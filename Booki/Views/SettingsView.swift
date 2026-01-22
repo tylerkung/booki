@@ -188,16 +188,25 @@ struct EditProfileSheet: View {
 
 struct ExportDataView: View {
     @Query(sort: \Bet.createdAt, order: .reverse) private var bets: [Bet]
+    @Query(sort: \LedgerEntry.createdAt, order: .reverse) private var ledgerEntries: [LedgerEntry]
     @Query private var events: [Event]
 
     @State private var showingBetExportShare = false
     @State private var betExportURL: URL?
+    @State private var showingLedgerExportShare = false
+    @State private var ledgerExportURL: URL?
 
     private func eventName(for eventId: String) -> String {
         if let event = events.first(where: { $0.id.uuidString == eventId }) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return eventId
+    }
+
+    private func betDescription(for bet: Bet?) -> String {
+        guard let bet = bet else { return "" }
+        let event = eventName(for: bet.eventId)
+        return "\(event) - \(bet.side) \(formatOdds(bet.odds))"
     }
 
     private func formatOdds(_ odds: Int) -> String {
@@ -275,6 +284,46 @@ struct ExportDataView: View {
         }
     }
 
+    private func generateLedgerCSV() -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .short
+        dateFormatter.timeStyle = .short
+
+        let numberFormatter = NumberFormatter()
+        numberFormatter.numberStyle = .decimal
+        numberFormatter.minimumFractionDigits = 2
+        numberFormatter.maximumFractionDigits = 2
+
+        var csv = "Date,Player,Type,Amount,Description,Related Bet\n"
+
+        for entry in ledgerEntries {
+            let date = dateFormatter.string(from: entry.createdAt)
+            let playerName = escapeCSV(entry.player?.name ?? "Unknown")
+            let type = entry.type.rawValue.capitalized
+            let amount = numberFormatter.string(from: entry.amount as NSDecimalNumber) ?? "0.00"
+            let description = escapeCSV(entry.entryDescription)
+            let relatedBet = escapeCSV(betDescription(for: entry.bet))
+
+            csv += "\(date),\(playerName),\(type),\(amount),\(description),\(relatedBet)\n"
+        }
+
+        return csv
+    }
+
+    private func exportLedgerToFile() -> URL? {
+        let csv = generateLedgerCSV()
+        let fileName = "booki_ledger_export.csv"
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+
+        do {
+            try csv.write(to: tempURL, atomically: true, encoding: .utf8)
+            return tempURL
+        } catch {
+            print("Failed to write CSV file: \(error)")
+            return nil
+        }
+    }
+
     var body: some View {
         List {
             Section {
@@ -288,12 +337,15 @@ struct ExportDataView: View {
                 }
                 .disabled(bets.isEmpty)
 
-                NavigationLink {
-                    Text("Ledger export will be implemented in US-030")
-                        .foregroundStyle(.secondary)
+                Button {
+                    if let url = exportLedgerToFile() {
+                        ledgerExportURL = url
+                        showingLedgerExportShare = true
+                    }
                 } label: {
-                    Label("Export Ledger", systemImage: "doc.text")
+                    Label("Export Ledger (\(ledgerEntries.count))", systemImage: "doc.text")
                 }
+                .disabled(ledgerEntries.isEmpty)
             } header: {
                 Text("Export Options")
             } footer: {
@@ -304,6 +356,11 @@ struct ExportDataView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingBetExportShare) {
             if let url = betExportURL {
+                ShareSheet(activityItems: [url])
+            }
+        }
+        .sheet(isPresented: $showingLedgerExportShare) {
+            if let url = ledgerExportURL {
                 ShareSheet(activityItems: [url])
             }
         }
