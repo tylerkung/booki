@@ -19,6 +19,8 @@
 		8A1234560010 /* Market.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550010 /* Market.swift */; };
 		8A1234560011 /* LiabilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550011 /* LiabilityService.swift */; };
 		8A1234560012 /* LiabilityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550012 /* LiabilityServiceTests.swift */; };
+		8A1234560013 /* ExposureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550014 /* ExposureService.swift */; };
+		8A1234560014 /* ExposureServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550015 /* ExposureServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +38,8 @@
 		8A1234550011 /* LiabilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiabilityService.swift; sourceTree = "<group>"; };
 		8A1234550012 /* LiabilityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiabilityServiceTests.swift; sourceTree = "<group>"; };
 		8A1234550013 /* BookiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BookiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8A1234550014 /* ExposureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExposureService.swift; sourceTree = "<group>"; };
+		8A1234550015 /* ExposureServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExposureServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +83,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1234550012 /* LiabilityServiceTests.swift */,
+				8A1234550015 /* ExposureServiceTests.swift */,
 			);
 			path = BookiTests;
 			sourceTree = "<group>";
@@ -138,6 +143,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1234550011 /* LiabilityService.swift */,
+				8A1234550014 /* ExposureService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -255,6 +261,7 @@
 				8A1234560009 /* Event.swift in Sources */,
 				8A1234560010 /* Market.swift in Sources */,
 				8A1234560011 /* LiabilityService.swift in Sources */,
+				8A1234560013 /* ExposureService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -263,6 +270,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A1234560012 /* LiabilityServiceTests.swift in Sources */,
+				8A1234560014 /* ExposureServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
