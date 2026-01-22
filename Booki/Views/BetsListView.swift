@@ -189,14 +189,304 @@ struct BetRowView: View {
     }
 }
 
-// MARK: - Bet Detail View (Placeholder)
+// MARK: - Bet Detail View
 
 struct BetDetailView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @Query private var events: [Event]
+
     let bet: Bet
 
+    @State private var showingVoidConfirmation = false
+    @State private var showingSettleConfirmation = false
+
+    // MARK: - Computed Properties
+
+    private var event: Event? {
+        events.first { $0.id.uuidString == bet.eventId }
+    }
+
+    private var eventName: String {
+        if let event = event {
+            return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        return "Event \(bet.eventId.prefix(8))"
+    }
+
+    private var formattedOdds: String {
+        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
+    }
+
+    private var formattedStake: String {
+        formatCurrency(bet.stake)
+    }
+
+    private var potentialPayout: Decimal {
+        LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
+    }
+
+    private var formattedPotentialPayout: String {
+        formatCurrency(potentialPayout)
+    }
+
+    private var totalReturn: Decimal {
+        bet.stake + potentialPayout
+    }
+
+    private var formattedTotalReturn: String {
+        formatCurrency(totalReturn)
+    }
+
+    private var statusColor: Color {
+        switch bet.status {
+        case .pending: return .orange
+        case .accepted: return .blue
+        case .declined: return .red
+        case .readyToGrade: return .purple
+        case .graded: return .indigo
+        case .settled: return .green
+        case .void: return .gray
+        }
+    }
+
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: bet.createdAt)
+    }
+
+    // MARK: - Body
+
     var body: some View {
-        Text("Bet Detail: \(bet.id.uuidString)")
-            .navigationTitle("Bet Details")
+        List {
+            // MARK: - Status Section
+            Section {
+                HStack {
+                    Text("Status")
+                    Spacer()
+                    Text(bet.status.rawValue.capitalized)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(statusColor)
+                        .clipShape(Capsule())
+                }
+
+                if let gradeResult = bet.gradeResult {
+                    HStack {
+                        Text("Result")
+                        Spacer()
+                        Text(gradeResult.rawValue.capitalized)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(gradeResultColor(gradeResult))
+                    }
+                }
+            }
+
+            // MARK: - Event Section
+            Section("Event") {
+                LabeledContent("Matchup", value: eventName)
+
+                if let event = event {
+                    LabeledContent("Sport", value: event.sport)
+                    LabeledContent("League", value: event.league)
+
+                    let eventFormatter = DateFormatter()
+                    let _ = eventFormatter.dateStyle = .medium
+                    let _ = eventFormatter.timeStyle = .short
+                    LabeledContent("Start Time", value: eventFormatter.string(from: event.startTime))
+
+                    LabeledContent("Event Status", value: event.status.rawValue.capitalized)
+
+                    if let finalScore = event.finalScore {
+                        LabeledContent("Final Score", value: finalScore)
+                    }
+                }
+            }
+
+            // MARK: - Bet Details Section
+            Section("Bet Details") {
+                LabeledContent("Market", value: bet.market)
+                LabeledContent("Side", value: bet.side)
+                LabeledContent("Odds", value: formattedOdds)
+                LabeledContent("Stake", value: formattedStake)
+            }
+
+            // MARK: - Payout Section
+            Section("Potential Payout") {
+                LabeledContent("Profit if Win", value: formattedPotentialPayout)
+                    .foregroundStyle(.green)
+                LabeledContent("Total Return", value: formattedTotalReturn)
+                    .fontWeight(.semibold)
+            }
+
+            // MARK: - Player Section
+            Section("Player") {
+                if let player = bet.player {
+                    LabeledContent("Name", value: player.name)
+                    if let email = player.email {
+                        LabeledContent("Email", value: email)
+                    }
+                } else {
+                    Text("Unknown Player")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // MARK: - Meta Section
+            Section("Details") {
+                LabeledContent("Created", value: formattedDate)
+                LabeledContent("Bet ID", value: bet.id.uuidString.prefix(8) + "...")
+                    .font(.caption)
+            }
+
+            // MARK: - Actions Section
+            if shouldShowActions {
+                Section("Actions") {
+                    actionButtons
+                }
+            }
+        }
+        .navigationTitle("Bet Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            "Void this bet?",
+            isPresented: $showingVoidConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Void Bet", role: .destructive) {
+                voidBet()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This action cannot be undone. The bet will be marked as void.")
+        }
+        .confirmationDialog(
+            "Settle this bet?",
+            isPresented: $showingSettleConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Settle Bet") {
+                settleBet()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let result = bet.gradeResult {
+                Text("This will create a ledger entry for a \(result.rawValue) settlement.")
+            } else {
+                Text("This will create a ledger entry for the settlement.")
+            }
+        }
+    }
+
+    // MARK: - Actions View
+
+    private var shouldShowActions: Bool {
+        switch bet.status {
+        case .pending, .accepted, .graded:
+            return true
+        default:
+            return false
+        }
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        switch bet.status {
+        case .pending:
+            Button {
+                acceptBet()
+            } label: {
+                Label("Accept Bet", systemImage: "checkmark.circle.fill")
+            }
+            .tint(.green)
+
+            Button(role: .destructive) {
+                declineBet()
+            } label: {
+                Label("Decline Bet", systemImage: "xmark.circle.fill")
+            }
+
+        case .accepted:
+            Button(role: .destructive) {
+                showingVoidConfirmation = true
+            } label: {
+                Label("Void Bet", systemImage: "trash.circle.fill")
+            }
+
+        case .graded:
+            Button {
+                showingSettleConfirmation = true
+            } label: {
+                Label("Settle Bet", systemImage: "dollarsign.circle.fill")
+            }
+            .tint(.green)
+
+        default:
+            EmptyView()
+        }
+    }
+
+    // MARK: - Actions
+
+    private func acceptBet() {
+        let result = BetService.acceptBet(bet)
+        switch result {
+        case .success:
+            break
+        case .failure(let error):
+            print("Failed to accept bet: \(error)")
+        }
+    }
+
+    private func declineBet() {
+        let result = BetService.declineBet(bet)
+        switch result {
+        case .success:
+            break
+        case .failure(let error):
+            print("Failed to decline bet: \(error)")
+        }
+    }
+
+    private func voidBet() {
+        let result = BetService.voidBet(bet)
+        switch result {
+        case .success:
+            break
+        case .failure(let error):
+            print("Failed to void bet: \(error)")
+        }
+    }
+
+    private func settleBet() {
+        let result = GradingService.settleBet(bet)
+        switch result {
+        case .success(let ledgerEntry):
+            modelContext.insert(ledgerEntry)
+        case .failure(let error):
+            print("Failed to settle bet: \(error)")
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+
+    private func gradeResultColor(_ result: GradeResult) -> Color {
+        switch result {
+        case .win: return .green
+        case .loss: return .red
+        case .push: return .orange
+        }
     }
 }
 
