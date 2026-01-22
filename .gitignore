@@ -1,42 +1,57 @@
-# Dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# Xcode
+build/
+DerivedData/
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
 
-# Testing
-/coverage
+# Swift Package Manager
+.build/
+Packages/
+Package.resolved
+*.swiftpm
 
-# Next.js
-/.next/
-/out/
+# CocoaPods
+Pods/
+Podfile.lock
 
-# Production
-/build
+# Carthage
+Carthage/Build/
 
-# Misc
+# macOS
 .DS_Store
-*.pem
+.AppleDouble
+.LSOverride
+._*
 
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# App packaging
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Swift Package Manager
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
 
 # Env files
 .env
-.env*.local
-
-# Vercel
-.vercel
-
-# TypeScript
-*.tsbuildinfo
+.env.local
 
 # IDE
 .idea
