@@ -5,6 +5,8 @@ struct EventsListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Event.startTime) private var events: [Event]
 
+    @State private var showingAddEvent = false
+
     /// Group events by sport and league
     private var groupedEvents: [(key: String, events: [Event])] {
         let grouped = Dictionary(grouping: events) { "\($0.sport) - \($0.league)" }
@@ -44,6 +46,18 @@ struct EventsListView: View {
             .navigationTitle("Events")
             .navigationDestination(for: Event.self) { event in
                 EventDetailView(event: event)
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showingAddEvent = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingAddEvent) {
+                AddEventSheet()
             }
         }
     }
