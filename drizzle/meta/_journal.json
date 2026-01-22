@@ -29,6 +29,13 @@
       "when": 1769102967722,
       "tag": "0003_worthless_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1769103078033,
+      "tag": "0004_last_corsair",
+      "breakpoints": true
     }
   ]
 }

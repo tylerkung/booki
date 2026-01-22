@@ -44,6 +44,20 @@ export const ledgerEntryTypeEnum = pgEnum("ledger_entry_type", [
   "reversal",
 ]);
 
+// Event status enum
+export const eventStatusEnum = pgEnum("event_status", [
+  "scheduled",
+  "live",
+  "final",
+]);
+
+// Market type enum
+export const marketTypeEnum = pgEnum("market_type", [
+  "spread",
+  "total",
+  "moneyline",
+]);
+
 // Bookies table - stores bookie accounts
 export const bookies = pgTable("bookies", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -129,3 +143,45 @@ export const ledgerEntries = pgTable("ledger_entries", {
 // Ledger entry types
 export type LedgerEntry = typeof ledgerEntries.$inferSelect;
 export type NewLedgerEntry = typeof ledgerEntries.$inferInsert;
+
+// Events table - stores sports events
+export const events = pgTable("events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sport: varchar("sport", { length: 100 }).notNull(),
+  league: varchar("league", { length: 100 }).notNull(),
+  homeTeam: varchar("home_team", { length: 255 }).notNull(),
+  awayTeam: varchar("away_team", { length: 255 }).notNull(),
+  startTime: timestamp("start_time", { withTimezone: true }).notNull(),
+  status: eventStatusEnum("status").notNull().default("scheduled"),
+  finalScore: varchar("final_score", { length: 50 }), // e.g., "24-17", nullable until game ends
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// Event types
+export type Event = typeof events.$inferSelect;
+export type NewEvent = typeof events.$inferInsert;
+
+// Markets table - stores betting markets for events
+export const markets = pgTable("markets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id")
+    .notNull()
+    .references(() => events.id),
+  type: marketTypeEnum("type").notNull(),
+  sideA: varchar("side_a", { length: 100 }).notNull(), // e.g., "Team A -3.5", "Over 45.5"
+  sideB: varchar("side_b", { length: 100 }).notNull(), // e.g., "Team B +3.5", "Under 45.5"
+  oddsA: integer("odds_a").notNull(), // American odds for side A
+  oddsB: integer("odds_b").notNull(), // American odds for side B
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// Market types
+export type Market = typeof markets.$inferSelect;
+export type NewMarket = typeof markets.$inferInsert;
