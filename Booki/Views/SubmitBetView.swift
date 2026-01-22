@@ -478,6 +478,7 @@ struct BetSelection: Hashable {
 /// View for entering stake amount and reviewing bet submission details
 struct StakeEntryView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
 
@@ -487,6 +488,10 @@ struct StakeEntryView: View {
 
     /// Stake input as string for TextField binding
     @State private var stakeInput: String = ""
+    /// Whether the submission was successful (shows confirmation)
+    @State private var showingSuccess: Bool = false
+    /// Error message if submission fails
+    @State private var submissionError: String?
 
     // MARK: - Computed Properties
 
@@ -559,9 +564,37 @@ struct StakeEntryView: View {
 
             // Review Summary Section
             reviewSummarySection
+
+            // Compliance Disclosure Section
+            if isStakeValid {
+                complianceDisclosureSection
+            }
         }
-        .navigationTitle("Enter Stake")
+        .navigationTitle("Review Request")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            if isStakeValid {
+                submitButton
+            }
+        }
+        .alert("Request Submitted", isPresented: $showingSuccess) {
+            Button("OK") {
+                // Return to event list by dismissing twice (market selection + stake entry)
+                dismiss()
+            }
+        } message: {
+            Text("Your bet request has been recorded and is pending review.")
+        }
+        .alert("Submission Failed", isPresented: .init(
+            get: { submissionError != nil },
+            set: { if !$0 { submissionError = nil } }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            if let error = submissionError {
+                Text(error)
+            }
+        }
     }
 
     // MARK: - Section Views
@@ -700,6 +733,76 @@ struct StakeEntryView: View {
             }
         } header: {
             Text("Review Summary")
+        }
+    }
+
+    @ViewBuilder
+    private var complianceDisclosureSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundStyle(.blue)
+                    Text("This submission records a bet request with your book. No money is wagered or transferred in this app.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Disclosure")
+        }
+    }
+
+    @ViewBuilder
+    private var submitButton: some View {
+        Button(action: submitRequest) {
+            Text("Submit Request")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.blue)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    // MARK: - Actions
+
+    private func submitRequest() {
+        guard let stakeValue = stake else { return }
+
+        // Get player's existing bets and ledger entries
+        let playerBets = bets.filter { $0.player?.id == player.id }
+        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+
+        // Submit bet via BetService
+        let result = BetService.submitBet(
+            player: player,
+            eventId: event.id.uuidString,
+            market: selection.market.type.rawValue,
+            side: selection.side,
+            odds: selection.odds,
+            stake: stakeValue,
+            existingBets: playerBets,
+            ledgerEntries: playerLedgerEntries
+        )
+
+        switch result {
+        case .success(let bet):
+            // Insert the bet into the model context
+            modelContext.insert(bet)
+            showingSuccess = true
+        case .failure(let error):
+            switch error {
+            case .insufficientCredit(let available, let required):
+                submissionError = "Insufficient credit. Available: \(formatCurrency(available)), Required: \(formatCurrency(required))"
+            case .playerNotActive(let status):
+                submissionError = "Your account is \(status.rawValue). You cannot submit bet requests."
+            default:
+                submissionError = "Failed to submit request. Please try again."
+            }
         }
     }
 
