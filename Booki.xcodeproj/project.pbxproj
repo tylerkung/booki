@@ -11,6 +11,12 @@
 		8A1234560002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550002 /* ContentView.swift */; };
 		8A1234560003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550003 /* Assets.xcassets */; };
 		8A1234560004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550004 /* Preview Assets.xcassets */; };
+		8A1234560005 /* Bookie.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550005 /* Bookie.swift */; };
+		8A1234560006 /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550006 /* Player.swift */; };
+		8A1234560007 /* Bet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550007 /* Bet.swift */; };
+		8A1234560008 /* LedgerEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550008 /* LedgerEntry.swift */; };
+		8A1234560009 /* Event.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550009 /* Event.swift */; };
+		8A1234560010 /* Market.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550010 /* Market.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,6 +25,12 @@
 		8A1234550002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		8A1234550003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8A1234550004 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		8A1234550005 /* Bookie.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bookie.swift; sourceTree = "<group>"; };
+		8A1234550006 /* Player.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Player.swift; sourceTree = "<group>"; };
+		8A1234550007 /* Bet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bet.swift; sourceTree = "<group>"; };
+		8A1234550008 /* LedgerEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerEntry.swift; sourceTree = "<group>"; };
+		8A1234550009 /* Event.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Event.swift; sourceTree = "<group>"; };
+		8A1234550010 /* Market.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Market.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +78,12 @@
 		8A1234530003 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				8A1234550005 /* Bookie.swift */,
+				8A1234550006 /* Player.swift */,
+				8A1234550007 /* Bet.swift */,
+				8A1234550008 /* LedgerEntry.swift */,
+				8A1234550009 /* Event.swift */,
+				8A1234550010 /* Market.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -171,6 +189,12 @@
 			files = (
 				8A1234560002 /* ContentView.swift in Sources */,
 				8A1234560001 /* BookiApp.swift in Sources */,
+				8A1234560005 /* Bookie.swift in Sources */,
+				8A1234560006 /* Player.swift in Sources */,
+				8A1234560007 /* Bet.swift in Sources */,
+				8A1234560008 /* LedgerEntry.swift in Sources */,
+				8A1234560009 /* Event.swift in Sources */,
+				8A1234560010 /* Market.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
