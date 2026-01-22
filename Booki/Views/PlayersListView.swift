@@ -666,24 +666,103 @@ struct BalanceAdjustmentSheet: View {
     }
 }
 
-// MARK: - Add Player Sheet (Placeholder for US-022)
+// MARK: - Add Player Sheet
 
 struct AddPlayerSheet: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+
+    @State private var name: String = ""
+    @State private var email: String = ""
+    @State private var creditLimitString: String = ""
+
+    private var creditLimit: Decimal {
+        guard let doubleValue = Double(creditLimitString) else { return 0 }
+        return Decimal(doubleValue)
+    }
+
+    private var isValidInput: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var formattedCreditLimit: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: creditLimit as NSDecimalNumber) ?? "$\(creditLimit)"
+    }
 
     var body: some View {
         NavigationStack {
-            Text("Add Player Form")
-                .navigationTitle("Add Player")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            dismiss()
-                        }
+            Form {
+                Section {
+                    TextField("Name", text: $name)
+                        .textContentType(.name)
+                        .autocorrectionDisabled()
+
+                    TextField("Email (Optional)", text: $email)
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+
+                    TextField("Credit Limit", text: $creditLimitString)
+                        .keyboardType(.decimalPad)
+                } header: {
+                    Text("Player Details")
+                } footer: {
+                    Text("Name is required. Email and credit limit are optional.")
+                }
+
+                Section {
+                    LabeledContent("Name") {
+                        Text(name.isEmpty ? "—" : name)
+                            .foregroundStyle(name.isEmpty ? .secondary : .primary)
+                    }
+
+                    LabeledContent("Email") {
+                        Text(email.isEmpty ? "Not provided" : email)
+                            .foregroundStyle(email.isEmpty ? .secondary : .primary)
+                    }
+
+                    LabeledContent("Credit Limit") {
+                        Text(formattedCreditLimit)
+                    }
+                } header: {
+                    Text("Preview")
+                }
+            }
+            .navigationTitle("Add Player")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
                     }
                 }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        savePlayer()
+                    }
+                    .disabled(!isValidInput)
+                }
+            }
         }
+    }
+
+    private func savePlayer() {
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
+
+        let player = PlayerService.addPlayer(
+            name: trimmedName,
+            email: trimmedEmail.isEmpty ? nil : trimmedEmail,
+            creditLimit: creditLimit
+        )
+
+        modelContext.insert(player)
+        dismiss()
     }
 }
 
