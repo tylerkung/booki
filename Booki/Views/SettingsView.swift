@@ -5,11 +5,24 @@ import UIKit
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var bookies: [Bookie]
+    @Query(sort: \Player.name) private var players: [Player]
 
     @State private var showingEditProfile = false
+    @State private var showingSeedDataConfirmation = false
+    @State private var showingSeedDataSuccess = false
+    @State private var seededEventCount = 0
+
+    // Test Mode settings (persisted via AppStorage)
+    @AppStorage("isPlayerMode") private var isPlayerMode: Bool = false
+    @AppStorage("selectedPlayerID") private var selectedPlayerID: String = ""
 
     private var currentBookie: Bookie? {
         bookies.first
+    }
+
+    /// Active players for test mode selection
+    private var activePlayers: [Player] {
+        players.filter { $0.status == .active }
     }
 
     private var appVersion: String {
@@ -58,10 +71,45 @@ struct SettingsView: View {
                     } label: {
                         Label("Export Data", systemImage: "square.and.arrow.up")
                     }
+
+                    Button {
+                        showingSeedDataConfirmation = true
+                    } label: {
+                        Label("Load Sample Data", systemImage: "sportscourt")
+                    }
                 } header: {
                     Text("Data Management")
                 } footer: {
-                    Text("Export your bets and ledger data to CSV format for record-keeping.")
+                    Text("Export your data or load sample events for testing.")
+                }
+
+                // MARK: - Test Mode Section
+                Section {
+                    if activePlayers.isEmpty {
+                        Text("Add players first to test player mode")
+                            .foregroundStyle(.secondary)
+                            .italic()
+                    } else {
+                        Picker("Select Player", selection: $selectedPlayerID) {
+                            Text("Choose a player").tag("")
+                            ForEach(activePlayers) { player in
+                                Text(player.name).tag(player.id.uuidString)
+                            }
+                        }
+
+                        Button {
+                            if !selectedPlayerID.isEmpty {
+                                isPlayerMode = true
+                            }
+                        } label: {
+                            Label("Switch to Player View", systemImage: "person.fill")
+                        }
+                        .disabled(selectedPlayerID.isEmpty)
+                    }
+                } header: {
+                    Text("Test Mode")
+                } footer: {
+                    Text("View the app as a specific player to test the player experience. In production, bookie and player will have separate accounts.")
                 }
 
                 // MARK: - About Section
@@ -76,6 +124,30 @@ struct SettingsView: View {
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileSheet(existingBookie: currentBookie)
             }
+            .alert("Load Sample Data", isPresented: $showingSeedDataConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Clear & Load", role: .destructive) {
+                    loadSampleData()
+                }
+            } message: {
+                Text("This will delete all existing events and load 12 sample games across NFL, NBA, and MLB with markets.")
+            }
+            .alert("Sample Data Loaded", isPresented: $showingSeedDataSuccess) {
+                Button("OK") { }
+            } message: {
+                Text("Successfully loaded \(seededEventCount) sample events with markets.")
+            }
+        }
+    }
+
+    private func loadSampleData() {
+        do {
+            try SeedDataService.clearAllEvents(in: modelContext)
+            let events = SeedDataService.seedMockData(in: modelContext)
+            seededEventCount = events.count
+            showingSeedDataSuccess = true
+        } catch {
+            print("Failed to seed data: \(error)")
         }
     }
 

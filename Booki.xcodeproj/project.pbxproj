@@ -39,6 +39,7 @@
 		8A1234560030 /* AddEventSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550031 /* AddEventSheet.swift */; };
 		8A1234560031 /* AddMarketSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550032 /* AddMarketSheet.swift */; };
 		8A1234560032 /* EditMarketSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550033 /* EditMarketSheet.swift */; };
+		8A1234560033 /* SeedDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550034 /* SeedDataService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -76,6 +77,7 @@
 		8A1234550031 /* AddEventSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddEventSheet.swift; sourceTree = "<group>"; };
 		8A1234550032 /* AddMarketSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMarketSheet.swift; sourceTree = "<group>"; };
 		8A1234550033 /* EditMarketSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditMarketSheet.swift; sourceTree = "<group>"; };
+		8A1234550034 /* SeedDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedDataService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -198,6 +200,7 @@
 				8A1234550018 /* BetService.swift */,
 				8A1234550019 /* GradingService.swift */,
 				8A1234550020 /* PlayerService.swift */,
+				8A1234550034 /* SeedDataService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -333,6 +336,7 @@
 				8A1234560030 /* AddEventSheet.swift in Sources */,
 				8A1234560031 /* AddMarketSheet.swift in Sources */,
 				8A1234560032 /* EditMarketSheet.swift in Sources */,
+				8A1234560033 /* SeedDataService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
