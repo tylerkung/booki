@@ -23,6 +23,7 @@
 		8A1234560014 /* ExposureServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550015 /* ExposureServiceTests.swift */; };
 		8A1234560015 /* BalanceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550016 /* BalanceService.swift */; };
 		8A1234560016 /* BalanceServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550017 /* BalanceServiceTests.swift */; };
+		8A1234560017 /* BetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550018 /* BetService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +45,7 @@
 		8A1234550015 /* ExposureServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExposureServiceTests.swift; sourceTree = "<group>"; };
 		8A1234550016 /* BalanceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceService.swift; sourceTree = "<group>"; };
 		8A1234550017 /* BalanceServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceServiceTests.swift; sourceTree = "<group>"; };
+		8A1234550018 /* BetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -150,6 +152,7 @@
 				8A1234550011 /* LiabilityService.swift */,
 				8A1234550014 /* ExposureService.swift */,
 				8A1234550016 /* BalanceService.swift */,
+				8A1234550018 /* BetService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -269,6 +272,7 @@
 				8A1234560011 /* LiabilityService.swift in Sources */,
 				8A1234560013 /* ExposureService.swift in Sources */,
 				8A1234560015 /* BalanceService.swift in Sources */,
+				8A1234560017 /* BetService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
