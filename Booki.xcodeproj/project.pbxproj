@@ -17,6 +17,8 @@
 		8A1234560008 /* LedgerEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550008 /* LedgerEntry.swift */; };
 		8A1234560009 /* Event.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550009 /* Event.swift */; };
 		8A1234560010 /* Market.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550010 /* Market.swift */; };
+		8A1234560011 /* LiabilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550011 /* LiabilityService.swift */; };
+		8A1234560012 /* LiabilityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550012 /* LiabilityServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,10 +33,30 @@
 		8A1234550008 /* LedgerEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerEntry.swift; sourceTree = "<group>"; };
 		8A1234550009 /* Event.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Event.swift; sourceTree = "<group>"; };
 		8A1234550010 /* Market.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Market.swift; sourceTree = "<group>"; };
+		8A1234550011 /* LiabilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiabilityService.swift; sourceTree = "<group>"; };
+		8A1234550012 /* LiabilityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiabilityServiceTests.swift; sourceTree = "<group>"; };
+		8A1234550013 /* BookiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BookiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXContainerItemProxy section */
+		8A1234570001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8A1234520000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8A1234520001;
+			remoteInfo = Booki;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		8A1234540001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8A1234540004 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -48,8 +70,17 @@
 			isa = PBXGroup;
 			children = (
 				8A1234530001 /* Booki */,
+				8A1234530008 /* BookiTests */,
 				8A1234530002 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		8A1234530008 /* BookiTests */ = {
+			isa = PBXGroup;
+			children = (
+				8A1234550012 /* LiabilityServiceTests.swift */,
+			);
+			path = BookiTests;
 			sourceTree = "<group>";
 		};
 		8A1234530001 /* Booki */ = {
@@ -71,6 +102,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1234550000 /* Booki.app */,
+				8A1234550013 /* BookiTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -105,6 +137,7 @@
 		8A1234530006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				8A1234550011 /* LiabilityService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -137,7 +170,32 @@
 			productReference = 8A1234550000 /* Booki.app */;
 			productType = "com.apple.product-type.application";
 		};
+		8A1234520002 /* BookiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8A1234510002 /* Build configuration list for PBXNativeTarget "BookiTests" */;
+			buildPhases = (
+				8A1234540003 /* Sources */,
+				8A1234540004 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8A1234580001 /* PBXTargetDependency */,
+			);
+			name = BookiTests;
+			productName = BookiTests;
+			productReference = 8A1234550013 /* BookiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		8A1234580001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8A1234520001 /* Booki */;
+			targetProxy = 8A1234570001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		8A1234520000 /* Project object */ = {
@@ -166,6 +224,7 @@
 			projectRoot = "";
 			targets = (
 				8A1234520001 /* Booki */,
+				8A1234520002 /* BookiTests */,
 			);
 		};
 /* End PBXProject section */
@@ -195,12 +254,57 @@
 				8A1234560008 /* LedgerEntry.swift in Sources */,
 				8A1234560009 /* Event.swift in Sources */,
 				8A1234560010 /* Market.swift in Sources */,
+				8A1234560011 /* LiabilityService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8A1234540003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8A1234560012 /* LiabilityServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		8A1234500004 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.booki.BookiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Booki.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Booki";
+			};
+			name = Debug;
+		};
+		8A1234500005 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.booki.BookiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Booki.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Booki";
+			};
+			name = Release;
+		};
 		8A1234500000 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -393,6 +497,15 @@
 			buildConfigurations = (
 				8A1234500002 /* Debug */,
 				8A1234500003 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8A1234510002 /* Build configuration list for PBXNativeTarget "BookiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8A1234500004 /* Debug */,
+				8A1234500005 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
