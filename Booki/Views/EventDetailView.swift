@@ -5,10 +5,17 @@ struct EventDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allBets: [Bet]
 
-    let event: Event
+    @Bindable var event: Event
 
     @State private var showingAddMarket = false
     @State private var marketToEdit: Market?
+    @State private var showingFinalScoreSheet = false
+    @State private var selectedStatus: EventStatus
+
+    init(event: Event) {
+        self.event = event
+        self._selectedStatus = State(initialValue: event.status)
+    }
 
     // MARK: - Computed Properties
 
@@ -53,16 +60,13 @@ struct EventDetailView: View {
                 LabeledContent("League", value: event.league)
                 LabeledContent("Start Time", value: formattedStartTime)
 
-                HStack {
-                    Text("Status")
-                    Spacer()
-                    Text(event.status.rawValue.capitalized)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(statusColor)
-                        .clipShape(Capsule())
+                Picker("Status", selection: $selectedStatus) {
+                    Text("Scheduled").tag(EventStatus.scheduled)
+                    Text("Live").tag(EventStatus.live)
+                    Text("Final").tag(EventStatus.final)
+                }
+                .onChange(of: selectedStatus) { oldValue, newValue in
+                    handleStatusChange(from: oldValue, to: newValue)
                 }
 
                 if let finalScore = event.finalScore {
@@ -161,6 +165,34 @@ struct EventDetailView: View {
         }
         .sheet(item: $marketToEdit) { market in
             EditMarketSheet(market: market)
+        }
+        .sheet(isPresented: $showingFinalScoreSheet, onDismiss: {
+            // Sync selectedStatus with actual event status after sheet dismisses
+            selectedStatus = event.status
+        }) {
+            FinalScoreSheet(event: event, bets: eventBets) {
+                // On save, transition accepted bets to readyToGrade
+                transitionBetsToReadyToGrade()
+            }
+        }
+    }
+
+    // MARK: - Status Change Handler
+
+    private func handleStatusChange(from oldValue: EventStatus, to newValue: EventStatus) {
+        if newValue == .final {
+            // Show final score sheet when changing to Final
+            showingFinalScoreSheet = true
+        } else {
+            // For other status changes, update directly
+            event.status = newValue
+        }
+    }
+
+    private func transitionBetsToReadyToGrade() {
+        // Transition accepted bets to readyToGrade when event is finalized
+        for bet in eventBets where bet.status == .accepted {
+            bet.status = .readyToGrade
         }
     }
 
@@ -420,6 +452,115 @@ struct EventMarketRowView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Final Score Sheet
+
+struct FinalScoreSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var event: Event
+    let bets: [Bet]
+    let onSave: () -> Void
+
+    @State private var homeScore: String = ""
+    @State private var awayScore: String = ""
+
+    private var isFormValid: Bool {
+        guard let home = Int(homeScore), let away = Int(awayScore) else {
+            return false
+        }
+        return home >= 0 && away >= 0
+    }
+
+    private var acceptedBetsCount: Int {
+        bets.filter { $0.status == .accepted }.count
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Event") {
+                    LabeledContent("Matchup", value: "\(event.awayTeam) @ \(event.homeTeam)")
+                    LabeledContent("Sport", value: event.sport)
+                }
+
+                Section("Final Score") {
+                    HStack {
+                        VStack {
+                            Text(event.homeTeam)
+                                .font(.headline)
+                            TextField("Score", text: $homeScore)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.center)
+                                .font(.title)
+                                .frame(width: 80)
+                                .padding(8)
+                                .background(Color(.secondarySystemBackground))
+                                .cornerRadius(8)
+                        }
+
+                        Text("-")
+                            .font(.title)
+                            .padding(.horizontal)
+
+                        VStack {
+                            Text(event.awayTeam)
+                                .font(.headline)
+                            TextField("Score", text: $awayScore)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.center)
+                                .font(.title)
+                                .frame(width: 80)
+                                .padding(8)
+                                .background(Color(.secondarySystemBackground))
+                                .cornerRadius(8)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
+                }
+
+                if acceptedBetsCount > 0 {
+                    Section {
+                        HStack {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundStyle(.blue)
+                            Text("\(acceptedBetsCount) bet(s) will be marked as ready to grade")
+                                .font(.subheadline)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Enter Final Score")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveFinalScore()
+                    }
+                    .disabled(!isFormValid)
+                }
+            }
+        }
+    }
+
+    private func saveFinalScore() {
+        guard let home = Int(homeScore), let away = Int(awayScore) else { return }
+
+        // Set the final score (homeScore - awayScore)
+        event.finalScore = "\(home) - \(away)"
+        event.status = .final
+
+        // Trigger the callback to transition bets
+        onSave()
+
+        dismiss()
     }
 }
 
