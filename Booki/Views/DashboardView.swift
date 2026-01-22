@@ -62,7 +62,13 @@ struct DashboardView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(viewModel.topRiskEvents) { item in
-                            RiskEventRow(item: item)
+                            if let event = events.first(where: { $0.id.uuidString == item.eventId }) {
+                                NavigationLink(value: event) {
+                                    RiskEventRow(item: item)
+                                }
+                            } else {
+                                RiskEventRow(item: item)
+                            }
                         }
                     }
                 } header: {
@@ -81,6 +87,9 @@ struct DashboardView: View {
             }
             .onChange(of: bets.map { $0.status }) {
                 viewModel.refresh(bets: bets, events: events)
+            }
+            .navigationDestination(for: Event.self) { event in
+                EventDetailView(event: event)
             }
         }
     }
