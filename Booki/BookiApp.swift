@@ -7,6 +7,7 @@ struct BookiApp: App {
         let schema = Schema([
             Bookie.self,
             Player.self,
+            Bet.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
