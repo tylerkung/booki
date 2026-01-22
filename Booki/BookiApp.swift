@@ -6,6 +6,7 @@ struct BookiApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Bookie.self,
+            Player.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
