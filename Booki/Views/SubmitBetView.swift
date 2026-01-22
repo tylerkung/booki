@@ -473,22 +473,247 @@ struct BetSelection: Hashable {
     }
 }
 
-// MARK: - Stake Entry View (Placeholder for US-025)
+// MARK: - Stake Entry View
 
-/// Placeholder view for stake entry (will be implemented in US-025)
+/// View for entering stake amount and reviewing bet submission details
 struct StakeEntryView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var bets: [Bet]
+    @Query private var ledgerEntries: [LedgerEntry]
+
     let player: Player
     let event: Event
     let selection: BetSelection
 
-    var body: some View {
-        ContentUnavailableView(
-            "Stake Entry",
-            systemImage: "dollarsign.circle",
-            description: Text("Stake entry will be available soon.")
+    /// Stake input as string for TextField binding
+    @State private var stakeInput: String = ""
+
+    // MARK: - Computed Properties
+
+    /// Parse stake from input string
+    private var stake: Decimal? {
+        guard !stakeInput.isEmpty else { return nil }
+        guard let doubleValue = Double(stakeInput) else { return nil }
+        guard doubleValue > 0 else { return nil }
+        return Decimal(doubleValue)
+    }
+
+    /// Calculate potential payout based on stake and odds
+    private var potentialPayout: Decimal? {
+        guard let stake = stake else { return nil }
+        return LiabilityService.calculatePayout(stake: stake, odds: selection.odds)
+    }
+
+    /// Total return (stake + payout)
+    private var totalReturn: Decimal? {
+        guard let stake = stake, let payout = potentialPayout else { return nil }
+        return stake + payout
+    }
+
+    /// Player balance summary for display
+    private var balanceSummary: PlayerBalanceSummary {
+        let playerBets = bets.filter { $0.player?.id == player.id }
+        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+        return BalanceService.playerSummary(
+            for: player,
+            bets: playerBets,
+            ledgerEntries: playerLedgerEntries
         )
+    }
+
+    /// Check if stake is valid (positive and within available credit)
+    private var isStakeValid: Bool {
+        guard let stake = stake, let payout = potentialPayout else { return false }
+        // Check if potential liability (payout) is within available credit
+        return payout <= balanceSummary.availableCredit
+    }
+
+    /// Color for available credit
+    private var availableCreditColor: Color {
+        balanceSummary.availableCredit >= 0 ? Color.primary : Color.red
+    }
+
+    /// Error message for invalid stake
+    private var stakeError: String? {
+        guard let stake = stake, let payout = potentialPayout else { return nil }
+        if payout > balanceSummary.availableCredit {
+            return "Potential payout exceeds available credit"
+        }
+        return nil
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        List {
+            // Available Credit Section
+            availableCreditSection
+
+            // Stake Input Section
+            stakeInputSection
+
+            // Payout Section (shown when stake is entered)
+            if stake != nil {
+                payoutSection
+            }
+
+            // Review Summary Section
+            reviewSummarySection
+        }
         .navigationTitle("Enter Stake")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // MARK: - Section Views
+
+    @ViewBuilder
+    private var availableCreditSection: some View {
+        Section {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Available Credit")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(formatCurrency(balanceSummary.availableCredit))
+                        .font(.title2.bold())
+                        .foregroundStyle(availableCreditColor)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("Credit Limit")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(formatCurrency(player.creditLimit))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Your Account")
+        }
+    }
+
+    @ViewBuilder
+    private var stakeInputSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("$")
+                        .font(.title)
+                        .foregroundStyle(.secondary)
+                    TextField("0", text: $stakeInput)
+                        .font(.title.bold())
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.leading)
+                }
+
+                // Validation error message
+                if let error = stakeError {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+        } header: {
+            Text("Stake Amount")
+        }
+    }
+
+    @ViewBuilder
+    private var payoutSection: some View {
+        Section {
+            HStack {
+                Text("Potential Profit")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let payout = potentialPayout {
+                    Text(formatCurrency(payout))
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.green)
+                }
+            }
+
+            HStack {
+                Text("Total Return")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let total = totalReturn {
+                    Text(formatCurrency(total))
+                        .fontWeight(.bold)
+                }
+            }
+        } header: {
+            Text("Potential Payout")
+        } footer: {
+            Text("Returns include your original stake if bet wins.")
+        }
+    }
+
+    @ViewBuilder
+    private var reviewSummarySection: some View {
+        Section {
+            // Event
+            LabeledContent("Event") {
+                Text("\(event.awayTeam) @ \(event.homeTeam)")
+                    .foregroundStyle(.secondary)
+            }
+
+            // Market
+            LabeledContent("Market") {
+                Text(selection.market.type.rawValue.capitalized)
+                    .foregroundStyle(.secondary)
+            }
+
+            // Side
+            LabeledContent("Selection") {
+                Text(selection.side)
+                    .fontWeight(.semibold)
+            }
+
+            // Odds
+            LabeledContent("Odds") {
+                Text(formatOdds(selection.odds))
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.blue)
+            }
+
+            // Stake (if entered)
+            if let stakeValue = stake {
+                LabeledContent("Stake") {
+                    Text(formatCurrency(stakeValue))
+                        .fontWeight(.semibold)
+                }
+            }
+
+            // Potential Payout (if calculated)
+            if let payout = potentialPayout {
+                LabeledContent("Potential Payout") {
+                    Text(formatCurrency(payout))
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.green)
+                }
+            }
+        } header: {
+            Text("Review Summary")
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+
+    private func formatOdds(_ odds: Int) -> String {
+        odds >= 0 ? "+\(odds)" : "\(odds)"
     }
 }
 
