@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -186,15 +187,106 @@ struct EditProfileSheet: View {
 // MARK: - Export Data View
 
 struct ExportDataView: View {
+    @Query(sort: \Bet.createdAt, order: .reverse) private var bets: [Bet]
+    @Query private var events: [Event]
+
+    @State private var showingBetExportShare = false
+    @State private var betExportURL: URL?
+
+    private func eventName(for eventId: String) -> String {
+        if let event = events.first(where: { $0.id.uuidString == eventId }) {
+            return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        return eventId
+    }
+
+    private func formatOdds(_ odds: Int) -> String {
+        odds >= 0 ? "+\(odds)" : "\(odds)"
+    }
+
+    private func calculatePayout(for bet: Bet) -> Decimal? {
+        guard bet.status == .settled, let result = bet.gradeResult else {
+            return nil
+        }
+
+        switch result {
+        case .win:
+            return LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
+        case .loss:
+            return -bet.stake
+        case .push:
+            return Decimal.zero
+        }
+    }
+
+    private func escapeCSV(_ value: String) -> String {
+        if value.contains(",") || value.contains("\"") || value.contains("\n") {
+            return "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
+        }
+        return value
+    }
+
+    private func generateBetsCSV() -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .short
+        dateFormatter.timeStyle = .short
+
+        let numberFormatter = NumberFormatter()
+        numberFormatter.numberStyle = .decimal
+        numberFormatter.minimumFractionDigits = 2
+        numberFormatter.maximumFractionDigits = 2
+
+        var csv = "Date,Player,Event,Market,Side,Odds,Stake,Status,Result,Payout\n"
+
+        for bet in bets {
+            let date = dateFormatter.string(from: bet.createdAt)
+            let playerName = escapeCSV(bet.player?.name ?? "Unknown")
+            let event = escapeCSV(eventName(for: bet.eventId))
+            let market = escapeCSV(bet.market)
+            let side = escapeCSV(bet.side)
+            let odds = formatOdds(bet.odds)
+            let stake = numberFormatter.string(from: bet.stake as NSDecimalNumber) ?? "0.00"
+            let status = bet.status.rawValue.capitalized
+            let result = bet.gradeResult?.rawValue.capitalized ?? ""
+            let payout: String
+            if let payoutValue = calculatePayout(for: bet) {
+                payout = numberFormatter.string(from: payoutValue as NSDecimalNumber) ?? ""
+            } else {
+                payout = ""
+            }
+
+            csv += "\(date),\(playerName),\(event),\(market),\(side),\(odds),\(stake),\(status),\(result),\(payout)\n"
+        }
+
+        return csv
+    }
+
+    private func exportBetsToFile() -> URL? {
+        let csv = generateBetsCSV()
+        let fileName = "booki_bets_export.csv"
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+
+        do {
+            try csv.write(to: tempURL, atomically: true, encoding: .utf8)
+            return tempURL
+        } catch {
+            print("Failed to write CSV file: \(error)")
+            return nil
+        }
+    }
+
     var body: some View {
         List {
             Section {
-                NavigationLink {
-                    Text("Bet export will be implemented in US-029")
-                        .foregroundStyle(.secondary)
+                Button {
+                    if let url = exportBetsToFile() {
+                        betExportURL = url
+                        showingBetExportShare = true
+                    }
                 } label: {
-                    Label("Export Bets", systemImage: "list.bullet.rectangle")
+                    Label("Export Bets (\(bets.count))", systemImage: "list.bullet.rectangle")
                 }
+                .disabled(bets.isEmpty)
 
                 NavigationLink {
                     Text("Ledger export will be implemented in US-030")
@@ -210,7 +302,28 @@ struct ExportDataView: View {
         }
         .navigationTitle("Export Data")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingBetExportShare) {
+            if let url = betExportURL {
+                ShareSheet(activityItems: [url])
+            }
+        }
     }
+}
+
+// MARK: - Share Sheet
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    var applicationActivities: [UIActivity]? = nil
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: applicationActivities
+        )
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 #Preview {
