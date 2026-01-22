@@ -37,6 +37,8 @@
 		8A1234560028 /* PlayerHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550029 /* PlayerHistoryView.swift */; };
 		8A1234560029 /* EventsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550030 /* EventsListView.swift */; };
 		8A1234560030 /* AddEventSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550031 /* AddEventSheet.swift */; };
+		8A1234560031 /* AddMarketSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550032 /* AddMarketSheet.swift */; };
+		8A1234560032 /* EditMarketSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550033 /* EditMarketSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -72,6 +74,8 @@
 		8A1234550029 /* PlayerHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerHistoryView.swift; sourceTree = "<group>"; };
 		8A1234550030 /* EventsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventsListView.swift; sourceTree = "<group>"; };
 		8A1234550031 /* AddEventSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddEventSheet.swift; sourceTree = "<group>"; };
+		8A1234550032 /* AddMarketSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMarketSheet.swift; sourceTree = "<group>"; };
+		8A1234550033 /* EditMarketSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditMarketSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -171,6 +175,8 @@
 				8A1234550029 /* PlayerHistoryView.swift */,
 				8A1234550030 /* EventsListView.swift */,
 				8A1234550031 /* AddEventSheet.swift */,
+				8A1234550032 /* AddMarketSheet.swift */,
+				8A1234550033 /* EditMarketSheet.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -325,6 +331,8 @@
 				8A1234560028 /* PlayerHistoryView.swift in Sources */,
 				8A1234560029 /* EventsListView.swift in Sources */,
 				8A1234560030 /* AddEventSheet.swift in Sources */,
+				8A1234560031 /* AddMarketSheet.swift in Sources */,
+				8A1234560032 /* EditMarketSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
