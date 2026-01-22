@@ -26,6 +26,11 @@
 		8A1234560017 /* BetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550018 /* BetService.swift */; };
 		8A1234560018 /* GradingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550019 /* GradingService.swift */; };
 		8A1234560019 /* PlayerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550020 /* PlayerService.swift */; };
+		8A1234560020 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550021 /* DashboardView.swift */; };
+		8A1234560021 /* BetsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550022 /* BetsListView.swift */; };
+		8A1234560022 /* PlayersListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550023 /* PlayersListView.swift */; };
+		8A1234560023 /* GradingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550024 /* GradingView.swift */; };
+		8A1234560024 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550025 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +55,11 @@
 		8A1234550018 /* BetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetService.swift; sourceTree = "<group>"; };
 		8A1234550019 /* GradingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradingService.swift; sourceTree = "<group>"; };
 		8A1234550020 /* PlayerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerService.swift; sourceTree = "<group>"; };
+		8A1234550021 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		8A1234550022 /* BetsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetsListView.swift; sourceTree = "<group>"; };
+		8A1234550023 /* PlayersListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayersListView.swift; sourceTree = "<group>"; };
+		8A1234550024 /* GradingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradingView.swift; sourceTree = "<group>"; };
+		8A1234550025 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -139,6 +149,11 @@
 		8A1234530004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				8A1234550021 /* DashboardView.swift */,
+				8A1234550022 /* BetsListView.swift */,
+				8A1234550023 /* PlayersListView.swift */,
+				8A1234550024 /* GradingView.swift */,
+				8A1234550025 /* SettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -281,6 +296,11 @@
 				8A1234560017 /* BetService.swift in Sources */,
 				8A1234560018 /* GradingService.swift in Sources */,
 				8A1234560019 /* PlayerService.swift in Sources */,
+				8A1234560020 /* DashboardView.swift in Sources */,
+				8A1234560021 /* BetsListView.swift in Sources */,
+				8A1234560022 /* PlayersListView.swift in Sources */,
+				8A1234560023 /* GradingView.swift in Sources */,
+				8A1234560024 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
