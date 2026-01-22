@@ -36,6 +36,14 @@ export const betStatusEnum = pgEnum("bet_status", [
 // Grade result enum - bet outcomes
 export const gradeResultEnum = pgEnum("grade_result", ["win", "loss", "push"]);
 
+// Ledger entry type enum
+export const ledgerEntryTypeEnum = pgEnum("ledger_entry_type", [
+  "settlement",
+  "adjustment",
+  "payment_logged",
+  "reversal",
+]);
+
 // Bookies table - stores bookie accounts
 export const bookies = pgTable("bookies", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -102,3 +110,22 @@ export const bets = pgTable("bets", {
 // Bet types
 export type Bet = typeof bets.$inferSelect;
 export type NewBet = typeof bets.$inferInsert;
+
+// Ledger entries table - append-only financial records
+export const ledgerEntries = pgTable("ledger_entries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  playerId: uuid("player_id")
+    .notNull()
+    .references(() => players.id),
+  betId: uuid("bet_id").references(() => bets.id), // nullable - only set for settlement entries
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // positive or negative
+  type: ledgerEntryTypeEnum("type").notNull(),
+  description: varchar("description", { length: 500 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// Ledger entry types
+export type LedgerEntry = typeof ledgerEntries.$inferSelect;
+export type NewLedgerEntry = typeof ledgerEntries.$inferInsert;
