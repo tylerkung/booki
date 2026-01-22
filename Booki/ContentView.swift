@@ -71,10 +71,10 @@ struct ContentView: View {
             }
 
             NavigationStack {
-                SubmitBetView(player: player)
+                GamesView(player: player)
             }
             .tabItem {
-                Label("Submit", systemImage: "plus.circle.fill")
+                Label("Games", systemImage: "sportscourt.fill")
             }
 
             PlayerSettingsView()
