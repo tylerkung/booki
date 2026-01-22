@@ -21,6 +21,40 @@ struct DashboardView: View {
                     PendingBetsCard(count: viewModel.pendingBetsCount)
                 }
 
+                // MARK: - Pending Bets Queue Section
+                Section {
+                    if viewModel.pendingBets.isEmpty {
+                        Text("No pending bets")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(viewModel.pendingBets) { bet in
+                            PendingBetRow(
+                                bet: bet,
+                                eventName: eventName(for: bet),
+                                onAccept: { acceptBet(bet) },
+                                onDecline: { declineBet(bet) }
+                            )
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    declineBet(bet)
+                                } label: {
+                                    Label("Decline", systemImage: "xmark.circle")
+                                }
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button {
+                                    acceptBet(bet)
+                                } label: {
+                                    Label("Accept", systemImage: "checkmark.circle")
+                                }
+                                .tint(.green)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Pending Bets Queue")
+                }
+
                 // MARK: - Top Risk Events Section
                 Section {
                     if viewModel.topRiskEvents.isEmpty {
@@ -45,6 +79,38 @@ struct DashboardView: View {
             .onChange(of: bets.count) {
                 viewModel.refresh(bets: bets, events: events)
             }
+            .onChange(of: bets.map { $0.status }) {
+                viewModel.refresh(bets: bets, events: events)
+            }
+        }
+    }
+
+    // MARK: - Helper Methods
+
+    private func eventName(for bet: Bet) -> String {
+        if let event = events.first(where: { $0.id.uuidString == bet.eventId }) {
+            return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        return "Event \(bet.eventId.prefix(8))"
+    }
+
+    private func acceptBet(_ bet: Bet) {
+        let result = BetService.acceptBet(bet)
+        switch result {
+        case .success:
+            viewModel.refresh(bets: bets, events: events)
+        case .failure:
+            break
+        }
+    }
+
+    private func declineBet(_ bet: Bet) {
+        let result = BetService.declineBet(bet)
+        switch result {
+        case .success:
+            viewModel.refresh(bets: bets, events: events)
+        case .failure:
+            break
         }
     }
 }
@@ -107,6 +173,92 @@ struct PendingBetsCard: View {
                     .padding(.vertical, 4)
                     .background(Color.orange)
                     .clipShape(Capsule())
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Pending Bet Row
+
+struct PendingBetRow: View {
+    let bet: Bet
+    let eventName: String
+    let onAccept: () -> Void
+    let onDecline: () -> Void
+
+    private var formattedOdds: String {
+        if bet.odds > 0 {
+            return "+\(bet.odds)"
+        } else {
+            return "\(bet.odds)"
+        }
+    }
+
+    private var formattedStake: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Top row: Player name and event
+            HStack {
+                Text(bet.player?.name ?? "Unknown Player")
+                    .font(.headline)
+
+                Spacer()
+
+                Text(eventName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            // Middle row: Side, odds, stake
+            HStack {
+                Text(bet.side)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+
+                Text(formattedOdds)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text(formattedStake)
+                    .font(.subheadline.bold())
+            }
+
+            // Bottom row: Action buttons
+            HStack(spacing: 12) {
+                Button {
+                    onAccept()
+                } label: {
+                    Label("Accept", systemImage: "checkmark.circle.fill")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    onDecline()
+                } label: {
+                    Label("Decline", systemImage: "xmark.circle.fill")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color.red)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.vertical, 4)
