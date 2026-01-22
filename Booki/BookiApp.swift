@@ -5,7 +5,7 @@ import SwiftData
 struct BookiApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            // Models will be added here as they are created
+            Bookie.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
