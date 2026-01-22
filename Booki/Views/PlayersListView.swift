@@ -329,6 +329,13 @@ struct PlayerDetailView: View {
 
             // MARK: - Actions Section
             Section("Actions") {
+                // View Player's Bet History
+                NavigationLink {
+                    PlayerHistoryView(player: player)
+                } label: {
+                    Label("View My Bets", systemImage: "clock.arrow.circlepath")
+                }
+
                 // Submit Bet Request (only for active players)
                 if player.status == .active {
                     NavigationLink {
