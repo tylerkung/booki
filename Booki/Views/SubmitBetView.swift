@@ -204,20 +204,290 @@ struct EventRowView: View {
     }
 }
 
-// MARK: - Market Selection View (Placeholder for US-024)
+// MARK: - Market Selection View
 
-/// Placeholder view for market selection (will be implemented in US-024)
+/// View for selecting a market and side for bet submission
 struct MarketSelectionView: View {
     let player: Player
     let event: Event
 
+    /// Selected market and side for the bet
+    @State private var selectedMarket: Market?
+    @State private var selectedSide: SelectedSide?
+
+    /// Which side is selected (A or B)
+    enum SelectedSide: Hashable {
+        case sideA
+        case sideB
+    }
+
+    // MARK: - Computed Properties
+
+    /// Markets for this event grouped by type
+    private var marketsByType: [MarketType: [Market]] {
+        guard let markets = event.markets else { return [:] }
+        return Dictionary(grouping: markets, by: { $0.type })
+    }
+
+    /// Ordered market types for display
+    private var orderedMarketTypes: [MarketType] {
+        [.spread, .total, .moneyline].filter { marketsByType[$0] != nil }
+    }
+
+    /// Display name for market type
+    private func marketTypeName(_ type: MarketType) -> String {
+        switch type {
+        case .spread: return "Spread"
+        case .total: return "Total"
+        case .moneyline: return "Moneyline"
+        }
+    }
+
+    /// Check if a selection has been made
+    private var hasSelection: Bool {
+        selectedMarket != nil && selectedSide != nil
+    }
+
+    /// Get the selected side label for display
+    private var selectedSideLabel: String? {
+        guard let market = selectedMarket, let side = selectedSide else { return nil }
+        switch side {
+        case .sideA: return market.sideA
+        case .sideB: return market.sideB
+        }
+    }
+
+    /// Get the selected odds for display
+    private var selectedOdds: Int? {
+        guard let market = selectedMarket, let side = selectedSide else { return nil }
+        switch side {
+        case .sideA: return market.oddsA
+        case .sideB: return market.oddsB
+        }
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        List {
+            // Event info section
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(event.awayTeam) @ \(event.homeTeam)")
+                        .font(.headline)
+                    HStack {
+                        Text(event.sport)
+                        Text("•")
+                        Text(event.league)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Event")
+            }
+
+            // Markets section
+            if event.markets?.isEmpty ?? true {
+                ContentUnavailableView(
+                    "No Markets Available",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("No betting markets are available for this event.")
+                )
+            } else {
+                ForEach(orderedMarketTypes, id: \.self) { marketType in
+                    marketTypeSection(type: marketType)
+                }
+            }
+
+            // Selection summary (shown when something is selected)
+            if hasSelection {
+                Section {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Your Selection")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(selectedSideLabel ?? "")
+                                .font(.headline)
+                        }
+                        Spacer()
+                        Text(formatOdds(selectedOdds ?? 0))
+                            .font(.title2.bold())
+                            .foregroundStyle(.blue)
+                    }
+                } header: {
+                    Text("Selected")
+                }
+            }
+        }
+        .navigationTitle("Select Market")
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            if hasSelection {
+                continueButton
+            }
+        }
+        .navigationDestination(for: BetSelection.self) { selection in
+            StakeEntryView(player: player, event: event, selection: selection)
+        }
+    }
+
+    // MARK: - Section Views
+
+    @ViewBuilder
+    private func marketTypeSection(type: MarketType) -> some View {
+        let markets = marketsByType[type] ?? []
+
+        Section {
+            ForEach(markets, id: \.id) { market in
+                MarketRowView(
+                    market: market,
+                    selectedSide: selectedMarket?.id == market.id ? selectedSide : nil,
+                    onSelectSideA: {
+                        selectedMarket = market
+                        selectedSide = .sideA
+                    },
+                    onSelectSideB: {
+                        selectedMarket = market
+                        selectedSide = .sideB
+                    }
+                )
+            }
+        } header: {
+            Text(marketTypeName(type))
+        }
+    }
+
+    // MARK: - Continue Button
+
+    @ViewBuilder
+    private var continueButton: some View {
+        NavigationLink(value: BetSelection(
+            market: selectedMarket!,
+            side: selectedSide == .sideA ? selectedMarket!.sideA : selectedMarket!.sideB,
+            odds: selectedSide == .sideA ? selectedMarket!.oddsA : selectedMarket!.oddsB
+        )) {
+            Text("Continue")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.blue)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    // MARK: - Helpers
+
+    private func formatOdds(_ odds: Int) -> String {
+        odds >= 0 ? "+\(odds)" : "\(odds)"
+    }
+}
+
+// MARK: - Market Row View
+
+/// Row view for displaying a single market with tappable sides
+struct MarketRowView: View {
+    let market: Market
+    let selectedSide: MarketSelectionView.SelectedSide?
+    let onSelectSideA: () -> Void
+    let onSelectSideB: () -> Void
+
+    private func formatOdds(_ odds: Int) -> String {
+        odds >= 0 ? "+\(odds)" : "\(odds)"
+    }
+
+    private var sideASelected: Bool {
+        selectedSide == .sideA
+    }
+
+    private var sideBSelected: Bool {
+        selectedSide == .sideB
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Side A button
+            Button(action: onSelectSideA) {
+                VStack(spacing: 4) {
+                    Text(market.sideA)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                    Text(formatOdds(market.oddsA))
+                        .font(.headline.bold())
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 8)
+                .background(sideASelected ? Color.blue : Color(.systemGray5))
+                .foregroundStyle(sideASelected ? .white : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+
+            // Side B button
+            Button(action: onSelectSideB) {
+                VStack(spacing: 4) {
+                    Text(market.sideB)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                    Text(formatOdds(market.oddsB))
+                        .font(.headline.bold())
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 8)
+                .background(sideBSelected ? Color.blue : Color(.systemGray5))
+                .foregroundStyle(sideBSelected ? .white : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Bet Selection Model
+
+/// Model to pass selected bet details to stake entry view
+struct BetSelection: Hashable {
+    let market: Market
+    let side: String
+    let odds: Int
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(market.id)
+        hasher.combine(side)
+        hasher.combine(odds)
+    }
+
+    static func == (lhs: BetSelection, rhs: BetSelection) -> Bool {
+        lhs.market.id == rhs.market.id && lhs.side == rhs.side && lhs.odds == rhs.odds
+    }
+}
+
+// MARK: - Stake Entry View (Placeholder for US-025)
+
+/// Placeholder view for stake entry (will be implemented in US-025)
+struct StakeEntryView: View {
+    let player: Player
+    let event: Event
+    let selection: BetSelection
+
     var body: some View {
         ContentUnavailableView(
-            "Market Selection",
-            systemImage: "list.bullet.rectangle",
-            description: Text("Market selection will be available soon.")
+            "Stake Entry",
+            systemImage: "dollarsign.circle",
+            description: Text("Stake entry will be available soon.")
         )
-        .navigationTitle("Select Market")
+        .navigationTitle("Enter Stake")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
