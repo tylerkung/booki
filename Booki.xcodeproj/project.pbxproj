@@ -21,6 +21,8 @@
 		8A1234560012 /* LiabilityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550012 /* LiabilityServiceTests.swift */; };
 		8A1234560013 /* ExposureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550014 /* ExposureService.swift */; };
 		8A1234560014 /* ExposureServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550015 /* ExposureServiceTests.swift */; };
+		8A1234560015 /* BalanceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550016 /* BalanceService.swift */; };
+		8A1234560016 /* BalanceServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550017 /* BalanceServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +42,8 @@
 		8A1234550013 /* BookiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BookiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1234550014 /* ExposureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExposureService.swift; sourceTree = "<group>"; };
 		8A1234550015 /* ExposureServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExposureServiceTests.swift; sourceTree = "<group>"; };
+		8A1234550016 /* BalanceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceService.swift; sourceTree = "<group>"; };
+		8A1234550017 /* BalanceServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,6 +88,7 @@
 			children = (
 				8A1234550012 /* LiabilityServiceTests.swift */,
 				8A1234550015 /* ExposureServiceTests.swift */,
+				8A1234550017 /* BalanceServiceTests.swift */,
 			);
 			path = BookiTests;
 			sourceTree = "<group>";
@@ -144,6 +149,7 @@
 			children = (
 				8A1234550011 /* LiabilityService.swift */,
 				8A1234550014 /* ExposureService.swift */,
+				8A1234550016 /* BalanceService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -262,6 +268,7 @@
 				8A1234560010 /* Market.swift in Sources */,
 				8A1234560011 /* LiabilityService.swift in Sources */,
 				8A1234560013 /* ExposureService.swift in Sources */,
+				8A1234560015 /* BalanceService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -271,6 +278,7 @@
 			files = (
 				8A1234560012 /* LiabilityServiceTests.swift in Sources */,
 				8A1234560014 /* ExposureServiceTests.swift in Sources */,
+				8A1234560016 /* BalanceServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
