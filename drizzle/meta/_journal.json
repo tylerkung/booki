@@ -15,6 +15,13 @@
       "when": 1769102757293,
       "tag": "0001_lean_shockwave",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769102850543,
+      "tag": "0002_new_zemo",
+      "breakpoints": true
     }
   ]
 }
