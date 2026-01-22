@@ -329,6 +329,15 @@ struct PlayerDetailView: View {
 
             // MARK: - Actions Section
             Section("Actions") {
+                // Submit Bet Request (only for active players)
+                if player.status == .active {
+                    NavigationLink {
+                        SubmitBetView(player: player)
+                    } label: {
+                        Label("Submit Request", systemImage: "plus.circle")
+                    }
+                }
+
                 // Balance Adjustment
                 Button {
                     showingAdjustmentSheet = true

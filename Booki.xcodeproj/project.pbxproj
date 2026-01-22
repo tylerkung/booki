@@ -33,6 +33,7 @@
 		8A1234560024 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550025 /* SettingsView.swift */; };
 		8A1234560025 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550026 /* DashboardViewModel.swift */; };
 		8A1234560026 /* EventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550027 /* EventDetailView.swift */; };
+		8A1234560027 /* SubmitBetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550028 /* SubmitBetView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +65,7 @@
 		8A1234550025 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		8A1234550026 /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
 		8A1234550027 /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
+		8A1234550028 /* SubmitBetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmitBetView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -159,6 +161,7 @@
 				8A1234550024 /* GradingView.swift */,
 				8A1234550025 /* SettingsView.swift */,
 				8A1234550027 /* EventDetailView.swift */,
+				8A1234550028 /* SubmitBetView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -309,6 +312,7 @@
 				8A1234560024 /* SettingsView.swift in Sources */,
 				8A1234560025 /* DashboardViewModel.swift in Sources */,
 				8A1234560026 /* EventDetailView.swift in Sources */,
+				8A1234560027 /* SubmitBetView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
