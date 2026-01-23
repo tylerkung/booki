@@ -76,9 +76,13 @@ class BetSlipManager: ObservableObject {
     private let userDefaultsKey = "betSlipItems"
     private let betModeKey = "betSlipMode"
     private let stakeKey = "betSlipStake"
+    private let itemStakesKey = "betSlipItemStakes"
 
     /// Published array of bet slip items (order preserved)
     @Published private(set) var items: [BetSlipItem] = []
+
+    /// Per-item stakes for singles mode (US-003)
+    @Published private(set) var itemStakes: [UUID: Decimal] = [:]
 
     /// Published bet mode (singles or parlay)
     /// US-041: Support Multi-Bet (Parlay) Selections
@@ -105,6 +109,7 @@ class BetSlipManager: ObservableObject {
         loadItems()
         loadBetMode()
         loadStake()
+        loadItemStakes()
     }
 
     // MARK: - Parlay Odds Calculation (US-041)
@@ -211,6 +216,33 @@ class BetSlipManager: ObservableObject {
         stake = amount
     }
 
+    // MARK: - Per-Item Stakes (US-003)
+
+    /// Set stake for an individual bet item
+    func setItemStake(marketId: UUID, stake: Decimal) {
+        itemStakes[marketId] = stake
+        saveItemStakes()
+    }
+
+    /// Get stake for an individual bet item (returns 0 if not set)
+    func getItemStake(marketId: UUID) -> Decimal {
+        return itemStakes[marketId] ?? 0
+    }
+
+    /// Total stake from individual item stakes (sum of all per-bet stakes)
+    var individualTotalStake: Decimal {
+        return itemStakes.values.reduce(Decimal.zero) { $0 + $1 }
+    }
+
+    /// Total payout from individual item stakes
+    var individualTotalPayout: Decimal {
+        return items.reduce(Decimal.zero) { total, item in
+            let itemStake = getItemStake(marketId: item.marketId)
+            guard itemStake > 0 else { return total }
+            return total + calculatePayout(odds: item.odds, stake: itemStake)
+        }
+    }
+
     // MARK: - Public API
 
     /// Number of selections in the bet slip
@@ -249,15 +281,23 @@ class BetSlipManager: ObservableObject {
 
     /// Remove a selection from the bet slip
     func remove(_ selection: BetSlipSelection) {
+        // Find matching items to remove their stakes
+        for item in items where item.asSelection == selection {
+            itemStakes.removeValue(forKey: item.marketId)
+        }
         items.removeAll { $0.asSelection == selection }
         saveItems()
+        saveItemStakes()
     }
 
     /// Remove item at index
     func remove(at index: Int) {
         guard index >= 0 && index < items.count else { return }
+        let item = items[index]
+        itemStakes.removeValue(forKey: item.marketId)
         items.remove(at: index)
         saveItems()
+        saveItemStakes()
     }
 
     /// Toggle a selection (add if not present, remove if present)
@@ -272,7 +312,9 @@ class BetSlipManager: ObservableObject {
     /// Clear all selections
     func clearAll() {
         items.removeAll()
+        itemStakes.removeAll()
         saveItems()
+        saveItemStakes()
     }
 
     // MARK: - Persistence
@@ -318,5 +360,36 @@ class BetSlipManager: ObservableObject {
 
     private func saveStake() {
         UserDefaults.standard.set(NSDecimalNumber(decimal: stake).doubleValue, forKey: stakeKey)
+    }
+
+    private func loadItemStakes() {
+        guard let data = UserDefaults.standard.data(forKey: itemStakesKey) else { return }
+        do {
+            let decoder = JSONDecoder()
+            // Decode as [String: Double] since UUID keys need string conversion
+            let stringDict = try decoder.decode([String: Double].self, from: data)
+            itemStakes = stringDict.reduce(into: [UUID: Decimal]()) { result, pair in
+                if let uuid = UUID(uuidString: pair.key) {
+                    result[uuid] = Decimal(pair.value)
+                }
+            }
+        } catch {
+            print("Failed to decode item stakes: \(error)")
+            itemStakes = [:]
+        }
+    }
+
+    private func saveItemStakes() {
+        do {
+            let encoder = JSONEncoder()
+            // Convert to [String: Double] for encoding since UUID keys need string conversion
+            let stringDict = itemStakes.reduce(into: [String: Double]()) { result, pair in
+                result[pair.key.uuidString] = NSDecimalNumber(decimal: pair.value).doubleValue
+            }
+            let data = try encoder.encode(stringDict)
+            UserDefaults.standard.set(data, forKey: itemStakesKey)
+        } catch {
+            print("Failed to encode item stakes: \(error)")
+        }
     }
 }
