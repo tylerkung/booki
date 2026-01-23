@@ -153,7 +153,19 @@ struct TrackView: View {
                         )
                     }
                 } header: {
-                    TicketHeaderView(ticket: ticket)
+                    NavigationLink {
+                        TicketDetailView(ticket: ticket)
+                    } label: {
+                        HStack {
+                            TicketHeaderView(ticket: ticket)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
