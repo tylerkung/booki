@@ -175,11 +175,6 @@ struct GamesView: View {
         )
     }
 
-    /// Color for available credit
-    private var availableCreditColor: Color {
-        balanceSummary.availableCredit >= 0 ? Color.primary : Color.red
-    }
-
     // MARK: - Body
 
     var body: some View {
@@ -343,9 +338,6 @@ struct GamesView: View {
     private var gamesList: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                // Player account info section
-                accountInfoCard
-
                 // Favorites section at top of All games (US-039)
                 if timeFilter == .all && selectedSport == nil && !favoriteEvents.isEmpty {
                     favoritesSection
@@ -389,44 +381,6 @@ struct GamesView: View {
                     }
                 )
             }
-        }
-    }
-
-    // MARK: - Account Info Card
-
-    @ViewBuilder
-    private var accountInfoCard: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text("Your Account")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Available Credit")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(formatCurrency(balanceSummary.availableCredit))
-                        .font(.title2.bold())
-                        .foregroundStyle(availableCreditColor)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Credit Limit")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(formatCurrency(player.creditLimit))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(12)
-            .background(Theme.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 
