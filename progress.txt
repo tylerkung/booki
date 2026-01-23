@@ -325,3 +325,18 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Uppercase text with tracking for headers: `.tracking(0.5)` gives professional sportsbook look
   - Can't use `let` declarations inside ViewBuilder blocks - must declare all variables before the view body
 ---
+
+## 2026-01-22 - US-051
+- **What was implemented:** Styled bet slip with premium sportsbook aesthetic
+- **Files changed:**
+  - `Booki/Views/BetSlipSheet.swift` (major overhaul - replaced List with ScrollView, premium card styling, accent borders, gradient buttons)
+- **Learnings for future iterations:**
+  - Replace `List` with `ScrollView` + `VStack` for full visual control in styled sheets
+  - Use `.toolbarBackground(Theme.cardBackground, for: .navigationBar)` with `.toolbarBackground(.visible, for: .navigationBar)` for dark nav bar
+  - Team logo placeholders: use `Circle()` with `LinearGradient` fill and initials overlay, generate consistent colors via string hash
+  - For premium buttons: combine `LinearGradient` background + `.shadow()` with accent color + `PremiumButtonStyle` for scale animation
+  - Use `AnyView()` wrapper when ternary operators return different View types (e.g., `isSelected ? AnyView(Theme.gold) : AnyView(Theme.elevatedBackground)`)
+  - Custom segmented picker: `HStack(spacing: 0)` with buttons, accent background on selected, border stroke
+  - Stake input styling: use `.font(.system(size: 32, weight: .bold, design: .rounded))` for large, impactful numbers
+  - Use `simultaneousGesture(DragGesture)` with `onChanged`/`onEnded` for press state animations on buttons
+---
