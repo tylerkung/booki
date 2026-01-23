@@ -709,20 +709,26 @@ struct BetSlipSheet: View {
         var successCount = 0
         var errors: [String] = []
 
-        // Generate a single ticketId for all bets in this submission
-        let ticketId = UUID()
+        // For parlay mode, all bets share one ticketId
+        // For singles mode, each bet gets its own ticketId
+        let parlayTicketId = UUID()
 
         // Submit each bet from the slip
         for item in betSlipManager.items {
             // Calculate stake for this bet based on mode (US-007)
             let betStake: Decimal
+            let ticketId: UUID
+
             switch betSlipManager.betMode {
             case .singles:
                 // US-007: For singles, use individual per-bet stake from itemStakes
                 betStake = betSlipManager.getItemStake(marketId: item.marketId)
+                // Each single bet gets its own ticket
+                ticketId = UUID()
             case .parlay:
-                // For parlay, use shared stake (single bet with combined odds)
+                // For parlay, use shared stake and shared ticketId
                 betStake = betSlipManager.stake
+                ticketId = parlayTicketId
             }
 
             let result = BetService.submitBet(
