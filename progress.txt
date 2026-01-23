@@ -49,3 +49,15 @@ Started: Fri Jan 23 13:56:25 PST 2026
   - Initialize itemStakeTexts from existing BetSlipManager.itemStakes in init() to restore state on sheet reopen
   - Clean up itemStakeTexts when removing items from the bet slip
 ---
+
+## 2026-01-23 - US-005
+- What was implemented: Restructured bet slip layout with scrollable top area and sticky bottom section
+- Files changed: Booki/Views/BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - Use VStack(spacing: 0) to wrap ScrollView and sticky section for clean separation
+  - stickyBottomSection is a new @ViewBuilder computed property containing stake entry, payout summary, and submit button
+  - Add a Rectangle divider with shadow for visual separation: `.shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: -2)`
+  - Sticky section uses Theme.cardBackground to differentiate from scrollable content area
+  - ScrollView content needs padding(.bottom, 16) to provide spacing before sticky section
+  - The scrollable area contains: header, Singles/Parlay toggle, bet cards, and parlay odds card (in parlay mode)
+---
