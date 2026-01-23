@@ -206,6 +206,7 @@ struct PlayerDetailView: View {
     @State private var showingBanConfirmation = false
     @State private var showingReactivateConfirmation = false
     @State private var showingAdjustmentSheet = false
+    @State private var showingPaymentSheet = false
 
     // MARK: - Computed Properties
 
@@ -354,6 +355,13 @@ struct PlayerDetailView: View {
                     Label("Adjust Balance", systemImage: "dollarsign.circle")
                 }
 
+                // Record Payment
+                Button {
+                    showingPaymentSheet = true
+                } label: {
+                    Label("Record Payment", systemImage: "banknote")
+                }
+
                 // Status Actions (contextual)
                 statusActionButtons
             }
@@ -364,6 +372,9 @@ struct PlayerDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingAdjustmentSheet) {
             BalanceAdjustmentSheet(player: player)
+        }
+        .sheet(isPresented: $showingPaymentSheet) {
+            PaymentSheet(player: player)
         }
         .confirmationDialog(
             "Archive this player?",
