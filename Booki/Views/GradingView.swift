@@ -8,6 +8,9 @@ struct GradingView: View {
 
     @State private var selectedBets: Set<UUID> = []
     @State private var isMultiSelectMode = false
+    @State private var showingBulkSettlementConfirmation = false
+    @State private var showingBulkSettlementSuccess = false
+    @State private var settlementSummary: BulkSettlementSummary?
 
     /// Bets ready to grade, sorted by creation date (oldest first for grading priority)
     private var readyToGradeBets: [Bet] {
@@ -15,31 +18,77 @@ struct GradingView: View {
             .sorted { $0.createdAt < $1.createdAt }
     }
 
+    /// Bets that are graded and ready for settlement
+    private var gradedBets: [Bet] {
+        bets.filter { $0.status == .graded }
+            .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    /// Calculate settlement preview for confirmation dialog
+    private var settlementPreview: BulkSettlementPreview {
+        var totalWinnings: Decimal = 0
+        var totalLosses: Decimal = 0
+
+        for bet in gradedBets {
+            guard let gradeResult = bet.gradeResult else { continue }
+
+            switch gradeResult {
+            case .win:
+                let payout = LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
+                totalWinnings += payout
+            case .loss:
+                totalLosses += bet.stake
+            case .push:
+                break
+            }
+        }
+
+        return BulkSettlementPreview(
+            betCount: gradedBets.count,
+            totalWinnings: totalWinnings,
+            totalLosses: totalLosses,
+            netImpact: totalWinnings - totalLosses
+        )
+    }
+
     var body: some View {
         NavigationStack {
-            Group {
-                if readyToGradeBets.isEmpty {
-                    ContentUnavailableView(
-                        "No Bets to Grade",
-                        systemImage: "checkmark.circle",
-                        description: Text("Bets ready for grading will appear here.")
-                    )
-                } else {
-                    List {
-                        ForEach(readyToGradeBets) { bet in
-                            GradingBetRow(
-                                bet: bet,
-                                event: event(for: bet),
-                                isSelected: selectedBets.contains(bet.id),
-                                isMultiSelectMode: isMultiSelectMode,
-                                onSelect: { toggleSelection(bet) },
-                                onGrade: { result in gradeBet(bet, result: result) }
-                            )
+            VStack(spacing: 0) {
+                // Settle All Graded section
+                if !gradedBets.isEmpty {
+                    bulkSettlementBanner
+                }
+
+                Group {
+                    if readyToGradeBets.isEmpty && gradedBets.isEmpty {
+                        ContentUnavailableView(
+                            "No Bets to Grade",
+                            systemImage: "checkmark.circle",
+                            description: Text("Bets ready for grading will appear here.")
+                        )
+                    } else if readyToGradeBets.isEmpty {
+                        ContentUnavailableView(
+                            "No Bets to Grade",
+                            systemImage: "checkmark.circle",
+                            description: Text("All bets have been graded. Use the button above to settle graded bets.")
+                        )
+                    } else {
+                        List {
+                            ForEach(readyToGradeBets) { bet in
+                                GradingBetRow(
+                                    bet: bet,
+                                    event: event(for: bet),
+                                    isSelected: selectedBets.contains(bet.id),
+                                    isMultiSelectMode: isMultiSelectMode,
+                                    onSelect: { toggleSelection(bet) },
+                                    onGrade: { result in gradeBet(bet, result: result) }
+                                )
+                            }
                         }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .background(Theme.background)
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .background(Theme.background)
                 }
             }
             .background(Theme.background)
@@ -79,7 +128,73 @@ struct GradingView: View {
                     }
                 }
             }
+            .confirmationDialog(
+                "Settle All Graded Bets?",
+                isPresented: $showingBulkSettlementConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Settle All") {
+                    performBulkSettlement()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                let preview = settlementPreview
+                Text("""
+                    Total bets to settle: \(preview.betCount)
+                    Total player winnings: \(formatCurrency(preview.totalWinnings))
+                    Total player losses: \(formatCurrency(preview.totalLosses))
+                    Net impact: \(formatCurrency(preview.netImpact))
+                    """)
+            }
+            .alert("Settlement Complete", isPresented: $showingBulkSettlementSuccess) {
+                Button("OK") {
+                    settlementSummary = nil
+                }
+            } message: {
+                if let summary = settlementSummary {
+                    Text("Settled \(summary.settledCount) bets: \(summary.winCount) wins, \(summary.lossCount) losses, \(summary.pushCount) pushes")
+                }
+            }
         }
+    }
+
+    // MARK: - Bulk Settlement Banner
+
+    private var bulkSettlementBanner: some View {
+        Button {
+            showingBulkSettlementConfirmation = true
+        } label: {
+            HStack {
+                Image(systemName: "dollarsign.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(Theme.accent)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Settle All Graded")
+                        .font(.headline)
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text("\(gradedBets.count) bet\(gradedBets.count == 1 ? "" : "s") ready")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .padding()
+            .background(Theme.cardBackground)
+            .overlay(
+                Rectangle()
+                    .fill(Theme.accent)
+                    .frame(width: 4),
+                alignment: .leading
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Helper Methods
@@ -124,6 +239,65 @@ struct GradingView: View {
         selectedBets.removeAll()
         isMultiSelectMode = false
     }
+
+    // MARK: - Bulk Settlement
+
+    private func performBulkSettlement() {
+        var winCount = 0
+        var lossCount = 0
+        var pushCount = 0
+        var settledCount = 0
+
+        for bet in gradedBets {
+            let result = GradingService.settleBet(bet)
+            switch result {
+            case .success(let ledgerEntry):
+                modelContext.insert(ledgerEntry)
+                settledCount += 1
+
+                if let gradeResult = bet.gradeResult {
+                    switch gradeResult {
+                    case .win: winCount += 1
+                    case .loss: lossCount += 1
+                    case .push: pushCount += 1
+                    }
+                }
+            case .failure(let error):
+                print("Failed to settle bet \(bet.id): \(error)")
+            }
+        }
+
+        settlementSummary = BulkSettlementSummary(
+            settledCount: settledCount,
+            winCount: winCount,
+            lossCount: lossCount,
+            pushCount: pushCount
+        )
+        showingBulkSettlementSuccess = true
+    }
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+}
+
+// MARK: - Bulk Settlement Models
+
+struct BulkSettlementPreview {
+    let betCount: Int
+    let totalWinnings: Decimal
+    let totalLosses: Decimal
+    let netImpact: Decimal
+}
+
+struct BulkSettlementSummary {
+    let settledCount: Int
+    let winCount: Int
+    let lossCount: Int
+    let pushCount: Int
 }
 
 // MARK: - Grading Bet Row

@@ -514,3 +514,18 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - TextField with .currency format provides nice number input for balance threshold
   - Stepper with range (1...90) provides bounded integer input for aging threshold
 ---
+
+## 2026-01-22 - US-063
+- **What was implemented:** Bulk Settlement Processing - ability to settle all graded bets at once
+- **Files changed:**
+  - `Booki/Views/GradingView.swift` (modified - added bulk settlement banner, confirmation dialog, settlement logic, success summary)
+- **Learnings for future iterations:**
+  - Use `BulkSettlementPreview` struct to calculate summary stats (bet count, winnings, losses, net impact) before confirmation
+  - Use `BulkSettlementSummary` struct to track settlement results (settled count, wins, losses, pushes)
+  - GradingService.settleBet() returns the ledger entry which must be inserted into modelContext
+  - Filter bets with `.graded` status for settlement (distinct from `.readyToGrade` for grading)
+  - Settlement preview shows net impact: positive = players profited, negative = bookie profited
+  - Use VStack(spacing: 0) to add banner above List without extra spacing
+  - Accent-colored left border on banner (`.overlay(Rectangle().fill(Theme.accent).frame(width: 4), alignment: .leading)`) provides visual emphasis
+  - Confirmation dialog message can use multi-line Text with string interpolation for formatted summary
+---
