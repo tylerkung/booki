@@ -22,8 +22,15 @@ struct GamesView: View {
     @Query(sort: \Event.startTime) private var events: [Event]
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
+    /// US-008: Query acceptance policy for event lock offset
+    @Query private var acceptancePolicies: [AcceptancePolicy]
 
     let player: Player
+
+    /// US-008: Get lock offset from policy (default 0 if no policy)
+    private var lockOffsetMinutes: Int {
+        acceptancePolicies.first?.eventLockOffsetMinutes ?? 0
+    }
 
     /// Currently selected sport filter (nil = "All")
     @State private var selectedSport: String? = nil
@@ -378,7 +385,8 @@ struct GamesView: View {
                     },
                     onTapCard: {
                         selectedEventForNavigation = event
-                    }
+                    },
+                    lockOffsetMinutes: lockOffsetMinutes
                 )
             }
         }
@@ -414,7 +422,8 @@ struct GamesView: View {
                         },
                         onTapCard: {
                             selectedEventForNavigation = event
-                        }
+                        },
+                        lockOffsetMinutes: lockOffsetMinutes
                     )
                 }
             }

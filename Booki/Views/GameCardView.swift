@@ -24,11 +24,20 @@ struct BetSlipSelection: Equatable, Hashable {
 /// US-037: Game Card Component
 /// Displays game info with quick-pick odds buttons
 /// Team names aligned with spread and ML boxes in a clean grid layout
+/// US-008: Lock status indicator for events approaching lock time
 struct GameCardView: View {
     let event: Event
     let selections: Set<BetSlipSelection>
     let onSelectOdds: (BetSlipSelection) -> Void
     let onTapCard: () -> Void
+
+    /// Minutes before event start to lock betting (default 0 = lock at start time)
+    var lockOffsetMinutes: Int = 0
+
+    /// Computed property to determine if event is locked for betting
+    private var isEventLocked: Bool {
+        event.isLocked(offsetMinutes: lockOffsetMinutes)
+    }
 
     // MARK: - Computed Properties
 
@@ -139,6 +148,13 @@ struct GameCardView: View {
                 Text(formattedStartTime)
                     .font(.caption)
                     .foregroundColor(Theme.textSecondary)
+
+                // US-008: Lock indicator when event is locked
+                if isEventLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.caption)
+                        .foregroundColor(Theme.warning)
+                }
             }
 
             Spacer()
@@ -302,6 +318,7 @@ struct GameCardView: View {
     }
 
     /// Single row with team name and aligned odds buttons
+    /// US-008: Buttons are disabled and dimmed when event is locked
     @ViewBuilder
     private func teamOddsRow(
         teamName: String,
@@ -328,9 +345,11 @@ struct GameCardView: View {
                     spreadValue: formatSpreadValue(side),
                     odds: odds,
                     isSelected: isSelected(selection),
-                    action: { onSelectOdds(selection) }
+                    isDisabled: isEventLocked,
+                    action: { if !isEventLocked { onSelectOdds(selection) } }
                 )
                 .frame(width: oddsButtonSize, height: oddsButtonSize)
+                .opacity(isEventLocked ? 0.5 : 1.0)
             }
 
             // Moneyline button
@@ -342,9 +361,11 @@ struct GameCardView: View {
                 MLButton(
                     odds: odds,
                     isSelected: isSelected(selection),
-                    action: { onSelectOdds(selection) }
+                    isDisabled: isEventLocked,
+                    action: { if !isEventLocked { onSelectOdds(selection) } }
                 )
                 .frame(width: oddsButtonSize, height: oddsButtonSize)
+                .opacity(isEventLocked ? 0.5 : 1.0)
             }
 
             // Total button (Over for away/top row, Under for home/bottom row)
@@ -357,9 +378,11 @@ struct GameCardView: View {
                     totalValue: formatTotalValue(side),
                     odds: odds,
                     isSelected: isSelected(selection),
-                    action: { onSelectOdds(selection) }
+                    isDisabled: isEventLocked,
+                    action: { if !isEventLocked { onSelectOdds(selection) } }
                 )
                 .frame(width: oddsButtonSize, height: oddsButtonSize)
+                .opacity(isEventLocked ? 0.5 : 1.0)
             }
         }
     }
@@ -394,10 +417,12 @@ struct GameCardView: View {
 // MARK: - Spread Button Component
 
 /// Spread button showing spread value as main text, odds as secondary
+/// US-008: Added isDisabled parameter for locked events
 struct SpreadButton: View {
     let spreadValue: String
     let odds: Int
     let isSelected: Bool
+    var isDisabled: Bool = false
     let action: () -> Void
 
     @State private var isPressed: Bool = false
@@ -409,6 +434,7 @@ struct SpreadButton: View {
 
     var body: some View {
         Button(action: {
+            guard !isDisabled else { return }
             withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
                 isPressed = true
             }
@@ -493,15 +519,18 @@ struct SpreadButton: View {
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
         }
         .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
 }
 
 // MARK: - ML Button Component
 
 /// Moneyline button showing just the odds
+/// US-008: Added isDisabled parameter for locked events
 struct MLButton: View {
     let odds: Int
     let isSelected: Bool
+    var isDisabled: Bool = false
     let action: () -> Void
 
     @State private var isPressed: Bool = false
@@ -513,6 +542,7 @@ struct MLButton: View {
 
     var body: some View {
         Button(action: {
+            guard !isDisabled else { return }
             withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
                 isPressed = true
             }
@@ -590,16 +620,19 @@ struct MLButton: View {
                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
         }
         .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
 }
 
 // MARK: - Total Button Component
 
 /// Total button showing total value (o220.5/u220.5) as main text, odds as secondary
+/// US-008: Added isDisabled parameter for locked events
 struct TotalButton: View {
     let totalValue: String
     let odds: Int
     let isSelected: Bool
+    var isDisabled: Bool = false
     let action: () -> Void
 
     @State private var isPressed: Bool = false
@@ -611,6 +644,7 @@ struct TotalButton: View {
 
     var body: some View {
         Button(action: {
+            guard !isDisabled else { return }
             withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
                 isPressed = true
             }
@@ -695,6 +729,7 @@ struct TotalButton: View {
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
         }
         .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
 }
 
