@@ -1,8 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// View for players to see their submitted bets and their status
-struct PlayerHistoryView: View {
+/// View for players to track their submitted bets and their status
+struct TrackView: View {
     @Query private var allBets: [Bet]
     @Query private var events: [Event]
 
@@ -25,7 +25,7 @@ struct PlayerHistoryView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("My Bets")
+        .navigationTitle("Track")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -255,7 +255,7 @@ struct HistoryBetRowView: View {
 
 #Preview {
     NavigationStack {
-        PlayerHistoryView(player: Player(
+        TrackView(player: Player(
             name: "Test Player",
             email: "test@example.com",
             creditLimit: 1000

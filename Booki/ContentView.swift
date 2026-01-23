@@ -115,7 +115,7 @@ struct ContentView: View {
             }
 
             PlayerTabView(player: player, balance: playerBalance(for: player)) {
-                PlayerHistoryView(player: player)
+                TrackView(player: player)
             }
             .tabItem {
                 Label("Track", systemImage: "list.bullet.rectangle")
