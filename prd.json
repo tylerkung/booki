@@ -136,7 +136,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Computed property - no storage needed"
     },
     {
