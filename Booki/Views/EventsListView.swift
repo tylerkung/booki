@@ -85,6 +85,10 @@ struct EventListRowView: View {
             return .green
         case .final:
             return .gray
+        case .postponed:
+            return .orange
+        case .canceled:
+            return .red
         }
     }
 
@@ -96,6 +100,10 @@ struct EventListRowView: View {
             return "Live"
         case .final:
             return "Final"
+        case .postponed:
+            return "Postponed"
+        case .canceled:
+            return "Canceled"
         }
     }
 
