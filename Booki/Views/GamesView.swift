@@ -7,6 +7,7 @@ enum TimeFilter: String, CaseIterable, Identifiable {
     case today = "Today"
     case tomorrow = "Tomorrow"
     case thisWeek = "This Week"
+    case favorites = "Favorites"
 
     var id: String { rawValue }
 }
@@ -15,6 +16,7 @@ enum TimeFilter: String, CaseIterable, Identifiable {
 /// US-036: Horizontal scrolling sport tabs with sticky header
 /// US-037: Game cards with quick-pick odds and bet slip integration
 /// US-038: Search and filter functionality
+/// US-039: Favorites system with filter and section
 struct GamesView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Event.startTime) private var events: [Event]
@@ -35,11 +37,14 @@ struct GamesView: View {
     /// Search text for filtering by team name (US-038)
     @State private var searchText: String = ""
 
-    /// Time filter option (US-038)
+    /// Time filter option (US-038, US-039)
     @State private var timeFilter: TimeFilter = .all
 
     /// Show filter options sheet (US-038)
     @State private var showingFilterSheet: Bool = false
+
+    /// Favorites manager (US-039)
+    @ObservedObject private var favoritesManager = FavoritesManager.shared
 
     // MARK: - Computed Properties
 
@@ -54,7 +59,7 @@ struct GamesView: View {
         return sports.sorted()
     }
 
-    /// Events filtered by time (US-038)
+    /// Events filtered by time (US-038) and favorites (US-039)
     private var timeFilteredEvents: [Event] {
         let calendar = Calendar.current
         let now = Date()
@@ -71,6 +76,18 @@ struct GamesView: View {
                 return availableEvents
             }
             return availableEvents.filter { $0.startTime >= now && $0.startTime <= weekEnd }
+        case .favorites:
+            return availableEvents.filter {
+                favoritesManager.hasFavoritedTeam(homeTeam: $0.homeTeam, awayTeam: $0.awayTeam)
+            }
+        }
+    }
+
+    /// Events with favorited teams (US-039) - for "All" view favorites section
+    private var favoriteEvents: [Event] {
+        guard !favoritesManager.favoriteTeams.isEmpty else { return [] }
+        return availableEvents.filter {
+            favoritesManager.hasFavoritedTeam(homeTeam: $0.homeTeam, awayTeam: $0.awayTeam)
         }
     }
 
@@ -94,14 +111,23 @@ struct GamesView: View {
         return searchFilteredEvents
     }
 
-    /// Whether any filters are active (US-038)
+    /// Whether any filters are active (US-038, US-039)
     private var hasActiveFilters: Bool {
         timeFilter != .all || !searchText.isEmpty
     }
 
-    /// Description of empty state based on filters (US-038)
+    /// Whether showing favorites filter (US-039)
+    private var isShowingFavorites: Bool {
+        timeFilter == .favorites
+    }
+
+    /// Description of empty state based on filters (US-038, US-039)
     private var emptyStateDescription: String {
-        if !searchText.isEmpty && timeFilter != .all {
+        if timeFilter == .favorites && favoritesManager.favoriteTeams.isEmpty {
+            return "Star your favorite teams to see them here."
+        } else if timeFilter == .favorites {
+            return "No games with your favorite teams right now."
+        } else if !searchText.isEmpty && timeFilter != .all {
             return "No games match '\(searchText)' for \(timeFilter.rawValue.lowercased())."
         } else if !searchText.isEmpty {
             return "No games match '\(searchText)'."
@@ -309,6 +335,11 @@ struct GamesView: View {
                 // Player account info section
                 accountInfoCard
 
+                // Favorites section at top of All games (US-039)
+                if timeFilter == .all && selectedSport == nil && !favoriteEvents.isEmpty {
+                    favoritesSection
+                }
+
                 // Events grouped by sport and league
                 ForEach(sortedSports, id: \.self) { sport in
                     sportSection(sport: sport)
@@ -318,6 +349,36 @@ struct GamesView: View {
             .padding(.vertical, 12)
         }
         .background(Color(.systemGroupedBackground))
+    }
+
+    // MARK: - Favorites Section (US-039)
+
+    @ViewBuilder
+    private var favoritesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Section header
+            HStack {
+                Image(systemName: "star.fill")
+                    .foregroundStyle(.yellow)
+                Text("Favorites")
+                    .fontWeight(.semibold)
+            }
+            .font(.subheadline)
+
+            // Favorite game cards
+            ForEach(favoriteEvents, id: \.id) { event in
+                GameCardView(
+                    event: event,
+                    selections: betSlipSelections,
+                    onSelectOdds: { selection in
+                        handleOddsSelection(selection)
+                    },
+                    onTapCard: {
+                        selectedEventForNavigation = event
+                    }
+                )
+            }
+        }
     }
 
     // MARK: - Account Info Card

@@ -23,6 +23,7 @@ struct BetSlipSelection: Equatable, Hashable {
 
 /// US-037: Game Card Component
 /// Displays game info with quick-pick odds buttons and expandable markets
+/// US-039: Added favorite toggle functionality
 struct GameCardView: View {
     let event: Event
     let selections: Set<BetSlipSelection>
@@ -31,6 +32,9 @@ struct GameCardView: View {
 
     /// Whether the card is expanded to show all markets
     @State private var isExpanded: Bool = false
+
+    /// Favorites manager for star toggle (US-039)
+    @ObservedObject private var favoritesManager = FavoritesManager.shared
 
     // MARK: - Computed Properties
 
@@ -188,20 +192,34 @@ struct GameCardView: View {
     private var teamsSection: some View {
         VStack(spacing: 8) {
             // Away team row
-            HStack {
-                Text(event.awayTeam)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Spacer()
-            }
+            teamRow(teamName: event.awayTeam)
 
             // Home team row
-            HStack {
-                Text(event.homeTeam)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Spacer()
+            teamRow(teamName: event.homeTeam)
+        }
+    }
+
+    /// Team row with favorite star (US-039)
+    @ViewBuilder
+    private func teamRow(teamName: String) -> some View {
+        HStack {
+            Text(teamName)
+                .font(.headline)
+                .fontWeight(.semibold)
+
+            Spacer()
+
+            // Favorite star button
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    favoritesManager.toggleFavorite(teamName)
+                }
+            }) {
+                Image(systemName: favoritesManager.isFavorite(teamName) ? "star.fill" : "star")
+                    .font(.system(size: 18))
+                    .foregroundStyle(favoritesManager.isFavorite(teamName) ? .yellow : .secondary)
             }
+            .buttonStyle(.plain)
         }
     }
 
