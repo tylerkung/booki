@@ -216,7 +216,7 @@ struct GamesView: View {
         }
         .sheet(isPresented: $showingBetSlipSheet) {
             BetSlipSheet(availableCredit: balanceSummary.availableCredit, player: player)
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.large])
         }
     }
 
