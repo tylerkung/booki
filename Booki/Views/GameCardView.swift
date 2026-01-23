@@ -347,6 +347,22 @@ struct GameCardView: View {
         return label
     }
 
+    /// Extract total value from label (e.g., "Over 220.5" -> "o220.5", "Under 220.5" -> "u220.5")
+    func formatTotalValue(_ label: String) -> String {
+        let components = label.components(separatedBy: " ")
+        guard components.count >= 2 else { return label }
+
+        let direction = components[0].lowercased()
+        let value = components[1]
+
+        if direction == "over" {
+            return "o\(value)"
+        } else if direction == "under" {
+            return "u\(value)"
+        }
+        return label
+    }
+
 }
 
 // MARK: - Spread Button Component
@@ -546,6 +562,111 @@ struct MLButton: View {
                 )
                 .scaleEffect(isPressed ? 0.92 : 1.0)
                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Total Button Component
+
+/// Total button showing total value (o220.5/u220.5) as main text, odds as secondary
+struct TotalButton: View {
+    let totalValue: String
+    let odds: Int
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isPressed: Bool = false
+    @State private var showSelectionHighlight: Bool = false
+
+    private var formattedOdds: String {
+        odds >= 0 ? "+\(odds)" : "\(odds)"
+    }
+
+    var body: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                isPressed = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                    isPressed = false
+                }
+            }
+            if !isSelected {
+                showSelectionHighlight = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    showSelectionHighlight = false
+                }
+            }
+            action()
+        }) {
+            VStack(spacing: 2) {
+                // Total value as main text
+                Text(totalValue)
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                // Odds as smaller secondary text
+                Text(formattedOdds)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(isSelected ? Theme.background.opacity(0.8) : Theme.textSecondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(
+                Group {
+                    if isSelected {
+                        LinearGradient(
+                            colors: [Theme.accent, Theme.accentSecondary.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    } else {
+                        LinearGradient(
+                            colors: [Theme.elevatedBackground, Theme.elevatedBackground.opacity(0.8)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                    .stroke(
+                        isSelected
+                            ? LinearGradient(
+                                colors: [Theme.accent, Theme.accentSecondary],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            : LinearGradient(
+                                colors: [Theme.border.opacity(0.6), Theme.border.opacity(0.3)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                        lineWidth: isSelected ? 2 : 1
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                    .fill(
+                        RadialGradient(
+                            colors: [Theme.accent.opacity(showSelectionHighlight ? 0.6 : 0), Theme.accent.opacity(0)],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 50
+                        )
+                    )
+                    .animation(.easeOut(duration: 0.4), value: showSelectionHighlight)
+            )
+            .shadow(
+                color: isSelected ? Theme.accent.opacity(0.5) : Color.clear,
+                radius: isSelected ? 10 : 0,
+                x: 0,
+                y: 0
+            )
+            .scaleEffect(isPressed ? 0.92 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
         }
         .buttonStyle(.plain)
     }
