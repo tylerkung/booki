@@ -384,7 +384,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 23,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
