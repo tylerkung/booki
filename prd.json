@@ -92,7 +92,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "UX fix for segmented control - may need to examine multiple bet slip related files"
     },
     {

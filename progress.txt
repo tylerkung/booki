@@ -7,6 +7,7 @@ Started: Fri Jan 23 12:48:18 PST 2026
 - Theme.swift provides consistent styling - use Theme.cardGradient, Theme.accent, Theme.textPrimary, etc.
 - Market types are accessed via event.markets?.first { $0.type == .spread/.moneyline/.total }
 - Xcode command line build is not available (xcodebuild requires full Xcode, not just Command Line Tools)
+- For SwiftUI Buttons with transparent backgrounds, use .contentShape(Rectangle()) to expand tap area
 
 ---
 
@@ -74,4 +75,17 @@ Started: Fri Jan 23 12:48:18 PST 2026
   - Game card now has three columns: SPREAD | ML | TOTAL
   - Total market uses sideA for Over, sideB for Under (consistent with spread/ml pattern)
   - The preview data already included totalMarket so the Preview shows all three columns
+---
+
+## 2026-01-23 - US-005
+- What was implemented: Fixed Singles/Parlay segmented control tap area in BetSlipSheet
+- Files changed: Booki/Views/BetSlipSheet.swift
+- Changes made:
+  - Added .contentShape(Rectangle()) modifier to the Button content in the Singles/Parlay toggle
+  - This expands the tap area to cover the full button background, not just the text label
+- **Learnings for future iterations:**
+  - SwiftUI Buttons with .buttonStyle(.plain) may have tap areas limited to visible content
+  - Use .contentShape(Rectangle()) after .background() to expand tap area to full frame
+  - BetSlipSheet.swift contains the Singles/Parlay toggle (lines 122-147)
+  - BetConfirmationSheet.swift is a separate confirmation flow shown after tapping "Review & Confirm"
 ---
