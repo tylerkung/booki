@@ -11,6 +11,7 @@ Started: Thu Jan 22 15:35:57 PST 2026
 - `MarketRowView` exists in `SubmitBetView.swift` - use `EventMarketRowView` for EventDetailView market rows
 - Market model uses `sideA`/`sideB` strings and `oddsA`/`oddsB` integers for American odds
 - For UserDefaults persistence, use singleton pattern with `@ObservedObject` for reactive SwiftUI updates (see FavoritesManager)
+- In ternary operators mixing different ShapeStyle types (e.g., `.primary` vs `.red`), use `.foregroundColor()` with explicit `Color.primary` and `Color.red` to avoid type mismatches
 
 ---
 
@@ -208,4 +209,22 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Use `ProgressView().tint(.white)` for loading spinner on dark buttons
   - When BetSlipSheet needs to present BetConfirmationSheet, pass the player through - requires optional player parameter
   - Use `.sheet(isPresented:)` with conditional `if let player = player` to safely present when player exists
+---
+
+## 2026-01-22 18:05 - US-044
+- **What was implemented:** Enhanced Account Summary View with hero balance, credit utilization progress bar, and quick stats
+- **Files changed:**
+  - `Booki/Views/AccountView.swift` (new) - Complete account summary view with balance display, credit progress bar, and stats
+  - `Booki/ContentView.swift` (modified - added Account tab as primary in player mode TabView)
+  - `Booki.xcodeproj/project.pbxproj` (added AccountView.swift to build)
+- **Learnings for future iterations:**
+  - Use `BalanceService.playerSummary()` to get all balance-related data (creditLimit, openLiability, balanceOwed, availableCredit)
+  - In ternary operators with `.foregroundStyle()`, type mismatches occur between `.primary` (HierarchicalShapeStyle) and `.red` (Color) - use `.foregroundColor()` with explicit `Color.primary` and `Color.red` instead
+  - Credit utilization calculated as: `(creditLimit - availableCredit) / creditLimit`
+  - Win rate calculated only from wins and losses, excluding pushes: `winCount / (winCount + lossCount)`
+  - Open bets count includes: pending, accepted, and readyToGrade statuses
+  - Use GeometryReader for responsive progress bar that fills based on utilization percentage
+  - Progress bar colors: green (<50%), yellow (50-80%), orange (80-100%), red (>100%)
+  - ScrollView with VStack provides better layout flexibility than List for card-based account UI
+  - Use `RoundedRectangle` with shadow for card-like sections in a non-List context
 ---
