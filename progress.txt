@@ -73,3 +73,13 @@ Started: Fri Jan 23 13:56:25 PST 2026
   - canSubmit logic now checks betMode and validates using appropriate method (isStakeValid for parlay, isIndividualStakeValid for singles)
   - stakeValidationWarning is a reusable view builder for showing credit exceeded warnings
 ---
+
+## 2026-01-23 - US-007
+- What was implemented: Updated bet submission logic to use individual per-bet stakes for singles mode
+- Files changed: Booki/Views/BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - In submitBets(), singles mode uses betSlipManager.getItemStake(marketId:) to get each bet's individual stake
+  - Parlay mode uses the shared betSlipManager.stake (single bet with combined odds, not distributed)
+  - After successful submission, clear both BetSlipManager state (clearAll()) and local itemStakeTexts state
+  - The original code incorrectly distributed parlay stake across legs - parlay is a single bet
+---
