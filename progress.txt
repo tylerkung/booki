@@ -122,3 +122,20 @@ Started: Fri Jan 23 14:18:44 PST 2026
   - Validation check runs at start of submitBets() and returns early if locked events found
   - This is a "belt-and-suspenders" check complementing the UI lock indicators from US-008
 ---
+
+## 2026-01-23 - US-010
+- **What was implemented:** Handle postponed and canceled events with proper locking behavior and UI
+- **Files changed:**
+  - Booki/Models/Event.swift (added .postponed and .canceled to EventStatus, updated isLocked function)
+  - Booki/Services/BetService.swift (added voidBetsForEvent function for bulk voiding bets)
+  - Booki/Views/GameCardView.swift (added POSTPONED/CANCELED badges, hide odds for canceled events)
+  - Booki/Views/EventDetailView.swift (added postponed/canceled to status picker, void all bets button with confirmation alert)
+- **Learnings for future iterations:**
+  - EventStatus enum extended with .postponed and .canceled cases
+  - isLocked logic: canceled = always locked, postponed = never locked (allows betting on rescheduled time), live/final = always locked
+  - GameCardView badges use similar styling to liveIndicator: Capsule with fill and stroke, Theme.warning for postponed, Theme.danger for canceled
+  - To hide odds buttons for canceled events: pass nil markets to teamOddsRow function
+  - BetService.voidBetsForEvent uses @discardableResult to optionally capture voided count
+  - EventDetailView shows "Void All Bets" button only when status == .canceled AND activeBets is not empty
+  - Use .alert modifier with destructive role for confirmation dialogs
+---
