@@ -23,6 +23,9 @@ struct BetSlipSheet: View {
     /// Custom stake text for input field (US-042)
     @State private var stakeText: String = ""
 
+    /// Per-item stake texts for singles mode (US-004)
+    @State private var itemStakeTexts: [UUID: String] = [:]
+
     /// State for submission process (US-006: Direct submission from bet slip)
     @State private var isSubmitting: Bool = false
     @State private var submissionComplete: Bool = false
@@ -42,6 +45,14 @@ struct BetSlipSheet: View {
         // Initialize stake text from manager's current stake
         let currentStake = BetSlipManager.shared.stake
         _stakeText = State(initialValue: currentStake > 0 ? "\(NSDecimalNumber(decimal: currentStake).intValue)" : "")
+        // Initialize per-item stake texts from manager's existing itemStakes (US-004)
+        var initialItemStakeTexts: [UUID: String] = [:]
+        for (marketId, stake) in BetSlipManager.shared.itemStakes {
+            if stake > 0 {
+                initialItemStakeTexts[marketId] = "\(NSDecimalNumber(decimal: stake).intValue)"
+            }
+        }
+        _itemStakeTexts = State(initialValue: initialItemStakeTexts)
     }
 
     var body: some View {
@@ -179,14 +190,22 @@ struct BetSlipSheet: View {
                 .padding(.horizontal)
                 .padding(.top, 16)
 
-                // Selections (US-053: animated item transitions)
+                // Selections (US-053: animated item transitions, US-004: per-item stakes)
                 VStack(spacing: 12) {
                     ForEach(Array(betSlipManager.items.enumerated()), id: \.element.marketId) { index, item in
-                        PremiumBetSlipItemCard(item: item, onRemove: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                betSlipManager.remove(at: index)
-                            }
-                        })
+                        PremiumBetSlipItemCard(
+                            item: item,
+                            onRemove: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    betSlipManager.remove(at: index)
+                                    // Also remove the stake text for this item
+                                    itemStakeTexts.removeValue(forKey: item.marketId)
+                                }
+                            },
+                            betMode: betSlipManager.betMode,
+                            stakeText: itemStakeTextBinding(for: item.marketId),
+                            betSlipManager: betSlipManager
+                        )
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.9).combined(with: .opacity),
                             removal: .scale(scale: 0.9).combined(with: .opacity).combined(with: .move(edge: .trailing))
@@ -630,14 +649,35 @@ struct BetSlipSheet: View {
         formatter.currencyCode = "USD"
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
+
+    /// Create a binding for per-item stake text (US-004)
+    private func itemStakeTextBinding(for marketId: UUID) -> Binding<String> {
+        Binding(
+            get: { itemStakeTexts[marketId] ?? "" },
+            set: { itemStakeTexts[marketId] = $0 }
+        )
+    }
 }
 
-// MARK: - Premium Bet Slip Item Card (US-051)
+// MARK: - Premium Bet Slip Item Card (US-051, US-004)
 
 /// Premium styled card for a single bet slip selection
+/// US-004: Add stake input to bet cards in singles mode
 struct PremiumBetSlipItemCard: View {
     let item: BetSlipItem
     let onRemove: () -> Void
+
+    /// Bet mode to determine if per-bet stake entry is shown (US-004)
+    var betMode: BetMode = .singles
+
+    /// Binding to per-item stake text (US-004)
+    @Binding var stakeText: String
+
+    /// BetSlipManager for stake calculations (US-004)
+    @ObservedObject var betSlipManager: BetSlipManager
+
+    /// Track if stake field is focused (US-004)
+    @FocusState private var isStakeFocused: Bool
 
     private var formattedOdds: String {
         item.odds >= 0 ? "+\(item.odds)" : "\(item.odds)"
@@ -649,6 +689,21 @@ struct PremiumBetSlipItemCard: View {
         case .total: return "TOTAL"
         case .moneyline: return "MONEYLINE"
         }
+    }
+
+    /// Calculate potential payout for this bet based on its individual stake (US-004)
+    private var individualPayout: Decimal {
+        let stake = betSlipManager.getItemStake(marketId: item.marketId)
+        guard stake > 0 else { return 0 }
+        return betSlipManager.calculatePayout(odds: item.odds, stake: stake)
+    }
+
+    /// Format currency for display
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 
     /// Generate a consistent color for a team based on its name
@@ -730,6 +785,67 @@ struct PremiumBetSlipItemCard: View {
                 .buttonStyle(.plain)
             }
             .padding(16)
+
+            // US-004: Per-bet stake input in singles mode
+            if betMode == .singles {
+                VStack(spacing: 8) {
+                    // Divider
+                    Rectangle()
+                        .fill(Theme.divider)
+                        .frame(height: 1)
+
+                    HStack(spacing: 12) {
+                        // Stake input
+                        HStack(spacing: 6) {
+                            Text("$")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Theme.gold)
+
+                            TextField("0", text: $stakeText)
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundStyle(Theme.textPrimary)
+                                .keyboardType(.numberPad)
+                                .focused($isStakeFocused)
+                                .frame(width: 60)
+                                .onChange(of: stakeText) { _, newValue in
+                                    // Parse and update per-item stake
+                                    if let value = Decimal(string: newValue.filter { $0.isNumber }) {
+                                        betSlipManager.setItemStake(marketId: item.marketId, stake: value)
+                                    } else if newValue.isEmpty {
+                                        betSlipManager.setItemStake(marketId: item.marketId, stake: 0)
+                                    }
+                                }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Theme.elevatedBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(
+                                    isStakeFocused ? Theme.gold.opacity(0.5) : Theme.border,
+                                    lineWidth: isStakeFocused ? 2 : 1
+                                )
+                        )
+
+                        Spacer()
+
+                        // Potential payout for this bet
+                        if individualPayout > 0 {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("To Win")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.textMuted)
+                                Text(formatCurrency(individualPayout))
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(Theme.accent)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+            }
 
             // Market type footer
             HStack {
