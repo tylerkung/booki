@@ -121,6 +121,51 @@ struct AccountView: View {
         return Double(winCount) / Double(winsAndLosses) * 100
     }
 
+    /// Push count
+    private var pushCount: Int {
+        settledBets.filter { $0.gradeResult == .push }.count
+    }
+
+    /// Total bets placed (all bets except void)
+    private var totalBetsPlaced: Int {
+        playerBets.filter { $0.status != .void }.count
+    }
+
+    /// Total stake across all settled bets (for ROI calculation)
+    private var totalStaked: Decimal {
+        settledBets.reduce(Decimal.zero) { $0 + $1.stake }
+    }
+
+    /// Total profit/loss from settled bets
+    private var totalProfitLoss: Decimal {
+        settledBets.reduce(Decimal.zero) { total, bet in
+            guard let result = bet.gradeResult else { return total }
+            switch result {
+            case .win:
+                // Calculate profit from win
+                let decimalOdds: Decimal
+                if bet.odds > 0 {
+                    decimalOdds = Decimal(bet.odds) / 100
+                } else {
+                    decimalOdds = 100 / Decimal(abs(bet.odds))
+                }
+                return total + (bet.stake * decimalOdds)
+            case .loss:
+                // Lost stake
+                return total - bet.stake
+            case .push:
+                // No change
+                return total
+            }
+        }
+    }
+
+    /// ROI percentage (profit / total staked)
+    private var roiPercentage: Double {
+        guard totalStaked > 0 else { return 0 }
+        return Double(truncating: (totalProfitLoss / totalStaked * 100) as NSDecimalNumber)
+    }
+
     /// Credit utilization percentage (0.0 to 1.0+)
     private var creditUtilization: Double {
         guard player.creditLimit > 0 else { return 0 }
@@ -155,6 +200,9 @@ struct AccountView: View {
 
                 // Quick Stats Section
                 quickStatsSection
+
+                // Betting Statistics Section
+                bettingStatisticsSection
 
                 // My Bets Section
                 myBetsSection
@@ -317,6 +365,125 @@ struct AccountView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(color.opacity(0.1))
         )
+    }
+
+    // MARK: - Betting Statistics Section
+
+    private var bettingStatisticsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Betting Stats")
+                .font(.headline)
+
+            // Win/Loss/Push Record
+            VStack(spacing: 12) {
+                // Record display (e.g., "12-8-1")
+                HStack {
+                    Text("Record")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    HStack(spacing: 0) {
+                        Text("\(winCount)")
+                            .foregroundStyle(.green)
+                            .fontWeight(.semibold)
+                        Text("-")
+                            .foregroundStyle(.secondary)
+                        Text("\(lossCount)")
+                            .foregroundStyle(.red)
+                            .fontWeight(.semibold)
+                        Text("-")
+                            .foregroundStyle(.secondary)
+                        Text("\(pushCount)")
+                            .foregroundStyle(.orange)
+                            .fontWeight(.semibold)
+                    }
+                    .font(.title3)
+                }
+
+                Divider()
+
+                // Total Bets Placed
+                HStack {
+                    Text("Total Bets Placed")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("\(totalBetsPlaced)")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+
+                // Win Percentage
+                HStack {
+                    Text("Win Percentage")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(settledBets.isEmpty ? "—" : String(format: "%.1f%%", winRate))
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(winRate >= 50 ? .green : .red)
+                }
+
+                Divider()
+
+                // Total Profit/Loss
+                HStack {
+                    Text("Total Profit/Loss")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if settledBets.isEmpty {
+                        Text("—")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    } else {
+                        Text(formatProfitLoss(totalProfitLoss))
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(totalProfitLoss >= 0 ? .green : .red)
+                    }
+                }
+
+                // ROI
+                HStack {
+                    Text("ROI")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if settledBets.isEmpty {
+                        Text("—")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    } else {
+                        Text(String(format: "%+.1f%%", roiPercentage))
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(roiPercentage >= 0 ? .green : .red)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+
+    /// Format profit/loss with sign
+    private func formatProfitLoss(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        let absValue = abs(value)
+        let formatted = formatter.string(from: absValue as NSDecimalNumber) ?? "$\(absValue)"
+        if value >= 0 {
+            return "+\(formatted)"
+        } else {
+            return "-\(formatted)"
+        }
     }
 
     // MARK: - My Bets Section
