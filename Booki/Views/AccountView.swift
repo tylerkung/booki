@@ -220,257 +220,448 @@ struct AccountView: View {
     // MARK: - Hero Balance Section
 
     private var heroBalanceSection: some View {
-        VStack(spacing: 8) {
-            Text("Current Balance")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        VStack(spacing: 12) {
+            Text("CURRENT BALANCE")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .tracking(1.5)
+                .foregroundStyle(Theme.textSecondary)
 
             Text(formatCurrency(balanceSummary.balanceOwed))
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(.system(size: 56, weight: .bold, design: .rounded))
                 .foregroundStyle(balanceColor)
+                .shadow(color: balanceColor.opacity(0.3), radius: 8, x: 0, y: 0)
 
             if balanceSummary.balanceOwed > 0 {
-                Text("Amount you owe")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .foregroundStyle(Theme.danger)
+                    Text("Amount you owe")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                }
             } else if balanceSummary.balanceOwed < 0 {
-                Text("Amount owed to you")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .foregroundStyle(Theme.accent)
+                    Text("Amount owed to you")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.textSecondary)
+                    Text("All settled up")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
+        .padding(.vertical, 32)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.cardBackground)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Theme.cardGradient)
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Theme.border.opacity(0.8), Theme.border.opacity(0.3)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
         )
+        .shadow(color: Color.black.opacity(0.4), radius: 12, x: 0, y: 6)
     }
 
     // MARK: - Credit Utilization Section
 
     private var creditUtilizationSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header with icon
             HStack {
-                Text("Available Credit")
-                    .font(.headline)
+                HStack(spacing: 8) {
+                    Image(systemName: "creditcard.fill")
+                        .foregroundStyle(Theme.accent)
+                    Text("AVAILABLE CREDIT")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .tracking(1)
+                        .foregroundStyle(Theme.textSecondary)
+                }
 
                 Spacer()
 
                 Text(formatCurrency(balanceSummary.availableCredit))
-                    .font(.headline)
-                    .foregroundColor(balanceSummary.availableCredit >= 0 ? Color.primary : Color.red)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(balanceSummary.availableCredit >= 0 ? Theme.textPrimary : Theme.danger)
             }
 
-            // Progress bar
+            // Styled progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // Background track
-                    RoundedRectangle(cornerRadius: 8)
+                    // Background track with gradient
+                    RoundedRectangle(cornerRadius: 10)
                         .fill(Theme.elevatedBackground)
-                        .frame(height: 12)
+                        .frame(height: 16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Theme.border, lineWidth: 1)
+                        )
 
-                    // Filled portion
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(creditUtilizationColor)
-                        .frame(width: min(CGFloat(creditUtilization) * geometry.size.width, geometry.size.width), height: 12)
+                    // Filled portion with gradient
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(creditUtilizationGradient)
+                        .frame(width: max(min(CGFloat(creditUtilization) * geometry.size.width, geometry.size.width), 8), height: 16)
+                        .shadow(color: creditUtilizationColor.opacity(0.5), radius: 4, x: 0, y: 0)
                 }
             }
-            .frame(height: 12)
+            .frame(height: 16)
 
+            // Footer stats
             HStack {
-                Text("Used: \(formatCurrency(player.creditLimit - balanceSummary.availableCredit))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("USED")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .tracking(0.5)
+                        .foregroundStyle(Theme.textMuted)
+                    Text(formatCurrency(player.creditLimit - balanceSummary.availableCredit))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(creditUtilizationColor)
+                }
 
                 Spacer()
 
-                Text("Limit: \(formatCurrency(player.creditLimit))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                // Utilization percentage
+                VStack(spacing: 2) {
+                    Text("\(Int(creditUtilization * 100))%")
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundStyle(creditUtilizationColor)
+                    Text("utilized")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textMuted)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("LIMIT")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .tracking(0.5)
+                        .foregroundStyle(Theme.textMuted)
+                    Text(formatCurrency(player.creditLimit))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.textPrimary)
+                }
             }
         }
-        .padding()
+        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.cardBackground)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.cardBackground)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            }
         )
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
     /// Color for credit utilization bar
     private var creditUtilizationColor: Color {
         if creditUtilization >= 1.0 {
-            return .red
+            return Theme.danger
         } else if creditUtilization >= 0.8 {
-            return .orange
+            return Theme.warning
         } else if creditUtilization >= 0.5 {
-            return .yellow
+            return Theme.gold
         } else {
-            return .green
+            return Theme.accent
         }
+    }
+
+    /// Gradient for credit utilization bar
+    private var creditUtilizationGradient: LinearGradient {
+        LinearGradient(
+            colors: [creditUtilizationColor, creditUtilizationColor.opacity(0.7)],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
     }
 
     // MARK: - Quick Stats Section
 
     private var quickStatsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Stats")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: "chart.bar.fill")
+                    .foregroundStyle(Theme.gold)
+                Text("QUICK STATS")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textSecondary)
+            }
 
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 // Open Bets
                 statCard(
                     title: "Open Bets",
                     value: "\(openBetsCount)",
-                    color: .blue
+                    icon: "ticket.fill",
+                    color: Theme.scheduled
                 )
 
                 // Pending Bets
                 statCard(
                     title: "Pending",
                     value: "\(pendingBetsCount)",
-                    color: .orange
+                    icon: "clock.fill",
+                    color: Theme.warning
                 )
 
                 // Win Rate
                 statCard(
                     title: "Win Rate",
                     value: settledBets.isEmpty ? "—" : String(format: "%.0f%%", winRate),
-                    color: .green
+                    icon: "percent",
+                    color: Theme.accent
                 )
             }
         }
-        .padding()
+        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.cardBackground)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.cardBackground)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            }
         )
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
-    private func statCard(title: String, value: String, color: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.title2.bold())
+    private func statCard(title: String, value: String, icon: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            // Icon
+            Image(systemName: icon)
+                .font(.title3)
                 .foregroundStyle(color)
 
+            // Value
+            Text(value)
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundStyle(Theme.textPrimary)
+
+            // Title
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundStyle(Theme.textSecondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, 16)
         .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Theme.elevatedBackground)
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(color.opacity(0.3), lineWidth: 1)
+            }
+        )
+        .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .fill(color.opacity(0.1))
+                .fill(color.opacity(0.05))
         )
     }
 
     // MARK: - Betting Statistics Section
 
     private var bettingStatisticsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Betting Stats")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(spacing: 8) {
+                Image(systemName: "trophy.fill")
+                    .foregroundStyle(Theme.gold)
+                Text("BETTING STATS")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textSecondary)
+            }
 
-            // Win/Loss/Push Record
+            // Record display card (W-L-P)
             VStack(spacing: 12) {
-                // Record display (e.g., "12-8-1")
-                HStack {
-                    Text("Record")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    HStack(spacing: 0) {
-                        Text("\(winCount)")
-                            .foregroundStyle(.green)
-                            .fontWeight(.semibold)
-                        Text("-")
-                            .foregroundStyle(.secondary)
-                        Text("\(lossCount)")
-                            .foregroundStyle(.red)
-                            .fontWeight(.semibold)
-                        Text("-")
-                            .foregroundStyle(.secondary)
-                        Text("\(pushCount)")
-                            .foregroundStyle(.orange)
-                            .fontWeight(.semibold)
-                    }
-                    .font(.title3)
+                Text("RECORD")
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .tracking(0.5)
+                    .foregroundStyle(Theme.textMuted)
+
+                HStack(spacing: 4) {
+                    Text("\(winCount)")
+                        .foregroundStyle(Theme.accent)
+                    Text("-")
+                        .foregroundStyle(Theme.textMuted)
+                    Text("\(lossCount)")
+                        .foregroundStyle(Theme.danger)
+                    Text("-")
+                        .foregroundStyle(Theme.textMuted)
+                    Text("\(pushCount)")
+                        .foregroundStyle(Theme.warning)
                 }
+                .font(.system(size: 32, weight: .bold, design: .rounded))
+
+                HStack(spacing: 20) {
+                    HStack(spacing: 4) {
+                        Circle().fill(Theme.accent).frame(width: 8, height: 8)
+                        Text("Wins")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    HStack(spacing: 4) {
+                        Circle().fill(Theme.danger).frame(width: 8, height: 8)
+                        Text("Losses")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    HStack(spacing: 4) {
+                        Circle().fill(Theme.warning).frame(width: 8, height: 8)
+                        Text("Pushes")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Theme.elevatedBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Theme.border, lineWidth: 0.5)
+                    )
+            )
+
+            // Stats grid
+            VStack(spacing: 16) {
+                // Total Bets Placed
+                statsRow(
+                    label: "Total Bets Placed",
+                    value: "\(totalBetsPlaced)",
+                    valueColor: Theme.textPrimary
+                )
 
                 Divider()
-
-                // Total Bets Placed
-                HStack {
-                    Text("Total Bets Placed")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(totalBetsPlaced)")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                }
+                    .background(Theme.divider)
 
                 // Win Percentage
-                HStack {
-                    Text("Win Percentage")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(settledBets.isEmpty ? "—" : String(format: "%.1f%%", winRate))
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(winRate >= 50 ? .green : .red)
-                }
+                statsRow(
+                    label: "Win Percentage",
+                    value: settledBets.isEmpty ? "—" : String(format: "%.1f%%", winRate),
+                    valueColor: settledBets.isEmpty ? Theme.textSecondary : (winRate >= 50 ? Theme.accent : Theme.danger)
+                )
 
                 Divider()
+                    .background(Theme.divider)
 
                 // Total Profit/Loss
                 HStack {
-                    Text("Total Profit/Loss")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        Image(systemName: "dollarsign.circle")
+                            .foregroundStyle(Theme.textMuted)
+                        Text("Total Profit/Loss")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                     Spacer()
                     if settledBets.isEmpty {
                         Text("—")
                             .font(.subheadline)
-                            .fontWeight(.medium)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Theme.textSecondary)
                     } else {
                         Text(formatProfitLoss(totalProfitLoss))
                             .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(totalProfitLoss >= 0 ? .green : .red)
+                            .fontWeight(.bold)
+                            .foregroundStyle(totalProfitLoss >= 0 ? Theme.accent : Theme.danger)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill((totalProfitLoss >= 0 ? Theme.accent : Theme.danger).opacity(0.15))
+                            )
                     }
                 }
 
+                Divider()
+                    .background(Theme.divider)
+
                 // ROI
                 HStack {
-                    Text("ROI")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .foregroundStyle(Theme.textMuted)
+                        Text("ROI")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                     Spacer()
                     if settledBets.isEmpty {
                         Text("—")
                             .font(.subheadline)
-                            .fontWeight(.medium)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Theme.textSecondary)
                     } else {
                         Text(String(format: "%+.1f%%", roiPercentage))
                             .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(roiPercentage >= 0 ? .green : .red)
+                            .fontWeight(.bold)
+                            .foregroundStyle(roiPercentage >= 0 ? Theme.accent : Theme.danger)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill((roiPercentage >= 0 ? Theme.accent : Theme.danger).opacity(0.15))
+                            )
                     }
                 }
             }
         }
-        .padding()
+        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.cardBackground)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.cardBackground)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            }
         )
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+
+    /// Helper for stats row
+    private func statsRow(label: String, value: String, valueColor: Color) -> some View {
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(valueColor)
+        }
     }
 
     /// Format profit/loss with sign
@@ -490,35 +681,63 @@ struct AccountView: View {
     // MARK: - My Bets Section
 
     private var myBetsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("My Bets")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: "ticket.fill")
+                    .foregroundStyle(Theme.scheduled)
+                Text("MY BETS")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textSecondary)
+            }
 
-            // Filter picker (Active, Settled, All)
-            Picker("Filter", selection: $selectedBetFilter) {
+            // Custom segmented picker
+            HStack(spacing: 0) {
                 ForEach(BetHistoryFilter.allCases) { filter in
-                    Text(filter.rawValue).tag(filter)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedBetFilter = filter
+                        }
+                    } label: {
+                        Text(filter.rawValue)
+                            .font(.subheadline)
+                            .fontWeight(selectedBetFilter == filter ? .semibold : .regular)
+                            .foregroundStyle(selectedBetFilter == filter ? Theme.background : Theme.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                selectedBetFilter == filter
+                                ? AnyView(Theme.accent)
+                                : AnyView(Color.clear)
+                            )
+                    }
                 }
             }
-            .pickerStyle(.segmented)
+            .background(Theme.elevatedBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            )
 
             // Bets list
             if filteredPlayerBets.isEmpty {
-                VStack(spacing: 8) {
+                VStack(spacing: 12) {
                     Image(systemName: "ticket")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 40))
+                        .foregroundStyle(Theme.textMuted)
                     Text("No bets")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.headline)
+                        .foregroundStyle(Theme.textSecondary)
                     if selectedBetFilter != .all {
                         Text("Try changing the filter")
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.textMuted)
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 32)
+                .padding(.vertical, 40)
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(filteredPlayerBets) { bet in
@@ -531,18 +750,23 @@ struct AccountView: View {
 
                         if bet.id != filteredPlayerBets.last?.id {
                             Divider()
+                                .background(Theme.divider)
                                 .padding(.leading, 52)
                         }
                     }
                 }
             }
         }
-        .padding()
+        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.cardBackground)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.cardBackground)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            }
         )
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
     /// Get event name for a bet
@@ -556,53 +780,86 @@ struct AccountView: View {
     // MARK: - Transaction History Section
 
     private var transactionHistorySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("History")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .foregroundStyle(Theme.textSecondary)
+                Text("HISTORY")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textSecondary)
+            }
 
-            // Filter picker
-            Picker("Filter", selection: $selectedTransactionFilter) {
+            // Custom segmented picker
+            HStack(spacing: 0) {
                 ForEach(TransactionFilter.allCases) { filter in
-                    Text(filter.rawValue).tag(filter)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedTransactionFilter = filter
+                        }
+                    } label: {
+                        Text(filter.rawValue)
+                            .font(.caption)
+                            .fontWeight(selectedTransactionFilter == filter ? .semibold : .regular)
+                            .foregroundStyle(selectedTransactionFilter == filter ? Theme.background : Theme.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                selectedTransactionFilter == filter
+                                ? AnyView(Theme.accent)
+                                : AnyView(Color.clear)
+                            )
+                    }
                 }
             }
-            .pickerStyle(.segmented)
+            .background(Theme.elevatedBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            )
 
             // Transaction list
             if filteredLedgerEntries.isEmpty {
-                VStack(spacing: 8) {
+                VStack(spacing: 12) {
                     Image(systemName: "doc.text")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 40))
+                        .foregroundStyle(Theme.textMuted)
                     Text("No transactions")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.headline)
+                        .foregroundStyle(Theme.textSecondary)
                     if selectedTransactionFilter != .all {
                         Text("Try changing the filter")
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.textMuted)
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 32)
+                .padding(.vertical, 40)
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(filteredLedgerEntries) { entry in
                         TransactionRowView(entry: entry)
                         if entry.id != filteredLedgerEntries.last?.id {
                             Divider()
+                                .background(Theme.divider)
                                 .padding(.leading, 52)
                         }
                     }
                 }
             }
         }
-        .padding()
+        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.cardBackground)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.cardBackground)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            }
         )
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
     // MARK: - Helpers
@@ -639,13 +896,13 @@ struct TransactionRowView: View {
     private var iconColor: Color {
         switch entry.type {
         case .settlement:
-            return .blue
+            return Theme.scheduled
         case .adjustment:
-            return .orange
+            return Theme.warning
         case .paymentLogged:
-            return .green
+            return Theme.accent
         case .reversal:
-            return .purple
+            return Color.purple
         }
     }
 
@@ -665,7 +922,7 @@ struct TransactionRowView: View {
 
     /// Amount color: green for positive (credits), red for negative (debits)
     private var amountColor: Color {
-        entry.amount >= 0 ? .green : .red
+        entry.amount >= 0 ? Theme.accent : Theme.danger
     }
 
     /// Formatted amount with sign
@@ -681,46 +938,62 @@ struct TransactionRowView: View {
     /// Formatted date
     private var formattedDate: String {
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium
+        formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: entry.createdAt)
     }
 
     var body: some View {
         HStack(spacing: 12) {
-            // Type icon
-            Image(systemName: iconName)
-                .font(.title2)
-                .foregroundStyle(iconColor)
-                .frame(width: 40)
+            // Type icon with background
+            ZStack {
+                Circle()
+                    .fill(iconColor.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                Image(systemName: iconName)
+                    .font(.body)
+                    .foregroundStyle(iconColor)
+            }
 
             // Description and metadata
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(entry.entryDescription)
                     .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
 
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Text(typeLabel)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Text("•")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .fontWeight(.medium)
+                        .foregroundStyle(iconColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(iconColor.opacity(0.1))
+                        )
 
                     Text(formattedDate)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textMuted)
                 }
             }
 
             Spacer()
 
-            // Amount
+            // Amount with background
             Text(formattedAmount)
-                .font(.subheadline.bold())
+                .font(.subheadline)
+                .fontWeight(.bold)
                 .foregroundStyle(amountColor)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(amountColor.opacity(0.1))
+                )
         }
         .padding(.vertical, 12)
     }
@@ -737,22 +1010,22 @@ struct AccountBetRowView: View {
     private var statusColor: Color {
         switch bet.status {
         case .pending:
-            return .orange
+            return Theme.warning
         case .accepted, .readyToGrade:
-            return .blue
+            return Theme.scheduled
         case .graded, .settled:
             if let result = bet.gradeResult {
                 switch result {
-                case .win: return .green
-                case .loss: return .red
-                case .push: return .orange
+                case .win: return Theme.accent
+                case .loss: return Theme.danger
+                case .push: return Theme.warning
                 }
             }
-            return .green
+            return Theme.accent
         case .declined:
-            return .red
+            return Theme.danger
         case .void:
-            return .gray
+            return Theme.textMuted
         }
     }
 
@@ -792,72 +1065,80 @@ struct AccountBetRowView: View {
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
-        formatter.timeStyle = .short
+        formatter.timeStyle = .none
         return formatter.string(from: bet.createdAt)
     }
 
     var body: some View {
         HStack(spacing: 12) {
-            // Status indicator circle
-            Circle()
-                .fill(statusColor)
-                .frame(width: 12, height: 12)
-                .frame(width: 40)
+            // Status indicator with glow effect
+            ZStack {
+                Circle()
+                    .fill(statusColor.opacity(0.2))
+                    .frame(width: 36, height: 36)
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 14, height: 14)
+                    .shadow(color: statusColor.opacity(0.5), radius: 4, x: 0, y: 0)
+            }
 
             // Bet info
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 // Event name
                 Text(eventName)
                     .font(.subheadline)
-                    .fontWeight(.medium)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
 
                 // Side and odds
-                HStack(spacing: 4) {
+                HStack(spacing: 8) {
                     Text(bet.side)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Text("•")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .fontWeight(.medium)
+                        .foregroundStyle(Theme.textSecondary)
 
                     Text(formattedOdds)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Text("•")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.gold)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(Theme.gold.opacity(0.15))
+                        )
 
                     Text(formattedDate)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textMuted)
                 }
             }
 
             Spacer()
 
             // Status badge and stake
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: .trailing, spacing: 6) {
                 Text(statusText)
                     .font(.caption2)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Theme.background)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
                     .background(statusColor)
                     .clipShape(Capsule())
 
                 Text(formattedStake)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.textSecondary)
             }
 
             // Chevron indicator
             Image(systemName: "chevron.right")
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .fontWeight(.semibold)
+                .foregroundStyle(Theme.textMuted)
         }
         .padding(.vertical, 12)
     }
@@ -913,19 +1194,19 @@ struct AccountBetDetailView: View {
     /// Status color
     private var statusColor: Color {
         switch bet.status {
-        case .pending: return .orange
-        case .accepted, .readyToGrade: return .blue
-        case .declined: return .red
+        case .pending: return Theme.warning
+        case .accepted, .readyToGrade: return Theme.scheduled
+        case .declined: return Theme.danger
         case .graded, .settled:
             if let result = bet.gradeResult {
                 switch result {
-                case .win: return .green
-                case .loss: return .red
-                case .push: return .orange
+                case .win: return Theme.accent
+                case .loss: return Theme.danger
+                case .push: return Theme.warning
                 }
             }
-            return .green
-        case .void: return .gray
+            return Theme.accent
+        case .void: return Theme.textMuted
         }
     }
 
@@ -948,11 +1229,11 @@ struct AccountBetDetailView: View {
 
     /// Grade result color
     private var gradeResultColor: Color {
-        guard let result = bet.gradeResult else { return .primary }
+        guard let result = bet.gradeResult else { return Theme.textPrimary }
         switch result {
-        case .win: return .green
-        case .loss: return .red
-        case .push: return .orange
+        case .win: return Theme.accent
+        case .loss: return Theme.danger
+        case .push: return Theme.warning
         }
     }
 
@@ -970,12 +1251,13 @@ struct AccountBetDetailView: View {
             Section {
                 HStack {
                     Text("Status")
+                        .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     Text(statusText)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.background)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
                         .background(statusColor)
                         .clipShape(Capsule())
                 }
@@ -983,60 +1265,129 @@ struct AccountBetDetailView: View {
                 if let gradeResult = bet.gradeResult {
                     HStack {
                         Text("Result")
+                            .foregroundStyle(Theme.textSecondary)
                         Spacer()
                         Text(gradeResult.rawValue.capitalized)
-                            .fontWeight(.semibold)
+                            .fontWeight(.bold)
                             .foregroundStyle(gradeResultColor)
                     }
                 }
             }
+            .listRowBackground(Theme.cardBackground)
 
             // Event Section
-            Section("Event") {
-                LabeledContent("Matchup", value: eventName)
+            Section {
+                detailRow(label: "Matchup", value: eventName)
 
                 if let event = event {
-                    LabeledContent("Sport", value: event.sport)
-                    LabeledContent("League", value: event.league)
+                    detailRow(label: "Sport", value: event.sport)
+                    detailRow(label: "League", value: event.league)
 
                     let eventFormatter = DateFormatter()
                     let _ = eventFormatter.dateStyle = .medium
                     let _ = eventFormatter.timeStyle = .short
-                    LabeledContent("Start Time", value: eventFormatter.string(from: event.startTime))
+                    detailRow(label: "Start Time", value: eventFormatter.string(from: event.startTime))
 
-                    LabeledContent("Event Status", value: event.status.rawValue.capitalized)
+                    detailRow(label: "Event Status", value: event.status.rawValue.capitalized)
 
                     if let finalScore = event.finalScore {
-                        LabeledContent("Final Score", value: finalScore)
+                        detailRow(label: "Final Score", value: finalScore, valueColor: Theme.gold)
                     }
                 }
+            } header: {
+                Text("EVENT")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textMuted)
             }
+            .listRowBackground(Theme.cardBackground)
 
             // Bet Details Section
-            Section("Your Bet") {
-                LabeledContent("Market", value: bet.market)
-                LabeledContent("Selection", value: bet.side)
-                LabeledContent("Odds", value: formattedOdds)
-                LabeledContent("Stake", value: formattedStake)
+            Section {
+                detailRow(label: "Market", value: bet.market)
+                detailRow(label: "Selection", value: bet.side, valueColor: Theme.textPrimary)
+                HStack {
+                    Text("Odds")
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Text(formattedOdds)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.gold)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(Theme.gold.opacity(0.15))
+                        )
+                }
+                detailRow(label: "Stake", value: formattedStake, valueColor: Theme.textPrimary)
+            } header: {
+                Text("YOUR BET")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textMuted)
             }
+            .listRowBackground(Theme.cardBackground)
 
             // Payout Section
-            Section("Potential Return") {
-                LabeledContent("Profit if Win", value: formatCurrency(potentialPayout))
-                    .foregroundStyle(.green)
-                LabeledContent("Total Return", value: formatCurrency(totalReturn))
+            Section {
+                HStack {
+                    Text("Profit if Win")
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Text(formatCurrency(potentialPayout))
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.accent)
+                }
+                HStack {
+                    Text("Total Return")
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Text(formatCurrency(totalReturn))
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.accent)
+                }
+            } header: {
+                Text("POTENTIAL RETURN")
+                    .font(.caption)
                     .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textMuted)
             }
+            .listRowBackground(Theme.cardBackground)
 
             // Details Section
-            Section("Details") {
-                LabeledContent("Placed", value: formattedDate)
-                LabeledContent("Bet ID", value: String(bet.id.uuidString.prefix(8)) + "...")
+            Section {
+                detailRow(label: "Placed", value: formattedDate)
+                detailRow(label: "Bet ID", value: String(bet.id.uuidString.prefix(8)) + "...")
+            } header: {
+                Text("DETAILS")
                     .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textMuted)
             }
+            .listRowBackground(Theme.cardBackground)
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
         .navigationTitle("Bet Details")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// Helper for detail rows
+    private func detailRow(label: String, value: String, valueColor: Color = Theme.textSecondary) -> some View {
+        HStack {
+            Text(label)
+                .foregroundStyle(Theme.textSecondary)
+            Spacer()
+            Text(value)
+                .fontWeight(.medium)
+                .foregroundStyle(valueColor)
+        }
     }
 
     /// Format currency helper
