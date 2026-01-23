@@ -4,9 +4,9 @@ import Foundation
 /// No stored balance field - always derived from ledger entries
 enum BalanceService {
 
-    /// Calculates the balance owed by summing all ledger entries for a player
-    /// Positive balance = player owes bookie (player lost money)
-    /// Negative balance = bookie owes player (player won money)
+    /// Calculates the balance by summing all ledger entries for a player
+    /// Internal convention: positive = player owes bookie, negative = bookie owes player
+    /// Note: For user-facing display, negate this value so positive = player credit
     /// - Parameter ledgerEntries: All ledger entries for the player
     /// - Returns: The net balance from all ledger entries
     static func calculateBalance(from ledgerEntries: [LedgerEntry]) -> Decimal {
@@ -15,9 +15,10 @@ enum BalanceService {
         }
     }
 
-    /// Calculates the balance owed by a player
+    /// Calculates the current balance for a player
+    /// Internal convention: positive = player owes bookie, negative = bookie owes player
     /// - Parameter ledgerEntries: All ledger entries for the player
-    /// - Returns: The balance owed (positive = player owes, negative = bookie owes)
+    /// - Returns: The balance (negate for display purposes)
     static func balanceOwed(from ledgerEntries: [LedgerEntry]) -> Decimal {
         return calculateBalance(from: ledgerEntries)
     }
@@ -96,7 +97,7 @@ struct PlayerBalanceSummary {
     let creditLimit: Decimal
     /// Total potential payout from active bets
     let openLiability: Decimal
-    /// Net balance from all ledger entries
+    /// Net balance from all ledger entries (internal: positive = player owes, negate for display)
     let balanceOwed: Decimal
     /// How much more the player can bet
     let availableCredit: Decimal

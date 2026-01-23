@@ -44,14 +44,14 @@ struct AppHeaderView: View {
     }
 
     /// Color for balance display
-    /// Positive balance = player owes bookie (red)
-    /// Negative balance = bookie owes player (green - player is winning)
+    /// Positive balance = player is in credit (green - bookie owes player)
+    /// Negative balance = player owes bookie (red - player is in debt)
     /// Zero = neutral
     private var balanceColor: Color {
         if balance > 0 {
-            return Theme.danger
-        } else if balance < 0 {
             return Theme.accent
+        } else if balance < 0 {
+            return Theme.danger
         } else {
             return Theme.textSecondary
         }

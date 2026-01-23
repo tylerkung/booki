@@ -89,6 +89,13 @@ struct AccountView: View {
         )
     }
 
+    /// Display balance - negated for user-facing semantics
+    /// Positive = player in credit (bookie owes player)
+    /// Negative = player in debt (player owes bookie)
+    private var displayBalance: Decimal {
+        -balanceSummary.balanceOwed
+    }
+
     /// Open bets count (pending + accepted)
     private var openBetsCount: Int {
         playerBets.filter { $0.status == .pending || $0.status == .accepted || $0.status == .readyToGrade }.count
@@ -182,9 +189,9 @@ struct AccountView: View {
 
     /// Color for balance display
     private var balanceColor: Color {
-        // Positive balance = player owes bookie (red)
-        // Negative balance = bookie owes player (green - player is winning)
-        balanceSummary.balanceOwed > 0 ? .red : (balanceSummary.balanceOwed < 0 ? .green : .primary)
+        // Positive displayBalance = player is in credit (green - bookie owes player)
+        // Negative displayBalance = player owes bookie (red - player is in debt)
+        displayBalance > 0 ? .green : (displayBalance < 0 ? .red : .primary)
     }
 
     // MARK: - Body
@@ -227,24 +234,24 @@ struct AccountView: View {
                 .tracking(1.5)
                 .foregroundStyle(Theme.textSecondary)
 
-            Text(formatCurrency(balanceSummary.balanceOwed))
+            Text(formatCurrency(displayBalance))
                 .font(.system(size: 56, weight: .bold, design: .rounded))
                 .foregroundStyle(balanceColor)
                 .shadow(color: balanceColor.opacity(0.3), radius: 8, x: 0, y: 0)
 
-            if balanceSummary.balanceOwed > 0 {
+            if displayBalance > 0 {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.up.circle.fill")
-                        .foregroundStyle(Theme.danger)
-                    Text("Amount you owe")
+                        .foregroundStyle(Theme.accent)
+                    Text("Amount owed to you")
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
-            } else if balanceSummary.balanceOwed < 0 {
+            } else if displayBalance < 0 {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.down.circle.fill")
-                        .foregroundStyle(Theme.accent)
-                    Text("Amount owed to you")
+                        .foregroundStyle(Theme.danger)
+                    Text("Amount you owe")
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }

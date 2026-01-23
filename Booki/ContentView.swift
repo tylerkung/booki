@@ -18,10 +18,13 @@ struct ContentView: View {
         return players.first { $0.id.uuidString == selectedPlayerID }
     }
 
-    /// Calculate balance for the selected player
+    /// Calculate display balance for the selected player
+    /// Note: Internal balance has opposite sign (positive = owes), so we negate for display
+    /// Display convention: positive = player in credit, negative = player in debt
     private func playerBalance(for player: Player) -> Decimal {
         let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
-        return BalanceService.balanceOwed(from: playerLedger)
+        let internalBalance = BalanceService.balanceOwed(from: playerLedger)
+        return -internalBalance  // Negate for display: positive = credit, negative = debt
     }
 
     /// Count of flagged players based on alert thresholds (for badge)
