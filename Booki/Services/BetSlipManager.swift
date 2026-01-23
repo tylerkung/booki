@@ -69,11 +69,13 @@ struct BetSlipItem: Equatable, Hashable, Codable {
 /// Manager for persistent bet slip storage
 /// US-040: Build Persistent Bet Slip
 /// US-041: Support Multi-Bet (Parlay) Selections
+/// US-042: Improved Stake Entry
 class BetSlipManager: ObservableObject {
     static let shared = BetSlipManager()
 
     private let userDefaultsKey = "betSlipItems"
     private let betModeKey = "betSlipMode"
+    private let stakeKey = "betSlipStake"
 
     /// Published array of bet slip items (order preserved)
     @Published private(set) var items: [BetSlipItem] = []
@@ -86,12 +88,23 @@ class BetSlipManager: ObservableObject {
         }
     }
 
+    /// Published stake amount (US-042)
+    @Published var stake: Decimal = 0 {
+        didSet {
+            saveStake()
+        }
+    }
+
+    /// Quick-pick stake amounts (US-042)
+    static let quickPickAmounts: [Decimal] = [5, 10, 25, 50, 100]
+
     /// Maximum selections allowed
     let maxSelections = 10
 
     private init() {
         loadItems()
         loadBetMode()
+        loadStake()
     }
 
     // MARK: - Parlay Odds Calculation (US-041)
@@ -130,6 +143,72 @@ class BetSlipManager: ObservableObject {
     var formattedParlayOdds: String? {
         guard let odds = combinedParlayOdds else { return nil }
         return odds >= 0 ? "+\(odds)" : "\(odds)"
+    }
+
+    // MARK: - Payout Calculation (US-042)
+
+    /// Calculate potential payout from American odds and stake
+    /// Payout includes the original stake (total return)
+    func calculatePayout(odds: Int, stake: Decimal) -> Decimal {
+        guard stake > 0 else { return 0 }
+
+        let decimalOdds = toDecimalOdds(odds)
+        return stake * Decimal(decimalOdds)
+    }
+
+    /// Calculate payout for a single bet (using current stake)
+    func singleBetPayout(for item: BetSlipItem) -> Decimal {
+        return calculatePayout(odds: item.odds, stake: stake)
+    }
+
+    /// Calculate total payout for singles mode (sum of individual payouts)
+    var totalSinglesPayout: Decimal {
+        guard stake > 0 else { return 0 }
+        return items.reduce(Decimal.zero) { total, item in
+            total + singleBetPayout(for: item)
+        }
+    }
+
+    /// Calculate total stake for singles mode (stake * number of bets)
+    var totalSinglesStake: Decimal {
+        return stake * Decimal(items.count)
+    }
+
+    /// Calculate payout for parlay mode (combined odds * stake)
+    var parlayPayout: Decimal {
+        guard stake > 0, let odds = combinedParlayOdds else { return 0 }
+        return calculatePayout(odds: odds, stake: stake)
+    }
+
+    /// Current total stake based on bet mode
+    var currentTotalStake: Decimal {
+        switch betMode {
+        case .singles:
+            return totalSinglesStake
+        case .parlay:
+            return stake
+        }
+    }
+
+    /// Current total payout based on bet mode
+    var currentTotalPayout: Decimal {
+        switch betMode {
+        case .singles:
+            return totalSinglesPayout
+        case .parlay:
+            return parlayPayout
+        }
+    }
+
+    /// Validate stake against available credit (US-042)
+    func isStakeValid(availableCredit: Decimal) -> Bool {
+        guard stake > 0 else { return false }
+        return currentTotalStake <= availableCredit
+    }
+
+    /// Set stake from quick-pick amount (US-042)
+    func setQuickPickStake(_ amount: Decimal) {
+        stake = amount
     }
 
     // MARK: - Public API
@@ -230,5 +309,14 @@ class BetSlipManager: ObservableObject {
 
     private func saveBetMode() {
         UserDefaults.standard.set(betMode.rawValue, forKey: betModeKey)
+    }
+
+    private func loadStake() {
+        let stakeValue = UserDefaults.standard.double(forKey: stakeKey)
+        stake = Decimal(stakeValue)
+    }
+
+    private func saveStake() {
+        UserDefaults.standard.set(NSDecimalNumber(decimal: stake).doubleValue, forKey: stakeKey)
     }
 }

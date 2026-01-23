@@ -3,9 +3,24 @@ import SwiftUI
 /// Full bet slip sheet showing all selections
 /// US-040: Build Persistent Bet Slip
 /// US-041: Support Multi-Bet (Parlay) Selections
+/// US-042: Improved Stake Entry
 struct BetSlipSheet: View {
     @ObservedObject private var betSlipManager = BetSlipManager.shared
     @Environment(\.dismiss) private var dismiss
+
+    /// Available credit for stake validation (US-042)
+    let availableCredit: Decimal
+
+    /// Custom stake text for input field (US-042)
+    @State private var stakeText: String = ""
+
+    /// Initialize with available credit for validation
+    init(availableCredit: Decimal = Decimal.greatestFiniteMagnitude) {
+        self.availableCredit = availableCredit
+        // Initialize stake text from manager's current stake
+        let currentStake = BetSlipManager.shared.stake
+        _stakeText = State(initialValue: currentStake > 0 ? "\(NSDecimalNumber(decimal: currentStake).intValue)" : "")
+    }
 
     var body: some View {
         NavigationStack {
@@ -113,8 +128,138 @@ struct BetSlipSheet: View {
                     .padding(.vertical, 4)
                 }
             }
+
+            // Stake Entry Section (US-042)
+            stakeEntrySection
+
+            // Payout Summary Section (US-042)
+            if betSlipManager.stake > 0 {
+                payoutSummarySection
+            }
         }
         .listStyle(.insetGrouped)
+    }
+
+    // MARK: - Stake Entry Section (US-042)
+
+    @ViewBuilder
+    private var stakeEntrySection: some View {
+        Section {
+            VStack(spacing: 16) {
+                // Quick-pick stake buttons
+                HStack(spacing: 8) {
+                    ForEach(BetSlipManager.quickPickAmounts, id: \.self) { amount in
+                        QuickPickButton(
+                            amount: amount,
+                            isSelected: betSlipManager.stake == amount,
+                            action: {
+                                betSlipManager.setQuickPickStake(amount)
+                                stakeText = "\(NSDecimalNumber(decimal: amount).intValue)"
+                            }
+                        )
+                    }
+                }
+
+                // Custom amount input
+                HStack {
+                    Text("$")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+
+                    TextField("Custom amount", text: $stakeText)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .keyboardType(.numberPad)
+                        .onChange(of: stakeText) { _, newValue in
+                            // Parse and update stake
+                            if let value = Decimal(string: newValue.filter { $0.isNumber }) {
+                                betSlipManager.stake = value
+                            } else if newValue.isEmpty {
+                                betSlipManager.stake = 0
+                            }
+                        }
+
+                    Spacer()
+
+                    if !stakeText.isEmpty {
+                        Button(action: {
+                            stakeText = ""
+                            betSlipManager.stake = 0
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color(.systemGray5))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                // Stake validation warning (US-042)
+                if betSlipManager.stake > 0 && !betSlipManager.isStakeValid(availableCredit: availableCredit) {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text("Stake exceeds available credit (\(formatCurrency(availableCredit)))")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Stake")
+        } footer: {
+            if betSlipManager.betMode == .singles && betSlipManager.count > 1 {
+                Text("Stake applies to each of your \(betSlipManager.count) singles bets. Total stake: \(formatCurrency(betSlipManager.totalSinglesStake))")
+            }
+        }
+    }
+
+    // MARK: - Payout Summary Section (US-042)
+
+    @ViewBuilder
+    private var payoutSummarySection: some View {
+        Section {
+            VStack(spacing: 12) {
+                // Total stake row
+                HStack {
+                    Text("Total Stake")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(formatCurrency(betSlipManager.currentTotalStake))
+                        .fontWeight(.medium)
+                }
+
+                Divider()
+
+                // Potential payout row
+                HStack {
+                    Text("Potential Payout")
+                        .font(.headline)
+                    Spacer()
+                    Text(formatCurrency(betSlipManager.currentTotalPayout))
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.green)
+                }
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Summary")
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 
     // MARK: - Delete Handler
@@ -191,6 +336,33 @@ struct BetSlipItemRow: View {
     }
 }
 
+// MARK: - Quick Pick Button (US-042)
+
+/// Button for quick-pick stake amounts
+struct QuickPickButton: View {
+    let amount: Decimal
+    let isSelected: Bool
+    let action: () -> Void
+
+    private var formattedAmount: String {
+        "$\(NSDecimalNumber(decimal: amount).intValue)"
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(formattedAmount)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(isSelected ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(isSelected ? Color.blue : Color(.systemGray5))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 #Preview {
-    BetSlipSheet()
+    BetSlipSheet(availableCredit: 500)
 }
