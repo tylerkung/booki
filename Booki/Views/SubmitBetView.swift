@@ -159,6 +159,8 @@ struct EventRowView: View {
         case .scheduled: return .blue
         case .live: return .green
         case .final: return .gray
+        case .postponed: return .orange
+        case .canceled: return .red
         }
     }
 
@@ -167,6 +169,8 @@ struct EventRowView: View {
         case .scheduled: return "Upcoming"
         case .live: return "Live"
         case .final: return "Final"
+        case .postponed: return "Postponed"
+        case .canceled: return "Canceled"
         }
     }
 
@@ -532,7 +536,7 @@ struct StakeEntryView: View {
 
     /// Check if stake is valid (positive and within available credit)
     private var isStakeValid: Bool {
-        guard let stake = stake, let payout = potentialPayout else { return false }
+        guard let _ = stake, let payout = potentialPayout else { return false }
         // Check if potential liability (payout) is within available credit
         return payout <= balanceSummary.availableCredit
     }
@@ -544,7 +548,7 @@ struct StakeEntryView: View {
 
     /// Error message for invalid stake
     private var stakeError: String? {
-        guard let stake = stake, let payout = potentialPayout else { return nil }
+        guard let _ = stake, let payout = potentialPayout else { return nil }
         if payout > balanceSummary.availableCredit {
             return "Potential payout exceeds available credit"
         }
