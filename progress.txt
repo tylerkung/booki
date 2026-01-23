@@ -9,6 +9,7 @@ Started: Fri Jan 23 12:48:18 PST 2026
 - Xcode command line build is not available (xcodebuild requires full Xcode, not just Command Line Tools)
 - For SwiftUI Buttons with transparent backgrounds, use .contentShape(Rectangle()) to expand tap area
 - Balance display convention: Internal (BalanceService) uses positive = player owes, but player-facing displays negate this so positive = player credit (green), negative = debt (red)
+- For SwiftUI List/Form views with dark theme: use .scrollContentBackground(.hidden) + .background(Theme.background) + .listRowBackground(Theme.cardBackground) on sections
 
 ---
 
@@ -125,4 +126,20 @@ Started: Fri Jan 23 12:48:18 PST 2026
   - Bookie views (DashboardView, PlayersListView) use internal convention directly - no negation needed there
   - The formula `availableCredit = creditLimit - liability - balance` is correct with internal convention
   - GradingService creates Win = +payout, Loss = -stake entries which seems opposite but works with the negation
+---
+
+## 2026-01-23 - US-008
+- What was implemented: Standardized card background colors across the app
+- Files changed: Booki/Views/SettingsView.swift, Booki/Views/DashboardView.swift
+- Changes made:
+  - SettingsView: Added .listRowBackground(Theme.cardBackground) to all 5 sections
+  - DashboardView: Added .listRowBackground(Theme.cardBackground) to all sections (Exposure, Pending Bets Count, Pending Bets Queue, Top Risk Events, Settlements, Players Owe You, You Owe Players)
+  - FlaggedPlayersView: Added .listRowBackground(Theme.cardBackground) to list rows
+  - EditProfileSheet: Added .listRowBackground(Theme.cardBackground) to both sections, plus .scrollContentBackground(.hidden) and .background(Theme.background)
+  - ExportDataView: Added .listRowBackground(Theme.cardBackground), plus .scrollContentBackground(.hidden) and .background(Theme.background)
+- **Learnings for future iterations:**
+  - SwiftUI List sections need .listRowBackground(Theme.cardBackground) to show themed background
+  - Always pair .scrollContentBackground(.hidden) with .background(Theme.background) for List/Form views
+  - AccountView already had the correct pattern - use it as reference for consistent styling
+  - The key files for bookie-facing UI are: SettingsView.swift, DashboardView.swift (and their nested views)
 ---
