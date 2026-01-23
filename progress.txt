@@ -340,3 +340,20 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Stake input styling: use `.font(.system(size: 32, weight: .bold, design: .rounded))` for large, impactful numbers
   - Use `simultaneousGesture(DragGesture)` with `onChanged`/`onEnded` for press state animations on buttons
 ---
+
+## 2026-01-22 - US-052
+- **What was implemented:** Styled Account and Stats Views with premium dark theme aesthetic
+- **Files changed:**
+  - `Booki/Views/AccountView.swift` (major overhaul - 604 additions, 253 deletions)
+- **Learnings for future iterations:**
+  - Use `.shadow(color: balanceColor.opacity(0.3), radius: 8)` for glow effects on text
+  - Credit utilization bar: use `LinearGradient` with `creditUtilizationColor` and `.opacity(0.7)` for premium look
+  - For large record display (W-L-P), use `.font(.system(size: 32, weight: .bold, design: .rounded))` 
+  - Custom segmented pickers: `HStack(spacing: 0)` with Button for each option, `Theme.accent` background on selected
+  - Wrap different `ShapeStyle` types in `AnyView()` when using in ternary for segmented picker backgrounds
+  - Icon backgrounds: `ZStack` with `Circle().fill(color.opacity(0.15))` and icon on top
+  - Amount/value badges: use `Capsule().fill(color.opacity(0.15))` with `.padding(.horizontal, 10).padding(.vertical, 4)`
+  - Transaction row styling: icon with background circle, type badge as capsule, amount with colored background
+  - For List in detail views: use `.listRowBackground(Theme.cardBackground)` and `.scrollContentBackground(.hidden)` 
+  - Section headers in Lists: custom Text with `.font(.caption).fontWeight(.semibold).tracking(1)` and `Theme.textMuted`
+---
