@@ -8,6 +8,7 @@ Started: Fri Jan 23 12:48:18 PST 2026
 - Market types are accessed via event.markets?.first { $0.type == .spread/.moneyline/.total }
 - Xcode command line build is not available (xcodebuild requires full Xcode, not just Command Line Tools)
 - For SwiftUI Buttons with transparent backgrounds, use .contentShape(Rectangle()) to expand tap area
+- Balance display convention: Internal (BalanceService) uses positive = player owes, but player-facing displays negate this so positive = player credit (green), negative = debt (red)
 
 ---
 
@@ -107,4 +108,21 @@ Started: Fri Jan 23 12:48:18 PST 2026
   - BetConfirmationSheet.swift still exists in project but is no longer presented (could be removed)
   - The submission logic uses BetService.submitBet and generates a shared ticketId for all bets
   - Success animation uses outerRingScale/outerRingOpacity for pulsing effect
+---
+
+## 2026-01-23 - US-007
+- What was implemented: Fixed player balance display logic to show correct semantics
+- Files changed: Booki/ContentView.swift, Booki/Services/BalanceService.swift, Booki/Views/AccountView.swift, Booki/Views/AppHeaderView.swift
+- Changes made:
+  - ContentView: Negate internal balance for display in playerBalance() function
+  - AppHeaderView: Updated balanceColor to show green for positive (credit), red for negative (debt)
+  - AccountView: Added displayBalance computed property that negates internal balance
+  - AccountView: Updated heroBalanceSection to use displayBalance with correct colors and text
+  - BalanceService: Updated comments to clarify internal vs display conventions
+- **Learnings for future iterations:**
+  - Internal balance convention (BalanceService): positive = player owes bookie, negative = bookie owes player
+  - Display balance convention (player-facing): positive = player in credit (green), negative = player in debt (red)
+  - Bookie views (DashboardView, PlayersListView) use internal convention directly - no negation needed there
+  - The formula `availableCredit = creditLimit - liability - balance` is correct with internal convention
+  - GradingService creates Win = +payout, Loss = -stake entries which seems opposite but works with the negation
 ---
