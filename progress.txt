@@ -37,3 +37,15 @@ Started: Fri Jan 23 13:56:25 PST 2026
   - When removing items, also clean up corresponding itemStakes entries
   - The individualTotalStake and individualTotalPayout computed properties calculate totals from per-bet stakes
 ---
+
+## 2026-01-23 - US-004
+- What was implemented: Added per-bet stake input to bet cards in singles mode with individual payout display
+- Files changed: Booki/Views/BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - PremiumBetSlipItemCard now accepts betMode, stakeText binding, and betSlipManager as parameters
+  - Use @FocusState to track whether stake input field is focused for styling changes
+  - When using per-item state in ForEach, create a Binding helper function (itemStakeTextBinding) to provide bindings for each item
+  - Store itemStakeTexts as [UUID: String] in BetSlipSheet for UI text, while BetSlipManager stores itemStakes as [UUID: Decimal] for values
+  - Initialize itemStakeTexts from existing BetSlipManager.itemStakes in init() to restore state on sheet reopen
+  - Clean up itemStakeTexts when removing items from the bet slip
+---

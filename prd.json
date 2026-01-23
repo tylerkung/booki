@@ -69,7 +69,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Modify PremiumBetSlipItemCard struct to support inline stake entry"
     },
     {
