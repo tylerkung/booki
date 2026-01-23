@@ -17,6 +17,10 @@ struct SettingsView: View {
     @AppStorage("isPlayerMode") private var isPlayerMode: Bool = false
     @AppStorage("selectedPlayerID") private var selectedPlayerID: String = ""
 
+    // Alert Threshold settings
+    @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
+    @AppStorage("agingThreshold") private var agingThreshold: Int = 7
+
     private var currentBookie: Bookie? {
         bookies.first
     }
@@ -63,6 +67,24 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("Bookie Profile")
+                }
+
+                // MARK: - Alert Thresholds Section
+                Section {
+                    HStack {
+                        Text("Balance Threshold")
+                        Spacer()
+                        TextField("Amount", value: $balanceThreshold, format: .currency(code: "USD"))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 100)
+                    }
+
+                    Stepper("Aging Threshold: \(agingThreshold) days", value: $agingThreshold, in: 1...90)
+                } header: {
+                    Text("Balance Alerts")
+                } footer: {
+                    Text("Get alerted when players have balances above the threshold or aging balances older than the specified days.")
                 }
 
                 // MARK: - Data Management Section

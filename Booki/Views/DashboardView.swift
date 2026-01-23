@@ -1,6 +1,22 @@
 import SwiftUI
 import SwiftData
 
+/// Flag reason enum for player alerts
+enum PlayerFlagReason: String, CaseIterable {
+    case highBalance = "High Balance"
+    case aging = "Aging"
+    case both = "High Balance & Aging"
+}
+
+/// Model for flagged player display
+struct FlaggedPlayer: Identifiable {
+    let id: UUID
+    let player: Player
+    let balance: Decimal
+    let daysSinceLastActivity: Int?
+    let reason: PlayerFlagReason
+}
+
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var bets: [Bet]
@@ -9,6 +25,11 @@ struct DashboardView: View {
     @Query private var ledgerEntries: [LedgerEntry]
 
     @State private var viewModel = DashboardViewModel()
+    @State private var showingFlaggedPlayers = false
+
+    // Alert Threshold settings
+    @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
+    @AppStorage("agingThreshold") private var agingThreshold: Int = 7
 
     /// Model for player balance display
     private struct PlayerBalanceItem: Identifiable {
@@ -62,9 +83,100 @@ struct DashboardView: View {
         abs(youOwePlayers.reduce(Decimal.zero) { $0 + $1.balance })
     }
 
+    /// Players who need attention based on alert thresholds
+    private var flaggedPlayers: [FlaggedPlayer] {
+        let thresholdDecimal = Decimal(balanceThreshold)
+
+        return players.filter { $0.status == .active }.compactMap { player in
+            let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
+            let balance = BalanceService.balanceOwed(from: playerLedger)
+
+            // Only flag players who owe money (positive balance)
+            guard balance > 0 else { return nil }
+
+            // Find days since last activity
+            let lastEntryDate = playerLedger.map { $0.createdAt }.max()
+            let daysSinceLastActivity: Int? = lastEntryDate.map { lastDate in
+                Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day ?? 0
+            }
+
+            // Check thresholds
+            let isHighBalance = balance >= thresholdDecimal
+            let isAging = (daysSinceLastActivity ?? 0) >= agingThreshold
+
+            // Determine flag reason
+            let reason: PlayerFlagReason?
+            if isHighBalance && isAging {
+                reason = .both
+            } else if isHighBalance {
+                reason = .highBalance
+            } else if isAging {
+                reason = .aging
+            } else {
+                reason = nil
+            }
+
+            guard let flagReason = reason else { return nil }
+
+            return FlaggedPlayer(
+                id: player.id,
+                player: player,
+                balance: balance,
+                daysSinceLastActivity: daysSinceLastActivity,
+                reason: flagReason
+            )
+        }.sorted { $0.balance > $1.balance }
+    }
+
+    /// Count of flagged players
+    var flaggedPlayersCount: Int {
+        flaggedPlayers.count
+    }
+
     var body: some View {
         NavigationStack {
             List {
+                // MARK: - Alert Banner Section
+                if !flaggedPlayers.isEmpty {
+                    Section {
+                        Button {
+                            showingFlaggedPlayers = true
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.white)
+                                    .padding(8)
+                                    .background(Theme.danger)
+                                    .clipShape(Circle())
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("\(flaggedPlayersCount) player\(flaggedPlayersCount == 1 ? "" : "s") need\(flaggedPlayersCount == 1 ? "s" : "") attention")
+                                        .font(.headline)
+                                        .foregroundStyle(Theme.textPrimary)
+
+                                    Text("Tap to view flagged players")
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.textSecondary)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                            .background(Theme.danger.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
+                    }
+                }
+
                 // MARK: - Balances Section
                 balancesSection
 
@@ -184,6 +296,9 @@ struct DashboardView: View {
             }
             .navigationDestination(for: Player.self) { player in
                 PlayerDetailView(player: player)
+            }
+            .sheet(isPresented: $showingFlaggedPlayers) {
+                FlaggedPlayersView(flaggedPlayers: flaggedPlayers)
             }
         }
     }
@@ -508,6 +623,123 @@ struct PlayerBalanceRow: View {
                 .foregroundStyle(isOwedToYou ? Theme.accent : Theme.danger)
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Flagged Players View
+
+struct FlaggedPlayersView: View {
+    @Environment(\.dismiss) private var dismiss
+    let flaggedPlayers: [FlaggedPlayer]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if flaggedPlayers.isEmpty {
+                    ContentUnavailableView(
+                        "No Flagged Players",
+                        systemImage: "checkmark.circle",
+                        description: Text("All players are within acceptable thresholds.")
+                    )
+                } else {
+                    ForEach(flaggedPlayers) { flagged in
+                        NavigationLink(value: flagged.player) {
+                            FlaggedPlayerRow(flaggedPlayer: flagged)
+                        }
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .navigationTitle("Players Need Attention")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .navigationDestination(for: Player.self) { player in
+                PlayerDetailView(player: player)
+            }
+        }
+    }
+}
+
+// MARK: - Flagged Player Row
+
+struct FlaggedPlayerRow: View {
+    let flaggedPlayer: FlaggedPlayer
+
+    private var formattedBalance: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: flaggedPlayer.balance as NSDecimalNumber) ?? "$\(flaggedPlayer.balance)"
+    }
+
+    private var daysText: String? {
+        guard let days = flaggedPlayer.daysSinceLastActivity else { return nil }
+        switch days {
+        case 0:
+            return "Today"
+        case 1:
+            return "1 day ago"
+        default:
+            return "\(days) days ago"
+        }
+    }
+
+    private var reasonColor: Color {
+        switch flaggedPlayer.reason {
+        case .highBalance:
+            return Theme.gold
+        case .aging:
+            return .orange
+        case .both:
+            return Theme.danger
+        }
+    }
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(flaggedPlayer.player.name)
+                        .font(.headline)
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text(flaggedPlayer.reason.rawValue)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(reasonColor)
+                        .clipShape(Capsule())
+                }
+
+                HStack(spacing: 12) {
+                    Text("Owes: \(formattedBalance)")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.accent)
+
+                    if let days = daysText {
+                        Text("Last activity: \(days)")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                }
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(Theme.textMuted)
+        }
+        .padding(.vertical, 6)
     }
 }
 

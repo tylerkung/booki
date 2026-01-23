@@ -5,12 +5,44 @@ struct ContentView: View {
     @AppStorage("isPlayerMode") private var isPlayerMode: Bool = false
     @AppStorage("selectedPlayerID") private var selectedPlayerID: String = ""
 
+    // Alert Threshold settings
+    @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
+    @AppStorage("agingThreshold") private var agingThreshold: Int = 7
+
     @Query private var players: [Player]
+    @Query private var ledgerEntries: [LedgerEntry]
 
     /// The currently selected player for player mode
     private var selectedPlayer: Player? {
         guard !selectedPlayerID.isEmpty else { return nil }
         return players.first { $0.id.uuidString == selectedPlayerID }
+    }
+
+    /// Count of flagged players based on alert thresholds (for badge)
+    private var flaggedPlayersCount: Int {
+        let thresholdDecimal = Decimal(balanceThreshold)
+
+        return players.filter { player in
+            guard player.status == .active else { return false }
+
+            let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
+            let balance = BalanceService.balanceOwed(from: playerLedger)
+
+            // Only flag players who owe money (positive balance)
+            guard balance > 0 else { return false }
+
+            // Find days since last activity
+            let lastEntryDate = playerLedger.map { $0.createdAt }.max()
+            let daysSinceLastActivity: Int = lastEntryDate.map { lastDate in
+                Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day ?? 0
+            } ?? 0
+
+            // Check thresholds
+            let isHighBalance = balance >= thresholdDecimal
+            let isAging = daysSinceLastActivity >= agingThreshold
+
+            return isHighBalance || isAging
+        }.count
     }
 
     var body: some View {
@@ -45,6 +77,7 @@ struct ContentView: View {
                 .tabItem {
                     Label("Players", systemImage: "person.2.fill")
                 }
+                .badge(flaggedPlayersCount > 0 ? flaggedPlayersCount : 0)
 
             EventsListView()
                 .tabItem {
