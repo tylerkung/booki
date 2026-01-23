@@ -3,6 +3,7 @@ import SwiftData
 
 /// Redesigned player view for browsing games organized by sport with easy navigation
 /// US-036: Horizontal scrolling sport tabs with sticky header
+/// US-037: Game cards with quick-pick odds and bet slip integration
 struct GamesView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Event.startTime) private var events: [Event]
@@ -13,6 +14,12 @@ struct GamesView: View {
 
     /// Currently selected sport filter (nil = "All")
     @State private var selectedSport: String? = nil
+
+    /// Selected odds for bet slip (US-037)
+    @State private var betSlipSelections: Set<BetSlipSelection> = []
+
+    /// Event to navigate to for full market view
+    @State private var selectedEventForNavigation: Event? = nil
 
     // MARK: - Computed Properties
 
@@ -87,12 +94,49 @@ struct GamesView: View {
             } else {
                 gamesList
             }
+
+            // Floating bet slip indicator (US-037)
+            if !betSlipSelections.isEmpty {
+                betSlipIndicator
+            }
         }
         .navigationTitle("Games")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: Event.self) { event in
             MarketSelectionView(player: player, event: event)
         }
+        .navigationDestination(item: $selectedEventForNavigation) { event in
+            MarketSelectionView(player: player, event: event)
+        }
+    }
+
+    // MARK: - Bet Slip Indicator
+
+    @ViewBuilder
+    private var betSlipIndicator: some View {
+        HStack {
+            Image(systemName: "ticket.fill")
+                .foregroundStyle(.white)
+
+            Text("\(betSlipSelections.count) Selection\(betSlipSelections.count == 1 ? "" : "s")")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.white)
+
+            Spacer()
+
+            Button(action: {
+                withAnimation {
+                    betSlipSelections.removeAll()
+                }
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.blue)
     }
 
     // MARK: - Sport Tabs Header
@@ -131,38 +175,58 @@ struct GamesView: View {
 
     @ViewBuilder
     private var gamesList: some View {
-        List {
-            // Player account info section
-            Section {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Available Credit")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(formatCurrency(balanceSummary.availableCredit))
-                            .font(.title2.bold())
-                            .foregroundStyle(availableCreditColor)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("Credit Limit")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(formatCurrency(player.creditLimit))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                // Player account info section
+                accountInfoCard
+
+                // Events grouped by sport and league
+                ForEach(sortedSports, id: \.self) { sport in
+                    sportSection(sport: sport)
                 }
-            } header: {
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+
+    // MARK: - Account Info Card
+
+    @ViewBuilder
+    private var accountInfoCard: some View {
+        VStack(spacing: 8) {
+            HStack {
                 Text("Your Account")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                Spacer()
             }
 
-            // Events grouped by sport and league
-            ForEach(sortedSports, id: \.self) { sport in
-                sportSection(sport: sport)
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Available Credit")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(formatCurrency(balanceSummary.availableCredit))
+                        .font(.title2.bold())
+                        .foregroundStyle(availableCreditColor)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("Credit Limit")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(formatCurrency(player.creditLimit))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
+            .padding(12)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .listStyle(.grouped)
     }
 
     // MARK: - Sport Section
@@ -173,19 +237,44 @@ struct GamesView: View {
         let sortedLeagues = leaguesByEvent.keys.sorted()
 
         ForEach(sortedLeagues, id: \.self) { league in
-            Section {
-                ForEach(leaguesByEvent[league] ?? [], id: \.id) { event in
-                    NavigationLink(value: event) {
-                        GameRowView(event: event)
-                    }
-                }
-            } header: {
+            VStack(alignment: .leading, spacing: 12) {
+                // Section header
                 HStack {
                     Text(sport)
                         .fontWeight(.semibold)
                     Text("•")
+                        .foregroundStyle(.secondary)
                     Text(league)
+                        .foregroundStyle(.secondary)
                 }
+                .font(.subheadline)
+
+                // Game cards
+                ForEach(leaguesByEvent[league] ?? [], id: \.id) { event in
+                    GameCardView(
+                        event: event,
+                        selections: betSlipSelections,
+                        onSelectOdds: { selection in
+                            handleOddsSelection(selection)
+                        },
+                        onTapCard: {
+                            selectedEventForNavigation = event
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Selection Handling
+
+    /// Handle odds button tap - toggle selection in bet slip
+    private func handleOddsSelection(_ selection: BetSlipSelection) {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            if betSlipSelections.contains(selection) {
+                betSlipSelections.remove(selection)
+            } else {
+                betSlipSelections.insert(selection)
             }
         }
     }

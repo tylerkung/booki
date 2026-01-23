@@ -41,6 +41,7 @@
 		8A1234560032 /* EditMarketSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550033 /* EditMarketSheet.swift */; };
 		8A1234560033 /* SeedDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550034 /* SeedDataService.swift */; };
 		8A1234560034 /* GamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550035 /* GamesView.swift */; };
+		8A1234560035 /* GameCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550036 /* GameCardView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -80,6 +81,7 @@
 		8A1234550033 /* EditMarketSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditMarketSheet.swift; sourceTree = "<group>"; };
 		8A1234550034 /* SeedDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedDataService.swift; sourceTree = "<group>"; };
 		8A1234550035 /* GamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamesView.swift; sourceTree = "<group>"; };
+		8A1234550036 /* GameCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -182,6 +184,7 @@
 				8A1234550032 /* AddMarketSheet.swift */,
 				8A1234550033 /* EditMarketSheet.swift */,
 				8A1234550035 /* GamesView.swift */,
+				8A1234550036 /* GameCardView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -341,6 +344,7 @@
 				8A1234560032 /* EditMarketSheet.swift in Sources */,
 				8A1234560033 /* SeedDataService.swift in Sources */,
 				8A1234560034 /* GamesView.swift in Sources */,
+				8A1234560035 /* GameCardView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
