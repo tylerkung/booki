@@ -85,7 +85,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Core integration - connects policy to submission flow"
     },
     {

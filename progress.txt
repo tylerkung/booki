@@ -44,3 +44,17 @@ Started: Fri Jan 23 14:18:44 PST 2026
   - evaluateBet function returns an array of violations - empty array means bet should be auto-accepted
   - Event lock check also considers event status (.live, .final) regardless of offset
 ---
+
+## 2026-01-23 - US-004
+- **What was implemented:** Integrated policy evaluation into bet submission flow
+- **Files changed:**
+  - Booki/Services/BetService.swift (added policy parameters and evaluation logic)
+  - Booki/Views/BetSlipSheet.swift (added @Query for events and acceptancePolicies, updated submitBets)
+- **Learnings for future iterations:**
+  - BetService.submitBet now accepts optional policy, isParlay, parlayLegs, playerBetCount, and event parameters
+  - When policy is provided: evaluates bet, auto-accepts if no violations, queues for review if violations
+  - When .eventLocked violation occurs, returns .failure(.eventLocked) instead of creating a bet
+  - BetSlipSheet queries AcceptancePolicy and Events via @Query and passes to BetService
+  - Player bet count is calculated from existing bets for new player threshold check
+  - Parlay detection uses betMode == .parlay && count > 1
+---
