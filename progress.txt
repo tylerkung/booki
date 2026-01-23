@@ -404,3 +404,19 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - For delayed transitions after success state, chain `DispatchQueue.main.asyncAfter` calls
   - The login view is not in the main flow - accessed via Settings > Test Mode > "Test Player Login UI" button
 ---
+
+## 2026-01-22 - US-056
+- **What was implemented:** Bulk Grading by Event - grade all bets for a finalized event at once
+- **Files changed:**
+  - `Booki/Views/GradeEventSheet.swift` (new) - Complete sheet for bulk grading with event summary, bets grouped by market, suggested outcomes, override options, confirmation dialog, and success summary
+  - `Booki/Views/EventDetailView.swift` (modified - added Grade All Bets button, betsToGrade computed property, showingGradeEventSheet state)
+  - `Booki.xcodeproj/project.pbxproj` (modified - added GradeEventSheet.swift to build)
+- **Learnings for future iterations:**
+  - GradingService.gradeBet() expects `.accepted` status but events finalize to `.readyToGrade` - for bulk grading, set bet.status and bet.gradeResult directly
+  - Suggested outcome calculation uses same logic from GradingBetRow: parse finalScore, compare against spread/total/moneyline lines
+  - Use `Dictionary(grouping:)` to organize bets by market for grouped display
+  - BetGradeRow component with suggested grade, override option, and grade selection buttons provides flexible per-bet control
+  - ZStack with conditional views enables smooth transition from grading to success state
+  - Use `@State private var overrideGrades: [UUID: GradeResult]` for tracking per-bet overrides
+  - extractLine() regex pattern `[+-]?\d+\.?\d*` extracts numeric values from bet sides like "Team -3.5"
+---
