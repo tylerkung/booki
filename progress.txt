@@ -389,3 +389,18 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - passwordHash field exists but is never set through UI (will be set programmatically when auth is implemented)
   - Use `.textContentType(.username)` for username fields to enable autofill suggestions
 ---
+
+## 2026-01-22 - US-055
+- **What was implemented:** Player Login View (UI Only) for testing purposes
+- **Files changed:**
+  - `Booki/Views/PlayerLoginView.swift` (new) - Complete login UI with username/password fields
+  - `Booki/Views/SettingsView.swift` (modified - added "Test Player Login UI" button and sheet)
+  - `Booki.xcodeproj/project.pbxproj` (modified - added PlayerLoginView.swift to build)
+- **Learnings for future iterations:**
+  - Login matching works by checking username field OR player name (case-insensitive)
+  - Use `.placeholder(when:)` custom View extension for styled placeholder text in dark theme TextFields
+  - TextField with dark theme needs explicit `.foregroundStyle(Theme.textPrimary)` and placeholder overlay
+  - Use `SecureField` for password input to mask characters
+  - For delayed transitions after success state, chain `DispatchQueue.main.asyncAfter` calls
+  - The login view is not in the main flow - accessed via Settings > Test Mode > "Test Player Login UI" button
+---
