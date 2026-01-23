@@ -482,3 +482,17 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Section headers can include totals using HStack with Text and Spacer
   - PlayerBalanceRow displays: name, days since last activity, and colored balance amount
 ---
+
+## 2026-01-22 - US-061
+- **What was implemented:** Collection tracking for outstanding balances - status field, UI badges, action buttons, and filtering
+- **Files changed:**
+  - `Booki/Models/Player.swift` (modified - added CollectionStatus enum, collectionStatus/collectionStatusDate/promisedPaymentDate fields)
+  - `Booki/Views/PlayersListView.swift` (modified - added collection status badge, action buttons, filter UI, PromisedDateSheet)
+- **Learnings for future iterations:**
+  - Avoid naming enum cases `.none` as it conflicts with `Optional.none` - use `.noStatus` or similar instead
+  - Use `CaseIterable` with enum for filter pickers to easily iterate all options
+  - Collection status section should only show when player balance > 0 (owes money)
+  - Use `Menu` with `ForEach(EnumType.allCases)` for filter dropdowns in toolbar
+  - Overlay badge on toolbar buttons with `.overlay(alignment: .topTrailing)` for notification counts
+  - Date picker for promised payment date uses `.graphical` style with `in: Date()...` to restrict to future dates
+---
