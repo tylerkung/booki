@@ -32,3 +32,15 @@ Started: Fri Jan 23 14:18:44 PST 2026
   - No need to modify project.pbxproj or BookiApp.swift schema when modifying existing files
   - SwiftData handles optional String fields without additional configuration
 ---
+
+## 2026-01-23 - US-003
+- **What was implemented:** AcceptancePolicyService for evaluating bets against acceptance policy rules
+- **Files changed:**
+  - Booki/Services/AcceptancePolicyService.swift (new)
+  - Booki.xcodeproj/project.pbxproj (added file references)
+- **Learnings for future iterations:**
+  - Services in this codebase are implemented as `enum` types with static functions (pure logic, no state)
+  - PolicyViolation enum captures all the reasons a bet may fail policy: stakeTooHigh, stakeRequiresReview, newPlayer, parlayNotAllowed, parlayTooManyLegs, eventLocked
+  - evaluateBet function returns an array of violations - empty array means bet should be auto-accepted
+  - Event lock check also considers event status (.live, .final) regardless of offset
+---
