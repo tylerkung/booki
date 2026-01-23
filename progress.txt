@@ -269,3 +269,17 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Use `formatProfitLoss()` helper to show profit/loss with appropriate sign (+/-) and currency formatting
   - `settledBets` filters for bets with `.settled` status AND non-nil `gradeResult` for accurate statistics
 ---
+
+## 2026-01-22 - US-048
+- **What was implemented:** Theme.swift with color palette and design tokens for dark sports-betting theme
+- **Files changed:**
+  - `Booki/Theme.swift` (new) - Complete color system with backgrounds, accents, text colors, gradients, and view modifiers
+  - `Booki.xcodeproj/project.pbxproj` (modified - added Theme.swift to build)
+- **Learnings for future iterations:**
+  - Use `Color(hex: UInt)` extension for cleaner hex color initialization
+  - Theme enum with static properties provides type-safe, discoverable color tokens
+  - Include view modifiers like `.cardStyle()` and `.elevatedCardStyle()` for consistent component styling
+  - Primary background: #0D0D0D, Card background: #1A1A1A, Accent: #00FF87, Gold: #FFD700, Danger: #FF4444
+  - Include gradients for buttons and cards to give premium sportsbook feel
+  - Add Preview at bottom of Theme.swift with color swatches for easy reference during development
+---
