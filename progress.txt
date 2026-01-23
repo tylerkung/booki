@@ -310,3 +310,18 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - For non-List ScrollView content, apply Theme.background directly to the VStack/ScrollView
   - Replace Color(.systemBackground) with Theme.cardBackground and Color(.systemGray5) with Theme.elevatedBackground
 ---
+
+## 2026-01-22 - US-050
+- **What was implemented:** Styled game cards with premium sportsbook aesthetic
+- **Files changed:**
+  - `Booki/Views/GameCardView.swift` (modified - gradient backgrounds, pill-shaped odds buttons, pulsing live indicator, premium typography)
+- **Learnings for future iterations:**
+  - Use `LinearGradient` for subtle card backgrounds: `colors: [Theme.cardBackground, Color(hex: 0x151515)]`
+  - Pill/capsule odds buttons: use `.clipShape(Capsule())` instead of RoundedRectangle
+  - Pulsing animation with `@State private var isPulsing: Bool` and `repeatForever(autoreverses: false)` animation
+  - For glowing effect on selected state: combine `.shadow()` with accent color opacity
+  - Use `.spring(response: 0.2, dampingFraction: 0.6)` for snappy button press animations
+  - Selected odds buttons: use gradient background + glow shadow for premium feel
+  - Uppercase text with tracking for headers: `.tracking(0.5)` gives professional sportsbook look
+  - Can't use `let` declarations inside ViewBuilder blocks - must declare all variables before the view body
+---
