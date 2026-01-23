@@ -61,3 +61,15 @@ Started: Fri Jan 23 13:56:25 PST 2026
   - ScrollView content needs padding(.bottom, 16) to provide spacing before sticky section
   - The scrollable area contains: header, Singles/Parlay toggle, bet cards, and parlay odds card (in parlay mode)
 ---
+
+## 2026-01-23 - US-006
+- What was implemented: Configured sticky section content to display differently based on bet mode
+- Files changed: Booki/Views/BetSlipSheet.swift, Booki/Services/BetSlipManager.swift
+- **Learnings for future iterations:**
+  - Use switch statement in stickyBottomSection to conditionally render parlay vs singles content
+  - Parlay mode: stakeEntrySection, payoutSummarySection, submitSection
+  - Singles mode: singlesSummarySection (sum of individual stakes), stakeValidationWarning, submitSection
+  - Added isIndividualStakeValid(availableCredit:) method to BetSlipManager for validating per-bet stakes
+  - canSubmit logic now checks betMode and validates using appropriate method (isStakeValid for parlay, isIndividualStakeValid for singles)
+  - stakeValidationWarning is a reusable view builder for showing credit exceeded warnings
+---
