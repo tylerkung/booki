@@ -70,7 +70,8 @@ struct BetsListView: View {
                             NavigationLink(value: bet) {
                                 BetRowView(
                                     bet: bet,
-                                    eventName: eventName(for: bet)
+                                    eventName: eventName(for: bet),
+                                    policyViolationReason: bet.policyViolationReason
                                 )
                             }
                         }
@@ -103,6 +104,7 @@ struct BetsListView: View {
 struct BetRowView: View {
     let bet: Bet
     let eventName: String
+    var policyViolationReason: String? = nil
 
     private var formattedOdds: String {
         if bet.odds > 0 {
@@ -174,6 +176,13 @@ struct BetRowView: View {
                 Text(bet.side)
                     .font(.subheadline)
                     .fontWeight(.medium)
+            }
+
+            // Policy violation reason (only for pending bets with violations)
+            if bet.status == .pending, let reason = policyViolationReason, !reason.isEmpty {
+                Text("Review: \(reason)")
+                    .font(.caption)
+                    .foregroundStyle(Theme.warning)
             }
 
             // Bottom row: Odds and stake
