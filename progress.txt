@@ -12,6 +12,8 @@ Started: Thu Jan 22 15:35:57 PST 2026
 - Market model uses `sideA`/`sideB` strings and `oddsA`/`oddsB` integers for American odds
 - For UserDefaults persistence, use singleton pattern with `@ObservedObject` for reactive SwiftUI updates (see FavoritesManager)
 - In ternary operators mixing different ShapeStyle types (e.g., `.primary` vs `.red`), use `.foregroundColor()` with explicit `Color.primary` and `Color.red` to avoid type mismatches
+- For dark theme: use `.scrollContentBackground(.hidden)` + `.background(Theme.background)` on List views; use Theme.cardBackground for card-style containers
+- Global UIKit appearances (TabBar, NavBar) should be configured in app init() method
 
 ---
 
@@ -282,4 +284,29 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Primary background: #0D0D0D, Card background: #1A1A1A, Accent: #00FF87, Gold: #FFD700, Danger: #FF4444
   - Include gradients for buttons and cards to give premium sportsbook feel
   - Add Preview at bottom of Theme.swift with color swatches for easy reference during development
+---
+
+## 2026-01-22 - US-049
+- **What was implemented:** Applied dark theme throughout the app shell - TabView, NavigationStack, and all List views
+- **Files changed:**
+  - `Booki/BookiApp.swift` (modified - added preferredColorScheme(.dark), configured UIKit appearances)
+  - `Booki/ContentView.swift` (modified - added .tint(Theme.accent) to TabViews, dark background for PlayerSettingsView)
+  - `Booki/Views/DashboardView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/SettingsView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/BetsListView.swift` (modified - scrollContentBackground(.hidden), Theme.background on List and VStack)
+  - `Booki/Views/GradingView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/PlayersListView.swift` (modified - scrollContentBackground(.hidden), Theme.background for list and detail)
+  - `Booki/Views/EventsListView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/EventDetailView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/PlayerHistoryView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/SubmitBetView.swift` (modified - scrollContentBackground(.hidden), Theme.background for 3 views)
+  - `Booki/Views/GamesView.swift` (modified - Theme.background, Theme.cardBackground, Theme.accent for tabs/filters)
+  - `Booki/Views/AccountView.swift` (modified - Theme.background, Theme.cardBackground, Theme.elevatedBackground)
+- **Learnings for future iterations:**
+  - Use `configureAppAppearance()` in app init for UIKit global settings (TabBar, NavBar)
+  - `.scrollContentBackground(.hidden)` required to hide default List backgrounds before applying custom background
+  - `.preferredColorScheme(.dark)` on root view sets system-wide dark mode
+  - UITabBarAppearance and UINavigationBarAppearance with configureWithOpaqueBackground() for consistent dark chrome
+  - For non-List ScrollView content, apply Theme.background directly to the VStack/ScrollView
+  - Replace Color(.systemBackground) with Theme.cardBackground and Color(.systemGray5) with Theme.elevatedBackground
 ---
