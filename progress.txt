@@ -22,3 +22,13 @@ Started: Fri Jan 23 14:18:44 PST 2026
   - All new models must be added to the Schema array in BookiApp.swift
   - Xcode project file requires 4 edits to add a new source file: PBXBuildFile, PBXFileReference, group children, and Sources build phase
 ---
+
+## 2026-01-23 - US-002
+- **What was implemented:** Added policyViolationReason field to Bet model for storing review reasons
+- **Files changed:**
+  - Booki/Models/Bet.swift (added policyViolationReason: String? field and updated init)
+- **Learnings for future iterations:**
+  - Adding optional fields to existing SwiftData models is straightforward - just add the property and update init with default nil
+  - No need to modify project.pbxproj or BookiApp.swift schema when modifying existing files
+  - SwiftData handles optional String fields without additional configuration
+---

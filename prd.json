@@ -43,7 +43,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Simple string field - can store multiple reasons comma-separated if needed"
     },
     {
