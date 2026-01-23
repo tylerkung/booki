@@ -160,3 +160,17 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Use `.presentationDetents([.medium, .large])` for expandable sheets that can be dragged to different heights
   - Float indicator at bottom with chevron.up icon to indicate tappability
 ---
+
+## 2026-01-22 17:22 - US-041
+- **What was implemented:** Multi-bet (parlay) selections with combined odds calculation and mode toggle
+- **Files changed:**
+  - `Booki/Services/BetSlipManager.swift` (modified - added BetMode enum, parlay odds calculation, bet mode persistence)
+  - `Booki/Views/BetSlipSheet.swift` (modified - added Singles/Parlay toggle, combined odds display, X button for remove)
+- **Learnings for future iterations:**
+  - Convert American odds to decimal: positive odds = (odds / 100) + 1, negative odds = (100 / abs(odds)) + 1
+  - Convert decimal back to American: >= 2.0 = (decimal - 1) * 100 (positive), < 2.0 = -100 / (decimal - 1) (negative)
+  - Parlay combined odds = multiply all decimal odds together, then convert back to American
+  - Use `@Published var betMode: BetMode` with `didSet { saveBetMode() }` for automatic persistence on change
+  - `BetSlipItemRow` needs `onRemove` callback to support X button alongside swipe-to-delete
+  - Combined parlay odds section should only show when mode is parlay AND count > 1
+---
