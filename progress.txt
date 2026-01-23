@@ -73,3 +73,14 @@ Started: Fri Jan 23 14:18:44 PST 2026
   - ensurePolicyExists() pattern on onAppear creates singleton-like policy record
   - NavigationLink placement in SettingsView follows pattern of section with header and footer
 ---
+
+## 2026-01-23 - US-006
+- **What was implemented:** Display policy violation reasons for pending bets in BetsListView
+- **Files changed:**
+  - Booki/Views/BetsListView.swift (added policyViolationReason parameter to BetRowView, display violation reason text)
+- **Learnings for future iterations:**
+  - BetRowView accepts optional policyViolationReason parameter with default nil for backwards compatibility
+  - Violation reason displayed with Theme.warning color and "Review: " prefix
+  - Only shows for bets with .pending status AND non-nil, non-empty policyViolationReason
+  - Use `foregroundStyle(Theme.warning)` for warning-colored text display
+---

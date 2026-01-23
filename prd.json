@@ -121,7 +121,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Helps bookie understand why bet needs attention"
     },
     {
