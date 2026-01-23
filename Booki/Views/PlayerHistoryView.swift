@@ -3,9 +3,7 @@ import SwiftData
 
 /// View for players to see their submitted bets and their status
 struct PlayerHistoryView: View {
-    @Environment(\.modelContext) private var modelContext
     @Query private var allBets: [Bet]
-    @Query private var allLedgerEntries: [LedgerEntry]
     @Query private var events: [Event]
 
     let player: Player
@@ -18,39 +16,10 @@ struct PlayerHistoryView: View {
             .sorted { $0.createdAt > $1.createdAt }
     }
 
-    /// Ledger entries for this player
-    private var playerLedgerEntries: [LedgerEntry] {
-        allLedgerEntries.filter { $0.player?.id == player.id }
-    }
-
-    /// Player balance summary
-    private var balanceSummary: PlayerBalanceSummary {
-        BalanceService.playerSummary(
-            for: player,
-            bets: playerBets,
-            ledgerEntries: playerLedgerEntries
-        )
-    }
-
-    /// Color for balance display
-    private var balanceColor: Color {
-        // Positive balance = player owes bookie (secondary)
-        // Negative balance = bookie owes player (green - player is winning)
-        balanceSummary.balanceOwed >= 0 ? Color.secondary : Color.green
-    }
-
-    /// Color for available credit
-    private var availableCreditColor: Color {
-        balanceSummary.availableCredit >= 0 ? Color.primary : Color.red
-    }
-
     // MARK: - Body
 
     var body: some View {
         List {
-            // Balance Section
-            balanceSection
-
             // Bet History Section
             betHistorySection
         }
@@ -61,60 +30,6 @@ struct PlayerHistoryView: View {
     }
 
     // MARK: - Section Views
-
-    @ViewBuilder
-    private var balanceSection: some View {
-        Section {
-            // Current Balance (prominent)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Current Balance")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(formatCurrency(balanceSummary.balanceOwed))
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(balanceColor)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 8)
-
-            // Balance Details
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Available Credit")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(formatCurrency(balanceSummary.availableCredit))
-                        .font(.headline)
-                        .foregroundStyle(availableCreditColor)
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Credit Limit")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(formatCurrency(player.creditLimit))
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            // Open Liability
-            if balanceSummary.openLiability > 0 {
-                HStack {
-                    Text("Open Liability")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(formatCurrency(balanceSummary.openLiability))
-                        .fontWeight(.medium)
-                        .foregroundStyle(.orange)
-                }
-            }
-        } header: {
-            Text("Account Summary")
-        }
-    }
 
     @ViewBuilder
     private var betHistorySection: some View {
@@ -145,13 +60,6 @@ struct PlayerHistoryView: View {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return "Event \(bet.eventId.prefix(8))"
-    }
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 }
 
