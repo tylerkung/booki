@@ -10,6 +10,7 @@ struct EventDetailView: View {
     @State private var showingAddMarket = false
     @State private var marketToEdit: Market?
     @State private var showingFinalScoreSheet = false
+    @State private var showingGradeEventSheet = false
     @State private var selectedStatus: EventStatus
 
     init(event: Event) {
@@ -28,6 +29,11 @@ struct EventDetailView: View {
     /// Active bets (pending + accepted) for exposure calculation
     private var activeBets: [Bet] {
         eventBets.filter { $0.status == .pending || $0.status == .accepted }
+    }
+
+    /// Bets ready to grade (readyToGrade + accepted with final event)
+    private var betsToGrade: [Bet] {
+        eventBets.filter { $0.status == .readyToGrade || ($0.status == .accepted && event.status == .final) }
     }
 
     /// Event exposure breakdown
@@ -72,6 +78,25 @@ struct EventDetailView: View {
                 if let finalScore = event.finalScore {
                     LabeledContent("Final Score", value: finalScore)
                         .fontWeight(.semibold)
+                }
+
+                // Grade All Bets button when event is final and has gradable bets
+                if event.status == .final && !betsToGrade.isEmpty {
+                    Button {
+                        showingGradeEventSheet = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Theme.accent)
+                            Text("Grade All Bets (\(betsToGrade.count))")
+                                .fontWeight(.semibold)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .foregroundStyle(Theme.textPrimary)
                 }
             }
 
@@ -176,6 +201,9 @@ struct EventDetailView: View {
                 // On save, transition accepted bets to readyToGrade
                 transitionBetsToReadyToGrade()
             }
+        }
+        .sheet(isPresented: $showingGradeEventSheet) {
+            GradeEventSheet(event: event, betsToGrade: betsToGrade)
         }
     }
 
