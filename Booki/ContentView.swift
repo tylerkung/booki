@@ -64,10 +64,10 @@ struct ContentView: View {
     private func playerModeView(player: Player) -> some View {
         TabView {
             NavigationStack {
-                PlayerHistoryView(player: player)
+                AccountView(player: player)
             }
             .tabItem {
-                Label("My Bets", systemImage: "list.bullet.rectangle")
+                Label("Account", systemImage: "person.circle.fill")
             }
 
             NavigationStack {
@@ -75,6 +75,13 @@ struct ContentView: View {
             }
             .tabItem {
                 Label("Games", systemImage: "sportscourt.fill")
+            }
+
+            NavigationStack {
+                PlayerHistoryView(player: player)
+            }
+            .tabItem {
+                Label("My Bets", systemImage: "list.bullet.rectangle")
             }
 
             PlayerSettingsView()
