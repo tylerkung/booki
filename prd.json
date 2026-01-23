@@ -1,7 +1,7 @@
 {
   "project": "Booki",
-  "branchName": "ralph/player-experience-v2",
-  "description": "Booki Player Experience v2 - Elevating the player experience with comprehensive game browsing, improved bet slip, dark sports-betting theme, bookie event management, and enhanced grading/settlement workflows.",
+  "branchName": "ralph/booki-v3.0",
+  "description": "Game Card Totals & Layout Update - Add Totals column to game cards, remove All Markets toggle, fix bet slip UX issues, correct balance display logic, and standardize card backgrounds. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift) - do NOT revert to default iOS styling.",
   "techStack": {
     "platform": "iOS 17+",
     "language": "Swift 5.9+",
@@ -11,548 +11,137 @@
   },
   "userStories": [
     {
-      "id": "US-031",
-      "title": "Create Event Management View for Bookie",
-      "description": "As a bookie, I want to manually create and manage events so I can set up games for my players to bet on.",
+      "id": "US-001",
+      "title": "Remove All Markets Toggle Button",
+      "description": "As a developer, I want to remove the All Markets expand button from game cards so the card is cleaner and additional markets are accessed via the detail view.",
       "acceptanceCriteria": [
-        "New 'Events' tab in bookie mode TabView (between Players and Grading)",
-        "EventsListView shows all events grouped by sport/league",
-        "Events sorted by start time (upcoming first)",
-        "Status badges: Scheduled (blue), Live (green), Final (gray)",
-        "Tap event to view/edit details",
+        "Remove expandButton view builder from GameCardView.swift",
+        "Remove isExpanded state variable",
+        "Remove expandedMarketsSection view builder",
+        "Remove the conditional rendering of expandedMarketsSection in the body",
+        "Card now shows only the main betting grid (will have Spread, ML, Total after US-004)",
+        "Tapping the card still navigates to MarketSelectionView for full market access",
         "Project builds and runs in Simulator"
       ],
       "priority": 1,
       "passes": true,
-      "notes": ""
+      "notes": "Modify existing GameCardView.swift - just remove expand functionality, don't add Total column yet"
     },
     {
-      "id": "US-032",
-      "title": "Build Add Event Form",
-      "description": "As a bookie, I want to create new events with teams, sport, league, and start time.",
+      "id": "US-002",
+      "title": "Create TotalButton Component and Helper",
+      "description": "As a developer, I need a TotalButton component styled like SpreadButton with line value as main text and odds as secondary.",
       "acceptanceCriteria": [
-        "'+' button in Events tab toolbar presents AddEventSheet",
-        "Form fields: sport (picker), league (text), homeTeam, awayTeam, startTime (DatePicker)",
-        "Sport picker includes: NFL, NBA, MLB, NHL, Soccer, UFC, Tennis, Other",
-        "Validation: all fields required",
-        "Save creates event with status 'scheduled'",
+        "Create formatTotalValue function that extracts line from 'Over 220.5' -> 'o220.5' or 'Under 220.5' -> 'u220.5'",
+        "Create TotalButton struct in GameCardView.swift modeled after SpreadButton",
+        "Button takes totalValue (e.g., 'o220.5'), odds (Int), isSelected (Bool), and action closure",
+        "Main text shows totalValue (font size 14, black weight)",
+        "Secondary text shows formatted odds below (font size 10, semibold)",
+        "Use same selected/unselected styling as SpreadButton (gradients, borders, animations)",
         "Project builds and runs in Simulator"
       ],
       "priority": 2,
       "passes": true,
-      "notes": ""
+      "notes": "Create component first before integrating - model after SpreadButton structure"
     },
     {
-      "id": "US-033",
-      "title": "Build Market Management for Events",
-      "description": "As a bookie, I want to add betting markets (spread, total, moneyline) to events with custom odds.",
+      "id": "US-003",
+      "title": "Reduce Button Sizes for Three-Column Layout",
+      "description": "As a developer, I need to adjust button and text sizes so three columns fit comfortably on screen.",
       "acceptanceCriteria": [
-        "EventDetailView has 'Markets' section with list of existing markets",
-        "'Add Market' button presents AddMarketSheet",
-        "Market type picker: Spread, Total, Moneyline",
-        "Dynamic form based on type: Spread (team + spread for each side), Total (Over/Under X), Moneyline (team names)",
-        "Odds input as American odds (e.g., -110, +150)",
-        "Edit existing market odds inline or via sheet",
-        "Delete market with swipe action",
+        "Reduce oddsButtonSize from 72 to 60 in GameCardView",
+        "In SpreadButton: reduce main text from 16 to 14, secondary text from 11 to 10",
+        "In MLButton: reduce text from 16 to 14",
+        "In TotalButton (from US-002): use 14 for main, 10 for secondary",
+        "Reduce team name font size from 15 to 14 in teamOddsRow",
         "Project builds and runs in Simulator"
       ],
       "priority": 3,
       "passes": true,
-      "notes": ""
+      "notes": "Size adjustments to make room for third column"
     },
     {
-      "id": "US-034",
-      "title": "Seed Mock Data Script",
-      "description": "As a developer, I want to seed realistic mock game data for testing purposes.",
+      "id": "US-004",
+      "title": "Add Total Column to Game Card",
+      "description": "As a player, I want to see and tap Over/Under totals directly on the game card alongside Spread and ML.",
       "acceptanceCriteria": [
-        "SeedDataService with static method to generate mock events",
-        "Includes 10+ events across NFL, NBA, MLB sports",
-        "Each event has 2-3 markets (spread, total, moneyline)",
-        "Mix of scheduled and live events",
-        "Button in Settings (bookie mode) to 'Load Sample Data'",
-        "Clears existing events before seeding (with confirmation)",
+        "Add 'TOTAL' header in teamsWithOddsSection after ML column (same styling as SPREAD/ML headers)",
+        "TOTAL header only shows if totalMarket is available",
+        "Modify teamOddsRow to accept totalMarket parameter",
+        "Away team row (top) shows Over button using TotalButton",
+        "Home team row (bottom) shows Under button using TotalButton",
+        "TotalButton receives correct line value from formatTotalValue (sideA for Over, sideB for Under)",
+        "Tapping Over/Under adds selection to bet slip via onSelectOdds callback",
+        "Selection state reflects correctly (highlighted when in bet slip)",
+        "Column order is: Team Name | SPREAD | ML | TOTAL",
         "Project builds and runs in Simulator"
       ],
       "priority": 4,
       "passes": true,
-      "notes": ""
+      "notes": "This integrates the TotalButton from US-002 into the game card layout"
     },
     {
-      "id": "US-035",
-      "title": "Update Event Status and Final Score",
-      "description": "As a bookie, I want to update event status and enter final scores for grading.",
+      "id": "US-005",
+      "title": "Fix Bet Slip Segmented Control Tap Area",
+      "description": "As a player, I want to tap anywhere on the Singles/Parlay segment to switch modes, not just the text.",
       "acceptanceCriteria": [
-        "EventDetailView has status picker: Scheduled, Live, Final",
-        "When status changed to Final, prompt for final score entry",
-        "Final score format: homeScore - awayScore",
-        "Changing to Final auto-transitions related bets to 'readyToGrade'",
+        "Locate the Singles/Parlay segmented control (likely in BetSlipSheet.swift or BetConfirmationSheet.swift)",
+        "Add .contentShape(Rectangle()) to the segment buttons to expand tap area",
+        "Ensure entire segment button area is tappable, not just the text label",
+        "Both Singles and Parlay segments respond to taps on full button area",
         "Project builds and runs in Simulator"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "UX fix for segmented control - may need to examine multiple bet slip related files"
     },
     {
-      "id": "US-036",
-      "title": "Redesign Player Games View with Sport Tabs",
-      "description": "As a player, I want to browse games organized by sport with easy navigation.",
+      "id": "US-006",
+      "title": "Remove Redundant Review Screen from Bet Submission",
+      "description": "As a player, I want to submit my bet directly after entering my stake without an extra review step.",
       "acceptanceCriteria": [
-        "Replace current SubmitBetView with new GamesView",
-        "Horizontal scrolling sport tabs at top (All, NFL, NBA, MLB, etc.)",
-        "Only show sports that have available events",
-        "'All' tab selected by default",
-        "Sticky header that stays visible while scrolling",
+        "Identify the review/confirmation step in bet submission flow (likely BetConfirmationSheet.swift)",
+        "Remove or bypass the intermediate review screen state",
+        "User enters stake and taps submit to place bet immediately",
+        "Confirmation feedback (success toast/alert) still shows after successful submission",
+        "Error handling still works for failed submissions",
         "Project builds and runs in Simulator"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "Streamline bet submission - check BetConfirmationSheet for step/state management"
     },
     {
-      "id": "US-037",
-      "title": "Build Game Card Component",
-      "description": "As a player, I want game cards that show key info at a glance with quick betting options.",
+      "id": "US-007",
+      "title": "Fix Player Balance Display Logic",
+      "description": "As a player, I want the balance display to show positive when I'm in good standing and negative when I owe money.",
       "acceptanceCriteria": [
-        "GameCard component showing: teams, start time, live indicator",
-        "Team names with abbreviated format option (e.g., 'LAL' vs 'Lakers')",
-        "Quick-pick odds buttons for spread and moneyline visible on card",
-        "Tapping odds button adds selection to bet slip",
-        "Tapping card expands to show all markets",
-        "Visual feedback when odds button tapped (selection state)",
+        "Review balance calculation in BalanceService.swift",
+        "Positive balance = player is in credit (good standing, bookie owes player)",
+        "Negative balance = player owes money to the bookie (debt)",
+        "Update any inverted logic in balance calculations or display",
+        "Update AppHeaderView.swift balance color logic if needed: green for positive (credit), red for negative (debt)",
+        "Verify AccountView.swift shows balance correctly",
         "Project builds and runs in Simulator"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "Check BalanceService, AppHeaderView, AccountView for balance semantics"
     },
     {
-      "id": "US-038",
-      "title": "Implement Search and Filter",
-      "description": "As a player, I want to search for specific teams or filter games.",
+      "id": "US-008",
+      "title": "Standardize Card Background Colors",
+      "description": "As a user, I want consistent card background styling across the app using the Account page card color.",
       "acceptanceCriteria": [
-        "Search bar at top of games view",
-        "Search matches team names (home or away)",
-        "Filter options: Today, Tomorrow, This Week, All",
-        "Filter accessible via button next to search",
-        "Empty state when no results match",
+        "Identify the card background color used on Player AccountView (should be Theme.cardBackground)",
+        "Update Settings tab (PlayerSettingsView or PlayerSettingsContent) to use Theme.cardBackground for section backgrounds",
+        "Update Bookie dashboard cards (BookieDashboardView or similar) to use Theme.cardBackground",
+        "All card/section backgrounds should use consistent Theme.cardBackground color",
         "Project builds and runs in Simulator"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-039",
-      "title": "Add Favorites System",
-      "description": "As a player, I want to favorite teams so I can quickly find their games.",
-      "acceptanceCriteria": [
-        "Star/heart icon on game cards to favorite",
-        "Favorites stored in UserDefaults (by team name for now)",
-        "'Favorites' filter option shows only games with favorited teams",
-        "Favorites section at top of All games view (if any exist)",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-040",
-      "title": "Build Persistent Bet Slip",
-      "description": "As a player, I want a bet slip that persists my selections as I browse games.",
-      "acceptanceCriteria": [
-        "BetSlip model stored in app state (not navigation-dependent)",
-        "Floating bet slip indicator showing selection count",
-        "Tap indicator to expand full bet slip sheet",
-        "Selections persist while browsing different games",
-        "Clear all button in bet slip",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-041",
-      "title": "Support Multi-Bet (Parlay) Selections",
-      "description": "As a player, I want to add multiple selections to my bet slip.",
-      "acceptanceCriteria": [
-        "Can add up to 10 selections to bet slip",
-        "Each selection shows: event, side, odds",
-        "Remove individual selections with swipe or X button",
-        "Show combined odds for parlay (multiply decimal odds)",
-        "Toggle between 'Singles' and 'Parlay' mode",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-042",
-      "title": "Improved Stake Entry",
-      "description": "As a player, I want a better stake entry experience with quick-pick amounts.",
-      "acceptanceCriteria": [
-        "Quick-pick stake buttons: $5, $10, $25, $50, $100",
-        "Custom amount input field",
-        "Show potential payout updating in real-time",
-        "For parlays, show combined payout",
-        "Stake validation against available credit",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-043",
-      "title": "Bet Confirmation Flow",
-      "description": "As a player, I want a clear confirmation before submitting my bet request.",
-      "acceptanceCriteria": [
-        "Review screen showing all selections with odds and stake",
-        "Total stake and potential payout summary",
-        "Compliance disclosure text",
-        "'Confirm' button submits all bets",
-        "Success animation/feedback on submission",
-        "Bet slip clears after successful submission",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-044",
-      "title": "Enhanced Account Summary View",
-      "description": "As a player, I want a comprehensive view of my account status.",
-      "acceptanceCriteria": [
-        "Dedicated 'Account' tab in player mode (replace current My Bets as primary)",
-        "Hero section with current balance (large, prominent)",
-        "Available credit with visual progress bar toward limit",
-        "Quick stats: Open bets count, Pending bets count, Win rate",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-045",
-      "title": "Transaction History View",
-      "description": "As a player, I want to see a detailed history of all balance changes.",
-      "acceptanceCriteria": [
-        "'History' section in Account tab",
-        "List of all ledger entries (settlements, adjustments, payments)",
-        "Each entry shows: date, type, amount (+/-), description",
-        "Color coding: green for credits, red for debits",
-        "Filter by type: All, Settlements, Adjustments, Payments",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 15,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-046",
-      "title": "Bet History with Filtering",
-      "description": "As a player, I want to view my bet history with filters for status.",
-      "acceptanceCriteria": [
-        "'My Bets' section accessible from Account tab",
-        "Filter tabs: Active, Settled, All",
-        "Active = pending + accepted",
-        "Settled = won, lost, push, void",
-        "Sort by date (newest first)",
-        "Tap bet for detail view with full info",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 16,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-047",
-      "title": "Win/Loss Statistics",
-      "description": "As a player, I want to see my betting performance statistics.",
-      "acceptanceCriteria": [
-        "Stats card in Account view",
-        "Total bets placed",
-        "Win/Loss/Push record (e.g., '12-8-1')",
-        "Win percentage",
-        "Total profit/loss amount",
-        "ROI percentage (profit / total staked)",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 17,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-048",
-      "title": "Define Color Palette and Design Tokens",
-      "description": "As a developer, I need a consistent color system for the dark sports-betting theme.",
-      "acceptanceCriteria": [
-        "Create Theme.swift with color definitions",
-        "Primary background: near-black (#0D0D0D or similar)",
-        "Secondary background: dark gray for cards (#1A1A1A)",
-        "Accent color: vibrant green for positive/wins (#00FF87 or similar)",
-        "Secondary accent: gold/yellow for highlights",
-        "Danger color: red for losses/errors",
-        "Text colors: white primary, gray secondary",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 18,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-049",
-      "title": "Apply Dark Theme to App Shell",
-      "description": "As a user, I want the app to have a dark theme throughout.",
-      "acceptanceCriteria": [
-        "Set app-wide color scheme to dark",
-        "TabView with custom styling (dark background, accent selection)",
-        "NavigationStack with dark styling",
-        "All List views with dark background (not system grouped)",
-        "Consistent across bookie and player modes",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 19,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-050",
-      "title": "Style Game Cards with Betting Aesthetic",
-      "description": "As a player, I want game cards that feel like a premium sportsbook.",
-      "acceptanceCriteria": [
-        "Card background with subtle gradient or border",
-        "Team names in bold, high-contrast typography",
-        "Odds buttons with pill/capsule shape",
-        "Selected odds have bright accent background",
-        "Live games have pulsing/glowing live indicator",
-        "Subtle shadows for depth",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 20,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-051",
-      "title": "Style Bet Slip with Premium Feel",
-      "description": "As a player, I want the bet slip to feel polished and exciting.",
-      "acceptanceCriteria": [
-        "Dark sheet background with accent border at top",
-        "Each selection in a card with team logos placeholder (colored circles)",
-        "Odds displayed prominently with color",
-        "Stake input with custom styling (not default TextField)",
-        "Payout display with green accent",
-        "Submit button with gradient or glow effect",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 21,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-052",
-      "title": "Style Account and Stats Views",
-      "description": "As a player, I want the account views to match the dark theme.",
-      "acceptanceCriteria": [
-        "Balance displayed in large, bold typography",
-        "Credit utilization as styled progress bar",
-        "Stats cards with dark backgrounds and accent highlights",
-        "Win/loss colored appropriately (green/red)",
-        "Transaction history with clear visual hierarchy",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 22,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-053",
-      "title": "Add Subtle Animations",
-      "description": "As a user, I want subtle animations that make the app feel alive.",
-      "acceptanceCriteria": [
-        "Odds button tap has scale animation",
-        "Bet slip expand/collapse is animated",
-        "Adding selection to slip has brief highlight animation",
-        "Successful bet submission has celebration animation (subtle)",
-        "Tab switching has smooth transition",
-        "No animations that slow down core interactions",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 23,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-054",
-      "title": "Add Username/Password Fields to Player Model",
-      "description": "As a developer, I need to store credentials for future player authentication.",
-      "acceptanceCriteria": [
-        "Add optional 'username' field to Player model",
-        "Add optional 'passwordHash' field to Player model (never store plain text)",
-        "Migration handles existing players (fields are nil)",
-        "AddPlayerSheet has optional username field",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 24,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-055",
-      "title": "Player Login View (UI Only)",
-      "description": "As a developer, I want to build the login UI for future implementation.",
-      "acceptanceCriteria": [
-        "PlayerLoginView with username and password fields",
-        "'Login' button (currently triggers test mode with matching player)",
-        "'Forgot Password' link (shows placeholder alert)",
-        "Styled with dark theme",
-        "Not active in main flow yet (accessible via Settings for testing)",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 25,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-056",
-      "title": "Bulk Grading by Event",
-      "description": "As a bookie, I want to grade all bets for a finished event at once based on the final score.",
-      "acceptanceCriteria": [
-        "EventDetailView shows 'Grade All Bets' button when event status is Final",
-        "Button shows count of bets to grade (e.g., 'Grade All Bets (12)')",
-        "Tapping opens GradeEventSheet with event summary, list of bets grouped by market, auto-calculated suggested outcomes",
-        "Override option per bet if needed",
-        "'Apply All' button grades all bets with suggested outcomes",
-        "Confirmation dialog before applying",
-        "Success summary shows grades applied (X wins, Y losses, Z pushes)",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 26,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-057",
-      "title": "Undo/Reverse Settlement",
-      "description": "As a bookie, I want to reverse a settled bet if I made an error.",
-      "acceptanceCriteria": [
-        "BetDetailView shows 'Reverse Settlement' button for settled bets",
-        "Reversal creates a new ledger entry that negates the original settlement",
-        "Bet status changes back to 'graded' (can be re-settled)",
-        "Reversal entry has type 'reversal' with description noting original bet",
-        "Confirmation dialog with warning about impact on player balance",
-        "Reversal is logged for audit trail",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 27,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-058",
-      "title": "Payment Recording",
-      "description": "As a bookie, I want to record when a player pays me or I pay a player.",
-      "acceptanceCriteria": [
-        "PlayerDetailView has 'Record Payment' button",
-        "PaymentSheet with fields: Amount, Direction (Player Paid Me / I Paid Player), Payment method (Cash, Venmo, Zelle, Bank, Other), Optional note",
-        "Creates ledger entry with type 'paymentLogged'",
-        "Negative amount for player paying bookie (reduces what they owe)",
-        "Positive amount for bookie paying player (reduces what bookie owes)",
-        "Payment history visible in player's ledger",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 28,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-059",
-      "title": "Weekly Settlement Summary",
-      "description": "As a bookie, I want to see a summary of the week's activity for settlement purposes.",
-      "acceptanceCriteria": [
-        "New 'Settlements' section in Dashboard or dedicated view",
-        "Week picker to select settlement period (Mon-Sun default)",
-        "Summary shows: Total bets graded, Total won by players, Total lost by players, Net movement",
-        "Per-player breakdown: Player name, bets settled, net result, current balance",
-        "Export summary as text/CSV for sharing",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 29,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-060",
-      "title": "Who Owes Dashboard Widget",
-      "description": "As a bookie, I want to see at a glance who owes me and who I owe.",
-      "acceptanceCriteria": [
-        "Dashboard has 'Balances' section prominently displayed",
-        "Split into two lists: 'Players Owe You' (positive balances) and 'You Owe Players' (negative balances)",
-        "Each row shows: player name, amount, days since last activity",
-        "Total owed to you and total you owe at section headers",
-        "Tap player to go to their detail view",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 30,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-061",
-      "title": "Collection Tracking",
-      "description": "As a bookie, I want to track collection status for outstanding balances.",
-      "acceptanceCriteria": [
-        "Player model has optional 'collectionStatus' field: none, reminded, promised, overdue",
-        "PlayerDetailView shows collection status badge if balance > 0",
-        "'Mark as Reminded' button sets status and logs date",
-        "'Mark as Promised' button with optional promised date",
-        "'Mark as Overdue' button for delinquent accounts",
-        "Collection status visible in Players list for players who owe",
-        "Filter players list by collection status",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 31,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-062",
-      "title": "Outstanding Balance Alerts",
-      "description": "As a bookie, I want to be alerted about players with high or aging balances.",
-      "acceptanceCriteria": [
-        "Settings option to set balance threshold (e.g., $500)",
-        "Settings option to set aging threshold (e.g., 7 days)",
-        "Dashboard shows alert banner when any player exceeds thresholds",
-        "Alert shows count: '3 players need attention'",
-        "Tapping alert shows filtered list of flagged players",
-        "Player row shows specific flag reason (high balance, aging, or both)",
-        "Badge on Players tab when alerts exist",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 32,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-063",
-      "title": "Bulk Settlement Processing",
-      "description": "As a bookie, I want to settle all graded bets at once.",
-      "acceptanceCriteria": [
-        "GradingView has 'Settle All Graded' button when graded bets exist",
-        "Shows count of bets to settle",
-        "Confirmation shows summary: Total bets to settle, Total player winnings, Total player losses, Net impact",
-        "Processes all settlements and creates ledger entries",
-        "Success summary shows settled count",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 33,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "Ensure visual consistency - may need to check multiple view files"
     }
   ]
 }
