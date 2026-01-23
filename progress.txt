@@ -174,3 +174,21 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - `BetSlipItemRow` needs `onRemove` callback to support X button alongside swipe-to-delete
   - Combined parlay odds section should only show when mode is parlay AND count > 1
 ---
+
+## 2026-01-22 17:30 - US-042
+- **What was implemented:** Improved stake entry with quick-pick amounts and real-time payout display
+- **Files changed:**
+  - `Booki/Services/BetSlipManager.swift` (modified - added stake property, payout calculations, validation)
+  - `Booki/Views/BetSlipSheet.swift` (modified - added stake entry section, quick-pick buttons, payout summary)
+  - `Booki/Views/GamesView.swift` (modified - passes availableCredit to BetSlipSheet)
+- **Learnings for future iterations:**
+  - Use `static let quickPickAmounts: [Decimal]` for quick-pick stake options
+  - Calculate payout using decimal odds: `stake * decimalOdds` gives total return (includes original stake)
+  - For singles mode, total stake = stake per bet * number of bets
+  - For parlay mode, total stake = single stake amount
+  - Use `@State private var stakeText` synced with BetSlipManager.stake for TextField binding
+  - Use `.keyboardType(.numberPad)` for numeric stake input
+  - Initialize @State in custom init: `_stakeText = State(initialValue: ...)`
+  - Use `Decimal.greatestFiniteMagnitude` as default when credit limit is not known (bypasses validation)
+  - Show validation warning with orange color when stake exceeds available credit
+---
