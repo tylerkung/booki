@@ -496,3 +496,21 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Overlay badge on toolbar buttons with `.overlay(alignment: .topTrailing)` for notification counts
   - Date picker for promised payment date uses `.graphical` style with `in: Date()...` to restrict to future dates
 ---
+
+## 2026-01-22 - US-062
+- **What was implemented:** Outstanding Balance Alerts with configurable thresholds and dashboard alert banner
+- **Files changed:**
+  - `Booki/Views/SettingsView.swift` (modified - added Balance Alerts section with balance and aging threshold settings)
+  - `Booki/Views/DashboardView.swift` (modified - added alert banner, FlaggedPlayer model, FlaggedPlayersView, FlaggedPlayerRow)
+  - `Booki/ContentView.swift` (modified - added flaggedPlayersCount computed property and badge on Players tab)
+- **Learnings for future iterations:**
+  - Use `@AppStorage` for simple settings that should persist across sessions (balanceThreshold, agingThreshold)
+  - Use `Decimal(Double)` to convert @AppStorage Double to Decimal for balance comparisons
+  - PlayerFlagReason enum with CaseIterable makes it easy to show flag reason badges
+  - FlaggedPlayer model encapsulates player, balance, days since last activity, and flag reason
+  - Use `.badge(count)` on TabView items for showing alert counts - only shows when count > 0
+  - Alert banner with Theme.danger.opacity(0.15) background provides good visibility without being too harsh
+  - Use `.sheet(isPresented:)` for presenting FlaggedPlayersView from dashboard alert banner
+  - TextField with .currency format provides nice number input for balance threshold
+  - Stepper with range (1...90) provides bounded integer input for aging threshold
+---
