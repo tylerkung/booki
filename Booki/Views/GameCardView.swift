@@ -271,6 +271,14 @@ struct GameCardView: View {
                         .tracking(0.8)
                         .frame(width: oddsButtonSize)
                 }
+
+                if totalMarket != nil {
+                    Text("TOTAL")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(Theme.textMuted)
+                        .tracking(0.8)
+                        .frame(width: oddsButtonSize)
+                }
             }
 
             // Away team row with odds
@@ -278,6 +286,7 @@ struct GameCardView: View {
                 teamName: event.awayTeam,
                 spreadMarket: spreadMarket,
                 moneylineMarket: moneylineMarket,
+                totalMarket: totalMarket,
                 isAwayTeam: true
             )
 
@@ -286,6 +295,7 @@ struct GameCardView: View {
                 teamName: event.homeTeam,
                 spreadMarket: spreadMarket,
                 moneylineMarket: moneylineMarket,
+                totalMarket: totalMarket,
                 isAwayTeam: false
             )
         }
@@ -297,6 +307,7 @@ struct GameCardView: View {
         teamName: String,
         spreadMarket: Market?,
         moneylineMarket: Market?,
+        totalMarket: Market?,
         isAwayTeam: Bool
     ) -> some View {
         HStack(spacing: 8) {
@@ -329,6 +340,21 @@ struct GameCardView: View {
                 let selection = makeSelection(market: ml, side: side, odds: odds)
 
                 MLButton(
+                    odds: odds,
+                    isSelected: isSelected(selection),
+                    action: { onSelectOdds(selection) }
+                )
+                .frame(width: oddsButtonSize, height: oddsButtonSize)
+            }
+
+            // Total button (Over for away/top row, Under for home/bottom row)
+            if let total = totalMarket {
+                let side = isAwayTeam ? total.sideA : total.sideB  // sideA = Over, sideB = Under
+                let odds = isAwayTeam ? total.oddsA : total.oddsB
+                let selection = makeSelection(market: total, side: side, odds: odds)
+
+                TotalButton(
+                    totalValue: formatTotalValue(side),
                     odds: odds,
                     isSelected: isSelected(selection),
                     action: { onSelectOdds(selection) }
