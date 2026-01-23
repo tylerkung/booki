@@ -1,6 +1,26 @@
 import SwiftUI
 import SwiftData
 
+/// Filter options for transaction history
+enum TransactionFilter: String, CaseIterable, Identifiable {
+    case all = "All"
+    case settlements = "Settlements"
+    case adjustments = "Adjustments"
+    case payments = "Payments"
+
+    var id: String { rawValue }
+
+    /// Matching EntryType for filtering (nil = all types)
+    var entryType: EntryType? {
+        switch self {
+        case .all: return nil
+        case .settlements: return .settlement
+        case .adjustments: return .adjustment
+        case .payments: return .paymentLogged
+        }
+    }
+}
+
 /// Enhanced account summary view for players showing balance, credit utilization, and quick stats
 struct AccountView: View {
     @Environment(\.modelContext) private var modelContext
@@ -8,6 +28,9 @@ struct AccountView: View {
     @Query private var allLedgerEntries: [LedgerEntry]
 
     let player: Player
+
+    // Transaction history filter state
+    @State private var selectedTransactionFilter: TransactionFilter = .all
 
     // MARK: - Computed Properties
 
@@ -19,6 +42,15 @@ struct AccountView: View {
     /// Ledger entries for this player
     private var playerLedgerEntries: [LedgerEntry] {
         allLedgerEntries.filter { $0.player?.id == player.id }
+    }
+
+    /// Filtered ledger entries based on selected filter, sorted by date (newest first)
+    private var filteredLedgerEntries: [LedgerEntry] {
+        let sorted = playerLedgerEntries.sorted { $0.createdAt > $1.createdAt }
+        guard let entryType = selectedTransactionFilter.entryType else {
+            return sorted
+        }
+        return sorted.filter { $0.type == entryType }
     }
 
     /// Player balance summary
@@ -89,6 +121,9 @@ struct AccountView: View {
 
                 // Quick Stats Section
                 quickStatsSection
+
+                // Transaction History Section
+                transactionHistorySection
             }
             .padding()
         }
@@ -247,6 +282,58 @@ struct AccountView: View {
         )
     }
 
+    // MARK: - Transaction History Section
+
+    private var transactionHistorySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("History")
+                .font(.headline)
+
+            // Filter picker
+            Picker("Filter", selection: $selectedTransactionFilter) {
+                ForEach(TransactionFilter.allCases) { filter in
+                    Text(filter.rawValue).tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            // Transaction list
+            if filteredLedgerEntries.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "doc.text")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                    Text("No transactions")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if selectedTransactionFilter != .all {
+                        Text("Try changing the filter")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(filteredLedgerEntries) { entry in
+                        TransactionRowView(entry: entry)
+                        if entry.id != filteredLedgerEntries.last?.id {
+                            Divider()
+                                .padding(.leading, 52)
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+
     // MARK: - Helpers
 
     private func formatCurrency(_ value: Decimal) -> String {
@@ -254,6 +341,117 @@ struct AccountView: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+}
+
+// MARK: - Transaction Row View
+
+/// Row view for displaying a single ledger entry in the transaction history
+struct TransactionRowView: View {
+    let entry: LedgerEntry
+
+    /// Icon name based on entry type
+    private var iconName: String {
+        switch entry.type {
+        case .settlement:
+            return "checkmark.circle.fill"
+        case .adjustment:
+            return "slider.horizontal.3"
+        case .paymentLogged:
+            return "dollarsign.circle.fill"
+        case .reversal:
+            return "arrow.uturn.backward.circle.fill"
+        }
+    }
+
+    /// Icon color based on entry type
+    private var iconColor: Color {
+        switch entry.type {
+        case .settlement:
+            return .blue
+        case .adjustment:
+            return .orange
+        case .paymentLogged:
+            return .green
+        case .reversal:
+            return .purple
+        }
+    }
+
+    /// Formatted type label
+    private var typeLabel: String {
+        switch entry.type {
+        case .settlement:
+            return "Settlement"
+        case .adjustment:
+            return "Adjustment"
+        case .paymentLogged:
+            return "Payment"
+        case .reversal:
+            return "Reversal"
+        }
+    }
+
+    /// Amount color: green for positive (credits), red for negative (debits)
+    private var amountColor: Color {
+        entry.amount >= 0 ? .green : .red
+    }
+
+    /// Formatted amount with sign
+    private var formattedAmount: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        let absAmount = abs(entry.amount)
+        let formatted = formatter.string(from: absAmount as NSDecimalNumber) ?? "$\(absAmount)"
+        return entry.amount >= 0 ? "+\(formatted)" : "-\(formatted)"
+    }
+
+    /// Formatted date
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: entry.createdAt)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Type icon
+            Image(systemName: iconName)
+                .font(.title2)
+                .foregroundStyle(iconColor)
+                .frame(width: 40)
+
+            // Description and metadata
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.entryDescription)
+                    .font(.subheadline)
+                    .lineLimit(2)
+
+                HStack(spacing: 4) {
+                    Text(typeLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("•")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+
+                    Text(formattedDate)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Amount
+            Text(formattedAmount)
+                .font(.subheadline.bold())
+                .foregroundStyle(amountColor)
+        }
+        .padding(.vertical, 12)
     }
 }
 
