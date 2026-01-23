@@ -141,105 +141,127 @@ struct BetSlipSheet: View {
         .background(Theme.background)
     }
 
-    // MARK: - Selections List
+    // MARK: - Selections List (US-005: Restructured with sticky bottom)
 
     @ViewBuilder
     private var selectionsList: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                // Header with count and mode toggle (US-041)
-                VStack(spacing: 12) {
-                    HStack {
-                        Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
-                            .font(.headline)
-                            .foregroundStyle(Theme.textPrimary)
-                        Spacer()
-                        Text("Max \(betSlipManager.maxSelections)")
-                            .font(.caption)
-                            .foregroundStyle(Theme.textMuted)
-                    }
+        VStack(spacing: 0) {
+            // Scrollable content area
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Header with count and mode toggle (US-041)
+                    VStack(spacing: 12) {
+                        HStack {
+                            Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
+                                .font(.headline)
+                                .foregroundStyle(Theme.textPrimary)
+                            Spacer()
+                            Text("Max \(betSlipManager.maxSelections)")
+                                .font(.caption)
+                                .foregroundStyle(Theme.textMuted)
+                        }
 
-                    // Singles/Parlay Toggle (US-041) - Styled
-                    // US-005: Added .contentShape(Rectangle()) to expand tap area to full button
-                    HStack(spacing: 0) {
-                        ForEach(BetMode.allCases, id: \.self) { mode in
-                            Button(action: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    betSlipManager.betMode = mode
+                        // Singles/Parlay Toggle (US-041) - Styled
+                        // US-005: Added .contentShape(Rectangle()) to expand tap area to full button
+                        HStack(spacing: 0) {
+                            ForEach(BetMode.allCases, id: \.self) { mode in
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        betSlipManager.betMode = mode
+                                    }
+                                }) {
+                                    Text(mode.rawValue)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(betSlipManager.betMode == mode ? Theme.background : Theme.textSecondary)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(betSlipManager.betMode == mode ? Theme.accent : Color.clear)
+                                        .contentShape(Rectangle())
                                 }
-                            }) {
-                                Text(mode.rawValue)
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(betSlipManager.betMode == mode ? Theme.background : Theme.textSecondary)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(betSlipManager.betMode == mode ? Theme.accent : Color.clear)
-                                    .contentShape(Rectangle())
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
+                        }
+                        .background(Theme.elevatedBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Theme.border, lineWidth: 1)
+                        )
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 16)
+
+                    // Selections (US-053: animated item transitions, US-004: per-item stakes)
+                    VStack(spacing: 12) {
+                        ForEach(Array(betSlipManager.items.enumerated()), id: \.element.marketId) { index, item in
+                            PremiumBetSlipItemCard(
+                                item: item,
+                                onRemove: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        betSlipManager.remove(at: index)
+                                        // Also remove the stake text for this item
+                                        itemStakeTexts.removeValue(forKey: item.marketId)
+                                    }
+                                },
+                                betMode: betSlipManager.betMode,
+                                stakeText: itemStakeTextBinding(for: item.marketId),
+                                betSlipManager: betSlipManager
+                            )
+                            .transition(.asymmetric(
+                                insertion: .scale(scale: 0.9).combined(with: .opacity),
+                                removal: .scale(scale: 0.9).combined(with: .opacity).combined(with: .move(edge: .trailing))
+                            ))
                         }
                     }
-                    .background(Theme.elevatedBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Theme.border, lineWidth: 1)
-                    )
-                }
-                .padding(.horizontal)
-                .padding(.top, 16)
+                    .padding(.horizontal)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: betSlipManager.count)
 
-                // Selections (US-053: animated item transitions, US-004: per-item stakes)
-                VStack(spacing: 12) {
-                    ForEach(Array(betSlipManager.items.enumerated()), id: \.element.marketId) { index, item in
-                        PremiumBetSlipItemCard(
-                            item: item,
-                            onRemove: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    betSlipManager.remove(at: index)
-                                    // Also remove the stake text for this item
-                                    itemStakeTexts.removeValue(forKey: item.marketId)
-                                }
-                            },
-                            betMode: betSlipManager.betMode,
-                            stakeText: itemStakeTextBinding(for: item.marketId),
-                            betSlipManager: betSlipManager
-                        )
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.9).combined(with: .opacity),
-                            removal: .scale(scale: 0.9).combined(with: .opacity).combined(with: .move(edge: .trailing))
-                        ))
+                    // Combined Parlay Odds (US-041)
+                    if betSlipManager.betMode == .parlay && betSlipManager.count > 1 {
+                        parlayOddsCard
+                            .padding(.horizontal)
                     }
                 }
-                .padding(.horizontal)
-                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: betSlipManager.count)
+                .padding(.bottom, 16)
+            }
+            .background(Theme.background)
 
-                // Combined Parlay Odds (US-041)
-                if betSlipManager.betMode == .parlay && betSlipManager.count > 1 {
-                    parlayOddsCard
-                        .padding(.horizontal)
-                }
+            // US-005: Sticky bottom section with divider
+            stickyBottomSection
+        }
+    }
 
+    // MARK: - Sticky Bottom Section (US-005)
+
+    @ViewBuilder
+    private var stickyBottomSection: some View {
+        VStack(spacing: 0) {
+            // Subtle divider/shadow at top of sticky section
+            Rectangle()
+                .fill(Theme.divider)
+                .frame(height: 1)
+                .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: -2)
+
+            VStack(spacing: 16) {
                 // Stake Entry Section (US-042)
                 stakeEntrySection
-                    .padding(.horizontal)
 
                 // Payout Summary Section (US-042)
                 if betSlipManager.stake > 0 {
                     payoutSummarySection
-                        .padding(.horizontal)
                 }
 
                 // Submit Button (US-006: Direct submission without review screen)
                 if canSubmit {
                     submitSection
-                        .padding(.horizontal)
-                        .padding(.bottom, 16)
                 }
             }
+            .padding(.horizontal)
+            .padding(.top, 16)
+            .padding(.bottom, 16)
+            .background(Theme.cardBackground)
         }
-        .background(Theme.background)
     }
 
     // MARK: - Parlay Odds Card
