@@ -102,24 +102,17 @@ struct ContentView: View {
     private func playerModeView(player: Player) -> some View {
         TabView {
             NavigationStack {
-                AccountView(player: player)
-            }
-            .tabItem {
-                Label("Account", systemImage: "person.circle.fill")
-            }
-
-            NavigationStack {
                 GamesView(player: player)
             }
             .tabItem {
-                Label("Games", systemImage: "sportscourt.fill")
+                Label("Games", systemImage: "house.fill")
             }
 
             NavigationStack {
                 PlayerHistoryView(player: player)
             }
             .tabItem {
-                Label("My Bets", systemImage: "list.bullet.rectangle")
+                Label("Track", systemImage: "list.bullet.rectangle")
             }
 
             PlayerSettingsView()
