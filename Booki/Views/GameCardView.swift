@@ -101,12 +101,29 @@ struct GameCardView: View {
                 expandedMarketsSection
             }
         }
-        .background(Color(.systemBackground))
+        .background(
+            // Subtle gradient background for premium feel
+            LinearGradient(
+                colors: [Theme.cardBackground, Color(hex: 0x151515)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(.systemGray4), lineWidth: 1)
+                .stroke(
+                    // Subtle accent-tinted border for depth
+                    LinearGradient(
+                        colors: [Theme.border.opacity(0.8), Theme.border.opacity(0.4)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
         )
+        // Subtle shadow for depth
+        .shadow(color: Color.black.opacity(0.4), radius: 8, x: 0, y: 4)
     }
 
     // MARK: - Card Content
@@ -142,10 +159,10 @@ struct GameCardView: View {
             HStack(spacing: 4) {
                 Image(systemName: "clock")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(Theme.textSecondary)
                 Text(formattedStartTime)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(Theme.textSecondary)
             }
 
             Spacer()
@@ -158,32 +175,64 @@ struct GameCardView: View {
             // Sport badge
             Text(event.sport)
                 .font(.caption2)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
+                .fontWeight(.semibold)
+                .foregroundColor(Theme.textSecondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(Color(.systemGray5))
+                .background(Theme.elevatedBackground)
                 .clipShape(Capsule())
         }
     }
 
     // MARK: - Live Indicator
 
+    /// Pulsing animation state for live indicator
+    @State private var isPulsing: Bool = false
+
     @ViewBuilder
     private var liveIndicator: some View {
         HStack(spacing: 4) {
-            Circle()
-                .fill(Color.green)
-                .frame(width: 6, height: 6)
+            // Pulsing dot with glow effect
+            ZStack {
+                // Outer glow
+                Circle()
+                    .fill(Theme.live.opacity(0.4))
+                    .frame(width: 12, height: 12)
+                    .scaleEffect(isPulsing ? 1.3 : 0.8)
+                    .opacity(isPulsing ? 0 : 0.8)
+
+                // Inner solid dot
+                Circle()
+                    .fill(Theme.live)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: Theme.live.opacity(0.8), radius: 4, x: 0, y: 0)
+            }
             Text("LIVE")
                 .font(.caption2)
                 .fontWeight(.bold)
-                .foregroundStyle(.green)
+                .foregroundColor(Theme.live)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color.green.opacity(0.15))
-        .clipShape(Capsule())
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .fill(Theme.live.opacity(0.15))
+                .overlay(
+                    Capsule()
+                        .stroke(Theme.live.opacity(0.3), lineWidth: 1)
+                )
+        )
+        .shadow(color: Theme.live.opacity(0.3), radius: 6, x: 0, y: 0)
+        .onAppear {
+            // Start continuous pulsing animation
+            withAnimation(
+                Animation
+                    .easeInOut(duration: 1.2)
+                    .repeatForever(autoreverses: false)
+            ) {
+                isPulsing = true
+            }
+        }
     }
 
     // MARK: - Teams Section
@@ -204,8 +253,9 @@ struct GameCardView: View {
     private func teamRow(teamName: String) -> some View {
         HStack {
             Text(teamName)
-                .font(.headline)
-                .fontWeight(.semibold)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(Theme.textPrimary)
+                .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
 
             Spacer()
 
@@ -217,7 +267,8 @@ struct GameCardView: View {
             }) {
                 Image(systemName: favoritesManager.isFavorite(teamName) ? "star.fill" : "star")
                     .font(.system(size: 18))
-                    .foregroundStyle(favoritesManager.isFavorite(teamName) ? .yellow : .secondary)
+                    .foregroundColor(favoritesManager.isFavorite(teamName) ? Theme.gold : Theme.textMuted)
+                    .shadow(color: favoritesManager.isFavorite(teamName) ? Theme.gold.opacity(0.5) : Color.clear, radius: 4, x: 0, y: 0)
             }
             .buttonStyle(.plain)
         }
@@ -234,16 +285,18 @@ struct GameCardView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if spreadMarket != nil {
-                    Text("Spread")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    Text("SPREAD")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Theme.textMuted)
+                        .tracking(0.5)
                         .frame(width: 70)
                 }
 
                 if moneylineMarket != nil {
                     Text("ML")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Theme.textMuted)
+                        .tracking(0.5)
                         .frame(width: 70)
                 }
             }
@@ -396,14 +449,18 @@ struct GameCardView: View {
                 isExpanded.toggle()
             }
         }) {
-            HStack {
+            HStack(spacing: 4) {
                 Text(isExpanded ? "Show Less" : "All Markets")
-                    .font(.caption)
-                    .foregroundStyle(.blue)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Theme.accent)
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.caption)
-                    .foregroundStyle(.blue)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(Theme.accent)
             }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .background(Theme.accent.opacity(0.1))
+            .clipShape(Capsule())
         }
         .buttonStyle(.plain)
     }
@@ -413,7 +470,11 @@ struct GameCardView: View {
     @ViewBuilder
     private var expandedMarketsSection: some View {
         VStack(spacing: 12) {
-            Divider()
+            // Styled divider
+            Rectangle()
+                .fill(Theme.divider)
+                .frame(height: 1)
+                .padding(.horizontal, -12)
 
             ForEach(allMarkets, id: \.id) { market in
                 expandedMarketRow(market: market)
@@ -427,10 +488,10 @@ struct GameCardView: View {
     private func expandedMarketRow(market: Market) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             // Market type header
-            Text(marketTypeName(market.type))
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
+            Text(marketTypeName(market.type).uppercased())
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(Theme.textMuted)
+                .tracking(0.5)
 
             // Market options
             HStack(spacing: 8) {
@@ -466,7 +527,8 @@ struct GameCardView: View {
 
 // MARK: - Odds Button Component
 
-/// Reusable odds button with selection state and tap feedback
+/// Reusable odds button with pill/capsule shape, selection state, and tap feedback
+/// US-050: Premium sportsbook styling with bright accent for selected state
 struct OddsButton: View {
     let topLabel: String?
     let odds: Int
@@ -482,11 +544,11 @@ struct OddsButton: View {
     var body: some View {
         Button(action: {
             // Trigger tap animation
-            withAnimation(.easeInOut(duration: 0.1)) {
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                 isPressed = true
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.easeInOut(duration: 0.1)) {
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                     isPressed = false
                 }
             }
@@ -495,21 +557,50 @@ struct OddsButton: View {
             VStack(spacing: 2) {
                 if let label = topLabel {
                     Text(label)
-                        .font(.caption2)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(isSelected ? Theme.cardBackground : Theme.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
                 Text(formattedOdds)
-                    .font(.subheadline)
-                    .fontWeight(.bold)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(isSelected ? Theme.cardBackground : Theme.textPrimary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 4)
-            .background(isSelected ? Color.blue : Color(.systemGray5))
-            .foregroundStyle(isSelected ? .white : .primary)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .scaleEffect(isPressed ? 0.95 : 1.0)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 6)
+            .background(
+                Group {
+                    if isSelected {
+                        // Bright accent background with subtle gradient for selected state
+                        LinearGradient(
+                            colors: [Theme.accent, Theme.accent.opacity(0.85)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    } else {
+                        // Dark elevated background for unselected state
+                        Theme.elevatedBackground
+                    }
+                }
+            )
+            // Pill/capsule shape
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(
+                        isSelected ? Theme.accent.opacity(0.5) : Theme.border,
+                        lineWidth: isSelected ? 2 : 0.5
+                    )
+            )
+            // Glow effect for selected state
+            .shadow(
+                color: isSelected ? Theme.accent.opacity(0.4) : Color.clear,
+                radius: isSelected ? 8 : 0,
+                x: 0,
+                y: 0
+            )
+            .scaleEffect(isPressed ? 0.92 : 1.0)
         }
         .buttonStyle(.plain)
     }
@@ -555,14 +646,60 @@ struct OddsButton: View {
 
     event.markets = [spread, ml, total]
 
-    return VStack {
+    // Create a sample selection to show selected state
+    let sampleSelection = BetSlipSelection(
+        eventId: event.id,
+        marketId: ml.id,
+        side: ml.sideB,
+        odds: ml.oddsB,
+        marketType: .moneyline
+    )
+
+    // Second event for preview (scheduled game)
+    let scheduledEvent = Event(
+        sport: "NFL",
+        league: "NFL",
+        homeTeam: "Chiefs",
+        awayTeam: "Bills",
+        startTime: Date().addingTimeInterval(86400),
+        status: .scheduled
+    )
+    let nflSpread = Market(
+        type: .spread,
+        sideA: "Bills +3",
+        sideB: "Chiefs -3",
+        oddsA: -110,
+        oddsB: -110,
+        event: scheduledEvent
+    )
+    let nflMl = Market(
+        type: .moneyline,
+        sideA: "Bills",
+        sideB: "Chiefs",
+        oddsA: 140,
+        oddsB: -160,
+        event: scheduledEvent
+    )
+    scheduledEvent.markets = [nflSpread, nflMl]
+
+    return VStack(spacing: 16) {
+        // Card with selection (live game)
         GameCardView(
             event: event,
+            selections: [sampleSelection],
+            onSelectOdds: { _ in },
+            onTapCard: { }
+        )
+
+        // Card without selection (scheduled game)
+        GameCardView(
+            event: scheduledEvent,
             selections: [],
             onSelectOdds: { _ in },
             onTapCard: { }
         )
-        .padding()
     }
-    .background(Color(.systemGroupedBackground))
+    .padding()
+    .background(Theme.background)
+    .preferredColorScheme(.dark)
 }
