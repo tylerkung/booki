@@ -40,6 +40,10 @@ struct BetSlipSheet: View {
     @State private var outerRingScale: CGFloat = 0.8
     @State private var outerRingOpacity: Double = 0
 
+    /// US-009: State for locked events error alert
+    @State private var showLockedEventsAlert: Bool = false
+    @State private var lockedEventNames: [String] = []
+
     /// Initialize with available credit for validation and optional player
     init(availableCredit: Decimal = Decimal.greatestFiniteMagnitude, player: Player? = nil) {
         self.availableCredit = availableCredit
@@ -115,6 +119,12 @@ struct BetSlipSheet: View {
                 if let error = submissionError {
                     Text(error)
                 }
+            }
+            // US-009: Alert for locked events
+            .alert("Events Locked", isPresented: $showLockedEventsAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("The following events are locked for betting:\n\n\(lockedEventNames.joined(separator: "\n"))\n\nPlease remove them from your bet slip to continue.")
             }
         }
     }
@@ -697,10 +707,37 @@ struct BetSlipSheet: View {
         .background(Theme.background)
     }
 
+    // MARK: - Locked Events Validation (US-009)
+
+    /// Check if any events in the bet slip are locked and return their names
+    private func getLockedEventNames() -> [String] {
+        // Get lock offset from policy (default 0)
+        let lockOffset = acceptancePolicies.first?.eventLockOffsetMinutes ?? 0
+
+        var lockedNames: [String] = []
+        for item in betSlipManager.items {
+            if let event = events.first(where: { $0.id == item.eventId }) {
+                if event.isLocked(offsetMinutes: lockOffset) {
+                    // Use the event description from the bet slip item
+                    lockedNames.append(item.eventDescription)
+                }
+            }
+        }
+        return lockedNames
+    }
+
     // MARK: - Submission Logic (US-006: Direct submission from bet slip)
 
     private func submitBets() {
         guard canSubmit, let player = player else { return }
+
+        // US-009: Check for locked events before submission
+        let lockedEvents = getLockedEventNames()
+        if !lockedEvents.isEmpty {
+            lockedEventNames = lockedEvents
+            showLockedEventsAlert = true
+            return
+        }
 
         isSubmitting = true
 
