@@ -420,3 +420,19 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Use `@State private var overrideGrades: [UUID: GradeResult]` for tracking per-bet overrides
   - extractLine() regex pattern `[+-]?\d+\.?\d*` extracts numeric values from bet sides like "Team -3.5"
 ---
+
+## 2026-01-22 - US-057
+- **What was implemented:** Undo/Reverse Settlement feature for reversing settled bets
+- **Files changed:**
+  - `Booki/Services/GradingService.swift` (modified - added `reverseBet()` function with new error cases)
+  - `Booki/Views/BetsListView.swift` (modified - added Reverse Settlement button, confirmation dialog, and reversal logic to BetDetailView)
+- **Learnings for future iterations:**
+  - The `.reversal` EntryType already existed in LedgerEntry model - no need to create new type
+  - Ledger is append-only: reversals create new entries with negated amounts, not modifying originals
+  - BalanceService sums all entries, so reversal entries with negative amounts automatically correct balance
+  - Use `@Query private var ledgerEntries: [LedgerEntry]` to access ledger for finding original settlement
+  - Find settlement entry by matching `entry.bet?.id == bet.id && entry.type == .settlement`
+  - Bet status transitions back to `.graded` after reversal (allows re-settlement if needed)
+  - Confirmation dialog shows balance impact: describes whether reversal will add or remove from player balance
+  - Use `formatCurrency(abs(amount))` to show positive amount in impact description regardless of direction
+---
