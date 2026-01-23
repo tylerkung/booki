@@ -1,9 +1,11 @@
 import SwiftUI
+import SwiftData
 
 /// Full bet slip sheet showing all selections
 /// US-040: Build Persistent Bet Slip
 /// US-041: Support Multi-Bet (Parlay) Selections
 /// US-042: Improved Stake Entry
+/// US-043: Bet Confirmation Flow
 struct BetSlipSheet: View {
     @ObservedObject private var betSlipManager = BetSlipManager.shared
     @Environment(\.dismiss) private var dismiss
@@ -11,12 +13,19 @@ struct BetSlipSheet: View {
     /// Available credit for stake validation (US-042)
     let availableCredit: Decimal
 
+    /// Player for confirmation sheet (US-043)
+    let player: Player?
+
     /// Custom stake text for input field (US-042)
     @State private var stakeText: String = ""
 
-    /// Initialize with available credit for validation
-    init(availableCredit: Decimal = Decimal.greatestFiniteMagnitude) {
+    /// Show confirmation sheet (US-043)
+    @State private var showingConfirmation: Bool = false
+
+    /// Initialize with available credit for validation and optional player
+    init(availableCredit: Decimal = Decimal.greatestFiniteMagnitude, player: Player? = nil) {
         self.availableCredit = availableCredit
+        self.player = player
         // Initialize stake text from manager's current stake
         let currentStake = BetSlipManager.shared.stake
         _stakeText = State(initialValue: currentStake > 0 ? "\(NSDecimalNumber(decimal: currentStake).intValue)" : "")
@@ -136,8 +145,54 @@ struct BetSlipSheet: View {
             if betSlipManager.stake > 0 {
                 payoutSummarySection
             }
+
+            // Review & Confirm Button (US-043)
+            if canSubmit {
+                reviewConfirmSection
+            }
         }
         .listStyle(.insetGrouped)
+        .sheet(isPresented: $showingConfirmation) {
+            if let player = player {
+                BetConfirmationSheet(player: player)
+            }
+        }
+    }
+
+    // MARK: - Can Submit Check (US-043)
+
+    /// Whether the bet slip is ready to submit
+    private var canSubmit: Bool {
+        guard !betSlipManager.isEmpty else { return false }
+        guard betSlipManager.stake > 0 else { return false }
+        guard player != nil else { return false }
+        return betSlipManager.isStakeValid(availableCredit: availableCredit)
+    }
+
+    // MARK: - Review & Confirm Section (US-043)
+
+    @ViewBuilder
+    private var reviewConfirmSection: some View {
+        Section {
+            Button(action: {
+                showingConfirmation = true
+            }) {
+                HStack {
+                    Spacer()
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Review & Confirm")
+                        .fontWeight(.semibold)
+                    Spacer()
+                }
+                .foregroundStyle(.white)
+                .padding(.vertical, 12)
+                .background(Color.green)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.clear)
+        }
     }
 
     // MARK: - Stake Entry Section (US-042)
@@ -364,5 +419,9 @@ struct QuickPickButton: View {
 }
 
 #Preview {
-    BetSlipSheet(availableCredit: 500)
+    BetSlipSheet(
+        availableCredit: 500,
+        player: Player(name: "Test Player", email: "test@example.com", creditLimit: 1000)
+    )
+    .modelContainer(for: [Player.self, Event.self, Bet.self, LedgerEntry.self], inMemory: true)
 }
