@@ -34,7 +34,7 @@
 		8A1234560025 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550026 /* DashboardViewModel.swift */; };
 		8A1234560026 /* EventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550027 /* EventDetailView.swift */; };
 		8A1234560027 /* SubmitBetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550028 /* SubmitBetView.swift */; };
-		8A1234560028 /* PlayerHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550029 /* PlayerHistoryView.swift */; };
+		8A1234560028 /* TrackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550029 /* TrackView.swift */; };
 		8A1234560029 /* EventsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550030 /* EventsListView.swift */; };
 		8A1234560030 /* AddEventSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550031 /* AddEventSheet.swift */; };
 		8A1234560031 /* AddMarketSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550032 /* AddMarketSheet.swift */; };
@@ -52,6 +52,9 @@
 		8A1234560043 /* GradeEventSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550044 /* GradeEventSheet.swift */; };
 		8A1234560044 /* PaymentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550045 /* PaymentSheet.swift */; };
 		8A1234560045 /* WeeklySettlementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550046 /* WeeklySettlementView.swift */; };
+		8A1234560046 /* AppHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550047 /* AppHeaderView.swift */; };
+		8A1234560047 /* TicketDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550048 /* TicketDetailView.swift */; };
+		8A1234560048 /* AcceptancePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550049 /* AcceptancePolicy.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -84,7 +87,7 @@
 		8A1234550026 /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
 		8A1234550027 /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
 		8A1234550028 /* SubmitBetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmitBetView.swift; sourceTree = "<group>"; };
-		8A1234550029 /* PlayerHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerHistoryView.swift; sourceTree = "<group>"; };
+		8A1234550029 /* TrackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackView.swift; sourceTree = "<group>"; };
 		8A1234550030 /* EventsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventsListView.swift; sourceTree = "<group>"; };
 		8A1234550031 /* AddEventSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddEventSheet.swift; sourceTree = "<group>"; };
 		8A1234550032 /* AddMarketSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMarketSheet.swift; sourceTree = "<group>"; };
@@ -102,6 +105,9 @@
 		8A1234550044 /* GradeEventSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradeEventSheet.swift; sourceTree = "<group>"; };
 		8A1234550045 /* PaymentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentSheet.swift; sourceTree = "<group>"; };
 		8A1234550046 /* WeeklySettlementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySettlementView.swift; sourceTree = "<group>"; };
+		8A1234550047 /* AppHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppHeaderView.swift; sourceTree = "<group>"; };
+		8A1234550048 /* TicketDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketDetailView.swift; sourceTree = "<group>"; };
+		8A1234550049 /* AcceptancePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcceptancePolicy.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -185,6 +191,7 @@
 				8A1234550008 /* LedgerEntry.swift */,
 				8A1234550009 /* Event.swift */,
 				8A1234550010 /* Market.swift */,
+				8A1234550049 /* AcceptancePolicy.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -199,7 +206,7 @@
 				8A1234550025 /* SettingsView.swift */,
 				8A1234550027 /* EventDetailView.swift */,
 				8A1234550028 /* SubmitBetView.swift */,
-				8A1234550029 /* PlayerHistoryView.swift */,
+				8A1234550029 /* TrackView.swift */,
 				8A1234550030 /* EventsListView.swift */,
 				8A1234550031 /* AddEventSheet.swift */,
 				8A1234550032 /* AddMarketSheet.swift */,
@@ -213,6 +220,8 @@
 				8A1234550044 /* GradeEventSheet.swift */,
 				8A1234550045 /* PaymentSheet.swift */,
 				8A1234550046 /* WeeklySettlementView.swift */,
+				8A1234550047 /* AppHeaderView.swift */,
+				8A1234550048 /* TicketDetailView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -367,7 +376,7 @@
 				8A1234560025 /* DashboardViewModel.swift in Sources */,
 				8A1234560026 /* EventDetailView.swift in Sources */,
 				8A1234560027 /* SubmitBetView.swift in Sources */,
-				8A1234560028 /* PlayerHistoryView.swift in Sources */,
+				8A1234560028 /* TrackView.swift in Sources */,
 				8A1234560029 /* EventsListView.swift in Sources */,
 				8A1234560030 /* AddEventSheet.swift in Sources */,
 				8A1234560031 /* AddMarketSheet.swift in Sources */,
@@ -385,6 +394,9 @@
 				8A1234560043 /* GradeEventSheet.swift in Sources */,
 				8A1234560044 /* PaymentSheet.swift in Sources */,
 				8A1234560045 /* WeeklySettlementView.swift in Sources */,
+				8A1234560046 /* AppHeaderView.swift in Sources */,
+				8A1234560047 /* TicketDetailView.swift in Sources */,
+				8A1234560048 /* AcceptancePolicy.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

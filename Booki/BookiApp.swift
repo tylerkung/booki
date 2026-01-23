@@ -11,6 +11,7 @@ struct BookiApp: App {
             LedgerEntry.self,
             Event.self,
             Market.self,
+            AcceptancePolicy.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
