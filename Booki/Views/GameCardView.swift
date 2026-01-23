@@ -245,7 +245,7 @@ struct GameCardView: View {
     // MARK: - Combined Teams + Odds Section
 
     /// Fixed button size for consistent layout
-    private let oddsButtonSize: CGFloat = 72
+    private let oddsButtonSize: CGFloat = 60
 
     @ViewBuilder
     private var teamsWithOddsSection: some View {
@@ -302,7 +302,7 @@ struct GameCardView: View {
         HStack(spacing: 8) {
             // Team name
             Text(teamName)
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundColor(Theme.textPrimary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -402,11 +402,11 @@ struct SpreadButton: View {
             VStack(spacing: 2) {
                 // Spread value as main text
                 Text(spreadValue)
-                    .font(.system(size: 16, weight: .black))
+                    .font(.system(size: 14, weight: .black))
                     .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
                 // Odds as smaller secondary text
                 Text(formattedOdds)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(isSelected ? Theme.background.opacity(0.8) : Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -504,7 +504,7 @@ struct MLButton: View {
             action()
         }) {
             Text(formattedOdds)
-                .font(.system(size: 16, weight: .black))
+                .font(.system(size: 14, weight: .black))
                 .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(
