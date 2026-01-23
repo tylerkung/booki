@@ -28,8 +28,11 @@ struct GamesView: View {
     /// Currently selected sport filter (nil = "All")
     @State private var selectedSport: String? = nil
 
-    /// Selected odds for bet slip (US-037)
-    @State private var betSlipSelections: Set<BetSlipSelection> = []
+    /// Bet slip manager for persistent selections (US-040)
+    @ObservedObject private var betSlipManager = BetSlipManager.shared
+
+    /// Show bet slip sheet (US-040)
+    @State private var showingBetSlipSheet: Bool = false
 
     /// Event to navigate to for full market view
     @State private var selectedEventForNavigation: Event? = nil
@@ -196,8 +199,8 @@ struct GamesView: View {
                 gamesList
             }
 
-            // Floating bet slip indicator (US-037)
-            if !betSlipSelections.isEmpty {
+            // Floating bet slip indicator (US-037, US-040)
+            if !betSlipManager.isEmpty {
                 betSlipIndicator
             }
         }
@@ -213,35 +216,38 @@ struct GamesView: View {
             TimeFilterSheet(selectedFilter: $timeFilter)
                 .presentationDetents([.height(280)])
         }
+        .sheet(isPresented: $showingBetSlipSheet) {
+            BetSlipSheet()
+                .presentationDetents([.medium, .large])
+        }
     }
 
-    // MARK: - Bet Slip Indicator
+    // MARK: - Bet Slip Indicator (US-040)
 
     @ViewBuilder
     private var betSlipIndicator: some View {
-        HStack {
-            Image(systemName: "ticket.fill")
-                .foregroundStyle(.white)
+        Button(action: {
+            showingBetSlipSheet = true
+        }) {
+            HStack {
+                Image(systemName: "ticket.fill")
+                    .foregroundStyle(.white)
 
-            Text("\(betSlipSelections.count) Selection\(betSlipSelections.count == 1 ? "" : "s")")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
+                Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
 
-            Spacer()
+                Spacer()
 
-            Button(action: {
-                withAnimation {
-                    betSlipSelections.removeAll()
-                }
-            }) {
-                Image(systemName: "xmark.circle.fill")
+                Image(systemName: "chevron.up")
                     .foregroundStyle(.white.opacity(0.7))
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.blue)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color.blue)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Search and Filter Header (US-038)
@@ -369,9 +375,9 @@ struct GamesView: View {
             ForEach(favoriteEvents, id: \.id) { event in
                 GameCardView(
                     event: event,
-                    selections: betSlipSelections,
+                    selections: betSlipManager.selectionsSet,
                     onSelectOdds: { selection in
-                        handleOddsSelection(selection)
+                        handleOddsSelection(selection, event: event)
                     },
                     onTapCard: {
                         selectedEventForNavigation = event
@@ -443,9 +449,9 @@ struct GamesView: View {
                 ForEach(leaguesByEvent[league] ?? [], id: \.id) { event in
                     GameCardView(
                         event: event,
-                        selections: betSlipSelections,
+                        selections: betSlipManager.selectionsSet,
                         onSelectOdds: { selection in
-                            handleOddsSelection(selection)
+                            handleOddsSelection(selection, event: event)
                         },
                         onTapCard: {
                             selectedEventForNavigation = event
@@ -456,16 +462,37 @@ struct GamesView: View {
         }
     }
 
-    // MARK: - Selection Handling
+    // MARK: - Selection Handling (US-040)
 
-    /// Handle odds button tap - toggle selection in bet slip
-    private func handleOddsSelection(_ selection: BetSlipSelection) {
+    /// Handle odds button tap - toggle selection in bet slip using manager
+    private func handleOddsSelection(_ selection: BetSlipSelection, event: Event) {
+        // Build descriptions for the bet slip item
+        let eventDescription = "\(event.awayTeam) @ \(event.homeTeam)"
+        let marketDescription = buildMarketDescription(selection: selection, event: event)
+
         withAnimation(.easeInOut(duration: 0.15)) {
-            if betSlipSelections.contains(selection) {
-                betSlipSelections.remove(selection)
-            } else {
-                betSlipSelections.insert(selection)
-            }
+            betSlipManager.toggle(
+                selection,
+                eventDescription: eventDescription,
+                marketDescription: marketDescription
+            )
+        }
+    }
+
+    /// Build market description string for bet slip display
+    private func buildMarketDescription(selection: BetSlipSelection, event: Event) -> String {
+        let market = event.markets?.first { $0.id == selection.marketId }
+        guard let market = market else {
+            return selection.side
+        }
+
+        switch market.type {
+        case .spread:
+            return "Spread"
+        case .total:
+            return "Total"
+        case .moneyline:
+            return "Moneyline"
         }
     }
 
