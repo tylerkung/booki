@@ -347,6 +347,9 @@ struct BetConfirmationSheet: View {
         var successCount = 0
         var errors: [String] = []
 
+        // Generate a single ticketId for all bets in this submission
+        let ticketId = UUID()
+
         // Submit each bet from the slip
         for item in betSlipManager.items {
             // Calculate stake for this bet
@@ -369,7 +372,8 @@ struct BetConfirmationSheet: View {
                 odds: item.odds,
                 stake: betStake,
                 existingBets: playerBets,
-                ledgerEntries: playerLedgerEntries
+                ledgerEntries: playerLedgerEntries,
+                ticketId: ticketId
             )
 
             switch result {

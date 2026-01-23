@@ -32,6 +32,9 @@ final class Bet {
     var gradeResult: GradeResult?
     var createdAt: Date
 
+    /// Ticket ID to group bets placed together in the same submission
+    var ticketId: UUID
+
     /// Relationship: many bets belong to one player
     var player: Player?
 
@@ -45,7 +48,8 @@ final class Bet {
         status: BetStatus = .pending,
         gradeResult: GradeResult? = nil,
         player: Player? = nil,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        ticketId: UUID = UUID()
     ) {
         self.id = id
         self.eventId = eventId
@@ -57,5 +61,6 @@ final class Bet {
         self.gradeResult = gradeResult
         self.player = player
         self.createdAt = createdAt
+        self.ticketId = ticketId
     }
 }

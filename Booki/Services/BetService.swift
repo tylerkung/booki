@@ -25,6 +25,7 @@ enum BetService {
     ///   - stake: The amount being wagered
     ///   - existingBets: Player's existing bets (for credit calculation)
     ///   - ledgerEntries: Player's ledger entries (for credit calculation)
+    ///   - ticketId: The ticket ID to group bets placed together (defaults to new UUID)
     /// - Returns: Result with the created Bet on success, or BetServiceError on failure
     static func submitBet(
         player: Player,
@@ -34,7 +35,8 @@ enum BetService {
         odds: Int,
         stake: Decimal,
         existingBets: [Bet],
-        ledgerEntries: [LedgerEntry]
+        ledgerEntries: [LedgerEntry],
+        ticketId: UUID = UUID()
     ) -> Result<Bet, BetServiceError> {
         // Check player is active
         guard player.status == .active else {
@@ -67,7 +69,8 @@ enum BetService {
             odds: odds,
             stake: stake,
             status: .pending,
-            player: player
+            player: player,
+            ticketId: ticketId
         )
 
         return .success(bet)
