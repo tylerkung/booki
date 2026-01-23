@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Full bet slip sheet showing all selections
 /// US-040: Build Persistent Bet Slip
+/// US-041: Support Multi-Bet (Parlay) Selections
 struct BetSlipSheet: View {
     @ObservedObject private var betSlipManager = BetSlipManager.shared
     @Environment(\.dismiss) private var dismiss
@@ -54,24 +55,63 @@ struct BetSlipSheet: View {
     @ViewBuilder
     private var selectionsList: some View {
         List {
-            // Header with count
+            // Header with count and mode toggle (US-041)
             Section {
-                HStack {
-                    Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
-                        .font(.headline)
-                    Spacer()
-                    Text("Max \(betSlipManager.maxSelections)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
+                            .font(.headline)
+                        Spacer()
+                        Text("Max \(betSlipManager.maxSelections)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Singles/Parlay Toggle (US-041)
+                    Picker("Bet Mode", selection: $betSlipManager.betMode) {
+                        ForEach(BetMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
                 }
             }
 
             // Selections
             Section {
                 ForEach(Array(betSlipManager.items.enumerated()), id: \.element.marketId) { index, item in
-                    BetSlipItemRow(item: item)
+                    BetSlipItemRow(item: item, onRemove: {
+                        withAnimation {
+                            betSlipManager.remove(at: index)
+                        }
+                    })
                 }
                 .onDelete(perform: deleteItems)
+            }
+
+            // Combined Parlay Odds (US-041)
+            if betSlipManager.betMode == .parlay && betSlipManager.count > 1 {
+                Section {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(betSlipManager.count)-Leg Parlay")
+                                .font(.headline)
+                            Text("Combined odds")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        if let parlayOdds = betSlipManager.formattedParlayOdds {
+                            Text(parlayOdds)
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.green)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
             }
         }
         .listStyle(.insetGrouped)
@@ -89,8 +129,10 @@ struct BetSlipSheet: View {
 // MARK: - Bet Slip Item Row
 
 /// Row view for a single bet slip selection
+/// US-041: Added onRemove callback for X button
 struct BetSlipItemRow: View {
     let item: BetSlipItem
+    let onRemove: () -> Void
 
     private var formattedOdds: String {
         item.odds >= 0 ? "+\(item.odds)" : "\(item.odds)"
@@ -105,35 +147,45 @@ struct BetSlipItemRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Event description
-            Text(item.eventDescription)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                // Event description
+                Text(item.eventDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
-            // Selection details
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.side)
+                // Selection details
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.side)
+                            .font(.headline)
+
+                        Text(marketTypeLabel)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    // Odds badge
+                    Text(formattedOdds)
                         .font(.headline)
-
-                    Text(marketTypeLabel)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
-
-                Spacer()
-
-                // Odds badge
-                Text(formattedOdds)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.blue)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
             }
+
+            // X button to remove (US-041)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
     }

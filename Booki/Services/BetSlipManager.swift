@@ -2,6 +2,13 @@ import Foundation
 import SwiftUI
 import Combine
 
+/// Bet mode for the slip - Singles (individual bets) or Parlay (combined)
+/// US-041: Support Multi-Bet (Parlay) Selections
+enum BetMode: String, Codable, CaseIterable {
+    case singles = "Singles"
+    case parlay = "Parlay"
+}
+
 /// Extended selection model for bet slip with event details for display
 /// US-040: Build Persistent Bet Slip
 struct BetSlipItem: Equatable, Hashable, Codable {
@@ -61,19 +68,68 @@ struct BetSlipItem: Equatable, Hashable, Codable {
 
 /// Manager for persistent bet slip storage
 /// US-040: Build Persistent Bet Slip
+/// US-041: Support Multi-Bet (Parlay) Selections
 class BetSlipManager: ObservableObject {
     static let shared = BetSlipManager()
 
     private let userDefaultsKey = "betSlipItems"
+    private let betModeKey = "betSlipMode"
 
     /// Published array of bet slip items (order preserved)
     @Published private(set) var items: [BetSlipItem] = []
+
+    /// Published bet mode (singles or parlay)
+    /// US-041: Support Multi-Bet (Parlay) Selections
+    @Published var betMode: BetMode = .singles {
+        didSet {
+            saveBetMode()
+        }
+    }
 
     /// Maximum selections allowed
     let maxSelections = 10
 
     private init() {
         loadItems()
+        loadBetMode()
+    }
+
+    // MARK: - Parlay Odds Calculation (US-041)
+
+    /// Convert American odds to decimal odds
+    private func toDecimalOdds(_ americanOdds: Int) -> Double {
+        if americanOdds > 0 {
+            return (Double(americanOdds) / 100.0) + 1.0
+        } else {
+            return (100.0 / Double(abs(americanOdds))) + 1.0
+        }
+    }
+
+    /// Convert decimal odds back to American odds
+    private func toAmericanOdds(_ decimalOdds: Double) -> Int {
+        if decimalOdds >= 2.0 {
+            return Int(round((decimalOdds - 1.0) * 100.0))
+        } else {
+            return Int(round(-100.0 / (decimalOdds - 1.0)))
+        }
+    }
+
+    /// Calculate combined parlay odds (multiply decimal odds)
+    /// Returns nil if no items
+    var combinedParlayOdds: Int? {
+        guard !items.isEmpty else { return nil }
+
+        let combinedDecimal = items.reduce(1.0) { result, item in
+            result * toDecimalOdds(item.odds)
+        }
+
+        return toAmericanOdds(combinedDecimal)
+    }
+
+    /// Formatted combined parlay odds string
+    var formattedParlayOdds: String? {
+        guard let odds = combinedParlayOdds else { return nil }
+        return odds >= 0 ? "+\(odds)" : "\(odds)"
     }
 
     // MARK: - Public API
@@ -161,5 +217,18 @@ class BetSlipManager: ObservableObject {
         } catch {
             print("Failed to encode bet slip items: \(error)")
         }
+    }
+
+    private func loadBetMode() {
+        guard let rawValue = UserDefaults.standard.string(forKey: betModeKey),
+              let mode = BetMode(rawValue: rawValue) else {
+            betMode = .singles
+            return
+        }
+        betMode = mode
+    }
+
+    private func saveBetMode() {
+        UserDefaults.standard.set(betMode.rawValue, forKey: betModeKey)
     }
 }
