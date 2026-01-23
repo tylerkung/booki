@@ -325,20 +325,6 @@ struct BetSlipSheet: View {
                 .tracking(1)
 
             VStack(spacing: 16) {
-                // Quick-pick stake buttons
-                HStack(spacing: 8) {
-                    ForEach(BetSlipManager.quickPickAmounts, id: \.self) { amount in
-                        PremiumQuickPickButton(
-                            amount: amount,
-                            isSelected: betSlipManager.stake == amount,
-                            action: {
-                                betSlipManager.setQuickPickStake(amount)
-                                stakeText = "\(NSDecimalNumber(decimal: amount).intValue)"
-                            }
-                        )
-                    }
-                }
-
                 // Custom amount input - Styled
                 HStack(spacing: 12) {
                     Text("$")
@@ -763,66 +749,6 @@ struct PremiumBetSlipItemCard: View {
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Theme.border, lineWidth: 0.5)
-        )
-    }
-}
-
-// MARK: - Premium Quick Pick Button (US-051)
-
-/// Premium styled quick-pick stake button
-struct PremiumQuickPickButton: View {
-    let amount: Decimal
-    let isSelected: Bool
-    let action: () -> Void
-
-    @State private var isPressed: Bool = false
-
-    private var formattedAmount: String {
-        "$\(NSDecimalNumber(decimal: amount).intValue)"
-    }
-
-    var body: some View {
-        Button(action: action) {
-            Text(formattedAmount)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(isSelected ? Theme.background : Theme.textSecondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                    isSelected
-                        ? AnyView(Theme.gold)
-                        : AnyView(Theme.elevatedBackground)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(
-                            isSelected ? Theme.gold : Theme.border,
-                            lineWidth: isSelected ? 0 : 1
-                        )
-                )
-                .scaleEffect(isPressed ? 0.95 : 1.0)
-                .shadow(
-                    color: isSelected ? Theme.gold.opacity(0.3) : Color.clear,
-                    radius: 4,
-                    x: 0,
-                    y: 2
-                )
-        }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    withAnimation(.easeInOut(duration: 0.1)) {
-                        isPressed = true
-                    }
-                }
-                .onEnded { _ in
-                    withAnimation(.easeInOut(duration: 0.1)) {
-                        isPressed = false
-                    }
-                }
         )
     }
 }
