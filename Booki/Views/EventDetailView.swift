@@ -11,6 +11,7 @@ struct EventDetailView: View {
     @State private var marketToEdit: Market?
     @State private var showingFinalScoreSheet = false
     @State private var showingGradeEventSheet = false
+    @State private var showingVoidConfirmation = false
     @State private var selectedStatus: EventStatus
 
     init(event: Event) {
@@ -70,6 +71,8 @@ struct EventDetailView: View {
                     Text("Scheduled").tag(EventStatus.scheduled)
                     Text("Live").tag(EventStatus.live)
                     Text("Final").tag(EventStatus.final)
+                    Text("Postponed").tag(EventStatus.postponed)
+                    Text("Canceled").tag(EventStatus.canceled)
                 }
                 .onChange(of: selectedStatus) { oldValue, newValue in
                     handleStatusChange(from: oldValue, to: newValue)
@@ -89,6 +92,25 @@ struct EventDetailView: View {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(Theme.accent)
                             Text("Grade All Bets (\(betsToGrade.count))")
+                                .fontWeight(.semibold)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .foregroundStyle(Theme.textPrimary)
+                }
+
+                // Void All Bets button when event is canceled and has active bets
+                if event.status == .canceled && !activeBets.isEmpty {
+                    Button {
+                        showingVoidConfirmation = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(Theme.danger)
+                            Text("Void All Bets (\(activeBets.count))")
                                 .fontWeight(.semibold)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -205,6 +227,14 @@ struct EventDetailView: View {
         .sheet(isPresented: $showingGradeEventSheet) {
             GradeEventSheet(event: event, betsToGrade: betsToGrade)
         }
+        .alert("Void All Bets?", isPresented: $showingVoidConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Void Bets", role: .destructive) {
+                voidAllBetsForCanceledEvent()
+            }
+        } message: {
+            Text("This will void \(activeBets.count) pending/accepted bet(s) for this canceled event. This action cannot be undone.")
+        }
     }
 
     // MARK: - Status Change Handler
@@ -224,6 +254,12 @@ struct EventDetailView: View {
         for bet in eventBets where bet.status == .accepted {
             bet.status = .readyToGrade
         }
+    }
+
+    private func voidAllBetsForCanceledEvent() {
+        // Void all pending and accepted bets for this canceled event
+        let voidedCount = BetService.voidBetsForEvent(eventId: event.id.uuidString, bets: allBets)
+        print("Voided \(voidedCount) bets for canceled event: \(displayName)")
     }
 
     // MARK: - Market Actions
@@ -247,6 +283,10 @@ struct EventDetailView: View {
             return .green
         case .final:
             return .gray
+        case .postponed:
+            return Theme.warning
+        case .canceled:
+            return Theme.danger
         }
     }
 

@@ -6,6 +6,8 @@ enum EventStatus: String, Codable {
     case scheduled
     case live
     case final
+    case postponed
+    case canceled
 }
 
 /// Event model representing a sports event
@@ -57,11 +59,21 @@ final class Event {
 
     /// Determines if the event is locked for betting
     /// - Parameter offsetMinutes: Minutes before start time to lock betting
-    /// - Returns: true if event is locked (current time >= lock time, or event is live/final)
+    /// - Returns: true if event is locked (current time >= lock time, or event is live/final/canceled)
     func isLocked(offsetMinutes: Int) -> Bool {
+        // Canceled events are always locked
+        if status == .canceled {
+            return true
+        }
+
         // Events that are live or final are always locked
         if status == .live || status == .final {
             return true
+        }
+
+        // Postponed events allow betting (on the new time when rescheduled)
+        if status == .postponed {
+            return false
         }
 
         // Check if current time is past the lock time

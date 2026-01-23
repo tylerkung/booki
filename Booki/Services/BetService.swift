@@ -199,4 +199,28 @@ enum BetService {
             ledgerEntries: ledgerEntries
         )
     }
+
+    // MARK: - Bulk Operations
+
+    /// Voids all pending or accepted bets for a specific event
+    /// Used when an event is canceled to void all outstanding bets
+    /// - Parameters:
+    ///   - eventId: The event ID to void bets for
+    ///   - bets: All bets to filter from
+    /// - Returns: Number of bets voided
+    @discardableResult
+    static func voidBetsForEvent(eventId: String, bets: [Bet]) -> Int {
+        var voidedCount = 0
+
+        for bet in bets {
+            // Only void bets for this event that are pending or accepted
+            guard bet.eventId == eventId else { continue }
+            guard bet.status == .pending || bet.status == .accepted else { continue }
+
+            bet.status = .void
+            voidedCount += 1
+        }
+
+        return voidedCount
+    }
 }

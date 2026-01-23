@@ -39,6 +39,11 @@ struct GameCardView: View {
         event.isLocked(offsetMinutes: lockOffsetMinutes)
     }
 
+    /// Computed property to determine if event is canceled
+    private var isEventCanceled: Bool {
+        event.status == .canceled
+    }
+
     // MARK: - Computed Properties
 
     /// Formatted start time for display
@@ -164,6 +169,16 @@ struct GameCardView: View {
                 liveIndicator
             }
 
+            // Postponed indicator
+            if event.status == .postponed {
+                postponedBadge
+            }
+
+            // Canceled indicator
+            if event.status == .canceled {
+                canceledBadge
+            }
+
             // Sport badge with gradient accent
             Text(event.sport)
                 .font(.system(size: 10, weight: .bold))
@@ -258,6 +273,44 @@ struct GameCardView: View {
         }
     }
 
+    // MARK: - Postponed Badge
+
+    @ViewBuilder
+    private var postponedBadge: some View {
+        Text("POSTPONED")
+            .font(.system(size: 10, weight: .black))
+            .foregroundColor(Theme.warning)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Theme.warning.opacity(0.2))
+                    .overlay(
+                        Capsule()
+                            .stroke(Theme.warning.opacity(0.6), lineWidth: 1.5)
+                    )
+            )
+    }
+
+    // MARK: - Canceled Badge
+
+    @ViewBuilder
+    private var canceledBadge: some View {
+        Text("CANCELED")
+            .font(.system(size: 10, weight: .black))
+            .foregroundColor(Theme.danger)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Theme.danger.opacity(0.2))
+                    .overlay(
+                        Capsule()
+                            .stroke(Theme.danger.opacity(0.6), lineWidth: 1.5)
+                    )
+            )
+    }
+
     // MARK: - Combined Teams + Odds Section
 
     /// Fixed button size for consistent layout
@@ -266,52 +319,54 @@ struct GameCardView: View {
     @ViewBuilder
     private var teamsWithOddsSection: some View {
         VStack(spacing: 8) {
-            // Column headers
-            HStack(spacing: 8) {
-                // Team column header (empty)
-                Text("")
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            // Column headers - hide for canceled events
+            if !isEventCanceled {
+                HStack(spacing: 8) {
+                    // Team column header (empty)
+                    Text("")
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                if spreadMarket != nil {
-                    Text("SPREAD")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(Theme.textMuted)
-                        .tracking(0.8)
-                        .frame(width: oddsButtonSize)
-                }
+                    if spreadMarket != nil {
+                        Text("SPREAD")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Theme.textMuted)
+                            .tracking(0.8)
+                            .frame(width: oddsButtonSize)
+                    }
 
-                if moneylineMarket != nil {
-                    Text("ML")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(Theme.textMuted)
-                        .tracking(0.8)
-                        .frame(width: oddsButtonSize)
-                }
+                    if moneylineMarket != nil {
+                        Text("ML")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Theme.textMuted)
+                            .tracking(0.8)
+                            .frame(width: oddsButtonSize)
+                    }
 
-                if totalMarket != nil {
-                    Text("TOTAL")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(Theme.textMuted)
-                        .tracking(0.8)
-                        .frame(width: oddsButtonSize)
+                    if totalMarket != nil {
+                        Text("TOTAL")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Theme.textMuted)
+                            .tracking(0.8)
+                            .frame(width: oddsButtonSize)
+                    }
                 }
             }
 
-            // Away team row with odds
+            // Away team row with odds (pass nil markets if canceled to hide buttons)
             teamOddsRow(
                 teamName: event.awayTeam,
-                spreadMarket: spreadMarket,
-                moneylineMarket: moneylineMarket,
-                totalMarket: totalMarket,
+                spreadMarket: isEventCanceled ? nil : spreadMarket,
+                moneylineMarket: isEventCanceled ? nil : moneylineMarket,
+                totalMarket: isEventCanceled ? nil : totalMarket,
                 isAwayTeam: true
             )
 
-            // Home team row with odds
+            // Home team row with odds (pass nil markets if canceled to hide buttons)
             teamOddsRow(
                 teamName: event.homeTeam,
-                spreadMarket: spreadMarket,
-                moneylineMarket: moneylineMarket,
-                totalMarket: totalMarket,
+                spreadMarket: isEventCanceled ? nil : spreadMarket,
+                moneylineMarket: isEventCanceled ? nil : moneylineMarket,
+                totalMarket: isEventCanceled ? nil : totalMarket,
                 isAwayTeam: false
             )
         }
