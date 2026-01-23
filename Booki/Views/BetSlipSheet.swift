@@ -147,7 +147,7 @@ struct BetSlipSheet: View {
                 .padding(.horizontal)
                 .padding(.top, 16)
 
-                // Selections
+                // Selections (US-053: animated item transitions)
                 VStack(spacing: 12) {
                     ForEach(Array(betSlipManager.items.enumerated()), id: \.element.marketId) { index, item in
                         PremiumBetSlipItemCard(item: item, onRemove: {
@@ -155,9 +155,14 @@ struct BetSlipSheet: View {
                                 betSlipManager.remove(at: index)
                             }
                         })
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.9).combined(with: .opacity),
+                            removal: .scale(scale: 0.9).combined(with: .opacity).combined(with: .move(edge: .trailing))
+                        ))
                     }
                 }
                 .padding(.horizontal)
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: betSlipManager.count)
 
                 // Combined Parlay Odds (US-041)
                 if betSlipManager.betMode == .parlay && betSlipManager.count > 1 {

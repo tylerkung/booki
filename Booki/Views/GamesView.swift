@@ -199,9 +199,11 @@ struct GamesView: View {
                 gamesList
             }
 
-            // Floating bet slip indicator (US-037, US-040)
+            // Floating bet slip indicator (US-037, US-040, US-053)
+            // US-053: Animated appear/disappear transition
             if !betSlipManager.isEmpty {
                 betSlipIndicator
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .background(Theme.background)
@@ -542,13 +544,22 @@ struct GamesView: View {
 // MARK: - Sport Tab Button
 
 /// Button for sport filter tabs with selected state styling
+/// US-053: Enhanced with smooth selection animation
 struct SportTabButton: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
 
+    /// US-053: Press state for scale animation
+    @State private var isPressed: Bool = false
+
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            // US-053: Animate tab selection
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                action()
+            }
+        }) {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(isSelected ? .semibold : .medium)
@@ -557,8 +568,25 @@ struct SportTabButton: View {
                 .padding(.vertical, 8)
                 .background(isSelected ? Theme.accent : Theme.cardBackground)
                 .clipShape(Capsule())
+                // US-053: Scale animation on press
+                .scaleEffect(isPressed ? 0.95 : 1.0)
         }
         .buttonStyle(.plain)
+        // US-053: Smooth background/selection animation
+        .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isSelected)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        isPressed = true
+                    }
+                }
+                .onEnded { _ in
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        isPressed = false
+                    }
+                }
+        )
     }
 }
 

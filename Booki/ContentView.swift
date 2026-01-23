@@ -17,9 +17,13 @@ struct ContentView: View {
         if isPlayerMode, let player = selectedPlayer {
             // Player Mode UI
             playerModeView(player: player)
+                // US-053: Smooth transition when switching between modes
+                .transition(.opacity.animation(.easeInOut(duration: 0.2)))
         } else {
             // Bookie Mode UI (default)
             bookieModeView
+                // US-053: Smooth transition when switching between modes
+                .transition(.opacity.animation(.easeInOut(duration: 0.2)))
         }
     }
 

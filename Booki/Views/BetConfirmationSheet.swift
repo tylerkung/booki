@@ -252,15 +252,25 @@ struct BetConfirmationSheet: View {
         .background(.ultraThinMaterial)
     }
 
-    // MARK: - Success View
+    // MARK: - Success View (US-053: Enhanced celebration animation)
+
+    /// US-053: Outer ring pulse state
+    @State private var outerRingScale: CGFloat = 0.8
+    @State private var outerRingOpacity: Double = 0
 
     @ViewBuilder
     private var successView: some View {
         VStack(spacing: 24) {
             Spacer()
 
-            // Success animation
+            // Success animation (US-053: Enhanced with pulsing rings)
             ZStack {
+                // Outer expanding ring
+                Circle()
+                    .stroke(Color.green.opacity(outerRingOpacity), lineWidth: 3)
+                    .frame(width: 140, height: 140)
+                    .scaleEffect(outerRingScale)
+
                 Circle()
                     .fill(Color.green.opacity(0.1))
                     .frame(width: 120, height: 120)
@@ -276,9 +286,20 @@ struct BetConfirmationSheet: View {
                     .scaleEffect(checkmarkScale)
             }
             .onAppear {
+                // US-053: Staggered celebration animation
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                     showCheckmark = true
                     checkmarkScale = 1.0
+                }
+                // Outer ring pulse
+                withAnimation(.easeOut(duration: 0.6)) {
+                    outerRingScale = 1.5
+                    outerRingOpacity = 0.5
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.easeOut(duration: 0.4)) {
+                        outerRingOpacity = 0
+                    }
                 }
             }
 

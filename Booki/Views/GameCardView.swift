@@ -529,6 +529,7 @@ struct GameCardView: View {
 
 /// Reusable odds button with pill/capsule shape, selection state, and tap feedback
 /// US-050: Premium sportsbook styling with bright accent for selected state
+/// US-053: Enhanced animations for tap and selection highlight
 struct OddsButton: View {
     let topLabel: String?
     let odds: Int
@@ -536,6 +537,8 @@ struct OddsButton: View {
     let action: () -> Void
 
     @State private var isPressed: Bool = false
+    /// US-053: Track when selection state changes to show highlight pulse
+    @State private var showSelectionHighlight: Bool = false
 
     private var formattedOdds: String {
         odds >= 0 ? "+\(odds)" : "\(odds)"
@@ -543,13 +546,20 @@ struct OddsButton: View {
 
     var body: some View {
         Button(action: {
-            // Trigger tap animation
+            // US-053: Trigger tap animation with spring
             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                 isPressed = true
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                     isPressed = false
+                }
+            }
+            // US-053: Show selection highlight pulse when adding to slip
+            if !isSelected {
+                showSelectionHighlight = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showSelectionHighlight = false
                 }
             }
             action()
@@ -593,6 +603,12 @@ struct OddsButton: View {
                         lineWidth: isSelected ? 2 : 0.5
                     )
             )
+            // US-053: Selection highlight pulse overlay
+            .overlay(
+                Capsule()
+                    .fill(Theme.accent.opacity(showSelectionHighlight ? 0.4 : 0))
+                    .animation(.easeOut(duration: 0.3), value: showSelectionHighlight)
+            )
             // Glow effect for selected state
             .shadow(
                 color: isSelected ? Theme.accent.opacity(0.4) : Color.clear,
@@ -601,6 +617,8 @@ struct OddsButton: View {
                 y: 0
             )
             .scaleEffect(isPressed ? 0.92 : 1.0)
+            // US-053: Animate selection state changes
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isSelected)
         }
         .buttonStyle(.plain)
     }
