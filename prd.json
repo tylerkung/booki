@@ -1,7 +1,7 @@
 {
   "project": "Booki",
-  "branchName": "ralph/booki-v3.0",
-  "description": "Game Card Totals & Layout Update - Add Totals column to game cards, remove All Markets toggle, fix bet slip UX issues, correct balance display logic, and standardize card backgrounds. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift) - do NOT revert to default iOS styling.",
+  "branchName": "ralph/bet-slip-layout",
+  "description": "Bet Slip Layout Improvements - Full height modal, sticky bottom section with stake/submit, per-bet stakes for singles mode, remove quick-pick buttons. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
   "techStack": {
     "platform": "iOS 17+",
     "language": "Swift 5.9+",
@@ -12,136 +12,114 @@
   "userStories": [
     {
       "id": "US-001",
-      "title": "Remove All Markets Toggle Button",
-      "description": "As a developer, I want to remove the All Markets expand button from game cards so the card is cleaner and additional markets are accessed via the detail view.",
+      "title": "Change Bet Slip to Full Height Modal",
+      "description": "As a player, I want the bet slip to open to full height so I can see all my selections without scrolling.",
       "acceptanceCriteria": [
-        "Remove expandButton view builder from GameCardView.swift",
-        "Remove isExpanded state variable",
-        "Remove expandedMarketsSection view builder",
-        "Remove the conditional rendering of expandedMarketsSection in the body",
-        "Card now shows only the main betting grid (will have Spread, ML, Total after US-004)",
-        "Tapping the card still navigates to MarketSelectionView for full market access",
+        "Locate where BetSlipSheet presentation detents are configured (in GamesView.swift)",
+        "Change .presentationDetents([.medium, .large]) to .presentationDetents([.large])",
+        "Bet slip now opens to full modal height (100% of stacked modal)",
         "Project builds and runs in Simulator"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Modify existing GameCardView.swift - just remove expand functionality, don't add Total column yet"
+      "notes": "Simple change in GamesView.swift where BetSlipSheet is presented"
     },
     {
       "id": "US-002",
-      "title": "Create TotalButton Component and Helper",
-      "description": "As a developer, I need a TotalButton component styled like SpreadButton with line value as main text and odds as secondary.",
+      "title": "Remove Quick-Pick Stake Buttons",
+      "description": "As a player, I want a cleaner stake entry without preset amount buttons.",
       "acceptanceCriteria": [
-        "Create formatTotalValue function that extracts line from 'Over 220.5' -> 'o220.5' or 'Under 220.5' -> 'u220.5'",
-        "Create TotalButton struct in GameCardView.swift modeled after SpreadButton",
-        "Button takes totalValue (e.g., 'o220.5'), odds (Int), isSelected (Bool), and action closure",
-        "Main text shows totalValue (font size 14, black weight)",
-        "Secondary text shows formatted odds below (font size 10, semibold)",
-        "Use same selected/unselected styling as SpreadButton (gradients, borders, animations)",
+        "In BetSlipSheet.swift stakeEntrySection, remove the quick-pick buttons HStack (ForEach with PremiumQuickPickButton)",
+        "Keep the custom amount input field ($ text field with Theme styling)",
+        "Optionally remove PremiumQuickPickButton struct if no longer used elsewhere",
+        "Stake section now shows only the text input field",
         "Project builds and runs in Simulator"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Create component first before integrating - model after SpreadButton structure"
+      "passes": false,
+      "notes": "Remove the HStack with ForEach(BetSlipManager.quickPickAmounts) in stakeEntrySection"
     },
     {
       "id": "US-003",
-      "title": "Reduce Button Sizes for Three-Column Layout",
-      "description": "As a developer, I need to adjust button and text sizes so three columns fit comfortably on screen.",
+      "title": "Add Per-Item Stake Storage to BetSlipManager",
+      "description": "As a developer, I need to store individual stakes per bet item for singles mode.",
       "acceptanceCriteria": [
-        "Reduce oddsButtonSize from 72 to 60 in GameCardView",
-        "In SpreadButton: reduce main text from 16 to 14, secondary text from 11 to 10",
-        "In MLButton: reduce text from 16 to 14",
-        "In TotalButton (from US-002): use 14 for main, 10 for secondary",
-        "Reduce team name font size from 15 to 14 in teamOddsRow",
+        "Add itemStakes dictionary [UUID: Decimal] to BetSlipManager to store per-item stakes",
+        "Add methods: setItemStake(marketId: UUID, stake: Decimal), getItemStake(marketId: UUID) -> Decimal",
+        "Add computed property individualTotalStake that sums all item stakes",
+        "Add computed property individualTotalPayout that calculates total payout from individual stakes",
+        "When an item is removed, also remove its stake from itemStakes",
+        "When clearAll() is called, also clear itemStakes",
         "Project builds and runs in Simulator"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Size adjustments to make room for third column"
+      "passes": false,
+      "notes": "Modify BetSlipManager.swift - foundation for per-bet stakes in singles mode"
     },
     {
       "id": "US-004",
-      "title": "Add Total Column to Game Card",
-      "description": "As a player, I want to see and tap Over/Under totals directly on the game card alongside Spread and ML.",
+      "title": "Add Stake Input to Bet Cards in Singles Mode",
+      "description": "As a player betting singles, I want to enter a different stake for each bet individually.",
       "acceptanceCriteria": [
-        "Add 'TOTAL' header in teamsWithOddsSection after ML column (same styling as SPREAD/ML headers)",
-        "TOTAL header only shows if totalMarket is available",
-        "Modify teamOddsRow to accept totalMarket parameter",
-        "Away team row (top) shows Over button using TotalButton",
-        "Home team row (bottom) shows Under button using TotalButton",
-        "TotalButton receives correct line value from formatTotalValue (sideA for Over, sideB for Under)",
-        "Tapping Over/Under adds selection to bet slip via onSelectOdds callback",
-        "Selection state reflects correctly (highlighted when in bet slip)",
-        "Column order is: Team Name | SPREAD | ML | TOTAL",
+        "Modify PremiumBetSlipItemCard to accept betMode and stake binding parameters",
+        "When betMode == .singles, show stake input field on each bet card",
+        "Stake input styled consistently ($ prefix, Theme.elevatedBackground, gold border when focused)",
+        "Show individual potential payout on each card based on that bet's stake and odds",
+        "Changes to stake update BetSlipManager.itemStakes via the binding",
         "Project builds and runs in Simulator"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "This integrates the TotalButton from US-002 into the game card layout"
+      "passes": false,
+      "notes": "Modify PremiumBetSlipItemCard struct to support inline stake entry"
     },
     {
       "id": "US-005",
-      "title": "Fix Bet Slip Segmented Control Tap Area",
-      "description": "As a player, I want to tap anywhere on the Singles/Parlay segment to switch modes, not just the text.",
+      "title": "Restructure Bet Slip with Sticky Bottom Section",
+      "description": "As a developer, I need to restructure the bet slip layout with scrollable top and sticky bottom.",
       "acceptanceCriteria": [
-        "Locate the Singles/Parlay segmented control (likely in BetSlipSheet.swift or BetConfirmationSheet.swift)",
-        "Add .contentShape(Rectangle()) to the segment buttons to expand tap area",
-        "Ensure entire segment button area is tappable, not just the text label",
-        "Both Singles and Parlay segments respond to taps on full button area",
+        "Restructure selectionsList to separate scrollable content from sticky bottom",
+        "Scrollable area contains: header with count, Singles/Parlay toggle, bet cards, parlay odds card (if parlay)",
+        "Create stickyBottomSection view builder for bottom content",
+        "Use VStack with Spacer or safeAreaInset to position sticky section at bottom",
+        "Add subtle divider (Rectangle with Theme.divider or subtle shadow) between scroll area and sticky section",
+        "Sticky section has Theme.cardBackground background",
         "Project builds and runs in Simulator"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "UX fix for segmented control - may need to examine multiple bet slip related files"
+      "passes": false,
+      "notes": "Major layout restructure - keep all existing components, just reorganize positioning"
     },
     {
       "id": "US-006",
-      "title": "Remove Redundant Review Screen from Bet Submission",
-      "description": "As a player, I want to submit my bet directly after entering my stake without an extra review step.",
+      "title": "Configure Sticky Section Content by Mode",
+      "description": "As a player, I want the sticky section to show appropriate controls based on bet mode.",
       "acceptanceCriteria": [
-        "Identify the review/confirmation step in bet submission flow (likely BetConfirmationSheet.swift)",
-        "Remove or bypass the intermediate review screen state",
-        "User enters stake and taps submit to place bet immediately",
-        "Confirmation feedback (success toast/alert) still shows after successful submission",
-        "Error handling still works for failed submissions",
+        "When betMode == .parlay: sticky section shows stake input, potential payout, Place Bet button",
+        "When betMode == .singles: sticky section shows total stake summary, total payout, Place Bet button",
+        "Stake validation warning appears in sticky section when applicable",
+        "Place Bet button uses existing submitSection styling",
+        "canSubmit logic works correctly for both modes",
         "Project builds and runs in Simulator"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Streamline bet submission - check BetConfirmationSheet for step/state management"
+      "passes": false,
+      "notes": "Conditional rendering in stickyBottomSection based on betSlipManager.betMode"
     },
     {
       "id": "US-007",
-      "title": "Fix Player Balance Display Logic",
-      "description": "As a player, I want the balance display to show positive when I'm in good standing and negative when I owe money.",
+      "title": "Update Submission Logic for Per-Bet Stakes",
+      "description": "As a developer, I need to update bet submission to use individual stakes for singles mode.",
       "acceptanceCriteria": [
-        "Review balance calculation in BalanceService.swift",
-        "Positive balance = player is in credit (good standing, bookie owes player)",
-        "Negative balance = player owes money to the bookie (debt)",
-        "Update any inverted logic in balance calculations or display",
-        "Update AppHeaderView.swift balance color logic if needed: green for positive (credit), red for negative (debt)",
-        "Verify AccountView.swift shows balance correctly",
+        "Modify submitBets() to read from itemStakes for singles mode",
+        "For each item in singles mode, get stake from betSlipManager.getItemStake(item.marketId)",
+        "Parlay mode continues to use the shared betSlipManager.stake",
+        "Each bet submitted with its correct individual stake amount",
+        "Success count and error handling work correctly with new stake structure",
         "Project builds and runs in Simulator"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Check BalanceService, AppHeaderView, AccountView for balance semantics"
-    },
-    {
-      "id": "US-008",
-      "title": "Standardize Card Background Colors",
-      "description": "As a user, I want consistent card background styling across the app using the Account page card color.",
-      "acceptanceCriteria": [
-        "Identify the card background color used on Player AccountView (should be Theme.cardBackground)",
-        "Update Settings tab (PlayerSettingsView or PlayerSettingsContent) to use Theme.cardBackground for section backgrounds",
-        "Update Bookie dashboard cards (BookieDashboardView or similar) to use Theme.cardBackground",
-        "All card/section backgrounds should use consistent Theme.cardBackground color",
-        "Project builds and runs in Simulator"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Ensure visual consistency - may need to check multiple view files"
+      "passes": false,
+      "notes": "Update submitBets() function in BetSlipSheet.swift"
     }
   ]
 }
