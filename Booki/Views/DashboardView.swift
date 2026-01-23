@@ -74,6 +74,38 @@ struct DashboardView: View {
                 } header: {
                     Text("Top Risk Events")
                 }
+
+                // MARK: - Settlements Section
+                Section {
+                    NavigationLink {
+                        WeeklySettlementView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "calendar.badge.clock")
+                                .font(.title2)
+                                .foregroundStyle(Theme.accent)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Weekly Settlement")
+                                    .font(.subheadline)
+                                    .foregroundStyle(Theme.textPrimary)
+
+                                Text("View summary and export")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                } header: {
+                    Text("Settlements")
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)

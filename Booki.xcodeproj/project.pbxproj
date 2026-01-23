@@ -51,6 +51,7 @@
 		8A1234560042 /* PlayerLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550043 /* PlayerLoginView.swift */; };
 		8A1234560043 /* GradeEventSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550044 /* GradeEventSheet.swift */; };
 		8A1234560044 /* PaymentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550045 /* PaymentSheet.swift */; };
+		8A1234560045 /* WeeklySettlementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550046 /* WeeklySettlementView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -100,6 +101,7 @@
 		8A1234550043 /* PlayerLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerLoginView.swift; sourceTree = "<group>"; };
 		8A1234550044 /* GradeEventSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradeEventSheet.swift; sourceTree = "<group>"; };
 		8A1234550045 /* PaymentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentSheet.swift; sourceTree = "<group>"; };
+		8A1234550046 /* WeeklySettlementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySettlementView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -210,6 +212,7 @@
 				8A1234550043 /* PlayerLoginView.swift */,
 				8A1234550044 /* GradeEventSheet.swift */,
 				8A1234550045 /* PaymentSheet.swift */,
+				8A1234550046 /* WeeklySettlementView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -381,6 +384,7 @@
 				8A1234560042 /* PlayerLoginView.swift in Sources */,
 				8A1234560043 /* GradeEventSheet.swift in Sources */,
 				8A1234560044 /* PaymentSheet.swift in Sources */,
+				8A1234560045 /* WeeklySettlementView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
