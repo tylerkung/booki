@@ -376,3 +376,16 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Expanding ring effect: animate both `scaleEffect` and `opacity` with staggered timing
   - Keep animations subtle - spring animations with damping 0.7-0.8 feel responsive without being bouncy
 ---
+
+## 2026-01-22 - US-054
+- **What was implemented:** Added username and passwordHash fields to Player model for future authentication
+- **Files changed:**
+  - `Booki/Models/Player.swift` (modified - added optional username and passwordHash fields)
+  - `Booki/Services/PlayerService.swift` (modified - addPlayer now accepts optional username parameter)
+  - `Booki/Views/PlayersListView.swift` (modified - AddPlayerSheet has new Authentication section with username field)
+- **Learnings for future iterations:**
+  - SwiftData handles optional fields with nil default gracefully - no explicit migration needed
+  - Use separate Form Section for authentication fields to keep UI organized
+  - passwordHash field exists but is never set through UI (will be set programmatically when auth is implemented)
+  - Use `.textContentType(.username)` for username fields to enable autofill suggestions
+---
