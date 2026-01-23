@@ -8,8 +8,11 @@ import SwiftData
 /// US-043: Bet Confirmation Flow
 /// US-051: Style Bet Slip with Premium Feel
 struct BetSlipSheet: View {
+    @Environment(\.modelContext) private var modelContext
     @ObservedObject private var betSlipManager = BetSlipManager.shared
     @Environment(\.dismiss) private var dismiss
+    @Query private var bets: [Bet]
+    @Query private var ledgerEntries: [LedgerEntry]
 
     /// Available credit for stake validation (US-042)
     let availableCredit: Decimal
@@ -20,8 +23,17 @@ struct BetSlipSheet: View {
     /// Custom stake text for input field (US-042)
     @State private var stakeText: String = ""
 
-    /// Show confirmation sheet (US-043)
-    @State private var showingConfirmation: Bool = false
+    /// State for submission process (US-006: Direct submission from bet slip)
+    @State private var isSubmitting: Bool = false
+    @State private var submissionComplete: Bool = false
+    @State private var submissionError: String?
+    @State private var submittedCount: Int = 0
+
+    /// Animation state for success (US-006)
+    @State private var showCheckmark: Bool = false
+    @State private var checkmarkScale: CGFloat = 0
+    @State private var outerRingScale: CGFloat = 0.8
+    @State private var outerRingOpacity: Double = 0
 
     /// Initialize with available credit for validation and optional player
     init(availableCredit: Decimal = Decimal.greatestFiniteMagnitude, player: Player? = nil) {
@@ -38,31 +50,38 @@ struct BetSlipSheet: View {
                 // Dark background
                 Theme.background.ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    // Accent border at top
-                    Theme.accent
-                        .frame(height: 3)
+                // US-006: Show success view after submission completes
+                if submissionComplete {
+                    successView
+                } else {
+                    VStack(spacing: 0) {
+                        // Accent border at top
+                        Theme.accent
+                            .frame(height: 3)
 
-                    if betSlipManager.isEmpty {
-                        emptyState
-                    } else {
-                        selectionsList
+                        if betSlipManager.isEmpty {
+                            emptyState
+                        } else {
+                            selectionsList
+                        }
                     }
                 }
             }
-            .navigationTitle("Bet Slip")
+            .navigationTitle(submissionComplete ? "Success" : "Bet Slip")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Theme.cardBackground, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
-                        dismiss()
+                    if !submissionComplete {
+                        Button("Close") {
+                            dismiss()
+                        }
+                        .foregroundStyle(Theme.textSecondary)
                     }
-                    .foregroundStyle(Theme.textSecondary)
                 }
 
-                if !betSlipManager.isEmpty {
+                if !betSlipManager.isEmpty && !submissionComplete {
                     ToolbarItem(placement: .destructiveAction) {
                         Button("Clear All", role: .destructive) {
                             withAnimation {
@@ -70,7 +89,18 @@ struct BetSlipSheet: View {
                             }
                         }
                         .foregroundStyle(Theme.danger)
+                        .disabled(isSubmitting)
                     }
+                }
+            }
+            .alert("Submission Error", isPresented: .init(
+                get: { submissionError != nil },
+                set: { if !$0 { submissionError = nil } }
+            )) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                if let error = submissionError {
+                    Text(error)
                 }
             }
         }
@@ -182,20 +212,15 @@ struct BetSlipSheet: View {
                         .padding(.horizontal)
                 }
 
-                // Review & Confirm Button (US-043)
+                // Submit Button (US-006: Direct submission without review screen)
                 if canSubmit {
-                    reviewConfirmSection
+                    submitSection
                         .padding(.horizontal)
                         .padding(.bottom, 16)
                 }
             }
         }
         .background(Theme.background)
-        .sheet(isPresented: $showingConfirmation) {
-            if let player = player {
-                BetConfirmationSheet(player: player)
-            }
-        }
     }
 
     // MARK: - Parlay Odds Card
@@ -246,17 +271,20 @@ struct BetSlipSheet: View {
         return betSlipManager.isStakeValid(availableCredit: availableCredit)
     }
 
-    // MARK: - Review & Confirm Section (US-043)
+    // MARK: - Submit Section (US-006: Direct submission without review screen)
 
     @ViewBuilder
-    private var reviewConfirmSection: some View {
-        Button(action: {
-            showingConfirmation = true
-        }) {
+    private var submitSection: some View {
+        Button(action: submitBets) {
             HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
+                if isSubmitting {
+                    ProgressView()
+                        .tint(Theme.background)
+                        .padding(.trailing, 4)
+                }
+                Image(systemName: isSubmitting ? "hourglass" : "checkmark.circle.fill")
                     .font(.title3)
-                Text("Review & Confirm")
+                Text(isSubmitting ? "Submitting..." : "Place Bet")
                     .font(.headline)
                     .fontWeight(.bold)
             }
@@ -282,6 +310,7 @@ struct BetSlipSheet: View {
             .shadow(color: Theme.accent.opacity(0.4), radius: 12, x: 0, y: 4)
         }
         .buttonStyle(PremiumButtonStyle())
+        .disabled(isSubmitting)
     }
 
     // MARK: - Stake Entry Section (US-042)
@@ -446,6 +475,164 @@ struct BetSlipSheet: View {
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Theme.border, lineWidth: 0.5)
             )
+        }
+    }
+
+    // MARK: - Success View (US-006: Direct submission with celebration animation)
+
+    @ViewBuilder
+    private var successView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            // Success animation with pulsing rings
+            ZStack {
+                // Outer expanding ring
+                Circle()
+                    .stroke(Theme.accent.opacity(outerRingOpacity), lineWidth: 3)
+                    .frame(width: 140, height: 140)
+                    .scaleEffect(outerRingScale)
+
+                Circle()
+                    .fill(Theme.accent.opacity(0.1))
+                    .frame(width: 120, height: 120)
+
+                Circle()
+                    .fill(Theme.accent.opacity(0.2))
+                    .frame(width: 100, height: 100)
+                    .scaleEffect(showCheckmark ? 1 : 0.5)
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 70))
+                    .foregroundStyle(Theme.accent)
+                    .scaleEffect(checkmarkScale)
+            }
+            .onAppear {
+                // Staggered celebration animation
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                    showCheckmark = true
+                    checkmarkScale = 1.0
+                }
+                // Outer ring pulse
+                withAnimation(.easeOut(duration: 0.6)) {
+                    outerRingScale = 1.5
+                    outerRingOpacity = 0.5
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.easeOut(duration: 0.4)) {
+                        outerRingOpacity = 0
+                    }
+                }
+            }
+
+            VStack(spacing: 8) {
+                Text("Request Submitted!")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Theme.textPrimary)
+
+                Text("\(submittedCount) bet\(submittedCount == 1 ? "" : "s") recorded and pending review")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Spacer()
+
+            // Done button
+            Button(action: {
+                dismiss()
+            }) {
+                Text("Done")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Theme.accent)
+                    .foregroundStyle(Theme.background)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .padding()
+        }
+        .padding()
+        .background(Theme.background)
+    }
+
+    // MARK: - Submission Logic (US-006: Direct submission from bet slip)
+
+    private func submitBets() {
+        guard canSubmit, let player = player else { return }
+
+        isSubmitting = true
+
+        // Get player's existing bets and ledger entries
+        let playerBets = bets.filter { $0.player?.id == player.id }
+        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+
+        var successCount = 0
+        var errors: [String] = []
+
+        // Generate a single ticketId for all bets in this submission
+        let ticketId = UUID()
+
+        // Submit each bet from the slip
+        for item in betSlipManager.items {
+            // Calculate stake for this bet
+            let betStake: Decimal
+            switch betSlipManager.betMode {
+            case .singles:
+                betStake = betSlipManager.stake
+            case .parlay:
+                // For parlay, distribute stake across legs
+                betStake = betSlipManager.stake / Decimal(betSlipManager.count)
+            }
+
+            let result = BetService.submitBet(
+                player: player,
+                eventId: item.eventId.uuidString,
+                market: item.marketType.rawValue,
+                side: item.side,
+                odds: item.odds,
+                stake: betStake,
+                existingBets: playerBets,
+                ledgerEntries: playerLedgerEntries,
+                ticketId: ticketId
+            )
+
+            switch result {
+            case .success(let bet):
+                modelContext.insert(bet)
+                successCount += 1
+            case .failure(let error):
+                switch error {
+                case .insufficientCredit(let available, let required):
+                    errors.append("Insufficient credit for \(item.side): Need \(formatCurrency(required)), have \(formatCurrency(available))")
+                case .playerNotActive(let status):
+                    errors.append("Account is \(status.rawValue)")
+                default:
+                    errors.append("Failed to submit \(item.side)")
+                }
+            }
+        }
+
+        isSubmitting = false
+
+        if successCount > 0 {
+            submittedCount = successCount
+            // Clear bet slip and stake
+            betSlipManager.clearAll()
+            betSlipManager.stake = 0
+
+            // Show success animation
+            withAnimation(.easeInOut(duration: 0.3)) {
+                submissionComplete = true
+            }
+        }
+
+        if !errors.isEmpty && successCount == 0 {
+            submissionError = errors.joined(separator: "\n")
+        } else if !errors.isEmpty {
+            // Partial success - some bets failed
+            submissionError = "\(successCount) bets submitted. Some failed:\n" + errors.joined(separator: "\n")
         }
     }
 
