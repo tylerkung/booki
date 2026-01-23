@@ -21,16 +21,43 @@ enum TransactionFilter: String, CaseIterable, Identifiable {
     }
 }
 
+/// Filter options for bet history (player view)
+enum BetHistoryFilter: String, CaseIterable, Identifiable {
+    case active = "Active"
+    case settled = "Settled"
+    case all = "All"
+
+    var id: String { rawValue }
+
+    /// Returns the bet statuses that match this filter
+    var matchingStatuses: [BetStatus] {
+        switch self {
+        case .active:
+            // Active = pending + accepted (+ readyToGrade since it's still in-play)
+            return [.pending, .accepted, .readyToGrade]
+        case .settled:
+            // Settled = won, lost, push, void (graded bets awaiting settlement also shown here)
+            return [.graded, .settled, .void]
+        case .all:
+            return BetStatus.allCases
+        }
+    }
+}
+
 /// Enhanced account summary view for players showing balance, credit utilization, and quick stats
 struct AccountView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allBets: [Bet]
     @Query private var allLedgerEntries: [LedgerEntry]
+    @Query private var allEvents: [Event]
 
     let player: Player
 
     // Transaction history filter state
     @State private var selectedTransactionFilter: TransactionFilter = .all
+
+    // Bet history filter state
+    @State private var selectedBetFilter: BetHistoryFilter = .active
 
     // MARK: - Computed Properties
 
@@ -101,6 +128,13 @@ struct AccountView: View {
         return Double(truncating: (used / player.creditLimit) as NSDecimalNumber)
     }
 
+    /// Filtered bets based on selected filter, sorted by date (newest first)
+    private var filteredPlayerBets: [Bet] {
+        playerBets
+            .filter { selectedBetFilter.matchingStatuses.contains($0.status) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
     /// Color for balance display
     private var balanceColor: Color {
         // Positive balance = player owes bookie (red)
@@ -121,6 +155,9 @@ struct AccountView: View {
 
                 // Quick Stats Section
                 quickStatsSection
+
+                // My Bets Section
+                myBetsSection
 
                 // Transaction History Section
                 transactionHistorySection
@@ -280,6 +317,72 @@ struct AccountView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(color.opacity(0.1))
         )
+    }
+
+    // MARK: - My Bets Section
+
+    private var myBetsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("My Bets")
+                .font(.headline)
+
+            // Filter picker (Active, Settled, All)
+            Picker("Filter", selection: $selectedBetFilter) {
+                ForEach(BetHistoryFilter.allCases) { filter in
+                    Text(filter.rawValue).tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            // Bets list
+            if filteredPlayerBets.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "ticket")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                    Text("No bets")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if selectedBetFilter != .all {
+                        Text("Try changing the filter")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(filteredPlayerBets) { bet in
+                        NavigationLink {
+                            AccountBetDetailView(bet: bet)
+                        } label: {
+                            AccountBetRowView(bet: bet, eventName: eventName(for: bet))
+                        }
+                        .buttonStyle(.plain)
+
+                        if bet.id != filteredPlayerBets.last?.id {
+                            Divider()
+                                .padding(.leading, 52)
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+
+    /// Get event name for a bet
+    private func eventName(for bet: Bet) -> String {
+        if let event = allEvents.first(where: { $0.id.uuidString == bet.eventId }) {
+            return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        return "Event \(bet.eventId.prefix(8))"
     }
 
     // MARK: - Transaction History Section
@@ -452,6 +555,328 @@ struct TransactionRowView: View {
                 .foregroundStyle(amountColor)
         }
         .padding(.vertical, 12)
+    }
+}
+
+// MARK: - Player Bet Row View
+
+/// Row view for displaying a bet in the player's bet history
+struct AccountBetRowView: View {
+    let bet: Bet
+    let eventName: String
+
+    /// Status color based on bet status
+    private var statusColor: Color {
+        switch bet.status {
+        case .pending:
+            return .orange
+        case .accepted, .readyToGrade:
+            return .blue
+        case .graded, .settled:
+            if let result = bet.gradeResult {
+                switch result {
+                case .win: return .green
+                case .loss: return .red
+                case .push: return .orange
+                }
+            }
+            return .green
+        case .declined:
+            return .red
+        case .void:
+            return .gray
+        }
+    }
+
+    /// Status display text
+    private var statusText: String {
+        switch bet.status {
+        case .pending:
+            return "Pending"
+        case .accepted, .readyToGrade:
+            return "Open"
+        case .graded, .settled:
+            if let result = bet.gradeResult {
+                return result.rawValue.capitalized
+            }
+            return "Settled"
+        case .declined:
+            return "Declined"
+        case .void:
+            return "Void"
+        }
+    }
+
+    /// Formatted odds
+    private var formattedOdds: String {
+        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
+    }
+
+    /// Formatted stake
+    private var formattedStake: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
+    }
+
+    /// Formatted date
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: bet.createdAt)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Status indicator circle
+            Circle()
+                .fill(statusColor)
+                .frame(width: 12, height: 12)
+                .frame(width: 40)
+
+            // Bet info
+            VStack(alignment: .leading, spacing: 4) {
+                // Event name
+                Text(eventName)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+
+                // Side and odds
+                HStack(spacing: 4) {
+                    Text(bet.side)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("•")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+
+                    Text(formattedOdds)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("•")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+
+                    Text(formattedDate)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Status badge and stake
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(statusText)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(statusColor)
+                    .clipShape(Capsule())
+
+                Text(formattedStake)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            // Chevron indicator
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 12)
+    }
+}
+
+// MARK: - Player Bet Detail View
+
+/// Detail view for a player to see full bet information
+struct AccountBetDetailView: View {
+    @Query private var events: [Event]
+
+    let bet: Bet
+
+    /// Event for this bet
+    private var event: Event? {
+        events.first { $0.id.uuidString == bet.eventId }
+    }
+
+    /// Event name
+    private var eventName: String {
+        if let event = event {
+            return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        return "Event \(bet.eventId.prefix(8))"
+    }
+
+    /// Formatted odds
+    private var formattedOdds: String {
+        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
+    }
+
+    /// Formatted stake
+    private var formattedStake: String {
+        formatCurrency(bet.stake)
+    }
+
+    /// Potential payout (profit only)
+    private var potentialPayout: Decimal {
+        let decimalOdds: Decimal
+        if bet.odds > 0 {
+            decimalOdds = Decimal(bet.odds) / 100
+        } else {
+            decimalOdds = 100 / Decimal(abs(bet.odds))
+        }
+        return bet.stake * decimalOdds
+    }
+
+    /// Total return (stake + profit)
+    private var totalReturn: Decimal {
+        bet.stake + potentialPayout
+    }
+
+    /// Status color
+    private var statusColor: Color {
+        switch bet.status {
+        case .pending: return .orange
+        case .accepted, .readyToGrade: return .blue
+        case .declined: return .red
+        case .graded, .settled:
+            if let result = bet.gradeResult {
+                switch result {
+                case .win: return .green
+                case .loss: return .red
+                case .push: return .orange
+                }
+            }
+            return .green
+        case .void: return .gray
+        }
+    }
+
+    /// Status text
+    private var statusText: String {
+        switch bet.status {
+        case .pending: return "Pending Approval"
+        case .accepted: return "Open"
+        case .readyToGrade: return "Awaiting Result"
+        case .graded: return "Graded"
+        case .settled:
+            if let result = bet.gradeResult {
+                return result.rawValue.capitalized
+            }
+            return "Settled"
+        case .declined: return "Declined"
+        case .void: return "Void"
+        }
+    }
+
+    /// Grade result color
+    private var gradeResultColor: Color {
+        guard let result = bet.gradeResult else { return .primary }
+        switch result {
+        case .win: return .green
+        case .loss: return .red
+        case .push: return .orange
+        }
+    }
+
+    /// Formatted date
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: bet.createdAt)
+    }
+
+    var body: some View {
+        List {
+            // Status Section
+            Section {
+                HStack {
+                    Text("Status")
+                    Spacer()
+                    Text(statusText)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(statusColor)
+                        .clipShape(Capsule())
+                }
+
+                if let gradeResult = bet.gradeResult {
+                    HStack {
+                        Text("Result")
+                        Spacer()
+                        Text(gradeResult.rawValue.capitalized)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(gradeResultColor)
+                    }
+                }
+            }
+
+            // Event Section
+            Section("Event") {
+                LabeledContent("Matchup", value: eventName)
+
+                if let event = event {
+                    LabeledContent("Sport", value: event.sport)
+                    LabeledContent("League", value: event.league)
+
+                    let eventFormatter = DateFormatter()
+                    let _ = eventFormatter.dateStyle = .medium
+                    let _ = eventFormatter.timeStyle = .short
+                    LabeledContent("Start Time", value: eventFormatter.string(from: event.startTime))
+
+                    LabeledContent("Event Status", value: event.status.rawValue.capitalized)
+
+                    if let finalScore = event.finalScore {
+                        LabeledContent("Final Score", value: finalScore)
+                    }
+                }
+            }
+
+            // Bet Details Section
+            Section("Your Bet") {
+                LabeledContent("Market", value: bet.market)
+                LabeledContent("Selection", value: bet.side)
+                LabeledContent("Odds", value: formattedOdds)
+                LabeledContent("Stake", value: formattedStake)
+            }
+
+            // Payout Section
+            Section("Potential Return") {
+                LabeledContent("Profit if Win", value: formatCurrency(potentialPayout))
+                    .foregroundStyle(.green)
+                LabeledContent("Total Return", value: formatCurrency(totalReturn))
+                    .fontWeight(.semibold)
+            }
+
+            // Details Section
+            Section("Details") {
+                LabeledContent("Placed", value: formattedDate)
+                LabeledContent("Bet ID", value: String(bet.id.uuidString.prefix(8)) + "...")
+                    .font(.caption)
+            }
+        }
+        .navigationTitle("Bet Details")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// Format currency helper
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 }
 
