@@ -6,6 +6,8 @@ enum GradingServiceError: Error, Equatable {
     case betNotGraded
     case playerRequired
     case alreadySettled
+    case notSettled
+    case noSettlementEntryFound
 }
 
 /// Service for grading and settling bets
@@ -65,6 +67,48 @@ enum GradingService {
         bet.status = .settled
 
         return .success(ledgerEntry)
+    }
+
+    // MARK: - Reversal
+
+    /// Reverses a settled bet by creating a reversal ledger entry
+    /// The bet status changes back to 'graded' so it can be re-settled if needed
+    /// - Parameters:
+    ///   - bet: The bet to reverse (must be settled)
+    ///   - ledgerEntries: All ledger entries to find the original settlement
+    /// - Returns: Result with the created reversal LedgerEntry on success, or GradingServiceError on failure
+    static func reverseBet(_ bet: Bet, ledgerEntries: [LedgerEntry]) -> Result<LedgerEntry, GradingServiceError> {
+        guard bet.status == .settled else {
+            return .failure(.notSettled)
+        }
+
+        guard let player = bet.player else {
+            return .failure(.playerRequired)
+        }
+
+        // Find the original settlement entry for this bet
+        guard let settlementEntry = ledgerEntries.first(where: { entry in
+            entry.bet?.id == bet.id && entry.type == .settlement
+        }) else {
+            return .failure(.noSettlementEntryFound)
+        }
+
+        // Create reversal entry that negates the original settlement
+        let reversalAmount = -settlementEntry.amount
+        let description = "Reversal of: \(settlementEntry.entryDescription)"
+
+        let reversalEntry = LedgerEntry(
+            amount: reversalAmount,
+            type: .reversal,
+            entryDescription: description,
+            player: player,
+            bet: bet
+        )
+
+        // Transition bet back to graded status (can be re-settled)
+        bet.status = .graded
+
+        return .success(reversalEntry)
     }
 
     // MARK: - Private Helpers

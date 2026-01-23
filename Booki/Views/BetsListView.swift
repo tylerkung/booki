@@ -198,11 +198,13 @@ struct BetDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query private var events: [Event]
+    @Query private var ledgerEntries: [LedgerEntry]
 
     let bet: Bet
 
     @State private var showingVoidConfirmation = false
     @State private var showingSettleConfirmation = false
+    @State private var showingReverseConfirmation = false
 
     // MARK: - Computed Properties
 
@@ -385,17 +387,45 @@ struct BetDetailView: View {
                 Text("This will create a ledger entry for the settlement.")
             }
         }
+        .confirmationDialog(
+            "Reverse this settlement?",
+            isPresented: $showingReverseConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Reverse Settlement", role: .destructive) {
+                reverseBet()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("\(reversalImpactDescription) The bet will return to 'graded' status and can be re-settled if needed.")
+        }
     }
 
     // MARK: - Actions View
 
     private var shouldShowActions: Bool {
         switch bet.status {
-        case .pending, .accepted, .graded:
+        case .pending, .accepted, .graded, .settled:
             return true
         default:
             return false
         }
+    }
+
+    /// Calculate the balance impact description for reversal warning
+    private var reversalImpactDescription: String {
+        if let settlementEntry = ledgerEntries.first(where: { $0.bet?.id == bet.id && $0.type == .settlement }) {
+            let amount = settlementEntry.amount
+            let formattedAmount = formatCurrency(abs(amount))
+            if amount > 0 {
+                return "This will remove \(formattedAmount) from the player's balance."
+            } else if amount < 0 {
+                return "This will add \(formattedAmount) to the player's balance."
+            } else {
+                return "This will have no impact on the player's balance (push)."
+            }
+        }
+        return "This will reverse the settlement and adjust the player's balance."
     }
 
     @ViewBuilder
@@ -429,6 +459,13 @@ struct BetDetailView: View {
                 Label("Settle Bet", systemImage: "dollarsign.circle.fill")
             }
             .tint(.green)
+
+        case .settled:
+            Button(role: .destructive) {
+                showingReverseConfirmation = true
+            } label: {
+                Label("Reverse Settlement", systemImage: "arrow.uturn.backward.circle.fill")
+            }
 
         default:
             EmptyView()
@@ -474,6 +511,16 @@ struct BetDetailView: View {
             modelContext.insert(ledgerEntry)
         case .failure(let error):
             print("Failed to settle bet: \(error)")
+        }
+    }
+
+    private func reverseBet() {
+        let result = GradingService.reverseBet(bet, ledgerEntries: ledgerEntries)
+        switch result {
+        case .success(let reversalEntry):
+            modelContext.insert(reversalEntry)
+        case .failure(let error):
+            print("Failed to reverse bet: \(error)")
         }
     }
 
