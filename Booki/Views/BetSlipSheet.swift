@@ -232,7 +232,7 @@ struct BetSlipSheet: View {
         }
     }
 
-    // MARK: - Sticky Bottom Section (US-005)
+    // MARK: - Sticky Bottom Section (US-005, US-006)
 
     @ViewBuilder
     private var stickyBottomSection: some View {
@@ -244,12 +244,27 @@ struct BetSlipSheet: View {
                 .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: -2)
 
             VStack(spacing: 16) {
-                // Stake Entry Section (US-042)
-                stakeEntrySection
+                // US-006: Different content based on bet mode
+                switch betSlipManager.betMode {
+                case .parlay:
+                    // Parlay mode: stake input, potential payout, Place Bet button
+                    stakeEntrySection
 
-                // Payout Summary Section (US-042)
-                if betSlipManager.stake > 0 {
-                    payoutSummarySection
+                    if betSlipManager.stake > 0 {
+                        payoutSummarySection
+                    }
+
+                case .singles:
+                    // Singles mode: total stake summary (from per-bet stakes), total payout, Place Bet button
+                    // No stake entry here since stakes are entered per-card
+                    if betSlipManager.individualTotalStake > 0 {
+                        singlesSummarySection
+                    }
+
+                    // Stake validation warning for singles mode
+                    if betSlipManager.individualTotalStake > 0 && !betSlipManager.isIndividualStakeValid(availableCredit: availableCredit) {
+                        stakeValidationWarning
+                    }
                 }
 
                 // Submit Button (US-006: Direct submission without review screen)
@@ -262,6 +277,94 @@ struct BetSlipSheet: View {
             .padding(.bottom, 16)
             .background(Theme.cardBackground)
         }
+    }
+
+    // MARK: - Singles Summary Section (US-006)
+
+    @ViewBuilder
+    private var singlesSummarySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("SUMMARY")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(Theme.textMuted)
+                .tracking(1)
+
+            VStack(spacing: 0) {
+                // Total stake row (sum of individual bet stakes)
+                HStack {
+                    Text("Total Stake")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Text(formatCurrency(betSlipManager.individualTotalStake))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.textPrimary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
+                // Bet count
+                HStack {
+                    Text("\(betSlipManager.count) Bet\(betSlipManager.count == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textMuted)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+
+                // Divider
+                Rectangle()
+                    .fill(Theme.divider)
+                    .frame(height: 1)
+
+                // Potential payout row - Premium styled with green accent
+                HStack {
+                    Text("Potential Payout")
+                        .font(.headline)
+                        .foregroundStyle(Theme.textPrimary)
+                    Spacer()
+                    Text(formatCurrency(betSlipManager.individualTotalPayout))
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.accent)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
+                .background(
+                    LinearGradient(
+                        colors: [Theme.accent.opacity(0.1), Color.clear],
+                        startPoint: .trailing,
+                        endPoint: .leading
+                    )
+                )
+            }
+            .background(Theme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            )
+        }
+    }
+
+    // MARK: - Stake Validation Warning (US-006)
+
+    @ViewBuilder
+    private var stakeValidationWarning: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(Theme.warning)
+            Text("Total stake exceeds available credit (\(formatCurrency(availableCredit)))")
+                .font(.caption)
+                .foregroundStyle(Theme.warning)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Theme.warning.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     // MARK: - Parlay Odds Card
@@ -302,14 +405,22 @@ struct BetSlipSheet: View {
         )
     }
 
-    // MARK: - Can Submit Check (US-043)
+    // MARK: - Can Submit Check (US-043, US-006)
 
     /// Whether the bet slip is ready to submit
     private var canSubmit: Bool {
         guard !betSlipManager.isEmpty else { return false }
-        guard betSlipManager.stake > 0 else { return false }
         guard player != nil else { return false }
-        return betSlipManager.isStakeValid(availableCredit: availableCredit)
+
+        // US-006: Different validation based on bet mode
+        switch betSlipManager.betMode {
+        case .parlay:
+            guard betSlipManager.stake > 0 else { return false }
+            return betSlipManager.isStakeValid(availableCredit: availableCredit)
+        case .singles:
+            guard betSlipManager.individualTotalStake > 0 else { return false }
+            return betSlipManager.isIndividualStakeValid(availableCredit: availableCredit)
+        }
     }
 
     // MARK: - Submit Section (US-006: Direct submission without review screen)

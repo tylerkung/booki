@@ -211,6 +211,12 @@ class BetSlipManager: ObservableObject {
         return currentTotalStake <= availableCredit
     }
 
+    /// Validate individual stakes (for singles mode) against available credit (US-006)
+    func isIndividualStakeValid(availableCredit: Decimal) -> Bool {
+        guard individualTotalStake > 0 else { return false }
+        return individualTotalStake <= availableCredit
+    }
+
     /// Set stake from quick-pick amount (US-042)
     func setQuickPickStake(_ amount: Decimal) {
         stake = amount
