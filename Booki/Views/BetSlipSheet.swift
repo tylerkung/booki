@@ -119,6 +119,7 @@ struct BetSlipSheet: View {
                     }
 
                     // Singles/Parlay Toggle (US-041) - Styled
+                    // US-005: Added .contentShape(Rectangle()) to expand tap area to full button
                     HStack(spacing: 0) {
                         ForEach(BetMode.allCases, id: \.self) { mode in
                             Button(action: {
@@ -133,6 +134,7 @@ struct BetSlipSheet: View {
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 10)
                                     .background(betSlipManager.betMode == mode ? Theme.accent : Color.clear)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }
