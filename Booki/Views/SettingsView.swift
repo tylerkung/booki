@@ -89,6 +89,20 @@ struct SettingsView: View {
                 }
                 .listRowBackground(Theme.cardBackground)
 
+                // MARK: - Acceptance Rules Section
+                Section {
+                    NavigationLink {
+                        AcceptancePolicySettingsView()
+                    } label: {
+                        Label("Acceptance Rules", systemImage: "checkmark.shield")
+                    }
+                } header: {
+                    Text("Bet Management")
+                } footer: {
+                    Text("Configure rules for auto-accepting or reviewing bets.")
+                }
+                .listRowBackground(Theme.cardBackground)
+
                 // MARK: - Data Management Section
                 Section {
                     NavigationLink {
