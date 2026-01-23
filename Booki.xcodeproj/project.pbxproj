@@ -47,6 +47,7 @@
 		8A1234560038 /* BetSlipSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550039 /* BetSlipSheet.swift */; };
 		8A1234560039 /* BetConfirmationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550040 /* BetConfirmationSheet.swift */; };
 		8A1234560040 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550041 /* AccountView.swift */; };
+		8A1234560041 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550042 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -92,6 +93,7 @@
 		8A1234550039 /* BetSlipSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetSlipSheet.swift; sourceTree = "<group>"; };
 		8A1234550040 /* BetConfirmationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetConfirmationSheet.swift; sourceTree = "<group>"; };
 		8A1234550041 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
+		8A1234550042 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -146,6 +148,7 @@
 			children = (
 				8A1234550001 /* BookiApp.swift */,
 				8A1234550002 /* ContentView.swift */,
+				8A1234550042 /* Theme.swift */,
 				8A1234530003 /* Models */,
 				8A1234530004 /* Views */,
 				8A1234530005 /* ViewModels */,
@@ -365,6 +368,7 @@
 				8A1234560038 /* BetSlipSheet.swift in Sources */,
 				8A1234560039 /* BetConfirmationSheet.swift in Sources */,
 				8A1234560040 /* AccountView.swift in Sources */,
+				8A1234560041 /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
