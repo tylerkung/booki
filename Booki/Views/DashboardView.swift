@@ -5,12 +5,69 @@ struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var bets: [Bet]
     @Query private var events: [Event]
+    @Query private var players: [Player]
+    @Query private var ledgerEntries: [LedgerEntry]
 
     @State private var viewModel = DashboardViewModel()
+
+    /// Model for player balance display
+    private struct PlayerBalanceItem: Identifiable {
+        let id: UUID
+        let player: Player
+        let balance: Decimal
+        let daysSinceLastActivity: Int?
+    }
+
+    /// Computed property for players with balances
+    private var playerBalances: [PlayerBalanceItem] {
+        players.filter { $0.status == .active }.compactMap { player in
+            let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
+            let balance = BalanceService.balanceOwed(from: playerLedger)
+
+            // Skip players with zero balance
+            guard balance != 0 else { return nil }
+
+            // Find days since last activity
+            let lastEntryDate = playerLedger.map { $0.createdAt }.max()
+            let daysSinceLastActivity: Int? = lastEntryDate.map { lastDate in
+                Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day ?? 0
+            }
+
+            return PlayerBalanceItem(
+                id: player.id,
+                player: player,
+                balance: balance,
+                daysSinceLastActivity: daysSinceLastActivity
+            )
+        }
+    }
+
+    /// Players who owe the bookie (positive balance)
+    private var playersOweYou: [PlayerBalanceItem] {
+        playerBalances.filter { $0.balance > 0 }.sorted { $0.balance > $1.balance }
+    }
+
+    /// Players the bookie owes (negative balance)
+    private var youOwePlayers: [PlayerBalanceItem] {
+        playerBalances.filter { $0.balance < 0 }.sorted { $0.balance < $1.balance }
+    }
+
+    /// Total amount players owe
+    private var totalPlayersOwe: Decimal {
+        playersOweYou.reduce(Decimal.zero) { $0 + $1.balance }
+    }
+
+    /// Total amount bookie owes
+    private var totalYouOwe: Decimal {
+        abs(youOwePlayers.reduce(Decimal.zero) { $0 + $1.balance })
+    }
 
     var body: some View {
         NavigationStack {
             List {
+                // MARK: - Balances Section
+                balancesSection
+
                 // MARK: - Exposure Overview Section
                 Section {
                     ExposureCard(totalExposure: viewModel.totalExposure)
@@ -125,6 +182,9 @@ struct DashboardView: View {
             .navigationDestination(for: Event.self) { event in
                 EventDetailView(event: event)
             }
+            .navigationDestination(for: Player.self) { player in
+                PlayerDetailView(player: player)
+            }
         }
     }
 
@@ -155,6 +215,69 @@ struct DashboardView: View {
         case .failure:
             break
         }
+    }
+
+    // MARK: - Balances Section
+
+    @ViewBuilder
+    private var balancesSection: some View {
+        // Show section only if there are any players with non-zero balances
+        if !playersOweYou.isEmpty || !youOwePlayers.isEmpty {
+            // MARK: - Players Owe You
+            if !playersOweYou.isEmpty {
+                Section {
+                    ForEach(playersOweYou) { item in
+                        NavigationLink(value: item.player) {
+                            PlayerBalanceRow(
+                                name: item.player.name,
+                                balance: item.balance,
+                                daysSinceLastActivity: item.daysSinceLastActivity,
+                                isOwedToYou: true
+                            )
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("Players Owe You")
+                        Spacer()
+                        Text(formatCurrency(totalPlayersOwe))
+                            .font(.caption.bold())
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+            }
+
+            // MARK: - You Owe Players
+            if !youOwePlayers.isEmpty {
+                Section {
+                    ForEach(youOwePlayers) { item in
+                        NavigationLink(value: item.player) {
+                            PlayerBalanceRow(
+                                name: item.player.name,
+                                balance: item.balance,
+                                daysSinceLastActivity: item.daysSinceLastActivity,
+                                isOwedToYou: false
+                            )
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("You Owe Players")
+                        Spacer()
+                        Text(formatCurrency(totalYouOwe))
+                            .font(.caption.bold())
+                            .foregroundStyle(Theme.danger)
+                    }
+                }
+            }
+        }
+    }
+
+    private func formatCurrency(_ amount: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
     }
 }
 
@@ -336,7 +459,59 @@ struct RiskEventRow: View {
     }
 }
 
+// MARK: - Player Balance Row
+
+struct PlayerBalanceRow: View {
+    let name: String
+    let balance: Decimal
+    let daysSinceLastActivity: Int?
+    let isOwedToYou: Bool
+
+    private var formattedBalance: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        let amount = abs(balance)
+        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
+    }
+
+    private var daysText: String? {
+        guard let days = daysSinceLastActivity else { return nil }
+        switch days {
+        case 0:
+            return "Today"
+        case 1:
+            return "1 day ago"
+        default:
+            return "\(days) days ago"
+        }
+    }
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(name)
+                    .font(.headline)
+                    .foregroundStyle(Theme.textPrimary)
+
+                if let days = daysText {
+                    Text("Last activity: \(days)")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
+            }
+
+            Spacer()
+
+            Text(formattedBalance)
+                .font(.subheadline.bold())
+                .foregroundStyle(isOwedToYou ? Theme.accent : Theme.danger)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 #Preview {
     DashboardView()
-        .modelContainer(for: [Bet.self, Event.self], inMemory: true)
+        .modelContainer(for: [Bet.self, Event.self, Player.self, LedgerEntry.self], inMemory: true)
 }
