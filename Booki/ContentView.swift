@@ -18,6 +18,12 @@ struct ContentView: View {
         return players.first { $0.id.uuidString == selectedPlayerID }
     }
 
+    /// Calculate balance for the selected player
+    private func playerBalance(for player: Player) -> Decimal {
+        let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
+        return BalanceService.balanceOwed(from: playerLedger)
+    }
+
     /// Count of flagged players based on alert thresholds (for badge)
     private var flaggedPlayersCount: Int {
         let thresholdDecimal = Decimal(balanceThreshold)
@@ -101,33 +107,67 @@ struct ContentView: View {
 
     private func playerModeView(player: Player) -> some View {
         TabView {
-            NavigationStack {
+            PlayerTabView(player: player, balance: playerBalance(for: player)) {
                 GamesView(player: player)
             }
             .tabItem {
                 Label("Games", systemImage: "house.fill")
             }
 
-            NavigationStack {
+            PlayerTabView(player: player, balance: playerBalance(for: player)) {
                 PlayerHistoryView(player: player)
             }
             .tabItem {
                 Label("Track", systemImage: "list.bullet.rectangle")
             }
 
-            PlayerSettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
-                }
+            PlayerTabView(player: player, balance: playerBalance(for: player)) {
+                PlayerSettingsContent()
+            }
+            .tabItem {
+                Label("Settings", systemImage: "gearshape.fill")
+            }
         }
         .tint(Theme.accent)
     }
 }
 
-// MARK: - Player Settings View
+// MARK: - Player Tab View Wrapper
 
-/// Minimal settings view for player mode with option to switch back to bookie mode
-struct PlayerSettingsView: View {
+/// Wrapper view that adds the persistent header to each player tab
+struct PlayerTabView<Content: View>: View {
+    let player: Player
+    let balance: Decimal
+    @ViewBuilder let content: Content
+
+    @State private var navigateToAccount = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Persistent header at top
+                AppHeaderView(
+                    player: player,
+                    balance: balance,
+                    navigateToAccount: {
+                        navigateToAccount = true
+                    }
+                )
+
+                // Tab content
+                content
+            }
+            .navigationDestination(isPresented: $navigateToAccount) {
+                AccountView(player: player)
+            }
+        }
+    }
+}
+
+// MARK: - Player Settings Content
+
+/// Settings content view without NavigationStack (wrapper provides it)
+struct PlayerSettingsContent: View {
     @AppStorage("isPlayerMode") private var isPlayerMode: Bool = false
     @AppStorage("selectedPlayerID") private var selectedPlayerID: String = ""
 
@@ -139,37 +179,35 @@ struct PlayerSettingsView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                // Current Player Info
-                if let player = selectedPlayer {
-                    Section {
-                        LabeledContent("Name", value: player.name)
-                        if let email = player.email {
-                            LabeledContent("Email", value: email)
-                        }
-                    } header: {
-                        Text("Player Account")
-                    }
-                }
-
-                // Switch to Bookie Mode
+        List {
+            // Current Player Info
+            if let player = selectedPlayer {
                 Section {
-                    Button {
-                        isPlayerMode = false
-                    } label: {
-                        Label("Switch to Bookie Mode", systemImage: "arrow.left.arrow.right")
+                    LabeledContent("Name", value: player.name)
+                    if let email = player.email {
+                        LabeledContent("Email", value: email)
                     }
                 } header: {
-                    Text("Test Mode")
-                } footer: {
-                    Text("Switch back to the bookie view to manage bets and players.")
+                    Text("Player Account")
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.background)
-            .navigationTitle("Settings")
+
+            // Switch to Bookie Mode
+            Section {
+                Button {
+                    isPlayerMode = false
+                } label: {
+                    Label("Switch to Bookie Mode", systemImage: "arrow.left.arrow.right")
+                }
+            } header: {
+                Text("Test Mode")
+            } footer: {
+                Text("Switch back to the bookie view to manage bets and players.")
+            }
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
+        .navigationTitle("Settings")
     }
 }
 
