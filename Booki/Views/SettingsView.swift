@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var showingSeedDataConfirmation = false
     @State private var showingSeedDataSuccess = false
     @State private var seededEventCount = 0
+    @State private var showingPlayerLogin = false
 
     // Test Mode settings (persisted via AppStorage)
     @AppStorage("isPlayerMode") private var isPlayerMode: Bool = false
@@ -105,6 +106,12 @@ struct SettingsView: View {
                             Label("Switch to Player View", systemImage: "person.fill")
                         }
                         .disabled(selectedPlayerID.isEmpty)
+
+                        Button {
+                            showingPlayerLogin = true
+                        } label: {
+                            Label("Test Player Login UI", systemImage: "rectangle.and.pencil.and.ellipsis")
+                        }
                     }
                 } header: {
                     Text("Test Mode")
@@ -125,6 +132,9 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileSheet(existingBookie: currentBookie)
+            }
+            .sheet(isPresented: $showingPlayerLogin) {
+                PlayerLoginView()
             }
             .alert("Load Sample Data", isPresented: $showingSeedDataConfirmation) {
                 Button("Cancel", role: .cancel) { }
