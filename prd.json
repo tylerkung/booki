@@ -105,7 +105,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Bookie-facing settings UI - keep it simple and clear"
     },
     {
