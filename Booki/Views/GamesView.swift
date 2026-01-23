@@ -571,6 +571,8 @@ struct GameRowView: View {
         case .scheduled: return .blue
         case .live: return .green
         case .final: return .gray
+        case .postponed: return .orange
+        case .canceled: return .red
         }
     }
 
@@ -579,6 +581,8 @@ struct GameRowView: View {
         case .scheduled: return "Upcoming"
         case .live: return "Live"
         case .final: return "Final"
+        case .postponed: return "Postponed"
+        case .canceled: return "Canceled"
         }
     }
 
