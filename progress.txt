@@ -228,3 +228,18 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - ScrollView with VStack provides better layout flexibility than List for card-based account UI
   - Use `RoundedRectangle` with shadow for card-like sections in a non-List context
 ---
+
+## 2026-01-22 - US-045
+- **What was implemented:** Transaction History View with filtering by type
+- **Files changed:**
+  - `Booki/Views/AccountView.swift` (modified - added TransactionFilter enum, transactionHistorySection, and TransactionRowView)
+- **Learnings for future iterations:**
+  - Use `TransactionFilter` enum with `CaseIterable` and `Identifiable` for filter options
+  - Map filter enum to `EntryType?` (nil = all types) for clean filtering logic
+  - Use `LazyVStack` inside ScrollView for efficient rendering of long transaction lists
+  - Color coding: green for positive amounts (credits), red for negative amounts (debits)
+  - Icon colors by type: blue for settlements, orange for adjustments, green for payments, purple for reversals
+  - Segmented picker (`.pickerStyle(.segmented)`) works well for small number of filter options
+  - Use `Divider().padding(.leading, 52)` to indent dividers past icon column for cleaner list appearance
+  - Empty state should hint about changing filters when a filter is active
+---
