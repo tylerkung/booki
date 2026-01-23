@@ -39,6 +39,8 @@ struct PlayersListView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle("Players")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -356,6 +358,8 @@ struct PlayerDetailView: View {
                 statusActionButtons
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
         .navigationTitle(player.name)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingAdjustmentSheet) {

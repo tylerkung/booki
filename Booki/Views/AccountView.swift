@@ -212,6 +212,7 @@ struct AccountView: View {
             }
             .padding()
         }
+        .background(Theme.background)
         .navigationTitle("Account")
         .navigationBarTitleDisplayMode(.large)
     }
@@ -242,7 +243,7 @@ struct AccountView: View {
         .padding(.vertical, 24)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(Theme.cardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -267,7 +268,7 @@ struct AccountView: View {
                 ZStack(alignment: .leading) {
                     // Background track
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(.systemGray5))
+                        .fill(Theme.elevatedBackground)
                         .frame(height: 12)
 
                     // Filled portion
@@ -293,7 +294,7 @@ struct AccountView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(Theme.cardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -344,7 +345,7 @@ struct AccountView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(Theme.cardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -467,7 +468,7 @@ struct AccountView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(Theme.cardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -539,7 +540,7 @@ struct AccountView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(Theme.cardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -599,7 +600,7 @@ struct AccountView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(Theme.cardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }

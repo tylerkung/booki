@@ -120,6 +120,8 @@ struct SettingsView: View {
                     Text("About")
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle("Settings")
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileSheet(existingBookie: currentBookie)

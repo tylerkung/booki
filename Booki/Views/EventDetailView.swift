@@ -158,6 +158,8 @@ struct EventDetailView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
         .navigationTitle("Event Details")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingAddMarket) {

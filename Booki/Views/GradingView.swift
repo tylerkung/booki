@@ -38,8 +38,11 @@ struct GradingView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Theme.background)
                 }
             }
+            .background(Theme.background)
             .navigationTitle("Grading")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

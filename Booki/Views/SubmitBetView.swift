@@ -98,6 +98,8 @@ struct SubmitBetView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
         .navigationTitle("Submit Request")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: Event.self) { event in
@@ -321,6 +323,8 @@ struct MarketSelectionView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
         .navigationTitle("Select Market")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -570,6 +574,8 @@ struct StakeEntryView: View {
                 complianceDisclosureSection
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
         .navigationTitle("Review Request")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {

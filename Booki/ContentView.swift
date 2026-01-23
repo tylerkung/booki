@@ -57,6 +57,7 @@ struct ContentView: View {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
         }
+        .tint(Theme.accent)
     }
 
     // MARK: - Player Mode
@@ -89,6 +90,7 @@ struct ContentView: View {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
         }
+        .tint(Theme.accent)
     }
 }
 
@@ -134,6 +136,8 @@ struct PlayerSettingsView: View {
                     Text("Switch back to the bookie view to manage bets and players.")
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle("Settings")
         }
     }

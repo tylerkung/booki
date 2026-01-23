@@ -75,6 +75,8 @@ struct DashboardView: View {
                     Text("Top Risk Events")
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle("Dashboard")
             .refreshable {
                 viewModel.refresh(bets: bets, events: events)

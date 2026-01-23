@@ -43,6 +43,8 @@ struct EventsListView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle("Events")
             .navigationDestination(for: Event.self) { event in
                 EventDetailView(event: event)

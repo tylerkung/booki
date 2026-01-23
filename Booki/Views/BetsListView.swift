@@ -77,7 +77,10 @@ struct BetsListView: View {
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(Theme.background)
             }
+            .background(Theme.background)
             .navigationTitle("Bets")
             .navigationDestination(for: Bet.self) { bet in
                 BetDetailView(bet: bet)
@@ -350,6 +353,8 @@ struct BetDetailView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
         .navigationTitle("Bet Details")
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(

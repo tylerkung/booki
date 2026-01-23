@@ -186,11 +186,11 @@ struct GamesView: View {
         VStack(spacing: 0) {
             // Search bar and filter (US-038)
             searchAndFilterHeader
-                .background(Color(.systemBackground))
+                .background(Theme.background)
 
             // Sticky sport tabs header
             sportTabsHeader
-                .background(Color(.systemBackground))
+                .background(Theme.background)
 
             // Games list
             if filteredEvents.isEmpty {
@@ -204,6 +204,7 @@ struct GamesView: View {
                 betSlipIndicator
             }
         }
+        .background(Theme.background)
         .navigationTitle("Games")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: Event.self) { event in
@@ -274,7 +275,7 @@ struct GamesView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Color(.systemGray5))
+            .background(Theme.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
             // Filter button
@@ -288,10 +289,10 @@ struct GamesView: View {
                             .fontWeight(.medium)
                     }
                 }
-                .foregroundStyle(timeFilter != .all ? .white : .primary)
+                .foregroundStyle(timeFilter != .all ? Theme.background : Theme.textPrimary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(timeFilter != .all ? Color.blue : Color(.systemGray5))
+                .background(timeFilter != .all ? Theme.accent : Theme.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             .buttonStyle(.plain)
@@ -325,9 +326,11 @@ struct GamesView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
-        .background(Color(.systemBackground))
+        .background(Theme.background)
         .overlay(
-            Divider(),
+            Rectangle()
+                .fill(Theme.divider)
+                .frame(height: 0.5),
             alignment: .bottom
         )
     }
@@ -354,7 +357,7 @@ struct GamesView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Theme.background)
     }
 
     // MARK: - Favorites Section (US-039)
@@ -420,7 +423,7 @@ struct GamesView: View {
                 }
             }
             .padding(12)
-            .background(Color(.systemBackground))
+            .background(Theme.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
@@ -549,10 +552,10 @@ struct SportTabButton: View {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(isSelected ? .semibold : .medium)
-                .foregroundStyle(isSelected ? .white : .primary)
+                .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(isSelected ? Color.blue : Color(.systemGray5))
+                .background(isSelected ? Theme.accent : Theme.cardBackground)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -645,13 +648,15 @@ struct TimeFilterSheet: View {
                             Spacer()
                             if selectedFilter == filter {
                                 Image(systemName: "checkmark")
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(Theme.accent)
                                     .fontWeight(.semibold)
                             }
                         }
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle("Filter by Time")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

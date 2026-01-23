@@ -54,6 +54,8 @@ struct PlayerHistoryView: View {
             // Bet History Section
             betHistorySection
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
         .navigationTitle("My Bets")
         .navigationBarTitleDisplayMode(.inline)
     }
