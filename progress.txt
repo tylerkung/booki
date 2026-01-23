@@ -192,3 +192,20 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Use `Decimal.greatestFiniteMagnitude` as default when credit limit is not known (bypasses validation)
   - Show validation warning with orange color when stake exceeds available credit
 ---
+
+## 2026-01-22 17:45 - US-043
+- **What was implemented:** Bet confirmation flow with review screen, submission, and success animation
+- **Files changed:**
+  - `Booki/Views/BetConfirmationSheet.swift` (new) - Full confirmation sheet with review, submission, and success animation
+  - `Booki/Views/BetSlipSheet.swift` (modified - added player parameter, showingConfirmation state, Review & Confirm button)
+  - `Booki/Views/GamesView.swift` (modified - passes player to BetSlipSheet)
+  - `Booki.xcodeproj/project.pbxproj` (added BetConfirmationSheet.swift to build)
+- **Learnings for future iterations:**
+  - Use `@State private var checkmarkScale: CGFloat = 0` with `.scaleEffect()` and `.spring()` animation for success checkmark
+  - Use `ZStack` with conditional content to transition between confirmation and success views
+  - BetService.submitBet() requires player, eventId, market, side, odds, stake, existingBets, ledgerEntries
+  - For parlay mode, simplified implementation creates individual bets with evenly split stake (full parlay model would need ParlayBet)
+  - Use `ProgressView().tint(.white)` for loading spinner on dark buttons
+  - When BetSlipSheet needs to present BetConfirmationSheet, pass the player through - requires optional player parameter
+  - Use `.sheet(isPresented:)` with conditional `if let player = player` to safely present when player exists
+---
