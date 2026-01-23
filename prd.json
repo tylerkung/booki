@@ -1,7 +1,7 @@
 {
   "project": "Booki",
-  "branchName": "ralph/bet-slip-layout",
-  "description": "Bet Slip Layout Improvements - Full height modal, sticky bottom section with stake/submit, per-bet stakes for singles mode, remove quick-pick buttons. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
+  "branchName": "ralph/acceptance-rules-engine",
+  "description": "Bookie Acceptance Rules Engine & Event Locking - Configurable auto-accept policies, manual review queue with violation reasons, event lock times. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
   "techStack": {
     "platform": "iOS 17+",
     "language": "Swift 5.9+",
@@ -12,114 +12,185 @@
   "userStories": [
     {
       "id": "US-001",
-      "title": "Change Bet Slip to Full Height Modal",
-      "description": "As a player, I want the bet slip to open to full height so I can see all my selections without scrolling.",
+      "title": "Create AcceptancePolicy Model",
+      "description": "As a developer, I need a model to store bookie's acceptance policy configuration.",
       "acceptanceCriteria": [
-        "Locate where BetSlipSheet presentation detents are configured (in GamesView.swift)",
-        "Change .presentationDetents([.medium, .large]) to .presentationDetents([.large])",
-        "Bet slip now opens to full modal height (100% of stacked modal)",
+        "Create AcceptancePolicy.swift in Booki/Models/",
+        "Model is a SwiftData @Model class",
+        "Add autoAcceptMaxStake: Decimal (default 100)",
+        "Add requireReviewAboveStake: Decimal (default 500)",
+        "Add autoAcceptNewPlayers: Bool (default false)",
+        "Add newPlayerBetThreshold: Int (default 5)",
+        "Add autoAcceptParlays: Bool (default false)",
+        "Add parlayMaxLegs: Int (default 4)",
+        "Add eventLockOffsetMinutes: Int (default 0)",
+        "Add relationship to Bookie if applicable, or make it a singleton query",
         "Project builds and runs in Simulator"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Simple change in GamesView.swift where BetSlipSheet is presented"
+      "notes": "Foundation model - keep simple, can extend later"
     },
     {
       "id": "US-002",
-      "title": "Remove Quick-Pick Stake Buttons",
-      "description": "As a player, I want a cleaner stake entry without preset amount buttons.",
+      "title": "Add Policy Violation Reason to Bet Model",
+      "description": "As a developer, I need to store why a bet was queued for review.",
       "acceptanceCriteria": [
-        "In BetSlipSheet.swift stakeEntrySection, remove the quick-pick buttons HStack (ForEach with PremiumQuickPickButton)",
-        "Keep the custom amount input field ($ text field with Theme styling)",
-        "Optionally remove PremiumQuickPickButton struct if no longer used elsewhere",
-        "Stake section now shows only the text input field",
+        "Add policyViolationReason: String? field to Bet model in Bet.swift",
+        "Field is nil for auto-accepted bets or bets without policy evaluation",
+        "Field stores human-readable reason when bet is queued",
+        "Update Bet init to include optional policyViolationReason parameter",
         "Project builds and runs in Simulator"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Remove the HStack with ForEach(BetSlipManager.quickPickAmounts) in stakeEntrySection"
+      "passes": false,
+      "notes": "Simple string field - can store multiple reasons comma-separated if needed"
     },
     {
       "id": "US-003",
-      "title": "Add Per-Item Stake Storage to BetSlipManager",
-      "description": "As a developer, I need to store individual stakes per bet item for singles mode.",
+      "title": "Create Acceptance Policy Service",
+      "description": "As a developer, I need logic to evaluate if a bet should be auto-accepted or queued.",
       "acceptanceCriteria": [
-        "Add itemStakes dictionary [UUID: Decimal] to BetSlipManager to store per-item stakes",
-        "Add methods: setItemStake(marketId: UUID, stake: Decimal), getItemStake(marketId: UUID) -> Decimal",
-        "Add computed property individualTotalStake that sums all item stakes",
-        "Add computed property individualTotalPayout that calculates total payout from individual stakes",
-        "When an item is removed, also remove its stake from itemStakes",
-        "When clearAll() is called, also clear itemStakes",
+        "Create AcceptancePolicyService.swift in Booki/Services/",
+        "Add enum PolicyViolation with cases: stakeTooHigh, stakeRequiresReview, newPlayer, parlayNotAllowed, parlayTooManyLegs, eventLocked",
+        "Add static function evaluateBet(stake:isParlay:parlayLegs:playerBetCount:event:policy:) -> [PolicyViolation]",
+        "Stake check: stake > policy.autoAcceptMaxStake returns .stakeTooHigh",
+        "Stake check: stake > policy.requireReviewAboveStake returns .stakeRequiresReview",
+        "New player check: playerBetCount < policy.newPlayerBetThreshold AND !policy.autoAcceptNewPlayers returns .newPlayer",
+        "Parlay check: isParlay AND !policy.autoAcceptParlays returns .parlayNotAllowed",
+        "Parlay legs check: isParlay AND parlayLegs > policy.parlayMaxLegs returns .parlayTooManyLegs",
+        "Event lock check: event.startTime <= Date() + policy.eventLockOffsetMinutes returns .eventLocked",
+        "Add function violationDescription(_:) -> String that returns human-readable text for each violation",
         "Project builds and runs in Simulator"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Modify BetSlipManager.swift - foundation for per-bet stakes in singles mode"
+      "passes": false,
+      "notes": "Pure logic service - no side effects, easy to test"
     },
     {
       "id": "US-004",
-      "title": "Add Stake Input to Bet Cards in Singles Mode",
-      "description": "As a player betting singles, I want to enter a different stake for each bet individually.",
+      "title": "Integrate Policy Evaluation into Bet Submission",
+      "description": "As a developer, I need to apply policy rules when bets are submitted.",
       "acceptanceCriteria": [
-        "Modify PremiumBetSlipItemCard to accept betMode and stake binding parameters",
-        "When betMode == .singles, show stake input field on each bet card",
-        "Stake input styled consistently ($ prefix, Theme.elevatedBackground, gold border when focused)",
-        "Show individual potential payout on each card based on that bet's stake and odds",
-        "Changes to stake update BetSlipManager.itemStakes via the binding",
+        "Modify BetService.submitBet to accept optional policy: AcceptancePolicy? parameter",
+        "Modify BetService.submitBet to accept isParlay: Bool and parlayLegs: Int parameters",
+        "Modify BetService.submitBet to accept playerBetCount: Int parameter",
+        "When policy provided, call AcceptancePolicyService.evaluateBet",
+        "If no violations (empty array): set bet status to .accepted",
+        "If violations present: set bet status to .pending and store violation reasons in policyViolationReason",
+        "If .eventLocked violation: return failure with appropriate error instead of creating bet",
+        "If no policy provided: default to .pending (backwards compatible)",
+        "Update BetSlipSheet.submitBets to query AcceptancePolicy and pass to BetService",
+        "Update BetSlipSheet.submitBets to pass isParlay, parlayLegs, playerBetCount",
         "Project builds and runs in Simulator"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Modify PremiumBetSlipItemCard struct to support inline stake entry"
+      "passes": false,
+      "notes": "Core integration - connects policy to submission flow"
     },
     {
       "id": "US-005",
-      "title": "Restructure Bet Slip with Sticky Bottom Section",
-      "description": "As a developer, I need to restructure the bet slip layout with scrollable top and sticky bottom.",
+      "title": "Create Acceptance Policy Settings UI",
+      "description": "As a bookie, I want to configure my acceptance rules in Settings.",
       "acceptanceCriteria": [
-        "Restructure selectionsList to separate scrollable content from sticky bottom",
-        "Scrollable area contains: header with count, Singles/Parlay toggle, bet cards, parlay odds card (if parlay)",
-        "Create stickyBottomSection view builder for bottom content",
-        "Use VStack with Spacer or safeAreaInset to position sticky section at bottom",
-        "Add subtle divider (Rectangle with Theme.divider or subtle shadow) between scroll area and sticky section",
-        "Sticky section has Theme.cardBackground background",
+        "Create AcceptancePolicySettingsView.swift in Booki/Views/",
+        "Query or create AcceptancePolicy on view appear",
+        "Stake thresholds section: TextField for autoAcceptMaxStake and requireReviewAboveStake with currency formatting",
+        "Player rules section: Toggle for autoAcceptNewPlayers, Stepper for newPlayerBetThreshold (1-20 range)",
+        "Parlay rules section: Toggle for autoAcceptParlays, Stepper for parlayMaxLegs (2-10 range)",
+        "Event lock section: Picker for eventLockOffsetMinutes with options 0, 1, 2, 5, 10, 15, 30",
+        "Add navigation link to AcceptancePolicySettingsView from SettingsView.swift",
+        "Use Theme styling (Theme.cardBackground, Theme.textPrimary, etc.)",
+        "Changes auto-save via SwiftData observation",
         "Project builds and runs in Simulator"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Major layout restructure - keep all existing components, just reorganize positioning"
+      "passes": false,
+      "notes": "Bookie-facing settings UI - keep it simple and clear"
     },
     {
       "id": "US-006",
-      "title": "Configure Sticky Section Content by Mode",
-      "description": "As a player, I want the sticky section to show appropriate controls based on bet mode.",
+      "title": "Display Policy Violation Reasons in Pending Bets",
+      "description": "As a bookie, I want to see why a bet is pending review.",
       "acceptanceCriteria": [
-        "When betMode == .parlay: sticky section shows stake input, potential payout, Place Bet button",
-        "When betMode == .singles: sticky section shows total stake summary, total payout, Place Bet button",
-        "Stake validation warning appears in sticky section when applicable",
-        "Place Bet button uses existing submitSection styling",
-        "canSubmit logic works correctly for both modes",
+        "Locate where pending bets are displayed (BetsListView or similar)",
+        "For pending bets with non-nil policyViolationReason, show the reason",
+        "Display as subtitle text below bet info, styled with Theme.warning color",
+        "Format: 'Review: [reason]' or just the reason text",
+        "Only show for .pending status bets with violation reasons",
         "Project builds and runs in Simulator"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Conditional rendering in stickyBottomSection based on betSlipManager.betMode"
+      "passes": false,
+      "notes": "Helps bookie understand why bet needs attention"
     },
     {
       "id": "US-007",
-      "title": "Update Submission Logic for Per-Bet Stakes",
-      "description": "As a developer, I need to update bet submission to use individual stakes for singles mode.",
+      "title": "Add Event Lock Computed Property",
+      "description": "As a developer, I need to compute if an event is locked for betting.",
       "acceptanceCriteria": [
-        "Modify submitBets() to read from itemStakes for singles mode",
-        "For each item in singles mode, get stake from betSlipManager.getItemStake(item.marketId)",
-        "Parlay mode continues to use the shared betSlipManager.stake",
-        "Each bet submitted with its correct individual stake amount",
-        "Success count and error handling work correctly with new stake structure",
+        "Add function isLocked(offsetMinutes: Int) -> Bool to Event model",
+        "Returns true if Date() >= startTime.addingTimeInterval(-Double(offsetMinutes * 60))",
+        "Returns true if status is .live or .final regardless of offset",
+        "Add function lockTime(offsetMinutes: Int) -> Date that returns startTime minus offset",
         "Project builds and runs in Simulator"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Update submitBets() function in BetSlipSheet.swift"
+      "passes": false,
+      "notes": "Computed property - no storage needed"
+    },
+    {
+      "id": "US-008",
+      "title": "Display Lock Status in Game Cards",
+      "description": "As a player, I want to see if an event is locked before trying to bet.",
+      "acceptanceCriteria": [
+        "Modify GameCardView to accept optional lockOffsetMinutes parameter (default 0)",
+        "Check event.isLocked(offsetMinutes:) to determine lock status",
+        "When locked: show lock icon (lock.fill) next to time or as overlay",
+        "When locked: reduce opacity on odds buttons to 0.5",
+        "When locked: disable onSelectOdds action (don't add to slip)",
+        "Optional: show toast or brief message when tapping locked odds",
+        "Update GamesView to pass lockOffsetMinutes from policy (query policy or use default)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Player-facing lock indication - clear visual feedback"
+    },
+    {
+      "id": "US-009",
+      "title": "Prevent Locked Event Bets in Bet Slip",
+      "description": "As a system, I need to validate bet slip doesn't contain locked events on submit.",
+      "acceptanceCriteria": [
+        "In BetSlipSheet, before submission check if any selected events are locked",
+        "Query events for each bet slip item and check isLocked",
+        "If any locked events found: show error alert listing which events are locked",
+        "Prevent submission until locked events are removed from slip",
+        "Add helper to BetSlipManager or create function to validate slip",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Belt-and-suspenders check at submission time"
+    },
+    {
+      "id": "US-010",
+      "title": "Handle Postponed and Canceled Events",
+      "description": "As a bookie, I need proper handling when events are postponed or canceled.",
+      "acceptanceCriteria": [
+        "Add .postponed and .canceled cases to EventStatus enum if not present",
+        "Postponed events: isLocked returns false (allow betting on new time)",
+        "Postponed events: show 'POSTPONED' badge in GameCardView",
+        "Canceled events: isLocked returns true always",
+        "Canceled events: show 'CANCELED' badge in GameCardView, hide odds buttons",
+        "Add BetService.voidBetsForEvent(eventId:) function",
+        "When event status changes to .canceled, bookie can trigger void of pending/accepted bets",
+        "Add void action button in event detail or bets list for canceled events",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Edge case handling - important for real-world usage"
     }
   ]
 }

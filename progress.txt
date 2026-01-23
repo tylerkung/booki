@@ -1,85 +1,24 @@
 # Ralph Progress Log
-Started: Fri Jan 23 13:56:25 PST 2026
+Started: Fri Jan 23 14:18:44 PST 2026
+---
 
 ## Codebase Patterns
-- BetSlipSheet presentation is configured in GamesView.swift via .sheet modifier
-- Use `swiftc -parse <file>` for basic syntax validation, but full builds require Xcode IDE
-- Always use Theme.swift for colors - never default iOS colors
+- SwiftData models use `@Model` decorator with `@Attribute(.unique)` for id field
+- All models should be registered in BookiApp.swift schema array
+- New Swift files must be added to project.pbxproj (PBXFileReference, PBXBuildFile, group children, and Sources build phase)
+- Xcode project file IDs follow pattern `8A123455XXXX` for file refs and `8A123456XXXX` for build files
+- Use `swiftc -parse` for syntax validation but expect SwiftData macro errors (normal)
 
 ---
 
 ## 2026-01-23 - US-001
-- What was implemented: Changed bet slip modal to open at full height instead of medium
-- Files changed: Booki/Views/GamesView.swift
+- **What was implemented:** AcceptancePolicy SwiftData model for bookie acceptance rules
+- **Files changed:**
+  - Booki/Models/AcceptancePolicy.swift (new)
+  - Booki/BookiApp.swift (added to schema)
+  - Booki.xcodeproj/project.pbxproj (added file references)
 - **Learnings for future iterations:**
-  - BetSlipSheet presentation detents are configured in GamesView.swift (line ~219)
-  - The .presentationDetents modifier controls sheet heights
-  - [.large] = full height, [.medium, .large] = half height with drag to expand
----
-
-## 2026-01-23 - US-002
-- What was implemented: Removed quick-pick stake buttons for a cleaner stake entry interface
-- Files changed: Booki/Views/BetSlipSheet.swift
-- **Learnings for future iterations:**
-  - The stakeEntrySection in BetSlipSheet.swift contains stake input controls
-  - PremiumQuickPickButton struct was only used in BetSlipSheet.swift (safe to remove)
-  - Custom stake input uses Theme.gold for border highlight when focused
-  - BetSlipManager.quickPickAmounts still exists but is no longer used in the UI
----
-
-## 2026-01-23 - US-003
-- What was implemented: Added per-item stake storage to BetSlipManager for individual stakes in singles mode
-- Files changed: Booki/Services/BetSlipManager.swift
-- **Learnings for future iterations:**
-  - BetSlipManager uses UserDefaults for persistence with separate keys for items, betMode, stake, and itemStakes
-  - itemStakes dictionary uses [UUID: Decimal] for per-bet stakes, keyed by marketId
-  - For JSON encoding/decoding UUID dictionaries, convert to [String: Double] since UUID keys need string conversion
-  - When removing items, also clean up corresponding itemStakes entries
-  - The individualTotalStake and individualTotalPayout computed properties calculate totals from per-bet stakes
----
-
-## 2026-01-23 - US-004
-- What was implemented: Added per-bet stake input to bet cards in singles mode with individual payout display
-- Files changed: Booki/Views/BetSlipSheet.swift
-- **Learnings for future iterations:**
-  - PremiumBetSlipItemCard now accepts betMode, stakeText binding, and betSlipManager as parameters
-  - Use @FocusState to track whether stake input field is focused for styling changes
-  - When using per-item state in ForEach, create a Binding helper function (itemStakeTextBinding) to provide bindings for each item
-  - Store itemStakeTexts as [UUID: String] in BetSlipSheet for UI text, while BetSlipManager stores itemStakes as [UUID: Decimal] for values
-  - Initialize itemStakeTexts from existing BetSlipManager.itemStakes in init() to restore state on sheet reopen
-  - Clean up itemStakeTexts when removing items from the bet slip
----
-
-## 2026-01-23 - US-005
-- What was implemented: Restructured bet slip layout with scrollable top area and sticky bottom section
-- Files changed: Booki/Views/BetSlipSheet.swift
-- **Learnings for future iterations:**
-  - Use VStack(spacing: 0) to wrap ScrollView and sticky section for clean separation
-  - stickyBottomSection is a new @ViewBuilder computed property containing stake entry, payout summary, and submit button
-  - Add a Rectangle divider with shadow for visual separation: `.shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: -2)`
-  - Sticky section uses Theme.cardBackground to differentiate from scrollable content area
-  - ScrollView content needs padding(.bottom, 16) to provide spacing before sticky section
-  - The scrollable area contains: header, Singles/Parlay toggle, bet cards, and parlay odds card (in parlay mode)
----
-
-## 2026-01-23 - US-006
-- What was implemented: Configured sticky section content to display differently based on bet mode
-- Files changed: Booki/Views/BetSlipSheet.swift, Booki/Services/BetSlipManager.swift
-- **Learnings for future iterations:**
-  - Use switch statement in stickyBottomSection to conditionally render parlay vs singles content
-  - Parlay mode: stakeEntrySection, payoutSummarySection, submitSection
-  - Singles mode: singlesSummarySection (sum of individual stakes), stakeValidationWarning, submitSection
-  - Added isIndividualStakeValid(availableCredit:) method to BetSlipManager for validating per-bet stakes
-  - canSubmit logic now checks betMode and validates using appropriate method (isStakeValid for parlay, isIndividualStakeValid for singles)
-  - stakeValidationWarning is a reusable view builder for showing credit exceeded warnings
----
-
-## 2026-01-23 - US-007
-- What was implemented: Updated bet submission logic to use individual per-bet stakes for singles mode
-- Files changed: Booki/Views/BetSlipSheet.swift
-- **Learnings for future iterations:**
-  - In submitBets(), singles mode uses betSlipManager.getItemStake(marketId:) to get each bet's individual stake
-  - Parlay mode uses the shared betSlipManager.stake (single bet with combined odds, not distributed)
-  - After successful submission, clear both BetSlipManager state (clearAll()) and local itemStakeTexts state
-  - The original code incorrectly distributed parlay stake across legs - parlay is a single bet
+  - SwiftData models follow a consistent pattern: @Model class with @Attribute(.unique) var id: UUID
+  - All new models must be added to the Schema array in BookiApp.swift
+  - Xcode project file requires 4 edits to add a new source file: PBXBuildFile, PBXFileReference, group children, and Sources build phase
 ---
