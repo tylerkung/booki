@@ -468,3 +468,17 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Export format as plain text with CSV-style rows for easy sharing/parsing
   - Summary models (WeeklySummary, PlayerBreakdown) as structs outside the view for clean separation
 ---
+
+## 2026-01-22 - US-060
+- **What was implemented:** Who Owes Dashboard Widget showing players with non-zero balances
+- **Files changed:**
+  - `Booki/Views/DashboardView.swift` (modified - added Balances section at top of dashboard, PlayerBalanceRow component)
+- **Learnings for future iterations:**
+  - Use `@Query private var players: [Player]` and `@Query private var ledgerEntries: [LedgerEntry]` for real-time balance calculations
+  - Calculate `daysSinceLastActivity` from ledger entries: `Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day`
+  - Positive balance = player owes bookie, negative balance = bookie owes player (from BalanceService)
+  - Split balances into two sections: `playersOweYou` (positive) and `youOwePlayers` (negative)
+  - Use `NavigationLink(value: player)` with `.navigationDestination(for: Player.self)` for type-safe player navigation
+  - Section headers can include totals using HStack with Text and Spacer
+  - PlayerBalanceRow displays: name, days since last activity, and colored balance amount
+---
