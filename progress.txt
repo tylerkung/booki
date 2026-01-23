@@ -451,3 +451,20 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Follow the BalanceAdjustmentSheet pattern for ledger entry creation: create LedgerEntry with proper type and insert via modelContext
   - The existing ledger display in AccountView and PlayerHistoryView already shows paymentLogged entries via EntryType filtering
 ---
+
+## 2026-01-22 - US-059
+- **What was implemented:** Weekly Settlement Summary view with week picker, summary stats, per-player breakdown, and export functionality
+- **Files changed:**
+  - `Booki/Views/WeeklySettlementView.swift` (new) - Complete weekly settlement view with all features
+  - `Booki/Views/DashboardView.swift` (modified - added Settlements section linking to WeeklySettlementView)
+  - `Booki.xcodeproj/project.pbxproj` (modified - added WeeklySettlementView.swift to build)
+- **Learnings for future iterations:**
+  - Use `static func currentWeekStart() -> Date` for calculating Monday of current week (weekday 1 = Sunday, 2 = Monday)
+  - Filter ledger entries by `type == .settlement` and date range to get weekly settlements
+  - Positive ledger amount = player lost (bookie profit), negative = player won (bookie owes)
+  - Use `Dictionary(grouping:)` or manual UUID-keyed dict to aggregate per-player stats
+  - `ShareLink(item: String)` provides native iOS sharing; `UIPasteboard.general.string` for clipboard
+  - Use `Calendar.current.date(byAdding: .weekOfYear, value: weeks, to: date)` for week navigation
+  - Export format as plain text with CSV-style rows for easy sharing/parsing
+  - Summary models (WeeklySummary, PlayerBreakdown) as structs outside the view for clean separation
+---
