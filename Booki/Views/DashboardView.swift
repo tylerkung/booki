@@ -143,16 +143,33 @@ struct DashboardView: View {
                             showingFlaggedPlayers = true
                         } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(.white)
-                                    .padding(8)
-                                    .background(Theme.danger)
-                                    .clipShape(Circle())
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            RadialGradient(
+                                                colors: [Theme.danger.opacity(0.4), Theme.danger.opacity(0)],
+                                                center: .center,
+                                                startRadius: 0,
+                                                endRadius: 24
+                                            )
+                                        )
+                                        .frame(width: 48, height: 48)
+
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                colors: [Theme.danger, Theme.accentTertiary],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                        )
+                                        .shadow(color: Theme.danger.opacity(0.5), radius: 4, x: 0, y: 0)
+                                }
 
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("\(flaggedPlayersCount) player\(flaggedPlayersCount == 1 ? "" : "s") need\(flaggedPlayersCount == 1 ? "s" : "") attention")
-                                        .font(.headline)
+                                        .font(.system(size: 15, weight: .bold))
                                         .foregroundStyle(Theme.textPrimary)
 
                                     Text("Tap to view flagged players")
@@ -162,14 +179,34 @@ struct DashboardView: View {
 
                                 Spacer()
 
-                                Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.textMuted)
+                                Image(systemName: "chevron.right.circle.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(Theme.danger.opacity(0.6))
                             }
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
-                            .background(Theme.danger.opacity(0.15))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Theme.danger.opacity(0.15), Theme.accentTertiary.opacity(0.08)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Theme.danger.opacity(0.4), Theme.accentTertiary.opacity(0.2)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                            )
+                            .shadow(color: Theme.danger.opacity(0.2), radius: 8, x: 0, y: 4)
                         }
                         .buttonStyle(.plain)
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -410,16 +447,35 @@ struct ExposureCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Total Open Exposure")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            HStack {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.caption)
+                    .foregroundStyle(Theme.accentSecondary)
+                Text("Total Open Exposure")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+            }
 
             Text(formattedExposure)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .foregroundStyle(totalExposure > 0 ? .red : .primary)
+                .font(.system(size: 36, weight: .black, design: .rounded))
+                .foregroundStyle(
+                    totalExposure > 0
+                        ? LinearGradient(
+                            colors: [Theme.danger, Theme.accentTertiary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        : LinearGradient(
+                            colors: [Theme.textPrimary, Theme.textSecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                )
+                .shadow(color: totalExposure > 0 ? Theme.danger.opacity(0.3) : .clear, radius: 8, x: 0, y: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 8)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 4)
     }
 }
 
@@ -427,36 +483,70 @@ struct ExposureCard: View {
 
 struct PendingBetsCard: View {
     let count: Int
+    @State private var isPulsing = false
 
     var body: some View {
         HStack {
-            Image(systemName: "clock.badge.exclamationmark")
-                .font(.title2)
-                .foregroundStyle(count > 0 ? .orange : .secondary)
+            ZStack {
+                if count > 0 {
+                    Circle()
+                        .fill(Theme.warning.opacity(0.3))
+                        .frame(width: 44, height: 44)
+                        .scaleEffect(isPulsing ? 1.2 : 1.0)
+                        .opacity(isPulsing ? 0 : 0.8)
+                }
+                Image(systemName: "clock.badge.exclamationmark")
+                    .font(.title2)
+                    .foregroundStyle(
+                        count > 0
+                            ? LinearGradient(
+                                colors: [Theme.warning, Theme.gold],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            : LinearGradient(colors: [Theme.textSecondary], startPoint: .top, endPoint: .bottom)
+                    )
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Pending Bets")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Text("\(count)")
-                    .font(.title2.bold())
-                    .foregroundStyle(count > 0 ? .orange : .primary)
+                    .font(.system(size: 24, weight: .black, design: .rounded))
+                    .foregroundStyle(count > 0 ? Theme.warning : Theme.textPrimary)
             }
 
             Spacer()
 
             if count > 0 {
                 Text("Action Required")
-                    .font(.caption)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.orange)
-                    .clipShape(Capsule())
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Theme.background)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Theme.warning, Theme.gold],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                    )
+                    .shadow(color: Theme.warning.opacity(0.4), radius: 6, x: 0, y: 2)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
+        .onAppear {
+            if count > 0 {
+                withAnimation(Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: false)) {
+                    isPulsing = true
+                }
+            }
+        }
     }
 }
 
@@ -513,18 +603,25 @@ struct PendingBetRow: View {
                     .font(.subheadline.bold())
             }
 
-            // Bottom row: Action buttons
+            // Bottom row: Action buttons with gamelike styling
             HStack(spacing: 12) {
                 Button {
                     onAccept()
                 } label: {
                     Label("Accept", systemImage: "checkmark.circle.fill")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.background)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(Color.green)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .padding(.vertical, 10)
+                        .background(
+                            LinearGradient(
+                                colors: [Theme.accent, Theme.accent.opacity(0.8)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                        .shadow(color: Theme.accent.opacity(0.4), radius: 6, x: 0, y: 2)
                 }
                 .buttonStyle(.plain)
 
@@ -532,12 +629,19 @@ struct PendingBetRow: View {
                     onDecline()
                 } label: {
                     Label("Decline", systemImage: "xmark.circle.fill")
-                        .font(.subheadline.bold())
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(Color.red)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .padding(.vertical, 10)
+                        .background(
+                            LinearGradient(
+                                colors: [Theme.danger, Theme.accentTertiary.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                        .shadow(color: Theme.danger.opacity(0.4), radius: 6, x: 0, y: 2)
                 }
                 .buttonStyle(.plain)
             }
@@ -555,22 +659,35 @@ struct RiskEventRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.displayName)
-                    .font(.headline)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
 
                 if let startTime = item.formattedStartTime {
                     Text(startTime)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
 
             Spacer()
 
             Text(item.formattedExposure)
-                .font(.subheadline.bold())
-                .foregroundStyle(.red)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Theme.danger, Theme.accentTertiary],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(Theme.danger.opacity(0.15))
+                )
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }
 

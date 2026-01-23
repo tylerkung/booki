@@ -23,7 +23,7 @@ struct BetSlipSelection: Equatable, Hashable {
 
 /// US-037: Game Card Component
 /// Displays game info with quick-pick odds buttons and expandable markets
-/// US-039: Added favorite toggle functionality
+/// Team names aligned with spread and ML boxes in a clean grid layout
 struct GameCardView: View {
     let event: Event
     let selections: Set<BetSlipSelection>
@@ -32,9 +32,6 @@ struct GameCardView: View {
 
     /// Whether the card is expanded to show all markets
     @State private var isExpanded: Bool = false
-
-    /// Favorites manager for star toggle (US-039)
-    @ObservedObject private var favoritesManager = FavoritesManager.shared
 
     // MARK: - Computed Properties
 
@@ -101,29 +98,27 @@ struct GameCardView: View {
                 expandedMarketsSection
             }
         }
-        .background(
-            // Subtle gradient background for premium feel
-            LinearGradient(
-                colors: [Theme.cardBackground, Color(hex: 0x151515)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(Theme.cardGradient)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: Theme.cornerRadius)
                 .stroke(
-                    // Subtle accent-tinted border for depth
+                    // Exciting gradient border with accent hints
                     LinearGradient(
-                        colors: [Theme.border.opacity(0.8), Theme.border.opacity(0.4)],
-                        startPoint: .top,
-                        endPoint: .bottom
+                        colors: [
+                            Theme.accent.opacity(0.4),
+                            Theme.border.opacity(0.6),
+                            Theme.accentSecondary.opacity(0.3)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     ),
-                    lineWidth: 1
+                    lineWidth: 1.5
                 )
         )
-        // Subtle shadow for depth
-        .shadow(color: Color.black.opacity(0.4), radius: 8, x: 0, y: 4)
+        // Layered shadows for depth and glow
+        .shadow(color: Theme.accent.opacity(0.08), radius: 16, x: 0, y: 0)
+        .shadow(color: Color.black.opacity(0.5), radius: 10, x: 0, y: 6)
     }
 
     // MARK: - Card Content
@@ -134,11 +129,8 @@ struct GameCardView: View {
             // Header: Time and Live indicator
             cardHeader
 
-            // Teams display
-            teamsSection
-
-            // Quick-pick odds section
-            quickPickOddsSection
+            // Combined teams + odds section (aligned)
+            teamsWithOddsSection
 
             // Expand/collapse button
             expandButton
@@ -172,15 +164,20 @@ struct GameCardView: View {
                 liveIndicator
             }
 
-            // Sport badge
+            // Sport badge with gradient accent
             Text(event.sport)
-                .font(.caption2)
-                .fontWeight(.semibold)
-                .foregroundColor(Theme.textSecondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Theme.elevatedBackground)
-                .clipShape(Capsule())
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(Theme.textPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(Theme.accentSecondary.opacity(0.2))
+                        .overlay(
+                            Capsule()
+                                .stroke(Theme.accentSecondary.opacity(0.4), lineWidth: 1)
+                        )
+                )
         }
     }
 
@@ -192,37 +189,63 @@ struct GameCardView: View {
     @ViewBuilder
     private var liveIndicator: some View {
         HStack(spacing: 4) {
-            // Pulsing dot with glow effect
+            // Pulsing dot with enhanced glow effect
             ZStack {
-                // Outer glow
+                // Outer expanding glow
                 Circle()
-                    .fill(Theme.live.opacity(0.4))
-                    .frame(width: 12, height: 12)
-                    .scaleEffect(isPulsing ? 1.3 : 0.8)
-                    .opacity(isPulsing ? 0 : 0.8)
+                    .fill(
+                        RadialGradient(
+                            colors: [Theme.live.opacity(0.6), Theme.live.opacity(0)],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 10
+                        )
+                    )
+                    .frame(width: 16, height: 16)
+                    .scaleEffect(isPulsing ? 1.5 : 0.8)
+                    .opacity(isPulsing ? 0 : 1)
 
-                // Inner solid dot
+                // Inner solid dot with gradient
                 Circle()
-                    .fill(Theme.live)
-                    .frame(width: 6, height: 6)
-                    .shadow(color: Theme.live.opacity(0.8), radius: 4, x: 0, y: 0)
+                    .fill(
+                        RadialGradient(
+                            colors: [Theme.live, Theme.accentTertiary],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 4
+                        )
+                    )
+                    .frame(width: 8, height: 8)
+                    .shadow(color: Theme.live, radius: 6, x: 0, y: 0)
             }
             Text("LIVE")
-                .font(.caption2)
-                .fontWeight(.bold)
+                .font(.system(size: 10, weight: .black))
                 .foregroundColor(Theme.live)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
         .background(
             Capsule()
-                .fill(Theme.live.opacity(0.15))
+                .fill(
+                    LinearGradient(
+                        colors: [Theme.live.opacity(0.2), Theme.accentTertiary.opacity(0.1)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
                 .overlay(
                     Capsule()
-                        .stroke(Theme.live.opacity(0.3), lineWidth: 1)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Theme.live.opacity(0.6), Theme.accentTertiary.opacity(0.4)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            lineWidth: 1.5
+                        )
                 )
         )
-        .shadow(color: Theme.live.opacity(0.3), radius: 6, x: 0, y: 0)
+        .shadow(color: Theme.live.opacity(0.4), radius: 8, x: 0, y: 0)
         .onAppear {
             // Start continuous pulsing animation
             withAnimation(
@@ -235,204 +258,104 @@ struct GameCardView: View {
         }
     }
 
-    // MARK: - Teams Section
+    // MARK: - Combined Teams + Odds Section
+
+    /// Fixed button size for consistent layout
+    private let oddsButtonSize: CGFloat = 72
 
     @ViewBuilder
-    private var teamsSection: some View {
+    private var teamsWithOddsSection: some View {
         VStack(spacing: 8) {
-            // Away team row
-            teamRow(teamName: event.awayTeam)
-
-            // Home team row
-            teamRow(teamName: event.homeTeam)
-        }
-    }
-
-    /// Team row with favorite star (US-039)
-    @ViewBuilder
-    private func teamRow(teamName: String) -> some View {
-        HStack {
-            Text(teamName)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundColor(Theme.textPrimary)
-                .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
-
-            Spacer()
-
-            // Favorite star button
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    favoritesManager.toggleFavorite(teamName)
-                }
-            }) {
-                Image(systemName: favoritesManager.isFavorite(teamName) ? "star.fill" : "star")
-                    .font(.system(size: 18))
-                    .foregroundColor(favoritesManager.isFavorite(teamName) ? Theme.gold : Theme.textMuted)
-                    .shadow(color: favoritesManager.isFavorite(teamName) ? Theme.gold.opacity(0.5) : Color.clear, radius: 4, x: 0, y: 0)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    // MARK: - Quick-Pick Odds Section
-
-    @ViewBuilder
-    private var quickPickOddsSection: some View {
-        VStack(spacing: 8) {
-            // Headers
+            // Column headers
             HStack(spacing: 8) {
+                // Team column header (empty)
                 Text("")
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if spreadMarket != nil {
                     Text("SPREAD")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundColor(Theme.textMuted)
-                        .tracking(0.5)
-                        .frame(width: 70)
+                        .tracking(0.8)
+                        .frame(width: oddsButtonSize)
                 }
 
                 if moneylineMarket != nil {
                     Text("ML")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundColor(Theme.textMuted)
-                        .tracking(0.5)
-                        .frame(width: 70)
+                        .tracking(0.8)
+                        .frame(width: oddsButtonSize)
                 }
             }
 
-            // Away team odds row
-            if let spread = spreadMarket, let ml = moneylineMarket {
-                oddsRow(
-                    teamName: event.awayTeam,
-                    spreadSelection: makeSelection(market: spread, side: spread.sideA, odds: spread.oddsA),
-                    spreadLabel: spread.sideA,
-                    spreadOdds: spread.oddsA,
-                    mlSelection: makeSelection(market: ml, side: ml.sideA, odds: ml.oddsA),
-                    mlOdds: ml.oddsA
-                )
-            } else if let spread = spreadMarket {
-                oddsRowSpreadOnly(
-                    teamName: event.awayTeam,
-                    selection: makeSelection(market: spread, side: spread.sideA, odds: spread.oddsA),
-                    spreadLabel: spread.sideA,
-                    spreadOdds: spread.oddsA
-                )
-            } else if let ml = moneylineMarket {
-                oddsRowMLOnly(
-                    teamName: event.awayTeam,
-                    selection: makeSelection(market: ml, side: ml.sideA, odds: ml.oddsA),
-                    mlOdds: ml.oddsA
-                )
-            }
+            // Away team row with odds
+            teamOddsRow(
+                teamName: event.awayTeam,
+                spreadMarket: spreadMarket,
+                moneylineMarket: moneylineMarket,
+                isAwayTeam: true
+            )
 
-            // Home team odds row
-            if let spread = spreadMarket, let ml = moneylineMarket {
-                oddsRow(
-                    teamName: event.homeTeam,
-                    spreadSelection: makeSelection(market: spread, side: spread.sideB, odds: spread.oddsB),
-                    spreadLabel: spread.sideB,
-                    spreadOdds: spread.oddsB,
-                    mlSelection: makeSelection(market: ml, side: ml.sideB, odds: ml.oddsB),
-                    mlOdds: ml.oddsB
-                )
-            } else if let spread = spreadMarket {
-                oddsRowSpreadOnly(
-                    teamName: event.homeTeam,
-                    selection: makeSelection(market: spread, side: spread.sideB, odds: spread.oddsB),
-                    spreadLabel: spread.sideB,
-                    spreadOdds: spread.oddsB
-                )
-            } else if let ml = moneylineMarket {
-                oddsRowMLOnly(
-                    teamName: event.homeTeam,
-                    selection: makeSelection(market: ml, side: ml.sideB, odds: ml.oddsB),
-                    mlOdds: ml.oddsB
-                )
-            }
+            // Home team row with odds
+            teamOddsRow(
+                teamName: event.homeTeam,
+                spreadMarket: spreadMarket,
+                moneylineMarket: moneylineMarket,
+                isAwayTeam: false
+            )
         }
     }
 
-    // MARK: - Odds Row Variants
-
+    /// Single row with team name and aligned odds buttons
     @ViewBuilder
-    private func oddsRow(
+    private func teamOddsRow(
         teamName: String,
-        spreadSelection: BetSlipSelection,
-        spreadLabel: String,
-        spreadOdds: Int,
-        mlSelection: BetSlipSelection,
-        mlOdds: Int
+        spreadMarket: Market?,
+        moneylineMarket: Market?,
+        isAwayTeam: Bool
     ) -> some View {
         HStack(spacing: 8) {
-            // Team name placeholder (invisible - teams shown above)
-            Color.clear
+            // Team name
+            Text(teamName)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(Theme.textPrimary)
+                .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             // Spread button
-            OddsButton(
-                topLabel: formatSpreadLabel(spreadLabel),
-                odds: spreadOdds,
-                isSelected: isSelected(spreadSelection),
-                action: { onSelectOdds(spreadSelection) }
-            )
-            .frame(width: 70)
+            if let spread = spreadMarket {
+                let side = isAwayTeam ? spread.sideA : spread.sideB
+                let odds = isAwayTeam ? spread.oddsA : spread.oddsB
+                let selection = makeSelection(market: spread, side: side, odds: odds)
+
+                SpreadButton(
+                    spreadValue: formatSpreadValue(side),
+                    odds: odds,
+                    isSelected: isSelected(selection),
+                    action: { onSelectOdds(selection) }
+                )
+                .frame(width: oddsButtonSize, height: oddsButtonSize)
+            }
 
             // Moneyline button
-            OddsButton(
-                topLabel: nil,
-                odds: mlOdds,
-                isSelected: isSelected(mlSelection),
-                action: { onSelectOdds(mlSelection) }
-            )
-            .frame(width: 70)
-        }
-    }
+            if let ml = moneylineMarket {
+                let odds = isAwayTeam ? ml.oddsA : ml.oddsB
+                let side = isAwayTeam ? ml.sideA : ml.sideB
+                let selection = makeSelection(market: ml, side: side, odds: odds)
 
-    @ViewBuilder
-    private func oddsRowSpreadOnly(
-        teamName: String,
-        selection: BetSlipSelection,
-        spreadLabel: String,
-        spreadOdds: Int
-    ) -> some View {
-        HStack(spacing: 8) {
-            Color.clear
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            OddsButton(
-                topLabel: formatSpreadLabel(spreadLabel),
-                odds: spreadOdds,
-                isSelected: isSelected(selection),
-                action: { onSelectOdds(selection) }
-            )
-            .frame(width: 70)
-        }
-    }
-
-    @ViewBuilder
-    private func oddsRowMLOnly(
-        teamName: String,
-        selection: BetSlipSelection,
-        mlOdds: Int
-    ) -> some View {
-        HStack(spacing: 8) {
-            Color.clear
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            OddsButton(
-                topLabel: nil,
-                odds: mlOdds,
-                isSelected: isSelected(selection),
-                action: { onSelectOdds(selection) }
-            )
-            .frame(width: 70)
+                MLButton(
+                    odds: odds,
+                    isSelected: isSelected(selection),
+                    action: { onSelectOdds(selection) }
+                )
+                .frame(width: oddsButtonSize, height: oddsButtonSize)
+            }
         }
     }
 
     /// Extract spread number from label (e.g., "Lakers -3.5" -> "-3.5")
-    private func formatSpreadLabel(_ label: String) -> String {
-        // Try to extract the spread number from the label
+    private func formatSpreadValue(_ label: String) -> String {
         let components = label.components(separatedBy: " ")
         if let last = components.last, (last.hasPrefix("+") || last.hasPrefix("-")) {
             return last
@@ -445,22 +368,40 @@ struct GameCardView: View {
     @ViewBuilder
     private var expandButton: some View {
         Button(action: {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 isExpanded.toggle()
             }
         }) {
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 Text(isExpanded ? "Show Less" : "All Markets")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(Theme.accent)
+                    .font(.system(size: 12, weight: .semibold))
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(Theme.accent)
+                    .font(.system(size: 10, weight: .bold))
             }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 12)
-            .background(Theme.accent.opacity(0.1))
-            .clipShape(Capsule())
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [Theme.accent, Theme.accentSecondary],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .background(
+                Capsule()
+                    .fill(Theme.accent.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Theme.accent.opacity(0.4), Theme.accentSecondary.opacity(0.3)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                ),
+                                lineWidth: 1
+                            )
+                    )
+            )
         }
         .buttonStyle(.plain)
     }
@@ -525,19 +466,16 @@ struct GameCardView: View {
     }
 }
 
-// MARK: - Odds Button Component
+// MARK: - Spread Button Component
 
-/// Reusable odds button with pill/capsule shape, selection state, and tap feedback
-/// US-050: Premium sportsbook styling with bright accent for selected state
-/// US-053: Enhanced animations for tap and selection highlight
-struct OddsButton: View {
-    let topLabel: String?
+/// Spread button showing spread value as main text, odds as secondary
+struct SpreadButton: View {
+    let spreadValue: String
     let odds: Int
     let isSelected: Bool
     let action: () -> Void
 
     @State private var isPressed: Bool = false
-    /// US-053: Track when selection state changes to show highlight pulse
     @State private var showSelectionHighlight: Bool = false
 
     private var formattedOdds: String {
@@ -546,19 +484,219 @@ struct OddsButton: View {
 
     var body: some View {
         Button(action: {
-            // US-053: Trigger tap animation with spring
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
                 isPressed = true
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
                     isPressed = false
                 }
             }
-            // US-053: Show selection highlight pulse when adding to slip
             if !isSelected {
                 showSelectionHighlight = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    showSelectionHighlight = false
+                }
+            }
+            action()
+        }) {
+            VStack(spacing: 2) {
+                // Spread value as main text
+                Text(spreadValue)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                // Odds as smaller secondary text
+                Text(formattedOdds)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(isSelected ? Theme.background.opacity(0.8) : Theme.textSecondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(
+                Group {
+                    if isSelected {
+                        LinearGradient(
+                            colors: [Theme.accent, Theme.accentSecondary.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    } else {
+                        LinearGradient(
+                            colors: [Theme.elevatedBackground, Theme.elevatedBackground.opacity(0.8)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                    .stroke(
+                        isSelected
+                            ? LinearGradient(
+                                colors: [Theme.accent, Theme.accentSecondary],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            : LinearGradient(
+                                colors: [Theme.border.opacity(0.6), Theme.border.opacity(0.3)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                        lineWidth: isSelected ? 2 : 1
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                    .fill(
+                        RadialGradient(
+                            colors: [Theme.accent.opacity(showSelectionHighlight ? 0.6 : 0), Theme.accent.opacity(0)],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 50
+                        )
+                    )
+                    .animation(.easeOut(duration: 0.4), value: showSelectionHighlight)
+            )
+            .shadow(
+                color: isSelected ? Theme.accent.opacity(0.5) : Color.clear,
+                radius: isSelected ? 10 : 0,
+                x: 0,
+                y: 0
+            )
+            .scaleEffect(isPressed ? 0.92 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - ML Button Component
+
+/// Moneyline button showing just the odds
+struct MLButton: View {
+    let odds: Int
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isPressed: Bool = false
+    @State private var showSelectionHighlight: Bool = false
+
+    private var formattedOdds: String {
+        odds >= 0 ? "+\(odds)" : "\(odds)"
+    }
+
+    var body: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                isPressed = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                    isPressed = false
+                }
+            }
+            if !isSelected {
+                showSelectionHighlight = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    showSelectionHighlight = false
+                }
+            }
+            action()
+        }) {
+            Text(formattedOdds)
+                .font(.system(size: 16, weight: .black))
+                .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(
+                    Group {
+                        if isSelected {
+                            LinearGradient(
+                                colors: [Theme.accent, Theme.accentSecondary.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        } else {
+                            LinearGradient(
+                                colors: [Theme.elevatedBackground, Theme.elevatedBackground.opacity(0.8)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        }
+                    }
+                )
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                        .stroke(
+                            isSelected
+                                ? LinearGradient(
+                                    colors: [Theme.accent, Theme.accentSecondary],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                                : LinearGradient(
+                                    colors: [Theme.border.opacity(0.6), Theme.border.opacity(0.3)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                            lineWidth: isSelected ? 2 : 1
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                        .fill(
+                            RadialGradient(
+                                colors: [Theme.accent.opacity(showSelectionHighlight ? 0.6 : 0), Theme.accent.opacity(0)],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 50
+                            )
+                        )
+                        .animation(.easeOut(duration: 0.4), value: showSelectionHighlight)
+                )
+                .shadow(
+                    color: isSelected ? Theme.accent.opacity(0.5) : Color.clear,
+                    radius: isSelected ? 10 : 0,
+                    x: 0,
+                    y: 0
+                )
+                .scaleEffect(isPressed ? 0.92 : 1.0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Legacy Odds Button (for expanded markets)
+
+/// Generic odds button for expanded market section
+struct OddsButton: View {
+    let topLabel: String?
+    let odds: Int
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isPressed: Bool = false
+    @State private var showSelectionHighlight: Bool = false
+
+    private var formattedOdds: String {
+        odds >= 0 ? "+\(odds)" : "\(odds)"
+    }
+
+    var body: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                isPressed = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                    isPressed = false
+                }
+            }
+            if !isSelected {
+                showSelectionHighlight = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     showSelectionHighlight = false
                 }
             }
@@ -567,58 +705,73 @@ struct OddsButton: View {
             VStack(spacing: 2) {
                 if let label = topLabel {
                     Text(label)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(isSelected ? Theme.cardBackground : Theme.textSecondary)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(isSelected ? Theme.background : Theme.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
                 Text(formattedOdds)
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(isSelected ? Theme.cardBackground : Theme.textPrimary)
+                    .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .padding(.horizontal, 6)
+            .padding(.horizontal, 8)
             .background(
                 Group {
                     if isSelected {
-                        // Bright accent background with subtle gradient for selected state
                         LinearGradient(
-                            colors: [Theme.accent, Theme.accent.opacity(0.85)],
+                            colors: [Theme.accent, Theme.accentSecondary.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    } else {
+                        LinearGradient(
+                            colors: [Theme.elevatedBackground, Theme.elevatedBackground.opacity(0.8)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
-                    } else {
-                        // Dark elevated background for unselected state
-                        Theme.elevatedBackground
                     }
                 }
             )
-            // Pill/capsule shape
-            .clipShape(Capsule())
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
             .overlay(
-                Capsule()
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
                     .stroke(
-                        isSelected ? Theme.accent.opacity(0.5) : Theme.border,
-                        lineWidth: isSelected ? 2 : 0.5
+                        isSelected
+                            ? LinearGradient(
+                                colors: [Theme.accent, Theme.accentSecondary],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            : LinearGradient(
+                                colors: [Theme.border.opacity(0.6), Theme.border.opacity(0.3)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                        lineWidth: isSelected ? 2 : 1
                     )
             )
-            // US-053: Selection highlight pulse overlay
             .overlay(
-                Capsule()
-                    .fill(Theme.accent.opacity(showSelectionHighlight ? 0.4 : 0))
-                    .animation(.easeOut(duration: 0.3), value: showSelectionHighlight)
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                    .fill(
+                        RadialGradient(
+                            colors: [Theme.accent.opacity(showSelectionHighlight ? 0.6 : 0), Theme.accent.opacity(0)],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 50
+                        )
+                    )
+                    .animation(.easeOut(duration: 0.4), value: showSelectionHighlight)
             )
-            // Glow effect for selected state
             .shadow(
-                color: isSelected ? Theme.accent.opacity(0.4) : Color.clear,
+                color: isSelected ? Theme.accent.opacity(0.5) : Color.clear,
                 radius: isSelected ? 8 : 0,
                 x: 0,
                 y: 0
             )
             .scaleEffect(isPressed ? 0.92 : 1.0)
-            // US-053: Animate selection state changes
-            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isSelected)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
         }
         .buttonStyle(.plain)
     }

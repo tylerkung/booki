@@ -1,55 +1,61 @@
 import SwiftUI
 
-/// Design tokens for the dark sports-betting theme
+/// Design tokens for the fun, gamelike sports-betting theme
 /// Provides consistent colors, typography, and styling across the app
 enum Theme {
 
     // MARK: - Background Colors
 
-    /// Primary background: near-black (#0D0D0D)
-    static let background = Color(hex: 0x0D0D0D)
+    /// Primary background: deep purple-tinted black for gaming feel
+    static let background = Color(hex: 0x0A0A12)
 
-    /// Secondary background: dark gray for cards (#1A1A1A)
-    static let cardBackground = Color(hex: 0x1A1A1A)
+    /// Secondary background: dark with subtle purple tint for cards
+    static let cardBackground = Color(hex: 0x14141F)
 
-    /// Tertiary background: slightly lighter for nested elements (#252525)
-    static let elevatedBackground = Color(hex: 0x252525)
+    /// Tertiary background: slightly lighter for nested elements
+    static let elevatedBackground = Color(hex: 0x1E1E2D)
 
     // MARK: - Accent Colors
 
-    /// Primary accent: vibrant green for positive/wins (#00FF87)
-    static let accent = Color(hex: 0x00FF87)
+    /// Primary accent: electric cyan/teal for energy (#00F5D4)
+    static let accent = Color(hex: 0x00F5D4)
 
-    /// Secondary accent: gold/yellow for highlights (#FFD700)
-    static let gold = Color(hex: 0xFFD700)
+    /// Secondary accent: vibrant purple for variety (#9D4EDD)
+    static let accentSecondary = Color(hex: 0x9D4EDD)
 
-    /// Danger color: red for losses/errors (#FF4444)
-    static let danger = Color(hex: 0xFF4444)
+    /// Tertiary accent: hot pink for highlights (#FF006E)
+    static let accentTertiary = Color(hex: 0xFF006E)
 
-    /// Warning color: orange for caution states (#FF9500)
-    static let warning = Color(hex: 0xFF9500)
+    /// Secondary accent: gold/yellow for highlights - now more vibrant
+    static let gold = Color(hex: 0xFFE66D)
+
+    /// Danger color: coral red for losses/errors - softer, more gamelike
+    static let danger = Color(hex: 0xFF6B6B)
+
+    /// Warning color: warm orange for caution states
+    static let warning = Color(hex: 0xFFA94D)
 
     // MARK: - Text Colors
 
-    /// Primary text: white
-    static let textPrimary = Color.white
+    /// Primary text: slightly warm white for comfort
+    static let textPrimary = Color(hex: 0xF8F8F8)
 
-    /// Secondary text: gray (#9E9E9E)
-    static let textSecondary = Color(hex: 0x9E9E9E)
+    /// Secondary text: soft lavender gray
+    static let textSecondary = Color(hex: 0xA8A8B8)
 
-    /// Muted text: darker gray (#666666)
-    static let textMuted = Color(hex: 0x666666)
+    /// Muted text: deeper purple-gray
+    static let textMuted = Color(hex: 0x6B6B7B)
 
     // MARK: - Status Colors
 
-    /// Live indicator green (#00FF87)
+    /// Live indicator: vibrant cyan (matches accent)
     static let live = accent
 
-    /// Scheduled/upcoming blue (#007AFF)
-    static let scheduled = Color(hex: 0x007AFF)
+    /// Scheduled/upcoming: soft blue-purple
+    static let scheduled = Color(hex: 0x7B68EE)
 
-    /// Final/completed gray (#666666)
-    static let finalStatus = Color(hex: 0x666666)
+    /// Final/completed: muted purple-gray
+    static let finalStatus = Color(hex: 0x5C5C6F)
 
     // MARK: - Bet Result Colors
 
@@ -64,36 +70,66 @@ enum Theme {
 
     // MARK: - UI Element Colors
 
-    /// Border color for cards and inputs (#333333)
-    static let border = Color(hex: 0x333333)
+    /// Border color: subtle purple tint
+    static let border = Color(hex: 0x2A2A3A)
 
-    /// Divider color (#2A2A2A)
-    static let divider = Color(hex: 0x2A2A2A)
+    /// Divider color: deep purple-black
+    static let divider = Color(hex: 0x22222E)
 
     /// Selected state background with accent tint
     static let selectedBackground = accent.opacity(0.15)
 
+    // MARK: - Corner Radius (more rounded = more fun)
+
+    /// Standard corner radius for cards
+    static let cornerRadius: CGFloat = 16
+
+    /// Smaller corner radius for buttons and inner elements
+    static let cornerRadiusSmall: CGFloat = 12
+
     // MARK: - Gradients
 
-    /// Primary button gradient
+    /// Primary button gradient: cyan to purple for energy
     static let buttonGradient = LinearGradient(
-        colors: [accent, accent.opacity(0.8)],
-        startPoint: .top,
-        endPoint: .bottom
+        colors: [accent, accentSecondary],
+        startPoint: .leading,
+        endPoint: .trailing
     )
 
-    /// Gold highlight gradient
-    static let goldGradient = LinearGradient(
-        colors: [gold, Color(hex: 0xFFA500)],
+    /// Exciting multi-color gradient for special elements
+    static let rainbowGradient = LinearGradient(
+        colors: [accent, accentSecondary, accentTertiary],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
 
-    /// Card subtle gradient overlay
+    /// Gold highlight gradient - warmer, more playful
+    static let goldGradient = LinearGradient(
+        colors: [gold, Color(hex: 0xFFAA00)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    /// Card gradient: subtle purple depth
     static let cardGradient = LinearGradient(
-        colors: [cardBackground, Color(hex: 0x151515)],
+        colors: [cardBackground, Color(hex: 0x0E0E18)],
         startPoint: .top,
         endPoint: .bottom
+    )
+
+    /// Background gradient for screens: adds depth
+    static let backgroundGradient = LinearGradient(
+        colors: [Color(hex: 0x12121A), background],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    /// Glow gradient for selected/active states
+    static let glowGradient = RadialGradient(
+        colors: [accent.opacity(0.3), accent.opacity(0)],
+        center: .center,
+        startRadius: 0,
+        endRadius: 50
     )
 }
 
@@ -115,32 +151,64 @@ extension Color {
 // MARK: - View Modifiers
 
 extension View {
-    /// Apply the standard card background style
+    /// Apply the standard card background style with gamelike styling
     func cardStyle() -> some View {
         self
-            .background(Theme.cardBackground)
-            .cornerRadius(12)
+            .background(Theme.cardGradient)
+            .cornerRadius(Theme.cornerRadius)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Theme.border, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Theme.border.opacity(0.8), Theme.border.opacity(0.3)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
     }
 
-    /// Apply the elevated card style with shadow
+    /// Apply the elevated card style with colored glow
     func elevatedCardStyle() -> some View {
         self
-            .background(Theme.cardBackground)
-            .cornerRadius(12)
+            .background(Theme.cardGradient)
+            .cornerRadius(Theme.cornerRadius)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Theme.border, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Theme.accent.opacity(0.3), Theme.accentSecondary.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
-            .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+            .shadow(color: Theme.accent.opacity(0.15), radius: 12, x: 0, y: 4)
+            .shadow(color: Color.black.opacity(0.4), radius: 8, x: 0, y: 4)
     }
 
-    /// Apply the standard dark background
+    /// Apply the standard dark background with subtle gradient
     func darkBackground() -> some View {
-        self.background(Theme.background)
+        self.background(Theme.backgroundGradient)
+    }
+
+    /// Apply a glowing border effect for highlighted elements
+    func glowingBorder(color: Color = Theme.accent, isActive: Bool = true) -> some View {
+        self
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .stroke(color, lineWidth: isActive ? 2 : 0)
+            )
+            .shadow(color: isActive ? color.opacity(0.5) : .clear, radius: 8, x: 0, y: 0)
+    }
+
+    /// Apply accent gradient text
+    func gradientText() -> some View {
+        self
+            .overlay(Theme.buttonGradient)
+            .mask(self)
     }
 }
 
@@ -167,7 +235,11 @@ extension View {
                     .font(.headline)
                     .foregroundStyle(Theme.textPrimary)
                 HStack(spacing: 12) {
-                    colorSwatch(Theme.accent, "Accent")
+                    colorSwatch(Theme.accent, "Cyan")
+                    colorSwatch(Theme.accentSecondary, "Purple")
+                    colorSwatch(Theme.accentTertiary, "Pink")
+                }
+                HStack(spacing: 12) {
                     colorSwatch(Theme.gold, "Gold")
                     colorSwatch(Theme.danger, "Danger")
                     colorSwatch(Theme.warning, "Warning")
@@ -215,11 +287,47 @@ extension View {
                     .padding()
                     .frame(maxWidth: .infinity)
                     .elevatedCardStyle()
+
+                Text("Glowing Card")
+                    .foregroundStyle(Theme.textPrimary)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .cardStyle()
+                    .glowingBorder()
+            }
+
+            // Gradient Demo
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Gradients")
+                    .font(.headline)
+                    .foregroundStyle(Theme.textPrimary)
+
+                HStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                        .fill(Theme.buttonGradient)
+                        .frame(height: 50)
+                        .overlay(
+                            Text("Button")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(Theme.background)
+                        )
+
+                    RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                        .fill(Theme.rainbowGradient)
+                        .frame(height: 50)
+                        .overlay(
+                            Text("Rainbow")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                        )
+                }
             }
         }
         .padding()
     }
-    .background(Theme.background)
+    .darkBackground()
 }
 
 @ViewBuilder
