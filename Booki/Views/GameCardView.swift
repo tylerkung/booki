@@ -22,16 +22,13 @@ struct BetSlipSelection: Equatable, Hashable {
 }
 
 /// US-037: Game Card Component
-/// Displays game info with quick-pick odds buttons and expandable markets
+/// Displays game info with quick-pick odds buttons
 /// Team names aligned with spread and ML boxes in a clean grid layout
 struct GameCardView: View {
     let event: Event
     let selections: Set<BetSlipSelection>
     let onSelectOdds: (BetSlipSelection) -> Void
     let onTapCard: () -> Void
-
-    /// Whether the card is expanded to show all markets
-    @State private var isExpanded: Bool = false
 
     // MARK: - Computed Properties
 
@@ -65,11 +62,6 @@ struct GameCardView: View {
         event.markets?.first { $0.type == .total }
     }
 
-    /// All markets for expanded view
-    private var allMarkets: [Market] {
-        event.markets ?? []
-    }
-
     /// Check if a specific selection is in the bet slip
     private func isSelected(_ selection: BetSlipSelection) -> Bool {
         selections.contains(selection)
@@ -92,11 +84,6 @@ struct GameCardView: View {
         VStack(spacing: 0) {
             // Main card content
             cardContent
-
-            // Expanded markets section
-            if isExpanded {
-                expandedMarketsSection
-            }
         }
         .background(Theme.cardGradient)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
@@ -131,9 +118,6 @@ struct GameCardView: View {
 
             // Combined teams + odds section (aligned)
             teamsWithOddsSection
-
-            // Expand/collapse button
-            expandButton
         }
         .padding(12)
         .contentShape(Rectangle())
@@ -363,107 +347,6 @@ struct GameCardView: View {
         return label
     }
 
-    // MARK: - Expand Button
-
-    @ViewBuilder
-    private var expandButton: some View {
-        Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                isExpanded.toggle()
-            }
-        }) {
-            HStack(spacing: 6) {
-                Text(isExpanded ? "Show Less" : "All Markets")
-                    .font(.system(size: 12, weight: .semibold))
-                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 10, weight: .bold))
-            }
-            .foregroundStyle(
-                LinearGradient(
-                    colors: [Theme.accent, Theme.accentSecondary],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .padding(.vertical, 8)
-            .padding(.horizontal, 16)
-            .background(
-                Capsule()
-                    .fill(Theme.accent.opacity(0.12))
-                    .overlay(
-                        Capsule()
-                            .stroke(
-                                LinearGradient(
-                                    colors: [Theme.accent.opacity(0.4), Theme.accentSecondary.opacity(0.3)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Expanded Markets Section
-
-    @ViewBuilder
-    private var expandedMarketsSection: some View {
-        VStack(spacing: 12) {
-            // Styled divider
-            Rectangle()
-                .fill(Theme.divider)
-                .frame(height: 1)
-                .padding(.horizontal, -12)
-
-            ForEach(allMarkets, id: \.id) { market in
-                expandedMarketRow(market: market)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 12)
-    }
-
-    @ViewBuilder
-    private func expandedMarketRow(market: Market) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Market type header
-            Text(marketTypeName(market.type).uppercased())
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(Theme.textMuted)
-                .tracking(0.5)
-
-            // Market options
-            HStack(spacing: 8) {
-                // Side A
-                let selectionA = makeSelection(market: market, side: market.sideA, odds: market.oddsA)
-                OddsButton(
-                    topLabel: market.sideA,
-                    odds: market.oddsA,
-                    isSelected: isSelected(selectionA),
-                    action: { onSelectOdds(selectionA) }
-                )
-
-                // Side B
-                let selectionB = makeSelection(market: market, side: market.sideB, odds: market.oddsB)
-                OddsButton(
-                    topLabel: market.sideB,
-                    odds: market.oddsB,
-                    isSelected: isSelected(selectionB),
-                    action: { onSelectOdds(selectionB) }
-                )
-            }
-        }
-    }
-
-    private func marketTypeName(_ type: MarketType) -> String {
-        switch type {
-        case .spread: return "Spread"
-        case .total: return "Total"
-        case .moneyline: return "Moneyline"
-        }
-    }
 }
 
 // MARK: - Spread Button Component
