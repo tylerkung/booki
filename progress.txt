@@ -1,0 +1,129 @@
+# Ralph Progress Log
+Started: Thu Jan 22 15:35:57 PST 2026
+
+## Codebase Patterns
+- Event model already exists with `EventStatus` enum (scheduled, live, final)
+- EventDetailView already exists for viewing/editing event details
+- Use `NavigationLink(value:)` with `.navigationDestination(for:)` for type-safe navigation
+- Rename view components to avoid conflicts (e.g., `EventRowView` exists in `SubmitBetView.swift`, so use `EventListRowView` in new files)
+- When adding new Swift files, must add to `project.pbxproj`: PBXBuildFile, PBXFileReference, PBXGroup (Views), and PBXSourcesBuildPhase sections
+- Use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcrun xcodebuild` for command-line builds
+- `MarketRowView` exists in `SubmitBetView.swift` - use `EventMarketRowView` for EventDetailView market rows
+- Market model uses `sideA`/`sideB` strings and `oddsA`/`oddsB` integers for American odds
+
+---
+
+## 2026-01-22 15:38 - US-031
+- **What was implemented:** Created EventsListView for bookie event management with Events tab in TabView
+- **Files changed:**
+  - `Booki/Views/EventsListView.swift` (new)
+  - `Booki/ContentView.swift` (added Events tab)
+  - `Booki.xcodeproj/project.pbxproj` (added EventsListView.swift to build)
+- **Learnings for future iterations:**
+  - The Views directory already has `EventRowView` in `SubmitBetView.swift` - had to rename my row view to `EventListRowView` to avoid redeclaration error
+  - Event model and EventDetailView already exist - no need to create new models
+  - Status badge colors are already defined: blue=scheduled, green=live, gray=final
+  - Grouping events by sport/league using `Dictionary(grouping:)` works well for section organization
+---
+
+## 2026-01-22 15:43 - US-032
+- **What was implemented:** Created AddEventSheet for adding new events with sport picker, team inputs, and date/time picker
+- **Files changed:**
+  - `Booki/Views/AddEventSheet.swift` (new)
+  - `Booki/Views/EventsListView.swift` (added toolbar + button and sheet presentation)
+  - `Booki.xcodeproj/project.pbxproj` (added AddEventSheet.swift to build)
+- **Learnings for future iterations:**
+  - SwiftUI Form with Picker works well for sport selection
+  - DatePicker with `[.date, .hourAndMinute]` components provides combined date/time selection
+  - Form validation using computed property `isFormValid` enables/disables save button
+  - Use `@State private var showingAddEvent = false` with `.sheet(isPresented:)` for modal presentation
+  - Use `.trimmingCharacters(in: .whitespaces)` to clean user input before saving
+---
+
+## 2026-01-22 15:47 - US-033
+- **What was implemented:** Market management for events - adding, editing, and deleting markets
+- **Files changed:**
+  - `Booki/Views/AddMarketSheet.swift` (new) - Dynamic form for adding markets
+  - `Booki/Views/EditMarketSheet.swift` (new) - Sheet for editing market odds
+  - `Booki/Views/EventDetailView.swift` (added Markets section with CRUD)
+  - `Booki.xcodeproj/project.pbxproj` (added new files to build)
+- **Learnings for future iterations:**
+  - `MarketRowView` already exists in `SubmitBetView.swift` - had to use `EventMarketRowView` to avoid redeclaration
+  - Use `@State private var marketToEdit: Market?` with `.sheet(item:)` for edit sheets bound to specific items
+  - American odds validation: must be >= 100 or <= -100 (values between -99 and +99 are invalid)
+  - Dynamic form switching with `@ViewBuilder` and switch statement on enum works well for different market types
+  - Use `.onDelete(perform:)` on ForEach for swipe-to-delete functionality
+---
+
+## 2026-01-22 15:51 - US-034
+- **What was implemented:** SeedDataService for generating mock game data with "Load Sample Data" button in Settings
+- **Files changed:**
+  - `Booki/Services/SeedDataService.swift` (new) - Service with mock event generation
+  - `Booki/Views/SettingsView.swift` (added Load Sample Data button with confirmation)
+  - `Booki.xcodeproj/project.pbxproj` (added SeedDataService.swift to build)
+- **Learnings for future iterations:**
+  - Use `modelContext.delete(model: Event.self)` to delete all instances of a model type
+  - Creating events with markets requires setting the event on each market: `Market(..., event: game1)`
+  - Use `@State` variables for alerts: `showingConfirmation`, `showingSuccess` with `.alert(isPresented:)` modifiers
+  - Use two alerts (confirmation + success) chained with `.alert()` modifiers
+  - Build command with iPhone 16: `DEVELOPER_DIR=... xcodebuild -destination 'platform=iOS Simulator,name=iPhone 16'`
+---
+
+## 2026-01-22 15:54 - US-035
+- **What was implemented:** Status picker and final score entry for events
+- **Files changed:**
+  - `Booki/Views/EventDetailView.swift` (modified - added status picker, FinalScoreSheet, bet status transition)
+- **Learnings for future iterations:**
+  - Use `@Bindable var event: Event` (not `let`) when you need to modify a SwiftData model in a view
+  - Use `@State private var selectedStatus: EventStatus` initialized from model in `init()` for Picker binding
+  - Use `.onChange(of: selectedStatus)` to trigger side effects when picker selection changes
+  - Use `.sheet(isPresented:, onDismiss:)` to sync state when sheet is cancelled (e.g., revert picker selection)
+  - Bet status `readyToGrade` is used for accepted bets whose event is finalized and awaiting grading
+  - Filter bets by `$0.eventId == event.id.uuidString` to find related bets
+---
+
+## 2026-01-22 16:02 - US-036
+- **What was implemented:** Redesigned player games view with horizontal scrolling sport tabs
+- **Files changed:**
+  - `Booki/Views/GamesView.swift` (new) - Main games browsing view with sport tabs
+  - `Booki/ContentView.swift` (modified - replaced SubmitBetView with GamesView, renamed tab to "Games")
+  - `Booki.xcodeproj/project.pbxproj` (added GamesView.swift to build)
+- **Learnings for future iterations:**
+  - Use `VStack(spacing: 0)` with sticky header to keep sport tabs visible while scrolling
+  - `EventRowView` already exists in `SubmitBetView.swift` - created `GameRowView` to avoid conflicts
+  - Use `ScrollView(.horizontal, showsIndicators: false)` for horizontal tab scrolling
+  - Sport tabs filter by setting `@State private var selectedSport: String? = nil` (nil = "All")
+  - Filter available sports with `Set(availableEvents.map { $0.sport }).sorted()` for unique, sorted list
+  - `SubmitBetView.swift` still contains `MarketSelectionView` and `StakeEntryView` which are used via navigation
+---
+
+## 2026-01-22 16:05 - US-037
+- **What was implemented:** GameCard component with quick-pick odds, expandable markets, and bet slip integration
+- **Files changed:**
+  - `Booki/Views/GameCardView.swift` (new) - GameCard with teams, time, live indicator, odds buttons
+  - `Booki/Views/GamesView.swift` (modified - integrated GameCardView, added bet slip selections state)
+  - `Booki.xcodeproj/project.pbxproj` (added GameCardView.swift to build)
+- **Learnings for future iterations:**
+  - Use `Set<BetSlipSelection>` for efficient selection tracking across multiple cards
+  - Use `@State private var isExpanded` within GameCardView for local expand/collapse state
+  - `navigationDestination(item:)` works well with `@State` for programmatic navigation
+  - Use `.contentShape(Rectangle())` to make entire card area tappable
+  - Odds button scale animation (`scaleEffect(isPressed ? 0.95 : 1.0)`) provides good tap feedback
+  - Format spread label to extract just the number (e.g., "Lakers -3.5" -> "-3.5")
+  - Live indicator with pulsing green dot and "LIVE" text in green-tinted capsule
+  - `BetSlipSelection` model with `Hashable` conformance for Set storage
+---
+
+## 2026-01-22 16:10 - US-038
+- **What was implemented:** Search and filter functionality for games view
+- **Files changed:**
+  - `Booki/Views/GamesView.swift` (modified - added search bar, time filter, filter sheet)
+- **Learnings for future iterations:**
+  - Use `TimeFilter` enum with `CaseIterable` and `Identifiable` for filter options
+  - Chain multiple filtering computed properties: `timeFilteredEvents` -> `searchFilteredEvents` -> `filteredEvents`
+  - Use `Calendar.isDateInToday()` and `isDateInTomorrow()` for simple date filtering
+  - Search filtering: use `lowercased().contains()` for case-insensitive matching
+  - Use `.presentationDetents([.height(280)])` for compact filter sheet
+  - Empty state message should dynamically reflect which filters are active
+  - "Clear Filters" button in empty state provides quick reset path
+---

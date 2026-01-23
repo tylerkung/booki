@@ -1,9 +1,20 @@
 import SwiftUI
 import SwiftData
 
+/// Time filter options for games (US-038)
+enum TimeFilter: String, CaseIterable, Identifiable {
+    case all = "All"
+    case today = "Today"
+    case tomorrow = "Tomorrow"
+    case thisWeek = "This Week"
+
+    var id: String { rawValue }
+}
+
 /// Redesigned player view for browsing games organized by sport with easy navigation
 /// US-036: Horizontal scrolling sport tabs with sticky header
 /// US-037: Game cards with quick-pick odds and bet slip integration
+/// US-038: Search and filter functionality
 struct GamesView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Event.startTime) private var events: [Event]
@@ -21,6 +32,15 @@ struct GamesView: View {
     /// Event to navigate to for full market view
     @State private var selectedEventForNavigation: Event? = nil
 
+    /// Search text for filtering by team name (US-038)
+    @State private var searchText: String = ""
+
+    /// Time filter option (US-038)
+    @State private var timeFilter: TimeFilter = .all
+
+    /// Show filter options sheet (US-038)
+    @State private var showingFilterSheet: Bool = false
+
     // MARK: - Computed Properties
 
     /// Available events (scheduled or live, not final)
@@ -34,12 +54,63 @@ struct GamesView: View {
         return sports.sorted()
     }
 
-    /// Events filtered by selected sport
+    /// Events filtered by time (US-038)
+    private var timeFilteredEvents: [Event] {
+        let calendar = Calendar.current
+        let now = Date()
+
+        switch timeFilter {
+        case .all:
+            return availableEvents
+        case .today:
+            return availableEvents.filter { calendar.isDateInToday($0.startTime) }
+        case .tomorrow:
+            return availableEvents.filter { calendar.isDateInTomorrow($0.startTime) }
+        case .thisWeek:
+            guard let weekEnd = calendar.date(byAdding: .day, value: 7, to: now) else {
+                return availableEvents
+            }
+            return availableEvents.filter { $0.startTime >= now && $0.startTime <= weekEnd }
+        }
+    }
+
+    /// Events filtered by search text (US-038) - matches team names
+    private var searchFilteredEvents: [Event] {
+        guard !searchText.isEmpty else {
+            return timeFilteredEvents
+        }
+        let lowercasedSearch = searchText.lowercased()
+        return timeFilteredEvents.filter {
+            $0.homeTeam.lowercased().contains(lowercasedSearch) ||
+            $0.awayTeam.lowercased().contains(lowercasedSearch)
+        }
+    }
+
+    /// Events filtered by selected sport (combines all filters)
     private var filteredEvents: [Event] {
         if let sport = selectedSport {
-            return availableEvents.filter { $0.sport == sport }
+            return searchFilteredEvents.filter { $0.sport == sport }
         }
-        return availableEvents
+        return searchFilteredEvents
+    }
+
+    /// Whether any filters are active (US-038)
+    private var hasActiveFilters: Bool {
+        timeFilter != .all || !searchText.isEmpty
+    }
+
+    /// Description of empty state based on filters (US-038)
+    private var emptyStateDescription: String {
+        if !searchText.isEmpty && timeFilter != .all {
+            return "No games match '\(searchText)' for \(timeFilter.rawValue.lowercased())."
+        } else if !searchText.isEmpty {
+            return "No games match '\(searchText)'."
+        } else if timeFilter != .all {
+            return "No games available for \(timeFilter.rawValue.lowercased())."
+        } else if let sport = selectedSport {
+            return "There are no upcoming \(sport) games."
+        }
+        return "There are no upcoming games to bet on."
     }
 
     /// Events grouped by sport and league for display
@@ -84,6 +155,10 @@ struct GamesView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Search bar and filter (US-038)
+            searchAndFilterHeader
+                .background(Color(.systemBackground))
+
             // Sticky sport tabs header
             sportTabsHeader
                 .background(Color(.systemBackground))
@@ -107,6 +182,10 @@ struct GamesView: View {
         }
         .navigationDestination(item: $selectedEventForNavigation) { event in
             MarketSelectionView(player: player, event: event)
+        }
+        .sheet(isPresented: $showingFilterSheet) {
+            TimeFilterSheet(selectedFilter: $timeFilter)
+                .presentationDetents([.height(280)])
         }
     }
 
@@ -137,6 +216,56 @@ struct GamesView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color.blue)
+    }
+
+    // MARK: - Search and Filter Header (US-038)
+
+    @ViewBuilder
+    private var searchAndFilterHeader: some View {
+        HStack(spacing: 12) {
+            // Search bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+
+                TextField("Search teams...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(.systemGray5))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            // Filter button
+            Button(action: { showingFilterSheet = true }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .font(.system(size: 16))
+                    if timeFilter != .all {
+                        Text(timeFilter.rawValue)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                }
+                .foregroundStyle(timeFilter != .all ? .white : .primary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(timeFilter != .all ? Color.blue : Color(.systemGray5))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 
     // MARK: - Sport Tabs Header
@@ -283,14 +412,30 @@ struct GamesView: View {
 
     @ViewBuilder
     private var emptyStateView: some View {
-        ContentUnavailableView(
-            "No Games Available",
-            systemImage: "sportscourt",
-            description: Text(selectedSport != nil
-                ? "There are no upcoming \(selectedSport!) games."
-                : "There are no upcoming games to bet on.")
-        )
+        VStack(spacing: 16) {
+            ContentUnavailableView(
+                hasActiveFilters ? "No Results" : "No Games Available",
+                systemImage: hasActiveFilters ? "magnifyingglass" : "sportscourt",
+                description: Text(emptyStateDescription)
+            )
+
+            // Clear filters button if filters are active (US-038)
+            if hasActiveFilters {
+                Button(action: clearFilters) {
+                    Text("Clear Filters")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
         .frame(maxHeight: .infinity)
+    }
+
+    /// Clear all search and time filters (US-038)
+    private func clearFilters() {
+        searchText = ""
+        timeFilter = .all
     }
 
     // MARK: - Helpers
@@ -388,6 +533,47 @@ struct GameRowView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Time Filter Sheet (US-038)
+
+/// Sheet for selecting time filter options
+struct TimeFilterSheet: View {
+    @Binding var selectedFilter: TimeFilter
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(TimeFilter.allCases) { filter in
+                    Button(action: {
+                        selectedFilter = filter
+                        dismiss()
+                    }) {
+                        HStack {
+                            Text(filter.rawValue)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if selectedFilter == filter {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.blue)
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Filter by Time")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 
