@@ -13,6 +13,8 @@ struct BetSlipSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
+    @Query private var events: [Event]
+    @Query private var acceptancePolicies: [AcceptancePolicy]
 
     /// Available credit for stake validation (US-042)
     let availableCredit: Decimal
@@ -706,6 +708,16 @@ struct BetSlipSheet: View {
         let playerBets = bets.filter { $0.player?.id == player.id }
         let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
 
+        // Get the acceptance policy (use first one if available)
+        let policy = acceptancePolicies.first
+
+        // Calculate player bet count for new player check
+        let playerBetCount = playerBets.count
+
+        // Determine if this is a parlay and how many legs
+        let isParlay = betSlipManager.betMode == .parlay && betSlipManager.count > 1
+        let parlayLegs = isParlay ? betSlipManager.count : 0
+
         var successCount = 0
         var errors: [String] = []
 
@@ -731,6 +743,9 @@ struct BetSlipSheet: View {
                 ticketId = parlayTicketId
             }
 
+            // Find the event for this bet item
+            let event = events.first { $0.id == item.eventId }
+
             let result = BetService.submitBet(
                 player: player,
                 eventId: item.eventId.uuidString,
@@ -740,7 +755,12 @@ struct BetSlipSheet: View {
                 stake: betStake,
                 existingBets: playerBets,
                 ledgerEntries: playerLedgerEntries,
-                ticketId: ticketId
+                ticketId: ticketId,
+                policy: policy,
+                isParlay: isParlay,
+                parlayLegs: parlayLegs,
+                playerBetCount: playerBetCount,
+                event: event
             )
 
             switch result {
@@ -753,6 +773,8 @@ struct BetSlipSheet: View {
                     errors.append("Insufficient credit for \(item.side): Need \(formatCurrency(required)), have \(formatCurrency(available))")
                 case .playerNotActive(let status):
                     errors.append("Account is \(status.rawValue)")
+                case .eventLocked:
+                    errors.append("Event is locked for betting: \(item.side)")
                 default:
                     errors.append("Failed to submit \(item.side)")
                 }

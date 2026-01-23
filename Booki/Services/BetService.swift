@@ -7,6 +7,7 @@ enum BetServiceError: Error, Equatable {
     case playerNotActive(status: PlayerStatus)
     case betNotFound
     case playerRequired
+    case eventLocked
 }
 
 /// Service for bet operations including submission and status transitions
@@ -14,8 +15,8 @@ enum BetService {
 
     // MARK: - Bet Submission
 
-    /// Submits a new bet request, creating a pending bet with snapshotted odds
-    /// Validates that the player has sufficient available credit
+    /// Submits a new bet request, creating a pending or accepted bet with snapshotted odds
+    /// Validates that the player has sufficient available credit and optionally evaluates acceptance policy
     /// - Parameters:
     ///   - player: The player submitting the bet
     ///   - eventId: The event identifier
@@ -26,6 +27,11 @@ enum BetService {
     ///   - existingBets: Player's existing bets (for credit calculation)
     ///   - ledgerEntries: Player's ledger entries (for credit calculation)
     ///   - ticketId: The ticket ID to group bets placed together (defaults to new UUID)
+    ///   - policy: Optional acceptance policy to evaluate bet against
+    ///   - isParlay: Whether this is a parlay bet (default false)
+    ///   - parlayLegs: Number of legs in the parlay (default 0 for singles)
+    ///   - playerBetCount: Number of bets the player has previously placed (default 0)
+    ///   - event: The event being bet on (required if policy is provided)
     /// - Returns: Result with the created Bet on success, or BetServiceError on failure
     static func submitBet(
         player: Player,
@@ -36,7 +42,12 @@ enum BetService {
         stake: Decimal,
         existingBets: [Bet],
         ledgerEntries: [LedgerEntry],
-        ticketId: UUID = UUID()
+        ticketId: UUID = UUID(),
+        policy: AcceptancePolicy? = nil,
+        isParlay: Bool = false,
+        parlayLegs: Int = 0,
+        playerBetCount: Int = 0,
+        event: Event? = nil
     ) -> Result<Bet, BetServiceError> {
         // Check player is active
         guard player.status == .active else {
@@ -61,16 +72,46 @@ enum BetService {
             ))
         }
 
-        // Create pending bet with snapshotted odds
+        // Evaluate acceptance policy if provided
+        var betStatus: BetStatus = .pending
+        var policyViolationReason: String? = nil
+
+        if let policy = policy, let event = event {
+            let violations = AcceptancePolicyService.evaluateBet(
+                stake: stake,
+                isParlay: isParlay,
+                parlayLegs: parlayLegs,
+                playerBetCount: playerBetCount,
+                event: event,
+                policy: policy
+            )
+
+            // If event is locked, return failure instead of creating bet
+            if violations.contains(.eventLocked) {
+                return .failure(.eventLocked)
+            }
+
+            // If no violations, auto-accept; otherwise queue for review
+            if violations.isEmpty {
+                betStatus = .accepted
+            } else {
+                betStatus = .pending
+                policyViolationReason = AcceptancePolicyService.combinedViolationDescription(violations)
+            }
+        }
+        // If no policy provided, default to .pending (backwards compatible)
+
+        // Create bet with determined status
         let bet = Bet(
             eventId: eventId,
             market: market,
             side: side,
             odds: odds,
             stake: stake,
-            status: .pending,
+            status: betStatus,
             player: player,
-            ticketId: ticketId
+            ticketId: ticketId,
+            policyViolationReason: policyViolationReason
         )
 
         return .success(bet)
