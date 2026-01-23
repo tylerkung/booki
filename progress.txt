@@ -243,3 +243,17 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Use `Divider().padding(.leading, 52)` to indent dividers past icon column for cleaner list appearance
   - Empty state should hint about changing filters when a filter is active
 ---
+
+## 2026-01-22 - US-046
+- **What was implemented:** Bet History with Filtering in Account tab
+- **Files changed:**
+  - `Booki/Views/AccountView.swift` (modified - added BetHistoryFilter enum, myBetsSection, AccountBetRowView, AccountBetDetailView)
+- **Learnings for future iterations:**
+  - `PlayerBetRowView` already exists in `PlayersListView.swift` - use unique names like `AccountBetRowView` to avoid redeclaration errors
+  - BetHistoryFilter enum maps to `[BetStatus]` arrays for multi-status filtering: Active = pending + accepted + readyToGrade, Settled = graded + settled + void
+  - Use `NavigationLink { destination } label: { ... }` syntax for in-line navigation within LazyVStack
+  - Add `.buttonStyle(.plain)` to NavigationLink to prevent default highlight behavior on tap
+  - For player-facing bet detail view, show user-friendly status text (e.g., "Pending Approval" instead of "pending")
+  - Use colored status indicator circles (12pt) for compact visual status in list rows
+  - Query all events (`@Query private var allEvents: [Event]`) to look up event names for bet display
+---
