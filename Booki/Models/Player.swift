@@ -19,6 +19,12 @@ final class Player {
     var createdAt: Date
     var updatedAt: Date
 
+    /// Optional username for player authentication (future use)
+    var username: String?
+
+    /// Optional password hash for player authentication (never store plain text passwords)
+    var passwordHash: String?
+
     /// Relationship: many players belong to one bookie
     var bookie: Bookie?
 
@@ -29,6 +35,8 @@ final class Player {
         creditLimit: Decimal = 0,
         status: PlayerStatus = .active,
         bookie: Bookie? = nil,
+        username: String? = nil,
+        passwordHash: String? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -38,6 +46,8 @@ final class Player {
         self.creditLimit = creditLimit
         self.status = status
         self.bookie = bookie
+        self.username = username
+        self.passwordHash = passwordHash
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

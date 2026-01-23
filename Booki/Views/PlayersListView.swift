@@ -695,6 +695,7 @@ struct AddPlayerSheet: View {
     @State private var name: String = ""
     @State private var email: String = ""
     @State private var creditLimitString: String = ""
+    @State private var username: String = ""
 
     private var creditLimit: Decimal {
         guard let doubleValue = Double(creditLimitString) else { return 0 }
@@ -735,6 +736,17 @@ struct AddPlayerSheet: View {
                 }
 
                 Section {
+                    TextField("Username (Optional)", text: $username)
+                        .textContentType(.username)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("Authentication")
+                } footer: {
+                    Text("Username can be used for player login in the future.")
+                }
+
+                Section {
                     LabeledContent("Name") {
                         Text(name.isEmpty ? "—" : name)
                             .foregroundStyle(name.isEmpty ? .secondary : .primary)
@@ -747,6 +759,11 @@ struct AddPlayerSheet: View {
 
                     LabeledContent("Credit Limit") {
                         Text(formattedCreditLimit)
+                    }
+
+                    LabeledContent("Username") {
+                        Text(username.isEmpty ? "Not provided" : username)
+                            .foregroundStyle(username.isEmpty ? .secondary : .primary)
                     }
                 } header: {
                     Text("Preview")
@@ -774,11 +791,13 @@ struct AddPlayerSheet: View {
     private func savePlayer() {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
+        let trimmedUsername = username.trimmingCharacters(in: .whitespaces)
 
         let player = PlayerService.addPlayer(
             name: trimmedName,
             email: trimmedEmail.isEmpty ? nil : trimmedEmail,
-            creditLimit: creditLimit
+            creditLimit: creditLimit,
+            username: trimmedUsername.isEmpty ? nil : trimmedUsername
         )
 
         modelContext.insert(player)

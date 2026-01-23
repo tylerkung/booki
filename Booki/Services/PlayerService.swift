@@ -19,19 +19,22 @@ enum PlayerService {
     ///   - email: The player's email (optional)
     ///   - creditLimit: The player's credit limit (defaults to 0)
     ///   - bookie: The bookie this player belongs to (optional)
+    ///   - username: The player's username for authentication (optional)
     /// - Returns: The newly created Player
     static func addPlayer(
         name: String,
         email: String? = nil,
         creditLimit: Decimal = 0,
-        bookie: Bookie? = nil
+        bookie: Bookie? = nil,
+        username: String? = nil
     ) -> Player {
         return Player(
             name: name,
             email: email,
             creditLimit: creditLimit,
             status: .active,
-            bookie: bookie
+            bookie: bookie,
+            username: username
         )
     }
 
