@@ -16,3 +16,13 @@ Started: Fri Jan 23 13:56:25 PST 2026
   - The .presentationDetents modifier controls sheet heights
   - [.large] = full height, [.medium, .large] = half height with drag to expand
 ---
+
+## 2026-01-23 - US-002
+- What was implemented: Removed quick-pick stake buttons for a cleaner stake entry interface
+- Files changed: Booki/Views/BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - The stakeEntrySection in BetSlipSheet.swift contains stake input controls
+  - PremiumQuickPickButton struct was only used in BetSlipSheet.swift (safe to remove)
+  - Custom stake input uses Theme.gold for border highlight when focused
+  - BetSlipManager.quickPickAmounts still exists but is no longer used in the UI
+---
