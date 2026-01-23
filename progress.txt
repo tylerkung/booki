@@ -436,3 +436,18 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Confirmation dialog shows balance impact: describes whether reversal will add or remove from player balance
   - Use `formatCurrency(abs(amount))` to show positive amount in impact description regardless of direction
 ---
+
+## 2026-01-22 - US-058
+- **What was implemented:** Payment Recording feature to record payments between bookie and players
+- **Files changed:**
+  - `Booki/Views/PaymentSheet.swift` (new) - Complete payment recording sheet with amount, direction, method, and note fields
+  - `Booki/Views/PlayersListView.swift` (modified - added Record Payment button and sheet to PlayerDetailView)
+  - `Booki.xcodeproj/project.pbxproj` (modified - added PaymentSheet.swift to build)
+- **Learnings for future iterations:**
+  - The `paymentLogged` EntryType already existed in LedgerEntry model - no need to create new type
+  - PaymentDirection enum: `playerPaidBookie` = negative ledger amount (reduces what player owes), `bookiePaidPlayer` = positive (increases balance)
+  - Use PaymentMethod enum with CaseIterable and Identifiable for Picker options (Cash, Venmo, Zelle, Bank, Other)
+  - Payment description format: "Payment received from/paid to [PlayerName] via [Method]" with optional note appended
+  - Follow the BalanceAdjustmentSheet pattern for ledger entry creation: create LedgerEntry with proper type and insert via modelContext
+  - The existing ledger display in AccountView and PlayerHistoryView already shows paymentLogged entries via EntryType filtering
+---
