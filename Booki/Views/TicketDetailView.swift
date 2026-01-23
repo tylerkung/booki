@@ -74,7 +74,7 @@ struct TicketDetailView: View {
 
             if allWin {
                 return ticket.potentialPayout
-            } else if anyPush && ticket.bets.filter { $0.gradeResult != .push }.allSatisfy({ $0.gradeResult == .win }) {
+            } else if anyPush && ticket.bets.filter({ $0.gradeResult != .push }).allSatisfy({ $0.gradeResult == .win }) {
                 // Recalculate parlay odds excluding pushed legs
                 let activeBets = ticket.bets.filter { $0.gradeResult != .push }
                 if activeBets.isEmpty {
@@ -251,7 +251,7 @@ struct TicketDetailView: View {
                 TicketDetailBetRowView(
                     bet: bet,
                     eventName: eventName(for: bet),
-                    event: events.first { $0.id.uuidString == bet.eventId }
+                    event: events.first(where: { $0.id.uuidString == bet.eventId })
                 )
             }
         } header: {
@@ -677,7 +677,8 @@ struct TicketDetailBetRowView: View {
         case .scheduled: return Theme.scheduled
         case .live: return Theme.accent
         case .final: return Theme.finalStatus
-        case .postponed, .cancelled: return Theme.danger
+        case .postponed: return Theme.warning
+        case .canceled: return Theme.danger
         }
     }
 }
