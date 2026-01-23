@@ -35,6 +35,9 @@ final class Bet {
     /// Ticket ID to group bets placed together in the same submission
     var ticketId: UUID
 
+    /// Human-readable reason why bet was queued for review (nil for auto-accepted bets)
+    var policyViolationReason: String?
+
     /// Relationship: many bets belong to one player
     var player: Player?
 
@@ -49,7 +52,8 @@ final class Bet {
         gradeResult: GradeResult? = nil,
         player: Player? = nil,
         createdAt: Date = Date(),
-        ticketId: UUID = UUID()
+        ticketId: UUID = UUID(),
+        policyViolationReason: String? = nil
     ) {
         self.id = id
         self.eventId = eventId
@@ -62,5 +66,6 @@ final class Bet {
         self.player = player
         self.createdAt = createdAt
         self.ticketId = ticketId
+        self.policyViolationReason = policyViolationReason
     }
 }
