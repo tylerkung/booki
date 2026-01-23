@@ -8,6 +8,34 @@ enum PlayerStatus: String, Codable {
     case banned
 }
 
+/// Collection status for tracking outstanding balance follow-ups
+enum CollectionStatus: String, Codable, CaseIterable, Identifiable {
+    case noStatus
+    case reminded
+    case promised
+    case overdue
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .noStatus: return "None"
+        case .reminded: return "Reminded"
+        case .promised: return "Promised"
+        case .overdue: return "Overdue"
+        }
+    }
+
+    var color: String {
+        switch self {
+        case .noStatus: return "gray"
+        case .reminded: return "yellow"
+        case .promised: return "blue"
+        case .overdue: return "red"
+        }
+    }
+}
+
 /// Player model representing a player seat that belongs to a bookie
 @Model
 final class Player {
@@ -25,6 +53,15 @@ final class Player {
     /// Optional password hash for player authentication (never store plain text passwords)
     var passwordHash: String?
 
+    /// Collection status for tracking outstanding balance follow-ups
+    var collectionStatus: CollectionStatus?
+
+    /// Date when collection status was last updated
+    var collectionStatusDate: Date?
+
+    /// Optional date when player promised to pay (used with .promised status)
+    var promisedPaymentDate: Date?
+
     /// Relationship: many players belong to one bookie
     var bookie: Bookie?
 
@@ -37,6 +74,9 @@ final class Player {
         bookie: Bookie? = nil,
         username: String? = nil,
         passwordHash: String? = nil,
+        collectionStatus: CollectionStatus? = nil,
+        collectionStatusDate: Date? = nil,
+        promisedPaymentDate: Date? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -48,6 +88,9 @@ final class Player {
         self.bookie = bookie
         self.username = username
         self.passwordHash = passwordHash
+        self.collectionStatus = collectionStatus
+        self.collectionStatusDate = collectionStatusDate
+        self.promisedPaymentDate = promisedPaymentDate
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

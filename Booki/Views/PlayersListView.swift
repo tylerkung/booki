@@ -1,6 +1,27 @@
 import SwiftUI
 import SwiftData
 
+/// Filter options for collection status
+enum CollectionFilter: String, CaseIterable, Identifiable {
+    case all
+    case reminded
+    case promised
+    case overdue
+    case anyStatus
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .all: return "All"
+        case .reminded: return "Reminded"
+        case .promised: return "Promised"
+        case .overdue: return "Overdue"
+        case .anyStatus: return "Any Status"
+        }
+    }
+}
+
 struct PlayersListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Player.name) private var players: [Player]
@@ -9,13 +30,40 @@ struct PlayersListView: View {
 
     @State private var showArchived = false
     @State private var showingAddPlayer = false
+    @State private var collectionFilter: CollectionFilter = .all
 
     private var filteredPlayers: [Player] {
-        if showArchived {
-            return players
-        } else {
-            return players.filter { $0.status != .archived }
+        var result = players
+
+        // Filter by archived status
+        if !showArchived {
+            result = result.filter { $0.status != .archived }
         }
+
+        // Filter by collection status
+        switch collectionFilter {
+        case .all:
+            break // No additional filtering
+        case .reminded:
+            result = result.filter { $0.collectionStatus == .reminded }
+        case .promised:
+            result = result.filter { $0.collectionStatus == .promised }
+        case .overdue:
+            result = result.filter { $0.collectionStatus == .overdue }
+        case .anyStatus:
+            result = result.filter {
+                $0.collectionStatus != nil && $0.collectionStatus != .noStatus
+            }
+        }
+
+        return result
+    }
+
+    /// Count of players with any collection status (for badge)
+    private var playersWithCollectionStatus: Int {
+        players.filter {
+            $0.collectionStatus != nil && $0.collectionStatus != .noStatus && balanceForPlayer($0) > 0
+        }.count
     }
 
     var body: some View {
@@ -44,11 +92,43 @@ struct PlayersListView: View {
             .navigationTitle("Players")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Toggle(isOn: $showArchived) {
-                        Label("Show Archived", systemImage: "archivebox")
+                    HStack(spacing: 8) {
+                        Toggle(isOn: $showArchived) {
+                            Label("Show Archived", systemImage: "archivebox")
+                        }
+                        .toggleStyle(.button)
+                        .tint(showArchived ? .blue : .secondary)
+
+                        Menu {
+                            ForEach(CollectionFilter.allCases) { filter in
+                                Button {
+                                    collectionFilter = filter
+                                } label: {
+                                    HStack {
+                                        Text(filter.displayName)
+                                        if collectionFilter == filter {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label("Collection Filter", systemImage: "line.3.horizontal.decrease.circle")
+                                .foregroundStyle(collectionFilter != .all ? Theme.accent : .secondary)
+                        }
+                        .overlay(alignment: .topTrailing) {
+                            if playersWithCollectionStatus > 0 && collectionFilter == .all {
+                                Text("\(playersWithCollectionStatus)")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(.white)
+                                    .padding(4)
+                                    .background(Color.red)
+                                    .clipShape(Circle())
+                                    .offset(x: 8, y: -8)
+                            }
+                        }
                     }
-                    .toggleStyle(.button)
-                    .tint(showArchived ? .blue : .secondary)
                 }
 
                 ToolbarItem(placement: .primaryAction) {
@@ -101,6 +181,20 @@ struct PlayerRowView: View {
     let balance: Decimal
     let utilization: Double
 
+    /// Whether to show collection status (only when player owes money)
+    private var shouldShowCollectionStatus: Bool {
+        balance > 0 && player.collectionStatus != nil && player.collectionStatus != .noStatus
+    }
+
+    private var collectionStatusColor: Color {
+        switch player.collectionStatus {
+        case .noStatus, nil: return .gray
+        case .reminded: return .yellow
+        case .promised: return .blue
+        case .overdue: return .red
+        }
+    }
+
     private var formattedBalance: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -146,6 +240,16 @@ struct PlayerRowView: View {
                         .padding(.vertical, 2)
                         .background(statusColor)
                         .clipShape(Capsule())
+
+                    if shouldShowCollectionStatus, let collectionStatus = player.collectionStatus {
+                        Text(collectionStatus.displayName)
+                            .font(.caption)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(collectionStatusColor)
+                            .clipShape(Capsule())
+                    }
                 }
 
                 HStack(spacing: 12) {
@@ -207,6 +311,8 @@ struct PlayerDetailView: View {
     @State private var showingReactivateConfirmation = false
     @State private var showingAdjustmentSheet = false
     @State private var showingPaymentSheet = false
+    @State private var showingPromisedDatePicker = false
+    @State private var promisedDate: Date = Date()
 
     // MARK: - Computed Properties
 
@@ -271,6 +377,24 @@ struct PlayerDetailView: View {
         balanceSummary.openLiability > 0 ? Color.orange : Color.secondary
     }
 
+    /// Whether to show collection status section (only when player owes money)
+    private var shouldShowCollectionStatus: Bool {
+        balanceSummary.balanceOwed > 0
+    }
+
+    private var collectionStatusColor: Color {
+        switch player.collectionStatus {
+        case .noStatus, nil: return .gray
+        case .reminded: return .yellow
+        case .promised: return .blue
+        case .overdue: return .red
+        }
+    }
+
+    private var collectionStatusText: String {
+        player.collectionStatus?.displayName ?? "None"
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -311,6 +435,40 @@ struct PlayerDetailView: View {
                 LabeledContent("Open Liability") {
                     Text(formattedOpenLiability)
                         .foregroundStyle(openLiabilityColor)
+                }
+            }
+
+            // MARK: - Collection Status Section
+            if shouldShowCollectionStatus {
+                Section("Collection Status") {
+                    HStack {
+                        Text("Status")
+                        Spacer()
+                        Text(collectionStatusText)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(collectionStatusColor)
+                            .clipShape(Capsule())
+                    }
+
+                    if let statusDate = player.collectionStatusDate {
+                        LabeledContent("Status Updated") {
+                            Text(statusDate, style: .date)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if player.collectionStatus == .promised, let promisedDate = player.promisedPaymentDate {
+                        LabeledContent("Promised Date") {
+                            Text(promisedDate, style: .date)
+                                .foregroundStyle(.blue)
+                        }
+                    }
+
+                    // Collection action buttons
+                    collectionActionButtons
                 }
             }
 
@@ -375,6 +533,14 @@ struct PlayerDetailView: View {
         }
         .sheet(isPresented: $showingPaymentSheet) {
             PaymentSheet(player: player)
+        }
+        .sheet(isPresented: $showingPromisedDatePicker) {
+            PromisedDateSheet(
+                promisedDate: $promisedDate,
+                onSave: { date in
+                    markAsPromised(date: date)
+                }
+            )
         }
         .confirmationDialog(
             "Archive this player?",
@@ -450,6 +616,47 @@ struct PlayerDetailView: View {
         }
     }
 
+    // MARK: - Collection Action Buttons
+
+    @ViewBuilder
+    private var collectionActionButtons: some View {
+        if player.collectionStatus != .reminded {
+            Button {
+                markAsReminded()
+            } label: {
+                Label("Mark as Reminded", systemImage: "bell.badge")
+            }
+            .tint(.yellow)
+        }
+
+        if player.collectionStatus != .promised {
+            Button {
+                showingPromisedDatePicker = true
+            } label: {
+                Label("Mark as Promised", systemImage: "calendar.badge.clock")
+            }
+            .tint(.blue)
+        }
+
+        if player.collectionStatus != .overdue {
+            Button {
+                markAsOverdue()
+            } label: {
+                Label("Mark as Overdue", systemImage: "exclamationmark.triangle")
+            }
+            .tint(.red)
+        }
+
+        if player.collectionStatus != nil && player.collectionStatus != .noStatus {
+            Button {
+                clearCollectionStatus()
+            } label: {
+                Label("Clear Status", systemImage: "xmark.circle")
+            }
+            .tint(.gray)
+        }
+    }
+
     // MARK: - Actions
 
     private func archivePlayer() {
@@ -480,6 +687,36 @@ struct PlayerDetailView: View {
         case .failure(let error):
             print("Failed to reactivate player: \(error)")
         }
+    }
+
+    // MARK: - Collection Status Actions
+
+    private func markAsReminded() {
+        player.collectionStatus = .reminded
+        player.collectionStatusDate = Date()
+        player.promisedPaymentDate = nil
+        player.updatedAt = Date()
+    }
+
+    private func markAsPromised(date: Date) {
+        player.collectionStatus = .promised
+        player.collectionStatusDate = Date()
+        player.promisedPaymentDate = date
+        player.updatedAt = Date()
+    }
+
+    private func markAsOverdue() {
+        player.collectionStatus = .overdue
+        player.collectionStatusDate = Date()
+        player.promisedPaymentDate = nil
+        player.updatedAt = Date()
+    }
+
+    private func clearCollectionStatus() {
+        player.collectionStatus = nil
+        player.collectionStatusDate = nil
+        player.promisedPaymentDate = nil
+        player.updatedAt = Date()
     }
 
     // MARK: - Helpers
@@ -813,6 +1050,51 @@ struct AddPlayerSheet: View {
 
         modelContext.insert(player)
         dismiss()
+    }
+}
+
+// MARK: - Promised Date Sheet
+
+struct PromisedDateSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Binding var promisedDate: Date
+    let onSave: (Date) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    DatePicker(
+                        "Promised Payment Date",
+                        selection: $promisedDate,
+                        in: Date()...,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.graphical)
+                } header: {
+                    Text("When did the player promise to pay?")
+                } footer: {
+                    Text("Select the date the player has promised to make payment.")
+                }
+            }
+            .navigationTitle("Mark as Promised")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave(promisedDate)
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 
