@@ -109,3 +109,16 @@ Started: Fri Jan 23 14:18:44 PST 2026
   - GamesView queries AcceptancePolicy via @Query and uses computed property `lockOffsetMinutes` with default 0
   - No need to modify project.pbxproj when only modifying existing files
 ---
+
+## 2026-01-23 - US-009
+- **What was implemented:** Validate bet slip for locked events before submission
+- **Files changed:**
+  - Booki/Views/BetSlipSheet.swift (added getLockedEventNames() function, locked events alert, pre-submission validation)
+- **Learnings for future iterations:**
+  - BetSlipSheet already has @Query for events and acceptancePolicies from US-004
+  - getLockedEventNames() iterates bet slip items, finds matching events, and checks isLocked
+  - Uses item.eventDescription for user-friendly event names in the alert
+  - Alert shows list of locked events with newline separators and prompts user to remove them
+  - Validation check runs at start of submitBets() and returns early if locked events found
+  - This is a "belt-and-suspenders" check complementing the UI lock indicators from US-008
+---
