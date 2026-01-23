@@ -257,3 +257,15 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Use colored status indicator circles (12pt) for compact visual status in list rows
   - Query all events (`@Query private var allEvents: [Event]`) to look up event names for bet display
 ---
+
+## 2026-01-22 - US-047
+- **What was implemented:** Win/Loss Statistics section in Account view with full betting performance stats
+- **Files changed:**
+  - `Booki/Views/AccountView.swift` (modified - added bettingStatisticsSection with record, total bets, win %, profit/loss, ROI)
+- **Learnings for future iterations:**
+  - Calculate profit from winning bets using decimal odds conversion: positive odds = (odds / 100), negative odds = (100 / abs(odds))
+  - For ROI calculation, use `totalProfitLoss / totalStaked * 100` where totalStaked is the sum of stakes from settled bets only
+  - Win/Loss/Push record displayed as color-coded format: green for wins, red for losses, orange for pushes
+  - Use `formatProfitLoss()` helper to show profit/loss with appropriate sign (+/-) and currency formatting
+  - `settledBets` filters for bets with `.settled` status AND non-nil `gradeResult` for accurate statistics
+---
