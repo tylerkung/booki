@@ -714,14 +714,15 @@ struct BetSlipSheet: View {
 
         // Submit each bet from the slip
         for item in betSlipManager.items {
-            // Calculate stake for this bet
+            // Calculate stake for this bet based on mode (US-007)
             let betStake: Decimal
             switch betSlipManager.betMode {
             case .singles:
-                betStake = betSlipManager.stake
+                // US-007: For singles, use individual per-bet stake from itemStakes
+                betStake = betSlipManager.getItemStake(marketId: item.marketId)
             case .parlay:
-                // For parlay, distribute stake across legs
-                betStake = betSlipManager.stake / Decimal(betSlipManager.count)
+                // For parlay, use shared stake (single bet with combined odds)
+                betStake = betSlipManager.stake
             }
 
             let result = BetService.submitBet(
@@ -756,9 +757,10 @@ struct BetSlipSheet: View {
 
         if successCount > 0 {
             submittedCount = successCount
-            // Clear bet slip and stake
+            // Clear bet slip, stake, and local stake texts
             betSlipManager.clearAll()
             betSlipManager.stake = 0
+            itemStakeTexts.removeAll()  // US-007: Clear local stake text state
 
             // Show success animation
             withAnimation(.easeInOut(duration: 0.3)) {
