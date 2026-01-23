@@ -53,7 +53,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Modify BetSlipManager.swift - foundation for per-bet stakes in singles mode"
     },
     {

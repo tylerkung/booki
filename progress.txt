@@ -26,3 +26,14 @@ Started: Fri Jan 23 13:56:25 PST 2026
   - Custom stake input uses Theme.gold for border highlight when focused
   - BetSlipManager.quickPickAmounts still exists but is no longer used in the UI
 ---
+
+## 2026-01-23 - US-003
+- What was implemented: Added per-item stake storage to BetSlipManager for individual stakes in singles mode
+- Files changed: Booki/Services/BetSlipManager.swift
+- **Learnings for future iterations:**
+  - BetSlipManager uses UserDefaults for persistence with separate keys for items, betMode, stake, and itemStakes
+  - itemStakes dictionary uses [UUID: Decimal] for per-bet stakes, keyed by marketId
+  - For JSON encoding/decoding UUID dictionaries, convert to [String: Double] since UUID keys need string conversion
+  - When removing items, also clean up corresponding itemStakes entries
+  - The individualTotalStake and individualTotalPayout computed properties calculate totals from per-bet stakes
+---
