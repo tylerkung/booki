@@ -108,7 +108,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Streamline bet submission - check BetConfirmationSheet for step/state management"
     },
     {

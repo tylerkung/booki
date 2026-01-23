@@ -89,3 +89,22 @@ Started: Fri Jan 23 12:48:18 PST 2026
   - BetSlipSheet.swift contains the Singles/Parlay toggle (lines 122-147)
   - BetConfirmationSheet.swift is a separate confirmation flow shown after tapping "Review & Confirm"
 ---
+
+## 2026-01-23 - US-006
+- What was implemented: Removed redundant review screen from bet submission flow
+- Files changed: Booki/Views/BetSlipSheet.swift
+- Changes made:
+  - Removed .sheet presentation to BetConfirmationSheet
+  - Added submission logic directly to BetSlipSheet (moved from BetConfirmationSheet)
+  - Added @Query for bets and ledgerEntries to support submission
+  - Added submission state variables: isSubmitting, submissionComplete, submissionError, submittedCount
+  - Added success view with celebration animation (pulsing rings, checkmark)
+  - Changed button from "Review & Confirm" to "Place Bet"
+  - Added error alert for failed submissions
+  - User can now submit bets directly after entering stake without extra review step
+- **Learnings for future iterations:**
+  - BetSlipSheet now handles the full bet submission flow in one sheet
+  - BetConfirmationSheet.swift still exists in project but is no longer presented (could be removed)
+  - The submission logic uses BetService.submitBet and generates a shared ticketId for all bets
+  - Success animation uses outerRingScale/outerRingOpacity for pulsing effect
+---
