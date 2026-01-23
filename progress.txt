@@ -10,6 +10,7 @@ Started: Thu Jan 22 15:35:57 PST 2026
 - Use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcrun xcodebuild` for command-line builds
 - `MarketRowView` exists in `SubmitBetView.swift` - use `EventMarketRowView` for EventDetailView market rows
 - Market model uses `sideA`/`sideB` strings and `oddsA`/`oddsB` integers for American odds
+- For UserDefaults persistence, use singleton pattern with `@ObservedObject` for reactive SwiftUI updates (see FavoritesManager)
 
 ---
 
@@ -126,4 +127,36 @@ Started: Thu Jan 22 15:35:57 PST 2026
   - Use `.presentationDetents([.height(280)])` for compact filter sheet
   - Empty state message should dynamically reflect which filters are active
   - "Clear Filters" button in empty state provides quick reset path
+---
+
+## 2026-01-22 16:07 - US-039
+- **What was implemented:** Favorites system for teams with storage, toggle, and filtering
+- **Files changed:**
+  - `Booki/Services/FavoritesManager.swift` (new) - Singleton manager storing favorites in UserDefaults
+  - `Booki/Views/GameCardView.swift` (modified - added star icon to team rows)
+  - `Booki/Views/GamesView.swift` (modified - added "Favorites" filter and favorites section at top)
+  - `Booki.xcodeproj/project.pbxproj` (added FavoritesManager.swift to build)
+- **Learnings for future iterations:**
+  - Use `@ObservedObject` for singleton managers like `FavoritesManager.shared` to get reactive updates
+  - Store favorites in UserDefaults as `[String]` array, convert to `Set<String>` for efficient lookups
+  - Add new filter cases to existing `TimeFilter` enum - works well as a cohesive filter system
+  - Show favorites section conditionally only when: on "All" view, no sport filter, and favorites exist
+  - Star icon uses `.yellow` fill when favorited, `.secondary` outline when not - provides clear visual feedback
+  - Use `withAnimation(.easeInOut(duration: 0.15))` for subtle star toggle animation
+---
+
+## 2026-01-22 16:15 - US-040
+- **What was implemented:** Persistent bet slip system with BetSlipManager singleton and expandable sheet
+- **Files changed:**
+  - `Booki/Services/BetSlipManager.swift` (new) - Singleton manager storing bet slip items in UserDefaults with Codable persistence
+  - `Booki/Views/BetSlipSheet.swift` (new) - Full bet slip sheet with selections list, swipe-to-delete, and clear all
+  - `Booki/Views/GamesView.swift` (modified - replaced @State selections with BetSlipManager, made indicator tappable)
+  - `Booki.xcodeproj/project.pbxproj` (added new files to build)
+- **Learnings for future iterations:**
+  - `BetSlipItem` extends `BetSlipSelection` with `eventDescription` and `marketDescription` for display in sheet
+  - Use `Codable` for complex data persistence in UserDefaults via JSON encoding/decoding
+  - Keep `BetSlipSelection` model in `GameCardView.swift` for compatibility with existing card code
+  - Provide `selectionsSet` computed property to convert items array to Set for efficient lookup
+  - Use `.presentationDetents([.medium, .large])` for expandable sheets that can be dragged to different heights
+  - Float indicator at bottom with chevron.up icon to indicate tappability
 ---
