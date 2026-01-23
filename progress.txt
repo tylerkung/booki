@@ -95,3 +95,17 @@ Started: Fri Jan 23 14:18:44 PST 2026
   - isLocked also returns true if Date() >= lockTime (i.e., current time past the lock time)
   - Lock time is calculated as startTime minus offsetMinutes converted to seconds
 ---
+
+## 2026-01-23 - US-008
+- **What was implemented:** Display lock status in game cards with visual indicators
+- **Files changed:**
+  - Booki/Views/GameCardView.swift (added lockOffsetMinutes parameter, lock icon, disabled/dimmed odds buttons)
+  - Booki/Views/GamesView.swift (query AcceptancePolicy and pass lockOffsetMinutes to GameCardView)
+- **Learnings for future iterations:**
+  - GameCardView uses computed `isEventLocked` property that calls `event.isLocked(offsetMinutes:)`
+  - Lock icon uses SF Symbol "lock.fill" with Theme.warning color
+  - Button components (SpreadButton, MLButton, TotalButton) now accept optional `isDisabled` parameter
+  - When locked: opacity reduced to 0.5 via `.opacity()` modifier, button disabled via `.disabled()` modifier
+  - GamesView queries AcceptancePolicy via @Query and uses computed property `lockOffsetMinutes` with default 0
+  - No need to modify project.pbxproj when only modifying existing files
+---

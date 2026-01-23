@@ -154,7 +154,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Player-facing lock indication - clear visual feedback"
     },
     {
