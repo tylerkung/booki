@@ -68,6 +68,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Bookie Profile")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Alert Thresholds Section
                 Section {
@@ -86,6 +87,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("Get alerted when players have balances above the threshold or aging balances older than the specified days.")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Data Management Section
                 Section {
@@ -105,6 +107,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("Export your data or load sample events for testing.")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Test Mode Section
                 Section {
@@ -140,6 +143,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("View the app as a specific player to test the player experience. In production, bookie and player will have separate accounts.")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - About Section
                 Section {
@@ -148,6 +152,7 @@ struct SettingsView: View {
                 } header: {
                     Text("About")
                 }
+                .listRowBackground(Theme.cardBackground)
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
@@ -228,6 +233,7 @@ struct EditProfileSheet: View {
                 } footer: {
                     Text("Both name and email are required.")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 Section {
                     LabeledContent("Name") {
@@ -242,7 +248,10 @@ struct EditProfileSheet: View {
                 } header: {
                     Text("Preview")
                 }
+                .listRowBackground(Theme.cardBackground)
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle(existingBookie == nil ? "Create Profile" : "Edit Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -457,7 +466,10 @@ struct ExportDataView: View {
             } footer: {
                 Text("Export your data to CSV format for external record-keeping and analysis.")
             }
+            .listRowBackground(Theme.cardBackground)
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
         .navigationTitle("Export Data")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingBetExportShare) {

@@ -221,11 +221,13 @@ struct DashboardView: View {
                 Section {
                     ExposureCard(totalExposure: viewModel.totalExposure)
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Pending Bets Count Section
                 Section {
                     PendingBetsCard(count: viewModel.pendingBetsCount)
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Pending Bets Queue Section
                 Section {
@@ -260,6 +262,7 @@ struct DashboardView: View {
                 } header: {
                     Text("Pending Bets Queue")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Top Risk Events Section
                 Section {
@@ -280,6 +283,7 @@ struct DashboardView: View {
                 } header: {
                     Text("Top Risk Events")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Settlements Section
                 Section {
@@ -312,6 +316,7 @@ struct DashboardView: View {
                 } header: {
                     Text("Settlements")
                 }
+                .listRowBackground(Theme.cardBackground)
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
@@ -397,6 +402,7 @@ struct DashboardView: View {
                             .foregroundStyle(Theme.accent)
                     }
                 }
+                .listRowBackground(Theme.cardBackground)
             }
 
             // MARK: - You Owe Players
@@ -421,6 +427,7 @@ struct DashboardView: View {
                             .foregroundStyle(Theme.danger)
                     }
                 }
+                .listRowBackground(Theme.cardBackground)
             }
         }
     }
@@ -763,6 +770,7 @@ struct FlaggedPlayersView: View {
                         NavigationLink(value: flagged.player) {
                             FlaggedPlayerRow(flaggedPlayer: flagged)
                         }
+                        .listRowBackground(Theme.cardBackground)
                     }
                 }
             }
