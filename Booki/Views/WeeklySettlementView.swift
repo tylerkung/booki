@@ -25,6 +25,9 @@ struct WeeklySettlementView: View {
     /// Filter for player list
     @State private var selectedFilter: SettlementFilterOption = .all
 
+    /// Temporary file URL for CSV export
+    @State private var csvFileURL: URL?
+
     // MARK: - Computed Properties
 
     /// Active players for settlement
@@ -95,6 +98,13 @@ struct WeeklySettlementView: View {
             .reduce(Decimal.zero) { $0 + $1.endingBalance })
     }
 
+    /// CSV filename based on weekEndingDate
+    private var csvFilename: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return "settlement_\(formatter.string(from: selectedWeekEndingDate)).csv"
+    }
+
     /// Filtered and sorted player reports for display
     /// - Sorted by absolute ending balance descending (biggest amounts first)
     /// - Filtered by settlement status
@@ -117,6 +127,53 @@ struct WeeklySettlementView: View {
     private func hasCollectionStatus(_ player: Player) -> Bool {
         guard let status = player.collectionStatus else { return false }
         return status != .noStatus
+    }
+
+    /// Generate CSV content for the settlement report
+    private func generateCSVContent() -> String {
+        var csvContent = "Player Name,Starting Balance,Net Results,Payments,Adjustments,Ending Balance,Settled\n"
+
+        for report in playerReports.sorted(by: { $0.player.name < $1.player.name }) {
+            let settled = isPlayerSettled(report.player) ? "Yes" : "No"
+            // Format currency values without $ symbol for CSV compatibility
+            let startingBalance = formatDecimalForCSV(report.startingBalance)
+            let netResults = formatDecimalForCSV(report.netBetResults)
+            let payments = formatDecimalForCSV(report.paymentsReceived)
+            let adjustments = formatDecimalForCSV(report.adjustments)
+            let endingBalance = formatDecimalForCSV(report.endingBalance)
+
+            // Escape player name if it contains commas
+            let playerName = report.player.name.contains(",") ? "\"\(report.player.name)\"" : report.player.name
+
+            csvContent += "\(playerName),\(startingBalance),\(netResults),\(payments),\(adjustments),\(endingBalance),\(settled)\n"
+        }
+
+        return csvContent
+    }
+
+    /// Format a Decimal value for CSV (no currency symbol, 2 decimal places)
+    private func formatDecimalForCSV(_ value: Decimal) -> String {
+        let nsDecimal = value as NSDecimalNumber
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: nsDecimal) ?? "\(value)"
+    }
+
+    /// Create a temporary file URL for the CSV export
+    private func createCSVFile() -> URL? {
+        let csvContent = generateCSVContent()
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let fileURL = tempDirectory.appendingPathComponent(csvFilename)
+
+        do {
+            try csvContent.write(to: fileURL, atomically: true, encoding: .utf8)
+            return fileURL
+        } catch {
+            print("Failed to write CSV file: \(error)")
+            return nil
+        }
     }
 
     // MARK: - Static Methods
@@ -237,6 +294,29 @@ struct WeeklySettlementView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("Weekly Settlement")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if let fileURL = csvFileURL {
+                    ShareLink(item: fileURL) {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                    }
+                } else {
+                    Button {
+                        csvFileURL = createCSVFile()
+                    } label: {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
+        }
+        .onAppear {
+            // Pre-generate CSV file URL
+            csvFileURL = createCSVFile()
+        }
+        .onChange(of: selectedWeekEndingDate) { _, _ in
+            // Regenerate CSV when week changes
+            csvFileURL = createCSVFile()
+        }
     }
 
     // MARK: - Helper Methods
