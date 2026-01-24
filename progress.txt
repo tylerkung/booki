@@ -15,6 +15,7 @@ Started: Fri Jan 23 18:00:08 PST 2026
 
 - GradingView groups parlays by ticketId using GradingGroup struct; use ParlayGradingGroupView for parlay display
 - Access parlayPushVoidPolicy via @Query policies: [AcceptancePolicy] and policies.first?.parlayPushVoidPolicyEnum
+- For parlay settlement: use GradingService.settleParlayBets (not settleBet); requires all legs graded first; creates single ledger entry for entire parlay
 
 ---
 
@@ -89,4 +90,18 @@ Started: Fri Jan 23 18:00:08 PST 2026
   - ParlayProjectedOutcome enum provides clean state management for outcome display (willLose, willPush, canWin, inProgress)
   - ParlayLegRow uses compact icon buttons for grading within the group (vs full buttons for singles)
   - Projected payout uses ParlayGradingService.calculateParlayPayout for consistency
+---
+
+## 2026-01-23 - US-007
+- **What was implemented**: Integrated parlay logic into settlement - parlays now settle correctly using ParlayGradingService for combined payout calculation.
+- **Files changed**:
+  - Booki/Services/GradingService.swift - Added new error cases (parlayRequiresGroupSettlement, parlayNotFullyGraded, parlayLegsNotFound); Modified settleBet to reject parlay bets (requires group settlement); Added settleParlayBets function that takes all parlay legs and policy; Added calculateParlaySettlement helper for parlay-specific ledger descriptions
+  - Booki/Views/GradingView.swift - Updated performBulkSettlement to handle parlays as groups using settleParlayBets; Tracks settled ticketIds to avoid duplicate settlement; Uses ParlayGradingService.calculateParlayOutcome for counting wins/losses/pushes
+  - Booki/Views/BetsListView.swift - Added @Query for allBets and policies to BetDetailView; Added parlayPolicy and parlayBets computed properties; Updated settleBet function to use settleParlayBets for parlay bets
+- **Learnings for future iterations:**
+  - Parlay settlement requires all legs be graded first (enforced via parlayNotFullyGraded error)
+  - settleParlayBets marks ALL parlay legs as settled after creating single ledger entry
+  - Ledger entry links to first bet as representative for display/tracking purposes
+  - Settlement descriptions follow format: "Parlay (X legs) - Win/Loss/Push: [amount]"
+  - BetDetailView needs @Query for allBets to find sibling parlay legs via ticketId filter
 ---

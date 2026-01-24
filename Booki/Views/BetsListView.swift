@@ -208,8 +208,20 @@ struct BetDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var events: [Event]
     @Query private var ledgerEntries: [LedgerEntry]
+    @Query private var allBets: [Bet]
+    @Query private var policies: [AcceptancePolicy]
 
     let bet: Bet
+
+    /// Get the current parlay push/void policy
+    private var parlayPolicy: ParlayPushVoidPolicy {
+        policies.first?.parlayPushVoidPolicyEnum ?? .reduceLegReprice
+    }
+
+    /// Get all bets with the same ticketId (for parlay settlement)
+    private var parlayBets: [Bet] {
+        allBets.filter { $0.ticketId == bet.ticketId }
+    }
 
     @State private var showingVoidConfirmation = false
     @State private var showingSettleConfirmation = false
@@ -514,12 +526,24 @@ struct BetDetailView: View {
     }
 
     private func settleBet() {
-        let result = GradingService.settleBet(bet)
-        switch result {
-        case .success(let ledgerEntry):
-            modelContext.insert(ledgerEntry)
-        case .failure(let error):
-            print("Failed to settle bet: \(error)")
+        // Handle parlay bets using group settlement
+        if bet.isParlay {
+            let result = GradingService.settleParlayBets(parlayBets, policy: parlayPolicy)
+            switch result {
+            case .success(let ledgerEntry):
+                modelContext.insert(ledgerEntry)
+            case .failure(let error):
+                print("Failed to settle parlay: \(error)")
+            }
+        } else {
+            // Handle single bets
+            let result = GradingService.settleBet(bet)
+            switch result {
+            case .success(let ledgerEntry):
+                modelContext.insert(ledgerEntry)
+            case .failure(let error):
+                print("Failed to settle bet: \(error)")
+            }
         }
     }
 

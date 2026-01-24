@@ -313,22 +313,63 @@ struct GradingView: View {
         var pushCount = 0
         var settledCount = 0
 
-        for bet in gradedBets {
-            let result = GradingService.settleBet(bet)
-            switch result {
-            case .success(let ledgerEntry):
-                modelContext.insert(ledgerEntry)
-                settledCount += 1
+        // Track which parlay ticketIds we've already settled
+        var settledParlayTicketIds: Set<UUID> = []
 
-                if let gradeResult = bet.gradeResult {
-                    switch gradeResult {
-                    case .win: winCount += 1
-                    case .loss: lossCount += 1
-                    case .push: pushCount += 1
+        for bet in gradedBets {
+            // Handle parlay bets as groups
+            if bet.isParlay {
+                // Skip if we've already settled this parlay's ticketId
+                if settledParlayTicketIds.contains(bet.ticketId) {
+                    continue
+                }
+
+                // Get all bets for this parlay (including already graded ones)
+                let parlayBets = bets.filter { $0.ticketId == bet.ticketId }
+
+                // Check if all legs are graded
+                let allGraded = parlayBets.allSatisfy { parlayBet in
+                    parlayBet.gradeResult != nil || parlayBet.status == .void
+                }
+
+                if allGraded {
+                    let result = GradingService.settleParlayBets(parlayBets, policy: parlayPolicy)
+                    switch result {
+                    case .success(let ledgerEntry):
+                        modelContext.insert(ledgerEntry)
+                        settledCount += 1 // Count as 1 parlay settled
+                        settledParlayTicketIds.insert(bet.ticketId)
+
+                        // Determine the outcome for counting
+                        let outcome = ParlayGradingService.calculateParlayOutcome(bets: parlayBets, policy: parlayPolicy)
+                        switch outcome {
+                        case .win: winCount += 1
+                        case .loss: lossCount += 1
+                        case .push: pushCount += 1
+                        case .pending, .partiallyGraded: break
+                        }
+                    case .failure(let error):
+                        print("Failed to settle parlay \(bet.ticketId): \(error)")
                     }
                 }
-            case .failure(let error):
-                print("Failed to settle bet \(bet.id): \(error)")
+            } else {
+                // Handle single bets
+                let result = GradingService.settleBet(bet)
+                switch result {
+                case .success(let ledgerEntry):
+                    modelContext.insert(ledgerEntry)
+                    settledCount += 1
+
+                    if let gradeResult = bet.gradeResult {
+                        switch gradeResult {
+                        case .win: winCount += 1
+                        case .loss: lossCount += 1
+                        case .push: pushCount += 1
+                        }
+                    }
+                case .failure(let error):
+                    print("Failed to settle bet \(bet.id): \(error)")
+                }
             }
         }
 

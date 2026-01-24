@@ -8,6 +8,9 @@ enum GradingServiceError: Error, Equatable {
     case alreadySettled
     case notSettled
     case noSettlementEntryFound
+    case parlayRequiresGroupSettlement
+    case parlayNotFullyGraded(gradedCount: Int, totalCount: Int)
+    case parlayLegsNotFound
 }
 
 /// Service for grading and settling bets
@@ -35,7 +38,13 @@ enum GradingService {
     /// Settles a graded bet by creating the appropriate ledger entry
     /// - Parameter bet: The bet to settle (must be graded with a result)
     /// - Returns: Result with the created LedgerEntry on success, or GradingServiceError on failure
+    /// - Note: For parlay bets, use `settleParlayBets` instead which handles all legs together
     static func settleBet(_ bet: Bet) -> Result<LedgerEntry, GradingServiceError> {
+        // For parlay bets, require group settlement
+        if bet.isParlay {
+            return .failure(.parlayRequiresGroupSettlement)
+        }
+
         guard bet.status == .graded else {
             if bet.status == .settled {
                 return .failure(.alreadySettled)
@@ -65,6 +74,66 @@ enum GradingService {
 
         // Update bet status to settled
         bet.status = .settled
+
+        return .success(ledgerEntry)
+    }
+
+    /// Settles a parlay bet by creating a single ledger entry for the combined outcome
+    /// - Parameters:
+    ///   - parlayBets: All bets (legs) in the parlay (must share the same ticketId)
+    ///   - policy: The parlay push/void policy to apply
+    /// - Returns: Result with the created LedgerEntry on success, or GradingServiceError on failure
+    static func settleParlayBets(_ parlayBets: [Bet], policy: ParlayPushVoidPolicy) -> Result<LedgerEntry, GradingServiceError> {
+        guard !parlayBets.isEmpty else {
+            return .failure(.parlayLegsNotFound)
+        }
+
+        guard let firstBet = parlayBets.first,
+              let player = firstBet.player else {
+            return .failure(.playerRequired)
+        }
+
+        let totalLegs = parlayBets.count
+
+        // Check if already settled
+        if parlayBets.allSatisfy({ $0.status == .settled }) {
+            return .failure(.alreadySettled)
+        }
+
+        // Check if all legs are graded (gradeResult != nil or status == .void)
+        let ungradedLegs = parlayBets.filter { bet in
+            bet.gradeResult == nil && bet.status != .void
+        }
+
+        if !ungradedLegs.isEmpty {
+            let gradedCount = totalLegs - ungradedLegs.count
+            return .failure(.parlayNotFullyGraded(gradedCount: gradedCount, totalCount: totalLegs))
+        }
+
+        // Calculate parlay outcome using ParlayGradingService
+        let outcome = ParlayGradingService.calculateParlayOutcome(bets: parlayBets, policy: policy)
+
+        // Calculate settlement amount and description based on outcome
+        let (amount, description) = calculateParlaySettlement(
+            stake: firstBet.stake,
+            outcome: outcome,
+            totalLegs: totalLegs
+        )
+
+        // Create single ledger entry for the parlay
+        // Link to first bet as representative (for display/tracking purposes)
+        let ledgerEntry = LedgerEntry(
+            amount: amount,
+            type: .settlement,
+            entryDescription: description,
+            player: player,
+            bet: firstBet
+        )
+
+        // Mark all parlay legs as settled
+        for bet in parlayBets {
+            bet.status = .settled
+        }
 
         return .success(ledgerEntry)
     }
@@ -133,6 +202,40 @@ enum GradingService {
             // Push: zero-sum entry (stake returned, no profit/loss)
             return (Decimal.zero, "Push settlement: \(bet.side) @ \(formatOdds(bet.odds)) - stake returned")
         }
+    }
+
+    /// Calculates the settlement amount and description for a parlay based on combined outcome
+    /// - Parameters:
+    ///   - stake: The stake amount for the parlay
+    ///   - outcome: The calculated parlay outcome from ParlayGradingService
+    ///   - totalLegs: Total number of legs in the parlay
+    /// - Returns: Tuple of (amount, description) for the ledger entry
+    private static func calculateParlaySettlement(stake: Decimal, outcome: ParlayOutcome, totalLegs: Int) -> (Decimal, String) {
+        switch outcome {
+        case .win(let payout):
+            // Win: positive entry for payout amount (profit the player receives)
+            return (payout, "Parlay (\(totalLegs) legs) - Win: +\(formatDecimal(payout))")
+
+        case .loss:
+            // Loss: negative entry for stake amount (player loses their stake)
+            return (-stake, "Parlay (\(totalLegs) legs) - Loss: -\(formatDecimal(stake))")
+
+        case .push:
+            // Push: zero-sum entry (stake returned, no profit/loss)
+            return (Decimal.zero, "Parlay (\(totalLegs) legs) - Push: stake returned")
+
+        case .pending, .partiallyGraded:
+            // Should not reach here - settlement requires all legs graded
+            return (Decimal.zero, "Parlay (\(totalLegs) legs) - Incomplete")
+        }
+    }
+
+    /// Formats a decimal for currency display in descriptions
+    private static func formatDecimal(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 
     /// Formats American odds for display in descriptions
