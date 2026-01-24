@@ -160,7 +160,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Enables real-time cross-device sync"
     },
     {

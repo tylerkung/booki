@@ -25,6 +25,9 @@ Started: Sat Jan 24 01:56:02 PST 2026
 - Use NotificationCenter for sync conflict notifications to UI layer
 - Upsert structs need `init(from:bookieId:)` to convert SwiftData models
 - Failable initializers (init?) for upsert structs that require relationships
+- Realtime subscriptions use `supabase.realtimeV2.channel(tableName)` with `postgresChange(AnyAction.self, ...)`
+- Subscribe to realtime AFTER initial sync completes to avoid duplicate processing
+- RLS automatically filters realtime events - no manual bookie_id filtering needed in subscription
 
 ---
 
@@ -208,4 +211,35 @@ Started: Sat Jan 24 01:56:02 PST 2026
   - Use NotificationCenter to communicate sync conflicts to UI layer
   - Each upsert struct needs `init(from:bookieId:)` to convert SwiftData models
   - Failable initializers (init?) for structs that require relationships (BetUpsert, LedgerEntryInsert)
+---
+
+## 2026-01-24 - US-008: Implement Realtime Subscriptions
+- **What was implemented:**
+  - Created `RealtimeService.swift` in `Booki/Services/` as ObservableObject
+  - Implemented `subscribe()` method that creates channels for all tenant tables (players, events, bets, ledger_entries, acceptance_policies)
+  - Used Supabase RealtimeV2 API with `postgresChange(AnyAction.self, ...)` to listen for INSERT, UPDATE, DELETE events
+  - Implemented handlers for each event type with table-specific upsert/delete logic
+  - On INSERT/UPDATE: decode record from AnyJSON and upsert into local SwiftData
+  - On DELETE: extract record ID from oldRecord and delete from local SwiftData
+  - Implemented `unsubscribe()` method that removes all channels (called on logout)
+  - Added `reconnect()` method for handling network reconnection scenarios
+  - Added `isConnected` and `connectionStatus` published properties for UI visibility
+  - Integrated RealtimeService into BookiApp.swift via environment object
+  - Updated AuthGateView to subscribe after initial sync and unsubscribe on logout
+
+- **Files changed:**
+  - `Booki/Services/RealtimeService.swift` (new - 595 lines)
+  - `Booki/BookiApp.swift` (updated - added RealtimeService injection)
+  - `Booki/Views/AuthGateView.swift` (updated - subscribe/unsubscribe lifecycle)
+
+- **Learnings for future iterations:**
+  - Supabase RealtimeV2 uses async/await with AsyncSequence for change streaming
+  - Use `AnyAction.self` with switch on `.insert`, `.update`, `.delete` cases for flexible handling
+  - RLS policies automatically filter realtime events by bookie_id - no manual filtering needed
+  - `InsertAction.record` and `UpdateAction.record` are `[String: AnyJSON]` dictionaries
+  - `DeleteAction.oldRecord` contains the deleted record (only with replica identity full)
+  - Custom date decoding strategy needed for ISO8601 dates from realtime payloads
+  - Subscribe AFTER initial sync completes to avoid duplicate processing
+  - Keep `shouldReconnect` flag to track intentional subscription state for reconnection logic
+  - Ledger entries are append-only - ignore UPDATE events for that table
 ---
