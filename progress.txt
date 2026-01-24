@@ -1,110 +1,35 @@
 # Ralph Progress Log
-Started: Sat Jan 24 01:05:13 PST 2026
+Started: Sat Jan 24 01:56:02 PST 2026
+---
 
 ## Codebase Patterns
-- Use Theme.swift for all colors and styling - never use default iOS colors
-- Access Supabase client via `SupabaseClientManager.shared.client`
-- Supabase credentials are stored in Info.plist (SUPABASE_URL, SUPABASE_ANON_KEY)
-- Config files go in Booki/Config/, Services go in Booki/Services/
-- Auth views go in Booki/Views/Auth/ directory
-- Use AuthTextFieldStyle and PrimaryButtonStyle for auth forms (defined in SignUpView.swift)
+- Use `IF NOT EXISTS` for all CREATE TABLE and CREATE INDEX statements in migrations
+- All tenant-isolated tables must have `bookie_id` column with index
+- Use DECIMAL(15, 2) for money amounts in PostgreSQL
+- Use TIMESTAMPTZ (not TIMESTAMP) for all date/time fields
+- Include updated_at triggers for tables that track modification time
+- SQL migrations go in `supabase/migrations/` directory
 
 ---
 
-## 2026-01-24 - US-001
-- **What was implemented**: Supabase Swift SDK integration with configuration and singleton client
-- **Files changed**:
-  - Booki.xcodeproj/project.pbxproj - Added SPM package reference and new file references
-  - Booki/Config/SupabaseConfig.swift - Created config reader for Info.plist credentials
-  - Booki/Services/SupabaseClient.swift - Created singleton wrapper for Supabase client
-  - Booki/Info.plist - Created with placeholder Supabase credentials
-- **Learnings for future iterations:**
-  - When adding SPM packages to Xcode projects, need to add: XCRemoteSwiftPackageReference, XCSwiftPackageProductDependency, and packageProductDependencies in native target
-  - Info.plist with GENERATE_INFOPLIST_FILE=YES merges custom plist with generated values
-  - The Supabase import won't resolve until Xcode resolves the SPM dependency (expected behavior for syntax checking)
----
+## 2026-01-24 - US-001: Create Supabase Database Schema
+- **What was implemented:**
+  - Created foundation database schema at `supabase/migrations/001_initial_schema.sql`
+  - Tables created: bookies, players, events, bets, ledger_entries, acceptance_policies
+  - All tables include bookie_id for multi-tenant isolation
+  - Indexes added on bookie_id and commonly filtered columns
+  - Created `update_updated_at_column()` trigger function
+  - Added comprehensive table and column comments
+  - Documented schema in `supabase/README.md` with table diagrams
 
-## 2026-01-24 - US-002
-- **What was implemented**: Centralized AuthManager for tracking authentication state
-- **Files changed**:
-  - Booki/Services/AuthManager.swift - Created AuthManager ObservableObject with published auth state properties
-  - Booki/BookiApp.swift - Added @StateObject authManager and .environmentObject(authManager)
-  - Booki.xcodeproj/project.pbxproj - Added AuthManager.swift file references
-- **Learnings for future iterations:**
-  - Supabase auth state changes are received via `supabase.auth.authStateChanges` async sequence
-  - AuthManager should be @MainActor to ensure all published property updates happen on main thread
-  - Auth state events include: initialSession, signedIn, signedOut, tokenRefreshed, userUpdated, userDeleted, passwordRecovery, mfaChallengeVerified
-  - When adding new files to Xcode project: add to PBXBuildFile, PBXFileReference, PBXGroup (Services), and PBXSourcesBuildPhase sections
----
+- **Files changed:**
+  - `supabase/migrations/001_initial_schema.sql` (new)
+  - `supabase/README.md` (new)
 
-## 2026-01-24 - US-003
-- **What was implemented**: Bookie signup flow with email/password authentication
-- **Files changed**:
-  - Booki/Views/Auth/SignUpView.swift - Created signup view with form validation and Supabase auth integration
-  - Booki.xcodeproj/project.pbxproj - Added Auth group under Views and SignUpView.swift file references
 - **Learnings for future iterations:**
-  - Auth views go in Booki/Views/Auth/ subdirectory
-  - When adding a new folder group: create PBXGroup with path, add files to it, add the group to parent group's children
-  - Supabase signup uses `client.auth.signUp(email:password:)` which returns a response with user info
-  - AuthError has cases like `.api(APIError)` for server errors - check `apiError.message` for error details
-  - Use AuthTextFieldStyle and PrimaryButtonStyle for consistent auth UI components (defined in SignUpView.swift)
-  - Placeholder modifier on View extension helps show placeholder text in custom styled text fields
----
-
-## 2026-01-24 - US-004
-- **What was implemented**: Bookie login flow with email/password authentication
-- **Files changed**:
-  - Booki/Views/Auth/LoginView.swift - Created login view with form fields, Supabase auth integration, and error handling
-  - Booki.xcodeproj/project.pbxproj - Added LoginView.swift file references to Auth group
-- **Learnings for future iterations:**
-  - Login uses `client.auth.signIn(email:password:)` - AuthManager updates automatically via auth state listener
-  - Login view follows same pattern as SignUpView but with fewer fields (no confirm password, simpler validation)
-  - Use `.textContentType(.password)` for login (vs `.newPassword` for signup) to help password autofill
-  - Common error cases: "invalid login credentials", "email not confirmed", "too many requests" (rate limiting)
-  - Navigation callbacks (onNavigateToSignUp, onNavigateToForgotPassword) allow parent view to handle navigation
----
-
-## 2026-01-24 - US-005
-- **What was implemented**: Sign in with Apple authentication
-- **Files changed**:
-  - Booki/Views/Auth/AppleSignInButton.swift - Created Apple Sign-In button component with Supabase integration
-  - Booki/Views/Auth/LoginView.swift - Added AppleSignInButton with "or" divider
-  - Booki/Views/Auth/SignUpView.swift - Added AppleSignInButton with "or" divider
-  - Booki.xcodeproj/project.pbxproj - Added AppleSignInButton.swift file references to Auth group
-- **Learnings for future iterations:**
-  - Apple Sign-In uses `SignInWithAppleButton` from AuthenticationServices framework
-  - Use `.signInWithAppleButtonStyle(.white)` for dark theme apps (provides contrast)
-  - ASAuthorizationAppleIDCredential provides identityToken which is base64 encoded - convert to String with `String(data:encoding:.utf8)`
-  - Supabase Apple auth: `client.auth.signInWithIdToken(credentials: .init(provider: .apple, idToken: idTokenString))`
-  - ASAuthorizationError.code cases: .canceled (user cancelled, don't show error), .failed, .invalidResponse, .notHandled, .notInteractive, .unknown
-  - Created reusable DividerWithText component for "or" separator between auth methods
-  - Actual "Sign in with Apple" capability must be added manually in Xcode project settings
----
-
-## 2026-01-24 - US-006
-- **What was implemented**: Password reset flow for bookies to recover access via email
-- **Files changed**:
-  - Booki/Views/Auth/ForgotPasswordView.swift - Created forgot password view with email field, validation, and Supabase reset integration
-  - Booki.xcodeproj/project.pbxproj - Added ForgotPasswordView.swift file references to Auth group
-- **Learnings for future iterations:**
-  - Password reset uses `client.auth.resetPasswordForEmail(email)` - no response data, just throws on error
-  - Simpler view than login/signup: just one email field with validation
-  - Same pattern: use AuthTextFieldStyle, PrimaryButtonStyle, Theme colors, and error handling
-  - Navigation callback (onNavigateToLogin) allows return to login view after success or back button
-  - Deep link handling for password reset can be added later; user resets password via web for now
----
-
-## 2026-01-24 - US-007
-- **What was implemented**: Auth gate and navigation flow that controls access to the main app
-- **Files changed**:
-  - Booki/Views/AuthGateView.swift - Created auth gate view with loading, login, and authenticated states
-  - Booki/BookiApp.swift - Updated root view from ContentView to AuthGateView
-  - Booki.xcodeproj/project.pbxproj - Added AuthGateView.swift file references to Views group
-- **Learnings for future iterations:**
-  - AuthGateView pattern: check isLoading first, then isAuthenticated to determine which view to show
-  - Use private enum (AuthViewType) to track which auth view is displayed (login, signUp, forgotPassword)
-  - Navigation between auth views handled via callbacks (onNavigateToSignUp, onNavigateToLogin, etc.)
-  - Loading view should show app logo and spinner while AuthManager checks initial session
-  - SwiftUI animations with `.animation()` modifier provide smooth transitions between auth states
-  - AuthGateView sits at the root of the app and the auth state listener handles all navigation automatically
+  - SwiftData models map closely to Postgres tables but use different naming (camelCase vs snake_case)
+  - AcceptancePolicy has many fields beyond what PRD specified - included all for completeness
+  - The `event_id` in bets is TEXT not UUID to support external event IDs
+  - LedgerEntry is append-only (no updated_at) by design
+  - Bookie table links to auth.users via auth_user_id for Supabase Auth integration
 ---
