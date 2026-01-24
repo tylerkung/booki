@@ -68,6 +68,7 @@
 		8A1234560060 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550060 /* SignUpView.swift */; };
 		8A1234560061 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550061 /* LoginView.swift */; };
 		8A1234560062 /* AppleSignInButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550062 /* AppleSignInButton.swift */; };
+		8A1234560063 /* ForgotPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550063 /* ForgotPasswordView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -134,6 +135,7 @@
 		8A1234550060 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
 		8A1234550061 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		8A1234550062 /* AppleSignInButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInButton.swift; sourceTree = "<group>"; };
+		8A1234550063 /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -241,6 +243,7 @@
 				8A1234550060 /* SignUpView.swift */,
 				8A1234550061 /* LoginView.swift */,
 				8A1234550062 /* AppleSignInButton.swift */,
+				8A1234550063 /* ForgotPasswordView.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -471,6 +474,7 @@
 				8A1234560060 /* SignUpView.swift in Sources */,
 				8A1234560061 /* LoginView.swift in Sources */,
 				8A1234560062 /* AppleSignInButton.swift in Sources */,
+				8A1234560063 /* ForgotPasswordView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
