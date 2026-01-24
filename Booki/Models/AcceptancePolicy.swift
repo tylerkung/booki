@@ -32,7 +32,7 @@ enum ParlayPushVoidPolicy: String, Codable, CaseIterable {
 /// AcceptancePolicy model storing bookie's acceptance policy configuration
 /// Used to determine if bets should be auto-accepted, queued for review, or rejected
 @Model
-final class AcceptancePolicy {
+final class AcceptancePolicy: Syncable {
     @Attribute(.unique) var id: UUID
 
     /// Maximum stake amount to auto-accept without review
@@ -73,6 +73,20 @@ final class AcceptancePolicy {
     var createdAt: Date
     var updatedAt: Date
 
+    // MARK: - Syncable Properties
+
+    /// The bookie this policy belongs to (for multi-tenant isolation)
+    var bookieId: UUID?
+
+    /// Whether this record has local changes that need to be uploaded
+    var needsSync: Bool
+
+    /// When this record was last successfully synced with the server
+    var lastSyncedAt: Date?
+
+    /// Version number for optimistic locking / conflict detection
+    var version: Int
+
     init(
         id: UUID = UUID(),
         autoAcceptMaxStake: Decimal = 100,
@@ -84,7 +98,11 @@ final class AcceptancePolicy {
         eventLockOffsetMinutes: Int = 0,
         parlayPushVoidPolicy: String = ParlayPushVoidPolicy.reduceLegReprice.rawValue,
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        bookieId: UUID? = nil,
+        needsSync: Bool = true,
+        lastSyncedAt: Date? = nil,
+        version: Int = 1
     ) {
         self.id = id
         self.autoAcceptMaxStake = autoAcceptMaxStake
@@ -97,5 +115,9 @@ final class AcceptancePolicy {
         self.parlayPushVoidPolicy = parlayPushVoidPolicy
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.bookieId = bookieId
+        self.needsSync = needsSync
+        self.lastSyncedAt = lastSyncedAt
+        self.version = version
     }
 }

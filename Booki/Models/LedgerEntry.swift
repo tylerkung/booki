@@ -12,7 +12,7 @@ enum EntryType: String, Codable {
 /// Append-only ledger entry for tracking all balance changes
 /// Note: This model is designed to be append-only - entries should never be updated or deleted
 @Model
-final class LedgerEntry {
+final class LedgerEntry: Syncable {
     @Attribute(.unique) var id: UUID
     var amount: Decimal
     var type: EntryType
@@ -25,6 +25,20 @@ final class LedgerEntry {
     /// Relationship: ledger entry may be associated with a bet (optional)
     var bet: Bet?
 
+    // MARK: - Syncable Properties
+
+    /// The bookie this ledger entry belongs to (for multi-tenant isolation)
+    var bookieId: UUID?
+
+    /// Whether this record has local changes that need to be uploaded
+    var needsSync: Bool
+
+    /// When this record was last successfully synced with the server
+    var lastSyncedAt: Date?
+
+    /// Version number for optimistic locking / conflict detection
+    var version: Int
+
     init(
         id: UUID = UUID(),
         amount: Decimal,
@@ -32,7 +46,11 @@ final class LedgerEntry {
         entryDescription: String,
         player: Player,
         bet: Bet? = nil,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        bookieId: UUID? = nil,
+        needsSync: Bool = true,
+        lastSyncedAt: Date? = nil,
+        version: Int = 1
     ) {
         self.id = id
         self.amount = amount
@@ -41,5 +59,9 @@ final class LedgerEntry {
         self.player = player
         self.bet = bet
         self.createdAt = createdAt
+        self.bookieId = bookieId
+        self.needsSync = needsSync
+        self.lastSyncedAt = lastSyncedAt
+        self.version = version
     }
 }

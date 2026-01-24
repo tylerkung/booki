@@ -4,7 +4,7 @@ import SwiftData
 /// Settlement period model representing a weekly settlement window
 /// The week is defined by its ending date (Sunday)
 @Model
-final class SettlementPeriod {
+final class SettlementPeriod: Syncable {
     @Attribute(.unique) var id: UUID
 
     /// The Sunday that ends this settlement week
@@ -32,13 +32,35 @@ final class SettlementPeriod {
         return "\(startStr) - \(endStr)"
     }
 
+    // MARK: - Syncable Properties
+
+    /// The bookie this settlement period belongs to (for multi-tenant isolation)
+    var bookieId: UUID?
+
+    /// Whether this record has local changes that need to be uploaded
+    var needsSync: Bool
+
+    /// When this record was last successfully synced with the server
+    var lastSyncedAt: Date?
+
+    /// Version number for optimistic locking / conflict detection
+    var version: Int
+
     init(
         id: UUID = UUID(),
         weekEndingDate: Date,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        bookieId: UUID? = nil,
+        needsSync: Bool = true,
+        lastSyncedAt: Date? = nil,
+        version: Int = 1
     ) {
         self.id = id
         self.weekEndingDate = weekEndingDate
         self.createdAt = createdAt
+        self.bookieId = bookieId
+        self.needsSync = needsSync
+        self.lastSyncedAt = lastSyncedAt
+        self.version = version
     }
 }

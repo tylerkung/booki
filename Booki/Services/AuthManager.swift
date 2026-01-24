@@ -26,6 +26,10 @@ final class AuthManager: ObservableObject {
     /// The current user's role (nil if not authenticated or role not set)
     @Published private(set) var userRole: UserRole?
 
+    /// The current bookie's ID from Supabase (nil if not authenticated as bookie)
+    /// This is set after login/signup when the bookie record is fetched/created (US-004)
+    @Published private(set) var currentBookieId: UUID?
+
     // MARK: - Private Properties
 
     private let supabase: SupabaseClient
@@ -114,6 +118,7 @@ final class AuthManager: ObservableObject {
 
         if !isAuthenticated {
             self.userRole = nil
+            self.currentBookieId = nil
         }
     }
 }

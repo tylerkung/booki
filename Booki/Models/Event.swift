@@ -12,7 +12,7 @@ enum EventStatus: String, Codable {
 
 /// Event model representing a sports event
 @Model
-final class Event {
+final class Event: Syncable {
     @Attribute(.unique) var id: UUID
     var sport: String
     var league: String
@@ -26,6 +26,20 @@ final class Event {
     @Relationship(deleteRule: .cascade, inverse: \Market.event)
     var markets: [Market]?
 
+    // MARK: - Syncable Properties
+
+    /// The bookie this event belongs to (for multi-tenant isolation)
+    var bookieId: UUID?
+
+    /// Whether this record has local changes that need to be uploaded
+    var needsSync: Bool
+
+    /// When this record was last successfully synced with the server
+    var lastSyncedAt: Date?
+
+    /// Version number for optimistic locking / conflict detection
+    var version: Int
+
     init(
         id: UUID = UUID(),
         sport: String,
@@ -35,7 +49,11 @@ final class Event {
         startTime: Date,
         status: EventStatus = .scheduled,
         finalScore: String? = nil,
-        markets: [Market]? = nil
+        markets: [Market]? = nil,
+        bookieId: UUID? = nil,
+        needsSync: Bool = true,
+        lastSyncedAt: Date? = nil,
+        version: Int = 1
     ) {
         self.id = id
         self.sport = sport
@@ -46,6 +64,10 @@ final class Event {
         self.status = status
         self.finalScore = finalScore
         self.markets = markets
+        self.bookieId = bookieId
+        self.needsSync = needsSync
+        self.lastSyncedAt = lastSyncedAt
+        self.version = version
     }
 
     // MARK: - Event Lock Logic

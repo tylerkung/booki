@@ -21,7 +21,7 @@ enum GradeResult: String, Codable {
 
 /// Bet model representing a wager placed by a player
 @Model
-final class Bet {
+final class Bet: Syncable {
     @Attribute(.unique) var id: UUID
     var eventId: String
     var market: String
@@ -47,6 +47,20 @@ final class Bet {
     /// Relationship: many bets belong to one player
     var player: Player?
 
+    // MARK: - Syncable Properties
+
+    /// The bookie this bet belongs to (for multi-tenant isolation)
+    var bookieId: UUID?
+
+    /// Whether this record has local changes that need to be uploaded
+    var needsSync: Bool
+
+    /// When this record was last successfully synced with the server
+    var lastSyncedAt: Date?
+
+    /// Version number for optimistic locking / conflict detection
+    var version: Int
+
     init(
         id: UUID = UUID(),
         eventId: String,
@@ -61,7 +75,11 @@ final class Bet {
         ticketId: UUID = UUID(),
         policyViolationReason: String? = nil,
         isParlay: Bool = false,
-        parlayLegs: Int = 1
+        parlayLegs: Int = 1,
+        bookieId: UUID? = nil,
+        needsSync: Bool = true,
+        lastSyncedAt: Date? = nil,
+        version: Int = 1
     ) {
         self.id = id
         self.eventId = eventId
@@ -77,5 +95,9 @@ final class Bet {
         self.policyViolationReason = policyViolationReason
         self.isParlay = isParlay
         self.parlayLegs = parlayLegs
+        self.bookieId = bookieId
+        self.needsSync = needsSync
+        self.lastSyncedAt = lastSyncedAt
+        self.version = version
     }
 }

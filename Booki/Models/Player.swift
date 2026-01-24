@@ -38,7 +38,7 @@ enum CollectionStatus: String, Codable, CaseIterable, Identifiable {
 
 /// Player model representing a player seat that belongs to a bookie
 @Model
-final class Player {
+final class Player: Syncable {
     @Attribute(.unique) var id: UUID
     var name: String
     var email: String?
@@ -65,6 +65,20 @@ final class Player {
     /// Relationship: many players belong to one bookie
     var bookie: Bookie?
 
+    // MARK: - Syncable Properties
+
+    /// The bookie this player belongs to (for multi-tenant isolation)
+    var bookieId: UUID?
+
+    /// Whether this record has local changes that need to be uploaded
+    var needsSync: Bool
+
+    /// When this record was last successfully synced with the server
+    var lastSyncedAt: Date?
+
+    /// Version number for optimistic locking / conflict detection
+    var version: Int
+
     init(
         id: UUID = UUID(),
         name: String,
@@ -78,7 +92,11 @@ final class Player {
         collectionStatusDate: Date? = nil,
         promisedPaymentDate: Date? = nil,
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        bookieId: UUID? = nil,
+        needsSync: Bool = true,
+        lastSyncedAt: Date? = nil,
+        version: Int = 1
     ) {
         self.id = id
         self.name = name
@@ -93,5 +111,9 @@ final class Player {
         self.promisedPaymentDate = promisedPaymentDate
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.bookieId = bookieId
+        self.needsSync = needsSync
+        self.lastSyncedAt = lastSyncedAt
+        self.version = version
     }
 }
