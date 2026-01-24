@@ -6,6 +6,8 @@ Started: Sat Jan 24 01:05:13 PST 2026
 - Access Supabase client via `SupabaseClientManager.shared.client`
 - Supabase credentials are stored in Info.plist (SUPABASE_URL, SUPABASE_ANON_KEY)
 - Config files go in Booki/Config/, Services go in Booki/Services/
+- Auth views go in Booki/Views/Auth/ directory
+- Use AuthTextFieldStyle and PrimaryButtonStyle for auth forms (defined in SignUpView.swift)
 
 ---
 
@@ -33,4 +35,18 @@ Started: Sat Jan 24 01:05:13 PST 2026
   - AuthManager should be @MainActor to ensure all published property updates happen on main thread
   - Auth state events include: initialSession, signedIn, signedOut, tokenRefreshed, userUpdated, userDeleted, passwordRecovery, mfaChallengeVerified
   - When adding new files to Xcode project: add to PBXBuildFile, PBXFileReference, PBXGroup (Services), and PBXSourcesBuildPhase sections
+---
+
+## 2026-01-24 - US-003
+- **What was implemented**: Bookie signup flow with email/password authentication
+- **Files changed**:
+  - Booki/Views/Auth/SignUpView.swift - Created signup view with form validation and Supabase auth integration
+  - Booki.xcodeproj/project.pbxproj - Added Auth group under Views and SignUpView.swift file references
+- **Learnings for future iterations:**
+  - Auth views go in Booki/Views/Auth/ subdirectory
+  - When adding a new folder group: create PBXGroup with path, add files to it, add the group to parent group's children
+  - Supabase signup uses `client.auth.signUp(email:password:)` which returns a response with user info
+  - AuthError has cases like `.api(APIError)` for server errors - check `apiError.message` for error details
+  - Use AuthTextFieldStyle and PrimaryButtonStyle for consistent auth UI components (defined in SignUpView.swift)
+  - Placeholder modifier on View extension helps show placeholder text in custom styled text fields
 ---
