@@ -32,7 +32,7 @@ struct BookiApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AuthGateView()
                 .preferredColorScheme(.dark)
                 .environmentObject(authManager)
         }

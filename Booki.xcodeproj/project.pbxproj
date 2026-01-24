@@ -69,6 +69,7 @@
 		8A1234560061 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550061 /* LoginView.swift */; };
 		8A1234560062 /* AppleSignInButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550062 /* AppleSignInButton.swift */; };
 		8A1234560063 /* ForgotPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550063 /* ForgotPasswordView.swift */; };
+		8A1234560064 /* AuthGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550064 /* AuthGateView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -136,6 +137,7 @@
 		8A1234550061 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		8A1234550062 /* AppleSignInButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInButton.swift; sourceTree = "<group>"; };
 		8A1234550063 /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
+		8A1234550064 /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -252,6 +254,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1234530010 /* Auth */,
+				8A1234550064 /* AuthGateView.swift */,
 				8A1234550021 /* DashboardView.swift */,
 				8A1234550022 /* BetsListView.swift */,
 				8A1234550023 /* PlayersListView.swift */,
@@ -475,6 +478,7 @@
 				8A1234560061 /* LoginView.swift in Sources */,
 				8A1234560062 /* AppleSignInButton.swift in Sources */,
 				8A1234560063 /* ForgotPasswordView.swift in Sources */,
+				8A1234560064 /* AuthGateView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
