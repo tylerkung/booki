@@ -60,3 +60,31 @@ Started: Sat Jan 24 01:56:02 PST 2026
   - Ledger entries should be append-only in practice even though DELETE/UPDATE allowed
   - Use COALESCE in get_user_bookie_id() to handle both bookie and player auth lookup
 ---
+
+## 2026-01-24 - US-003: Add Sync Fields to SwiftData Models
+- **What was implemented:**
+  - Created `Syncable` protocol in `Booki/Models/Syncable.swift`
+  - Added sync fields to 7 models: Player, Event, Bet, LedgerEntry, AcceptancePolicy, SettlementPeriod, PlayerSettlement
+  - Each model now has: `bookieId` (UUID?), `needsSync` (Bool, default true), `lastSyncedAt` (Date?), `version` (Int, default 1)
+  - All models conform to `Syncable` protocol
+  - Added `currentBookieId` property to `AuthManager` (to be populated in US-004)
+  - Initializers accept bookieId parameter with nil default for existing local data
+
+- **Files changed:**
+  - `Booki/Models/Syncable.swift` (new)
+  - `Booki/Models/Player.swift` (updated)
+  - `Booki/Models/Event.swift` (updated)
+  - `Booki/Models/Bet.swift` (updated)
+  - `Booki/Models/LedgerEntry.swift` (updated)
+  - `Booki/Models/AcceptancePolicy.swift` (updated)
+  - `Booki/Models/SettlementPeriod.swift` (updated)
+  - `Booki/Models/PlayerSettlement.swift` (updated)
+  - `Booki/Services/AuthManager.swift` (updated)
+
+- **Learnings for future iterations:**
+  - SwiftData @Model classes can conform to protocols, making Syncable pattern work
+  - needsSync defaults to true so new records are marked for upload immediately
+  - bookieId is nil until AuthManager.currentBookieId is set (in US-004) or record is synced
+  - Version number starts at 1 and increments on each successful sync (for conflict detection)
+  - AuthManager.currentBookieId cleared on sign out to reset sync state
+---
