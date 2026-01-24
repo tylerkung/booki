@@ -12,6 +12,9 @@ Started: Sat Jan 24 01:56:02 PST 2026
 - RLS helper functions use SECURITY DEFINER for consistent permissions
 - RLS policies use double-check pattern: `is_bookie() AND bookie_id = get_user_bookie_id()`
 - Players authenticate via auth_user_id linkage, not username/password in app
+- Use `fetchOrCreateBookie()` pattern for idempotent bookie record creation
+- AuthManager handles bookie record lifecycle via auth state listener (signedIn event)
+- Supabase Codable models use CodingKeys for snake_case database columns
 
 ---
 
@@ -87,4 +90,28 @@ Started: Sat Jan 24 01:56:02 PST 2026
   - bookieId is nil until AuthManager.currentBookieId is set (in US-004) or record is synced
   - Version number starts at 1 and increments on each successful sync (for conflict detection)
   - AuthManager.currentBookieId cleared on sign out to reset sync state
+---
+
+## 2026-01-24 - US-004: Create Bookie Record on Signup
+- **What was implemented:**
+  - Created `BookieService.swift` in `Booki/Services/` for all bookie record operations
+  - `BookieService` methods: `fetchCurrentBookie()`, `fetchBookie(forAuthUserId:)`, `createBookie()`, `fetchOrCreateBookie()`
+  - `BookieRecord` and `BookieInsert` Codable structs for Supabase interaction
+  - Updated `AuthManager` to call `ensureBookieRecord()` on sign-in events via auth state listener
+  - Added `isLoadingBookie`, `bookieError` published properties to AuthManager for UI feedback
+  - Updated `AuthGateView` to show loading state while bookie record is being fetched/created
+  - Added error alert in `AuthGateView` if bookie record creation fails
+  - Name derivation from email prefix when no explicit name provided
+
+- **Files changed:**
+  - `Booki/Services/BookieService.swift` (new)
+  - `Booki/Services/AuthManager.swift` (updated)
+  - `Booki/Views/AuthGateView.swift` (updated)
+
+- **Learnings for future iterations:**
+  - Supabase insert with `.select()` returns the created record for confirmation
+  - Use `fetchOrCreateBookie()` pattern to handle both new signups and returning users
+  - Auth state listener catches all auth methods (email/password, Apple Sign-In)
+  - Show loading state in AuthGateView while bookie record is loading to prevent flash of content
+  - Bookie record creation is idempotent - safe to call multiple times
 ---

@@ -13,11 +13,14 @@ struct AuthGateView: View {
     /// Tracks which auth view is currently displayed
     @State private var currentAuthView: AuthViewType = .login
 
+    /// Whether to show the bookie error alert
+    @State private var showBookieErrorAlert: Bool = false
+
     // MARK: - Body
 
     var body: some View {
         Group {
-            if authManager.isLoading {
+            if authManager.isLoading || (authManager.isAuthenticated && authManager.isLoadingBookie) {
                 loadingView
             } else if authManager.isAuthenticated {
                 ContentView()
@@ -27,6 +30,15 @@ struct AuthGateView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
         .animation(.easeInOut(duration: 0.2), value: authManager.isLoading)
+        .animation(.easeInOut(duration: 0.2), value: authManager.isLoadingBookie)
+        .onChange(of: authManager.bookieError) { _, newError in
+            showBookieErrorAlert = newError != nil
+        }
+        .alert("Setup Issue", isPresented: $showBookieErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(authManager.bookieError ?? "An error occurred setting up your account. Some features may not work correctly.")
+        }
     }
 
     // MARK: - Loading View

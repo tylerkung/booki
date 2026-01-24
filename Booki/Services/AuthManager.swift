@@ -27,8 +27,14 @@ final class AuthManager: ObservableObject {
     @Published private(set) var userRole: UserRole?
 
     /// The current bookie's ID from Supabase (nil if not authenticated as bookie)
-    /// This is set after login/signup when the bookie record is fetched/created (US-004)
+    /// This is set after login/signup when the bookie record is fetched/created
     @Published private(set) var currentBookieId: UUID?
+
+    /// Error message from bookie record operations (nil if no error)
+    @Published private(set) var bookieError: String?
+
+    /// Whether bookie record is being loaded
+    @Published private(set) var isLoadingBookie: Bool = false
 
     // MARK: - Private Properties
 
@@ -59,6 +65,32 @@ final class AuthManager: ObservableObject {
         // Auth state listener will handle updating the published properties
     }
 
+    /// Fetches or creates the bookie record for the current user
+    /// Call this after successful login/signup to ensure bookie record exists
+    /// - Parameter name: Optional name to use when creating a new bookie record
+    func ensureBookieRecord(name: String? = nil) async {
+        isLoadingBookie = true
+        bookieError = nil
+
+        do {
+            let bookie = try await BookieService.fetchOrCreateBookie(name: name)
+            currentBookieId = bookie.id
+            userRole = .bookie
+        } catch {
+            bookieError = error.localizedDescription
+            // Don't block the user from using the app, but log the error
+            print("Failed to fetch/create bookie record: \(error)")
+        }
+
+        isLoadingBookie = false
+    }
+
+    /// Sets the current bookie ID directly (used when bookie record is already known)
+    func setCurrentBookieId(_ bookieId: UUID) {
+        currentBookieId = bookieId
+        userRole = .bookie
+    }
+
     // MARK: - Private Methods
 
     /// Checks the current Supabase session on initialization
@@ -68,6 +100,8 @@ final class AuthManager: ObservableObject {
         do {
             let session = try await supabase.auth.session
             updateAuthState(userId: session.user.id.uuidString, isAuthenticated: true)
+            // Fetch bookie record for existing session
+            await ensureBookieRecord()
         } catch {
             // No valid session or error checking session
             updateAuthState(userId: nil, isAuthenticated: false)
@@ -89,6 +123,8 @@ final class AuthManager: ObservableObject {
                 case .signedIn:
                     if let session = session {
                         updateAuthState(userId: session.user.id.uuidString, isAuthenticated: true)
+                        // Fetch or create bookie record after sign in
+                        await ensureBookieRecord()
                     }
                 case .signedOut:
                     updateAuthState(userId: nil, isAuthenticated: false)
@@ -119,6 +155,7 @@ final class AuthManager: ObservableObject {
         if !isAuthenticated {
             self.userRole = nil
             self.currentBookieId = nil
+            self.bookieError = nil
         }
     }
 }

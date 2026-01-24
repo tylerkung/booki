@@ -84,7 +84,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Links auth user to bookie record for RLS policies to work"
     },
     {
