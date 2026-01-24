@@ -80,3 +80,16 @@ Started: Sat Jan 24 01:05:13 PST 2026
   - Created reusable DividerWithText component for "or" separator between auth methods
   - Actual "Sign in with Apple" capability must be added manually in Xcode project settings
 ---
+
+## 2026-01-24 - US-006
+- **What was implemented**: Password reset flow for bookies to recover access via email
+- **Files changed**:
+  - Booki/Views/Auth/ForgotPasswordView.swift - Created forgot password view with email field, validation, and Supabase reset integration
+  - Booki.xcodeproj/project.pbxproj - Added ForgotPasswordView.swift file references to Auth group
+- **Learnings for future iterations:**
+  - Password reset uses `client.auth.resetPasswordForEmail(email)` - no response data, just throws on error
+  - Simpler view than login/signup: just one email field with validation
+  - Same pattern: use AuthTextFieldStyle, PrimaryButtonStyle, Theme colors, and error handling
+  - Navigation callback (onNavigateToLogin) allows return to login view after success or back button
+  - Deep link handling for password reset can be added later; user resets password via web for now
+---

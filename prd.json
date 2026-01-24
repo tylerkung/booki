@@ -121,7 +121,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Deep link handling for password reset can be added later. User resets via web for now."
     },
     {
