@@ -121,7 +121,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Full detail view with mark settled action"
     },
     {

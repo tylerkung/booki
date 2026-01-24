@@ -69,3 +69,18 @@ Started: Fri Jan 23 22:58:07 PST 2026
   - isPlayerSettled() helper checks playerSettlements for matching player and period
   - Placeholder PlayerSettlementDetailView created for NavigationLink (full impl in US-006)
 ---
+
+## 2026-01-23 - US-006
+- What was implemented: Full PlayerSettlementDetailView with balance breakdown, betting activity, and mark as settled functionality
+- Files changed:
+  - Booki/Views/WeeklySettlementView.swift (updated - replaced placeholder with full implementation)
+- **Learnings for future iterations:**
+  - PlayerSettlementDetailView needs @Query for bets, ledgerEntries, and playerSettlements to calculate report
+  - Use existingSettlement computed property to find/update existing PlayerSettlement records
+  - BalanceSummaryCard shows flow: Starting Balance -> Net Results -> Payments -> Adjustments -> Ending Balance
+  - BalanceLineItem with showSign=true colors positive as danger (adds debt), negative as accent (reduces debt)
+  - BettingActivityCard shows won/lost/push counts; push = betsSettledCount - betsWonCount - betsLostCount
+  - Mark as Settled updates existing record or creates new PlayerSettlement with isSettled=true and settledAt=Date()
+  - TextField notes stored in PlayerSettlement.notes (optional)
+  - When already settled, show settledAt timestamp and any notes
+---
