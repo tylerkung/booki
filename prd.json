@@ -178,7 +178,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Prevents silent data loss from concurrent edits"
     },
     {

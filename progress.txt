@@ -243,3 +243,29 @@ Started: Sat Jan 24 01:56:02 PST 2026
   - Keep `shouldReconnect` flag to track intentional subscription state for reconnection logic
   - Ledger entries are append-only - ignore UPDATE events for that table
 ---
+
+## 2026-01-24 - US-009: Implement Conflict Resolution
+- **What was implemented:**
+  - Created `SyncConflict` model in ContentView for tracking conflict state in UI
+  - Added conflict alert handler that listens for `syncConflictDetected` notifications
+  - Alert shows message and provides "View Current" and "OK" buttons
+  - Enhanced conflict resolution methods in SyncService with detailed logging:
+    - Fetches server version number before resolution
+    - Logs: table name, record ID, local version, server version, timestamp
+    - Logs resolution strategy (first-write-wins)
+  - Added `logConflictDetails()` helper method for consistent conflict logging format
+  - Updated all resolve*Conflict methods to include version info in notifications
+  - Documented first-write-wins behavior in method comments throughout
+
+- **Files changed:**
+  - `Booki/ContentView.swift` (updated - added SyncConflict model, conflict alert handler)
+  - `Booki/Services/SyncService.swift` (updated - enhanced logging, added logConflictDetails)
+
+- **Learnings for future iterations:**
+  - NotificationCenter is effective for decoupling sync layer from UI layer
+  - Use ISO8601DateFormatter with .withFractionalSeconds for precise conflict timestamps
+  - Include both localVersion and serverVersion in notification userInfo for debugging
+  - First-write-wins is simpler than conflict merge - the first successful write to server wins
+  - Conflict detection uses version field comparison (server > local = conflict)
+  - Fetching version separately minimizes data transfer for conflict checks
+---
