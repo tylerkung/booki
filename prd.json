@@ -83,7 +83,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Main entry point for settlement workflow"
     },
     {

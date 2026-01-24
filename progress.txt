@@ -42,3 +42,16 @@ Started: Fri Jan 23 22:58:07 PST 2026
   - adjustments includes both .adjustment and .reversal entry types
   - Service files go in PBXGroup Services section in pbxproj
 ---
+
+## 2026-01-23 - US-004
+- What was implemented: Settlement Period Selection UI in WeeklySettlementView
+- Files changed:
+  - Booki/Views/WeeklySettlementView.swift (updated)
+- **Learnings for future iterations:**
+  - WeeklySettlementView already existed in the project - modified it to match acceptance criteria
+  - mostRecentSunday() calculates the most recent Sunday; if today is Sunday, use today; otherwise go back to previous Sunday
+  - Segmented picker with 5 weeks: uses Calendar.date(byAdding: .weekOfYear, value: -i, to: mostRecent)
+  - Summary calculations use SettlementService.calculatePlayerReport() to derive ending balances
+  - settledCount comes from filtering playerSettlements by periodWeekEndingDate and isSettled
+  - Total owed to bookie = positive ending balances; Total owed to players = abs of negative ending balances
+---
