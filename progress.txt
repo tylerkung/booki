@@ -93,3 +93,18 @@ Started: Sat Jan 24 01:05:13 PST 2026
   - Navigation callback (onNavigateToLogin) allows return to login view after success or back button
   - Deep link handling for password reset can be added later; user resets password via web for now
 ---
+
+## 2026-01-24 - US-007
+- **What was implemented**: Auth gate and navigation flow that controls access to the main app
+- **Files changed**:
+  - Booki/Views/AuthGateView.swift - Created auth gate view with loading, login, and authenticated states
+  - Booki/BookiApp.swift - Updated root view from ContentView to AuthGateView
+  - Booki.xcodeproj/project.pbxproj - Added AuthGateView.swift file references to Views group
+- **Learnings for future iterations:**
+  - AuthGateView pattern: check isLoading first, then isAuthenticated to determine which view to show
+  - Use private enum (AuthViewType) to track which auth view is displayed (login, signUp, forgotPassword)
+  - Navigation between auth views handled via callbacks (onNavigateToSignUp, onNavigateToLogin, etc.)
+  - Loading view should show app logo and spinner while AuthManager checks initial session
+  - SwiftUI animations with `.animation()` modifier provide smooth transitions between auth states
+  - AuthGateView sits at the root of the app and the auth state listener handles all navigation automatically
+---
