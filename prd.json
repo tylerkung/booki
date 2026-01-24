@@ -91,7 +91,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Visual feedback for parlay progress"
     },
     {
@@ -108,7 +108,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Bookie needs full picture when grading parlays"
     },
     {

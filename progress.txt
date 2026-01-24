@@ -9,6 +9,13 @@ Started: Fri Jan 23 18:00:08 PST 2026
 - Use `swiftc -parse <file>` for basic Swift syntax validation (Xcode not available in CLI)
 - For SwiftData compatibility: store enums as String, provide computed property for type-safe access (see parlayPushVoidPolicyEnum in AcceptancePolicy.swift)
 
+- TicketHeaderView shows "X/Y legs graded" for partially graded parlays and mini status dots for leg grades
+- TicketBetRowView shows grade result badges and "Awaiting Result" for pending legs
+- TicketDetailBetRowView also shows isPendingResult state for pending legs
+
+- GradingView groups parlays by ticketId using GradingGroup struct; use ParlayGradingGroupView for parlay display
+- Access parlayPushVoidPolicy via @Query policies: [AcceptancePolicy] and policies.first?.parlayPushVoidPolicyEnum
+
 ---
 
 ## 2026-01-23 - US-001
@@ -57,4 +64,29 @@ Started: Fri Jan 23 18:00:08 PST 2026
 - **Learnings for future iterations:**
   - US-003 and US-004 acceptance criteria overlapped significantly - calculateParlayPayout was implemented as part of US-003
   - When acceptance criteria overlap between stories, check if implementation is already complete before writing new code
+---
+
+## 2026-01-23 - US-005
+- **What was implemented**: Added leg status tracking to ticket display for parlays - visual feedback showing grading progress and status for each leg.
+- **Files changed**:
+  - Booki/Views/TrackView.swift - Added gradedLegsCount/showGradingProgress properties and legStatusColor helper to TicketHeaderView; shows "X/Y legs graded" text and mini status dots row; Updated TicketBetRowView to show grade badges when graded (not just settled) and "Awaiting Result" for pending legs
+  - Booki/Views/TicketDetailView.swift - Updated statusText to show grade result if available; Added isPendingResult computed property; Updated body to show "Awaiting Result" italic text for pending legs
+- **Learnings for future iterations:**
+  - TicketHeaderView and TicketBetRowView are both in TrackView.swift
+  - TicketDetailBetRowView is in TicketDetailView.swift (separate file)
+  - To check if a leg is graded: bet.gradeResult != nil
+  - To check if a leg is pending result: bet.gradeResult == nil && (bet.status == .accepted || bet.status == .readyToGrade)
+  - Mini status dots use Theme.accent (green/win), Theme.danger (red/loss), Theme.warning (yellow/push), Theme.textMuted (gray/pending)
+---
+
+## 2026-01-23 - US-006
+- **What was implemented**: Created parlay grading UI for bookie that groups parlay legs together and shows combined status/outcome.
+- **Files changed**:
+  - Booki/Views/GradingView.swift - Added GradingGroup struct to group bets; Added gradingGroups computed property that groups parlays by ticketId; Created ParlayGradingGroupView component with status header, projected outcome, and projected payout; Created ParlayLegRow for compact leg display; Modified List to use groups for display
+- **Learnings for future iterations:**
+  - GradingView uses @Query for policies to access AcceptancePolicy.parlayPushVoidPolicyEnum
+  - Group parlays by ticketId and include ALL bets with that ticketId (even already graded ones) for full context
+  - ParlayProjectedOutcome enum provides clean state management for outcome display (willLose, willPush, canWin, inProgress)
+  - ParlayLegRow uses compact icon buttons for grading within the group (vs full buttons for singles)
+  - Projected payout uses ParlayGradingService.calculateParlayPayout for consistency
 ---
