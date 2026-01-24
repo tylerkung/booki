@@ -60,6 +60,7 @@
 		8A1234560051 /* ParlayGradingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550052 /* ParlayGradingService.swift */; };
 		8A1234560053 /* SettlementPeriod.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550053 /* SettlementPeriod.swift */; };
 		8A1234560054 /* PlayerSettlement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550054 /* PlayerSettlement.swift */; };
+		8A1234560055 /* SettlementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550055 /* SettlementService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -118,6 +119,7 @@
 		8A1234550052 /* ParlayGradingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParlayGradingService.swift; sourceTree = "<group>"; };
 		8A1234550053 /* SettlementPeriod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementPeriod.swift; sourceTree = "<group>"; };
 		8A1234550054 /* PlayerSettlement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSettlement.swift; sourceTree = "<group>"; };
+		8A1234550055 /* SettlementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -261,6 +263,7 @@
 				8A1234550038 /* BetSlipManager.swift */,
 				8A1234550050 /* AcceptancePolicyService.swift */,
 				8A1234550052 /* ParlayGradingService.swift */,
+				8A1234550055 /* SettlementService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -417,6 +420,7 @@
 				8A1234560051 /* ParlayGradingService.swift in Sources */,
 				8A1234560053 /* SettlementPeriod.swift in Sources */,
 				8A1234560054 /* PlayerSettlement.swift in Sources */,
+				8A1234560055 /* SettlementService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
