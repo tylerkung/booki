@@ -203,6 +203,16 @@ struct TicketHeaderView: View {
         ticket.combinedStatus.rawValue.capitalized
     }
 
+    /// Count of graded legs in a parlay
+    private var gradedLegsCount: Int {
+        ticket.bets.filter { $0.gradeResult != nil }.count
+    }
+
+    /// Whether to show leg grading progress (only for parlays with some graded legs)
+    private var showGradingProgress: Bool {
+        ticket.isParlay && gradedLegsCount > 0 && gradedLegsCount < ticket.bets.count
+    }
+
     private func formatCurrency(_ value: Decimal) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -210,14 +220,39 @@ struct TicketHeaderView: View {
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 
+    /// Color for leg status dot
+    private func legStatusColor(for bet: Bet) -> Color {
+        if let result = bet.gradeResult {
+            switch result {
+            case .win: return Theme.accent
+            case .loss: return Theme.danger
+            case .push: return Theme.warning
+            }
+        }
+        if bet.status == .void {
+            return Theme.textMuted
+        }
+        // Pending/not yet graded
+        return Theme.textMuted.opacity(0.5)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Row 1: Ticket type and status
             HStack {
-                Text(ticket.typeLabel)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Theme.textPrimary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(ticket.typeLabel)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.textPrimary)
+
+                    // Show leg grading progress for parlays
+                    if showGradingProgress {
+                        Text("\(gradedLegsCount)/\(ticket.bets.count) legs graded")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.accentSecondary)
+                    }
+                }
 
                 Spacer()
 
@@ -231,7 +266,18 @@ struct TicketHeaderView: View {
                     .clipShape(Capsule())
             }
 
-            // Row 2: Stake and potential payout
+            // Row 2: Mini status dots for parlay legs
+            if ticket.isParlay {
+                HStack(spacing: 4) {
+                    ForEach(ticket.bets) { bet in
+                        Circle()
+                            .fill(legStatusColor(for: bet))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+            }
+
+            // Row 3: Stake and potential payout
             HStack {
                 Text("Stake: \(formatCurrency(ticket.totalStake))")
                     .font(.caption)
@@ -297,13 +343,26 @@ struct TicketBetRowView: View {
                     .foregroundStyle(Theme.textPrimary)
             }
 
-            // Row 3: Result (for settled bets)
-            if bet.status == .settled, let result = bet.gradeResult {
+            // Row 3: Grade status
+            if let result = bet.gradeResult {
+                // Show grade result badge when graded (even before settled)
                 HStack {
                     Text(result.rawValue.capitalized)
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundStyle(gradeResultColor(result))
+                        .foregroundStyle(Theme.background)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(gradeResultColor(result))
+                        .clipShape(Capsule())
+                }
+            } else if bet.status == .accepted || bet.status == .readyToGrade {
+                // Show pending indicator for legs awaiting result
+                HStack {
+                    Text("Awaiting Result")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textMuted)
+                        .italic()
                 }
             }
         }

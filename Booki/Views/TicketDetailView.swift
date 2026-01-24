@@ -436,18 +436,24 @@ struct TicketDetailBetRowView: View {
     }
 
     private var statusText: String {
+        // Show grade result if available (even for graded but not settled)
+        if let result = bet.gradeResult {
+            return result.rawValue.capitalized
+        }
         switch bet.status {
         case .pending: return "Pending"
         case .accepted: return "Open"
-        case .readyToGrade: return "Awaiting"
+        case .readyToGrade: return "Awaiting Result"
         case .graded, .settled:
-            if let result = bet.gradeResult {
-                return result.rawValue.capitalized
-            }
             return bet.status.rawValue.capitalized
         case .declined: return "Declined"
         case .void: return "Void"
         }
+    }
+
+    /// Whether this leg is pending grading result
+    private var isPendingResult: Bool {
+        bet.gradeResult == nil && (bet.status == .accepted || bet.status == .readyToGrade)
     }
 
     private var formattedBetDate: String {
@@ -496,14 +502,25 @@ struct TicketDetailBetRowView: View {
 
                 Spacer()
 
-                Text(statusText)
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(Theme.background)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(statusColor)
-                    .clipShape(Capsule())
+                VStack(alignment: .trailing, spacing: 4) {
+                    // Grade status badge
+                    Text(statusText)
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.background)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(statusColor)
+                        .clipShape(Capsule())
+
+                    // Show muted text for pending legs
+                    if isPendingResult {
+                        Text("Awaiting Result")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textMuted)
+                            .italic()
+                    }
+                }
             }
 
             // Row 2: Market and Selection
