@@ -188,3 +188,68 @@ Every table (except `bookies`) has a `bookie_id` column that:
 3. Is indexed for query performance
 
 RLS policies are defined in `002_rls_policies.sql`.
+
+## Row Level Security (RLS)
+
+RLS is enabled on all tables to enforce data isolation at the database level. Even if application code has bugs, RLS prevents unauthorized data access.
+
+### Helper Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `get_user_bookie_id()` | UUID | Returns the bookie_id for the current auth user (works for both bookies and players) |
+| `is_bookie()` | BOOLEAN | Returns true if current user is a bookie |
+| `get_player_id()` | UUID | Returns player_id for current auth user if they are a player |
+
+### Policy Summary
+
+| Table | User Type | SELECT | INSERT | UPDATE | DELETE |
+|-------|-----------|--------|--------|--------|--------|
+| **bookies** | Bookie | Own record only | Own record only | Own record only | Own record only |
+| **players** | Bookie | All in org | All in org | All in org | All in org |
+| **players** | Player | Own record only | - | - | - |
+| **events** | Bookie | All in org | All in org | All in org | All in org |
+| **events** | Player | All in org | - | - | - |
+| **bets** | Bookie | All in org | All in org | All in org | All in org |
+| **bets** | Player | Own bets only | Own bets only | - | - |
+| **ledger_entries** | Bookie | All in org | All in org | All in org | All in org |
+| **ledger_entries** | Player | Own entries only | - | - | - |
+| **acceptance_policies** | Bookie | Own policy only | Own policy only | Own policy only | Own policy only |
+| **acceptance_policies** | Player | - | - | - | - |
+
+### Policy Details
+
+#### Bookies Table
+- Bookies can only CRUD their own record (linked via `auth_user_id`)
+
+#### Players Table
+- Bookies have full CRUD on all players where `bookie_id` matches
+- Players can only SELECT their own record (linked via `auth_user_id`)
+
+#### Events Table
+- Bookies have full CRUD on all events where `bookie_id` matches
+- Players can SELECT all events from their bookie (to see available games)
+
+#### Bets Table
+- Bookies have full CRUD on all bets where `bookie_id` matches
+- Players can SELECT and INSERT their own bets (identified by `player_id`)
+- Players cannot UPDATE or DELETE bets (only bookie can grade/void)
+
+#### Ledger Entries Table
+- Bookies have full CRUD on all entries where `bookie_id` matches
+- Players can only SELECT their own entries (for balance history)
+- Note: Ledger should be append-only in practice; DELETE/UPDATE allowed for corrections
+
+#### Acceptance Policies Table
+- Only bookies can access this table
+- Each bookie can only CRUD their own policy
+
+### Security Notes
+
+1. **SECURITY DEFINER**: Helper functions use `SECURITY DEFINER` to execute with elevated privileges, ensuring consistent behavior regardless of caller permissions.
+
+2. **Double-Check Pattern**: Policies check both `bookie_id` match AND user type to prevent edge cases.
+
+3. **Player Isolation**: Players cannot see other players, even within the same bookie organization.
+
+4. **Bookie Verification**: Write operations verify `is_bookie()` to prevent players from modifying data they shouldn't.
