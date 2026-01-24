@@ -1,6 +1,25 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Sync Conflict Model
+
+/// Model representing a sync conflict for UI display
+struct SyncConflict: Identifiable, Equatable {
+    let id: UUID
+    let table: String
+    let recordId: UUID
+    let message: String
+    let timestamp: Date
+
+    init(table: String, recordId: UUID, message: String) {
+        self.id = UUID()
+        self.table = table
+        self.recordId = recordId
+        self.message = message
+        self.timestamp = Date()
+    }
+}
+
 struct ContentView: View {
     @AppStorage("isPlayerMode") private var isPlayerMode: Bool = false
     @AppStorage("selectedPlayerID") private var selectedPlayerID: String = ""
@@ -11,6 +30,17 @@ struct ContentView: View {
 
     @Query private var players: [Player]
     @Query private var ledgerEntries: [LedgerEntry]
+
+    // MARK: - Conflict Alert State
+
+    /// The current sync conflict to display (nil when no conflict)
+    @State private var currentConflict: SyncConflict?
+
+    /// Whether to show the conflict alert
+    @State private var showConflictAlert: Bool = false
+
+    /// Navigation to view the conflicting record
+    @State private var navigateToConflictRecord: Bool = false
 
     /// The currently selected player for player mode
     private var selectedPlayer: Player? {
@@ -55,17 +85,75 @@ struct ContentView: View {
     }
 
     var body: some View {
-        if isPlayerMode, let player = selectedPlayer {
-            // Player Mode UI
-            playerModeView(player: player)
-                // US-053: Smooth transition when switching between modes
-                .transition(.opacity.animation(.easeInOut(duration: 0.2)))
-        } else {
-            // Bookie Mode UI (default)
-            bookieModeView
-                // US-053: Smooth transition when switching between modes
-                .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+        Group {
+            if isPlayerMode, let player = selectedPlayer {
+                // Player Mode UI
+                playerModeView(player: player)
+                    // US-053: Smooth transition when switching between modes
+                    .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+            } else {
+                // Bookie Mode UI (default)
+                bookieModeView
+                    // US-053: Smooth transition when switching between modes
+                    .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+            }
         }
+        // MARK: - Sync Conflict Alert
+        .alert("Sync Conflict", isPresented: $showConflictAlert) {
+            Button("View Current") {
+                // Navigate to the conflicting record
+                navigateToConflictRecord = true
+            }
+            Button("OK", role: .cancel) {
+                currentConflict = nil
+            }
+        } message: {
+            if let conflict = currentConflict {
+                Text(conflict.message)
+            } else {
+                Text("This record was modified elsewhere. Your changes were not saved.")
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .syncConflictDetected)) { notification in
+            handleSyncConflictNotification(notification)
+        }
+    }
+
+    // MARK: - Conflict Handling
+
+    /// Handle sync conflict notification and show alert
+    private func handleSyncConflictNotification(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let table = userInfo["table"] as? String,
+              let recordId = userInfo["id"] as? UUID,
+              let message = userInfo["message"] as? String else {
+            return
+        }
+
+        // Create conflict model for UI
+        let conflict = SyncConflict(table: table, recordId: recordId, message: message)
+        currentConflict = conflict
+        showConflictAlert = true
+
+        // Log conflict for debugging (enhanced logging as per US-009)
+        logConflict(conflict)
+    }
+
+    /// Log conflict details for debugging purposes
+    private func logConflict(_ conflict: SyncConflict) {
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withFullDate, .withFullTime, .withFractionalSeconds]
+
+        print("""
+        ⚠️ SYNC CONFLICT DETECTED
+        ━━━━━━━━━━━━━━━━━━━━━━━━
+        Table: \(conflict.table)
+        Record ID: \(conflict.recordId)
+        Message: \(conflict.message)
+        Timestamp: \(dateFormatter.string(from: conflict.timestamp))
+        Resolution: First-write-wins - server version kept, local changes discarded
+        ━━━━━━━━━━━━━━━━━━━━━━━━
+        """)
     }
 
     // MARK: - Bookie Mode

@@ -931,7 +931,18 @@ final class SyncService: ObservableObject {
     }
 
     /// Resolve player conflict by fetching server version
+    /// First-write-wins: the first successful write to the server is kept
     private func resolvePlayerConflict(_ player: Player, bookieId: UUID, context: ModelContext) async throws {
+        // First, get the server version number for detailed logging
+        let versionRecords: [VersionRecord] = try await supabase
+            .from("players")
+            .select("version")
+            .eq("id", value: player.id.uuidString)
+            .execute()
+            .value
+
+        let serverVersion = versionRecords.first?.version ?? 0
+
         let records: [PlayerRecord] = try await supabase
             .from("players")
             .select()
@@ -940,23 +951,46 @@ final class SyncService: ObservableObject {
             .value
 
         if let serverRecord = records.first {
-            // Log the conflict
-            print("Conflict detected for player \(player.id): local v\(player.version) vs server v\(serverRecord.updatedAt)")
+            // Log the conflict with full version details for debugging
+            logConflictDetails(
+                table: "players",
+                recordId: player.id,
+                localVersion: player.version,
+                serverVersion: serverVersion,
+                recordDescription: "Player '\(player.name)'"
+            )
 
-            // Update local with server data
+            // Update local with server data (first-write-wins)
             try upsertPlayer(serverRecord, bookieId: bookieId, context: context)
 
             // Post notification for UI to show conflict message
             NotificationCenter.default.post(
                 name: .syncConflictDetected,
                 object: nil,
-                userInfo: ["table": "players", "id": player.id, "message": "Player '\(player.name)' was modified elsewhere. Your changes were not saved."]
+                userInfo: [
+                    "table": "players",
+                    "id": player.id,
+                    "message": "Player '\(player.name)' was modified elsewhere. Your changes were not saved.",
+                    "localVersion": player.version,
+                    "serverVersion": serverVersion
+                ]
             )
         }
     }
 
     /// Resolve event conflict by fetching server version
+    /// First-write-wins: the first successful write to the server is kept
     private func resolveEventConflict(_ event: Event, bookieId: UUID, context: ModelContext) async throws {
+        // First, get the server version number for detailed logging
+        let versionRecords: [VersionRecord] = try await supabase
+            .from("events")
+            .select("version")
+            .eq("id", value: event.id.uuidString)
+            .execute()
+            .value
+
+        let serverVersion = versionRecords.first?.version ?? 0
+
         let records: [EventRecord] = try await supabase
             .from("events")
             .select()
@@ -965,19 +999,45 @@ final class SyncService: ObservableObject {
             .value
 
         if let serverRecord = records.first {
-            print("Conflict detected for event \(event.id): local v\(event.version)")
+            // Log the conflict with full version details for debugging
+            logConflictDetails(
+                table: "events",
+                recordId: event.id,
+                localVersion: event.version,
+                serverVersion: serverVersion,
+                recordDescription: "Event '\(event.homeTeam) vs \(event.awayTeam)'"
+            )
+
+            // Update local with server data (first-write-wins)
             try upsertEvent(serverRecord, bookieId: bookieId, context: context)
 
             NotificationCenter.default.post(
                 name: .syncConflictDetected,
                 object: nil,
-                userInfo: ["table": "events", "id": event.id, "message": "Event '\(event.homeTeam) vs \(event.awayTeam)' was modified elsewhere. Your changes were not saved."]
+                userInfo: [
+                    "table": "events",
+                    "id": event.id,
+                    "message": "Event '\(event.homeTeam) vs \(event.awayTeam)' was modified elsewhere. Your changes were not saved.",
+                    "localVersion": event.version,
+                    "serverVersion": serverVersion
+                ]
             )
         }
     }
 
     /// Resolve bet conflict by fetching server version
+    /// First-write-wins: the first successful write to the server is kept
     private func resolveBetConflict(_ bet: Bet, bookieId: UUID, context: ModelContext) async throws {
+        // First, get the server version number for detailed logging
+        let versionRecords: [VersionRecord] = try await supabase
+            .from("bets")
+            .select("version")
+            .eq("id", value: bet.id.uuidString)
+            .execute()
+            .value
+
+        let serverVersion = versionRecords.first?.version ?? 0
+
         let records: [BetRecord] = try await supabase
             .from("bets")
             .select()
@@ -986,19 +1046,48 @@ final class SyncService: ObservableObject {
             .value
 
         if let serverRecord = records.first {
-            print("Conflict detected for bet \(bet.id): local v\(bet.version)")
+            // Log the conflict with full version details for debugging
+            let description = bet.player?.name != nil
+                ? "Bet from '\(bet.player!.name)' ($\(bet.stake))"
+                : "Bet ($\(bet.stake))"
+            logConflictDetails(
+                table: "bets",
+                recordId: bet.id,
+                localVersion: bet.version,
+                serverVersion: serverVersion,
+                recordDescription: description
+            )
+
+            // Update local with server data (first-write-wins)
             try upsertBet(serverRecord, bookieId: bookieId, context: context)
 
             NotificationCenter.default.post(
                 name: .syncConflictDetected,
                 object: nil,
-                userInfo: ["table": "bets", "id": bet.id, "message": "A bet was modified elsewhere. Your changes were not saved."]
+                userInfo: [
+                    "table": "bets",
+                    "id": bet.id,
+                    "message": "A bet was modified elsewhere. Your changes were not saved.",
+                    "localVersion": bet.version,
+                    "serverVersion": serverVersion
+                ]
             )
         }
     }
 
     /// Resolve acceptance policy conflict by fetching server version
+    /// First-write-wins: the first successful write to the server is kept
     private func resolveAcceptancePolicyConflict(_ policy: AcceptancePolicy, bookieId: UUID, context: ModelContext) async throws {
+        // First, get the server version number for detailed logging
+        let versionRecords: [VersionRecord] = try await supabase
+            .from("acceptance_policies")
+            .select("version")
+            .eq("id", value: policy.id.uuidString)
+            .execute()
+            .value
+
+        let serverVersion = versionRecords.first?.version ?? 0
+
         let records: [AcceptancePolicyRecord] = try await supabase
             .from("acceptance_policies")
             .select()
@@ -1007,15 +1096,64 @@ final class SyncService: ObservableObject {
             .value
 
         if let serverRecord = records.first {
-            print("Conflict detected for acceptance policy \(policy.id): local v\(policy.version)")
+            // Log the conflict with full version details for debugging
+            logConflictDetails(
+                table: "acceptance_policies",
+                recordId: policy.id,
+                localVersion: policy.version,
+                serverVersion: serverVersion,
+                recordDescription: "Acceptance Policy"
+            )
+
+            // Update local with server data (first-write-wins)
             try upsertAcceptancePolicy(serverRecord, bookieId: bookieId, context: context)
 
             NotificationCenter.default.post(
                 name: .syncConflictDetected,
                 object: nil,
-                userInfo: ["table": "acceptance_policies", "id": policy.id, "message": "Acceptance policy was modified elsewhere. Your changes were not saved."]
+                userInfo: [
+                    "table": "acceptance_policies",
+                    "id": policy.id,
+                    "message": "Acceptance policy was modified elsewhere. Your changes were not saved.",
+                    "localVersion": policy.version,
+                    "serverVersion": serverVersion
+                ]
             )
         }
+    }
+
+    // MARK: - Conflict Logging
+
+    /// Log detailed conflict information for debugging
+    /// Includes record ID, local version, server version, and timestamp
+    private func logConflictDetails(
+        table: String,
+        recordId: UUID,
+        localVersion: Int,
+        serverVersion: Int,
+        recordDescription: String
+    ) {
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withFullDate, .withFullTime, .withFractionalSeconds]
+        let timestamp = dateFormatter.string(from: Date())
+
+        print("""
+
+        ⚠️ SYNC CONFLICT DETECTED
+        ════════════════════════════════════════════════════════
+        Table:           \(table)
+        Record ID:       \(recordId)
+        Description:     \(recordDescription)
+        Local Version:   \(localVersion)
+        Server Version:  \(serverVersion)
+        Timestamp:       \(timestamp)
+        ────────────────────────────────────────────────────────
+        Resolution:      First-write-wins
+                         Server version (v\(serverVersion)) will be kept
+                         Local changes (v\(localVersion)) will be discarded
+        ════════════════════════════════════════════════════════
+
+        """)
     }
 
     // MARK: - Public Upload Trigger
