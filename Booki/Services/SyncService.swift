@@ -121,11 +121,17 @@ final class SyncService: ObservableObject {
     /// Number of local records waiting to be uploaded
     @Published private(set) var pendingChangesCount: Int = 0
 
+    /// Current sync progress description (e.g., "Downloading Players...")
+    @Published private(set) var syncProgressDescription: String = ""
+
     // MARK: - Private Properties
 
     private let supabase: SupabaseClient
     private weak var authManager: AuthManager?
     private var modelContext: ModelContext?
+
+    /// Maximum records to fetch per page for pagination
+    private let pageLimit = 1000
 
     // MARK: - Initialization
 
@@ -262,18 +268,408 @@ final class SyncService: ObservableObject {
     // MARK: - Private Download Methods
 
     /// Download all data from server for the authenticated bookie
+    /// Downloads tables in order: players first (for relationships), then events, bets, etc.
     private func downloadAll(bookieId: UUID) async throws {
-        for table in SyncableTable.allCases {
+        // Download in dependency order: players before bets/ledger entries
+        let orderedTables: [SyncableTable] = [
+            .players,
+            .events,
+            .acceptancePolicies,
+            .bets,
+            .ledgerEntries,
+            .settlementPeriods,
+            .playerSettlements
+        ]
+
+        for table in orderedTables {
+            syncProgressDescription = "Downloading \(table.displayName)..."
             try await downloadTable(table, bookieId: bookieId)
         }
+
+        syncProgressDescription = ""
     }
 
     /// Download data for a specific table
-    /// Placeholder implementation - actual sync logic will be in US-006
+    /// Fetches records from Supabase and upserts into local SwiftData
     private func downloadTable(_ table: SyncableTable, bookieId: UUID) async throws {
-        // TODO: Implement in US-006 (Download Sync)
-        // This is a placeholder to establish the service structure
-        print("Would download \(table.displayName) for bookie \(bookieId)")
+        guard let context = modelContext else {
+            throw SyncServiceError.databaseError("Model context not configured")
+        }
+
+        switch table {
+        case .players:
+            try await downloadPlayers(bookieId: bookieId, context: context)
+        case .events:
+            try await downloadEvents(bookieId: bookieId, context: context)
+        case .bets:
+            try await downloadBets(bookieId: bookieId, context: context)
+        case .ledgerEntries:
+            try await downloadLedgerEntries(bookieId: bookieId, context: context)
+        case .acceptancePolicies:
+            try await downloadAcceptancePolicies(bookieId: bookieId, context: context)
+        case .settlementPeriods:
+            // Settlement tables not yet in DB schema - skip for now
+            print("Skipping settlement_periods - table not yet in database schema")
+        case .playerSettlements:
+            // Settlement tables not yet in DB schema - skip for now
+            print("Skipping player_settlements - table not yet in database schema")
+        }
+    }
+
+    // MARK: - Download Individual Tables
+
+    /// Download players from Supabase and upsert into SwiftData
+    private func downloadPlayers(bookieId: UUID, context: ModelContext) async throws {
+        var offset = 0
+        var hasMore = true
+
+        while hasMore {
+            let records: [PlayerRecord] = try await supabase
+                .from("players")
+                .select()
+                .eq("bookie_id", value: bookieId.uuidString)
+                .order("created_at")
+                .range(from: offset, to: offset + pageLimit - 1)
+                .execute()
+                .value
+
+            for record in records {
+                try upsertPlayer(record, bookieId: bookieId, context: context)
+            }
+
+            // Check if there are more records
+            hasMore = records.count == pageLimit
+            offset += pageLimit
+        }
+
+        try context.save()
+    }
+
+    /// Download events from Supabase and upsert into SwiftData
+    private func downloadEvents(bookieId: UUID, context: ModelContext) async throws {
+        var offset = 0
+        var hasMore = true
+
+        while hasMore {
+            let records: [EventRecord] = try await supabase
+                .from("events")
+                .select()
+                .eq("bookie_id", value: bookieId.uuidString)
+                .order("created_at")
+                .range(from: offset, to: offset + pageLimit - 1)
+                .execute()
+                .value
+
+            for record in records {
+                try upsertEvent(record, bookieId: bookieId, context: context)
+            }
+
+            hasMore = records.count == pageLimit
+            offset += pageLimit
+        }
+
+        try context.save()
+    }
+
+    /// Download bets from Supabase and upsert into SwiftData
+    private func downloadBets(bookieId: UUID, context: ModelContext) async throws {
+        var offset = 0
+        var hasMore = true
+
+        while hasMore {
+            let records: [BetRecord] = try await supabase
+                .from("bets")
+                .select()
+                .eq("bookie_id", value: bookieId.uuidString)
+                .order("created_at")
+                .range(from: offset, to: offset + pageLimit - 1)
+                .execute()
+                .value
+
+            for record in records {
+                try upsertBet(record, bookieId: bookieId, context: context)
+            }
+
+            hasMore = records.count == pageLimit
+            offset += pageLimit
+        }
+
+        try context.save()
+    }
+
+    /// Download ledger entries from Supabase and upsert into SwiftData
+    private func downloadLedgerEntries(bookieId: UUID, context: ModelContext) async throws {
+        var offset = 0
+        var hasMore = true
+
+        while hasMore {
+            let records: [LedgerEntryRecord] = try await supabase
+                .from("ledger_entries")
+                .select()
+                .eq("bookie_id", value: bookieId.uuidString)
+                .order("created_at")
+                .range(from: offset, to: offset + pageLimit - 1)
+                .execute()
+                .value
+
+            for record in records {
+                try upsertLedgerEntry(record, bookieId: bookieId, context: context)
+            }
+
+            hasMore = records.count == pageLimit
+            offset += pageLimit
+        }
+
+        try context.save()
+    }
+
+    /// Download acceptance policies from Supabase and upsert into SwiftData
+    private func downloadAcceptancePolicies(bookieId: UUID, context: ModelContext) async throws {
+        // Acceptance policies are unique per bookie, so no pagination needed
+        let records: [AcceptancePolicyRecord] = try await supabase
+            .from("acceptance_policies")
+            .select()
+            .eq("bookie_id", value: bookieId.uuidString)
+            .execute()
+            .value
+
+        for record in records {
+            try upsertAcceptancePolicy(record, bookieId: bookieId, context: context)
+        }
+
+        try context.save()
+    }
+
+    // MARK: - Upsert Methods
+
+    /// Upsert a player record from server into local SwiftData
+    private func upsertPlayer(_ record: PlayerRecord, bookieId: UUID, context: ModelContext) throws {
+        // Try to find existing local record
+        let recordId = record.id
+        let descriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.id == recordId })
+        let existingPlayers = try context.fetch(descriptor)
+
+        if let existing = existingPlayers.first {
+            // Update if server is newer
+            if record.updatedAt > (existing.lastSyncedAt ?? .distantPast) {
+                existing.name = record.name
+                existing.email = record.email
+                existing.creditLimit = record.creditLimit
+                existing.status = PlayerStatus(rawValue: record.status) ?? .active
+                existing.collectionStatus = record.collectionStatus.flatMap { CollectionStatus(rawValue: $0) }
+                existing.collectionStatusDate = record.collectionStatusDate
+                existing.promisedPaymentDate = record.promisedPaymentDate
+                existing.username = record.username
+                existing.passwordHash = record.passwordHash
+                existing.createdAt = record.createdAt
+                existing.updatedAt = record.updatedAt
+                existing.bookieId = bookieId
+                existing.needsSync = false
+                existing.lastSyncedAt = Date()
+            }
+        } else {
+            // Insert new record
+            let player = Player(
+                id: record.id,
+                name: record.name,
+                email: record.email,
+                creditLimit: record.creditLimit,
+                status: PlayerStatus(rawValue: record.status) ?? .active,
+                collectionStatus: record.collectionStatus.flatMap { CollectionStatus(rawValue: $0) },
+                collectionStatusDate: record.collectionStatusDate,
+                promisedPaymentDate: record.promisedPaymentDate,
+                createdAt: record.createdAt,
+                updatedAt: record.updatedAt,
+                bookieId: bookieId,
+                needsSync: false,
+                lastSyncedAt: Date()
+            )
+            player.username = record.username
+            player.passwordHash = record.passwordHash
+            context.insert(player)
+        }
+    }
+
+    /// Upsert an event record from server into local SwiftData
+    private func upsertEvent(_ record: EventRecord, bookieId: UUID, context: ModelContext) throws {
+        let recordId = record.id
+        let descriptor = FetchDescriptor<Event>(predicate: #Predicate { $0.id == recordId })
+        let existingEvents = try context.fetch(descriptor)
+
+        if let existing = existingEvents.first {
+            // Update if server is newer
+            if record.updatedAt > (existing.lastSyncedAt ?? .distantPast) {
+                existing.sport = record.sport
+                existing.league = record.league ?? ""
+                existing.homeTeam = record.homeTeam
+                existing.awayTeam = record.awayTeam
+                existing.startTime = record.startTime
+                existing.status = EventStatus(rawValue: record.status) ?? .scheduled
+                existing.finalScore = record.finalScore
+                existing.bookieId = bookieId
+                existing.needsSync = false
+                existing.lastSyncedAt = Date()
+            }
+        } else {
+            // Insert new record
+            let event = Event(
+                id: record.id,
+                sport: record.sport,
+                league: record.league ?? "",
+                homeTeam: record.homeTeam,
+                awayTeam: record.awayTeam,
+                startTime: record.startTime,
+                status: EventStatus(rawValue: record.status) ?? .scheduled,
+                finalScore: record.finalScore,
+                bookieId: bookieId,
+                needsSync: false,
+                lastSyncedAt: Date()
+            )
+            context.insert(event)
+        }
+    }
+
+    /// Upsert a bet record from server into local SwiftData
+    private func upsertBet(_ record: BetRecord, bookieId: UUID, context: ModelContext) throws {
+        let recordId = record.id
+        let descriptor = FetchDescriptor<Bet>(predicate: #Predicate { $0.id == recordId })
+        let existingBets = try context.fetch(descriptor)
+
+        // Find the player for this bet
+        let playerId = record.playerId
+        let playerDescriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.id == playerId })
+        let player = try context.fetch(playerDescriptor).first
+
+        if let existing = existingBets.first {
+            // Update if server is newer
+            if record.updatedAt > (existing.lastSyncedAt ?? .distantPast) {
+                existing.eventId = record.eventId
+                existing.market = record.market ?? ""
+                existing.side = record.side
+                existing.odds = record.odds
+                existing.stake = record.stake
+                existing.status = BetStatus(rawValue: record.status) ?? .pending
+                existing.gradeResult = record.gradeResult.flatMap { GradeResult(rawValue: $0) }
+                existing.ticketId = record.ticketId
+                existing.policyViolationReason = record.policyViolationReason
+                existing.isParlay = record.isParlay
+                existing.parlayLegs = record.parlayLegs
+                existing.player = player
+                existing.bookieId = bookieId
+                existing.needsSync = false
+                existing.lastSyncedAt = Date()
+            }
+        } else {
+            // Insert new record
+            let bet = Bet(
+                id: record.id,
+                eventId: record.eventId,
+                market: record.market ?? "",
+                side: record.side,
+                odds: record.odds,
+                stake: record.stake,
+                status: BetStatus(rawValue: record.status) ?? .pending,
+                gradeResult: record.gradeResult.flatMap { GradeResult(rawValue: $0) },
+                player: player,
+                createdAt: record.createdAt,
+                ticketId: record.ticketId,
+                policyViolationReason: record.policyViolationReason,
+                isParlay: record.isParlay,
+                parlayLegs: record.parlayLegs,
+                bookieId: bookieId,
+                needsSync: false,
+                lastSyncedAt: Date()
+            )
+            context.insert(bet)
+        }
+    }
+
+    /// Upsert a ledger entry record from server into local SwiftData
+    private func upsertLedgerEntry(_ record: LedgerEntryRecord, bookieId: UUID, context: ModelContext) throws {
+        let recordId = record.id
+        let descriptor = FetchDescriptor<LedgerEntry>(predicate: #Predicate { $0.id == recordId })
+        let existingEntries = try context.fetch(descriptor)
+
+        // Find the player for this entry
+        let playerId = record.playerId
+        let playerDescriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.id == playerId })
+        guard let player = try context.fetch(playerDescriptor).first else {
+            // Skip if player not found (may be deleted)
+            print("Skipping ledger entry \(record.id) - player \(record.playerId) not found")
+            return
+        }
+
+        // Find the bet if associated
+        var bet: Bet? = nil
+        if let betId = record.betId {
+            let betDescriptor = FetchDescriptor<Bet>(predicate: #Predicate { $0.id == betId })
+            bet = try context.fetch(betDescriptor).first
+        }
+
+        if existingEntries.first != nil {
+            // Ledger entries are append-only, so we don't update existing ones
+            // Just skip if it already exists
+        } else {
+            // Insert new record
+            let entry = LedgerEntry(
+                id: record.id,
+                amount: record.amount,
+                type: EntryType(rawValue: record.type) ?? .adjustment,
+                entryDescription: record.description,
+                player: player,
+                bet: bet,
+                createdAt: record.createdAt,
+                bookieId: bookieId,
+                needsSync: false,
+                lastSyncedAt: Date()
+            )
+            context.insert(entry)
+        }
+    }
+
+    /// Upsert an acceptance policy record from server into local SwiftData
+    private func upsertAcceptancePolicy(_ record: AcceptancePolicyRecord, bookieId: UUID, context: ModelContext) throws {
+        let recordId = record.id
+        let descriptor = FetchDescriptor<AcceptancePolicy>(predicate: #Predicate { $0.id == recordId })
+        let existingPolicies = try context.fetch(descriptor)
+
+        if let existing = existingPolicies.first {
+            // Update if server is newer
+            if record.updatedAt > (existing.lastSyncedAt ?? .distantPast) {
+                existing.autoAcceptMaxStake = record.maxStake
+                existing.requireReviewAboveStake = record.requireApprovalAbove ?? 0
+                existing.autoAcceptNewPlayers = record.autoAcceptNewPlayers
+                existing.newPlayerBetThreshold = record.newPlayerBetThreshold
+                existing.autoAcceptParlays = record.autoAcceptParlays
+                existing.parlayMaxLegs = record.parlayMaxLegs
+                existing.eventLockOffsetMinutes = record.eventLockOffsetMinutes
+                existing.parlayPushVoidPolicy = record.parlayPushVoidPolicy
+                existing.createdAt = record.createdAt
+                existing.updatedAt = record.updatedAt
+                existing.bookieId = bookieId
+                existing.needsSync = false
+                existing.lastSyncedAt = Date()
+            }
+        } else {
+            // Insert new record
+            let policy = AcceptancePolicy(
+                id: record.id,
+                autoAcceptMaxStake: record.maxStake,
+                requireReviewAboveStake: record.requireApprovalAbove ?? 0,
+                autoAcceptNewPlayers: record.autoAcceptNewPlayers,
+                newPlayerBetThreshold: record.newPlayerBetThreshold,
+                autoAcceptParlays: record.autoAcceptParlays,
+                parlayMaxLegs: record.parlayMaxLegs,
+                eventLockOffsetMinutes: record.eventLockOffsetMinutes,
+                parlayPushVoidPolicy: record.parlayPushVoidPolicy,
+                createdAt: record.createdAt,
+                updatedAt: record.updatedAt,
+                bookieId: bookieId,
+                needsSync: false,
+                lastSyncedAt: Date()
+            )
+            context.insert(policy)
+        }
     }
 
     // MARK: - Private Upload Methods
@@ -300,6 +696,9 @@ final class SyncService: ObservableObject {
 struct SyncStatusIndicator: View {
     @ObservedObject var syncService: SyncService
 
+    /// Whether to show the expanded progress view (default: false for compact toolbar display)
+    var showProgress: Bool = false
+
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: syncService.syncStatus.iconName)
@@ -307,7 +706,13 @@ struct SyncStatusIndicator: View {
                 .font(.system(size: 14))
                 .symbolEffect(.pulse, isActive: syncService.syncStatus == .syncing)
 
-            if syncService.pendingChangesCount > 0 && syncService.syncStatus != .syncing {
+            if syncService.syncStatus == .syncing && showProgress && !syncService.syncProgressDescription.isEmpty {
+                Text(syncService.syncProgressDescription)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+            } else if syncService.pendingChangesCount > 0 && syncService.syncStatus != .syncing {
                 Text("\(syncService.pendingChangesCount)")
                     .font(.caption2)
                     .fontWeight(.medium)
@@ -318,6 +723,30 @@ struct SyncStatusIndicator: View {
         .padding(.vertical, 4)
         .background(Theme.cardBackground.opacity(0.8))
         .cornerRadius(Theme.cornerRadiusSmall)
+    }
+}
+
+/// A larger sync progress view for display during initial sync
+struct SyncProgressView: View {
+    @ObservedObject var syncService: SyncService
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: Theme.accent))
+                .scaleEffect(1.2)
+
+            if !syncService.syncProgressDescription.isEmpty {
+                Text(syncService.syncProgressDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+            } else {
+                Text("Syncing...")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .padding()
     }
 }
 

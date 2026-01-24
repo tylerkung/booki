@@ -7,6 +7,7 @@ struct AuthGateView: View {
     // MARK: - Environment
 
     @EnvironmentObject private var authManager: AuthManager
+    @EnvironmentObject private var syncService: SyncService
 
     // MARK: - State
 
@@ -15,6 +16,9 @@ struct AuthGateView: View {
 
     /// Whether to show the bookie error alert
     @State private var showBookieErrorAlert: Bool = false
+
+    /// Tracks if initial sync has been triggered for this session
+    @State private var hasTriggeredInitialSync: Bool = false
 
     // MARK: - Body
 
@@ -38,6 +42,21 @@ struct AuthGateView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(authManager.bookieError ?? "An error occurred setting up your account. Some features may not work correctly.")
+        }
+        .onChange(of: authManager.currentBookieId) { _, newBookieId in
+            // Trigger initial sync when bookie ID becomes available
+            if newBookieId != nil && !hasTriggeredInitialSync {
+                hasTriggeredInitialSync = true
+                Task {
+                    await syncService.sync()
+                }
+            }
+        }
+        .onChange(of: authManager.isAuthenticated) { _, isAuthenticated in
+            // Reset sync flag when user logs out
+            if !isAuthenticated {
+                hasTriggeredInitialSync = false
+            }
         }
     }
 
@@ -108,9 +127,11 @@ private enum AuthViewType {
 #Preview("Loading") {
     AuthGateView()
         .environmentObject(AuthManager())
+        .environmentObject(SyncService())
 }
 
 #Preview("Login") {
     AuthGateView()
         .environmentObject(AuthManager())
+        .environmentObject(SyncService())
 }
