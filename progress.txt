@@ -55,3 +55,17 @@ Started: Fri Jan 23 22:58:07 PST 2026
   - settledCount comes from filtering playerSettlements by periodWeekEndingDate and isSettled
   - Total owed to bookie = positive ending balances; Total owed to players = abs of negative ending balances
 ---
+
+## 2026-01-23 - US-005
+- What was implemented: Player Settlement List with filtering, sorting, row view, and navigation
+- Files changed:
+  - Booki/Views/WeeklySettlementView.swift (updated)
+- **Learnings for future iterations:**
+  - Added SettlementFilterOption enum for filter picker (All/Unsettled/Settled)
+  - PlayerSettlementRowView shows player name, bet count, ending balance with color coding
+  - Balance color: Theme.danger for positive (player owes), Theme.accent for negative (bookie owes)
+  - Checkmark icon shows for settled players
+  - Sort by abs(endingBalance) descending for biggest amounts first
+  - isPlayerSettled() helper checks playerSettlements for matching player and period
+  - Placeholder PlayerSettlementDetailView created for NavigationLink (full impl in US-006)
+---

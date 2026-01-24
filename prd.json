@@ -101,7 +101,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "List view with settlement status per player"
     },
     {
