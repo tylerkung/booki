@@ -28,6 +28,10 @@ Started: Sat Jan 24 01:56:02 PST 2026
 - Realtime subscriptions use `supabase.realtimeV2.channel(tableName)` with `postgresChange(AnyAction.self, ...)`
 - Subscribe to realtime AFTER initial sync completes to avoid duplicate processing
 - RLS automatically filters realtime events - no manual bookie_id filtering needed in subscription
+- NetworkMonitor uses NWPathMonitor with dedicated DispatchQueue for async network monitoring
+- Debounce "going online" state changes to avoid UI flicker, but show "offline" immediately
+- Use `Notification.Name.networkStatusChanged` for app-wide network awareness
+- Connect NetworkMonitor to SyncService.setOnline/setOffline and trigger sync on reconnection
 
 ---
 
@@ -268,4 +272,35 @@ Started: Sat Jan 24 01:56:02 PST 2026
   - First-write-wins is simpler than conflict merge - the first successful write to server wins
   - Conflict detection uses version field comparison (server > local = conflict)
   - Fetching version separately minimizes data transfer for conflict checks
+---
+
+## 2026-01-24 - US-010: Add Network Monitor and Offline Mode
+- **What was implemented:**
+  - Created `NetworkMonitor.swift` in `Booki/Services/` using NWPathMonitor
+  - Publishes `isConnected`, `connectionStatus`, and `connectionType` properties
+  - Created `ConnectionType` enum for wifi, cellular, wiredEthernet, other, unknown
+  - Implemented debouncing for connection changes (0.5 seconds) to avoid UI flicker
+  - Created `OfflineBannerView` component showing "You are offline" banner with warning color
+  - Created `OfflineDisabledModifier` and `disabledWhenOffline()` view modifier for disabling views
+  - Created `OfflineAlertModifier` and `offlineAlert()` modifier for showing offline error alerts
+  - Added `networkStatusChanged` notification for app-wide awareness
+  - Integrated NetworkMonitor as environment object in `BookiApp.swift`
+  - Added offline banner to `ContentView` at top of main interface
+  - Integrated with `AuthGateView` to trigger sync and realtime reconnection when connectivity restored
+  - Connected to `SyncService.setOnline()`/`setOffline()` methods for status updates
+
+- **Files changed:**
+  - `Booki/Services/NetworkMonitor.swift` (new - ~280 lines)
+  - `Booki/BookiApp.swift` (updated - added NetworkMonitor injection)
+  - `Booki/ContentView.swift` (updated - added offline banner, networkMonitor environment object)
+  - `Booki/Views/AuthGateView.swift` (updated - network status change handler, auto-sync on reconnect)
+
+- **Learnings for future iterations:**
+  - NWPathMonitor runs on a dedicated dispatch queue; use MainActor for UI updates
+  - Debounce "going online" but not "going offline" - users need immediate offline feedback
+  - Use `monitor.cancel()` directly in deinit since deinit is non-isolated (can't call MainActor methods)
+  - Post notifications for network changes to allow decoupled reactions throughout the app
+  - Connect NetworkMonitor to both SyncService (status) and RealtimeService (reconnection)
+  - OfflineBannerView uses Theme.warning color with dark text for visibility
+  - Animation value should be the isConnected property for smooth banner transitions
 ---

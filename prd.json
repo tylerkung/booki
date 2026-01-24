@@ -197,7 +197,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "User always knows connectivity state and what they can do"
     }
   ]
