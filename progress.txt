@@ -84,3 +84,17 @@ Started: Fri Jan 23 22:58:07 PST 2026
   - TextField notes stored in PlayerSettlement.notes (optional)
   - When already settled, show settledAt timestamp and any notes
 ---
+
+## 2026-01-23 - US-007
+- What was implemented: Quick Payment Recording from Settlement view
+- Files changed:
+  - Booki/Views/WeeklySettlementView.swift (updated)
+- **Learnings for future iterations:**
+  - Added "Record Payment" button in PlayerSettlementDetailView that only shows when report.endingBalance > 0 (player owes)
+  - Created QuickPaymentSheet view with pre-filled amount (full amount owed by default)
+  - Quick buttons: "Full Payment" sets full amount, "Partial (50%)" only shows if amount > 50
+  - Reused PaymentMethod enum from PaymentSheet.swift for consistency
+  - LedgerEntry for payment uses negative amount (reduces player debt) with type .paymentLogged
+  - Success overlay shows briefly (1 second) before auto-dismissing sheet
+  - Sheet presentation refreshes report automatically since @Query re-evaluates after ledger insert
+---

@@ -390,6 +390,9 @@ struct PlayerSettlementDetailView: View {
     /// Notes text for marking as settled
     @State private var settlementNotes: String = ""
 
+    /// Show payment recording sheet
+    @State private var showPaymentSheet: Bool = false
+
     // MARK: - Computed Properties
 
     /// Start of the selected week (Monday)
@@ -489,6 +492,42 @@ struct PlayerSettlementDetailView: View {
                 .listRowBackground(Theme.cardBackground)
             }
 
+            // MARK: - Quick Payment Section (only show if player owes money)
+            if report.endingBalance > 0 {
+                Section {
+                    Button {
+                        showPaymentSheet = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "dollarsign.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(Theme.accent)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Record Payment")
+                                    .font(.headline)
+                                    .foregroundStyle(Theme.textPrimary)
+
+                                Text("Player owes \(formatCurrency(report.endingBalance))")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.subheadline)
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("Quick Actions")
+                }
+                .listRowBackground(Theme.cardBackground)
+            }
+
             // MARK: - Settlement Status Section
             Section {
                 if isSettled, let settlement = existingSettlement {
@@ -576,6 +615,12 @@ struct PlayerSettlementDetailView: View {
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
+        }
+        .sheet(isPresented: $showPaymentSheet) {
+            QuickPaymentSheet(
+                player: player,
+                amountOwed: report.endingBalance
+            )
         }
     }
 
@@ -833,6 +878,229 @@ struct BettingActivityCard: View {
             .padding(.top, 4)
         }
         .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Quick Payment Sheet
+
+struct QuickPaymentSheet: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    let player: Player
+    let amountOwed: Decimal
+
+    @State private var paymentAmount: String = ""
+    @State private var selectedMethod: PaymentMethod = .cash
+    @State private var note: String = ""
+    @State private var showSuccessMessage: Bool = false
+
+    private var amountDecimal: Decimal? {
+        guard let doubleValue = Double(paymentAmount), doubleValue > 0 else { return nil }
+        return Decimal(doubleValue)
+    }
+
+    private var isValidInput: Bool {
+        amountDecimal != nil
+    }
+
+    private var paymentDescription: String {
+        let methodText = selectedMethod.rawValue
+        var description = "Payment received from \(player.name) via \(methodText)"
+        if !note.trimmingCharacters(in: .whitespaces).isEmpty {
+            description += " - \(note.trimmingCharacters(in: .whitespaces))"
+        }
+        return description
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                // MARK: - Amount Section
+                Section {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Amount input
+                        HStack {
+                            Text("$")
+                                .font(.title2)
+                                .foregroundStyle(Theme.textMuted)
+                            TextField("0.00", text: $paymentAmount)
+                                .keyboardType(.decimalPad)
+                                .font(.title2.bold())
+                        }
+
+                        // Quick buttons
+                        HStack(spacing: 12) {
+                            Button {
+                                paymentAmount = "\(amountOwed)"
+                            } label: {
+                                Text("Full Payment")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.accent)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(Theme.accent.opacity(0.15))
+                                    .cornerRadius(Theme.cornerRadiusSmall)
+                            }
+                            .buttonStyle(.plain)
+
+                            if amountOwed > 50 {
+                                Button {
+                                    paymentAmount = "\(amountOwed / 2)"
+                                } label: {
+                                    Text("Partial (50%)")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(Theme.warning)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 10)
+                                        .background(Theme.warning.opacity(0.15))
+                                        .cornerRadius(Theme.cornerRadiusSmall)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Payment Amount")
+                } footer: {
+                    Text("Player owes \(formatCurrency(amountOwed))")
+                }
+
+                // MARK: - Payment Method Section
+                Section {
+                    Picker("Method", selection: $selectedMethod) {
+                        ForEach(PaymentMethod.allCases) { method in
+                            Label(method.rawValue, systemImage: method.icon)
+                                .tag(method)
+                        }
+                    }
+                } header: {
+                    Text("Payment Method")
+                }
+
+                // MARK: - Note Section
+                Section {
+                    TextField("Add a note (optional)", text: $note, axis: .vertical)
+                        .lineLimit(3...6)
+                } header: {
+                    Text("Note")
+                }
+
+                // MARK: - Preview Section
+                if let displayAmount = amountDecimal {
+                    Section {
+                        LabeledContent("Amount") {
+                            Text(formatCurrency(displayAmount))
+                                .fontWeight(.semibold)
+                        }
+
+                        LabeledContent("Method") {
+                            Label(selectedMethod.rawValue, systemImage: selectedMethod.icon)
+                        }
+
+                        LabeledContent("Balance Impact") {
+                            Text("-\(formatCurrency(displayAmount))")
+                                .foregroundStyle(Theme.accent)
+                                .fontWeight(.semibold)
+                        }
+
+                        if !note.trimmingCharacters(in: .whitespaces).isEmpty {
+                            LabeledContent("Note") {
+                                Text(note.trimmingCharacters(in: .whitespaces))
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                        }
+                    } header: {
+                        Text("Preview")
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .navigationTitle("Record Payment")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        savePayment()
+                    }
+                    .disabled(!isValidInput)
+                }
+            }
+            .overlay {
+                if showSuccessMessage {
+                    successOverlay
+                }
+            }
+        }
+        .onAppear {
+            // Pre-fill with full amount owed
+            paymentAmount = "\(amountOwed)"
+        }
+    }
+
+    // MARK: - Success Overlay
+
+    private var successOverlay: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(Theme.accent)
+
+            Text("Payment Recorded")
+                .font(.title2.bold())
+                .foregroundStyle(Theme.textPrimary)
+
+            if let amount = amountDecimal {
+                Text(formatCurrency(amount))
+                    .font(.title3)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .padding(40)
+        .background(Theme.cardBackground)
+        .cornerRadius(Theme.cornerRadius)
+        .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+    }
+
+    // MARK: - Actions
+
+    private func savePayment() {
+        guard let amount = amountDecimal else { return }
+
+        // Create ledger entry (negative amount reduces player's debt)
+        let ledgerEntry = LedgerEntry(
+            amount: -amount,
+            type: .paymentLogged,
+            entryDescription: paymentDescription,
+            player: player
+        )
+
+        modelContext.insert(ledgerEntry)
+
+        // Show success message briefly then dismiss
+        withAnimation {
+            showSuccessMessage = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            dismiss()
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 }
 
