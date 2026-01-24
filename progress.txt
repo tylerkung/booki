@@ -130,3 +130,15 @@ Started: Fri Jan 23 18:00:08 PST 2026
   - When passing optional callbacks through multiple view layers, use: `onVoid: onVoid != nil ? { onVoid?(bet) } : nil`
   - reduceLegReprice policy filters out voided/pushed legs and recalculates; treatAsPush makes entire parlay a push
 ---
+
+## 2026-01-23 - US-010
+- **What was implemented**: Added Parlay Outcome Summary section to TicketDetailView for settled parlays, showing clear math breakdown and visual outcome badges.
+- **Files changed**:
+  - Booki/Views/TicketDetailView.swift - Added ParlayOutcomeType private enum (win/loss/push); Added computed properties for outcome display (showParlayOutcome, originalCombinedDecimalOdds, adjustedCombinedDecimalOdds, parlayOutcomeType, parlaySettledAmount, validLegsCount, voidedOrPushedLegsCount); Added parlayOutcomeSection with large outcome badge, calculation breakdown, and reduced parlay info; Badge shows green WON/red LOST/yellow PUSHED with formatted amount; Calculation shows "Stake × Odds = Total Return" with profit display
+- **Learnings for future iterations:**
+  - TicketDetailView already had americanToDecimal and decimalToAmerican helpers - reuse them for consistency
+  - For visual outcome badges: use large icon + bold label + amount with colored background/border
+  - Show strikethrough on original odds when adjusted odds apply for clear visual indication
+  - For reduced parlays, show context: "Originally X legs, Y were voided/pushed, settled as Z-leg parlay"
+  - parlayOutcomeType enum provides clean state management for conditional UI rendering
+---
