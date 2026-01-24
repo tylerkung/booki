@@ -63,3 +63,20 @@ Started: Sat Jan 24 01:05:13 PST 2026
   - Common error cases: "invalid login credentials", "email not confirmed", "too many requests" (rate limiting)
   - Navigation callbacks (onNavigateToSignUp, onNavigateToForgotPassword) allow parent view to handle navigation
 ---
+
+## 2026-01-24 - US-005
+- **What was implemented**: Sign in with Apple authentication
+- **Files changed**:
+  - Booki/Views/Auth/AppleSignInButton.swift - Created Apple Sign-In button component with Supabase integration
+  - Booki/Views/Auth/LoginView.swift - Added AppleSignInButton with "or" divider
+  - Booki/Views/Auth/SignUpView.swift - Added AppleSignInButton with "or" divider
+  - Booki.xcodeproj/project.pbxproj - Added AppleSignInButton.swift file references to Auth group
+- **Learnings for future iterations:**
+  - Apple Sign-In uses `SignInWithAppleButton` from AuthenticationServices framework
+  - Use `.signInWithAppleButtonStyle(.white)` for dark theme apps (provides contrast)
+  - ASAuthorizationAppleIDCredential provides identityToken which is base64 encoded - convert to String with `String(data:encoding:.utf8)`
+  - Supabase Apple auth: `client.auth.signInWithIdToken(credentials: .init(provider: .apple, idToken: idTokenString))`
+  - ASAuthorizationError.code cases: .canceled (user cancelled, don't show error), .failed, .invalidResponse, .notHandled, .notInteractive, .unknown
+  - Created reusable DividerWithText component for "or" separator between auth methods
+  - Actual "Sign in with Apple" capability must be added manually in Xcode project settings
+---

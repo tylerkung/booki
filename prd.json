@@ -103,7 +103,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Requires Apple Developer account and Supabase Apple provider setup. Button will show but won't fully work without configuration."
     },
     {
