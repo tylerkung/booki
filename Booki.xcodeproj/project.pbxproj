@@ -11,6 +11,9 @@
 		8A1234560002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550002 /* ContentView.swift */; };
 		8A1234560003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550003 /* Assets.xcassets */; };
 		8A1234560004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550004 /* Preview Assets.xcassets */; };
+		8A1234560056 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550056 /* SupabaseConfig.swift */; };
+		8A1234560057 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550057 /* SupabaseClient.swift */; };
+		8A1234560058 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 8A1234590001 /* Supabase */; };
 		8A1234560005 /* Bookie.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550005 /* Bookie.swift */; };
 		8A1234560006 /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550006 /* Player.swift */; };
 		8A1234560007 /* Bet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550007 /* Bet.swift */; };
@@ -120,6 +123,9 @@
 		8A1234550053 /* SettlementPeriod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementPeriod.swift; sourceTree = "<group>"; };
 		8A1234550054 /* PlayerSettlement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSettlement.swift; sourceTree = "<group>"; };
 		8A1234550055 /* SettlementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementService.swift; sourceTree = "<group>"; };
+		8A1234550056 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
+		8A1234550057 /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
+		8A1234550058 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -137,6 +143,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8A1234560058 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -175,6 +182,8 @@
 				8A1234550001 /* BookiApp.swift */,
 				8A1234550002 /* ContentView.swift */,
 				8A1234550042 /* Theme.swift */,
+				8A1234550058 /* Info.plist */,
+				8A1234530009 /* Config */,
 				8A1234530003 /* Models */,
 				8A1234530004 /* Views */,
 				8A1234530005 /* ViewModels */,
@@ -183,6 +192,14 @@
 				8A1234530007 /* Preview Content */,
 			);
 			path = Booki;
+			sourceTree = "<group>";
+		};
+		8A1234530009 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				8A1234550056 /* SupabaseConfig.swift */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		8A1234530002 /* Products */ = {
@@ -264,6 +281,7 @@
 				8A1234550050 /* AcceptancePolicyService.swift */,
 				8A1234550052 /* ParlayGradingService.swift */,
 				8A1234550055 /* SettlementService.swift */,
+				8A1234550057 /* SupabaseClient.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -292,6 +310,9 @@
 			dependencies = (
 			);
 			name = Booki;
+			packageProductDependencies = (
+				8A1234590001 /* Supabase */,
+			);
 			productName = Booki;
 			productReference = 8A1234550000 /* Booki.app */;
 			productType = "com.apple.product-type.application";
@@ -345,6 +366,9 @@
 				Base,
 			);
 			mainGroup = 8A1234530000;
+			packageReferences = (
+				8A1234600001 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			productRefGroup = 8A1234530002 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -421,6 +445,8 @@
 				8A1234560053 /* SettlementPeriod.swift in Sources */,
 				8A1234560054 /* PlayerSettlement.swift in Sources */,
 				8A1234560055 /* SettlementService.swift in Sources */,
+				8A1234560056 /* SupabaseConfig.swift in Sources */,
+				8A1234560057 /* SupabaseClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -602,6 +628,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"Booki/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Booki/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -630,6 +657,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"Booki/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Booki/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -679,6 +707,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8A1234600001 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8A1234590001 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8A1234600001 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8A1234520000 /* Project object */;
 }
