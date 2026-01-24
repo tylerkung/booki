@@ -47,6 +47,69 @@ struct WeeklySettlementView: View {
         return weeks
     }
 
+    /// Check if viewing the current (most recent) week
+    private var isViewingCurrentWeek: Bool {
+        let mostRecent = WeeklySettlementView.mostRecentSunday()
+        return Calendar.current.isDate(selectedWeekEndingDate, inSameDayAs: mostRecent)
+    }
+
+    /// Check if there is earlier period data (ledger entries or bets before the selected week start)
+    private var hasEarlierPeriodData: Bool {
+        let earlierDate = Calendar.current.date(byAdding: .day, value: -7, to: selectedWeekStartDate) ?? selectedWeekStartDate
+        let hasEarlierLedger = ledgerEntries.contains { $0.date < earlierDate }
+        let hasEarlierBets = bets.contains { $0.createdAt < earlierDate }
+        return hasEarlierLedger || hasEarlierBets
+    }
+
+    /// Previous week's ending date (Sunday)
+    private var previousWeekEndingDate: Date {
+        Calendar.current.date(byAdding: .weekOfYear, value: -1, to: selectedWeekEndingDate) ?? selectedWeekEndingDate
+    }
+
+    /// Previous week's start date (Monday)
+    private var previousWeekStartDate: Date {
+        Calendar.current.date(byAdding: .day, value: -6, to: previousWeekEndingDate) ?? previousWeekEndingDate
+    }
+
+    /// Player reports for the previous period (for balance verification)
+    private var previousPeriodReports: [PlayerSettlementReport] {
+        activePlayers.map { player in
+            SettlementService.calculatePlayerReport(
+                player: player,
+                periodStart: previousWeekStartDate,
+                periodEnd: previousWeekEndingDate,
+                bets: bets,
+                ledgerEntries: ledgerEntries
+            )
+        }
+    }
+
+    /// Count of unsettled players from the previous period
+    private var unsettledFromPriorPeriodCount: Int {
+        activePlayers.filter { player in
+            !playerSettlements.contains { settlement in
+                settlement.player?.id == player.id &&
+                Calendar.current.isDate(settlement.periodWeekEndingDate, inSameDayAs: previousWeekEndingDate) &&
+                settlement.isSettled
+            }
+        }.count
+    }
+
+    /// Check if starting balances match previous period ending balances
+    private var balanceMismatchPlayers: [String] {
+        var mismatches: [String] = []
+        for report in playerReports {
+            let previousReport = previousPeriodReports.first { $0.player.id == report.player.id }
+            if let prevReport = previousReport {
+                // Check if starting balance matches previous ending balance
+                if report.startingBalance != prevReport.endingBalance {
+                    mismatches.append(report.player.name)
+                }
+            }
+        }
+        return mismatches
+    }
+
     /// Start of the selected week (Monday)
     private var selectedWeekStartDate: Date {
         Calendar.current.date(byAdding: .day, value: -6, to: selectedWeekEndingDate) ?? selectedWeekEndingDate
@@ -200,10 +263,37 @@ struct WeeklySettlementView: View {
             // MARK: - Week Picker Section
             Section {
                 VStack(spacing: 16) {
-                    // Date range header
-                    Text(dateRangeDescription)
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.textPrimary)
+                    // Date range header with navigation buttons
+                    HStack {
+                        // Previous week button
+                        Button {
+                            navigateToPreviousWeek()
+                        } label: {
+                            Image(systemName: "chevron.left.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(hasEarlierPeriodData ? Theme.accent : Theme.textMuted)
+                        }
+                        .disabled(!hasEarlierPeriodData)
+
+                        Spacer()
+
+                        // Date range
+                        Text(dateRangeDescription)
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.textPrimary)
+
+                        Spacer()
+
+                        // Next week button
+                        Button {
+                            navigateToNextWeek()
+                        } label: {
+                            Image(systemName: "chevron.right.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(isViewingCurrentWeek ? Theme.textMuted : Theme.accent)
+                        }
+                        .disabled(isViewingCurrentWeek)
+                    }
 
                     // Week picker
                     Picker("Week", selection: $selectedWeekEndingDate) {
@@ -217,6 +307,72 @@ struct WeeklySettlementView: View {
                 .padding(.vertical, 8)
             }
             .listRowBackground(Theme.cardBackground)
+
+            // MARK: - Prior Period Alerts Section
+            if unsettledFromPriorPeriodCount > 0 || !balanceMismatchPlayers.isEmpty {
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Unsettled from prior period warning
+                        if unsettledFromPriorPeriodCount > 0 {
+                            HStack(spacing: 10) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(Theme.warning)
+                                    .font(.title3)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(unsettledFromPriorPeriodCount) player\(unsettledFromPriorPeriodCount == 1 ? "" : "s") unsettled from prior period")
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(Theme.warning)
+
+                                    Text("Balances carried forward")
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.textSecondary)
+                                }
+
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                        }
+
+                        // Balance mismatch warning (if any)
+                        if !balanceMismatchPlayers.isEmpty {
+                            HStack(spacing: 10) {
+                                Image(systemName: "arrow.left.arrow.right.circle.fill")
+                                    .foregroundStyle(Theme.danger)
+                                    .font(.title3)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Balance verification issue")
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(Theme.danger)
+
+                                    Text("Starting balances carried from previous period")
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.textSecondary)
+                                }
+
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("Period Alerts")
+                        Spacer()
+                        if unsettledFromPriorPeriodCount > 0 {
+                            Text("\(unsettledFromPriorPeriodCount)")
+                                .font(.caption.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Theme.warning)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .listRowBackground(Theme.cardBackground)
+            }
 
             // MARK: - Summary Section
             Section {
@@ -353,6 +509,24 @@ struct WeeklySettlementView: View {
             settlement.player?.id == player.id &&
             Calendar.current.isDate(settlement.periodWeekEndingDate, inSameDayAs: selectedWeekEndingDate) &&
             settlement.isSettled
+        }
+    }
+
+    /// Navigate to the previous week
+    private func navigateToPreviousWeek() {
+        if let previousWeek = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: selectedWeekEndingDate) {
+            selectedWeekEndingDate = previousWeek
+        }
+    }
+
+    /// Navigate to the next week
+    private func navigateToNextWeek() {
+        if let nextWeek = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: selectedWeekEndingDate) {
+            let mostRecent = WeeklySettlementView.mostRecentSunday()
+            // Don't go past the current week
+            if nextWeek <= mostRecent {
+                selectedWeekEndingDate = nextWeek
+            }
         }
     }
 }
