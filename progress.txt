@@ -30,3 +30,15 @@ Started: Fri Jan 23 22:58:07 PST 2026
   - player relationship is optional (Player?) to allow flexibility
   - Use 8A12345500XX pattern for file references, 8A12345600XX for build files in pbxproj
 ---
+
+## 2026-01-23 - US-003
+- What was implemented: SettlementService with PlayerSettlementReport struct for calculating settlement data per player per period
+- Files changed:
+  - Booki/Services/SettlementService.swift (created)
+  - Booki.xcodeproj/project.pbxproj (added file references)
+- **Learnings for future iterations:**
+  - Services use `enum` (not struct/class) with static functions for stateless calculation services
+  - Payments in ledger are logged as negative amounts (reducing debt), so negate when calculating "paymentsReceived"
+  - adjustments includes both .adjustment and .reversal entry types
+  - Service files go in PBXGroup Services section in pbxproj
+---
