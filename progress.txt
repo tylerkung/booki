@@ -1,144 +1,20 @@
 # Ralph Progress Log
-Started: Fri Jan 23 18:00:08 PST 2026
----
+Started: Fri Jan 23 22:58:07 PST 2026
 
 ## Codebase Patterns
-- BetService.submitBet already accepts isParlay and parlayLegs parameters; ensures future stories can use existing API
-- Bet model uses SwiftData @Model macro; new fields need defaults for backwards compatibility
-- BetSlipSheet determines parlay mode via `betSlipManager.betMode == .parlay && count > 1`
-- Use `swiftc -parse <file>` for basic Swift syntax validation (Xcode not available in CLI)
-- For SwiftData compatibility: store enums as String, provide computed property for type-safe access (see parlayPushVoidPolicyEnum in AcceptancePolicy.swift)
-
-- TicketHeaderView shows "X/Y legs graded" for partially graded parlays and mini status dots for leg grades
-- TicketBetRowView shows grade result badges and "Awaiting Result" for pending legs
-- TicketDetailBetRowView also shows isPendingResult state for pending legs
-
-- GradingView groups parlays by ticketId using GradingGroup struct; use ParlayGradingGroupView for parlay display
-- Access parlayPushVoidPolicy via @Query policies: [AcceptancePolicy] and policies.first?.parlayPushVoidPolicyEnum
-- For parlay settlement: use GradingService.settleParlayBets (not settleBet); requires all legs graded first; creates single ledger entry for entire parlay
+- Always add new model files to Xcode project.pbxproj in 4 places: PBXBuildFile, PBXFileReference, PBXGroup (Models), PBXSourcesBuildPhase
+- Register SwiftData models in BookiApp.swift schema array
+- Use `swiftc -parse <file>` for syntax validation (full builds require Xcode IDE)
 
 ---
 
 ## 2026-01-23 - US-001
-- **What was implemented**: Added isParlay: Bool and parlayLegs: Int fields to Bet model with defaults (false/1). Updated BetService.submitBet to set these fields when creating Bet objects.
-- **Files changed**:
-  - Booki/Models/Bet.swift - Added isParlay and parlayLegs properties and init parameters
-  - Booki/Services/BetService.swift - Pass isParlay and parlayLegs when creating Bet
+- What was implemented: SettlementPeriod SwiftData model with weekEndingDate, createdAt, computed weekStartDate and dateRangeDescription
+- Files changed:
+  - Booki/Models/SettlementPeriod.swift (created)
+  - Booki/BookiApp.swift (added to schema)
+  - Booki.xcodeproj/project.pbxproj (added file references)
 - **Learnings for future iterations:**
-  - BetSlipSheet.submitBets already passes isParlay/parlayLegs to BetService - no changes needed there
-  - Singles get parlayLegs=0 from BetSlipSheet but BetService normalizes to 1 for singles
-  - SwiftData macro errors in diagnostics are expected when not building in Xcode IDE
----
-
-## 2026-01-23 - US-002
-- **What was implemented**: Added ParlayPushVoidPolicy enum and parlayPushVoidPolicy field to AcceptancePolicy model. Added Parlay Settlement section with Picker to AcceptancePolicySettingsView.
-- **Files changed**:
-  - Booki/Models/AcceptancePolicy.swift - Added ParlayPushVoidPolicy enum with displayLabel/explanation properties; added parlayPushVoidPolicy String field and parlayPushVoidPolicyEnum computed property for type-safe access
-  - Booki/Views/AcceptancePolicySettingsView.swift - Added new "Parlay Settlement" section with Picker for push/void policy; footer shows dynamic explanation based on selection
-- **Learnings for future iterations:**
-  - Store enums as String in SwiftData models and provide computed property for type-safe enum access (parlayPushVoidPolicyEnum pattern)
-  - AcceptancePolicySettingsView uses getOrCreatePolicy() pattern for lazy policy creation - follow this pattern for new fields
-  - Picker footer can be made dynamic to show policy-specific explanations by reading the current value
----
-
-## 2026-01-23 - US-003
-- **What was implemented**: Created ParlayGradingService.swift with ParlayOutcome enum and core parlay grading logic for calculating outcomes and payouts.
-- **Files changed**:
-  - Booki/Services/ParlayGradingService.swift - New file with ParlayOutcome enum (pending, win(payout), loss, push, partiallyGraded), calculateParlayOutcome function, calculateParlayPayout function, and americanToDecimal helper
-- **Learnings for future iterations:**
-  - Services follow enum pattern with static functions (no instances needed) - see GradingService for reference
-  - BetStatus.void is checked via bet.status property; GradeResult.push is checked via bet.gradeResult
-  - American odds conversion: positive odds = 1 + odds/100, negative odds = 1 + 100/|odds|
-  - Parlay payout is profit only (stake × combinedMultiplier - stake), not total return
----
-
-## 2026-01-23 - US-004
-- **What was implemented**: Verified American Odds Combination Math implementation already present in ParlayGradingService.swift (implemented during US-003). All acceptance criteria met:
-  - calculateParlayPayout(stake:bets:excludeVoidPush:) function exists
-  - americanToDecimal(odds:) helper converts American → decimal odds correctly
-  - Combined multiplier calculated by multiplying all decimal odds
-  - Payout formula: stake × combinedMultiplier - stake (profit only)
-  - excludeVoidPush parameter properly filters pushed/voided legs
-  - Returns 0 when no valid legs remain
-- **Files changed**:
-  - prd.json - Marked US-004 as passes: true
-- **Learnings for future iterations:**
-  - US-003 and US-004 acceptance criteria overlapped significantly - calculateParlayPayout was implemented as part of US-003
-  - When acceptance criteria overlap between stories, check if implementation is already complete before writing new code
----
-
-## 2026-01-23 - US-005
-- **What was implemented**: Added leg status tracking to ticket display for parlays - visual feedback showing grading progress and status for each leg.
-- **Files changed**:
-  - Booki/Views/TrackView.swift - Added gradedLegsCount/showGradingProgress properties and legStatusColor helper to TicketHeaderView; shows "X/Y legs graded" text and mini status dots row; Updated TicketBetRowView to show grade badges when graded (not just settled) and "Awaiting Result" for pending legs
-  - Booki/Views/TicketDetailView.swift - Updated statusText to show grade result if available; Added isPendingResult computed property; Updated body to show "Awaiting Result" italic text for pending legs
-- **Learnings for future iterations:**
-  - TicketHeaderView and TicketBetRowView are both in TrackView.swift
-  - TicketDetailBetRowView is in TicketDetailView.swift (separate file)
-  - To check if a leg is graded: bet.gradeResult != nil
-  - To check if a leg is pending result: bet.gradeResult == nil && (bet.status == .accepted || bet.status == .readyToGrade)
-  - Mini status dots use Theme.accent (green/win), Theme.danger (red/loss), Theme.warning (yellow/push), Theme.textMuted (gray/pending)
----
-
-## 2026-01-23 - US-006
-- **What was implemented**: Created parlay grading UI for bookie that groups parlay legs together and shows combined status/outcome.
-- **Files changed**:
-  - Booki/Views/GradingView.swift - Added GradingGroup struct to group bets; Added gradingGroups computed property that groups parlays by ticketId; Created ParlayGradingGroupView component with status header, projected outcome, and projected payout; Created ParlayLegRow for compact leg display; Modified List to use groups for display
-- **Learnings for future iterations:**
-  - GradingView uses @Query for policies to access AcceptancePolicy.parlayPushVoidPolicyEnum
-  - Group parlays by ticketId and include ALL bets with that ticketId (even already graded ones) for full context
-  - ParlayProjectedOutcome enum provides clean state management for outcome display (willLose, willPush, canWin, inProgress)
-  - ParlayLegRow uses compact icon buttons for grading within the group (vs full buttons for singles)
-  - Projected payout uses ParlayGradingService.calculateParlayPayout for consistency
----
-
-## 2026-01-23 - US-007
-- **What was implemented**: Integrated parlay logic into settlement - parlays now settle correctly using ParlayGradingService for combined payout calculation.
-- **Files changed**:
-  - Booki/Services/GradingService.swift - Added new error cases (parlayRequiresGroupSettlement, parlayNotFullyGraded, parlayLegsNotFound); Modified settleBet to reject parlay bets (requires group settlement); Added settleParlayBets function that takes all parlay legs and policy; Added calculateParlaySettlement helper for parlay-specific ledger descriptions
-  - Booki/Views/GradingView.swift - Updated performBulkSettlement to handle parlays as groups using settleParlayBets; Tracks settled ticketIds to avoid duplicate settlement; Uses ParlayGradingService.calculateParlayOutcome for counting wins/losses/pushes
-  - Booki/Views/BetsListView.swift - Added @Query for allBets and policies to BetDetailView; Added parlayPolicy and parlayBets computed properties; Updated settleBet function to use settleParlayBets for parlay bets
-- **Learnings for future iterations:**
-  - Parlay settlement requires all legs be graded first (enforced via parlayNotFullyGraded error)
-  - settleParlayBets marks ALL parlay legs as settled after creating single ledger entry
-  - Ledger entry links to first bet as representative for display/tracking purposes
-  - Settlement descriptions follow format: "Parlay (X legs) - Win/Loss/Push: [amount]"
-  - BetDetailView needs @Query for allBets to find sibling parlay legs via ticketId filter
----
-
-## 2026-01-23 - US-008
-- **What was implemented**: Added partial grades display for parlays in bookie bets list and detail views with settlement prevention for incomplete parlays.
-- **Files changed**:
-  - Booki/Views/BetsListView.swift - Added ParlayPartialInfo struct for tracking partial grading status; Updated BetsListView to calculate and pass parlayInfo to BetRowView; Updated BetRowView to show "Partial (X/Y)" badge with Theme.warning color and "Parlay will lose when settled" indicator; Added parlay partial grading computed properties to BetDetailView (isParlayPartiallyGraded, legsAwaitingCount, parlayWillLose, isParlayFullyGraded); Updated actionButtons to prevent settlement on partially graded parlays and show "Cannot settle - X legs awaiting results" message
-- **Learnings for future iterations:**
-  - Use ParlayPartialInfo struct pattern to pass parlay grading status between views
-  - Calculate parlay info by filtering allBets by ticketId and checking gradeResult/status
-  - isParlayPartiallyGraded: gradedCount > 0 && gradedCount < totalLegs
-  - BetDetailView actions section uses @ViewBuilder to conditionally show different UI states
----
-
-## 2026-01-23 - US-009
-- **What was implemented**: Added void grading functionality for bets with policy-based handling, plus voided legs indicator in ticket detail view.
-- **Files changed**:
-  - Booki/Services/GradingService.swift - Added voidBet function to set bet status to .void (separate from grade results)
-  - Booki/Views/GradingView.swift - Added void button to GradingBetRow and ParlayLegRow; Added onVoid callback to ParlayGradingGroupView; Added voidBet helper function
-  - Booki/Views/TicketDetailView.swift - Added voidedLegsCount, pushedLegsCount, hasAdjustedOdds, and adjustedCombinedOddsDisplay computed properties; Added voided/pushed legs indicator showing "X leg(s) voided - odds adjusted" with adjusted odds display
-- **Learnings for future iterations:**
-  - Void is a bet STATUS (.void), not a grade result - gradeResult remains nil for voided bets
-  - ParlayGradingService.calculateParlayOutcome already handles void status checks (bet.status == .void)
-  - For optional callbacks in views, use pattern: `var onVoid: (() -> Void)? = nil`
-  - When passing optional callbacks through multiple view layers, use: `onVoid: onVoid != nil ? { onVoid?(bet) } : nil`
-  - reduceLegReprice policy filters out voided/pushed legs and recalculates; treatAsPush makes entire parlay a push
----
-
-## 2026-01-23 - US-010
-- **What was implemented**: Added Parlay Outcome Summary section to TicketDetailView for settled parlays, showing clear math breakdown and visual outcome badges.
-- **Files changed**:
-  - Booki/Views/TicketDetailView.swift - Added ParlayOutcomeType private enum (win/loss/push); Added computed properties for outcome display (showParlayOutcome, originalCombinedDecimalOdds, adjustedCombinedDecimalOdds, parlayOutcomeType, parlaySettledAmount, validLegsCount, voidedOrPushedLegsCount); Added parlayOutcomeSection with large outcome badge, calculation breakdown, and reduced parlay info; Badge shows green WON/red LOST/yellow PUSHED with formatted amount; Calculation shows "Stake × Odds = Total Return" with profit display
-- **Learnings for future iterations:**
-  - TicketDetailView already had americanToDecimal and decimalToAmerican helpers - reuse them for consistency
-  - For visual outcome badges: use large icon + bold label + amount with colored background/border
-  - Show strikethrough on original odds when adjusted odds apply for clear visual indication
-  - For reduced parlays, show context: "Originally X legs, Y were voided/pushed, settled as Z-leg parlay"
-  - parlayOutcomeType enum provides clean state management for conditional UI rendering
+  - Week start is 6 days before week ending (Mon-Sun = 7 days, so -6 from Sunday gives Monday)
+  - DateFormatter "MMM d" gives short month + day, "MMM d, yyyy" adds year
 ---
