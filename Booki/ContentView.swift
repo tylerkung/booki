@@ -31,6 +31,11 @@ struct ContentView: View {
     @Query private var players: [Player]
     @Query private var ledgerEntries: [LedgerEntry]
 
+    // MARK: - Environment Objects
+
+    @EnvironmentObject private var networkMonitor: NetworkMonitor
+    @EnvironmentObject private var syncService: SyncService
+
     // MARK: - Conflict Alert State
 
     /// The current sync conflict to display (nil when no conflict)
@@ -85,17 +90,24 @@ struct ContentView: View {
     }
 
     var body: some View {
-        Group {
-            if isPlayerMode, let player = selectedPlayer {
-                // Player Mode UI
-                playerModeView(player: player)
-                    // US-053: Smooth transition when switching between modes
-                    .transition(.opacity.animation(.easeInOut(duration: 0.2)))
-            } else {
-                // Bookie Mode UI (default)
-                bookieModeView
-                    // US-053: Smooth transition when switching between modes
-                    .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+        VStack(spacing: 0) {
+            // MARK: - Offline Banner
+            OfflineBannerView()
+                .animation(.easeInOut(duration: 0.3), value: networkMonitor.isConnected)
+
+            // MARK: - Main Content
+            Group {
+                if isPlayerMode, let player = selectedPlayer {
+                    // Player Mode UI
+                    playerModeView(player: player)
+                        // US-053: Smooth transition when switching between modes
+                        .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+                } else {
+                    // Bookie Mode UI (default)
+                    bookieModeView
+                        // US-053: Smooth transition when switching between modes
+                        .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+                }
             }
         }
         // MARK: - Sync Conflict Alert
@@ -305,4 +317,6 @@ struct PlayerSettingsContent: View {
 #Preview {
     ContentView()
         .modelContainer(for: [Player.self, Bet.self, LedgerEntry.self, Event.self], inMemory: true)
+        .environmentObject(NetworkMonitor())
+        .environmentObject(SyncService())
 }

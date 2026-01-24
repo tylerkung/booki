@@ -9,6 +9,7 @@ struct AuthGateView: View {
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var syncService: SyncService
     @EnvironmentObject private var realtimeService: RealtimeService
+    @EnvironmentObject private var networkMonitor: NetworkMonitor
 
     // MARK: - State
 
@@ -63,6 +64,26 @@ struct AuthGateView: View {
                 Task {
                     await realtimeService.unsubscribe()
                 }
+            }
+        }
+        // MARK: - Network Status Change Handler
+        .onChange(of: networkMonitor.isConnected) { wasConnected, isConnected in
+            // When connection is restored, trigger sync
+            if !wasConnected && isConnected {
+                // Connection restored
+                syncService.setOnline()
+
+                // Trigger sync if authenticated
+                if authManager.currentBookieId != nil {
+                    Task {
+                        await syncService.sync()
+                        // Reconnect realtime if needed
+                        await realtimeService.reconnect()
+                    }
+                }
+            } else if wasConnected && !isConnected {
+                // Connection lost
+                syncService.setOffline()
             }
         }
     }
@@ -136,6 +157,7 @@ private enum AuthViewType {
         .environmentObject(AuthManager())
         .environmentObject(SyncService())
         .environmentObject(RealtimeService())
+        .environmentObject(NetworkMonitor())
 }
 
 #Preview("Login") {
@@ -143,4 +165,5 @@ private enum AuthViewType {
         .environmentObject(AuthManager())
         .environmentObject(SyncService())
         .environmentObject(RealtimeService())
+        .environmentObject(NetworkMonitor())
 }
