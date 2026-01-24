@@ -8,6 +8,7 @@ struct AuthGateView: View {
 
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var syncService: SyncService
+    @EnvironmentObject private var realtimeService: RealtimeService
 
     // MARK: - State
 
@@ -44,18 +45,24 @@ struct AuthGateView: View {
             Text(authManager.bookieError ?? "An error occurred setting up your account. Some features may not work correctly.")
         }
         .onChange(of: authManager.currentBookieId) { _, newBookieId in
-            // Trigger initial sync when bookie ID becomes available
+            // Trigger initial sync and realtime subscription when bookie ID becomes available
             if newBookieId != nil && !hasTriggeredInitialSync {
                 hasTriggeredInitialSync = true
                 Task {
+                    // First sync all data
                     await syncService.sync()
+                    // Then subscribe to realtime updates
+                    await realtimeService.subscribe()
                 }
             }
         }
         .onChange(of: authManager.isAuthenticated) { _, isAuthenticated in
-            // Reset sync flag when user logs out
+            // Reset sync flag and unsubscribe from realtime when user logs out
             if !isAuthenticated {
                 hasTriggeredInitialSync = false
+                Task {
+                    await realtimeService.unsubscribe()
+                }
             }
         }
     }
@@ -128,10 +135,12 @@ private enum AuthViewType {
     AuthGateView()
         .environmentObject(AuthManager())
         .environmentObject(SyncService())
+        .environmentObject(RealtimeService())
 }
 
 #Preview("Login") {
     AuthGateView()
         .environmentObject(AuthManager())
         .environmentObject(SyncService())
+        .environmentObject(RealtimeService())
 }
