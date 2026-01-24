@@ -15,6 +15,10 @@ Started: Sat Jan 24 01:56:02 PST 2026
 - Use `fetchOrCreateBookie()` pattern for idempotent bookie record creation
 - AuthManager handles bookie record lifecycle via auth state listener (signedIn event)
 - Supabase Codable models use CodingKeys for snake_case database columns
+- Download sync uses dependency order: players first (for relationships), then events, bets, etc.
+- Upsert logic compares server.updatedAt > local.lastSyncedAt to decide if update needed
+- Ledger entries are append-only - skip updates, only insert new records
+- Use pagination (range from:to:) for tables that may have many records (limit 1000)
 
 ---
 
@@ -142,4 +146,31 @@ Started: Sat Jan 24 01:56:02 PST 2026
   - FetchDescriptor with #Predicate is the SwiftData way to count records
   - Keep sync methods as placeholders for now - actual implementation in US-006/007
   - SyncableTable.rawValue maps to Supabase table names (snake_case)
+---
+
+## 2026-01-24 - US-006: Implement Download Sync
+- **What was implemented:**
+  - Created `SyncModels.swift` with Codable DTOs for all syncable tables (PlayerRecord, EventRecord, BetRecord, LedgerEntryRecord, AcceptancePolicyRecord, SettlementPeriodRecord, PlayerSettlementRecord)
+  - Implemented `downloadAll()` method with dependency-ordered table downloads (players first for relationships)
+  - Implemented `downloadTable()` with switch-based dispatch to table-specific download methods
+  - Added pagination support for large datasets (1000 records per page using range from:to:)
+  - Implemented upsert logic: update if server.updatedAt > local.lastSyncedAt, insert if new record
+  - Ledger entries are append-only - only insert, never update existing
+  - Trigger download sync on app launch when authenticated (via AuthGateView onChange of currentBookieId)
+  - Added `syncProgressDescription` published property for progress display during sync
+  - Added `SyncProgressView` component for visual feedback during sync
+  - Settlement tables (settlement_periods, player_settlements) skipped as DB schema pending
+
+- **Files changed:**
+  - `Booki/Services/SyncModels.swift` (new)
+  - `Booki/Services/SyncService.swift` (updated - full download implementation)
+  - `Booki/Views/AuthGateView.swift` (updated - trigger sync on auth)
+
+- **Learnings for future iterations:**
+  - Must download players BEFORE bets/ledger entries so relationships can be established
+  - Use `#Predicate { $0.id == recordId }` with local variable for SwiftData FetchDescriptor
+  - Server records use snake_case columns - CodingKeys required in all DTO models
+  - Ledger entries reference player and optionally bet - skip if player not found
+  - Settlement tables not yet in DB schema - need migration for settlement_periods and player_settlements
+  - Use hasTriggeredInitialSync flag in AuthGateView to prevent duplicate syncs
 ---

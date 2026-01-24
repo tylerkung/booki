@@ -122,7 +122,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Server is source of truth for download sync"
     },
     {
