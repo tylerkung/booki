@@ -50,3 +50,16 @@ Started: Sat Jan 24 01:05:13 PST 2026
   - Use AuthTextFieldStyle and PrimaryButtonStyle for consistent auth UI components (defined in SignUpView.swift)
   - Placeholder modifier on View extension helps show placeholder text in custom styled text fields
 ---
+
+## 2026-01-24 - US-004
+- **What was implemented**: Bookie login flow with email/password authentication
+- **Files changed**:
+  - Booki/Views/Auth/LoginView.swift - Created login view with form fields, Supabase auth integration, and error handling
+  - Booki.xcodeproj/project.pbxproj - Added LoginView.swift file references to Auth group
+- **Learnings for future iterations:**
+  - Login uses `client.auth.signIn(email:password:)` - AuthManager updates automatically via auth state listener
+  - Login view follows same pattern as SignUpView but with fewer fields (no confirm password, simpler validation)
+  - Use `.textContentType(.password)` for login (vs `.newPassword` for signup) to help password autofill
+  - Common error cases: "invalid login credentials", "email not confirmed", "too many requests" (rate limiting)
+  - Navigation callbacks (onNavigateToSignUp, onNavigateToForgotPassword) allow parent view to handle navigation
+---
