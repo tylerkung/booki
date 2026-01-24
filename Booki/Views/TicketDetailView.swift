@@ -136,10 +136,106 @@ struct TicketDetailView: View {
         }
     }
 
+    // MARK: - Parlay Outcome Properties
+
+    /// Whether this parlay is settled and should show outcome summary
+    private var showParlayOutcome: Bool {
+        ticket.isParlay && ticket.combinedStatus == .settled
+    }
+
+    /// Original combined decimal odds (all legs)
+    private var originalCombinedDecimalOdds: Decimal {
+        ticket.bets.reduce(Decimal(1)) { result, bet in
+            result * americanToDecimal(bet.odds)
+        }
+    }
+
+    /// Number of legs that were voided or pushed
+    private var voidedOrPushedLegsCount: Int {
+        voidedLegsCount + pushedLegsCount
+    }
+
+    /// Number of valid legs remaining after removing voided/pushed
+    private var validLegsCount: Int {
+        ticket.bets.count - voidedOrPushedLegsCount
+    }
+
+    /// Adjusted combined decimal odds (excluding voided/pushed legs)
+    private var adjustedCombinedDecimalOdds: Decimal? {
+        guard hasAdjustedOdds else { return nil }
+
+        let validBets = ticket.bets.filter { bet in
+            bet.status != .void && bet.gradeResult != .push
+        }
+
+        guard !validBets.isEmpty else { return nil }
+
+        return validBets.reduce(Decimal(1)) { result, bet in
+            result * americanToDecimal(bet.odds)
+        }
+    }
+
+    /// Determine parlay outcome type for display
+    private var parlayOutcomeType: ParlayOutcomeType? {
+        guard showParlayOutcome else { return nil }
+
+        // Check if any leg lost
+        if ticket.bets.contains(where: { $0.gradeResult == .loss }) {
+            return .loss
+        }
+
+        // Check if all non-voided/pushed legs won
+        let validBets = ticket.bets.filter { bet in
+            bet.status != .void && bet.gradeResult != .push
+        }
+
+        // If no valid legs remain, it's a push
+        if validBets.isEmpty {
+            return .push
+        }
+
+        // If all valid legs won, it's a win
+        if validBets.allSatisfy({ $0.gradeResult == .win }) {
+            return .win
+        }
+
+        // Otherwise it's a push (this shouldn't happen but handle edge case)
+        return .push
+    }
+
+    /// The actual profit/loss amount for settled parlays
+    private var parlaySettledAmount: Decimal {
+        guard let outcomeType = parlayOutcomeType else { return Decimal.zero }
+        let stake = ticket.bets.first?.stake ?? Decimal.zero
+
+        switch outcomeType {
+        case .win:
+            // Calculate payout with adjusted odds if applicable
+            let effectiveOdds = adjustedCombinedDecimalOdds ?? originalCombinedDecimalOdds
+            return stake * effectiveOdds - stake
+        case .loss:
+            return -stake
+        case .push:
+            return Decimal.zero
+        }
+    }
+
+    /// Enum for parlay outcome types
+    private enum ParlayOutcomeType {
+        case win
+        case loss
+        case push
+    }
+
     // MARK: - Body
 
     var body: some View {
         List {
+            // Parlay Outcome Section (for settled parlays - show prominently at top)
+            if showParlayOutcome {
+                parlayOutcomeSection
+            }
+
             // Ticket Summary Section
             ticketSummarySection
 
@@ -431,6 +527,250 @@ struct TicketDetailView: View {
                 .foregroundStyle(Theme.textMuted)
         }
         .listRowBackground(Theme.cardBackground)
+    }
+
+    // MARK: - Parlay Outcome Section
+
+    private var parlayOutcomeSection: some View {
+        Section {
+            VStack(spacing: 16) {
+                // Large outcome badge
+                parlayOutcomeBadge
+
+                Divider()
+                    .background(Theme.divider)
+
+                // Calculation breakdown
+                parlayCalculationBreakdown
+
+                // Reduced parlay info (if applicable)
+                if hasAdjustedOdds {
+                    Divider()
+                        .background(Theme.divider)
+                    reducedParlayInfo
+                }
+            }
+            .padding(.vertical, 8)
+        } header: {
+            Text("PARLAY OUTCOME")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .tracking(1)
+                .foregroundStyle(Theme.textMuted)
+        }
+        .listRowBackground(Theme.cardBackground)
+    }
+
+    /// Large outcome badge showing win/loss/push result
+    private var parlayOutcomeBadge: some View {
+        Group {
+            if let outcomeType = parlayOutcomeType {
+                HStack {
+                    Spacer()
+
+                    VStack(spacing: 4) {
+                        // Outcome icon
+                        Image(systemName: outcomeIcon(for: outcomeType))
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(outcomeColor(for: outcomeType))
+
+                        // Outcome label and amount
+                        Text(outcomeLabel(for: outcomeType))
+                            .font(.title2)
+                            .fontWeight(.black)
+                            .foregroundStyle(outcomeColor(for: outcomeType))
+
+                        // Amount
+                        Text(formatProfitLoss(parlaySettledAmount))
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundStyle(outcomeColor(for: outcomeType))
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(outcomeColor(for: outcomeType).opacity(0.15))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(outcomeColor(for: outcomeType).opacity(0.3), lineWidth: 2)
+                    )
+
+                    Spacer()
+                }
+            }
+        }
+    }
+
+    /// Calculation breakdown showing stake × odds = payout
+    private var parlayCalculationBreakdown: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Original odds row
+            HStack {
+                Text("Original Odds")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                let originalAmerican = decimalToAmerican(originalCombinedDecimalOdds)
+                Text(originalAmerican > 0 ? "+\(originalAmerican)" : "\(originalAmerican)")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(hasAdjustedOdds ? Theme.textMuted : Theme.gold)
+                    .strikethrough(hasAdjustedOdds, color: Theme.textMuted)
+            }
+
+            // Adjusted odds row (if applicable)
+            if hasAdjustedOdds, let adjustedOdds = adjustedCombinedDecimalOdds {
+                HStack {
+                    Text("Adjusted Odds")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    let adjustedAmerican = decimalToAmerican(adjustedOdds)
+                    Text(adjustedAmerican > 0 ? "+\(adjustedAmerican)" : "\(adjustedAmerican)")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.accentSecondary)
+                }
+            }
+
+            Divider()
+                .background(Theme.divider)
+
+            // Calculation formula
+            let stake = ticket.bets.first?.stake ?? Decimal.zero
+            let effectiveOdds = adjustedCombinedDecimalOdds ?? originalCombinedDecimalOdds
+
+            if parlayOutcomeType == .win {
+                // Show calculation for wins
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Calculation")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.textMuted)
+
+                    HStack(spacing: 4) {
+                        Text("Stake")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textMuted)
+                        Text(formatCurrency(stake))
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Theme.textPrimary)
+
+                        Text("×")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textMuted)
+
+                        Text(String(format: "%.3f", Double(truncating: effectiveOdds as NSDecimalNumber)))
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Theme.gold)
+
+                        Text("=")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textMuted)
+
+                        let totalReturn = stake * effectiveOdds
+                        Text(formatCurrency(totalReturn))
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundStyle(Theme.accent)
+                    }
+
+                    HStack {
+                        Text("Profit:")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textMuted)
+                        Text(formatProfitLoss(parlaySettledAmount))
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+            } else if parlayOutcomeType == .loss {
+                // Show stake lost
+                HStack {
+                    Text("Stake Lost")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Text(formatCurrency(stake))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.danger)
+                }
+            } else {
+                // Push - stake returned
+                HStack {
+                    Text("Stake Returned")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Text(formatCurrency(stake))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.warning)
+                }
+            }
+        }
+    }
+
+    /// Info about reduced parlay when legs were voided/pushed
+    private var reducedParlayInfo: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(Theme.accentSecondary)
+                    .font(.caption)
+                Text("Parlay Adjusted")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.accentSecondary)
+            }
+
+            Text("Originally \(ticket.bets.count) legs, \(voidedOrPushedLegsCount) \(voidedOrPushedLegsCount == 1 ? "was" : "were") \(reducedLegDescription), settled as \(validLegsCount)-leg parlay")
+                .font(.caption)
+                .foregroundStyle(Theme.textSecondary)
+        }
+    }
+
+    /// Description of what happened to removed legs
+    private var reducedLegDescription: String {
+        if voidedLegsCount > 0 && pushedLegsCount > 0 {
+            return "voided/pushed"
+        } else if voidedLegsCount > 0 {
+            return "voided"
+        } else {
+            return "pushed"
+        }
+    }
+
+    // MARK: - Outcome Helpers
+
+    private func outcomeIcon(for outcome: ParlayOutcomeType) -> String {
+        switch outcome {
+        case .win: return "checkmark.circle.fill"
+        case .loss: return "xmark.circle.fill"
+        case .push: return "equal.circle.fill"
+        }
+    }
+
+    private func outcomeColor(for outcome: ParlayOutcomeType) -> Color {
+        switch outcome {
+        case .win: return Theme.accent
+        case .loss: return Theme.danger
+        case .push: return Theme.warning
+        }
+    }
+
+    private func outcomeLabel(for outcome: ParlayOutcomeType) -> String {
+        switch outcome {
+        case .win: return "WON"
+        case .loss: return "LOST"
+        case .push: return "PUSHED"
+        }
     }
 
     // MARK: - Helpers
