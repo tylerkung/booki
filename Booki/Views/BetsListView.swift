@@ -1,6 +1,18 @@
 import SwiftUI
 import SwiftData
 
+/// Information about parlay partial grading status
+struct ParlayPartialInfo {
+    let gradedCount: Int
+    let totalLegs: Int
+    let willLose: Bool
+    let awaitingCount: Int
+
+    var isPartiallyGraded: Bool {
+        gradedCount > 0 && gradedCount < totalLegs
+    }
+}
+
 /// Filter options for bets list
 enum BetFilter: String, CaseIterable {
     case pending = "Pending"
@@ -71,7 +83,8 @@ struct BetsListView: View {
                                 BetRowView(
                                     bet: bet,
                                     eventName: eventName(for: bet),
-                                    policyViolationReason: bet.policyViolationReason
+                                    policyViolationReason: bet.policyViolationReason,
+                                    parlayInfo: parlayInfo(for: bet)
                                 )
                             }
                         }
@@ -97,6 +110,27 @@ struct BetsListView: View {
         }
         return "Event \(bet.eventId.prefix(8))"
     }
+
+    /// Calculate parlay partial info for a bet
+    private func parlayInfo(for bet: Bet) -> ParlayPartialInfo? {
+        guard bet.isParlay else { return nil }
+
+        // Find all bets with the same ticketId
+        let parlayBets = bets.filter { $0.ticketId == bet.ticketId }
+        guard parlayBets.count > 1 else { return nil }
+
+        let gradedCount = parlayBets.filter { $0.gradeResult != nil || $0.status == .void }.count
+        let totalLegs = parlayBets.count
+        let awaitingCount = totalLegs - gradedCount
+        let willLose = parlayBets.contains { $0.gradeResult == .loss }
+
+        return ParlayPartialInfo(
+            gradedCount: gradedCount,
+            totalLegs: totalLegs,
+            willLose: willLose,
+            awaitingCount: awaitingCount
+        )
+    }
 }
 
 // MARK: - Bet Row View
@@ -105,6 +139,7 @@ struct BetRowView: View {
     let bet: Bet
     let eventName: String
     var policyViolationReason: String? = nil
+    var parlayInfo: ParlayPartialInfo? = nil
 
     private var formattedOdds: String {
         if bet.odds > 0 {
@@ -149,14 +184,26 @@ struct BetRowView: View {
 
                 Spacer()
 
-                Text(bet.status.rawValue.capitalized)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(statusColor)
-                    .clipShape(Capsule())
+                // Show parlay partial badge if applicable
+                if let info = parlayInfo, info.isPartiallyGraded {
+                    Text("Partial (\(info.gradedCount)/\(info.totalLegs))")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Theme.warning)
+                        .clipShape(Capsule())
+                } else {
+                    Text(bet.status.rawValue.capitalized)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(statusColor)
+                        .clipShape(Capsule())
+                }
             }
 
             // Second row: Event name
@@ -183,6 +230,17 @@ struct BetRowView: View {
                 Text("Review: \(reason)")
                     .font(.caption)
                     .foregroundStyle(Theme.warning)
+            }
+
+            // Parlay will lose indicator
+            if let info = parlayInfo, info.willLose {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                    Text("Parlay will lose when settled")
+                        .font(.caption)
+                }
+                .foregroundStyle(Theme.danger)
             }
 
             // Bottom row: Odds and stake
@@ -281,6 +339,33 @@ struct BetDetailView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: bet.createdAt)
+    }
+
+    // MARK: - Parlay Partial Grading Info
+
+    /// Whether this is a parlay that is only partially graded
+    private var isParlayPartiallyGraded: Bool {
+        guard bet.isParlay else { return false }
+        let gradedCount = parlayBets.filter { $0.gradeResult != nil || $0.status == .void }.count
+        return gradedCount > 0 && gradedCount < parlayBets.count
+    }
+
+    /// Number of legs awaiting results
+    private var legsAwaitingCount: Int {
+        guard bet.isParlay else { return 0 }
+        return parlayBets.filter { $0.gradeResult == nil && $0.status != .void }.count
+    }
+
+    /// Whether the parlay already has a losing leg (will lose when settled)
+    private var parlayWillLose: Bool {
+        guard bet.isParlay else { return false }
+        return parlayBets.contains { $0.gradeResult == .loss }
+    }
+
+    /// Whether all parlay legs are graded and settlement can proceed
+    private var isParlayFullyGraded: Bool {
+        guard bet.isParlay else { return true }
+        return parlayBets.allSatisfy { $0.gradeResult != nil || $0.status == .void }
     }
 
     // MARK: - Body
@@ -474,12 +559,61 @@ struct BetDetailView: View {
             }
 
         case .graded:
-            Button {
-                showingSettleConfirmation = true
-            } label: {
-                Label("Settle Bet", systemImage: "dollarsign.circle.fill")
+            // For parlays, check if all legs are graded before allowing settlement
+            if bet.isParlay {
+                if isParlayPartiallyGraded {
+                    // Show partial status badge
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(Theme.warning)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Partial (\(parlayBets.count - legsAwaitingCount)/\(parlayBets.count))")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Theme.warning)
+                            Text("Cannot settle - \(legsAwaitingCount) leg\(legsAwaitingCount == 1 ? "" : "s") awaiting results")
+                                .font(.caption)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+
+                    // Show if parlay will lose
+                    if parlayWillLose {
+                        HStack {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(Theme.danger)
+                            Text("Parlay will lose when settled")
+                                .font(.caption)
+                                .foregroundStyle(Theme.danger)
+                        }
+                    }
+                } else if isParlayFullyGraded {
+                    // All legs graded, allow settlement
+                    if parlayWillLose {
+                        HStack {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(Theme.danger)
+                            Text("Parlay will lose when settled")
+                                .font(.caption)
+                                .foregroundStyle(Theme.danger)
+                        }
+                    }
+
+                    Button {
+                        showingSettleConfirmation = true
+                    } label: {
+                        Label("Settle Parlay", systemImage: "dollarsign.circle.fill")
+                    }
+                    .tint(.green)
+                }
+            } else {
+                // Single bet - allow settlement
+                Button {
+                    showingSettleConfirmation = true
+                } label: {
+                    Label("Settle Bet", systemImage: "dollarsign.circle.fill")
+                }
+                .tint(.green)
             }
-            .tint(.green)
 
         case .settled:
             Button(role: .destructive) {
