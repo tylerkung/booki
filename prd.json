@@ -1,7 +1,7 @@
 {
   "project": "Booki",
-  "branchName": "ralph/acceptance-rules-engine",
-  "description": "Bookie Acceptance Rules Engine & Event Locking - Configurable auto-accept policies, manual review queue with violation reasons, event lock times. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
+  "branchName": "ralph/parlay-grading-rules",
+  "description": "Parlay Grading Rules & Settlement - Proper parlay outcome logic, configurable push/void handling, American odds combination math, leg-by-leg status display. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
   "techStack": {
     "platform": "iOS 17+",
     "language": "Swift 5.9+",
@@ -12,185 +12,174 @@
   "userStories": [
     {
       "id": "US-001",
-      "title": "Create AcceptancePolicy Model",
-      "description": "As a developer, I need a model to store bookie's acceptance policy configuration.",
+      "title": "Add Bet Type Flag to Bet Model",
+      "description": "As a developer, I need to track whether a bet is part of a parlay or a single for proper grading logic.",
       "acceptanceCriteria": [
-        "Create AcceptancePolicy.swift in Booki/Models/",
-        "Model is a SwiftData @Model class",
-        "Add autoAcceptMaxStake: Decimal (default 100)",
-        "Add requireReviewAboveStake: Decimal (default 500)",
-        "Add autoAcceptNewPlayers: Bool (default false)",
-        "Add newPlayerBetThreshold: Int (default 5)",
-        "Add autoAcceptParlays: Bool (default false)",
-        "Add parlayMaxLegs: Int (default 4)",
-        "Add eventLockOffsetMinutes: Int (default 0)",
-        "Add relationship to Bookie if applicable, or make it a singleton query",
+        "Add isParlay: Bool field to Bet model (default false)",
+        "Add parlayLegs: Int field to store total legs in the parlay (default 1)",
+        "Update Bet init to include these parameters with defaults",
+        "Update BetSlipSheet.submitBets to set isParlay=true and parlayLegs=count for parlay mode bets",
+        "Singles get isParlay=false, parlayLegs=1",
         "Project builds and runs in Simulator"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Foundation model - keep simple, can extend later"
+      "notes": "Foundation for parlay-specific logic"
     },
     {
       "id": "US-002",
-      "title": "Add Policy Violation Reason to Bet Model",
-      "description": "As a developer, I need to store why a bet was queued for review.",
+      "title": "Add Parlay Push/Void Handling Policy",
+      "description": "As a bookie, I want to configure how pushes and voids are handled in parlays.",
       "acceptanceCriteria": [
-        "Add policyViolationReason: String? field to Bet model in Bet.swift",
-        "Field is nil for auto-accepted bets or bets without policy evaluation",
-        "Field stores human-readable reason when bet is queued",
-        "Update Bet init to include optional policyViolationReason parameter",
+        "Create enum ParlayPushVoidPolicy: String, Codable with cases: reduceLegReprice, treatAsPush",
+        "Add parlayPushVoidPolicy: String field to AcceptancePolicy model (default 'reduceLegReprice')",
+        "Add Picker to AcceptancePolicySettingsView in new 'Parlay Settlement' section",
+        "Picker options: 'Reduce legs & reprice' and 'Treat as push'",
+        "Add explanatory text below picker describing each option",
         "Project builds and runs in Simulator"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Simple string field - can store multiple reasons comma-separated if needed"
+      "notes": "Store as String for SwiftData compatibility, convert to enum in code"
     },
     {
       "id": "US-003",
-      "title": "Create Acceptance Policy Service",
-      "description": "As a developer, I need logic to evaluate if a bet should be auto-accepted or queued.",
+      "title": "Create ParlayGradingService",
+      "description": "As a developer, I need a service to calculate parlay outcomes based on leg results.",
       "acceptanceCriteria": [
-        "Create AcceptancePolicyService.swift in Booki/Services/",
-        "Add enum PolicyViolation with cases: stakeTooHigh, stakeRequiresReview, newPlayer, parlayNotAllowed, parlayTooManyLegs, eventLocked",
-        "Add static function evaluateBet(stake:isParlay:parlayLegs:playerBetCount:event:policy:) -> [PolicyViolation]",
-        "Stake check: stake > policy.autoAcceptMaxStake returns .stakeTooHigh",
-        "Stake check: stake > policy.requireReviewAboveStake returns .stakeRequiresReview",
-        "New player check: playerBetCount < policy.newPlayerBetThreshold AND !policy.autoAcceptNewPlayers returns .newPlayer",
-        "Parlay check: isParlay AND !policy.autoAcceptParlays returns .parlayNotAllowed",
-        "Parlay legs check: isParlay AND parlayLegs > policy.parlayMaxLegs returns .parlayTooManyLegs",
-        "Event lock check: event.startTime <= Date() + policy.eventLockOffsetMinutes returns .eventLocked",
-        "Add function violationDescription(_:) -> String that returns human-readable text for each violation",
+        "Create ParlayGradingService.swift in Booki/Services/",
+        "Create enum ParlayOutcome with cases: pending, win(payout: Decimal), loss, push, partiallyGraded(gradedCount: Int, totalCount: Int)",
+        "Add static function calculateParlayOutcome(bets: [Bet], policy: ParlayPushVoidPolicy) -> ParlayOutcome",
+        "If any leg has gradeResult == .loss, return .loss",
+        "If all legs have gradeResult == .win, calculate payout and return .win(payout:)",
+        "If any leg not yet graded (gradeResult == nil), return .partiallyGraded or .pending",
+        "Handle push/void legs based on policy parameter",
         "Project builds and runs in Simulator"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "Pure logic service - no side effects, easy to test"
+      "notes": "Core parlay logic service"
     },
     {
       "id": "US-004",
-      "title": "Integrate Policy Evaluation into Bet Submission",
-      "description": "As a developer, I need to apply policy rules when bets are submitted.",
+      "title": "Implement American Odds Combination Math",
+      "description": "As a developer, I need correct parlay payout calculation using American odds multiplication.",
       "acceptanceCriteria": [
-        "Modify BetService.submitBet to accept optional policy: AcceptancePolicy? parameter",
-        "Modify BetService.submitBet to accept isParlay: Bool and parlayLegs: Int parameters",
-        "Modify BetService.submitBet to accept playerBetCount: Int parameter",
-        "When policy provided, call AcceptancePolicyService.evaluateBet",
-        "If no violations (empty array): set bet status to .accepted",
-        "If violations present: set bet status to .pending and store violation reasons in policyViolationReason",
-        "If .eventLocked violation: return failure with appropriate error instead of creating bet",
-        "If no policy provided: default to .pending (backwards compatible)",
-        "Update BetSlipSheet.submitBets to query AcceptancePolicy and pass to BetService",
-        "Update BetSlipSheet.submitBets to pass isParlay, parlayLegs, playerBetCount",
+        "Add static function calculateParlayPayout(stake: Decimal, bets: [Bet], excludeVoidPush: Bool) -> Decimal to ParlayGradingService",
+        "Convert each leg's American odds to decimal: positive = 1 + odds/100, negative = 1 + 100/|odds|",
+        "Multiply all decimal odds together to get combined multiplier",
+        "Calculate payout: stake × combinedMultiplier - stake (profit only)",
+        "When excludeVoidPush=true, skip legs with gradeResult == .push or .void status",
+        "If no valid legs remain after exclusion, return 0 (stake returned separately)",
+        "Add helper function americanToDecimal(odds: Int) -> Decimal",
         "Project builds and runs in Simulator"
       ],
       "priority": 4,
       "passes": true,
-      "notes": "Core integration - connects policy to submission flow"
+      "notes": "Math must match industry standard parlay calculations"
     },
     {
       "id": "US-005",
-      "title": "Create Acceptance Policy Settings UI",
-      "description": "As a bookie, I want to configure my acceptance rules in Settings.",
+      "title": "Add Leg Status Tracking to Ticket Display",
+      "description": "As a player, I want to see the status of each leg in my parlay.",
       "acceptanceCriteria": [
-        "Create AcceptancePolicySettingsView.swift in Booki/Views/",
-        "Query or create AcceptancePolicy on view appear",
-        "Stake thresholds section: TextField for autoAcceptMaxStake and requireReviewAboveStake with currency formatting",
-        "Player rules section: Toggle for autoAcceptNewPlayers, Stepper for newPlayerBetThreshold (1-20 range)",
-        "Parlay rules section: Toggle for autoAcceptParlays, Stepper for parlayMaxLegs (2-10 range)",
-        "Event lock section: Picker for eventLockOffsetMinutes with options 0, 1, 2, 5, 10, 15, 30",
-        "Add navigation link to AcceptancePolicySettingsView from SettingsView.swift",
-        "Use Theme styling (Theme.cardBackground, Theme.textPrimary, etc.)",
-        "Changes auto-save via SwiftData observation",
+        "Modify TicketHeaderView in TrackView.swift to show leg grading progress for parlays",
+        "Display format: 'X/Y legs graded' when partially graded",
+        "Add row of mini status dots/icons below ticket type label (green=win, red=loss, yellow=push, gray=pending)",
+        "In TicketDetailView, each bet row shows grade status badge if graded",
+        "Pending legs show 'Awaiting Result' in muted text",
         "Project builds and runs in Simulator"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Bookie-facing settings UI - keep it simple and clear"
+      "passes": false,
+      "notes": "Visual feedback for parlay progress"
     },
     {
       "id": "US-006",
-      "title": "Display Policy Violation Reasons in Pending Bets",
-      "description": "As a bookie, I want to see why a bet is pending review.",
+      "title": "Create Parlay Grading UI for Bookie",
+      "description": "As a bookie, I want to see and grade parlay legs individually with the combined outcome shown.",
       "acceptanceCriteria": [
-        "Locate where pending bets are displayed (BetsListView or similar)",
-        "For pending bets with non-nil policyViolationReason, show the reason",
-        "Display as subtitle text below bet info, styled with Theme.warning color",
-        "Format: 'Review: [reason]' or just the reason text",
-        "Only show for .pending status bets with violation reasons",
+        "Locate bookie grading UI (GradingView or BetsListView grading section)",
+        "When displaying a parlay bet, show all legs from same ticketId grouped together",
+        "Add 'Parlay Status' header showing 'X of Y legs graded'",
+        "Show projected outcome based on current grades (e.g., 'Will lose - 1 leg lost')",
+        "Calculate and display projected payout if all remaining legs win",
+        "Each leg can still be graded individually",
         "Project builds and runs in Simulator"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Helps bookie understand why bet needs attention"
+      "passes": false,
+      "notes": "Bookie needs full picture when grading parlays"
     },
     {
       "id": "US-007",
-      "title": "Add Event Lock Computed Property",
-      "description": "As a developer, I need to compute if an event is locked for betting.",
+      "title": "Integrate Parlay Logic into Settlement",
+      "description": "As a developer, I need to settle parlays correctly based on combined outcome.",
       "acceptanceCriteria": [
-        "Add function isLocked(offsetMinutes: Int) -> Bool to Event model",
-        "Returns true if Date() >= startTime.addingTimeInterval(-Double(offsetMinutes * 60))",
-        "Returns true if status is .live or .final regardless of offset",
-        "Add function lockTime(offsetMinutes: Int) -> Date that returns startTime minus offset",
+        "Modify GradingService.settleBet to detect parlay bets (check isParlay flag)",
+        "For parlay bets, use ParlayGradingService.calculateParlayOutcome to determine result",
+        "Query AcceptancePolicy to get parlayPushVoidPolicy setting",
+        "Win: create ledger entry with combined payout from calculateParlayPayout",
+        "Loss: create ledger entry with -stake (negative)",
+        "Push: create ledger entry with 0 (stake returned)",
+        "Settlement description: 'Parlay (X legs) - Win/Loss/Push: [amount]'",
+        "Only settle when ALL legs are graded (check all bets with same ticketId)",
         "Project builds and runs in Simulator"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Computed property - no storage needed"
+      "passes": false,
+      "notes": "Core settlement integration"
     },
     {
       "id": "US-008",
-      "title": "Display Lock Status in Game Cards",
-      "description": "As a player, I want to see if an event is locked before trying to bet.",
+      "title": "Handle Partial Grades Display",
+      "description": "As a bookie, I need the system to clearly show parlays where some legs are graded but others are still pending.",
       "acceptanceCriteria": [
-        "Modify GameCardView to accept optional lockOffsetMinutes parameter (default 0)",
-        "Check event.isLocked(offsetMinutes:) to determine lock status",
-        "When locked: show lock icon (lock.fill) next to time or as overlay",
-        "When locked: reduce opacity on odds buttons to 0.5",
-        "When locked: disable onSelectOdds action (don't add to slip)",
-        "Optional: show toast or brief message when tapping locked odds",
-        "Update GamesView to pass lockOffsetMinutes from policy (query policy or use default)",
+        "In bookie bets list, parlays with partial grades show special status badge",
+        "Badge text: 'Partial (X/Y)' with Theme.warning color",
+        "Prevent settle action on partially graded parlays (button disabled or hidden)",
+        "Show tooltip or message: 'Cannot settle - X legs awaiting results'",
+        "When a leg already lost, show indicator: 'Parlay will lose when settled'",
         "Project builds and runs in Simulator"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "Player-facing lock indication - clear visual feedback"
+      "passes": false,
+      "notes": "Clear UX for incomplete parlays"
     },
     {
       "id": "US-009",
-      "title": "Prevent Locked Event Bets in Bet Slip",
-      "description": "As a system, I need to validate bet slip doesn't contain locked events on submit.",
+      "title": "Handle Voided Legs with Policy",
+      "description": "As a bookie, I need voided legs to be handled according to the configured policy.",
       "acceptanceCriteria": [
-        "In BetSlipSheet, before submission check if any selected events are locked",
-        "Query events for each bet slip item and check isLocked",
-        "If any locked events found: show error alert listing which events are locked",
-        "Prevent submission until locked events are removed from slip",
-        "Add helper to BetSlipManager or create function to validate slip",
+        "When grading a leg as void (bet.status = .void), check parlay policy",
+        "reduceLegReprice policy: recalculate payout excluding voided leg",
+        "If all non-void legs win, parlay wins at reduced odds",
+        "If only voided legs remain, treat as push (return stake)",
+        "treatAsPush policy: any voided leg makes entire parlay a push",
+        "Update ParlayGradingService.calculateParlayOutcome to handle .void status",
+        "Display 'X leg(s) voided - odds adjusted' in ticket detail",
         "Project builds and runs in Simulator"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "Belt-and-suspenders check at submission time"
+      "passes": false,
+      "notes": "Void handling per policy setting"
     },
     {
       "id": "US-010",
-      "title": "Handle Postponed and Canceled Events",
-      "description": "As a bookie, I need proper handling when events are postponed or canceled.",
+      "title": "Display Parlay Outcome Summary",
+      "description": "As a player, I want to see a clear summary of my parlay outcome with the math breakdown.",
       "acceptanceCriteria": [
-        "Add .postponed and .canceled cases to EventStatus enum if not present",
-        "Postponed events: isLocked returns false (allow betting on new time)",
-        "Postponed events: show 'POSTPONED' badge in GameCardView",
-        "Canceled events: isLocked returns true always",
-        "Canceled events: show 'CANCELED' badge in GameCardView, hide odds buttons",
-        "Add BetService.voidBetsForEvent(eventId:) function",
-        "When event status changes to .canceled, bookie can trigger void of pending/accepted bets",
-        "Add void action button in event detail or bets list for canceled events",
+        "In TicketDetailView, add 'Parlay Outcome' section for settled parlay tickets",
+        "Show original combined odds (all legs)",
+        "If legs were pushed/voided, show adjusted odds",
+        "Display calculation: 'Stake $X × Combined Odds Y.YY = Payout $Z'",
+        "For reduced parlays show: 'Originally X legs, Y pushed/voided, settled as Z-leg parlay'",
+        "Large outcome badge: green 'WON +$X', red 'LOST -$X', yellow 'PUSHED $0'",
         "Project builds and runs in Simulator"
       ],
       "priority": 10,
-      "passes": true,
-      "notes": "Edge case handling - important for real-world usage"
+      "passes": false,
+      "notes": "Clear outcome display with math transparency"
     }
   ]
 }
