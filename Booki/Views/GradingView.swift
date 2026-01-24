@@ -1,10 +1,20 @@
 import SwiftUI
 import SwiftData
 
+/// Represents a group of parlay legs or a single bet for display in grading
+struct GradingGroup: Identifiable {
+    let id: UUID // ticketId for parlays, bet.id for singles
+    let bets: [Bet]
+    let isParlay: Bool
+
+    var firstBet: Bet? { bets.first }
+}
+
 struct GradingView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var bets: [Bet]
     @Query private var events: [Event]
+    @Query private var policies: [AcceptancePolicy]
 
     @State private var selectedBets: Set<UUID> = []
     @State private var isMultiSelectMode = false
@@ -12,10 +22,53 @@ struct GradingView: View {
     @State private var showingBulkSettlementSuccess = false
     @State private var settlementSummary: BulkSettlementSummary?
 
+    /// Get the current parlay push/void policy
+    private var parlayPolicy: ParlayPushVoidPolicy {
+        policies.first?.parlayPushVoidPolicyEnum ?? .reduceLegReprice
+    }
+
     /// Bets ready to grade, sorted by creation date (oldest first for grading priority)
     private var readyToGradeBets: [Bet] {
         bets.filter { $0.status == .readyToGrade }
             .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    /// Groups bets by ticketId for parlays, singles stay individual
+    private var gradingGroups: [GradingGroup] {
+        // Separate parlays and singles
+        let parlayBets = readyToGradeBets.filter { $0.isParlay }
+        let singleBets = readyToGradeBets.filter { !$0.isParlay }
+
+        // Group parlay bets by ticketId
+        var parlayGroups: [UUID: [Bet]] = [:]
+        for bet in parlayBets {
+            parlayGroups[bet.ticketId, default: []].append(bet)
+        }
+
+        // Also find other legs of parlays that may already be graded (same ticketId)
+        for ticketId in parlayGroups.keys {
+            // Get all bets with this ticketId (including already graded ones)
+            let allLegsForTicket = bets.filter { $0.ticketId == ticketId }
+            parlayGroups[ticketId] = allLegsForTicket.sorted { $0.createdAt < $1.createdAt }
+        }
+
+        // Create groups
+        var groups: [GradingGroup] = []
+
+        // Add parlay groups (sorted by earliest bet creation date)
+        let sortedParlayGroups = parlayGroups.sorted {
+            ($0.value.first?.createdAt ?? Date.distantPast) < ($1.value.first?.createdAt ?? Date.distantPast)
+        }
+        for (ticketId, betsInGroup) in sortedParlayGroups {
+            groups.append(GradingGroup(id: ticketId, bets: betsInGroup, isParlay: true))
+        }
+
+        // Add single bets as individual groups
+        for bet in singleBets {
+            groups.append(GradingGroup(id: bet.id, bets: [bet], isParlay: false))
+        }
+
+        return groups
     }
 
     /// Bets that are graded and ready for settlement
@@ -74,15 +127,27 @@ struct GradingView: View {
                         )
                     } else {
                         List {
-                            ForEach(readyToGradeBets) { bet in
-                                GradingBetRow(
-                                    bet: bet,
-                                    event: event(for: bet),
-                                    isSelected: selectedBets.contains(bet.id),
-                                    isMultiSelectMode: isMultiSelectMode,
-                                    onSelect: { toggleSelection(bet) },
-                                    onGrade: { result in gradeBet(bet, result: result) }
-                                )
+                            ForEach(gradingGroups) { group in
+                                if group.isParlay {
+                                    ParlayGradingGroupView(
+                                        group: group,
+                                        events: events,
+                                        policy: parlayPolicy,
+                                        selectedBets: $selectedBets,
+                                        isMultiSelectMode: isMultiSelectMode,
+                                        onSelect: { bet in toggleSelection(bet) },
+                                        onGrade: { bet, result in gradeBet(bet, result: result) }
+                                    )
+                                } else if let bet = group.firstBet {
+                                    GradingBetRow(
+                                        bet: bet,
+                                        event: event(for: bet),
+                                        isSelected: selectedBets.contains(bet.id),
+                                        isMultiSelectMode: isMultiSelectMode,
+                                        onSelect: { toggleSelection(bet) },
+                                        onGrade: { result in gradeBet(bet, result: result) }
+                                    )
+                                }
                             }
                         }
                         .listStyle(.plain)
@@ -545,7 +610,398 @@ struct GradingBetRow: View {
     }
 }
 
+// MARK: - Parlay Grading Group View
+
+/// Displays a parlay with all its legs grouped together for grading
+struct ParlayGradingGroupView: View {
+    let group: GradingGroup
+    let events: [Event]
+    let policy: ParlayPushVoidPolicy
+    @Binding var selectedBets: Set<UUID>
+    let isMultiSelectMode: Bool
+    let onSelect: (Bet) -> Void
+    let onGrade: (Bet, GradeResult) -> Void
+
+    /// Legs that still need grading
+    private var legsToGrade: [Bet] {
+        group.bets.filter { $0.status == .readyToGrade }
+    }
+
+    /// Number of legs that have been graded
+    private var gradedCount: Int {
+        group.bets.filter { $0.gradeResult != nil || $0.status == .void }.count
+    }
+
+    /// Total number of legs in the parlay
+    private var totalLegs: Int {
+        group.bets.count
+    }
+
+    /// Calculate the projected outcome based on current grades
+    private var projectedOutcome: ParlayProjectedOutcome {
+        // Check for any losses first
+        let hasLoss = group.bets.contains { $0.gradeResult == .loss }
+        if hasLoss {
+            let lostLegs = group.bets.filter { $0.gradeResult == .loss }.count
+            return .willLose(lostLegs: lostLegs)
+        }
+
+        // Count wins, pushes, and pending
+        let winCount = group.bets.filter { $0.gradeResult == .win }.count
+        let pushVoidCount = group.bets.filter { $0.gradeResult == .push || $0.status == .void }.count
+        let pendingCount = group.bets.filter { $0.gradeResult == nil && $0.status != .void }.count
+
+        if pendingCount == 0 {
+            // All graded, no losses
+            if pushVoidCount > 0 {
+                switch policy {
+                case .treatAsPush:
+                    return .willPush
+                case .reduceLegReprice:
+                    if winCount == 0 {
+                        return .willPush
+                    }
+                    return .canWin(validLegs: winCount)
+                }
+            }
+            return .canWin(validLegs: winCount)
+        }
+
+        // Still has pending legs
+        return .inProgress(gradedCount: gradedCount, totalCount: totalLegs)
+    }
+
+    /// Calculate the projected payout if all remaining legs win
+    private var projectedPayout: Decimal? {
+        guard let firstBet = group.bets.first else { return nil }
+
+        // If parlay already lost, no payout
+        if group.bets.contains(where: { $0.gradeResult == .loss }) {
+            return nil
+        }
+
+        // Calculate assuming all pending legs win
+        let stake = firstBet.stake
+
+        // For reduceLegReprice, only use won + pending legs (exclude push/void)
+        // For treatAsPush with any push/void, payout would be 0
+        let hasPushVoid = group.bets.contains { $0.gradeResult == .push || $0.status == .void }
+        if hasPushVoid && policy == .treatAsPush {
+            return nil
+        }
+
+        // Get legs that would count (won + pending, excluding push/void)
+        let validLegs = group.bets.filter { bet in
+            bet.status != .void && bet.gradeResult != .push
+        }
+
+        if validLegs.isEmpty {
+            return Decimal.zero
+        }
+
+        return ParlayGradingService.calculateParlayPayout(stake: stake, bets: validLegs, excludeVoidPush: false)
+    }
+
+    /// Format currency value
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+
+    /// Get event for a bet
+    private func event(for bet: Bet) -> Event? {
+        events.first { $0.id.uuidString == bet.eventId }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Parlay Status Header
+            parlayStatusHeader
+
+            // Projected Outcome
+            projectedOutcomeView
+
+            // Divider
+            Rectangle()
+                .fill(Theme.divider)
+                .frame(height: 1)
+
+            // Individual legs
+            ForEach(group.bets) { bet in
+                ParlayLegRow(
+                    bet: bet,
+                    event: event(for: bet),
+                    isSelected: selectedBets.contains(bet.id),
+                    isMultiSelectMode: isMultiSelectMode,
+                    onSelect: { onSelect(bet) },
+                    onGrade: { result in onGrade(bet, result) }
+                )
+
+                if bet.id != group.bets.last?.id {
+                    Rectangle()
+                        .fill(Theme.divider.opacity(0.5))
+                        .frame(height: 1)
+                        .padding(.leading, 28)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    // MARK: - Parlay Status Header
+
+    private var parlayStatusHeader: some View {
+        HStack {
+            // Parlay icon
+            Image(systemName: "link")
+                .foregroundStyle(Theme.accentSecondary)
+                .font(.title3)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text("Parlay")
+                        .font(.headline)
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text("(\(totalLegs) legs)")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+
+                Text("\(gradedCount) of \(totalLegs) legs graded")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textMuted)
+            }
+
+            Spacer()
+
+            // Player name
+            if let player = group.bets.first?.player {
+                Text(player.name)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+    }
+
+    // MARK: - Projected Outcome View
+
+    @ViewBuilder
+    private var projectedOutcomeView: some View {
+        HStack(spacing: 12) {
+            switch projectedOutcome {
+            case .willLose(let lostLegs):
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Theme.danger)
+                    Text("Will lose - \(lostLegs) leg\(lostLegs == 1 ? "" : "s") lost")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.danger)
+                }
+
+            case .willPush:
+                HStack(spacing: 6) {
+                    Image(systemName: "equal.circle.fill")
+                        .foregroundStyle(Theme.warning)
+                    Text("Will push - stake returned")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.warning)
+                }
+
+            case .canWin(let validLegs):
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.accent)
+                    Text("Can win - \(validLegs) leg\(validLegs == 1 ? "" : "s") won")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.accent)
+                }
+
+            case .inProgress(let graded, let total):
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.fill")
+                        .foregroundStyle(Theme.textMuted)
+                    Text("In progress - \(graded)/\(total) graded")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+
+            Spacer()
+
+            // Projected payout if applicable
+            if let payout = projectedPayout, payout > 0 {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Projected payout")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textMuted)
+                    Text(formatCurrency(payout))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Theme.elevatedBackground.opacity(0.5))
+        .cornerRadius(8)
+    }
+}
+
+/// Projected outcome states for a parlay
+enum ParlayProjectedOutcome {
+    case willLose(lostLegs: Int)
+    case willPush
+    case canWin(validLegs: Int)
+    case inProgress(gradedCount: Int, totalCount: Int)
+}
+
+// MARK: - Parlay Leg Row
+
+/// Individual leg row within a parlay group - simplified version for parlay display
+struct ParlayLegRow: View {
+    let bet: Bet
+    let event: Event?
+    let isSelected: Bool
+    let isMultiSelectMode: Bool
+    let onSelect: () -> Void
+    let onGrade: (GradeResult) -> Void
+
+    private var eventName: String {
+        if let event = event {
+            return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        return "Event \(bet.eventId.prefix(8))"
+    }
+
+    private var formattedOdds: String {
+        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
+    }
+
+    /// Whether this leg has already been graded
+    private var isGraded: Bool {
+        bet.gradeResult != nil || bet.status == .void
+    }
+
+    /// Status indicator color
+    private var statusColor: Color {
+        if bet.status == .void {
+            return Theme.textMuted
+        }
+        guard let result = bet.gradeResult else {
+            return Theme.textMuted
+        }
+        switch result {
+        case .win: return Theme.accent
+        case .loss: return Theme.danger
+        case .push: return Theme.warning
+        }
+    }
+
+    /// Status text
+    private var statusText: String {
+        if bet.status == .void {
+            return "Void"
+        }
+        guard let result = bet.gradeResult else {
+            return "Pending"
+        }
+        return result.rawValue.capitalized
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Status indicator dot
+            Circle()
+                .fill(statusColor)
+                .frame(width: 10, height: 10)
+
+            // Multi-select checkbox (only for ungraded legs)
+            if isMultiSelectMode && !isGraded {
+                Button {
+                    onSelect()
+                } label: {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(isSelected ? .blue : .secondary)
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Bet info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(eventName)
+                    .font(.subheadline)
+                    .foregroundStyle(isGraded ? Theme.textMuted : Theme.textPrimary)
+
+                HStack(spacing: 4) {
+                    Text(bet.market)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textMuted)
+
+                    Text("•")
+                        .foregroundStyle(Theme.textMuted)
+
+                    Text(bet.side)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(isGraded ? Theme.textMuted : Theme.textSecondary)
+
+                    Text(formattedOdds)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
+            }
+
+            Spacer()
+
+            // Status badge or grading buttons
+            if isGraded {
+                Text(statusText)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(statusColor)
+                    .clipShape(Capsule())
+            } else if !isMultiSelectMode {
+                // Compact grading buttons
+                HStack(spacing: 8) {
+                    Button {
+                        onGrade(.win)
+                    } label: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.green)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        onGrade(.loss)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        onGrade(.push)
+                    } label: {
+                        Image(systemName: "equal.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.orange)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 #Preview {
     GradingView()
-        .modelContainer(for: [Bet.self, Event.self, Player.self], inMemory: true)
+        .modelContainer(for: [Bet.self, Event.self, Player.self, AcceptancePolicy.self], inMemory: true)
 }
