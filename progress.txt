@@ -19,6 +19,12 @@ Started: Sat Jan 24 01:56:02 PST 2026
 - Upsert logic compares server.updatedAt > local.lastSyncedAt to decide if update needed
 - Ledger entries are append-only - skip updates, only insert new records
 - Use pagination (range from:to:) for tables that may have many records (limit 1000)
+- Upload sync uses same dependency order as download: players first, then events, bets, etc.
+- Use `onConflict: "id"` in Supabase upsert for proper update-or-insert behavior
+- Version-based conflict detection: query server version before upload, abort if server > local
+- Use NotificationCenter for sync conflict notifications to UI layer
+- Upsert structs need `init(from:bookieId:)` to convert SwiftData models
+- Failable initializers (init?) for upsert structs that require relationships
 
 ---
 
@@ -173,4 +179,33 @@ Started: Sat Jan 24 01:56:02 PST 2026
   - Ledger entries reference player and optionally bet - skip if player not found
   - Settlement tables not yet in DB schema - need migration for settlement_periods and player_settlements
   - Use hasTriggeredInitialSync flag in AuthGateView to prevent duplicate syncs
+---
+
+## 2026-01-24 - US-007: Implement Upload Sync
+- **What was implemented:**
+  - Created Upsert/Insert structs in `SyncModels.swift` for all syncable tables (PlayerUpsert, EventUpsert, BetUpsert, LedgerEntryInsert, AcceptancePolicyUpsert)
+  - Implemented full `uploadPendingChanges()` method with dependency-ordered table uploads
+  - Implemented `uploadTableChanges()` with switch-based dispatch to table-specific upload methods
+  - Added `uploadPlayers()`, `uploadEvents()`, `uploadBets()`, `uploadLedgerEntries()`, `uploadAcceptancePolicies()` methods
+  - Implemented version-based conflict detection with `hasConflict()` method
+  - Created conflict resolution methods that fetch server version and update local copy
+  - Added `Notification.Name.syncConflictDetected` for UI to show conflict alerts
+  - Created `triggerUpload()` public method for triggering uploads after local writes
+  - On upload success: set needsSync=false, increment version, update lastSyncedAt
+  - On upload failure: keep needsSync=true, log error, continue with other records
+  - Ledger entries are insert-only (append-only pattern) - no conflict detection needed
+
+- **Files changed:**
+  - `Booki/Services/SyncModels.swift` (updated - added Upsert/Insert structs with CodingKeys)
+  - `Booki/Services/SyncService.swift` (updated - full upload implementation)
+
+- **Learnings for future iterations:**
+  - Upload must happen in dependency order: players before bets/ledger entries (foreign key relationships)
+  - Use `onConflict: "id"` parameter in Supabase upsert for proper update behavior
+  - Conflict detection queries just the version field to minimize data transfer
+  - Ledger entries don't need conflict detection - they're append-only by design
+  - Version increment happens AFTER successful upload to server
+  - Use NotificationCenter to communicate sync conflicts to UI layer
+  - Each upsert struct needs `init(from:bookieId:)` to convert SwiftData models
+  - Failable initializers (init?) for structs that require relationships (BetUpsert, LedgerEntryInsert)
 ---
