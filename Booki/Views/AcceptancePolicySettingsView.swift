@@ -97,6 +97,25 @@ struct AcceptancePolicySettingsView: View {
             }
             .listRowBackground(Theme.cardBackground)
 
+            // MARK: - Parlay Settlement Section
+            Section {
+                Picker("Push/Void Handling", selection: Binding(
+                    get: { policy?.parlayPushVoidPolicyEnum ?? .reduceLegReprice },
+                    set: { newValue in
+                        getOrCreatePolicy().parlayPushVoidPolicyEnum = newValue
+                    }
+                )) {
+                    ForEach(ParlayPushVoidPolicy.allCases, id: \.self) { policyOption in
+                        Text(policyOption.displayLabel).tag(policyOption)
+                    }
+                }
+            } header: {
+                Text("Parlay Settlement")
+            } footer: {
+                Text(policy?.parlayPushVoidPolicyEnum.explanation ?? ParlayPushVoidPolicy.reduceLegReprice.explanation)
+            }
+            .listRowBackground(Theme.cardBackground)
+
             // MARK: - Event Lock Section
             Section {
                 Picker("Lock Before Start", selection: Binding(

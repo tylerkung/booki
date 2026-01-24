@@ -1,6 +1,34 @@
 import Foundation
 import SwiftData
 
+/// Policy for how pushes and voids are handled in parlay bets
+enum ParlayPushVoidPolicy: String, Codable, CaseIterable {
+    /// Reduce parlay to remaining legs and recalculate payout at adjusted odds
+    case reduceLegReprice
+    /// Treat the entire parlay as a push (stake returned)
+    case treatAsPush
+
+    /// Human-readable display label
+    var displayLabel: String {
+        switch self {
+        case .reduceLegReprice:
+            return "Reduce legs & reprice"
+        case .treatAsPush:
+            return "Treat as push"
+        }
+    }
+
+    /// Explanatory description for the policy
+    var explanation: String {
+        switch self {
+        case .reduceLegReprice:
+            return "If a leg pushes or is voided, remove it from the parlay and recalculate the payout with the remaining legs."
+        case .treatAsPush:
+            return "If any leg pushes or is voided, the entire parlay becomes a push and the stake is returned."
+        }
+    }
+}
+
 /// AcceptancePolicy model storing bookie's acceptance policy configuration
 /// Used to determine if bets should be auto-accepted, queued for review, or rejected
 @Model
@@ -28,6 +56,20 @@ final class AcceptancePolicy {
     /// Minutes before event start to lock betting (0 = lock at start time)
     var eventLockOffsetMinutes: Int
 
+    /// Parlay push/void handling policy stored as String for SwiftData compatibility
+    /// Use parlayPushVoidPolicyEnum computed property for type-safe access
+    var parlayPushVoidPolicy: String
+
+    /// Type-safe access to the parlay push/void policy
+    var parlayPushVoidPolicyEnum: ParlayPushVoidPolicy {
+        get {
+            ParlayPushVoidPolicy(rawValue: parlayPushVoidPolicy) ?? .reduceLegReprice
+        }
+        set {
+            parlayPushVoidPolicy = newValue.rawValue
+        }
+    }
+
     var createdAt: Date
     var updatedAt: Date
 
@@ -40,6 +82,7 @@ final class AcceptancePolicy {
         autoAcceptParlays: Bool = false,
         parlayMaxLegs: Int = 4,
         eventLockOffsetMinutes: Int = 0,
+        parlayPushVoidPolicy: String = ParlayPushVoidPolicy.reduceLegReprice.rawValue,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -51,6 +94,7 @@ final class AcceptancePolicy {
         self.autoAcceptParlays = autoAcceptParlays
         self.parlayMaxLegs = parlayMaxLegs
         self.eventLockOffsetMinutes = eventLockOffsetMinutes
+        self.parlayPushVoidPolicy = parlayPushVoidPolicy
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
