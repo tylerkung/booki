@@ -171,6 +171,17 @@ struct SignUpView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
 
+                // Divider
+                DividerWithText(text: "or")
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 8)
+
+                // Sign in with Apple
+                AppleSignInButton { error in
+                    errorMessage = error
+                }
+                .padding(.horizontal, 24)
+
                 Spacer(minLength: 40)
 
                 // Navigate to Login

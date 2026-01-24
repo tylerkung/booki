@@ -67,6 +67,7 @@
 		8A1234560055 /* SettlementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550055 /* SettlementService.swift */; };
 		8A1234560060 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550060 /* SignUpView.swift */; };
 		8A1234560061 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550061 /* LoginView.swift */; };
+		8A1234560062 /* AppleSignInButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550062 /* AppleSignInButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -132,6 +133,7 @@
 		8A1234550059 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		8A1234550060 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
 		8A1234550061 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		8A1234550062 /* AppleSignInButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -238,6 +240,7 @@
 			children = (
 				8A1234550060 /* SignUpView.swift */,
 				8A1234550061 /* LoginView.swift */,
+				8A1234550062 /* AppleSignInButton.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -467,6 +470,7 @@
 				8A1234560059 /* AuthManager.swift in Sources */,
 				8A1234560060 /* SignUpView.swift in Sources */,
 				8A1234560061 /* LoginView.swift in Sources */,
+				8A1234560062 /* AppleSignInButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
