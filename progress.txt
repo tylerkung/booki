@@ -115,3 +115,31 @@ Started: Sat Jan 24 01:56:02 PST 2026
   - Show loading state in AuthGateView while bookie record is loading to prevent flash of content
   - Bookie record creation is idempotent - safe to call multiple times
 ---
+
+## 2026-01-24 - US-005: Create Sync Service Infrastructure
+- **What was implemented:**
+  - Created `SyncService.swift` in `Booki/Services/` as the central sync coordinator
+  - Implemented `SyncStatus` enum with cases: idle, syncing, error(String), offline
+  - Added visual properties to SyncStatus: displayText, iconName, iconColor using Theme colors
+  - Created `SyncableTable` enum listing all 7 syncable tables (players, events, bets, ledgerEntries, acceptancePolicies, settlementPeriods, playerSettlements)
+  - Implemented published properties: syncStatus, lastSyncedAt (Date?), pendingChangesCount (Int)
+  - Added sync() method for full sync cycle and syncTable() for targeted sync
+  - Created SyncServiceError enum for sync-specific error handling
+  - Implemented updatePendingChangesCount() using SwiftData FetchDescriptor queries
+  - Created `SyncStatusIndicator` view component for toolbar display
+  - Injected SyncService via environment in BookiApp.swift with configure() for dependencies
+  - Added SyncStatusIndicator to DashboardView toolbar
+
+- **Files changed:**
+  - `Booki/Services/SyncService.swift` (new)
+  - `Booki/BookiApp.swift` (updated - added SyncService injection)
+  - `Booki/Views/DashboardView.swift` (updated - added sync status toolbar item)
+
+- **Learnings for future iterations:**
+  - SyncService needs both ModelContext and AuthManager for proper operation
+  - Use configure() pattern for late dependency injection (context from sharedModelContainer)
+  - SyncStatusIndicator uses symbolEffect(.pulse) for animating sync state
+  - FetchDescriptor with #Predicate is the SwiftData way to count records
+  - Keep sync methods as placeholders for now - actual implementation in US-006/007
+  - SyncableTable.rawValue maps to Supabase table names (snake_case)
+---
