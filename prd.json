@@ -50,7 +50,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "RLS enforces data isolation at database level - even if client code has bugs, data is protected"
     },
     {

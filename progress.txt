@@ -9,6 +9,9 @@ Started: Sat Jan 24 01:56:02 PST 2026
 - Use TIMESTAMPTZ (not TIMESTAMP) for all date/time fields
 - Include updated_at triggers for tables that track modification time
 - SQL migrations go in `supabase/migrations/` directory
+- RLS helper functions use SECURITY DEFINER for consistent permissions
+- RLS policies use double-check pattern: `is_bookie() AND bookie_id = get_user_bookie_id()`
+- Players authenticate via auth_user_id linkage, not username/password in app
 
 ---
 
@@ -32,4 +35,28 @@ Started: Sat Jan 24 01:56:02 PST 2026
   - The `event_id` in bets is TEXT not UUID to support external event IDs
   - LedgerEntry is append-only (no updated_at) by design
   - Bookie table links to auth.users via auth_user_id for Supabase Auth integration
+---
+
+## 2026-01-24 - US-002: Implement Row Level Security Policies
+- **What was implemented:**
+  - Created RLS migration at `supabase/migrations/002_rls_policies.sql`
+  - Enabled RLS on all 6 tables (bookies, players, events, bets, ledger_entries, acceptance_policies)
+  - Created helper functions: `get_user_bookie_id()`, `is_bookie()`, `get_player_id()`
+  - Created 24 RLS policies (4 per table: SELECT/INSERT/UPDATE/DELETE)
+  - Bookie policies: Full CRUD on own data, isolated by bookie_id
+  - Player policies: SELECT own record only, can INSERT own bets
+  - Added comprehensive policy comments
+  - Updated `supabase/README.md` with policy matrix and documentation
+
+- **Files changed:**
+  - `supabase/migrations/002_rls_policies.sql` (new)
+  - `supabase/README.md` (updated)
+
+- **Learnings for future iterations:**
+  - Use SECURITY DEFINER for helper functions to ensure consistent behavior
+  - Double-check pattern: verify both bookie_id match AND user type (is_bookie())
+  - Players table allows player SELECT own record via auth_user_id linkage
+  - Bets table allows players to INSERT (place bets) but not UPDATE/DELETE
+  - Ledger entries should be append-only in practice even though DELETE/UPDATE allowed
+  - Use COALESCE in get_user_bookie_id() to handle both bookie and player auth lookup
 ---
