@@ -18,3 +18,15 @@ Started: Fri Jan 23 22:58:07 PST 2026
   - Week start is 6 days before week ending (Mon-Sun = 7 days, so -6 from Sunday gives Monday)
   - DateFormatter "MMM d" gives short month + day, "MMM d, yyyy" adds year
 ---
+
+## 2026-01-23 - US-002
+- What was implemented: PlayerSettlement SwiftData model to track per-player settlement status within a period
+- Files changed:
+  - Booki/Models/PlayerSettlement.swift (created)
+  - Booki/BookiApp.swift (added to schema)
+  - Booki.xcodeproj/project.pbxproj (added file references)
+- **Learnings for future iterations:**
+  - PlayerSettlement uses periodWeekEndingDate (Date) instead of relationship to SettlementPeriod for simplicity
+  - player relationship is optional (Player?) to allow flexibility
+  - Use 8A12345500XX pattern for file references, 8A12345600XX for build files in pbxproj
+---
