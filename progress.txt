@@ -1,128 +1,23 @@
 # Ralph Progress Log
-Started: Fri Jan 23 22:58:07 PST 2026
+Started: Sat Jan 24 01:05:13 PST 2026
 
 ## Codebase Patterns
-- Always add new model files to Xcode project.pbxproj in 4 places: PBXBuildFile, PBXFileReference, PBXGroup (Models), PBXSourcesBuildPhase
-- Register SwiftData models in BookiApp.swift schema array
-- Use `swiftc -parse <file>` for syntax validation (full builds require Xcode IDE)
+- Use Theme.swift for all colors and styling - never use default iOS colors
+- Access Supabase client via `SupabaseClientManager.shared.client`
+- Supabase credentials are stored in Info.plist (SUPABASE_URL, SUPABASE_ANON_KEY)
+- Config files go in Booki/Config/, Services go in Booki/Services/
 
 ---
 
-## 2026-01-23 - US-001
-- What was implemented: SettlementPeriod SwiftData model with weekEndingDate, createdAt, computed weekStartDate and dateRangeDescription
-- Files changed:
-  - Booki/Models/SettlementPeriod.swift (created)
-  - Booki/BookiApp.swift (added to schema)
-  - Booki.xcodeproj/project.pbxproj (added file references)
+## 2026-01-24 - US-001
+- **What was implemented**: Supabase Swift SDK integration with configuration and singleton client
+- **Files changed**:
+  - Booki.xcodeproj/project.pbxproj - Added SPM package reference and new file references
+  - Booki/Config/SupabaseConfig.swift - Created config reader for Info.plist credentials
+  - Booki/Services/SupabaseClient.swift - Created singleton wrapper for Supabase client
+  - Booki/Info.plist - Created with placeholder Supabase credentials
 - **Learnings for future iterations:**
-  - Week start is 6 days before week ending (Mon-Sun = 7 days, so -6 from Sunday gives Monday)
-  - DateFormatter "MMM d" gives short month + day, "MMM d, yyyy" adds year
----
-
-## 2026-01-23 - US-002
-- What was implemented: PlayerSettlement SwiftData model to track per-player settlement status within a period
-- Files changed:
-  - Booki/Models/PlayerSettlement.swift (created)
-  - Booki/BookiApp.swift (added to schema)
-  - Booki.xcodeproj/project.pbxproj (added file references)
-- **Learnings for future iterations:**
-  - PlayerSettlement uses periodWeekEndingDate (Date) instead of relationship to SettlementPeriod for simplicity
-  - player relationship is optional (Player?) to allow flexibility
-  - Use 8A12345500XX pattern for file references, 8A12345600XX for build files in pbxproj
----
-
-## 2026-01-23 - US-003
-- What was implemented: SettlementService with PlayerSettlementReport struct for calculating settlement data per player per period
-- Files changed:
-  - Booki/Services/SettlementService.swift (created)
-  - Booki.xcodeproj/project.pbxproj (added file references)
-- **Learnings for future iterations:**
-  - Services use `enum` (not struct/class) with static functions for stateless calculation services
-  - Payments in ledger are logged as negative amounts (reducing debt), so negate when calculating "paymentsReceived"
-  - adjustments includes both .adjustment and .reversal entry types
-  - Service files go in PBXGroup Services section in pbxproj
----
-
-## 2026-01-23 - US-004
-- What was implemented: Settlement Period Selection UI in WeeklySettlementView
-- Files changed:
-  - Booki/Views/WeeklySettlementView.swift (updated)
-- **Learnings for future iterations:**
-  - WeeklySettlementView already existed in the project - modified it to match acceptance criteria
-  - mostRecentSunday() calculates the most recent Sunday; if today is Sunday, use today; otherwise go back to previous Sunday
-  - Segmented picker with 5 weeks: uses Calendar.date(byAdding: .weekOfYear, value: -i, to: mostRecent)
-  - Summary calculations use SettlementService.calculatePlayerReport() to derive ending balances
-  - settledCount comes from filtering playerSettlements by periodWeekEndingDate and isSettled
-  - Total owed to bookie = positive ending balances; Total owed to players = abs of negative ending balances
----
-
-## 2026-01-23 - US-005
-- What was implemented: Player Settlement List with filtering, sorting, row view, and navigation
-- Files changed:
-  - Booki/Views/WeeklySettlementView.swift (updated)
-- **Learnings for future iterations:**
-  - Added SettlementFilterOption enum for filter picker (All/Unsettled/Settled)
-  - PlayerSettlementRowView shows player name, bet count, ending balance with color coding
-  - Balance color: Theme.danger for positive (player owes), Theme.accent for negative (bookie owes)
-  - Checkmark icon shows for settled players
-  - Sort by abs(endingBalance) descending for biggest amounts first
-  - isPlayerSettled() helper checks playerSettlements for matching player and period
-  - Placeholder PlayerSettlementDetailView created for NavigationLink (full impl in US-006)
----
-
-## 2026-01-23 - US-006
-- What was implemented: Full PlayerSettlementDetailView with balance breakdown, betting activity, and mark as settled functionality
-- Files changed:
-  - Booki/Views/WeeklySettlementView.swift (updated - replaced placeholder with full implementation)
-- **Learnings for future iterations:**
-  - PlayerSettlementDetailView needs @Query for bets, ledgerEntries, and playerSettlements to calculate report
-  - Use existingSettlement computed property to find/update existing PlayerSettlement records
-  - BalanceSummaryCard shows flow: Starting Balance -> Net Results -> Payments -> Adjustments -> Ending Balance
-  - BalanceLineItem with showSign=true colors positive as danger (adds debt), negative as accent (reduces debt)
-  - BettingActivityCard shows won/lost/push counts; push = betsSettledCount - betsWonCount - betsLostCount
-  - Mark as Settled updates existing record or creates new PlayerSettlement with isSettled=true and settledAt=Date()
-  - TextField notes stored in PlayerSettlement.notes (optional)
-  - When already settled, show settledAt timestamp and any notes
----
-
-## 2026-01-23 - US-007
-- What was implemented: Quick Payment Recording from Settlement view
-- Files changed:
-  - Booki/Views/WeeklySettlementView.swift (updated)
-- **Learnings for future iterations:**
-  - Added "Record Payment" button in PlayerSettlementDetailView that only shows when report.endingBalance > 0 (player owes)
-  - Created QuickPaymentSheet view with pre-filled amount (full amount owed by default)
-  - Quick buttons: "Full Payment" sets full amount, "Partial (50%)" only shows if amount > 50
-  - Reused PaymentMethod enum from PaymentSheet.swift for consistency
-  - LedgerEntry for payment uses negative amount (reduces player debt) with type .paymentLogged
-  - Success overlay shows briefly (1 second) before auto-dismissing sheet
-  - Sheet presentation refreshes report automatically since @Query re-evaluates after ledger insert
----
-
-## 2026-01-23 - US-008
-- What was implemented: Collection status badges and filtering in Settlement views
-- Files changed:
-  - Booki/Views/WeeklySettlementView.swift (updated)
-- **Learnings for future iterations:**
-  - CollectionStatus enum is defined in Player.swift with cases: noStatus, reminded, promised, overdue
-  - Collection status color mapping: reminded=Theme.warning (yellow), promised=Theme.scheduled (blue), overdue=Theme.danger (red)
-  - Added "Needs Attention" filter to SettlementFilterOption to show players with collection status set
-  - PlayerSettlementRowView shows collection status badge next to player name and settled checkmark
-  - PlayerSettlementDetailView has Collection Status section with NavigationLink to PlayerDetailView for editing
-  - If player has .promised status, show promised payment date in detail view
-  - Collection status icons: bell.badge.fill (reminded), calendar.badge.clock (promised), exclamationmark.triangle.fill (overdue)
----
-
-## 2026-01-23 - US-009
-- What was implemented: CSV export functionality for settlement reports
-- Files changed:
-  - Booki/Views/WeeklySettlementView.swift (updated)
-- **Learnings for future iterations:**
-  - ShareLink requires a URL, so create a temporary file with FileManager.default.temporaryDirectory
-  - CSV filename format: settlement_YYYY-MM-DD.csv using weekEndingDate
-  - Format Decimal values without currency symbol using NumberFormatter with .decimal style
-  - Escape player names containing commas by wrapping in double quotes
-  - CSV columns: Player Name, Starting Balance, Net Results, Payments, Adjustments, Ending Balance, Settled
-  - Use .onChange(of: selectedWeekEndingDate) to regenerate CSV when week selection changes
-  - Toolbar button with ShareLink shows system share sheet for CSV file
+  - When adding SPM packages to Xcode projects, need to add: XCRemoteSwiftPackageReference, XCSwiftPackageProductDependency, and packageProductDependencies in native target
+  - Info.plist with GENERATE_INFOPLIST_FILE=YES merges custom plist with generated values
+  - The Supabase import won't resolve until Xcode resolves the SPM dependency (expected behavior for syntax checking)
 ---
