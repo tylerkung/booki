@@ -4,6 +4,7 @@ import SwiftData
 @main
 struct BookiApp: App {
     @StateObject private var authManager = AuthManager()
+    @StateObject private var syncService = SyncService()
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -35,6 +36,12 @@ struct BookiApp: App {
             AuthGateView()
                 .preferredColorScheme(.dark)
                 .environmentObject(authManager)
+                .environmentObject(syncService)
+                .onAppear {
+                    // Configure sync service with model context
+                    let context = sharedModelContainer.mainContext
+                    syncService.configure(modelContext: context, authManager: authManager)
+                }
         }
         .modelContainer(sharedModelContainer)
     }

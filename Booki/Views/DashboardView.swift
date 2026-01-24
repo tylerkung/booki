@@ -19,6 +19,7 @@ struct FlaggedPlayer: Identifiable {
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var syncService: SyncService
     @Query private var bets: [Bet]
     @Query private var events: [Event]
     @Query private var players: [Player]
@@ -341,6 +342,11 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showingFlaggedPlayers) {
                 FlaggedPlayersView(flaggedPlayers: flaggedPlayers)
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    SyncStatusIndicator(syncService: syncService)
+                }
             }
         }
     }
@@ -871,4 +877,5 @@ struct FlaggedPlayerRow: View {
 #Preview {
     DashboardView()
         .modelContainer(for: [Bet.self, Event.self, Player.self, LedgerEntry.self], inMemory: true)
+        .environmentObject(SyncService())
 }
