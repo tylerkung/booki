@@ -111,7 +111,9 @@ enum BetService {
             status: betStatus,
             player: player,
             ticketId: ticketId,
-            policyViolationReason: policyViolationReason
+            policyViolationReason: policyViolationReason,
+            isParlay: isParlay,
+            parlayLegs: isParlay ? parlayLegs : 1
         )
 
         return .success(bet)

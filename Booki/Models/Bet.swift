@@ -38,6 +38,12 @@ final class Bet {
     /// Human-readable reason why bet was queued for review (nil for auto-accepted bets)
     var policyViolationReason: String?
 
+    /// Whether this bet is part of a parlay (default false for singles)
+    var isParlay: Bool
+
+    /// Number of legs in the parlay (1 for singles, N for parlays)
+    var parlayLegs: Int
+
     /// Relationship: many bets belong to one player
     var player: Player?
 
@@ -53,7 +59,9 @@ final class Bet {
         player: Player? = nil,
         createdAt: Date = Date(),
         ticketId: UUID = UUID(),
-        policyViolationReason: String? = nil
+        policyViolationReason: String? = nil,
+        isParlay: Bool = false,
+        parlayLegs: Int = 1
     ) {
         self.id = id
         self.eventId = eventId
@@ -67,5 +75,7 @@ final class Bet {
         self.createdAt = createdAt
         self.ticketId = ticketId
         self.policyViolationReason = policyViolationReason
+        self.isParlay = isParlay
+        self.parlayLegs = parlayLegs
     }
 }
