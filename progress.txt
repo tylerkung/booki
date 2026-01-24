@@ -21,3 +21,16 @@ Started: Sat Jan 24 01:05:13 PST 2026
   - Info.plist with GENERATE_INFOPLIST_FILE=YES merges custom plist with generated values
   - The Supabase import won't resolve until Xcode resolves the SPM dependency (expected behavior for syntax checking)
 ---
+
+## 2026-01-24 - US-002
+- **What was implemented**: Centralized AuthManager for tracking authentication state
+- **Files changed**:
+  - Booki/Services/AuthManager.swift - Created AuthManager ObservableObject with published auth state properties
+  - Booki/BookiApp.swift - Added @StateObject authManager and .environmentObject(authManager)
+  - Booki.xcodeproj/project.pbxproj - Added AuthManager.swift file references
+- **Learnings for future iterations:**
+  - Supabase auth state changes are received via `supabase.auth.authStateChanges` async sequence
+  - AuthManager should be @MainActor to ensure all published property updates happen on main thread
+  - Auth state events include: initialSession, signedIn, signedOut, tokenRefreshed, userUpdated, userDeleted, passwordRecovery, mfaChallengeVerified
+  - When adding new files to Xcode project: add to PBXBuildFile, PBXFileReference, PBXGroup (Services), and PBXSourcesBuildPhase sections
+---
