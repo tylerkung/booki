@@ -14,6 +14,7 @@
 		8A1234560056 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550056 /* SupabaseConfig.swift */; };
 		8A1234560057 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550057 /* SupabaseClient.swift */; };
 		8A1234560058 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 8A1234590001 /* Supabase */; };
+		8A1234560059 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550059 /* AuthManager.swift */; };
 		8A1234560005 /* Bookie.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550005 /* Bookie.swift */; };
 		8A1234560006 /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550006 /* Player.swift */; };
 		8A1234560007 /* Bet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550007 /* Bet.swift */; };
@@ -126,6 +127,7 @@
 		8A1234550056 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		8A1234550057 /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
 		8A1234550058 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		8A1234550059 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -282,6 +284,7 @@
 				8A1234550052 /* ParlayGradingService.swift */,
 				8A1234550055 /* SettlementService.swift */,
 				8A1234550057 /* SupabaseClient.swift */,
+				8A1234550059 /* AuthManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -447,6 +450,7 @@
 				8A1234560055 /* SettlementService.swift in Sources */,
 				8A1234560056 /* SupabaseConfig.swift in Sources */,
 				8A1234560057 /* SupabaseClient.swift in Sources */,
+				8A1234560059 /* AuthManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

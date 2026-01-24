@@ -3,6 +3,8 @@ import SwiftData
 
 @main
 struct BookiApp: App {
+    @StateObject private var authManager = AuthManager()
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Bookie.self,
@@ -32,6 +34,7 @@ struct BookiApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(.dark)
+                .environmentObject(authManager)
         }
         .modelContainer(sharedModelContainer)
     }
