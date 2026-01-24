@@ -33,6 +33,20 @@ enum GradingService {
         return .success(())
     }
 
+    /// Voids a bet, transitioning from accepted to void status
+    /// Voided bets are excluded from parlay calculations based on policy
+    /// - Parameter bet: The bet to void
+    /// - Returns: Result with success or GradingServiceError
+    static func voidBet(_ bet: Bet) -> Result<Void, GradingServiceError> {
+        guard bet.status == .accepted else {
+            return .failure(.invalidBetStatus(current: bet.status, expected: .accepted))
+        }
+
+        bet.status = .void
+        // Note: gradeResult remains nil for voided bets - void is a status, not a grade
+        return .success(())
+    }
+
     // MARK: - Settlement
 
     /// Settles a graded bet by creating the appropriate ledger entry

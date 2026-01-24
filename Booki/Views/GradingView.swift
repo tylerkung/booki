@@ -136,7 +136,8 @@ struct GradingView: View {
                                         selectedBets: $selectedBets,
                                         isMultiSelectMode: isMultiSelectMode,
                                         onSelect: { bet in toggleSelection(bet) },
-                                        onGrade: { bet, result in gradeBet(bet, result: result) }
+                                        onGrade: { bet, result in gradeBet(bet, result: result) },
+                                        onVoid: { bet in voidBet(bet) }
                                     )
                                 } else if let bet = group.firstBet {
                                     GradingBetRow(
@@ -145,7 +146,8 @@ struct GradingView: View {
                                         isSelected: selectedBets.contains(bet.id),
                                         isMultiSelectMode: isMultiSelectMode,
                                         onSelect: { toggleSelection(bet) },
-                                        onGrade: { result in gradeBet(bet, result: result) }
+                                        onGrade: { result in gradeBet(bet, result: result) },
+                                        onVoid: { voidBet(bet) }
                                     )
                                 }
                             }
@@ -294,6 +296,17 @@ struct GradingView: View {
         }
     }
 
+    private func voidBet(_ bet: Bet) {
+        let voidResult = GradingService.voidBet(bet)
+        switch voidResult {
+        case .success:
+            // Remove from selection if was selected
+            selectedBets.remove(bet.id)
+        case .failure(let error):
+            print("Failed to void bet: \(error)")
+        }
+    }
+
     private func bulkGrade(_ result: GradeResult) {
         // Grade all selected bets
         for betId in selectedBets {
@@ -415,6 +428,7 @@ struct GradingBetRow: View {
     let isMultiSelectMode: Bool
     let onSelect: () -> Void
     let onGrade: (GradeResult) -> Void
+    var onVoid: (() -> Void)? = nil
 
     private var eventName: String {
         if let event = event {
@@ -616,35 +630,49 @@ struct GradingBetRow: View {
 
             // Grading buttons (only when not in multi-select mode)
             if !isMultiSelectMode {
-                HStack(spacing: 12) {
-                    Button {
-                        onGrade(.win)
-                    } label: {
-                        Label("Win", systemImage: "checkmark.circle.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
+                VStack(spacing: 8) {
+                    HStack(spacing: 12) {
+                        Button {
+                            onGrade(.win)
+                        } label: {
+                            Label("Win", systemImage: "checkmark.circle.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
 
-                    Button {
-                        onGrade(.loss)
-                    } label: {
-                        Label("Loss", systemImage: "xmark.circle.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
+                        Button {
+                            onGrade(.loss)
+                        } label: {
+                            Label("Loss", systemImage: "xmark.circle.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
 
-                    Button {
-                        onGrade(.push)
-                    } label: {
-                        Label("Push", systemImage: "equal.circle.fill")
-                            .frame(maxWidth: .infinity)
+                        Button {
+                            onGrade(.push)
+                        } label: {
+                            Label("Push", systemImage: "equal.circle.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
+                    .labelStyle(.titleOnly)
+
+                    // Void button (secondary option)
+                    if let onVoid = onVoid {
+                        Button {
+                            onVoid()
+                        } label: {
+                            Label("Void Bet", systemImage: "nosign")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Theme.textMuted)
+                    }
                 }
-                .labelStyle(.titleOnly)
             }
         }
         .padding(.vertical, 8)
@@ -662,6 +690,7 @@ struct ParlayGradingGroupView: View {
     let isMultiSelectMode: Bool
     let onSelect: (Bet) -> Void
     let onGrade: (Bet, GradeResult) -> Void
+    var onVoid: ((Bet) -> Void)? = nil
 
     /// Legs that still need grading
     private var legsToGrade: [Bet] {
@@ -777,7 +806,8 @@ struct ParlayGradingGroupView: View {
                     isSelected: selectedBets.contains(bet.id),
                     isMultiSelectMode: isMultiSelectMode,
                     onSelect: { onSelect(bet) },
-                    onGrade: { result in onGrade(bet, result) }
+                    onGrade: { result in onGrade(bet, result) },
+                    onVoid: onVoid != nil ? { onVoid?(bet) } : nil
                 )
 
                 if bet.id != group.bets.last?.id {
@@ -909,6 +939,7 @@ struct ParlayLegRow: View {
     let isMultiSelectMode: Bool
     let onSelect: () -> Void
     let onGrade: (GradeResult) -> Void
+    var onVoid: (() -> Void)? = nil
 
     private var eventName: String {
         if let event = event {
@@ -1035,6 +1066,18 @@ struct ParlayLegRow: View {
                             .foregroundStyle(.orange)
                     }
                     .buttonStyle(.plain)
+
+                    // Void button
+                    if let onVoid = onVoid {
+                        Button {
+                            onVoid()
+                        } label: {
+                            Image(systemName: "nosign")
+                                .font(.title2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }

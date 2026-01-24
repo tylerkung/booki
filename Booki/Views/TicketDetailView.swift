@@ -63,6 +63,38 @@ struct TicketDetailView: View {
         ticket.totalStake + ticket.potentialPayout
     }
 
+    /// Count of voided legs in this parlay
+    private var voidedLegsCount: Int {
+        ticket.bets.filter { $0.status == .void }.count
+    }
+
+    /// Count of pushed legs in this parlay
+    private var pushedLegsCount: Int {
+        ticket.bets.filter { $0.gradeResult == .push }.count
+    }
+
+    /// Whether this parlay has voided or pushed legs that affected the odds
+    private var hasAdjustedOdds: Bool {
+        ticket.isParlay && (voidedLegsCount > 0 || pushedLegsCount > 0)
+    }
+
+    /// Adjusted combined odds (excluding voided/pushed legs)
+    private var adjustedCombinedOddsDisplay: String? {
+        guard hasAdjustedOdds else { return nil }
+
+        let validBets = ticket.bets.filter { bet in
+            bet.status != .void && bet.gradeResult != .push
+        }
+
+        guard !validBets.isEmpty else { return nil }
+
+        let combinedDecimal = validBets.reduce(Decimal(1)) { result, bet in
+            result * americanToDecimal(bet.odds)
+        }
+        let americanOdds = decimalToAmerican(combinedDecimal)
+        return americanOdds > 0 ? "+\(americanOdds)" : "\(americanOdds)"
+    }
+
     /// Actual payout for settled tickets
     private var actualPayout: Decimal? {
         guard ticket.combinedStatus == .settled else { return nil }
@@ -235,6 +267,56 @@ struct TicketDetailView: View {
                     .foregroundStyle(Theme.gold)
             }
             .padding(.top, 4)
+
+            // Voided/Pushed legs indicator - shows when odds have been adjusted
+            if hasAdjustedOdds {
+                VStack(alignment: .leading, spacing: 6) {
+                    // Voided legs info
+                    if voidedLegsCount > 0 {
+                        HStack(spacing: 6) {
+                            Image(systemName: "nosign")
+                                .foregroundStyle(Theme.textMuted)
+                                .font(.caption)
+                            Text("\(voidedLegsCount) leg\(voidedLegsCount == 1 ? "" : "s") voided - odds adjusted")
+                                .font(.caption)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+
+                    // Pushed legs info
+                    if pushedLegsCount > 0 {
+                        HStack(spacing: 6) {
+                            Image(systemName: "equal.circle")
+                                .foregroundStyle(Theme.warning)
+                                .font(.caption)
+                            Text("\(pushedLegsCount) leg\(pushedLegsCount == 1 ? "" : "s") pushed - odds adjusted")
+                                .font(.caption)
+                                .foregroundStyle(Theme.warning)
+                        }
+                    }
+
+                    // Adjusted odds display
+                    if let adjustedOdds = adjustedCombinedOddsDisplay {
+                        HStack {
+                            Text("Adjusted Odds")
+                                .font(.caption)
+                                .foregroundStyle(Theme.textSecondary)
+                            Spacer()
+                            Text(adjustedOdds)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Theme.accentSecondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Theme.accentSecondary.opacity(0.15))
+                                )
+                        }
+                    }
+                }
+                .padding(.top, 8)
+            }
         } header: {
             Text("ODDS BREAKDOWN")
                 .font(.caption)
