@@ -1,0 +1,318 @@
+import SwiftUI
+import Supabase
+
+/// Sign up view for new bookies to create an account
+struct SignUpView: View {
+
+    // MARK: - Environment
+
+    @EnvironmentObject private var authManager: AuthManager
+
+    // MARK: - State
+
+    @State private var email: String = ""
+    @State private var password: String = ""
+    @State private var confirmPassword: String = ""
+    @State private var isLoading: Bool = false
+    @State private var showSuccessAlert: Bool = false
+    @State private var errorMessage: String?
+
+    // MARK: - Validation
+
+    private var emailError: String? {
+        guard !email.isEmpty else { return nil }
+        return email.contains("@") ? nil : "Please enter a valid email address"
+    }
+
+    private var passwordError: String? {
+        guard !password.isEmpty else { return nil }
+        return password.count >= 8 ? nil : "Password must be at least 8 characters"
+    }
+
+    private var confirmPasswordError: String? {
+        guard !confirmPassword.isEmpty else { return nil }
+        return password == confirmPassword ? nil : "Passwords do not match"
+    }
+
+    private var isFormValid: Bool {
+        !email.isEmpty &&
+        !password.isEmpty &&
+        !confirmPassword.isEmpty &&
+        email.contains("@") &&
+        password.count >= 8 &&
+        password == confirmPassword
+    }
+
+    // MARK: - Actions
+
+    var onNavigateToLogin: () -> Void = {}
+
+    // MARK: - Body
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.system(size: 60))
+                        .foregroundStyle(Theme.accent)
+
+                    Text("Create Account")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text("Sign up to start managing your book")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .padding(.top, 40)
+                .padding(.bottom, 20)
+
+                // Form Fields
+                VStack(spacing: 16) {
+                    // Email Field
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Email")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        TextField("", text: $email)
+                            .textFieldStyle(AuthTextFieldStyle())
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                            .autocorrectionDisabled()
+                            .placeholder(when: email.isEmpty) {
+                                Text("Enter your email")
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+
+                        if let error = emailError {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(Theme.danger)
+                        }
+                    }
+
+                    // Password Field
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Password")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        SecureField("", text: $password)
+                            .textFieldStyle(AuthTextFieldStyle())
+                            .textContentType(.newPassword)
+                            .placeholder(when: password.isEmpty) {
+                                Text("Enter your password")
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+
+                        if let error = passwordError {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(Theme.danger)
+                        }
+                    }
+
+                    // Confirm Password Field
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Confirm Password")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        SecureField("", text: $confirmPassword)
+                            .textFieldStyle(AuthTextFieldStyle())
+                            .textContentType(.newPassword)
+                            .placeholder(when: confirmPassword.isEmpty) {
+                                Text("Confirm your password")
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+
+                        if let error = confirmPasswordError {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(Theme.danger)
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+
+                // Error Message
+                if let errorMessage = errorMessage {
+                    Text(errorMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.danger)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+
+                // Create Account Button
+                Button(action: signUp) {
+                    Group {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
+                        } else {
+                            Text("Create Account")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(!isFormValid || isLoading)
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
+
+                Spacer(minLength: 40)
+
+                // Navigate to Login
+                HStack(spacing: 4) {
+                    Text("Already have an account?")
+                        .foregroundStyle(Theme.textSecondary)
+
+                    Button(action: onNavigateToLogin) {
+                        Text("Log in")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+                .font(.subheadline)
+                .padding(.bottom, 24)
+            }
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Theme.backgroundGradient)
+        .alert("Check Your Email", isPresented: $showSuccessAlert) {
+            Button("OK", role: .cancel) {
+                onNavigateToLogin()
+            }
+        } message: {
+            Text("Check your email to verify your account")
+        }
+    }
+
+    // MARK: - Sign Up
+
+    private func signUp() {
+        guard isFormValid else { return }
+
+        isLoading = true
+        errorMessage = nil
+
+        Task {
+            do {
+                let _ = try await SupabaseClientManager.shared.client.auth.signUp(
+                    email: email,
+                    password: password
+                )
+                await MainActor.run {
+                    isLoading = false
+                    showSuccessAlert = true
+                }
+            } catch let error as AuthError {
+                await MainActor.run {
+                    isLoading = false
+                    errorMessage = mapAuthError(error)
+                }
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                    errorMessage = "An unexpected error occurred. Please try again."
+                }
+            }
+        }
+    }
+
+    /// Maps Supabase auth errors to user-friendly messages
+    private func mapAuthError(_ error: AuthError) -> String {
+        switch error {
+        case .api(let apiError):
+            // Check for common error codes
+            if let message = apiError.message?.lowercased() {
+                if message.contains("already registered") || message.contains("already exists") {
+                    return "This email is already registered. Please log in instead."
+                }
+                if message.contains("weak password") || message.contains("password") {
+                    return "Please choose a stronger password."
+                }
+                if message.contains("invalid email") {
+                    return "Please enter a valid email address."
+                }
+            }
+            return apiError.message ?? "Sign up failed. Please try again."
+        default:
+            return "Network error. Please check your connection and try again."
+        }
+    }
+}
+
+// MARK: - Text Field Style
+
+struct AuthTextFieldStyle: TextFieldStyle {
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(Theme.cardBackground)
+            .foregroundStyle(Theme.textPrimary)
+            .cornerRadius(Theme.cornerRadiusSmall)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                    .stroke(Theme.border, lineWidth: 1)
+            )
+    }
+}
+
+// MARK: - Primary Button Style
+
+struct PrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(isEnabled ? Theme.background : Theme.textMuted)
+            .background(
+                Group {
+                    if isEnabled {
+                        Theme.buttonGradient
+                    } else {
+                        Theme.elevatedBackground
+                    }
+                }
+            )
+            .cornerRadius(Theme.cornerRadiusSmall)
+            .opacity(configuration.isPressed ? 0.8 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Placeholder Modifier
+
+extension View {
+    func placeholder<Content: View>(
+        when shouldShow: Bool,
+        alignment: Alignment = .leading,
+        @ViewBuilder placeholder: () -> Content
+    ) -> some View {
+        ZStack(alignment: alignment) {
+            placeholder().opacity(shouldShow ? 1 : 0)
+            self
+        }
+    }
+}
+
+// MARK: - Preview
+
+#Preview {
+    SignUpView()
+        .environmentObject(AuthManager())
+}
