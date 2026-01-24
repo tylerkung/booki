@@ -376,16 +376,463 @@ struct PlayerSettlementRowView: View {
     }
 }
 
-// MARK: - Player Settlement Detail View (Placeholder)
-// Full implementation in US-006
+// MARK: - Player Settlement Detail View
 
 struct PlayerSettlementDetailView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var bets: [Bet]
+    @Query private var ledgerEntries: [LedgerEntry]
+    @Query private var playerSettlements: [PlayerSettlement]
+
     let player: Player
     let weekEndingDate: Date
 
+    /// Notes text for marking as settled
+    @State private var settlementNotes: String = ""
+
+    // MARK: - Computed Properties
+
+    /// Start of the selected week (Monday)
+    private var weekStartDate: Date {
+        Calendar.current.date(byAdding: .day, value: -6, to: weekEndingDate) ?? weekEndingDate
+    }
+
+    /// Settlement report for this player and period
+    private var report: PlayerSettlementReport {
+        SettlementService.calculatePlayerReport(
+            player: player,
+            periodStart: weekStartDate,
+            periodEnd: weekEndingDate,
+            bets: bets,
+            ledgerEntries: ledgerEntries
+        )
+    }
+
+    /// Existing settlement record for this player/period (if any)
+    private var existingSettlement: PlayerSettlement? {
+        playerSettlements.first { settlement in
+            settlement.player?.id == player.id &&
+            Calendar.current.isDate(settlement.periodWeekEndingDate, inSameDayAs: weekEndingDate)
+        }
+    }
+
+    /// Whether the player is marked as settled
+    private var isSettled: Bool {
+        existingSettlement?.isSettled ?? false
+    }
+
+    /// Date range description for display
+    private var dateRangeDescription: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+
+        let yearFormatter = DateFormatter()
+        yearFormatter.dateFormat = "MMM d, yyyy"
+
+        let startStr = formatter.string(from: weekStartDate)
+        let endStr = yearFormatter.string(from: weekEndingDate)
+
+        return "\(startStr) - \(endStr)"
+    }
+
     var body: some View {
-        Text("Settlement details for \(player.name)")
-            .navigationTitle(player.name)
+        List {
+            // MARK: - Balance Summary Section
+            Section {
+                BalanceSummaryCard(report: report)
+            } header: {
+                Text("Balance Summary")
+            }
+            .listRowBackground(Theme.cardBackground)
+
+            // MARK: - Betting Activity Section
+            Section {
+                BettingActivityCard(report: report)
+            } header: {
+                Text("Betting Activity")
+            }
+            .listRowBackground(Theme.cardBackground)
+
+            // MARK: - Payments Section
+            if report.paymentsReceived != 0 {
+                Section {
+                    HStack {
+                        Text("Payments Received")
+                            .foregroundStyle(Theme.textSecondary)
+                        Spacer()
+                        Text(formatCurrency(report.paymentsReceived))
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Payments")
+                }
+                .listRowBackground(Theme.cardBackground)
+            }
+
+            // MARK: - Adjustments Section
+            if report.adjustments != 0 {
+                Section {
+                    HStack {
+                        Text("Adjustments")
+                            .foregroundStyle(Theme.textSecondary)
+                        Spacer()
+                        Text(formatCurrencySigned(report.adjustments))
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(report.adjustments >= 0 ? Theme.danger : Theme.accent)
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Adjustments")
+                }
+                .listRowBackground(Theme.cardBackground)
+            }
+
+            // MARK: - Settlement Status Section
+            Section {
+                if isSettled, let settlement = existingSettlement {
+                    // Already settled - show status
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(Theme.accent)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Settled")
+                                    .font(.headline)
+                                    .foregroundStyle(Theme.textPrimary)
+
+                                if let settledAt = settlement.settledAt {
+                                    Text(formatSettledDate(settledAt))
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.textSecondary)
+                                }
+                            }
+
+                            Spacer()
+                        }
+
+                        if let notes = settlement.notes, !notes.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Notes")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.textSecondary)
+
+                                Text(notes)
+                                    .font(.subheadline)
+                                    .foregroundStyle(Theme.textPrimary)
+                            }
+                            .padding(.top, 4)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                } else {
+                    // Not settled - show mark as settled UI
+                    VStack(alignment: .leading, spacing: 16) {
+                        TextField("Settlement notes (optional)", text: $settlementNotes, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .foregroundStyle(Theme.textPrimary)
+                            .padding(12)
+                            .background(Theme.elevatedBackground)
+                            .cornerRadius(Theme.cornerRadiusSmall)
+                            .lineLimit(3...6)
+
+                        Button {
+                            markAsSettled()
+                        } label: {
+                            HStack {
+                                Image(systemName: "checkmark.circle")
+                                Text("Mark as Settled")
+                            }
+                            .font(.headline)
+                            .foregroundStyle(Theme.background)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Theme.accent)
+                            .cornerRadius(Theme.cornerRadiusSmall)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+            } header: {
+                Text("Settlement Status")
+            }
+            .listRowBackground(Theme.cardBackground)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
+        .navigationTitle(player.name)
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack {
+                    Text(player.name)
+                        .font(.headline)
+                        .foregroundStyle(Theme.textPrimary)
+                    Text(dateRangeDescription)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func markAsSettled() {
+        if let existing = existingSettlement {
+            // Update existing settlement
+            existing.isSettled = true
+            existing.settledAt = Date()
+            existing.notes = settlementNotes.isEmpty ? nil : settlementNotes
+        } else {
+            // Create new settlement record
+            let newSettlement = PlayerSettlement(
+                isSettled: true,
+                settledAt: Date(),
+                notes: settlementNotes.isEmpty ? nil : settlementNotes,
+                periodWeekEndingDate: weekEndingDate,
+                player: player
+            )
+            modelContext.insert(newSettlement)
+        }
+
+        // Clear notes field
+        settlementNotes = ""
+    }
+
+    // MARK: - Formatting Helpers
+
+    private func formatCurrency(_ amount: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: abs(amount) as NSDecimalNumber) ?? "$\(abs(amount))"
+    }
+
+    private func formatCurrencySigned(_ amount: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        let formatted = formatter.string(from: abs(amount) as NSDecimalNumber) ?? "$\(abs(amount))"
+        return amount >= 0 ? "+\(formatted)" : "-\(formatted)"
+    }
+
+    private func formatSettledDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return "Settled on \(formatter.string(from: date))"
+    }
+}
+
+// MARK: - Balance Summary Card
+
+struct BalanceSummaryCard: View {
+    let report: PlayerSettlementReport
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Starting Balance -> Net Results -> Payments -> Ending Balance flow
+            BalanceLineItem(
+                label: "Starting Balance",
+                amount: report.startingBalance,
+                isHighlighted: false
+            )
+
+            BalanceLineItem(
+                label: "Net Bet Results",
+                amount: report.netBetResults,
+                showSign: true,
+                isHighlighted: false
+            )
+
+            if report.paymentsReceived != 0 {
+                BalanceLineItem(
+                    label: "Payments",
+                    amount: -report.paymentsReceived,
+                    showSign: true,
+                    isHighlighted: false
+                )
+            }
+
+            if report.adjustments != 0 {
+                BalanceLineItem(
+                    label: "Adjustments",
+                    amount: report.adjustments,
+                    showSign: true,
+                    isHighlighted: false
+                )
+            }
+
+            Divider()
+                .background(Theme.divider)
+
+            // Ending Balance (highlighted)
+            HStack {
+                Text("Ending Balance")
+                    .font(.headline)
+                    .foregroundStyle(Theme.textPrimary)
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(formatCurrency(report.endingBalance))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(endingBalanceColor)
+
+                    Text(balanceDescription)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    private var endingBalanceColor: Color {
+        if report.endingBalance > 0 {
+            return Theme.danger // Player owes bookie
+        } else if report.endingBalance < 0 {
+            return Theme.accent // Bookie owes player
+        } else {
+            return Theme.textSecondary
+        }
+    }
+
+    private var balanceDescription: String {
+        if report.endingBalance > 0 {
+            return "owes you"
+        } else if report.endingBalance < 0 {
+            return "you owe"
+        } else {
+            return "even"
+        }
+    }
+
+    private func formatCurrency(_ amount: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: abs(amount) as NSDecimalNumber) ?? "$\(abs(amount))"
+    }
+}
+
+// MARK: - Balance Line Item
+
+struct BalanceLineItem: View {
+    let label: String
+    let amount: Decimal
+    var showSign: Bool = false
+    var isHighlighted: Bool = false
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(isHighlighted ? .headline : .subheadline)
+                .foregroundStyle(isHighlighted ? Theme.textPrimary : Theme.textSecondary)
+
+            Spacer()
+
+            Text(formattedAmount)
+                .font(.system(size: isHighlighted ? 18 : 16, weight: isHighlighted ? .bold : .semibold, design: .rounded))
+                .foregroundStyle(amountColor)
+        }
+    }
+
+    private var formattedAmount: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        let absFormatted = formatter.string(from: abs(amount) as NSDecimalNumber) ?? "$\(abs(amount))"
+
+        if showSign && amount != 0 {
+            return amount > 0 ? "+\(absFormatted)" : "-\(absFormatted)"
+        }
+        return absFormatted
+    }
+
+    private var amountColor: Color {
+        if showSign {
+            if amount > 0 {
+                return Theme.danger // Adds to debt
+            } else if amount < 0 {
+                return Theme.accent // Reduces debt
+            }
+        }
+        return Theme.textPrimary
+    }
+}
+
+// MARK: - Betting Activity Card
+
+struct BettingActivityCard: View {
+    let report: PlayerSettlementReport
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Total bets
+            HStack {
+                Text("Total Bets Settled")
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Text("\(report.betsSettledCount)")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.textPrimary)
+            }
+
+            // Won/Lost breakdown
+            HStack(spacing: 16) {
+                // Won
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .foregroundStyle(Theme.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(report.betsWonCount)")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.accent)
+                        Text("Won")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Lost
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .foregroundStyle(Theme.danger)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(report.betsLostCount)")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.danger)
+                        Text("Lost")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Pushed
+                HStack(spacing: 8) {
+                    Image(systemName: "equal.circle.fill")
+                        .foregroundStyle(Theme.textSecondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(report.betsSettledCount - report.betsWonCount - report.betsLostCount)")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.textSecondary)
+                        Text("Push")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.top, 4)
+        }
+        .padding(.vertical, 8)
     }
 }
 
