@@ -12,6 +12,7 @@ struct BookiApp: App {
             Event.self,
             Market.self,
             AcceptancePolicy.self,
+            SettlementPeriod.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
