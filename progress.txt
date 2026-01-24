@@ -98,3 +98,31 @@ Started: Fri Jan 23 22:58:07 PST 2026
   - Success overlay shows briefly (1 second) before auto-dismissing sheet
   - Sheet presentation refreshes report automatically since @Query re-evaluates after ledger insert
 ---
+
+## 2026-01-23 - US-008
+- What was implemented: Collection status badges and filtering in Settlement views
+- Files changed:
+  - Booki/Views/WeeklySettlementView.swift (updated)
+- **Learnings for future iterations:**
+  - CollectionStatus enum is defined in Player.swift with cases: noStatus, reminded, promised, overdue
+  - Collection status color mapping: reminded=Theme.warning (yellow), promised=Theme.scheduled (blue), overdue=Theme.danger (red)
+  - Added "Needs Attention" filter to SettlementFilterOption to show players with collection status set
+  - PlayerSettlementRowView shows collection status badge next to player name and settled checkmark
+  - PlayerSettlementDetailView has Collection Status section with NavigationLink to PlayerDetailView for editing
+  - If player has .promised status, show promised payment date in detail view
+  - Collection status icons: bell.badge.fill (reminded), calendar.badge.clock (promised), exclamationmark.triangle.fill (overdue)
+---
+
+## 2026-01-23 - US-009
+- What was implemented: CSV export functionality for settlement reports
+- Files changed:
+  - Booki/Views/WeeklySettlementView.swift (updated)
+- **Learnings for future iterations:**
+  - ShareLink requires a URL, so create a temporary file with FileManager.default.temporaryDirectory
+  - CSV filename format: settlement_YYYY-MM-DD.csv using weekEndingDate
+  - Format Decimal values without currency symbol using NumberFormatter with .decimal style
+  - Escape player names containing commas by wrapping in double quotes
+  - CSV columns: Player Name, Starting Balance, Net Results, Payments, Adjustments, Ending Balance, Settled
+  - Use .onChange(of: selectedWeekEndingDate) to regenerate CSV when week selection changes
+  - Toolbar button with ShareLink shows system share sheet for CSV file
+---

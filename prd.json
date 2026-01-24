@@ -156,7 +156,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Surface collection status in settlement context"
     },
     {
@@ -174,7 +174,7 @@
         "Project builds and runs in Simulator"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Export for record keeping and external accounting"
     },
     {
