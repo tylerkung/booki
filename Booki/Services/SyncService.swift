@@ -675,19 +675,387 @@ final class SyncService: ObservableObject {
     // MARK: - Private Upload Methods
 
     /// Upload all pending local changes to the server
+    /// Uploads tables in dependency order: players first (others depend on player_id)
     private func uploadPendingChanges(bookieId: UUID) async throws {
-        for table in SyncableTable.allCases {
+        // Upload in dependency order: players before bets/ledger entries
+        let orderedTables: [SyncableTable] = [
+            .players,
+            .events,
+            .acceptancePolicies,
+            .bets,
+            .ledgerEntries,
+            .settlementPeriods,
+            .playerSettlements
+        ]
+
+        for table in orderedTables {
+            syncProgressDescription = "Uploading \(table.displayName)..."
             try await uploadTableChanges(table, bookieId: bookieId)
         }
     }
 
     /// Upload pending changes for a specific table
-    /// Placeholder implementation - actual sync logic will be in US-007
+    /// Finds records with needsSync=true and upserts them to Supabase
     private func uploadTableChanges(_ table: SyncableTable, bookieId: UUID) async throws {
-        // TODO: Implement in US-007 (Upload Sync)
-        // This is a placeholder to establish the service structure
-        print("Would upload pending \(table.displayName) changes for bookie \(bookieId)")
+        guard let context = modelContext else {
+            throw SyncServiceError.databaseError("Model context not configured")
+        }
+
+        switch table {
+        case .players:
+            try await uploadPlayers(bookieId: bookieId, context: context)
+        case .events:
+            try await uploadEvents(bookieId: bookieId, context: context)
+        case .bets:
+            try await uploadBets(bookieId: bookieId, context: context)
+        case .ledgerEntries:
+            try await uploadLedgerEntries(bookieId: bookieId, context: context)
+        case .acceptancePolicies:
+            try await uploadAcceptancePolicies(bookieId: bookieId, context: context)
+        case .settlementPeriods:
+            // Settlement tables not yet in DB schema - skip for now
+            print("Skipping settlement_periods upload - table not yet in database schema")
+        case .playerSettlements:
+            // Settlement tables not yet in DB schema - skip for now
+            print("Skipping player_settlements upload - table not yet in database schema")
+        }
     }
+
+    // MARK: - Upload Individual Tables
+
+    /// Upload pending players to Supabase
+    private func uploadPlayers(bookieId: UUID, context: ModelContext) async throws {
+        let descriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.needsSync == true })
+        let pendingPlayers = try context.fetch(descriptor)
+
+        guard !pendingPlayers.isEmpty else { return }
+
+        // Check for conflicts and upload each player
+        for player in pendingPlayers {
+            do {
+                // Check for version conflict before uploading
+                if try await hasConflict(table: "players", id: player.id, localVersion: player.version) {
+                    // Conflict detected - fetch server version and update local
+                    try await resolvePlayerConflict(player, bookieId: bookieId, context: context)
+                    continue
+                }
+
+                // Create upsert payload
+                let upsert = PlayerUpsert(from: player, bookieId: bookieId)
+
+                // Upsert to Supabase (insert or update based on id)
+                try await supabase
+                    .from("players")
+                    .upsert(upsert, onConflict: "id")
+                    .execute()
+
+                // Mark as synced and increment version
+                player.needsSync = false
+                player.lastSyncedAt = Date()
+                player.version += 1
+                player.bookieId = bookieId
+
+            } catch {
+                // Log error but continue with other records
+                print("Failed to upload player \(player.id): \(error)")
+                // Keep needsSync = true so it will retry next time
+            }
+        }
+
+        try context.save()
+    }
+
+    /// Upload pending events to Supabase
+    private func uploadEvents(bookieId: UUID, context: ModelContext) async throws {
+        let descriptor = FetchDescriptor<Event>(predicate: #Predicate { $0.needsSync == true })
+        let pendingEvents = try context.fetch(descriptor)
+
+        guard !pendingEvents.isEmpty else { return }
+
+        for event in pendingEvents {
+            do {
+                // Check for version conflict
+                if try await hasConflict(table: "events", id: event.id, localVersion: event.version) {
+                    try await resolveEventConflict(event, bookieId: bookieId, context: context)
+                    continue
+                }
+
+                let upsert = EventUpsert(from: event, bookieId: bookieId)
+
+                try await supabase
+                    .from("events")
+                    .upsert(upsert, onConflict: "id")
+                    .execute()
+
+                event.needsSync = false
+                event.lastSyncedAt = Date()
+                event.version += 1
+                event.bookieId = bookieId
+
+            } catch {
+                print("Failed to upload event \(event.id): \(error)")
+            }
+        }
+
+        try context.save()
+    }
+
+    /// Upload pending bets to Supabase
+    private func uploadBets(bookieId: UUID, context: ModelContext) async throws {
+        let descriptor = FetchDescriptor<Bet>(predicate: #Predicate { $0.needsSync == true })
+        let pendingBets = try context.fetch(descriptor)
+
+        guard !pendingBets.isEmpty else { return }
+
+        for bet in pendingBets {
+            do {
+                // Check for version conflict
+                if try await hasConflict(table: "bets", id: bet.id, localVersion: bet.version) {
+                    try await resolveBetConflict(bet, bookieId: bookieId, context: context)
+                    continue
+                }
+
+                // Create upsert payload (requires player relationship)
+                guard let upsert = BetUpsert(from: bet, bookieId: bookieId) else {
+                    print("Skipping bet \(bet.id) - no associated player")
+                    continue
+                }
+
+                try await supabase
+                    .from("bets")
+                    .upsert(upsert, onConflict: "id")
+                    .execute()
+
+                bet.needsSync = false
+                bet.lastSyncedAt = Date()
+                bet.version += 1
+                bet.bookieId = bookieId
+
+            } catch {
+                print("Failed to upload bet \(bet.id): \(error)")
+            }
+        }
+
+        try context.save()
+    }
+
+    /// Upload pending ledger entries to Supabase
+    /// Note: Ledger entries are append-only - only insert new records, never update
+    private func uploadLedgerEntries(bookieId: UUID, context: ModelContext) async throws {
+        let descriptor = FetchDescriptor<LedgerEntry>(predicate: #Predicate { $0.needsSync == true })
+        let pendingEntries = try context.fetch(descriptor)
+
+        guard !pendingEntries.isEmpty else { return }
+
+        for entry in pendingEntries {
+            do {
+                // Ledger entries are append-only, so we just insert (no conflict check)
+                // If the entry already exists on server, the upsert will succeed without change
+                guard let insert = LedgerEntryInsert(from: entry, bookieId: bookieId) else {
+                    print("Skipping ledger entry \(entry.id) - no associated player")
+                    continue
+                }
+
+                try await supabase
+                    .from("ledger_entries")
+                    .upsert(insert, onConflict: "id")
+                    .execute()
+
+                entry.needsSync = false
+                entry.lastSyncedAt = Date()
+                entry.bookieId = bookieId
+
+            } catch {
+                print("Failed to upload ledger entry \(entry.id): \(error)")
+            }
+        }
+
+        try context.save()
+    }
+
+    /// Upload pending acceptance policies to Supabase
+    private func uploadAcceptancePolicies(bookieId: UUID, context: ModelContext) async throws {
+        let descriptor = FetchDescriptor<AcceptancePolicy>(predicate: #Predicate { $0.needsSync == true })
+        let pendingPolicies = try context.fetch(descriptor)
+
+        guard !pendingPolicies.isEmpty else { return }
+
+        for policy in pendingPolicies {
+            do {
+                // Check for version conflict
+                if try await hasConflict(table: "acceptance_policies", id: policy.id, localVersion: policy.version) {
+                    try await resolveAcceptancePolicyConflict(policy, bookieId: bookieId, context: context)
+                    continue
+                }
+
+                let upsert = AcceptancePolicyUpsert(from: policy, bookieId: bookieId)
+
+                try await supabase
+                    .from("acceptance_policies")
+                    .upsert(upsert, onConflict: "id")
+                    .execute()
+
+                policy.needsSync = false
+                policy.lastSyncedAt = Date()
+                policy.version += 1
+                policy.bookieId = bookieId
+
+            } catch {
+                print("Failed to upload acceptance policy \(policy.id): \(error)")
+            }
+        }
+
+        try context.save()
+    }
+
+    // MARK: - Conflict Detection and Resolution
+
+    /// Check if a record on the server has a higher version than local
+    /// Returns true if there's a conflict (server version > local version)
+    private func hasConflict(table: String, id: UUID, localVersion: Int) async throws -> Bool {
+        // Query server for the record's version
+        let response: [VersionRecord] = try await supabase
+            .from(table)
+            .select("version")
+            .eq("id", value: id.uuidString)
+            .execute()
+            .value
+
+        // If record doesn't exist on server, no conflict
+        guard let serverRecord = response.first else {
+            return false
+        }
+
+        // Conflict if server version is higher
+        return serverRecord.version > localVersion
+    }
+
+    /// Resolve player conflict by fetching server version
+    private func resolvePlayerConflict(_ player: Player, bookieId: UUID, context: ModelContext) async throws {
+        let records: [PlayerRecord] = try await supabase
+            .from("players")
+            .select()
+            .eq("id", value: player.id.uuidString)
+            .execute()
+            .value
+
+        if let serverRecord = records.first {
+            // Log the conflict
+            print("Conflict detected for player \(player.id): local v\(player.version) vs server v\(serverRecord.updatedAt)")
+
+            // Update local with server data
+            try upsertPlayer(serverRecord, bookieId: bookieId, context: context)
+
+            // Post notification for UI to show conflict message
+            NotificationCenter.default.post(
+                name: .syncConflictDetected,
+                object: nil,
+                userInfo: ["table": "players", "id": player.id, "message": "Player '\(player.name)' was modified elsewhere. Your changes were not saved."]
+            )
+        }
+    }
+
+    /// Resolve event conflict by fetching server version
+    private func resolveEventConflict(_ event: Event, bookieId: UUID, context: ModelContext) async throws {
+        let records: [EventRecord] = try await supabase
+            .from("events")
+            .select()
+            .eq("id", value: event.id.uuidString)
+            .execute()
+            .value
+
+        if let serverRecord = records.first {
+            print("Conflict detected for event \(event.id): local v\(event.version)")
+            try upsertEvent(serverRecord, bookieId: bookieId, context: context)
+
+            NotificationCenter.default.post(
+                name: .syncConflictDetected,
+                object: nil,
+                userInfo: ["table": "events", "id": event.id, "message": "Event '\(event.homeTeam) vs \(event.awayTeam)' was modified elsewhere. Your changes were not saved."]
+            )
+        }
+    }
+
+    /// Resolve bet conflict by fetching server version
+    private func resolveBetConflict(_ bet: Bet, bookieId: UUID, context: ModelContext) async throws {
+        let records: [BetRecord] = try await supabase
+            .from("bets")
+            .select()
+            .eq("id", value: bet.id.uuidString)
+            .execute()
+            .value
+
+        if let serverRecord = records.first {
+            print("Conflict detected for bet \(bet.id): local v\(bet.version)")
+            try upsertBet(serverRecord, bookieId: bookieId, context: context)
+
+            NotificationCenter.default.post(
+                name: .syncConflictDetected,
+                object: nil,
+                userInfo: ["table": "bets", "id": bet.id, "message": "A bet was modified elsewhere. Your changes were not saved."]
+            )
+        }
+    }
+
+    /// Resolve acceptance policy conflict by fetching server version
+    private func resolveAcceptancePolicyConflict(_ policy: AcceptancePolicy, bookieId: UUID, context: ModelContext) async throws {
+        let records: [AcceptancePolicyRecord] = try await supabase
+            .from("acceptance_policies")
+            .select()
+            .eq("id", value: policy.id.uuidString)
+            .execute()
+            .value
+
+        if let serverRecord = records.first {
+            print("Conflict detected for acceptance policy \(policy.id): local v\(policy.version)")
+            try upsertAcceptancePolicy(serverRecord, bookieId: bookieId, context: context)
+
+            NotificationCenter.default.post(
+                name: .syncConflictDetected,
+                object: nil,
+                userInfo: ["table": "acceptance_policies", "id": policy.id, "message": "Acceptance policy was modified elsewhere. Your changes were not saved."]
+            )
+        }
+    }
+
+    // MARK: - Public Upload Trigger
+
+    /// Trigger upload for pending changes after a local write
+    /// Call this after creating/updating/deleting local records
+    func triggerUpload() async {
+        guard let bookieId = authManager?.currentBookieId else {
+            print("Cannot trigger upload: no bookie ID")
+            return
+        }
+
+        // Don't trigger if already syncing
+        guard syncStatus != .syncing else { return }
+
+        do {
+            syncStatus = .syncing
+            try await uploadPendingChanges(bookieId: bookieId)
+            syncStatus = .idle
+            await updatePendingChangesCount()
+        } catch {
+            print("Upload failed: \(error)")
+            syncStatus = .error(error.localizedDescription)
+        }
+    }
+}
+
+// MARK: - Version Record for Conflict Detection
+
+/// Minimal record for fetching just the version field
+private struct VersionRecord: Codable {
+    let version: Int
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    /// Posted when a sync conflict is detected
+    /// userInfo contains: table (String), id (UUID), message (String)
+    static let syncConflictDetected = Notification.Name("syncConflictDetected")
 }
 
 // MARK: - Sync Status Indicator View
