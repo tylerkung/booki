@@ -6,6 +6,7 @@ enum SettlementFilterOption: String, CaseIterable, Identifiable {
     case all = "All"
     case unsettled = "Unsettled"
     case settled = "Settled"
+    case needsAttention = "Needs Attention"
 
     var id: String { rawValue }
 }
@@ -107,7 +108,15 @@ struct WeeklySettlementView: View {
             return sorted.filter { !isPlayerSettled($0.player) }
         case .settled:
             return sorted.filter { isPlayerSettled($0.player) }
+        case .needsAttention:
+            return sorted.filter { hasCollectionStatus($0.player) }
         }
+    }
+
+    /// Check if a player has a collection status set (not nil and not .noStatus)
+    private func hasCollectionStatus(_ player: Player) -> Bool {
+        guard let status = player.collectionStatus else { return false }
+        return status != .noStatus
     }
 
     // MARK: - Static Methods
@@ -321,6 +330,11 @@ struct PlayerSettlementRowView: View {
                             .font(.subheadline)
                             .foregroundStyle(Theme.accent)
                     }
+
+                    // Collection status badge
+                    if let badge = collectionStatusBadge {
+                        badge
+                    }
                 }
 
                 // Bet activity summary
@@ -345,6 +359,30 @@ struct PlayerSettlementRowView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    /// Collection status badge view if player has a collection status set
+    @ViewBuilder
+    private var collectionStatusBadge: some View? {
+        if let status = report.player.collectionStatus, status != .noStatus {
+            Text(status.displayName)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(collectionStatusColor(for: status))
+                .clipShape(Capsule())
+        }
+    }
+
+    /// Get the color for a collection status
+    private func collectionStatusColor(for status: CollectionStatus) -> Color {
+        switch status {
+        case .noStatus: return Theme.textMuted
+        case .reminded: return Theme.warning // Yellow/orange
+        case .promised: return Theme.scheduled // Blue
+        case .overdue: return Theme.danger // Red
+        }
     }
 
     private var balanceColor: Color {
@@ -488,6 +526,50 @@ struct PlayerSettlementDetailView: View {
                     .padding(.vertical, 4)
                 } header: {
                     Text("Adjustments")
+                }
+                .listRowBackground(Theme.cardBackground)
+            }
+
+            // MARK: - Collection Status Section (only show if player has collection status)
+            if let status = player.collectionStatus, status != .noStatus {
+                Section {
+                    NavigationLink {
+                        PlayerDetailView(player: player)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: collectionStatusIcon(for: status))
+                                .font(.title2)
+                                .foregroundStyle(collectionStatusColor(for: status))
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Collection Status")
+                                    .font(.subheadline)
+                                    .foregroundStyle(Theme.textSecondary)
+
+                                HStack(spacing: 8) {
+                                    Text(status.displayName)
+                                        .font(.headline)
+                                        .foregroundStyle(Theme.textPrimary)
+
+                                    // Show promised date if applicable
+                                    if status == .promised, let promisedDate = player.promisedPaymentDate {
+                                        Text("by \(promisedDate, style: .date)")
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.textSecondary)
+                                    }
+                                }
+                            }
+
+                            Spacer()
+
+                            Text("Edit")
+                                .font(.subheadline)
+                                .foregroundStyle(Theme.accent)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                } header: {
+                    Text("Collection Status")
                 }
                 .listRowBackground(Theme.cardBackground)
             }
@@ -670,6 +752,28 @@ struct PlayerSettlementDetailView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return "Settled on \(formatter.string(from: date))"
+    }
+
+    // MARK: - Collection Status Helpers
+
+    /// Get the color for a collection status
+    private func collectionStatusColor(for status: CollectionStatus) -> Color {
+        switch status {
+        case .noStatus: return Theme.textMuted
+        case .reminded: return Theme.warning // Yellow/orange
+        case .promised: return Theme.scheduled // Blue
+        case .overdue: return Theme.danger // Red
+        }
+    }
+
+    /// Get the icon for a collection status
+    private func collectionStatusIcon(for status: CollectionStatus) -> String {
+        switch status {
+        case .noStatus: return "questionmark.circle"
+        case .reminded: return "bell.badge.fill"
+        case .promised: return "calendar.badge.clock"
+        case .overdue: return "exclamationmark.triangle.fill"
+        }
     }
 }
 
