@@ -1,6 +1,8 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - BetSlipSelection Model (Active - shared with CompactGameRow)
+
 /// Selection model for bet slip integration
 /// Used to track which odds buttons are selected across game cards
 struct BetSlipSelection: Equatable, Hashable {
@@ -21,10 +23,14 @@ struct BetSlipSelection: Equatable, Hashable {
     }
 }
 
-/// US-037: Game Card Component
+// MARK: - Legacy GameCardView (Deprecated - use CompactGameRow instead)
+
+/// US-037: Game Card Component (LEGACY)
+/// @available(*, deprecated, message: "Use CompactGameRow for compact table-style layout")
 /// Displays game info with quick-pick odds buttons
 /// Team names aligned with spread and ML boxes in a clean grid layout
 /// US-008: Lock status indicator for events approaching lock time
+/// US-009: Marked as legacy - replaced by CompactGameRow for main games list
 struct GameCardView: View {
     let event: Event
     let selections: Set<BetSlipSelection>
@@ -469,10 +475,12 @@ struct GameCardView: View {
 
 }
 
-// MARK: - Spread Button Component
+// MARK: - Legacy Spread Button Component (Deprecated)
 
 /// Spread button showing spread value as main text, odds as secondary
+/// @available(*, deprecated, message: "Use compactOddsButton in CompactGameRow instead")
 /// US-008: Added isDisabled parameter for locked events
+/// US-009: Marked as legacy - replaced by inline compactOddsButton
 struct SpreadButton: View {
     let spreadValue: String
     let odds: Int
@@ -578,10 +586,12 @@ struct SpreadButton: View {
     }
 }
 
-// MARK: - ML Button Component
+// MARK: - Legacy ML Button Component (Deprecated)
 
 /// Moneyline button showing just the odds
+/// @available(*, deprecated, message: "Use compactOddsButton in CompactGameRow instead")
 /// US-008: Added isDisabled parameter for locked events
+/// US-009: Marked as legacy - replaced by inline compactOddsButton
 struct MLButton: View {
     let odds: Int
     let isSelected: Bool
@@ -679,10 +689,12 @@ struct MLButton: View {
     }
 }
 
-// MARK: - Total Button Component
+// MARK: - Legacy Total Button Component (Deprecated)
 
 /// Total button showing total value (o220.5/u220.5) as main text, odds as secondary
+/// @available(*, deprecated, message: "Use compactOddsButton in CompactGameRow instead")
 /// US-008: Added isDisabled parameter for locked events
+/// US-009: Marked as legacy - replaced by inline compactOddsButton
 struct TotalButton: View {
     let totalValue: String
     let odds: Int
@@ -788,9 +800,10 @@ struct TotalButton: View {
     }
 }
 
-// MARK: - Legacy Odds Button (for expanded markets)
+// MARK: - OddsButton (Active - used by MarketSelectionView)
 
 /// Generic odds button for expanded market section
+/// US-009: Kept active for use in MarketSelectionView
 struct OddsButton: View {
     let topLabel: String?
     let odds: Int
