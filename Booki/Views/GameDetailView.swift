@@ -461,8 +461,8 @@ struct GameDetailView: View {
     private func marketTypeSection(
         title: String,
         markets: [Market],
-        formatSideA: (String) -> String,
-        formatSideB: (String) -> String
+        formatSideA: @escaping (String) -> String,
+        formatSideB: @escaping (String) -> String
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             // Section header

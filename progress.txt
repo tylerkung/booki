@@ -1,5 +1,5 @@
 # Ralph Progress Log
-Started: Sat Jan 24 22:34:47 PST 2026
+Started: Sat Jan 25 2026
 ---
 
 ## Codebase Patterns
@@ -232,4 +232,94 @@ Started: Sat Jan 24 22:34:47 PST 2026
   - Pattern: Bet slip integration was implemented alongside the view creation (US-010/US-011)
   - Note: BetSlipManager is a singleton shared across all views - selections persist across navigation
   - Note: Future PRDs should verify if acceptance criteria are already met by earlier stories
+---
+
+## 2026-01-25 - Odds API Integration (US-001 through US-013)
+
+### US-001: OddsAPIService
+- **What was implemented**: Created OddsAPIService.swift for communicating with The Odds API
+- **Files created**: Booki/Services/OddsAPIService.swift
+- **Key details**:
+  - OddsAPIError enum for typed errors (invalidAPIKey, rateLimitExceeded, serverError, networkError, decodingError, noAPIKey, quotaExhausted)
+  - Base URL: https://api.the-odds-api.com
+  - @AppStorage for API key and bookmaker preference
+  - Singleton pattern (OddsAPIService.shared)
+
+### US-002: API Response Models
+- **What was implemented**: Created Codable models for API responses
+- **Files created**: Booki/Models/OddsAPIModels.swift
+- **Models**: OddsSport, OddsEvent, OddsBookmaker, OddsMarket, OddsOutcome, OddsScore, TeamScore
+
+### US-003: Fetch Sports
+- **What was implemented**: fetchSports() async method
+- **Endpoint**: GET /v4/sports/?apiKey={key}
+- **Filters**: Only returns active sports
+
+### US-004: Fetch Events with Odds
+- **What was implemented**: fetchOdds(sport:) async method
+- **Endpoint**: GET /v4/sports/{sport}/odds/
+- **Parameters**: regions=us, markets=h2h,spreads,totals, oddsFormat=american
+
+### US-005: External ID Fields
+- **What was implemented**: Added fields to Event model
+- **Fields added**: externalId, externalSource, lastOddsUpdate, homeScore, awayScore
+- **Note**: Supabase migration must be applied
+
+### US-006: OddsAPIMapper
+- **What was implemented**: Created mapper to convert API responses to app models
+- **Files created**: Booki/Services/OddsAPIMapper.swift
+- **Methods**: mapToEvent(), mapToMarkets()
+- **Sport key mapping**: basketball_nba -> Basketball/NBA, etc.
+
+### US-007: Import Events UI
+- **What was implemented**: Sheet for importing events from API
+- **Files created**: Booki/Views/ImportEventsView.swift
+- **Features**: Sport picker, loading state, success/error states, skip duplicates
+
+### US-008: Fetch Scores
+- **What was implemented**: fetchScores(sport:daysFrom:) async method
+- **Endpoint**: GET /v4/sports/{sport}/scores/
+- **Filters**: Only returns completed games
+
+### US-009: Update Events with Scores
+- **What was implemented**: updateEventsWithScores() method in FetchScoresView
+- **Logic**: Matches by externalId, parses scores, sets homeScore/awayScore, marks status as .final
+
+### US-010: Fetch Scores UI
+- **What was implemented**: Sheet for fetching and applying scores
+- **Files created**: Booki/Views/FetchScoresView.swift
+- **Features**: Fetches scores for all sports with imported events
+
+### US-011: API Settings Section
+- **What was implemented**: Odds API section in SettingsView
+- **Features**: SecureField for API key, bookmaker picker, quota display, test connection button
+
+### US-012: Quota Tracking
+- **What was implemented**: Published quota properties with AppStorage persistence
+- **Properties**: quotaRemaining, quotaUsed
+- **Headers parsed**: x-requests-remaining, x-requests-used
+
+### US-013: Refresh Odds
+- **What was implemented**: Sheet for refreshing odds on upcoming events
+- **Files created**: Booki/Views/RefreshOddsView.swift
+- **Filters**: Only events within 24 hours with externalId
+
+### Files Changed Summary
+- **Created**:
+  - Booki/Services/OddsAPIService.swift
+  - Booki/Services/OddsAPIMapper.swift
+  - Booki/Models/OddsAPIModels.swift
+  - Booki/Views/ImportEventsView.swift
+  - Booki/Views/FetchScoresView.swift
+  - Booki/Views/RefreshOddsView.swift
+- **Modified**:
+  - Booki/Models/Event.swift (added external ID and score fields)
+  - Booki/Views/SettingsView.swift (added Odds API settings section)
+  - Booki/Views/EventsListView.swift (added Import/Fetch/Refresh menu options)
+
+### Learnings
+- Pattern: Use @AppStorage for simple settings, Keychain for production API keys
+- Pattern: Singleton service with @Published properties for reactive quota updates
+- Pattern: Sport key mapping dictionary for API key -> display name conversion
+- Note: EventsListView toolbar now uses Menu for multiple actions
 ---

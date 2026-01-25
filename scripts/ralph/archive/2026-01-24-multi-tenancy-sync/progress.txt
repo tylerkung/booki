@@ -1,0 +1,6 @@
+# Ralph Progress Log
+# Project: Booki - Phase 4: Player Invites + Logout
+# Branch: ralph/player-experience-v2
+
+---
+

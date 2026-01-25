@@ -1,0 +1,683 @@
+## 2026-01-22 - US-030
+- What was implemented:
+  - Implemented CSV export for ledger entries in ExportDataView (SettingsView.swift)
+  - Export button shows ledger count: "Export Ledger (N)"
+  - CSV includes all required columns: date, player, type, amount, description, related bet
+  - Related bet column shows formatted bet info: "Event - Side Odds" (e.g., "Bulls @ Lakers - Bulls +150")
+  - Reused existing patterns: DateFormatter, NumberFormatter, escapeCSV, ShareSheet
+  - Button disabled when no ledger entries exist
+  - File exported as "booki_ledger_export.csv" to temp directory
+- Files changed:
+  - Booki/Views/SettingsView.swift (modified - added ledger CSV generation and export functionality)
+- **Learnings for future iterations:**
+  - LedgerEntry has `entryDescription` property (not `description`) to avoid shadowing built-in Swift property
+  - Related bet info uses eventName lookup plus bet.side and bet.odds for human-readable description
+  - Both export functions follow same pattern: generate CSV, write to temp file, present ShareSheet
+  - Ledger export completes the data export feature set alongside bet export
+---
+
+## 2026-01-22 - US-029
+- What was implemented:
+  - Implemented CSV export for bets in ExportDataView (SettingsView.swift)
+  - Export button shows bet count: "Export Bets (N)"
+  - CSV includes all required columns: date, player, event, market, side, odds, stake, status, result, payout
+  - Date formatting using DateFormatter with short date/time style
+  - Proper CSV escaping for values containing commas, quotes, or newlines
+  - Payout calculation: Win = profit (LiabilityService.calculatePayout), Loss = -stake, Push = 0
+  - ShareSheet using UIActivityViewController for iOS share functionality
+  - Button disabled when no bets exist
+  - File exported as "booki_bets_export.csv" to temp directory
+- Files changed:
+  - Booki/Views/SettingsView.swift (modified - full ExportDataView implementation with CSV generation and ShareSheet)
+- **Learnings for future iterations:**
+  - UIViewControllerRepresentable pattern wraps UIActivityViewController for SwiftUI
+  - CSV escaping: wrap values with quotes if they contain comma/quote/newline, double-escape quotes
+  - Use FileManager.default.temporaryDirectory for temporary export files
+  - NumberFormatter with .decimal style for consistent monetary value formatting
+  - Query events separately to map eventId back to readable event names
+---
+
+## 2026-01-22 - US-027
+- What was implemented:
+  - Created PlayerHistoryView for players to see their submitted bets and status
+  - Account Summary section showing: current balance (prominent largeTitle), available credit, credit limit, open liability
+  - Balance color coding: secondary for positive (owes bookie), green for negative (winning)
+  - Bet History section listing all player bets sorted by newest first
+  - HistoryBetRowView component showing: event name, status badge (color-coded), market, side, odds, stake, date
+  - For settled bets: shows outcome (Win/Loss/Push) and payout amount with color coding
+  - Payout calculations: Win = profit from LiabilityService, Loss = -stake, Push = 0
+  - Added navigation link "View My Bets" in PlayerDetailView Actions section
+  - Uses ContentUnavailableView for empty state when no bets
+- Files changed:
+  - Booki/Views/PlayerHistoryView.swift (new)
+  - Booki/Views/PlayersListView.swift (modified - added navigation link to PlayerHistoryView)
+  - Booki.xcodeproj/project.pbxproj (modified - added PlayerHistoryView.swift to project)
+- **Learnings for future iterations:**
+  - For settled bets, calculate payout using LiabilityService.calculatePayout for wins
+  - Loss payout is simply -stake, Push payout is 0
+  - PlayerBalanceSummary provides all needed financial info for player display
+  - Reuse existing patterns: status color-coding, currency formatting, date formatting
+  - Access PlayerHistoryView from PlayerDetailView to keep player-specific navigation organized
+---
+
+## 2026-01-22 - US-024
+- What was implemented:
+  - Replaced MarketSelectionView placeholder with full implementation
+  - Event info section showing matchup, sport, and league
+  - Markets grouped by type (Spread, Total, Moneyline) using orderedMarketTypes array
+  - MarketRowView component with two tappable side buttons (sideA and sideB)
+  - Tappable buttons show side label + odds with proper formatting (+/-)
+  - Selection highlighting: selected side has blue background with white text
+  - Selection summary section shows chosen side and odds when selected
+  - Continue button in safeAreaInset that appears only when selection made
+  - BetSelection struct for passing market/side/odds to next view via NavigationLink
+  - StakeEntryView placeholder created for US-025 to enable navigation
+  - Handles empty markets case with ContentUnavailableView
+- Files changed:
+  - Booki/Views/SubmitBetView.swift (modified - replaced MarketSelectionView placeholder)
+- **Learnings for future iterations:**
+  - Use Dictionary(grouping:by:) to group markets by type for section display
+  - BetSelection struct needs Hashable conformance for NavigationLink value
+  - Use safeAreaInset(edge: .bottom) for floating action buttons
+  - .buttonStyle(.plain) on buttons inside List rows prevents row selection interference
+  - Market model is @Model and uses UUID for id - need custom Hashable on wrapper struct
+  - SelectedSide enum pattern cleanly handles A vs B selection state
+---
+
+## 2026-01-22 - US-023
+- What was implemented:
+  - Created SubmitBetView for players to browse available events
+  - Player account info section showing available credit and credit limit
+  - Events grouped by sport/league using nested Sections
+  - EventRowView component showing: matchup (awayTeam @ homeTeam), start time, live status badge
+  - Filter for available events (excludes events with status .final)
+  - NavigationLink to MarketSelectionView (placeholder for US-024)
+  - Navigation from PlayerDetailView via "Submit Request" button (only shown for active players)
+  - Uses compliant language throughout ("Submit Request" instead of "Place Bet")
+- Files changed:
+  - Booki/Views/SubmitBetView.swift (new)
+  - Booki/Views/PlayersListView.swift (modified - added navigation to SubmitBetView)
+  - Booki.xcodeproj/project.pbxproj (modified - added SubmitBetView.swift to project)
+- **Learnings for future iterations:**
+  - Use nested Dictionary for grouping events by sport then league: [String: [String: [Event]]]
+  - Event model is @Model and automatically Hashable, works with NavigationLink(value:)
+  - Use computed Color property for ternary color selection to avoid HierarchicalShapeStyle/Color type mismatch
+  - MarketSelectionView placeholder created for US-024 to enable navigation
+  - navigationDestination(for: Event.self) enables type-safe navigation to market selection
+---
+
+## 2026-01-22 - US-022
+- What was implemented:
+  - Replaced AddPlayerSheet placeholder with full implementation
+  - Form fields: name (required), email (optional), creditLimit (optional, defaults to 0)
+  - Name field with textContentType .name and autocorrectionDisabled
+  - Email field with textContentType .emailAddress, emailAddress keyboard, lowercase autocapitalization disabled
+  - Credit limit field with decimalPad keyboard
+  - Preview section showing entered values with formatting (currency for credit limit)
+  - Validation: name is required (trimmed non-empty), email and credit limit are optional
+  - Save button disabled until valid input
+  - Save creates player via PlayerService.addPlayer and inserts into modelContext
+  - Sheet dismisses on save (list updates automatically via SwiftData reactivity)
+- Files changed:
+  - Booki/Views/PlayersListView.swift (modified - full AddPlayerSheet implementation)
+- **Learnings for future iterations:**
+  - PlayerService.addPlayer returns a Player that must be inserted into modelContext
+  - Use .textContentType(.name) and .textContentType(.emailAddress) for keyboard suggestions
+  - Use .autocapitalization(.none) for email fields in SwiftUI
+  - Optional fields can default to nil when empty string: email.isEmpty ? nil : email
+  - Decimal conversion from String via Double intermediate: Decimal(Double(string))
+---
+
+## 2026-01-22 - US-021
+- What was implemented:
+  - Replaced PlayerDetailView placeholder with full implementation
+  - Player info section showing: status badge (color-coded), email
+  - Balance section showing: balance owed, credit limit, available credit, open liability (all with color coding)
+  - Bet history section listing all player bets sorted by date (newest first)
+  - PlayerBetRowView component showing: event name, status badge, side, odds, stake, date, grade result
+  - Archive/Ban/Reactivate buttons with confirmation dialogs (contextual based on player status)
+  - Balance adjustment sheet (BalanceAdjustmentSheet) with:
+    - Amount input (decimal pad)
+    - Credit/debit toggle (negative = credit)
+    - Description field (multiline)
+    - Preview of adjustment amount
+    - Validation (amount != 0, description not empty)
+    - Saves via PlayerService.adjustBalance creating LedgerEntry
+- Files changed:
+  - Booki/Views/PlayersListView.swift (modified - full PlayerDetailView, PlayerBetRowView, BalanceAdjustmentSheet implementation)
+- **Learnings for future iterations:**
+  - Use computed Color properties for ternary color selection (e.g., balanceOwedColor) to avoid HierarchicalShapeStyle/Color type mismatch
+  - PlayerService.archivePlayer/banPlayer/reactivatePlayer return Result<Void, PlayerServiceError>
+  - PlayerService.adjustBalance returns LedgerEntry that needs to be inserted into modelContext
+  - Use confirmation dialogs for status changes with descriptive messages about what will happen
+  - Filter bets by player: allBets.filter { $0.player?.id == player.id }
+  - DateFormatter with dateStyle: .short and timeStyle: .short for compact bet row dates
+---
+
+## 2026-01-22 - US-020
+- What was implemented:
+  - Updated PlayersListView from placeholder to full player list view
+  - Created PlayerRowView component showing: player name, status badge, balance, credit limit, utilization %
+  - Status badges with color coding: green=active, gray=archived, red=banned (Capsule styled)
+  - Balance display with color coding: secondary for positive (owes bookie), green for negative (bookie owes player)
+  - Utilization percentage display with color coding: red>=90%, orange>=70%, primary otherwise
+  - Toggle button in toolbar to show/hide archived players (uses .toggleStyle(.button))
+  - Add Player button in toolbar that presents AddPlayerSheet (placeholder for US-022)
+  - NavigationLink to PlayerDetailView on tap (placeholder for US-021)
+  - ContentUnavailableView for empty state when no players
+  - Balance and utilization computed using BalanceService.playerSummary
+- Files changed:
+  - Booki/Views/PlayersListView.swift (modified - full implementation)
+- **Learnings for future iterations:**
+  - Use BalanceService.playerSummary to get comprehensive player financial state
+  - Utilization formula: (creditLimit - availableCredit) / creditLimit * 100
+  - Toggle with .toggleStyle(.button) provides compact toolbar toggle
+  - Player model is @Model and automatically Hashable, works directly with NavigationLink(value:)
+  - Filter archived players with: players.filter { $0.status != .archived }
+  - Use computed property for filteredPlayers based on showArchived state
+  - foregroundStyle type mismatch: use computed Color property when mixing with HierarchicalShapeStyle
+---
+
+## 2026-01-22 - US-019
+- What was implemented:
+  - Replaced GradingView placeholder with full implementation
+  - Lists bets with status `readyToGrade`, sorted by creation date (oldest first)
+  - GradingBetRow component showing: player name, event name, final score (if available), bet details (market, side, odds, stake)
+  - Suggested outcome feature that parses event finalScore and suggests Win/Loss/Push based on:
+    - Moneyline bets: compares bet side to winning team
+    - Total (over/under) bets: compares total points to line
+    - Spread bets: applies spread to point differential
+  - Win/Loss/Push buttons for each bet using GradingService.gradeBet
+  - Multi-select mode with Select/Done toggle button in toolbar
+  - Bulk grading via Menu dropdown (Grade All Win/Loss/Push) when bets selected
+  - ContentUnavailableView for empty state when no bets to grade
+- Files changed:
+  - Booki/Views/GradingView.swift (modified - full implementation)
+- **Learnings for future iterations:**
+  - Use Set<UUID> for tracking multi-select state (efficient contains/insert/remove)
+  - Event finalScore format expected as "homeScore-awayScore" (e.g., "24-17")
+  - Regex pattern `#"[+-]?\d+\.?\d*"#` extracts numeric lines/spreads from bet side strings
+  - Multi-select UI pattern: isMultiSelectMode state toggles button visibility and row checkboxes
+  - Menu with Label buttons provides good bulk action UX in toolbar
+---
+
+## 2026-01-22 - US-018
+- What was implemented:
+  - Created EventDetailView accessible from dashboard risk list via NavigationLink
+  - Event Info section showing: matchup (awayTeam @ homeTeam), sport, league, start time, status badge (blue=scheduled, green=live, gray=final), final score (if available)
+  - Exposure Breakdown section showing:
+    - Per-side exposure with soft (pending) and hard (accepted) breakdown
+    - Color-coded indicators: orange for pending, blue for accepted
+    - Max exposure total for the event
+  - Bets section listing all bets for this event with:
+    - Player name, status badge (color-coded)
+    - Side, odds (formatted with +/-), stake
+  - Liability by Side section showing:
+    - Total liability per side
+    - Bet counts (total, pending, accepted)
+  - Modified DashboardView to add NavigationLink to EventDetailView from top risk events
+  - Added navigationDestination(for: Event.self) to DashboardView NavigationStack
+  - Created supporting components: ExposureSideRow, EventBetRow, LiabilitySideRow
+- Files changed:
+  - Booki/Views/EventDetailView.swift (new)
+  - Booki/Views/DashboardView.swift (modified - added navigation to EventDetailView)
+  - Booki.xcodeproj/project.pbxproj (modified - added EventDetailView.swift to project)
+- **Learnings for future iterations:**
+  - Event model is @Model and automatically Hashable, works directly with NavigationLink(value:)
+  - SideExposure struct from ExposureService can be iterated via EventExposure.sides
+  - Use id: \.side for ForEach when iterating SideExposure array (side is unique per event)
+  - ExposureService.calculateEventExposure returns EventExposure with sides breakdown
+  - LiabilityService.calculateTotalLiability can compute liability for any [Bet] array
+---
+
+## 2026-01-22 - US-017
+- What was implemented:
+  - Replaced BetDetailView placeholder with full implementation
+  - Displays all bet information: status, grade result, event details, bet details (market, side, odds, stake), potential payout, player info, metadata
+  - Status badge with color coding (same colors as BetRowView)
+  - Event section shows: matchup, sport, league, start time, event status, final score (if available)
+  - Potential Payout section showing: profit if win (calculated via LiabilityService), total return (stake + profit)
+  - Contextual action buttons based on bet status:
+    - Pending: Accept Bet (green), Decline Bet (destructive)
+    - Accepted: Void Bet (destructive with confirmation dialog)
+    - Graded: Settle Bet (green with confirmation dialog)
+  - Actions call BetService (accept/decline/void) and GradingService (settle)
+  - Settle action creates LedgerEntry and inserts into modelContext
+  - Confirmation dialogs for void and settle actions with appropriate messaging
+  - LabeledContent SwiftUI component for consistent key-value display
+- Files changed:
+  - Booki/Views/BetsListView.swift (modified - replaced BetDetailView placeholder with full implementation)
+- **Learnings for future iterations:**
+  - LabeledContent is a built-in SwiftUI component for key-value displays in Lists (iOS 16+)
+  - Use confirmationDialog for destructive or significant actions with titleVisibility: .visible
+  - @Query can be used in detail views to fetch related data (e.g., events to look up by eventId)
+  - GradingService.settleBet returns a LedgerEntry that needs to be inserted into modelContext
+  - navigationBarTitleDisplayMode(.inline) for compact detail view titles
+---
+
+## 2026-01-22 - US-016
+- What was implemented:
+  - Updated BetsListView from placeholder to full bet list with status filtering
+  - Created BetFilter enum with cases: pending, open, readyToGrade, settled, all
+  - Added matchingStatuses computed property to map filters to BetStatus arrays
+  - Extended BetStatus with CaseIterable conformance for filter matching
+  - Segmented Picker control at top for filter selection
+  - Filtered and sorted bets display (sorted by createdAt descending)
+  - BetRowView component showing: player name, status badge (color-coded), event name, market, side, odds, stake
+  - NavigationLink to BetDetailView on tap using navigationDestination(for: Bet.self)
+  - ContentUnavailableView for empty state when no bets match filter
+  - BetDetailView placeholder (will be fully implemented in US-017)
+- Files changed:
+  - Booki/Views/BetsListView.swift (modified - full implementation)
+- **Learnings for future iterations:**
+  - Use navigationDestination(for: Bet.self) with NavigationLink(value: bet) for type-safe navigation
+  - Bet model is already Identifiable (via @Model) and Hashable, works directly with NavigationLink
+  - Segmented Picker with .pickerStyle(.segmented) provides compact filter UI
+  - ContentUnavailableView is a built-in SwiftUI component for empty states (iOS 17+)
+  - Status badge colors: orange=pending, blue=accepted, red=declined, purple=readyToGrade, indigo=graded, green=settled, gray=void
+---
+
+## 2026-01-22 - US-015
+- What was implemented:
+  - Added Pending Bets Queue section to DashboardView
+  - PendingBetRow component showing player name, event, side, odds, stake for each pending bet
+  - Swipe actions: swipe right to Accept (green), swipe left to Decline (red) with fullSwipe enabled
+  - Accept/Decline buttons visible on each row as an alternative action method
+  - BetService.acceptBet and BetService.declineBet called on action
+  - UI updates immediately via viewModel.refresh() after action
+  - Added .onChange(of: bets.map { $0.status }) to catch status changes for refresh
+  - Currency and odds formatting (positive odds show + prefix)
+- Files changed:
+  - Booki/Views/DashboardView.swift (modified - added PendingBetRow, pending bets section, accept/decline methods)
+- **Learnings for future iterations:**
+  - .swipeActions(edge: .leading) for swipe-right, .swipeActions(edge: .trailing) for swipe-left
+  - Use .buttonStyle(.plain) for buttons inside List rows to prevent row tap interference
+  - DashboardViewModel already had pendingBets property populated from prior implementation
+  - .onChange(of: bets.map { $0.status }) catches property changes on existing objects
+  - BetService is stateless (enum with static methods), can be called directly without injection
+---
+
+## 2026-01-22 - US-014
+- What was implemented:
+  - Updated DashboardView from placeholder to full exposure dashboard
+  - Created DashboardViewModel @Observable class for state management
+  - ExposureCard component showing total open exposure with currency formatting
+  - PendingBetsCard component showing count of pending bets with visual indicator
+  - Top Risk Events section listing up to 5 events sorted by exposure (descending)
+  - EventRiskItem struct for exposure display with formatted currency and dates
+  - Pull-to-refresh via .refreshable modifier that calls viewModel.refresh()
+  - Data loading via @Query for Bet and Event models from SwiftData
+- Files changed:
+  - Booki/Views/DashboardView.swift (modified - full implementation)
+  - Booki/ViewModels/DashboardViewModel.swift (new)
+  - Booki.xcodeproj/project.pbxproj (modified - added DashboardViewModel.swift)
+- **Learnings for future iterations:**
+  - @Observable (Observation framework) is used for ViewModels instead of ObservableObject
+  - Use @State private var viewModel = ViewModel() pattern for @Observable ViewModels
+  - @Query provides reactive data binding from SwiftData - changes trigger view updates
+  - .onChange(of: bets.count) catches insertions/deletions to refresh data
+  - NumberFormatter with .currency style for consistent money display
+  - ExposureService.calculateAllEventExposures returns EventExposure objects with eventId strings
+  - Need to map eventId strings back to Event objects for display names
+---
+
+## 2026-01-22 - US-013
+- What was implemented:
+  - Created TabView-based navigation structure in ContentView.swift
+  - Created 5 placeholder views in Views folder:
+    - DashboardView.swift - dashboard tab with chart.bar.fill icon
+    - BetsListView.swift - bets tab with list.bullet.rectangle icon
+    - PlayersListView.swift - players tab with person.2.fill icon
+    - GradingView.swift - grading tab with checkmark.circle.fill icon
+    - SettingsView.swift - settings tab with gearshape.fill icon
+  - Each view has NavigationStack wrapper and navigation title
+  - Tab selection persists automatically via SwiftUI TabView
+- Files changed:
+  - Booki/ContentView.swift (modified - replaced placeholder with TabView)
+  - Booki/Views/DashboardView.swift (new)
+  - Booki/Views/BetsListView.swift (new)
+  - Booki/Views/PlayersListView.swift (new)
+  - Booki/Views/GradingView.swift (new)
+  - Booki/Views/SettingsView.swift (new)
+  - Booki.xcodeproj/project.pbxproj (modified - added 5 view files)
+- **Learnings for future iterations:**
+  - Views folder was empty before this story - this is the first UI views added
+  - Use NavigationStack inside each tab for future navigation (push detail views)
+  - SF Symbols used: chart.bar.fill, list.bullet.rectangle, person.2.fill, checkmark.circle.fill, gearshape.fill
+  - Build for iOS Simulator with destination parameter to avoid code signing issues in CLI
+---
+
+## 2026-01-22 - US-012
+- What was implemented:
+  - Created PlayerService enum with static methods for player management operations
+  - addPlayer(name:email:creditLimit:bookie:) - creates new active player with optional fields
+  - archivePlayer(_:) - transitions player to archived status, preserves history
+  - banPlayer(_:) - transitions player to banned status, prevents betting
+  - reactivatePlayer(_:) - transitions player back to active status
+  - adjustBalance(for:amount:description:) - creates adjustment ledger entry for manual corrections
+  - logPayment(for:amount:description:) - creates paymentLogged ledger entry
+  - activePlayers(from:) - filters players to only active status
+  - canSubmitBets(_:) - checks if player is active and can bet
+  - updateCreditLimit(for:newLimit:) - updates player credit limit
+  - updatePlayer(_:name:email:) - updates player basic info
+  - Created PlayerServiceError enum with typed errors:
+    - playerNotFound - when player is not found
+    - invalidStatusTransition(current:target:) - when status change is invalid
+- Files changed:
+  - Booki/Services/PlayerService.swift (new)
+  - Booki.xcodeproj/project.pbxproj (modified - added PlayerService.swift to project)
+- **Learnings for future iterations:**
+  - PlayerService follows the same enum pattern as other services (BetService, GradingService)
+  - Player status changes update the updatedAt timestamp for audit trail
+  - Balance adjustments create LedgerEntry objects that integrate with the append-only ledger
+  - Two types of ledger entries from PlayerService: adjustment (manual corrections) and paymentLogged (settlements)
+  - The canSubmitBets check complements BetService.submitBet's player status validation
+  - Status transitions are validated to prevent no-op changes (already archived -> archived)
+---
+
+## 2026-01-22 - US-011
+- What was implemented:
+  - Created GradingService enum with static methods for grading and settling bets
+  - gradeBet(_:result:) - transitions bet from accepted to graded, sets gradeResult
+  - settleBet(_:) - creates ledger entries based on outcome, transitions bet to settled
+  - Settlement calculations:
+    - Win: positive ledger entry for payout amount (profit the player receives)
+    - Loss: negative ledger entry for stake amount (player loses their stake)
+    - Push: zero ledger entry (stake returned, no profit/loss)
+  - Created GradingServiceError enum with typed errors:
+    - invalidBetStatus(current:expected:) - when transition is invalid
+    - betNotGraded - when settleBet called without grade result
+    - playerRequired - when bet has no associated player
+    - alreadySettled - when trying to settle an already settled bet
+- Files changed:
+  - Booki/Services/GradingService.swift (new)
+  - Booki.xcodeproj/project.pbxproj (modified - added GradingService.swift to project)
+- **Learnings for future iterations:**
+  - GradingService composes with LiabilityService for payout calculations - good service composition
+  - Bet grading lifecycle: accepted -> graded -> settled (two-step process)
+  - Settlement creates a single LedgerEntry linked to both player and bet for traceability
+  - Win settlement uses LiabilityService.calculatePayout for correct payout based on American odds
+  - Loss settlement is simply the negative of the stake (player loses their wager)
+  - Push settlement is zero (no money changes hands, stake is effectively returned)
+---
+
+## 2026-01-22 - US-010
+- What was implemented:
+  - Created BetService enum with static methods for all bet-related operations
+  - submitBet(player:eventId:market:side:odds:stake:existingBets:ledgerEntries:) - creates pending bet with snapshotted odds, validates credit
+  - acceptBet(_:) - transitions bet from pending to accepted status
+  - declineBet(_:) - transitions bet from pending to declined status
+  - voidBet(_:) - transitions bet from accepted to void status
+  - hasAvailableCredit(player:stake:odds:existingBets:ledgerEntries:) - validates if player has sufficient credit
+  - availableCredit(for:bets:ledgerEntries:) - convenience wrapper for BalanceService
+  - Created BetServiceError enum with typed errors:
+    - insufficientCredit(available:required:) - when player lacks credit for bet
+    - invalidBetStatus(current:expected:) - when transition is invalid
+    - playerNotActive(status:) - when player is archived or banned
+    - betNotFound, playerRequired - for missing data
+- Files changed:
+  - Booki/Services/BetService.swift (new)
+  - Booki.xcodeproj/project.pbxproj (modified - added BetService.swift to project)
+- **Learnings for future iterations:**
+  - BetService validates credit against potential liability (payout), not just stake amount
+  - Service composes with BalanceService and LiabilityService - good layered architecture
+  - Use Result<Success, Error> pattern for explicit error handling in Swift
+  - Bet status transitions follow state machine: pending -> accepted/declined, accepted -> void
+  - Player status must be checked before allowing bet submission (banned players cannot bet)
+---
+
+## 2026-01-22 - US-009
+- What was implemented:
+  - Created BalanceService enum with static calculation methods for player balance derivation
+  - calculateBalance(from: [LedgerEntry]) - sums all ledger entries for net balance
+  - balanceOwed(from: [LedgerEntry]) - alias for tracking what player owes/is owed
+  - openLiability(from: [Bet]) - calculates potential payout from active bets via LiabilityService
+  - availableCredit(creditLimit:bets:ledgerEntries:) - implements formula: creditLimit - openLiability - balanceOwed
+  - availableCredit(for:bets:ledgerEntries:) - convenience method for Player objects
+  - playerSummary(for:bets:ledgerEntries:) - returns comprehensive PlayerBalanceSummary struct
+  - PlayerBalanceSummary struct with creditLimit, openLiability, balanceOwed, availableCredit fields
+  - Created comprehensive unit tests (25 tests) covering:
+    - Empty ledger/bets scenarios
+    - Single and multiple ledger entries (positive and negative)
+    - Open liability calculations with various bet statuses (pending, accepted, excluded statuses)
+    - Available credit calculations (normal, reduced by liability, reduced by balance, increased by negative balance)
+    - Player summary with no activity and with activity
+    - Edge cases (zero credit limit, large amounts, negative available credit)
+- Files changed:
+  - Booki/Services/BalanceService.swift (new)
+  - BookiTests/BalanceServiceTests.swift (new)
+  - Booki.xcodeproj/project.pbxproj (modified - added service and test files)
+- **Learnings for future iterations:**
+  - BalanceService composes with LiabilityService for open liability calculation - good service composition pattern
+  - Balance is always derived from ledger - no stored balance field (append-only ledger design)
+  - Available credit can be negative when player is over their limit
+  - Positive balance = player owes bookie, negative balance = bookie owes player
+  - Use tolerance-based comparison (0.01) in tests for Decimal division results
+---
+
+## 2026-01-22 - US-008
+- What was implemented:
+  - Created ExposureService enum with static calculation methods for risk management
+  - SideExposure struct: tracks soft exposure (pending) and hard exposure (accepted) per side
+  - EventExposure struct: tracks exposure breakdown with maxExposure, maxSoftExposure, maxHardExposure
+  - exposureBets(from:) - filters to only pending and accepted bets (excludes declined, void, graded, settled)
+  - groupBetsByEvent(_:) - groups bets by eventId using Dictionary(grouping:by:)
+  - calculateEventExposure(eventId:bets:) - calculates exposure breakdown by side for an event
+  - calculateAllEventExposures(from:) - returns EventExposure for all events with active bets
+  - calculateTotalExposure(from:) - sums max exposure across all events
+  - calculateExposure(forEvent:from:) - returns exposure for a specific event
+  - Created comprehensive unit tests (16 tests) covering:
+    - Exposure bet filtering (pending + accepted only)
+    - Grouping bets by event
+    - Single side and two-side exposure calculations
+    - Soft vs hard exposure separation
+    - All events exposure aggregation
+    - Total exposure calculation
+    - Single event queries
+    - Edge cases (empty bets, zero stake, unbalanced sides)
+- Files changed:
+  - Booki/Services/ExposureService.swift (new)
+  - BookiTests/ExposureServiceTests.swift (new)
+  - Booki.xcodeproj/project.pbxproj (modified - added service and test files)
+- **Learnings for future iterations:**
+  - Event exposure = max(total liability per side) - this represents worst-case scenario
+  - Soft exposure (pending) and hard exposure (accepted) help bookies see committed vs uncommitted risk
+  - Dictionary(grouping:by:) is efficient for grouping bets by eventId or side
+  - ExposureService leverages LiabilityService for payout calculations - good service composition
+  - Total exposure is sum of max exposure per event (each event is independent risk)
+---
+
+## 2026-01-22 - US-007
+- What was implemented:
+  - Created LiabilityService enum with static calculation methods
+  - calculatePayout(stake: Decimal, odds: Int) - calculates potential payout based on American odds
+  - calculateLiability(for: Bet) - wrapper for bet objects
+  - calculateTotalLiability(for: [Bet]) - sums liability across multiple bets
+  - activeBets(from: [Bet]) - filters to only pending and accepted bets
+  - calculateActiveLiability(for: [Bet]) - combines filtering and calculation
+  - Added test target (BookiTests) to Xcode project
+  - Created comprehensive unit tests (16 tests) covering:
+    - Negative odds payout calculations
+    - Positive odds payout calculations
+    - Bet and total liability calculations
+    - Active bet filtering (pending + accepted only)
+    - Edge cases (zero stake, large odds)
+- Files changed:
+  - Booki/Services/LiabilityService.swift (new)
+  - BookiTests/LiabilityServiceTests.swift (new)
+  - Booki.xcodeproj/project.pbxproj (modified - added service, test target, test files)
+- **Learnings for future iterations:**
+  - Decimal division can have precision issues - use tolerance-based comparison in tests
+  - Use `enum` instead of `class` for stateless services with only static methods
+  - Test targets require: PBXContainerItemProxy, PBXTargetDependency, separate XCConfigurationList
+  - DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer enables xcodebuild when xcode-select not configured
+  - Run tests with: xcodebuild -scheme BookiTests -destination 'platform=iOS Simulator,name=iPhone 16' test
+---
+
+## 2026-01-22 - US-006
+- What was implemented:
+  - Created Event @Model class with id (UUID), sport, league, homeTeam, awayTeam, startTime, status (EventStatus), finalScore (optional)
+  - Added EventStatus enum (String-backed, Codable): scheduled, live, final
+  - Created Market @Model class with id (UUID), type (MarketType), sideA, sideB, oddsA (Int), oddsB (Int), updatedAt
+  - Added MarketType enum (String-backed, Codable): spread, total, moneyline
+  - Added bidirectional relationship: Event has many Markets (with cascade delete), Market belongs to Event
+  - Integrated Event and Market models with SwiftData ModelContainer in BookiApp.swift
+  - Added all model files to Xcode project.pbxproj (including previously missing model files)
+- Files changed:
+  - Booki/Models/Event.swift (new)
+  - Booki/Models/Market.swift (new)
+  - Booki/BookiApp.swift (modified - added Event.self and Market.self to schema)
+  - Booki.xcodeproj/project.pbxproj (modified - added model files to project)
+- **Learnings for future iterations:**
+  - Use @Relationship(deleteRule: .cascade, inverse: \Market.event) for one-to-many relationships with cascade delete
+  - The inverse parameter in @Relationship creates the bidirectional link between models
+  - Model files must be added to project.pbxproj: PBXBuildFile, PBXFileReference, PBXGroup children, and PBXSourcesBuildPhase
+---
+
+## 2026-01-22 - US-005
+- What was implemented:
+  - Created LedgerEntry @Model class with id (UUID), amount (Decimal), type (EntryType), entryDescription, createdAt
+  - Added EntryType enum (String-backed, Codable): settlement, adjustment, paymentLogged, reversal
+  - Added relationship to Player (required via init) and Bet (optional)
+  - Model is designed append-only by not providing update methods
+  - Integrated LedgerEntry model with SwiftData ModelContainer in BookiApp.swift
+- Files changed:
+  - Booki/Models/LedgerEntry.swift (new)
+  - Booki/BookiApp.swift (modified - added LedgerEntry.self to schema)
+- **Learnings for future iterations:**
+  - Named property `entryDescription` instead of `description` to avoid shadowing the built-in Swift `description` property
+  - Append-only design is enforced at the application layer - no update methods provided, only init
+  - Required relationships can still use optional type in SwiftData but enforce via init parameter
+---
+
+## 2026-01-22 - US-004
+- What was implemented:
+  - Created Bet @Model class with id (UUID), eventId, market, side, odds (Int), stake (Decimal), status, gradeResult (optional), createdAt
+  - Added BetStatus enum (String-backed, Codable): pending, accepted, declined, readyToGrade, graded, settled, void
+  - Added GradeResult enum (String-backed, Codable): win, loss, push
+  - Added relationship to Player (many bets belong to one player) via optional player property
+  - Integrated Bet model with SwiftData ModelContainer in BookiApp.swift
+- Files changed:
+  - Booki/Models/Bet.swift (new)
+  - Booki/BookiApp.swift (modified - added Bet.self to schema)
+- **Learnings for future iterations:**
+  - Bet lifecycle follows state machine: pending -> accepted/declined, accepted -> readyToGrade/void, readyToGrade -> graded, graded -> settled
+  - Optional enum fields (like gradeResult) are defined as EnumType?
+  - American odds stored as Int (e.g., -110, +150) for simplicity
+---
+
+## 2026-01-22 - US-003
+- What was implemented:
+  - Created Player @Model class with id (UUID), name, email (optional), creditLimit (Decimal), status, createdAt, updatedAt
+  - Added PlayerStatus enum (String-backed, Codable): active, archived, banned
+  - Added relationship to Bookie (many players to one bookie) via optional bookie property
+  - Integrated Player model with SwiftData ModelContainer in BookiApp.swift
+- Files changed:
+  - Booki/Models/Player.swift (new)
+  - Booki/BookiApp.swift (modified - added Player.self to schema)
+- **Learnings for future iterations:**
+  - SwiftData relationships are defined with optional properties (var bookie: Bookie?)
+  - Follow same pattern as Bookie for new models: import Foundation + SwiftData, @Model final class, @Attribute(.unique) for id
+  - Optional email field is defined as String?
+---
+
+## Codebase Patterns
+- Platform: iOS 17+ with Swift 5.9+
+- UI Framework: SwiftUI
+- Persistence: SwiftData with @Model classes
+- Architecture: MVVM with Services layer
+- Use UUID for primary keys
+- Use Decimal for monetary values (stake, amounts)
+- Use Int for American odds (e.g., -110, +150)
+- Enums should be String-backed for SwiftData compatibility
+- Services should be @Observable classes injected via environment (or enums for stateless)
+- Views verify by building and running in Simulator
+- Xcode project uses ModelContainer initialization in App entry with empty Schema initially
+- Folder structure: Booki/Models, Booki/Views, Booki/ViewModels, Booki/Services
+- Models added to Schema array in BookiApp.swift must be imported via the same file scope (Models/ folder)
+- One-to-many relationships: use @Relationship(deleteRule: .cascade, inverse: \ChildModel.parentProperty) on parent
+- New model files must be added to project.pbxproj in 4 places: PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase
+- Decimal division has precision issues - use tolerance comparison (0.01) in tests for monetary calculations
+- Build command: DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project Booki.xcodeproj -scheme Booki build
+- Test command: DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -scheme BookiTests -destination 'platform=iOS Simulator,name=iPhone 16' test
+
+---
+
+## 2026-01-22 - US-002
+- What was implemented:
+  - Created Bookie @Model class with id (UUID), email, name, createdAt, updatedAt
+  - Added SubscriptionStatus enum (String-backed, Codable): active, inactive, trial
+  - Integrated Bookie model with SwiftData ModelContainer in BookiApp.swift
+  - Used @Attribute(.unique) for the id field
+- Files changed:
+  - Booki/Models/Bookie.swift (new)
+  - Booki/BookiApp.swift (modified - added Bookie.self to schema)
+- **Learnings for future iterations:**
+  - Enums used with SwiftData @Model must be String-backed and Codable
+  - swiftc -parse can verify Swift syntax without full Xcode SDK
+  - Each new model must be added to Schema array in BookiApp.swift
+---
+
+## 2026-01-22 - US-001
+- What was implemented:
+  - Created Xcode project with SwiftUI App lifecycle (BookiApp.swift as @main entry)
+  - Set up folder structure: Models, Views, ViewModels, Services directories
+  - Configured SwiftData ModelContainer in App entry point with empty schema
+  - Updated .gitignore for Xcode/Swift projects (already comprehensive)
+  - Created Assets.xcassets and Preview Assets.xcassets
+- Files changed:
+  - Booki.xcodeproj/project.pbxproj (new)
+  - Booki/BookiApp.swift (new)
+  - Booki/ContentView.swift (new)
+  - Booki/Assets.xcassets/* (new)
+  - Booki/Preview Content/Preview Assets.xcassets/* (new)
+  - .gitignore (modified)
+- **Learnings for future iterations:**
+  - The project pivoted from Next.js/TypeScript to native iOS/Swift
+  - xcodebuild requires sudo to set developer directory; CLI build verification may not work
+  - ModelContainer starts with empty Schema array - models are added as created
+  - SwiftUI #Preview macro requires full Xcode environment (command-line swift doesn't support it)
+---
+
+## 2026-01-22 - US-026
+- What was implemented:
+  - Added compliance disclosure section to StakeEntryView
+  - Disclosure text: "This submission records a bet request with your book. No money is wagered or transferred in this app."
+  - Disclosure section visible above Submit button when stake is valid
+  - Submit Request button in safeAreaInset (only visible when stake is valid)
+  - Button triggers BetService.submitBet with player, event, market, side, odds, stake
+  - Success alert shows "Your bet request has been recorded and is pending review" and dismisses view
+  - Error handling for insufficient credit and inactive player status
+  - Changed navigation title from "Enter Stake" to "Review Request" for compliant language
+  - Used @Environment(\.dismiss) for navigation back after successful submission
+- Files changed:
+  - Booki/Views/SubmitBetView.swift (modified - added compliance disclosure, submit button, submission logic)
+- **Learnings for future iterations:**
+  - BetService.submitBet returns Result<Bet, BetServiceError> - success returns Bet that must be inserted into modelContext
+  - Use @Environment(\.dismiss) for programmatic navigation back (dismiss() to return)
+  - Player status check is done in BetService.submitBet - will reject if not active
+  - Credit validation in BetService uses potential payout (liability), not just stake
+  - Alert confirmation pattern: showingSuccess state triggers alert, OK button dismisses view
+---
+
+
+## 2026-01-22 - US-028
+- What was implemented:
+  - Updated SettingsView from placeholder to full implementation
+  - Bookie Profile section showing name, email, subscription status with color-coded badge
+  - Edit Profile button that presents EditProfileSheet modal
+  - EditProfileSheet supports both creating new profile and editing existing one
+  - Form validation: both name and email required, preview section for confirmation
+  - Data Management section with Export Data NavigationLink
+  - ExportDataView with placeholder links for bet export (US-029) and ledger export (US-030)
+  - About section showing app version (CFBundleShortVersionString) and build number (CFBundleVersion)
+  - Handles case where no bookie profile exists with "Create Profile" option
+- Files changed:
+  - Booki/Views/SettingsView.swift (modified - full implementation with EditProfileSheet and ExportDataView)
+- **Learnings for future iterations:**
+  - Use @Query to fetch Bookie model and get first() for single-user app design
+  - Bundle.main.infoDictionary for accessing app version info (CFBundleShortVersionString, CFBundleVersion)
+  - SubscriptionStatus colors: green=active, red=inactive, orange=trial
+  - EditProfileSheet pattern: pass existingBookie as optional, onAppear populates fields if editing
+  - ExportDataView created as placeholder - will be fully implemented in US-029 and US-030
+---

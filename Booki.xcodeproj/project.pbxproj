@@ -7,14 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		50C083EF2F25F8B0001A0FE5 /* CompactOddsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */; };
+		50C083F02F25F8B0001A0FE5 /* CompactGameRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */; };
+		50C083F12F25F8B0001A0FE5 /* GameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */; };
+		50C083F42F2616C6001A0FE5 /* OddsAPIMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083F22F2616C6001A0FE5 /* OddsAPIMapper.swift */; };
+		50C083F52F2616C6001A0FE5 /* OddsAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083F32F2616C6001A0FE5 /* OddsAPIService.swift */; };
+		50C083F72F2616D4001A0FE5 /* OddsAPIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083F62F2616D4001A0FE5 /* OddsAPIModels.swift */; };
+		50C083FB2F26174D001A0FE5 /* FetchScoresView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083F82F26174D001A0FE5 /* FetchScoresView.swift */; };
+		50C083FC2F26174D001A0FE5 /* RefreshOddsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083FA2F26174D001A0FE5 /* RefreshOddsView.swift */; };
+		50C083FD2F26174D001A0FE5 /* ImportEventsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083F92F26174D001A0FE5 /* ImportEventsView.swift */; };
 		8A1234560001 /* BookiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550001 /* BookiApp.swift */; };
 		8A1234560002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550002 /* ContentView.swift */; };
 		8A1234560003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550003 /* Assets.xcassets */; };
 		8A1234560004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550004 /* Preview Assets.xcassets */; };
-		8A1234560056 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550056 /* SupabaseConfig.swift */; };
-		8A1234560057 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550057 /* SupabaseClient.swift */; };
-		8A1234560058 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 8A1234590001 /* Supabase */; };
-		8A1234560059 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550059 /* AuthManager.swift */; };
 		8A1234560005 /* Bookie.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550005 /* Bookie.swift */; };
 		8A1234560006 /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550006 /* Player.swift */; };
 		8A1234560007 /* Bet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550007 /* Bet.swift */; };
@@ -65,14 +70,46 @@
 		8A1234560053 /* SettlementPeriod.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550053 /* SettlementPeriod.swift */; };
 		8A1234560054 /* PlayerSettlement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550054 /* PlayerSettlement.swift */; };
 		8A1234560055 /* SettlementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550055 /* SettlementService.swift */; };
+		8A1234560056 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550056 /* SupabaseConfig.swift */; };
+		8A1234560057 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550057 /* SupabaseClient.swift */; };
+		8A1234560058 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 8A1234590001 /* Supabase */; };
+		8A1234560059 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550059 /* AuthManager.swift */; };
 		8A1234560060 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550060 /* SignUpView.swift */; };
 		8A1234560061 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550061 /* LoginView.swift */; };
 		8A1234560062 /* AppleSignInButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550062 /* AppleSignInButton.swift */; };
 		8A1234560063 /* ForgotPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550063 /* ForgotPasswordView.swift */; };
 		8A1234560064 /* AuthGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550064 /* AuthGateView.swift */; };
+		8A1234560065 /* BookieService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550065 /* BookieService.swift */; };
+		8A1234560066 /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550066 /* SyncService.swift */; };
+		8A1234560067 /* RealtimeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550067 /* RealtimeService.swift */; };
+		8A1234560068 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550068 /* NetworkMonitor.swift */; };
+		8A1234560069 /* Syncable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550069 /* Syncable.swift */; };
+		8A1234560070 /* SyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550070 /* SyncModels.swift */; };
+		8A1234560071 /* InviteCodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550071 /* InviteCodeService.swift */; };
+		8A1234560072 /* PlayerClaimView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550072 /* PlayerClaimView.swift */; };
+		8A1234560073 /* PlayerMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550073 /* PlayerMainView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		8A1234570001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8A1234520000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8A1234520001;
+			remoteInfo = Booki;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactGameRow.swift; sourceTree = "<group>"; };
+		50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactOddsButton.swift; sourceTree = "<group>"; };
+		50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDetailView.swift; sourceTree = "<group>"; };
+		50C083F22F2616C6001A0FE5 /* OddsAPIMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OddsAPIMapper.swift; sourceTree = "<group>"; };
+		50C083F32F2616C6001A0FE5 /* OddsAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OddsAPIService.swift; sourceTree = "<group>"; };
+		50C083F62F2616D4001A0FE5 /* OddsAPIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OddsAPIModels.swift; sourceTree = "<group>"; };
+		50C083F82F26174D001A0FE5 /* FetchScoresView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FetchScoresView.swift; sourceTree = "<group>"; };
+		50C083F92F26174D001A0FE5 /* ImportEventsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportEventsView.swift; sourceTree = "<group>"; };
+		50C083FA2F26174D001A0FE5 /* RefreshOddsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshOddsView.swift; sourceTree = "<group>"; };
 		8A1234550000 /* Booki.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Booki.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1234550001 /* BookiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookiApp.swift; sourceTree = "<group>"; };
 		8A1234550002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -138,17 +175,16 @@
 		8A1234550062 /* AppleSignInButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInButton.swift; sourceTree = "<group>"; };
 		8A1234550063 /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
 		8A1234550064 /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
+		8A1234550065 /* BookieService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookieService.swift; sourceTree = "<group>"; };
+		8A1234550066 /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
+		8A1234550067 /* RealtimeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeService.swift; sourceTree = "<group>"; };
+		8A1234550068 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		8A1234550069 /* Syncable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Syncable.swift; sourceTree = "<group>"; };
+		8A1234550070 /* SyncModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncModels.swift; sourceTree = "<group>"; };
+		8A1234550071 /* InviteCodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteCodeService.swift; sourceTree = "<group>"; };
+		8A1234550072 /* PlayerClaimView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerClaimView.swift; sourceTree = "<group>"; };
+		8A1234550073 /* PlayerMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMainView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXContainerItemProxy section */
-		8A1234570001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 8A1234520000 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 8A1234520001;
-			remoteInfo = Booki;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		8A1234540001 /* Frameworks */ = {
@@ -178,16 +214,6 @@
 			);
 			sourceTree = "<group>";
 		};
-		8A1234530008 /* BookiTests */ = {
-			isa = PBXGroup;
-			children = (
-				8A1234550012 /* LiabilityServiceTests.swift */,
-				8A1234550015 /* ExposureServiceTests.swift */,
-				8A1234550017 /* BalanceServiceTests.swift */,
-			);
-			path = BookiTests;
-			sourceTree = "<group>";
-		};
 		8A1234530001 /* Booki */ = {
 			isa = PBXGroup;
 			children = (
@@ -206,14 +232,6 @@
 			path = Booki;
 			sourceTree = "<group>";
 		};
-		8A1234530009 /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				8A1234550056 /* SupabaseConfig.swift */,
-			);
-			path = Config;
-			sourceTree = "<group>";
-		};
 		8A1234530002 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -226,6 +244,7 @@
 		8A1234530003 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				50C083F62F2616D4001A0FE5 /* OddsAPIModels.swift */,
 				8A1234550005 /* Bookie.swift */,
 				8A1234550006 /* Player.swift */,
 				8A1234550007 /* Bet.swift */,
@@ -235,24 +254,20 @@
 				8A1234550049 /* AcceptancePolicy.swift */,
 				8A1234550053 /* SettlementPeriod.swift */,
 				8A1234550054 /* PlayerSettlement.swift */,
+				8A1234550069 /* Syncable.swift */,
 			);
 			path = Models;
-			sourceTree = "<group>";
-		};
-		8A1234530010 /* Auth */ = {
-			isa = PBXGroup;
-			children = (
-				8A1234550060 /* SignUpView.swift */,
-				8A1234550061 /* LoginView.swift */,
-				8A1234550062 /* AppleSignInButton.swift */,
-				8A1234550063 /* ForgotPasswordView.swift */,
-			);
-			path = Auth;
 			sourceTree = "<group>";
 		};
 		8A1234530004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				50C083F82F26174D001A0FE5 /* FetchScoresView.swift */,
+				50C083F92F26174D001A0FE5 /* ImportEventsView.swift */,
+				50C083FA2F26174D001A0FE5 /* RefreshOddsView.swift */,
+				50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */,
+				50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */,
+				50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */,
 				8A1234530010 /* Auth */,
 				8A1234550064 /* AuthGateView.swift */,
 				8A1234550021 /* DashboardView.swift */,
@@ -279,6 +294,8 @@
 				8A1234550047 /* AppHeaderView.swift */,
 				8A1234550048 /* TicketDetailView.swift */,
 				8A1234550051 /* AcceptancePolicySettingsView.swift */,
+				8A1234550072 /* PlayerClaimView.swift */,
+				8A1234550073 /* PlayerMainView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -294,6 +311,8 @@
 		8A1234530006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				50C083F22F2616C6001A0FE5 /* OddsAPIMapper.swift */,
+				50C083F32F2616C6001A0FE5 /* OddsAPIService.swift */,
 				8A1234550011 /* LiabilityService.swift */,
 				8A1234550014 /* ExposureService.swift */,
 				8A1234550016 /* BalanceService.swift */,
@@ -308,6 +327,12 @@
 				8A1234550055 /* SettlementService.swift */,
 				8A1234550057 /* SupabaseClient.swift */,
 				8A1234550059 /* AuthManager.swift */,
+				8A1234550065 /* BookieService.swift */,
+				8A1234550066 /* SyncService.swift */,
+				8A1234550067 /* RealtimeService.swift */,
+				8A1234550068 /* NetworkMonitor.swift */,
+				8A1234550070 /* SyncModels.swift */,
+				8A1234550071 /* InviteCodeService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -318,6 +343,35 @@
 				8A1234550004 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		8A1234530008 /* BookiTests */ = {
+			isa = PBXGroup;
+			children = (
+				8A1234550012 /* LiabilityServiceTests.swift */,
+				8A1234550015 /* ExposureServiceTests.swift */,
+				8A1234550017 /* BalanceServiceTests.swift */,
+			);
+			path = BookiTests;
+			sourceTree = "<group>";
+		};
+		8A1234530009 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				8A1234550056 /* SupabaseConfig.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		8A1234530010 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				8A1234550060 /* SignUpView.swift */,
+				8A1234550061 /* LoginView.swift */,
+				8A1234550062 /* AppleSignInButton.swift */,
+				8A1234550063 /* ForgotPasswordView.swift */,
+			);
+			path = Auth;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -361,14 +415,6 @@
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
-
-/* Begin PBXTargetDependency section */
-		8A1234580001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 8A1234520001 /* Booki */;
-			targetProxy = 8A1234570001 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		8A1234520000 /* Project object */ = {
@@ -455,6 +501,9 @@
 				8A1234560036 /* FavoritesManager.swift in Sources */,
 				8A1234560037 /* BetSlipManager.swift in Sources */,
 				8A1234560038 /* BetSlipSheet.swift in Sources */,
+				50C083FB2F26174D001A0FE5 /* FetchScoresView.swift in Sources */,
+				50C083FC2F26174D001A0FE5 /* RefreshOddsView.swift in Sources */,
+				50C083FD2F26174D001A0FE5 /* ImportEventsView.swift in Sources */,
 				8A1234560039 /* BetConfirmationSheet.swift in Sources */,
 				8A1234560040 /* AccountView.swift in Sources */,
 				8A1234560041 /* Theme.swift in Sources */,
@@ -469,6 +518,8 @@
 				8A1234560050 /* AcceptancePolicySettingsView.swift in Sources */,
 				8A1234560051 /* ParlayGradingService.swift in Sources */,
 				8A1234560053 /* SettlementPeriod.swift in Sources */,
+				50C083F42F2616C6001A0FE5 /* OddsAPIMapper.swift in Sources */,
+				50C083F52F2616C6001A0FE5 /* OddsAPIService.swift in Sources */,
 				8A1234560054 /* PlayerSettlement.swift in Sources */,
 				8A1234560055 /* SettlementService.swift in Sources */,
 				8A1234560056 /* SupabaseConfig.swift in Sources */,
@@ -479,6 +530,19 @@
 				8A1234560062 /* AppleSignInButton.swift in Sources */,
 				8A1234560063 /* ForgotPasswordView.swift in Sources */,
 				8A1234560064 /* AuthGateView.swift in Sources */,
+				8A1234560065 /* BookieService.swift in Sources */,
+				50C083EF2F25F8B0001A0FE5 /* CompactOddsButton.swift in Sources */,
+				50C083F02F25F8B0001A0FE5 /* CompactGameRow.swift in Sources */,
+				50C083F72F2616D4001A0FE5 /* OddsAPIModels.swift in Sources */,
+				50C083F12F25F8B0001A0FE5 /* GameDetailView.swift in Sources */,
+				8A1234560066 /* SyncService.swift in Sources */,
+				8A1234560067 /* RealtimeService.swift in Sources */,
+				8A1234560068 /* NetworkMonitor.swift in Sources */,
+				8A1234560069 /* Syncable.swift in Sources */,
+				8A1234560070 /* SyncModels.swift in Sources */,
+				8A1234560071 /* InviteCodeService.swift in Sources */,
+				8A1234560072 /* PlayerClaimView.swift in Sources */,
+				8A1234560073 /* PlayerMainView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -494,43 +558,15 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		8A1234580001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8A1234520001 /* Booki */;
+			targetProxy = 8A1234570001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
-		8A1234500004 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.booki.BookiTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Booki.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Booki";
-			};
-			name = Debug;
-		};
-		8A1234500005 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.booki.BookiTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Booki.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Booki";
-			};
-			name = Release;
-		};
 		8A1234500000 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -705,6 +741,42 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		8A1234500004 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.booki.BookiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Booki.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Booki";
+			};
+			name = Debug;
+		};
+		8A1234500005 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.booki.BookiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Booki.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Booki";
 			};
 			name = Release;
 		};

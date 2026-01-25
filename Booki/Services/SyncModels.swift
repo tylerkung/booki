@@ -51,6 +51,10 @@ struct PlayerUpsert: Codable {
     let promisedPaymentDate: Date?
     let username: String?
     let passwordHash: String?
+    let inviteCode: String?
+    let inviteCodeGeneratedAt: Date?
+    let inviteCodeExpiresAt: Date?
+    let claimedAt: Date?
     let createdAt: Date
     let updatedAt: Date
     let version: Int
@@ -68,6 +72,10 @@ struct PlayerUpsert: Codable {
         case promisedPaymentDate = "promised_payment_date"
         case username
         case passwordHash = "password_hash"
+        case inviteCode = "invite_code"
+        case inviteCodeGeneratedAt = "invite_code_generated_at"
+        case inviteCodeExpiresAt = "invite_code_expires_at"
+        case claimedAt = "claimed_at"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case version
@@ -77,7 +85,7 @@ struct PlayerUpsert: Codable {
     init(from player: Player, bookieId: UUID) {
         self.id = player.id
         self.bookieId = bookieId
-        self.authUserId = nil // Players don't have auth accounts initially
+        self.authUserId = player.authUserId
         self.name = player.name
         self.email = player.email
         self.creditLimit = player.creditLimit
@@ -87,6 +95,10 @@ struct PlayerUpsert: Codable {
         self.promisedPaymentDate = player.promisedPaymentDate
         self.username = player.username
         self.passwordHash = player.passwordHash
+        self.inviteCode = player.inviteCode
+        self.inviteCodeGeneratedAt = player.inviteCodeGeneratedAt
+        self.inviteCodeExpiresAt = player.inviteCodeExpiresAt
+        self.claimedAt = player.claimedAt
         self.createdAt = player.createdAt
         self.updatedAt = player.updatedAt
         self.version = player.version

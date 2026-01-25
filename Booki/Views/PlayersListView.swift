@@ -313,6 +313,8 @@ struct PlayerDetailView: View {
     @State private var showingPaymentSheet = false
     @State private var showingPromisedDatePicker = false
     @State private var promisedDate: Date = Date()
+    @State private var showingRevokeCodeConfirmation = false
+    @State private var codeCopied = false
 
     // MARK: - Computed Properties
 
@@ -418,6 +420,91 @@ struct PlayerDetailView: View {
                 }
             }
 
+            // MARK: - Invite Code Section
+            Section("Player Account") {
+                if let claimedAt = player.claimedAt {
+                    // Account has been claimed
+                    HStack {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(.green)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Account Claimed")
+                                .font(.headline)
+                            Text(claimedAt, style: .date)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } else if let code = player.inviteCode {
+                    // Code exists but not claimed
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Invite Code")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        HStack(spacing: 12) {
+                            Text(code)
+                                .font(.system(.title2, design: .monospaced))
+                                .fontWeight(.bold)
+                                .kerning(2)
+
+                            Spacer()
+
+                            Button {
+                                UIPasteboard.general.string = code
+                                codeCopied = true
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                impactFeedback.impactOccurred()
+
+                                // Reset copy state after 2 seconds
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    codeCopied = false
+                                }
+                            } label: {
+                                Image(systemName: codeCopied ? "checkmark" : "doc.on.doc")
+                                    .font(.title3)
+                                    .foregroundStyle(codeCopied ? .green : Theme.accent)
+                            }
+                        }
+
+                        if let generatedAt = player.inviteCodeGeneratedAt {
+                            Text("Generated \(generatedAt, style: .relative) ago")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if let expiresAt = player.inviteCodeExpiresAt {
+                            if Date() > expiresAt {
+                                Text("Expired")
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            } else {
+                                Text("Expires \(expiresAt, style: .date)")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+
+                    Button(role: .destructive) {
+                        showingRevokeCodeConfirmation = true
+                    } label: {
+                        Label("Revoke Code", systemImage: "xmark.circle")
+                    }
+                } else {
+                    // No code exists
+                    Text("No invite code generated")
+                        .foregroundStyle(.secondary)
+                        .italic()
+
+                    Button {
+                        generateInviteCode()
+                    } label: {
+                        Label("Generate Invite Code", systemImage: "envelope.badge.person.crop")
+                    }
+                }
+            }
+
             // MARK: - Balance Section
             Section("Balance") {
                 LabeledContent("Balance Owed") {
@@ -492,7 +579,7 @@ struct PlayerDetailView: View {
             Section("Actions") {
                 // View Player's Bet History
                 NavigationLink {
-                    PlayerHistoryView(player: player)
+                    TrackView(player: player)
                 } label: {
                     Label("View My Bets", systemImage: "clock.arrow.circlepath")
                 }
@@ -577,6 +664,18 @@ struct PlayerDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will restore the player to active status, allowing them to submit new bets.")
+        }
+        .confirmationDialog(
+            "Revoke invite code?",
+            isPresented: $showingRevokeCodeConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Revoke Code", role: .destructive) {
+                revokeInviteCode()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The player will no longer be able to use this code to claim their account.")
         }
     }
 
@@ -717,6 +816,18 @@ struct PlayerDetailView: View {
         player.collectionStatusDate = nil
         player.promisedPaymentDate = nil
         player.updatedAt = Date()
+    }
+
+    // MARK: - Invite Code Actions
+
+    private func generateInviteCode() {
+        let inviteCodeService = InviteCodeService(modelContext: modelContext)
+        inviteCodeService.generateInviteForPlayer(player, expiresIn: nil)
+    }
+
+    private func revokeInviteCode() {
+        let inviteCodeService = InviteCodeService(modelContext: modelContext)
+        inviteCodeService.revokeCode(for: player)
     }
 
     // MARK: - Helpers

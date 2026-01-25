@@ -1,0 +1,168 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/player-experience-v2",
+  "description": "UX Improvements - Persistent header with user info and balance, tab reordering, and bet grouping by ticket in Track view. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift) - do NOT revert to default iOS styling.",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first, backend-ready architecture)",
+    "architecture": "MVVM with Services layer"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Reorder Player Mode Tabs",
+      "description": "As a player, I want the tabs ordered as Games, Track, Settings so Games is my home screen.",
+      "acceptanceCriteria": [
+        "Modify ContentView.swift playerModeView function to reorder tabs",
+        "Tab order: Games (first), Track (second, renamed from 'My Bets'), Settings (third)",
+        "Games tab uses house.fill SF Symbol",
+        "Track tab uses list.bullet.rectangle SF Symbol",
+        "Settings tab uses gearshape.fill SF Symbol",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Modify existing ContentView.swift - do not recreate"
+    },
+    {
+      "id": "US-002",
+      "title": "Create Persistent App Header Component",
+      "description": "As a player, I want a fixed header at the top showing my profile and balance so I always know my account status.",
+      "acceptanceCriteria": [
+        "Create new AppHeaderView.swift in Booki/Views/ folder",
+        "Header is fixed at top of screen (does not scroll with content)",
+        "Left side: Circular avatar (~36pt) with user initials in colored background",
+        "Initials are first letter of first name + first letter of last name (or first 2 letters if single name)",
+        "Left side: Player name displayed next to avatar",
+        "Left side section is tappable (navigation handled in US-003)",
+        "Right side: Current balance displayed, formatted as currency",
+        "Balance color uses Theme.balanceColor() helper or similar (green for credit, red for debt)",
+        "Balance is NOT tappable (informational only)",
+        "Header has subtle bottom border using Theme.divider",
+        "Header background uses Theme.cardBackground",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Create new file - MUST use existing Theme colors (Theme.cardBackground, Theme.accent, etc.) - do NOT use default iOS styling"
+    },
+    {
+      "id": "US-003",
+      "title": "Integrate Header Into Player Tab Views",
+      "description": "As a player, I want the header to appear on Games, Track, and Settings tabs with navigation to Account.",
+      "acceptanceCriteria": [
+        "Modify ContentView.swift to add AppHeaderView to each player tab",
+        "Header appears above the NavigationStack content for each tab",
+        "Tapping the user section (avatar + name) navigates to AccountView",
+        "Use NavigationLink or navigationDestination for proper navigation",
+        "Header receives player parameter for name and balance calculation",
+        "Query ledger entries in header or pass balance as parameter",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Modify existing ContentView.swift"
+    },
+    {
+      "id": "US-004",
+      "title": "Remove Your Account Section from Games Tab",
+      "description": "As a player, I no longer need the Your Account card in Games since the header shows my balance.",
+      "acceptanceCriteria": [
+        "In GamesView.swift, remove the accountInfoCard view builder",
+        "Remove accountInfoCard from the gamesList LazyVStack",
+        "Remove unused computed properties if not used elsewhere",
+        "Games list now starts with favorites section (if any) or sport sections directly",
+        "No empty space where the card was",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Modify existing GamesView.swift"
+    },
+    {
+      "id": "US-005",
+      "title": "Remove Account Summary Section from Track Tab",
+      "description": "As a player, I no longer need the Account Summary in Track since the header shows my balance.",
+      "acceptanceCriteria": [
+        "In PlayerHistoryView.swift, remove the balanceSection view builder",
+        "Remove balanceSection from the List",
+        "Remove unused computed properties if not used elsewhere",
+        "Bet history section now takes full space",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Modify existing PlayerHistoryView.swift"
+    },
+    {
+      "id": "US-006",
+      "title": "Rename PlayerHistoryView to TrackView",
+      "description": "As a developer, I want the view name to match the tab name for consistency.",
+      "acceptanceCriteria": [
+        "Rename file PlayerHistoryView.swift to TrackView.swift",
+        "Rename struct from PlayerHistoryView to TrackView",
+        "Update ContentView.swift to use TrackView instead of PlayerHistoryView",
+        "Update navigation title from 'My Bets' to 'Track'",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "File rename and reference updates"
+    },
+    {
+      "id": "US-007",
+      "title": "Add ticketId Field to Bet Model",
+      "description": "As a developer, I need to group bets by ticket so bets placed together are associated.",
+      "acceptanceCriteria": [
+        "In Bet.swift, add var ticketId: UUID field to the Bet model",
+        "Field is required (not optional) - all bets belong to a ticket",
+        "Add ticketId parameter to init with default value UUID() for backwards compatibility",
+        "In BetConfirmationSheet.swift, generate ONE shared ticketId for all bets in the submission",
+        "Pass the same ticketId to all Bet objects created in that submission",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Model change - may require app reinstall to clear old data"
+    },
+    {
+      "id": "US-008",
+      "title": "Group Bets by Ticket in Track View",
+      "description": "As a player, I want my bets grouped by ticket so I can see which bets were placed together.",
+      "acceptanceCriteria": [
+        "Modify TrackView.swift to group bets by ticketId",
+        "Create computed property to group bets into tickets",
+        "Display format: Section header shows ticket summary, individual bets listed below",
+        "Ticket header shows: Ticket type (Parlay X legs or Singles X bets), Total stake, Total potential payout, Combined status",
+        "Individual bets within ticket show: event name, side, odds, stake",
+        "Tickets sorted by most recent first (based on createdAt of first bet)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Major change to TrackView layout - maintain existing dark theme styling throughout"
+    },
+    {
+      "id": "US-009",
+      "title": "Create Ticket Detail View",
+      "description": "As a player, I want to tap a ticket to see comprehensive details including all bets and status history.",
+      "acceptanceCriteria": [
+        "Create new TicketDetailView.swift in Booki/Views/ folder",
+        "Tapping a ticket section header in Track navigates to detail view",
+        "Detail view shows: Ticket summary (type, total stake, potential/actual payout)",
+        "All bets in the ticket with full info (event, market, side, odds, stake)",
+        "Timestamps: bet placed date, graded date (if applicable), settled date (if applicable)",
+        "For each bet: current status with color coding",
+        "If settled: result (win/loss/push) and actual payout for each bet",
+        "For parlays: shows combined odds calculation breakdown",
+        "Back navigation returns to Track tab",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Create new file - MUST use existing dark Theme styling (Theme.background, Theme.cardBackground, etc.) - reference AccountView.swift for styling patterns"
+    }
+  ]
+}

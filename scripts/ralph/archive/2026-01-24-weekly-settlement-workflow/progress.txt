@@ -1,0 +1,16 @@
+# Ralph Progress Log
+Started: Fri Jan 24 2026
+---
+
+## Codebase Patterns
+- SwiftData @Model classes need @Attribute(.unique) for id fields
+- Use Theme.swift for all styling (Theme.background, Theme.cardBackground, Theme.accent, Theme.danger, etc.)
+- Services are typically enums with static functions, or classes for stateful services (ObservableObject)
+- Views go in Booki/Views/, Services in Booki/Services/, Models in Booki/Models/
+- New files must be added to project.pbxproj in 4 places: PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase
+- Use `contains(where:)` not `contains {}` for closure-based contains checks
+- BookiApp.swift is the main app entry point with modelContainer and environment setup
+- CollectionStatus enum in Player.swift: .noStatus, .reminded, .promised, .overdue
+- PaymentMethod enum exists in PaymentSheet.swift (cash, venmo, zelle, etc.)
+
+---

@@ -56,8 +56,8 @@ struct WeeklySettlementView: View {
     /// Check if there is earlier period data (ledger entries or bets before the selected week start)
     private var hasEarlierPeriodData: Bool {
         let earlierDate = Calendar.current.date(byAdding: .day, value: -7, to: selectedWeekStartDate) ?? selectedWeekStartDate
-        let hasEarlierLedger = ledgerEntries.contains { $0.date < earlierDate }
-        let hasEarlierBets = bets.contains { $0.createdAt < earlierDate }
+        let hasEarlierLedger = ledgerEntries.contains(where: { $0.createdAt < earlierDate })
+        let hasEarlierBets = bets.contains(where: { $0.createdAt < earlierDate })
         return hasEarlierLedger || hasEarlierBets
     }
 
@@ -87,11 +87,11 @@ struct WeeklySettlementView: View {
     /// Count of unsettled players from the previous period
     private var unsettledFromPriorPeriodCount: Int {
         activePlayers.filter { player in
-            !playerSettlements.contains { settlement in
+            !playerSettlements.contains(where: { settlement in
                 settlement.player?.id == player.id &&
                 Calendar.current.isDate(settlement.periodWeekEndingDate, inSameDayAs: previousWeekEndingDate) &&
                 settlement.isSettled
-            }
+            })
         }.count
     }
 
@@ -505,11 +505,11 @@ struct WeeklySettlementView: View {
 
     /// Check if a player is marked as settled for the selected period
     private func isPlayerSettled(_ player: Player) -> Bool {
-        playerSettlements.contains { settlement in
+        playerSettlements.contains(where: { settlement in
             settlement.player?.id == player.id &&
             Calendar.current.isDate(settlement.periodWeekEndingDate, inSameDayAs: selectedWeekEndingDate) &&
             settlement.isSettled
-        }
+        })
     }
 
     /// Navigate to the previous week
@@ -586,9 +586,7 @@ struct PlayerSettlementRowView: View {
                     }
 
                     // Collection status badge
-                    if let badge = collectionStatusBadge {
-                        badge
-                    }
+                    collectionStatusBadge
                 }
 
                 // Bet activity summary
@@ -617,7 +615,7 @@ struct PlayerSettlementRowView: View {
 
     /// Collection status badge view if player has a collection status set
     @ViewBuilder
-    private var collectionStatusBadge: some View? {
+    private var collectionStatusBadge: some View {
         if let status = report.player.collectionStatus, status != .noStatus {
             Text(status.displayName)
                 .font(.caption2.weight(.semibold))

@@ -1,0 +1,531 @@
+# Ralph Progress Log
+Started: Thu Jan 22 15:35:57 PST 2026
+
+## Codebase Patterns
+- Event model already exists with `EventStatus` enum (scheduled, live, final)
+- EventDetailView already exists for viewing/editing event details
+- Use `NavigationLink(value:)` with `.navigationDestination(for:)` for type-safe navigation
+- Rename view components to avoid conflicts (e.g., `EventRowView` exists in `SubmitBetView.swift`, so use `EventListRowView` in new files)
+- When adding new Swift files, must add to `project.pbxproj`: PBXBuildFile, PBXFileReference, PBXGroup (Views), and PBXSourcesBuildPhase sections
+- Use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcrun xcodebuild` for command-line builds
+- `MarketRowView` exists in `SubmitBetView.swift` - use `EventMarketRowView` for EventDetailView market rows
+- Market model uses `sideA`/`sideB` strings and `oddsA`/`oddsB` integers for American odds
+- For UserDefaults persistence, use singleton pattern with `@ObservedObject` for reactive SwiftUI updates (see FavoritesManager)
+- In ternary operators mixing different ShapeStyle types (e.g., `.primary` vs `.red`), use `.foregroundColor()` with explicit `Color.primary` and `Color.red` to avoid type mismatches
+- For dark theme: use `.scrollContentBackground(.hidden)` + `.background(Theme.background)` on List views; use Theme.cardBackground for card-style containers
+- Global UIKit appearances (TabBar, NavBar) should be configured in app init() method
+
+---
+
+## 2026-01-22 15:38 - US-031
+- **What was implemented:** Created EventsListView for bookie event management with Events tab in TabView
+- **Files changed:**
+  - `Booki/Views/EventsListView.swift` (new)
+  - `Booki/ContentView.swift` (added Events tab)
+  - `Booki.xcodeproj/project.pbxproj` (added EventsListView.swift to build)
+- **Learnings for future iterations:**
+  - The Views directory already has `EventRowView` in `SubmitBetView.swift` - had to rename my row view to `EventListRowView` to avoid redeclaration error
+  - Event model and EventDetailView already exist - no need to create new models
+  - Status badge colors are already defined: blue=scheduled, green=live, gray=final
+  - Grouping events by sport/league using `Dictionary(grouping:)` works well for section organization
+---
+
+## 2026-01-22 15:43 - US-032
+- **What was implemented:** Created AddEventSheet for adding new events with sport picker, team inputs, and date/time picker
+- **Files changed:**
+  - `Booki/Views/AddEventSheet.swift` (new)
+  - `Booki/Views/EventsListView.swift` (added toolbar + button and sheet presentation)
+  - `Booki.xcodeproj/project.pbxproj` (added AddEventSheet.swift to build)
+- **Learnings for future iterations:**
+  - SwiftUI Form with Picker works well for sport selection
+  - DatePicker with `[.date, .hourAndMinute]` components provides combined date/time selection
+  - Form validation using computed property `isFormValid` enables/disables save button
+  - Use `@State private var showingAddEvent = false` with `.sheet(isPresented:)` for modal presentation
+  - Use `.trimmingCharacters(in: .whitespaces)` to clean user input before saving
+---
+
+## 2026-01-22 15:47 - US-033
+- **What was implemented:** Market management for events - adding, editing, and deleting markets
+- **Files changed:**
+  - `Booki/Views/AddMarketSheet.swift` (new) - Dynamic form for adding markets
+  - `Booki/Views/EditMarketSheet.swift` (new) - Sheet for editing market odds
+  - `Booki/Views/EventDetailView.swift` (added Markets section with CRUD)
+  - `Booki.xcodeproj/project.pbxproj` (added new files to build)
+- **Learnings for future iterations:**
+  - `MarketRowView` already exists in `SubmitBetView.swift` - had to use `EventMarketRowView` to avoid redeclaration
+  - Use `@State private var marketToEdit: Market?` with `.sheet(item:)` for edit sheets bound to specific items
+  - American odds validation: must be >= 100 or <= -100 (values between -99 and +99 are invalid)
+  - Dynamic form switching with `@ViewBuilder` and switch statement on enum works well for different market types
+  - Use `.onDelete(perform:)` on ForEach for swipe-to-delete functionality
+---
+
+## 2026-01-22 15:51 - US-034
+- **What was implemented:** SeedDataService for generating mock game data with "Load Sample Data" button in Settings
+- **Files changed:**
+  - `Booki/Services/SeedDataService.swift` (new) - Service with mock event generation
+  - `Booki/Views/SettingsView.swift` (added Load Sample Data button with confirmation)
+  - `Booki.xcodeproj/project.pbxproj` (added SeedDataService.swift to build)
+- **Learnings for future iterations:**
+  - Use `modelContext.delete(model: Event.self)` to delete all instances of a model type
+  - Creating events with markets requires setting the event on each market: `Market(..., event: game1)`
+  - Use `@State` variables for alerts: `showingConfirmation`, `showingSuccess` with `.alert(isPresented:)` modifiers
+  - Use two alerts (confirmation + success) chained with `.alert()` modifiers
+  - Build command with iPhone 16: `DEVELOPER_DIR=... xcodebuild -destination 'platform=iOS Simulator,name=iPhone 16'`
+---
+
+## 2026-01-22 15:54 - US-035
+- **What was implemented:** Status picker and final score entry for events
+- **Files changed:**
+  - `Booki/Views/EventDetailView.swift` (modified - added status picker, FinalScoreSheet, bet status transition)
+- **Learnings for future iterations:**
+  - Use `@Bindable var event: Event` (not `let`) when you need to modify a SwiftData model in a view
+  - Use `@State private var selectedStatus: EventStatus` initialized from model in `init()` for Picker binding
+  - Use `.onChange(of: selectedStatus)` to trigger side effects when picker selection changes
+  - Use `.sheet(isPresented:, onDismiss:)` to sync state when sheet is cancelled (e.g., revert picker selection)
+  - Bet status `readyToGrade` is used for accepted bets whose event is finalized and awaiting grading
+  - Filter bets by `$0.eventId == event.id.uuidString` to find related bets
+---
+
+## 2026-01-22 16:02 - US-036
+- **What was implemented:** Redesigned player games view with horizontal scrolling sport tabs
+- **Files changed:**
+  - `Booki/Views/GamesView.swift` (new) - Main games browsing view with sport tabs
+  - `Booki/ContentView.swift` (modified - replaced SubmitBetView with GamesView, renamed tab to "Games")
+  - `Booki.xcodeproj/project.pbxproj` (added GamesView.swift to build)
+- **Learnings for future iterations:**
+  - Use `VStack(spacing: 0)` with sticky header to keep sport tabs visible while scrolling
+  - `EventRowView` already exists in `SubmitBetView.swift` - created `GameRowView` to avoid conflicts
+  - Use `ScrollView(.horizontal, showsIndicators: false)` for horizontal tab scrolling
+  - Sport tabs filter by setting `@State private var selectedSport: String? = nil` (nil = "All")
+  - Filter available sports with `Set(availableEvents.map { $0.sport }).sorted()` for unique, sorted list
+  - `SubmitBetView.swift` still contains `MarketSelectionView` and `StakeEntryView` which are used via navigation
+---
+
+## 2026-01-22 16:05 - US-037
+- **What was implemented:** GameCard component with quick-pick odds, expandable markets, and bet slip integration
+- **Files changed:**
+  - `Booki/Views/GameCardView.swift` (new) - GameCard with teams, time, live indicator, odds buttons
+  - `Booki/Views/GamesView.swift` (modified - integrated GameCardView, added bet slip selections state)
+  - `Booki.xcodeproj/project.pbxproj` (added GameCardView.swift to build)
+- **Learnings for future iterations:**
+  - Use `Set<BetSlipSelection>` for efficient selection tracking across multiple cards
+  - Use `@State private var isExpanded` within GameCardView for local expand/collapse state
+  - `navigationDestination(item:)` works well with `@State` for programmatic navigation
+  - Use `.contentShape(Rectangle())` to make entire card area tappable
+  - Odds button scale animation (`scaleEffect(isPressed ? 0.95 : 1.0)`) provides good tap feedback
+  - Format spread label to extract just the number (e.g., "Lakers -3.5" -> "-3.5")
+  - Live indicator with pulsing green dot and "LIVE" text in green-tinted capsule
+  - `BetSlipSelection` model with `Hashable` conformance for Set storage
+---
+
+## 2026-01-22 16:10 - US-038
+- **What was implemented:** Search and filter functionality for games view
+- **Files changed:**
+  - `Booki/Views/GamesView.swift` (modified - added search bar, time filter, filter sheet)
+- **Learnings for future iterations:**
+  - Use `TimeFilter` enum with `CaseIterable` and `Identifiable` for filter options
+  - Chain multiple filtering computed properties: `timeFilteredEvents` -> `searchFilteredEvents` -> `filteredEvents`
+  - Use `Calendar.isDateInToday()` and `isDateInTomorrow()` for simple date filtering
+  - Search filtering: use `lowercased().contains()` for case-insensitive matching
+  - Use `.presentationDetents([.height(280)])` for compact filter sheet
+  - Empty state message should dynamically reflect which filters are active
+  - "Clear Filters" button in empty state provides quick reset path
+---
+
+## 2026-01-22 16:07 - US-039
+- **What was implemented:** Favorites system for teams with storage, toggle, and filtering
+- **Files changed:**
+  - `Booki/Services/FavoritesManager.swift` (new) - Singleton manager storing favorites in UserDefaults
+  - `Booki/Views/GameCardView.swift` (modified - added star icon to team rows)
+  - `Booki/Views/GamesView.swift` (modified - added "Favorites" filter and favorites section at top)
+  - `Booki.xcodeproj/project.pbxproj` (added FavoritesManager.swift to build)
+- **Learnings for future iterations:**
+  - Use `@ObservedObject` for singleton managers like `FavoritesManager.shared` to get reactive updates
+  - Store favorites in UserDefaults as `[String]` array, convert to `Set<String>` for efficient lookups
+  - Add new filter cases to existing `TimeFilter` enum - works well as a cohesive filter system
+  - Show favorites section conditionally only when: on "All" view, no sport filter, and favorites exist
+  - Star icon uses `.yellow` fill when favorited, `.secondary` outline when not - provides clear visual feedback
+  - Use `withAnimation(.easeInOut(duration: 0.15))` for subtle star toggle animation
+---
+
+## 2026-01-22 16:15 - US-040
+- **What was implemented:** Persistent bet slip system with BetSlipManager singleton and expandable sheet
+- **Files changed:**
+  - `Booki/Services/BetSlipManager.swift` (new) - Singleton manager storing bet slip items in UserDefaults with Codable persistence
+  - `Booki/Views/BetSlipSheet.swift` (new) - Full bet slip sheet with selections list, swipe-to-delete, and clear all
+  - `Booki/Views/GamesView.swift` (modified - replaced @State selections with BetSlipManager, made indicator tappable)
+  - `Booki.xcodeproj/project.pbxproj` (added new files to build)
+- **Learnings for future iterations:**
+  - `BetSlipItem` extends `BetSlipSelection` with `eventDescription` and `marketDescription` for display in sheet
+  - Use `Codable` for complex data persistence in UserDefaults via JSON encoding/decoding
+  - Keep `BetSlipSelection` model in `GameCardView.swift` for compatibility with existing card code
+  - Provide `selectionsSet` computed property to convert items array to Set for efficient lookup
+  - Use `.presentationDetents([.medium, .large])` for expandable sheets that can be dragged to different heights
+  - Float indicator at bottom with chevron.up icon to indicate tappability
+---
+
+## 2026-01-22 17:22 - US-041
+- **What was implemented:** Multi-bet (parlay) selections with combined odds calculation and mode toggle
+- **Files changed:**
+  - `Booki/Services/BetSlipManager.swift` (modified - added BetMode enum, parlay odds calculation, bet mode persistence)
+  - `Booki/Views/BetSlipSheet.swift` (modified - added Singles/Parlay toggle, combined odds display, X button for remove)
+- **Learnings for future iterations:**
+  - Convert American odds to decimal: positive odds = (odds / 100) + 1, negative odds = (100 / abs(odds)) + 1
+  - Convert decimal back to American: >= 2.0 = (decimal - 1) * 100 (positive), < 2.0 = -100 / (decimal - 1) (negative)
+  - Parlay combined odds = multiply all decimal odds together, then convert back to American
+  - Use `@Published var betMode: BetMode` with `didSet { saveBetMode() }` for automatic persistence on change
+  - `BetSlipItemRow` needs `onRemove` callback to support X button alongside swipe-to-delete
+  - Combined parlay odds section should only show when mode is parlay AND count > 1
+---
+
+## 2026-01-22 17:30 - US-042
+- **What was implemented:** Improved stake entry with quick-pick amounts and real-time payout display
+- **Files changed:**
+  - `Booki/Services/BetSlipManager.swift` (modified - added stake property, payout calculations, validation)
+  - `Booki/Views/BetSlipSheet.swift` (modified - added stake entry section, quick-pick buttons, payout summary)
+  - `Booki/Views/GamesView.swift` (modified - passes availableCredit to BetSlipSheet)
+- **Learnings for future iterations:**
+  - Use `static let quickPickAmounts: [Decimal]` for quick-pick stake options
+  - Calculate payout using decimal odds: `stake * decimalOdds` gives total return (includes original stake)
+  - For singles mode, total stake = stake per bet * number of bets
+  - For parlay mode, total stake = single stake amount
+  - Use `@State private var stakeText` synced with BetSlipManager.stake for TextField binding
+  - Use `.keyboardType(.numberPad)` for numeric stake input
+  - Initialize @State in custom init: `_stakeText = State(initialValue: ...)`
+  - Use `Decimal.greatestFiniteMagnitude` as default when credit limit is not known (bypasses validation)
+  - Show validation warning with orange color when stake exceeds available credit
+---
+
+## 2026-01-22 17:45 - US-043
+- **What was implemented:** Bet confirmation flow with review screen, submission, and success animation
+- **Files changed:**
+  - `Booki/Views/BetConfirmationSheet.swift` (new) - Full confirmation sheet with review, submission, and success animation
+  - `Booki/Views/BetSlipSheet.swift` (modified - added player parameter, showingConfirmation state, Review & Confirm button)
+  - `Booki/Views/GamesView.swift` (modified - passes player to BetSlipSheet)
+  - `Booki.xcodeproj/project.pbxproj` (added BetConfirmationSheet.swift to build)
+- **Learnings for future iterations:**
+  - Use `@State private var checkmarkScale: CGFloat = 0` with `.scaleEffect()` and `.spring()` animation for success checkmark
+  - Use `ZStack` with conditional content to transition between confirmation and success views
+  - BetService.submitBet() requires player, eventId, market, side, odds, stake, existingBets, ledgerEntries
+  - For parlay mode, simplified implementation creates individual bets with evenly split stake (full parlay model would need ParlayBet)
+  - Use `ProgressView().tint(.white)` for loading spinner on dark buttons
+  - When BetSlipSheet needs to present BetConfirmationSheet, pass the player through - requires optional player parameter
+  - Use `.sheet(isPresented:)` with conditional `if let player = player` to safely present when player exists
+---
+
+## 2026-01-22 18:05 - US-044
+- **What was implemented:** Enhanced Account Summary View with hero balance, credit utilization progress bar, and quick stats
+- **Files changed:**
+  - `Booki/Views/AccountView.swift` (new) - Complete account summary view with balance display, credit progress bar, and stats
+  - `Booki/ContentView.swift` (modified - added Account tab as primary in player mode TabView)
+  - `Booki.xcodeproj/project.pbxproj` (added AccountView.swift to build)
+- **Learnings for future iterations:**
+  - Use `BalanceService.playerSummary()` to get all balance-related data (creditLimit, openLiability, balanceOwed, availableCredit)
+  - In ternary operators with `.foregroundStyle()`, type mismatches occur between `.primary` (HierarchicalShapeStyle) and `.red` (Color) - use `.foregroundColor()` with explicit `Color.primary` and `Color.red` instead
+  - Credit utilization calculated as: `(creditLimit - availableCredit) / creditLimit`
+  - Win rate calculated only from wins and losses, excluding pushes: `winCount / (winCount + lossCount)`
+  - Open bets count includes: pending, accepted, and readyToGrade statuses
+  - Use GeometryReader for responsive progress bar that fills based on utilization percentage
+  - Progress bar colors: green (<50%), yellow (50-80%), orange (80-100%), red (>100%)
+  - ScrollView with VStack provides better layout flexibility than List for card-based account UI
+  - Use `RoundedRectangle` with shadow for card-like sections in a non-List context
+---
+
+## 2026-01-22 - US-045
+- **What was implemented:** Transaction History View with filtering by type
+- **Files changed:**
+  - `Booki/Views/AccountView.swift` (modified - added TransactionFilter enum, transactionHistorySection, and TransactionRowView)
+- **Learnings for future iterations:**
+  - Use `TransactionFilter` enum with `CaseIterable` and `Identifiable` for filter options
+  - Map filter enum to `EntryType?` (nil = all types) for clean filtering logic
+  - Use `LazyVStack` inside ScrollView for efficient rendering of long transaction lists
+  - Color coding: green for positive amounts (credits), red for negative amounts (debits)
+  - Icon colors by type: blue for settlements, orange for adjustments, green for payments, purple for reversals
+  - Segmented picker (`.pickerStyle(.segmented)`) works well for small number of filter options
+  - Use `Divider().padding(.leading, 52)` to indent dividers past icon column for cleaner list appearance
+  - Empty state should hint about changing filters when a filter is active
+---
+
+## 2026-01-22 - US-046
+- **What was implemented:** Bet History with Filtering in Account tab
+- **Files changed:**
+  - `Booki/Views/AccountView.swift` (modified - added BetHistoryFilter enum, myBetsSection, AccountBetRowView, AccountBetDetailView)
+- **Learnings for future iterations:**
+  - `PlayerBetRowView` already exists in `PlayersListView.swift` - use unique names like `AccountBetRowView` to avoid redeclaration errors
+  - BetHistoryFilter enum maps to `[BetStatus]` arrays for multi-status filtering: Active = pending + accepted + readyToGrade, Settled = graded + settled + void
+  - Use `NavigationLink { destination } label: { ... }` syntax for in-line navigation within LazyVStack
+  - Add `.buttonStyle(.plain)` to NavigationLink to prevent default highlight behavior on tap
+  - For player-facing bet detail view, show user-friendly status text (e.g., "Pending Approval" instead of "pending")
+  - Use colored status indicator circles (12pt) for compact visual status in list rows
+  - Query all events (`@Query private var allEvents: [Event]`) to look up event names for bet display
+---
+
+## 2026-01-22 - US-047
+- **What was implemented:** Win/Loss Statistics section in Account view with full betting performance stats
+- **Files changed:**
+  - `Booki/Views/AccountView.swift` (modified - added bettingStatisticsSection with record, total bets, win %, profit/loss, ROI)
+- **Learnings for future iterations:**
+  - Calculate profit from winning bets using decimal odds conversion: positive odds = (odds / 100), negative odds = (100 / abs(odds))
+  - For ROI calculation, use `totalProfitLoss / totalStaked * 100` where totalStaked is the sum of stakes from settled bets only
+  - Win/Loss/Push record displayed as color-coded format: green for wins, red for losses, orange for pushes
+  - Use `formatProfitLoss()` helper to show profit/loss with appropriate sign (+/-) and currency formatting
+  - `settledBets` filters for bets with `.settled` status AND non-nil `gradeResult` for accurate statistics
+---
+
+## 2026-01-22 - US-048
+- **What was implemented:** Theme.swift with color palette and design tokens for dark sports-betting theme
+- **Files changed:**
+  - `Booki/Theme.swift` (new) - Complete color system with backgrounds, accents, text colors, gradients, and view modifiers
+  - `Booki.xcodeproj/project.pbxproj` (modified - added Theme.swift to build)
+- **Learnings for future iterations:**
+  - Use `Color(hex: UInt)` extension for cleaner hex color initialization
+  - Theme enum with static properties provides type-safe, discoverable color tokens
+  - Include view modifiers like `.cardStyle()` and `.elevatedCardStyle()` for consistent component styling
+  - Primary background: #0D0D0D, Card background: #1A1A1A, Accent: #00FF87, Gold: #FFD700, Danger: #FF4444
+  - Include gradients for buttons and cards to give premium sportsbook feel
+  - Add Preview at bottom of Theme.swift with color swatches for easy reference during development
+---
+
+## 2026-01-22 - US-049
+- **What was implemented:** Applied dark theme throughout the app shell - TabView, NavigationStack, and all List views
+- **Files changed:**
+  - `Booki/BookiApp.swift` (modified - added preferredColorScheme(.dark), configured UIKit appearances)
+  - `Booki/ContentView.swift` (modified - added .tint(Theme.accent) to TabViews, dark background for PlayerSettingsView)
+  - `Booki/Views/DashboardView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/SettingsView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/BetsListView.swift` (modified - scrollContentBackground(.hidden), Theme.background on List and VStack)
+  - `Booki/Views/GradingView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/PlayersListView.swift` (modified - scrollContentBackground(.hidden), Theme.background for list and detail)
+  - `Booki/Views/EventsListView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/EventDetailView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/PlayerHistoryView.swift` (modified - scrollContentBackground(.hidden), Theme.background)
+  - `Booki/Views/SubmitBetView.swift` (modified - scrollContentBackground(.hidden), Theme.background for 3 views)
+  - `Booki/Views/GamesView.swift` (modified - Theme.background, Theme.cardBackground, Theme.accent for tabs/filters)
+  - `Booki/Views/AccountView.swift` (modified - Theme.background, Theme.cardBackground, Theme.elevatedBackground)
+- **Learnings for future iterations:**
+  - Use `configureAppAppearance()` in app init for UIKit global settings (TabBar, NavBar)
+  - `.scrollContentBackground(.hidden)` required to hide default List backgrounds before applying custom background
+  - `.preferredColorScheme(.dark)` on root view sets system-wide dark mode
+  - UITabBarAppearance and UINavigationBarAppearance with configureWithOpaqueBackground() for consistent dark chrome
+  - For non-List ScrollView content, apply Theme.background directly to the VStack/ScrollView
+  - Replace Color(.systemBackground) with Theme.cardBackground and Color(.systemGray5) with Theme.elevatedBackground
+---
+
+## 2026-01-22 - US-050
+- **What was implemented:** Styled game cards with premium sportsbook aesthetic
+- **Files changed:**
+  - `Booki/Views/GameCardView.swift` (modified - gradient backgrounds, pill-shaped odds buttons, pulsing live indicator, premium typography)
+- **Learnings for future iterations:**
+  - Use `LinearGradient` for subtle card backgrounds: `colors: [Theme.cardBackground, Color(hex: 0x151515)]`
+  - Pill/capsule odds buttons: use `.clipShape(Capsule())` instead of RoundedRectangle
+  - Pulsing animation with `@State private var isPulsing: Bool` and `repeatForever(autoreverses: false)` animation
+  - For glowing effect on selected state: combine `.shadow()` with accent color opacity
+  - Use `.spring(response: 0.2, dampingFraction: 0.6)` for snappy button press animations
+  - Selected odds buttons: use gradient background + glow shadow for premium feel
+  - Uppercase text with tracking for headers: `.tracking(0.5)` gives professional sportsbook look
+  - Can't use `let` declarations inside ViewBuilder blocks - must declare all variables before the view body
+---
+
+## 2026-01-22 - US-051
+- **What was implemented:** Styled bet slip with premium sportsbook aesthetic
+- **Files changed:**
+  - `Booki/Views/BetSlipSheet.swift` (major overhaul - replaced List with ScrollView, premium card styling, accent borders, gradient buttons)
+- **Learnings for future iterations:**
+  - Replace `List` with `ScrollView` + `VStack` for full visual control in styled sheets
+  - Use `.toolbarBackground(Theme.cardBackground, for: .navigationBar)` with `.toolbarBackground(.visible, for: .navigationBar)` for dark nav bar
+  - Team logo placeholders: use `Circle()` with `LinearGradient` fill and initials overlay, generate consistent colors via string hash
+  - For premium buttons: combine `LinearGradient` background + `.shadow()` with accent color + `PremiumButtonStyle` for scale animation
+  - Use `AnyView()` wrapper when ternary operators return different View types (e.g., `isSelected ? AnyView(Theme.gold) : AnyView(Theme.elevatedBackground)`)
+  - Custom segmented picker: `HStack(spacing: 0)` with buttons, accent background on selected, border stroke
+  - Stake input styling: use `.font(.system(size: 32, weight: .bold, design: .rounded))` for large, impactful numbers
+  - Use `simultaneousGesture(DragGesture)` with `onChanged`/`onEnded` for press state animations on buttons
+---
+
+## 2026-01-22 - US-052
+- **What was implemented:** Styled Account and Stats Views with premium dark theme aesthetic
+- **Files changed:**
+  - `Booki/Views/AccountView.swift` (major overhaul - 604 additions, 253 deletions)
+- **Learnings for future iterations:**
+  - Use `.shadow(color: balanceColor.opacity(0.3), radius: 8)` for glow effects on text
+  - Credit utilization bar: use `LinearGradient` with `creditUtilizationColor` and `.opacity(0.7)` for premium look
+  - For large record display (W-L-P), use `.font(.system(size: 32, weight: .bold, design: .rounded))`
+  - Custom segmented pickers: `HStack(spacing: 0)` with Button for each option, `Theme.accent` background on selected
+  - Wrap different `ShapeStyle` types in `AnyView()` when using in ternary for segmented picker backgrounds
+  - Icon backgrounds: `ZStack` with `Circle().fill(color.opacity(0.15))` and icon on top
+  - Amount/value badges: use `Capsule().fill(color.opacity(0.15))` with `.padding(.horizontal, 10).padding(.vertical, 4)`
+  - Transaction row styling: icon with background circle, type badge as capsule, amount with colored background
+  - For List in detail views: use `.listRowBackground(Theme.cardBackground)` and `.scrollContentBackground(.hidden)`
+  - Section headers in Lists: custom Text with `.font(.caption).fontWeight(.semibold).tracking(1)` and `Theme.textMuted`
+---
+
+## 2026-01-22 - US-053
+- **What was implemented:** Added subtle animations throughout the app for a more polished feel
+- **Files changed:**
+  - `Booki/Views/GameCardView.swift` (enhanced OddsButton with selection highlight pulse)
+  - `Booki/Views/GamesView.swift` (sport tab button press animation, bet slip indicator transition)
+  - `Booki/Views/BetSlipSheet.swift` (animated item add/remove with asymmetric transitions)
+  - `Booki/Views/BetConfirmationSheet.swift` (enhanced celebration animation with expanding ring)
+  - `Booki/ContentView.swift` (smooth mode switching transitions)
+- **Learnings for future iterations:**
+  - Use `showSelectionHighlight` @State with delayed reset for flash/pulse effects on selection
+  - `.overlay()` with animated opacity for highlight pulse effect: `.animation(.easeOut(duration: 0.3), value: showSelectionHighlight)`
+  - `.transition(.asymmetric(insertion:removal:))` for different enter/exit animations on list items
+  - Use `.animation(.spring(response: 0.35, dampingFraction: 0.8), value: count)` on ForEach container for list changes
+  - `.transition(.move(edge: .bottom).combined(with: .opacity))` for floating indicators
+  - Use `simultaneousGesture(DragGesture(minimumDistance: 0))` for press state without blocking button action
+  - Expanding ring effect: animate both `scaleEffect` and `opacity` with staggered timing
+  - Keep animations subtle - spring animations with damping 0.7-0.8 feel responsive without being bouncy
+---
+
+## 2026-01-22 - US-054
+- **What was implemented:** Added username and passwordHash fields to Player model for future authentication
+- **Files changed:**
+  - `Booki/Models/Player.swift` (modified - added optional username and passwordHash fields)
+  - `Booki/Services/PlayerService.swift` (modified - addPlayer now accepts optional username parameter)
+  - `Booki/Views/PlayersListView.swift` (modified - AddPlayerSheet has new Authentication section with username field)
+- **Learnings for future iterations:**
+  - SwiftData handles optional fields with nil default gracefully - no explicit migration needed
+  - Use separate Form Section for authentication fields to keep UI organized
+  - passwordHash field exists but is never set through UI (will be set programmatically when auth is implemented)
+  - Use `.textContentType(.username)` for username fields to enable autofill suggestions
+---
+
+## 2026-01-22 - US-055
+- **What was implemented:** Player Login View (UI Only) for testing purposes
+- **Files changed:**
+  - `Booki/Views/PlayerLoginView.swift` (new) - Complete login UI with username/password fields
+  - `Booki/Views/SettingsView.swift` (modified - added "Test Player Login UI" button and sheet)
+  - `Booki.xcodeproj/project.pbxproj` (modified - added PlayerLoginView.swift to build)
+- **Learnings for future iterations:**
+  - Login matching works by checking username field OR player name (case-insensitive)
+  - Use `.placeholder(when:)` custom View extension for styled placeholder text in dark theme TextFields
+  - TextField with dark theme needs explicit `.foregroundStyle(Theme.textPrimary)` and placeholder overlay
+  - Use `SecureField` for password input to mask characters
+  - For delayed transitions after success state, chain `DispatchQueue.main.asyncAfter` calls
+  - The login view is not in the main flow - accessed via Settings > Test Mode > "Test Player Login UI" button
+---
+
+## 2026-01-22 - US-056
+- **What was implemented:** Bulk Grading by Event - grade all bets for a finalized event at once
+- **Files changed:**
+  - `Booki/Views/GradeEventSheet.swift` (new) - Complete sheet for bulk grading with event summary, bets grouped by market, suggested outcomes, override options, confirmation dialog, and success summary
+  - `Booki/Views/EventDetailView.swift` (modified - added Grade All Bets button, betsToGrade computed property, showingGradeEventSheet state)
+  - `Booki.xcodeproj/project.pbxproj` (modified - added GradeEventSheet.swift to build)
+- **Learnings for future iterations:**
+  - GradingService.gradeBet() expects `.accepted` status but events finalize to `.readyToGrade` - for bulk grading, set bet.status and bet.gradeResult directly
+  - Suggested outcome calculation uses same logic from GradingBetRow: parse finalScore, compare against spread/total/moneyline lines
+  - Use `Dictionary(grouping:)` to organize bets by market for grouped display
+  - BetGradeRow component with suggested grade, override option, and grade selection buttons provides flexible per-bet control
+  - ZStack with conditional views enables smooth transition from grading to success state
+  - Use `@State private var overrideGrades: [UUID: GradeResult]` for tracking per-bet overrides
+  - extractLine() regex pattern `[+-]?\d+\.?\d*` extracts numeric values from bet sides like "Team -3.5"
+---
+
+## 2026-01-22 - US-057
+- **What was implemented:** Undo/Reverse Settlement feature for reversing settled bets
+- **Files changed:**
+  - `Booki/Services/GradingService.swift` (modified - added `reverseBet()` function with new error cases)
+  - `Booki/Views/BetsListView.swift` (modified - added Reverse Settlement button, confirmation dialog, and reversal logic to BetDetailView)
+- **Learnings for future iterations:**
+  - The `.reversal` EntryType already existed in LedgerEntry model - no need to create new type
+  - Ledger is append-only: reversals create new entries with negated amounts, not modifying originals
+  - BalanceService sums all entries, so reversal entries with negative amounts automatically correct balance
+  - Use `@Query private var ledgerEntries: [LedgerEntry]` to access ledger for finding original settlement
+  - Find settlement entry by matching `entry.bet?.id == bet.id && entry.type == .settlement`
+  - Bet status transitions back to `.graded` after reversal (allows re-settlement if needed)
+  - Confirmation dialog shows balance impact: describes whether reversal will add or remove from player balance
+  - Use `formatCurrency(abs(amount))` to show positive amount in impact description regardless of direction
+---
+
+## 2026-01-22 - US-058
+- **What was implemented:** Payment Recording feature to record payments between bookie and players
+- **Files changed:**
+  - `Booki/Views/PaymentSheet.swift` (new) - Complete payment recording sheet with amount, direction, method, and note fields
+  - `Booki/Views/PlayersListView.swift` (modified - added Record Payment button and sheet to PlayerDetailView)
+  - `Booki.xcodeproj/project.pbxproj` (modified - added PaymentSheet.swift to build)
+- **Learnings for future iterations:**
+  - The `paymentLogged` EntryType already existed in LedgerEntry model - no need to create new type
+  - PaymentDirection enum: `playerPaidBookie` = negative ledger amount (reduces what player owes), `bookiePaidPlayer` = positive (increases balance)
+  - Use PaymentMethod enum with CaseIterable and Identifiable for Picker options (Cash, Venmo, Zelle, Bank, Other)
+  - Payment description format: "Payment received from/paid to [PlayerName] via [Method]" with optional note appended
+  - Follow the BalanceAdjustmentSheet pattern for ledger entry creation: create LedgerEntry with proper type and insert via modelContext
+  - The existing ledger display in AccountView and PlayerHistoryView already shows paymentLogged entries via EntryType filtering
+---
+
+## 2026-01-22 - US-059
+- **What was implemented:** Weekly Settlement Summary view with week picker, summary stats, per-player breakdown, and export functionality
+- **Files changed:**
+  - `Booki/Views/WeeklySettlementView.swift` (new) - Complete weekly settlement view with all features
+  - `Booki/Views/DashboardView.swift` (modified - added Settlements section linking to WeeklySettlementView)
+  - `Booki.xcodeproj/project.pbxproj` (modified - added WeeklySettlementView.swift to build)
+- **Learnings for future iterations:**
+  - Use `static func currentWeekStart() -> Date` for calculating Monday of current week (weekday 1 = Sunday, 2 = Monday)
+  - Filter ledger entries by `type == .settlement` and date range to get weekly settlements
+  - Positive ledger amount = player lost (bookie profit), negative = player won (bookie owes)
+  - Use `Dictionary(grouping:)` or manual UUID-keyed dict to aggregate per-player stats
+  - `ShareLink(item: String)` provides native iOS sharing; `UIPasteboard.general.string` for clipboard
+  - Use `Calendar.current.date(byAdding: .weekOfYear, value: weeks, to: date)` for week navigation
+  - Export format as plain text with CSV-style rows for easy sharing/parsing
+  - Summary models (WeeklySummary, PlayerBreakdown) as structs outside the view for clean separation
+---
+
+## 2026-01-22 - US-060
+- **What was implemented:** Who Owes Dashboard Widget showing players with non-zero balances
+- **Files changed:**
+  - `Booki/Views/DashboardView.swift` (modified - added Balances section at top of dashboard, PlayerBalanceRow component)
+- **Learnings for future iterations:**
+  - Use `@Query private var players: [Player]` and `@Query private var ledgerEntries: [LedgerEntry]` for real-time balance calculations
+  - Calculate `daysSinceLastActivity` from ledger entries: `Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day`
+  - Positive balance = player owes bookie, negative balance = bookie owes player (from BalanceService)
+  - Split balances into two sections: `playersOweYou` (positive) and `youOwePlayers` (negative)
+  - Use `NavigationLink(value: player)` with `.navigationDestination(for: Player.self)` for type-safe player navigation
+  - Section headers can include totals using HStack with Text and Spacer
+  - PlayerBalanceRow displays: name, days since last activity, and colored balance amount
+---
+
+## 2026-01-22 - US-061
+- **What was implemented:** Collection tracking for outstanding balances - status field, UI badges, action buttons, and filtering
+- **Files changed:**
+  - `Booki/Models/Player.swift` (modified - added CollectionStatus enum, collectionStatus/collectionStatusDate/promisedPaymentDate fields)
+  - `Booki/Views/PlayersListView.swift` (modified - added collection status badge, action buttons, filter UI, PromisedDateSheet)
+- **Learnings for future iterations:**
+  - Avoid naming enum cases `.none` as it conflicts with `Optional.none` - use `.noStatus` or similar instead
+  - Use `CaseIterable` with enum for filter pickers to easily iterate all options
+  - Collection status section should only show when player balance > 0 (owes money)
+  - Use `Menu` with `ForEach(EnumType.allCases)` for filter dropdowns in toolbar
+  - Overlay badge on toolbar buttons with `.overlay(alignment: .topTrailing)` for notification counts
+  - Date picker for promised payment date uses `.graphical` style with `in: Date()...` to restrict to future dates
+---
+
+## 2026-01-22 - US-062
+- **What was implemented:** Outstanding Balance Alerts with configurable thresholds and dashboard alert banner
+- **Files changed:**
+  - `Booki/Views/SettingsView.swift` (modified - added Balance Alerts section with balance and aging threshold settings)
+  - `Booki/Views/DashboardView.swift` (modified - added alert banner, FlaggedPlayer model, FlaggedPlayersView, FlaggedPlayerRow)
+  - `Booki/ContentView.swift` (modified - added flaggedPlayersCount computed property and badge on Players tab)
+- **Learnings for future iterations:**
+  - Use `@AppStorage` for simple settings that should persist across sessions (balanceThreshold, agingThreshold)
+  - Use `Decimal(Double)` to convert @AppStorage Double to Decimal for balance comparisons
+  - PlayerFlagReason enum with CaseIterable makes it easy to show flag reason badges
+  - FlaggedPlayer model encapsulates player, balance, days since last activity, and flag reason
+  - Use `.badge(count)` on TabView items for showing alert counts - only shows when count > 0
+  - Alert banner with Theme.danger.opacity(0.15) background provides good visibility without being too harsh
+  - Use `.sheet(isPresented:)` for presenting FlaggedPlayersView from dashboard alert banner
+  - TextField with .currency format provides nice number input for balance threshold
+  - Stepper with range (1...90) provides bounded integer input for aging threshold
+---
+
+## 2026-01-22 - US-063
+- **What was implemented:** Bulk Settlement Processing - ability to settle all graded bets at once
+- **Files changed:**
+  - `Booki/Views/GradingView.swift` (modified - added bulk settlement banner, confirmation dialog, settlement logic, success summary)
+- **Learnings for future iterations:**
+  - Use `BulkSettlementPreview` struct to calculate summary stats (bet count, winnings, losses, net impact) before confirmation
+  - Use `BulkSettlementSummary` struct to track settlement results (settled count, wins, losses, pushes)
+  - GradingService.settleBet() returns the ledger entry which must be inserted into modelContext
+  - Filter bets with `.graded` status for settlement (distinct from `.readyToGrade` for grading)
+  - Settlement preview shows net impact: positive = players profited, negative = bookie profited
+  - Use VStack(spacing: 0) to add banner above List without extra spacing
+  - Accent-colored left border on banner (`.overlay(Rectangle().fill(Theme.accent).frame(width: 4), alignment: .leading)`) provides visual emphasis
+  - Confirmation dialog message can use multi-line Text with string interpolation for formatted summary
+---

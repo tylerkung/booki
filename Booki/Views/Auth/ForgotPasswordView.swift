@@ -168,21 +168,19 @@ struct ForgotPasswordView: View {
 
     /// Maps Supabase auth errors to user-friendly messages
     private func mapAuthError(_ error: AuthError) -> String {
-        switch error {
-        case .api(let apiError):
-            // Check for common error codes
-            if let message = apiError.message?.lowercased() {
-                if message.contains("not found") || message.contains("no user") {
-                    return "No account found with this email address."
-                }
-                if message.contains("too many requests") || message.contains("rate limit") {
-                    return "Too many requests. Please try again later."
-                }
-            }
-            return apiError.message ?? "Unable to send reset link. Please try again."
-        default:
+        let message = error.localizedDescription.lowercased()
+
+        if message.contains("not found") || message.contains("no user") {
+            return "No account found with this email address."
+        }
+        if message.contains("too many requests") || message.contains("rate limit") {
+            return "Too many requests. Please try again later."
+        }
+        if message.contains("network") || message.contains("connection") {
             return "Network error. Please check your connection and try again."
         }
+
+        return "Unable to send reset link. Please try again."
     }
 }
 

@@ -1,0 +1,21 @@
+# Ralph Progress Log
+Started: Thu Jan 23 2026
+---
+
+## Codebase Patterns
+- BetService.submitBet already accepts isParlay and parlayLegs parameters; ensures future stories can use existing API
+- Bet model uses SwiftData @Model macro; new fields need defaults for backwards compatibility
+- BetSlipSheet determines parlay mode via `betSlipManager.betMode == .parlay && count > 1`
+- Use `swiftc -parse <file>` for basic Swift syntax validation (Xcode not available in CLI)
+- For SwiftData compatibility: store enums as String, provide computed property for type-safe access (see parlayPushVoidPolicyEnum in AcceptancePolicy.swift)
+- TicketHeaderView shows "X/Y legs graded" for partially graded parlays and mini status dots for leg grades
+- TicketBetRowView shows grade result badges and "Awaiting Result" for pending legs
+- TicketDetailBetRowView also shows isPendingResult state for pending legs
+- GradingView groups parlays by ticketId using GradingGroup struct; use ParlayGradingGroupView for parlay display
+- Access parlayPushVoidPolicy via @Query policies: [AcceptancePolicy] and policies.first?.parlayPushVoidPolicyEnum
+- For parlay settlement: use GradingService.settleParlayBets (not settleBet); requires all legs graded first; creates single ledger entry for entire parlay
+- LedgerEntry model has types: .settlement, .payment, .adjustment, .reversal - use these for settlement workflow
+- Theme.swift contains all styling: Theme.cardBackground, Theme.accent (green), Theme.danger (red), Theme.warning (yellow), Theme.textMuted
+- Player model has collectionStatus field with CollectionStatus enum (.none, .reminded, .promised, .overdue)
+
+---

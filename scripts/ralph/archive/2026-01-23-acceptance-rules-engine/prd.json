@@ -1,0 +1,185 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/parlay-grading-rules",
+  "description": "Parlay Grading Rules & Settlement - Proper parlay outcome logic, configurable push/void handling, American odds combination math, leg-by-leg status display. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first, backend-ready architecture)",
+    "architecture": "MVVM with Services layer"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add Bet Type Flag to Bet Model",
+      "description": "As a developer, I need to track whether a bet is part of a parlay or a single for proper grading logic.",
+      "acceptanceCriteria": [
+        "Add isParlay: Bool field to Bet model (default false)",
+        "Add parlayLegs: Int field to store total legs in the parlay (default 1)",
+        "Update Bet init to include these parameters with defaults",
+        "Update BetSlipSheet.submitBets to set isParlay=true and parlayLegs=count for parlay mode bets",
+        "Singles get isParlay=false, parlayLegs=1",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Foundation for parlay-specific logic"
+    },
+    {
+      "id": "US-002",
+      "title": "Add Parlay Push/Void Handling Policy",
+      "description": "As a bookie, I want to configure how pushes and voids are handled in parlays.",
+      "acceptanceCriteria": [
+        "Create enum ParlayPushVoidPolicy: String, Codable with cases: reduceLegReprice, treatAsPush",
+        "Add parlayPushVoidPolicy: String field to AcceptancePolicy model (default 'reduceLegReprice')",
+        "Add Picker to AcceptancePolicySettingsView in new 'Parlay Settlement' section",
+        "Picker options: 'Reduce legs & reprice' and 'Treat as push'",
+        "Add explanatory text below picker describing each option",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Store as String for SwiftData compatibility, convert to enum in code"
+    },
+    {
+      "id": "US-003",
+      "title": "Create ParlayGradingService",
+      "description": "As a developer, I need a service to calculate parlay outcomes based on leg results.",
+      "acceptanceCriteria": [
+        "Create ParlayGradingService.swift in Booki/Services/",
+        "Create enum ParlayOutcome with cases: pending, win(payout: Decimal), loss, push, partiallyGraded(gradedCount: Int, totalCount: Int)",
+        "Add static function calculateParlayOutcome(bets: [Bet], policy: ParlayPushVoidPolicy) -> ParlayOutcome",
+        "If any leg has gradeResult == .loss, return .loss",
+        "If all legs have gradeResult == .win, calculate payout and return .win(payout:)",
+        "If any leg not yet graded (gradeResult == nil), return .partiallyGraded or .pending",
+        "Handle push/void legs based on policy parameter",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Core parlay logic service"
+    },
+    {
+      "id": "US-004",
+      "title": "Implement American Odds Combination Math",
+      "description": "As a developer, I need correct parlay payout calculation using American odds multiplication.",
+      "acceptanceCriteria": [
+        "Add static function calculateParlayPayout(stake: Decimal, bets: [Bet], excludeVoidPush: Bool) -> Decimal to ParlayGradingService",
+        "Convert each leg's American odds to decimal: positive = 1 + odds/100, negative = 1 + 100/|odds|",
+        "Multiply all decimal odds together to get combined multiplier",
+        "Calculate payout: stake × combinedMultiplier - stake (profit only)",
+        "When excludeVoidPush=true, skip legs with gradeResult == .push or .void status",
+        "If no valid legs remain after exclusion, return 0 (stake returned separately)",
+        "Add helper function americanToDecimal(odds: Int) -> Decimal",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Math must match industry standard parlay calculations"
+    },
+    {
+      "id": "US-005",
+      "title": "Add Leg Status Tracking to Ticket Display",
+      "description": "As a player, I want to see the status of each leg in my parlay.",
+      "acceptanceCriteria": [
+        "Modify TicketHeaderView in TrackView.swift to show leg grading progress for parlays",
+        "Display format: 'X/Y legs graded' when partially graded",
+        "Add row of mini status dots/icons below ticket type label (green=win, red=loss, yellow=push, gray=pending)",
+        "In TicketDetailView, each bet row shows grade status badge if graded",
+        "Pending legs show 'Awaiting Result' in muted text",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Visual feedback for parlay progress"
+    },
+    {
+      "id": "US-006",
+      "title": "Create Parlay Grading UI for Bookie",
+      "description": "As a bookie, I want to see and grade parlay legs individually with the combined outcome shown.",
+      "acceptanceCriteria": [
+        "Locate bookie grading UI (GradingView or BetsListView grading section)",
+        "When displaying a parlay bet, show all legs from same ticketId grouped together",
+        "Add 'Parlay Status' header showing 'X of Y legs graded'",
+        "Show projected outcome based on current grades (e.g., 'Will lose - 1 leg lost')",
+        "Calculate and display projected payout if all remaining legs win",
+        "Each leg can still be graded individually",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Bookie needs full picture when grading parlays"
+    },
+    {
+      "id": "US-007",
+      "title": "Integrate Parlay Logic into Settlement",
+      "description": "As a developer, I need to settle parlays correctly based on combined outcome.",
+      "acceptanceCriteria": [
+        "Modify GradingService.settleBet to detect parlay bets (check isParlay flag)",
+        "For parlay bets, use ParlayGradingService.calculateParlayOutcome to determine result",
+        "Query AcceptancePolicy to get parlayPushVoidPolicy setting",
+        "Win: create ledger entry with combined payout from calculateParlayPayout",
+        "Loss: create ledger entry with -stake (negative)",
+        "Push: create ledger entry with 0 (stake returned)",
+        "Settlement description: 'Parlay (X legs) - Win/Loss/Push: [amount]'",
+        "Only settle when ALL legs are graded (check all bets with same ticketId)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Core settlement integration"
+    },
+    {
+      "id": "US-008",
+      "title": "Handle Partial Grades Display",
+      "description": "As a bookie, I need the system to clearly show parlays where some legs are graded but others are still pending.",
+      "acceptanceCriteria": [
+        "In bookie bets list, parlays with partial grades show special status badge",
+        "Badge text: 'Partial (X/Y)' with Theme.warning color",
+        "Prevent settle action on partially graded parlays (button disabled or hidden)",
+        "Show tooltip or message: 'Cannot settle - X legs awaiting results'",
+        "When a leg already lost, show indicator: 'Parlay will lose when settled'",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Clear UX for incomplete parlays"
+    },
+    {
+      "id": "US-009",
+      "title": "Handle Voided Legs with Policy",
+      "description": "As a bookie, I need voided legs to be handled according to the configured policy.",
+      "acceptanceCriteria": [
+        "When grading a leg as void (bet.status = .void), check parlay policy",
+        "reduceLegReprice policy: recalculate payout excluding voided leg",
+        "If all non-void legs win, parlay wins at reduced odds",
+        "If only voided legs remain, treat as push (return stake)",
+        "treatAsPush policy: any voided leg makes entire parlay a push",
+        "Update ParlayGradingService.calculateParlayOutcome to handle .void status",
+        "Display 'X leg(s) voided - odds adjusted' in ticket detail",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Void handling per policy setting"
+    },
+    {
+      "id": "US-010",
+      "title": "Display Parlay Outcome Summary",
+      "description": "As a player, I want to see a clear summary of my parlay outcome with the math breakdown.",
+      "acceptanceCriteria": [
+        "In TicketDetailView, add 'Parlay Outcome' section for settled parlay tickets",
+        "Show original combined odds (all legs)",
+        "If legs were pushed/voided, show adjusted odds",
+        "Display calculation: 'Stake $X × Combined Odds Y.YY = Payout $Z'",
+        "For reduced parlays show: 'Originally X legs, Y pushed/voided, settled as Z-leg parlay'",
+        "Large outcome badge: green 'WON +$X', red 'LOST -$X', yellow 'PUSHED $0'",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Clear outcome display with math transparency"
+    }
+  ]
+}

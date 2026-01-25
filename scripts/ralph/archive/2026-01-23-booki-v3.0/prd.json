@@ -1,0 +1,125 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/bet-slip-layout",
+  "description": "Bet Slip Layout Improvements - Full height modal, sticky bottom section with stake/submit, per-bet stakes for singles mode, remove quick-pick buttons. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first, backend-ready architecture)",
+    "architecture": "MVVM with Services layer"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Change Bet Slip to Full Height Modal",
+      "description": "As a player, I want the bet slip to open to full height so I can see all my selections without scrolling.",
+      "acceptanceCriteria": [
+        "Locate where BetSlipSheet presentation detents are configured (in GamesView.swift)",
+        "Change .presentationDetents([.medium, .large]) to .presentationDetents([.large])",
+        "Bet slip now opens to full modal height (100% of stacked modal)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Simple change in GamesView.swift where BetSlipSheet is presented"
+    },
+    {
+      "id": "US-002",
+      "title": "Remove Quick-Pick Stake Buttons",
+      "description": "As a player, I want a cleaner stake entry without preset amount buttons.",
+      "acceptanceCriteria": [
+        "In BetSlipSheet.swift stakeEntrySection, remove the quick-pick buttons HStack (ForEach with PremiumQuickPickButton)",
+        "Keep the custom amount input field ($ text field with Theme styling)",
+        "Optionally remove PremiumQuickPickButton struct if no longer used elsewhere",
+        "Stake section now shows only the text input field",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Remove the HStack with ForEach(BetSlipManager.quickPickAmounts) in stakeEntrySection"
+    },
+    {
+      "id": "US-003",
+      "title": "Add Per-Item Stake Storage to BetSlipManager",
+      "description": "As a developer, I need to store individual stakes per bet item for singles mode.",
+      "acceptanceCriteria": [
+        "Add itemStakes dictionary [UUID: Decimal] to BetSlipManager to store per-item stakes",
+        "Add methods: setItemStake(marketId: UUID, stake: Decimal), getItemStake(marketId: UUID) -> Decimal",
+        "Add computed property individualTotalStake that sums all item stakes",
+        "Add computed property individualTotalPayout that calculates total payout from individual stakes",
+        "When an item is removed, also remove its stake from itemStakes",
+        "When clearAll() is called, also clear itemStakes",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Modify BetSlipManager.swift - foundation for per-bet stakes in singles mode"
+    },
+    {
+      "id": "US-004",
+      "title": "Add Stake Input to Bet Cards in Singles Mode",
+      "description": "As a player betting singles, I want to enter a different stake for each bet individually.",
+      "acceptanceCriteria": [
+        "Modify PremiumBetSlipItemCard to accept betMode and stake binding parameters",
+        "When betMode == .singles, show stake input field on each bet card",
+        "Stake input styled consistently ($ prefix, Theme.elevatedBackground, gold border when focused)",
+        "Show individual potential payout on each card based on that bet's stake and odds",
+        "Changes to stake update BetSlipManager.itemStakes via the binding",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Modify PremiumBetSlipItemCard struct to support inline stake entry"
+    },
+    {
+      "id": "US-005",
+      "title": "Restructure Bet Slip with Sticky Bottom Section",
+      "description": "As a developer, I need to restructure the bet slip layout with scrollable top and sticky bottom.",
+      "acceptanceCriteria": [
+        "Restructure selectionsList to separate scrollable content from sticky bottom",
+        "Scrollable area contains: header with count, Singles/Parlay toggle, bet cards, parlay odds card (if parlay)",
+        "Create stickyBottomSection view builder for bottom content",
+        "Use VStack with Spacer or safeAreaInset to position sticky section at bottom",
+        "Add subtle divider (Rectangle with Theme.divider or subtle shadow) between scroll area and sticky section",
+        "Sticky section has Theme.cardBackground background",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Major layout restructure - keep all existing components, just reorganize positioning"
+    },
+    {
+      "id": "US-006",
+      "title": "Configure Sticky Section Content by Mode",
+      "description": "As a player, I want the sticky section to show appropriate controls based on bet mode.",
+      "acceptanceCriteria": [
+        "When betMode == .parlay: sticky section shows stake input, potential payout, Place Bet button",
+        "When betMode == .singles: sticky section shows total stake summary, total payout, Place Bet button",
+        "Stake validation warning appears in sticky section when applicable",
+        "Place Bet button uses existing submitSection styling",
+        "canSubmit logic works correctly for both modes",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Conditional rendering in stickyBottomSection based on betSlipManager.betMode"
+    },
+    {
+      "id": "US-007",
+      "title": "Update Submission Logic for Per-Bet Stakes",
+      "description": "As a developer, I need to update bet submission to use individual stakes for singles mode.",
+      "acceptanceCriteria": [
+        "Modify submitBets() to read from itemStakes for singles mode",
+        "For each item in singles mode, get stake from betSlipManager.getItemStake(item.marketId)",
+        "Parlay mode continues to use the shared betSlipManager.stake",
+        "Each bet submitted with its correct individual stake amount",
+        "Success count and error handling work correctly with new stake structure",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Update submitBets() function in BetSlipSheet.swift"
+    }
+  ]
+}

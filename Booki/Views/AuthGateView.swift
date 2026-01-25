@@ -29,7 +29,13 @@ struct AuthGateView: View {
             if authManager.isLoading || (authManager.isAuthenticated && authManager.isLoadingBookie) {
                 loadingView
             } else if authManager.isAuthenticated {
-                ContentView()
+                // Route based on user role
+                switch authManager.userRole {
+                case .player:
+                    PlayerMainView()
+                case .bookie, nil:
+                    ContentView()
+                }
             } else {
                 authFlowView
             }
@@ -124,7 +130,8 @@ struct AuthGateView: View {
             case .login:
                 LoginView(
                     onNavigateToSignUp: { currentAuthView = .signUp },
-                    onNavigateToForgotPassword: { currentAuthView = .forgotPassword }
+                    onNavigateToForgotPassword: { currentAuthView = .forgotPassword },
+                    onNavigateToPlayerClaim: { currentAuthView = .playerClaim }
                 )
             case .signUp:
                 SignUpView(
@@ -132,6 +139,10 @@ struct AuthGateView: View {
                 )
             case .forgotPassword:
                 ForgotPasswordView(
+                    onNavigateToLogin: { currentAuthView = .login }
+                )
+            case .playerClaim:
+                PlayerClaimView(
                     onNavigateToLogin: { currentAuthView = .login }
                 )
             }
@@ -148,6 +159,7 @@ private enum AuthViewType {
     case login
     case signUp
     case forgotPassword
+    case playerClaim
 }
 
 // MARK: - Preview

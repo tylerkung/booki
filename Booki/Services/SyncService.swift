@@ -725,10 +725,22 @@ final class SyncService: ObservableObject {
 
     /// Upload pending players to Supabase
     private func uploadPlayers(bookieId: UUID, context: ModelContext) async throws {
+        // Debug: Check all players first
+        let allPlayersDescriptor = FetchDescriptor<Player>()
+        let allPlayers = try context.fetch(allPlayersDescriptor)
+        print("DEBUG uploadPlayers: Total players in database: \(allPlayers.count)")
+        for p in allPlayers {
+            print("DEBUG: Player '\(p.name)' needsSync=\(p.needsSync), inviteCode=\(p.inviteCode ?? "nil")")
+        }
+
         let descriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.needsSync == true })
         let pendingPlayers = try context.fetch(descriptor)
+        print("DEBUG uploadPlayers: Players needing sync: \(pendingPlayers.count)")
 
-        guard !pendingPlayers.isEmpty else { return }
+        guard !pendingPlayers.isEmpty else {
+            print("DEBUG uploadPlayers: No players to upload")
+            return
+        }
 
         // Check for conflicts and upload each player
         for player in pendingPlayers {

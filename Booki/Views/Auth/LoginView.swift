@@ -25,6 +25,7 @@ struct LoginView: View {
 
     var onNavigateToSignUp: () -> Void = {}
     var onNavigateToForgotPassword: () -> Void = {}
+    var onNavigateToPlayerClaim: () -> Void = {}
 
     // MARK: - Body
 
@@ -151,6 +152,18 @@ struct LoginView: View {
                     }
                 }
                 .font(.subheadline)
+
+                // Player Claim Link
+                Button(action: onNavigateToPlayerClaim) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.badge.key")
+                        Text("I'm a Player")
+                            .fontWeight(.medium)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                }
+                .padding(.top, 8)
                 .padding(.bottom, 24)
             }
         }
@@ -192,24 +205,22 @@ struct LoginView: View {
 
     /// Maps Supabase auth errors to user-friendly messages
     private func mapAuthError(_ error: AuthError) -> String {
-        switch error {
-        case .api(let apiError):
-            // Check for common error codes
-            if let message = apiError.message?.lowercased() {
-                if message.contains("invalid login credentials") || message.contains("invalid credentials") {
-                    return "Invalid email or password. Please try again."
-                }
-                if message.contains("email not confirmed") || message.contains("not confirmed") {
-                    return "Please verify your email address before logging in."
-                }
-                if message.contains("too many requests") || message.contains("rate limit") {
-                    return "Too many login attempts. Please try again later."
-                }
-            }
-            return apiError.message ?? "Login failed. Please try again."
-        default:
+        let message = error.localizedDescription.lowercased()
+
+        if message.contains("invalid login credentials") || message.contains("invalid credentials") {
+            return "Invalid email or password. Please try again."
+        }
+        if message.contains("email not confirmed") || message.contains("not confirmed") {
+            return "Please verify your email address before logging in."
+        }
+        if message.contains("too many requests") || message.contains("rate limit") {
+            return "Too many login attempts. Please try again later."
+        }
+        if message.contains("network") || message.contains("connection") {
             return "Network error. Please check your connection and try again."
         }
+
+        return "Login failed. Please try again."
     }
 }
 

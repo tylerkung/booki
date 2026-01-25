@@ -4,14 +4,20 @@ import UIKit
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var authManager: AuthManager
+    @EnvironmentObject private var syncService: SyncService
     @Query private var bookies: [Bookie]
     @Query(sort: \Player.name) private var players: [Player]
 
     @State private var showingEditProfile = false
+    @State private var isSyncing = false
     @State private var showingSeedDataConfirmation = false
     @State private var showingSeedDataSuccess = false
     @State private var seededEventCount = 0
     @State private var showingPlayerLogin = false
+    @State private var showingLogoutConfirmation = false
+    @State private var showingLogoutError = false
+    @State private var logoutErrorMessage = ""
 
     // Test Mode settings (persisted via AppStorage)
     @AppStorage("isPlayerMode") private var isPlayerMode: Bool = false
@@ -20,6 +26,15 @@ struct SettingsView: View {
     // Alert Threshold settings
     @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
     @AppStorage("agingThreshold") private var agingThreshold: Int = 7
+
+    // Odds API settings (US-011)
+    @AppStorage("oddsAPIKey") private var oddsAPIKey: String = ""
+    @AppStorage("oddsAPIBookmaker") private var oddsAPIBookmaker: String = "draftkings"
+    @StateObject private var oddsService = OddsAPIService.shared
+    @State private var isTestingAPI = false
+    @State private var showingAPITestResult = false
+    @State private var apiTestSuccess = false
+    @State private var apiTestMessage = ""
 
     private var currentBookie: Bookie? {
         bookies.first
@@ -103,6 +118,57 @@ struct SettingsView: View {
                 }
                 .listRowBackground(Theme.cardBackground)
 
+                // MARK: - Odds API Section (US-011)
+                Section {
+                    SecureField("API Key", text: $oddsAPIKey)
+                        .textContentType(.password)
+                        .autocorrectionDisabled()
+
+                    Picker("Bookmaker", selection: $oddsAPIBookmaker) {
+                        Text("DraftKings").tag("draftkings")
+                        Text("FanDuel").tag("fanduel")
+                        Text("BetMGM").tag("betmgm")
+                        Text("Caesars").tag("caesars")
+                    }
+
+                    if let remaining = oddsService.quotaRemaining {
+                        LabeledContent("API Calls Remaining") {
+                            HStack {
+                                Text("\(remaining)")
+                                if remaining < 100 {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+                        }
+                    }
+
+                    Button {
+                        Task {
+                            await testAPIConnection()
+                        }
+                    } label: {
+                        HStack {
+                            Label("Test Connection", systemImage: "antenna.radiowaves.left.and.right")
+                            Spacer()
+                            if isTestingAPI {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(oddsAPIKey.isEmpty || isTestingAPI)
+                } header: {
+                    Text("Odds API")
+                } footer: {
+                    if let remaining = oddsService.quotaRemaining, remaining < 100 {
+                        Text("Low API quota. Your quota resets monthly.")
+                            .foregroundStyle(.orange)
+                    } else {
+                        Text("Get your API key from the-odds-api.com")
+                    }
+                }
+                .listRowBackground(Theme.cardBackground)
+
                 // MARK: - Data Management Section
                 Section {
                     NavigationLink {
@@ -159,6 +225,51 @@ struct SettingsView: View {
                 }
                 .listRowBackground(Theme.cardBackground)
 
+                // MARK: - Sync Section
+                Section {
+                    Button {
+                        Task {
+                            isSyncing = true
+                            await syncService.sync()
+                            isSyncing = false
+                        }
+                    } label: {
+                        HStack {
+                            Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
+                            Spacer()
+                            if isSyncing {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(isSyncing)
+                } header: {
+                    Text("Data")
+                } footer: {
+                    if let lastSync = syncService.lastSyncedAt {
+                        Text("Last synced: \(lastSync.formatted())")
+                    } else {
+                        Text("Not synced yet")
+                    }
+                }
+                .listRowBackground(Theme.cardBackground)
+
+                // MARK: - Account Section
+                Section {
+                    Button(role: .destructive) {
+                        showingLogoutConfirmation = true
+                    } label: {
+                        Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                } header: {
+                    Text("Account")
+                } footer: {
+                    if let userId = authManager.currentUserId {
+                        Text("Signed in as \(userId)")
+                    }
+                }
+                .listRowBackground(Theme.cardBackground)
+
                 // MARK: - About Section
                 Section {
                     LabeledContent("Version", value: appVersion)
@@ -189,6 +300,62 @@ struct SettingsView: View {
                 Button("OK") { }
             } message: {
                 Text("Successfully loaded \(seededEventCount) sample events with markets.")
+            }
+            .alert("Log Out", isPresented: $showingLogoutConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Log Out", role: .destructive) {
+                    performLogout()
+                }
+            } message: {
+                Text("Are you sure you want to log out?")
+            }
+            .alert("Logout Error", isPresented: $showingLogoutError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(logoutErrorMessage)
+            }
+            .alert(apiTestSuccess ? "Connection Successful" : "Connection Failed", isPresented: $showingAPITestResult) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(apiTestMessage)
+            }
+        }
+    }
+
+    // MARK: - US-011: Test API Connection
+
+    private func testAPIConnection() async {
+        isTestingAPI = true
+
+        // Update the service with the current key
+        oddsService.setAPIKey(oddsAPIKey)
+        oddsService.setBookmaker(oddsAPIBookmaker)
+
+        do {
+            let sports = try await oddsService.fetchSports()
+            apiTestSuccess = true
+            apiTestMessage = "Successfully connected! Found \(sports.count) sports available."
+            showingAPITestResult = true
+        } catch let error as OddsAPIError {
+            apiTestSuccess = false
+            apiTestMessage = error.localizedDescription
+            showingAPITestResult = true
+        } catch {
+            apiTestSuccess = false
+            apiTestMessage = error.localizedDescription
+            showingAPITestResult = true
+        }
+
+        isTestingAPI = false
+    }
+
+    private func performLogout() {
+        Task {
+            do {
+                try await authManager.signOut()
+            } catch {
+                logoutErrorMessage = error.localizedDescription
+                showingLogoutError = true
             }
         }
     }

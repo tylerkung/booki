@@ -1,0 +1,148 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/auth-foundation",
+  "description": "Phase 1: Auth Foundation - Supabase SDK integration, auth state management, bookie signup/login flows, Sign in with Apple, password reset, and auth gate navigation. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first, backend-ready architecture)",
+    "architecture": "MVVM with Services layer",
+    "backend": "Supabase (Auth + Postgres + Realtime)"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add Supabase SDK and Configuration",
+      "description": "As a developer, I need the Supabase Swift SDK integrated so I can use auth and database services.",
+      "acceptanceCriteria": [
+        "Add Supabase Swift SDK via Swift Package Manager (https://github.com/supabase/supabase-swift)",
+        "Create Booki/Config/ directory if it doesn't exist",
+        "Create SupabaseConfig.swift that reads SUPABASE_URL and SUPABASE_ANON_KEY from environment or Info.plist",
+        "Create SupabaseClient.swift in Booki/Services/ as a singleton with shared instance",
+        "Client provides access to auth and database via `SupabaseClient.shared.client`",
+        "Add placeholder values in Info.plist for SUPABASE_URL and SUPABASE_ANON_KEY",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Foundation for all Supabase integration. User will replace placeholder values with real credentials."
+    },
+    {
+      "id": "US-002",
+      "title": "Create Auth State Manager",
+      "description": "As a developer, I need a centralized auth state manager to track login status and current user.",
+      "acceptanceCriteria": [
+        "Create AuthManager.swift in Booki/Services/ as an ObservableObject class",
+        "Add published properties: isAuthenticated (Bool), isLoading (Bool), currentUserId (String?)",
+        "Add UserRole enum (bookie, player) and published userRole property",
+        "Initialize by checking Supabase session on init",
+        "Listen to Supabase auth state changes via onAuthStateChange",
+        "Implement signOut() method that calls Supabase auth.signOut()",
+        "Add @StateObject authManager and .environmentObject(authManager) in BookiApp.swift",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Central source of truth for auth state throughout the app"
+    },
+    {
+      "id": "US-003",
+      "title": "Create Bookie Signup Flow",
+      "description": "As a new bookie, I want to create an account with email and password so I can start using the app.",
+      "acceptanceCriteria": [
+        "Create SignUpView.swift in Booki/Views/Auth/",
+        "Add text fields: email, password, confirmPassword with SecureField for passwords",
+        "Add validation: email format (contains @), password min 8 chars, passwords match",
+        "Show inline validation errors below fields",
+        "Add 'Create Account' button that calls Supabase auth.signUp(email:password:)",
+        "Show loading state during signup",
+        "On success: show alert 'Check your email to verify your account'",
+        "Handle errors: display user-friendly messages for email taken, weak password, network error",
+        "Add 'Already have an account? Log in' link at bottom",
+        "Use Theme styling (Theme.background, Theme.cardBackground, Theme.accent, etc.)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Email verification is handled by Supabase automatically"
+    },
+    {
+      "id": "US-004",
+      "title": "Create Bookie Login Flow",
+      "description": "As a returning bookie, I want to log in with my credentials so I can access my book.",
+      "acceptanceCriteria": [
+        "Create LoginView.swift in Booki/Views/Auth/",
+        "Add text fields: email, password (SecureField)",
+        "Add 'Log In' button that calls Supabase auth.signIn(email:password:)",
+        "Show loading state during login",
+        "On success: AuthManager updates automatically via auth state listener",
+        "Handle errors: display messages for invalid credentials, unverified email, network error",
+        "Add 'Forgot Password?' link (navigates to ForgotPasswordView)",
+        "Add 'Don't have an account? Sign up' link at bottom",
+        "Use Theme styling consistent with app",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Auth state change triggers navigation automatically"
+    },
+    {
+      "id": "US-005",
+      "title": "Add Sign in with Apple",
+      "description": "As a bookie, I want to sign in with Apple for faster, more secure authentication.",
+      "acceptanceCriteria": [
+        "Add 'Sign in with Apple' capability comment in code (actual capability added manually in Xcode)",
+        "Create AppleSignInButton.swift in Booki/Views/Auth/ using SignInWithAppleButton",
+        "Implement Apple Sign-In coordinator/handler",
+        "On Apple auth success: call Supabase auth.signInWithIdToken(provider: .apple, idToken:)",
+        "Handle new user vs returning user (Supabase handles this)",
+        "Add AppleSignInButton to both LoginView and SignUpView",
+        "Handle errors: user cancelled, failed, network error",
+        "Use dark style button to match app theme",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Requires Apple Developer account and Supabase Apple provider setup. Button will show but won't fully work without configuration."
+    },
+    {
+      "id": "US-006",
+      "title": "Implement Password Reset Flow",
+      "description": "As a bookie, I want to reset my password if I forget it so I can regain access.",
+      "acceptanceCriteria": [
+        "Create ForgotPasswordView.swift in Booki/Views/Auth/",
+        "Add email text field and 'Send Reset Link' button",
+        "Call Supabase auth.resetPasswordForEmail(email)",
+        "On success: show confirmation message 'Check your email for a reset link'",
+        "Handle errors: email not found, network error",
+        "Add 'Back to Login' link",
+        "Use Theme styling consistent with app",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Deep link handling for password reset can be added later. User resets via web for now."
+    },
+    {
+      "id": "US-007",
+      "title": "Create Auth Gate and Navigation",
+      "description": "As a developer, I need the app to show login/signup when unauthenticated and main app when authenticated.",
+      "acceptanceCriteria": [
+        "Create AuthGateView.swift in Booki/Views/",
+        "Inject AuthManager via @EnvironmentObject",
+        "If authManager.isLoading: show loading spinner with app logo",
+        "If !authManager.isAuthenticated: show LoginView",
+        "If authManager.isAuthenticated: show existing ContentView/MainTabView",
+        "Update BookiApp.swift to use AuthGateView as the root view",
+        "Navigation updates automatically when auth state changes (login/logout)",
+        "Logout from anywhere returns to LoginView",
+        "Use Theme styling for loading state",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "This gates the entire app behind authentication"
+    }
+  ]
+}

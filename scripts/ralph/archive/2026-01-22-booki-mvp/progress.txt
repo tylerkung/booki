@@ -1,0 +1,23 @@
+## Codebase Patterns
+- Platform: iOS 17+ with Swift 5.9+
+- UI Framework: SwiftUI
+- Persistence: SwiftData with @Model classes
+- Architecture: MVVM with Services layer
+- Use UUID for primary keys
+- Use Decimal for monetary values (stake, amounts)
+- Use Int for American odds (e.g., -110, +150)
+- Enums should be String-backed for SwiftData compatibility
+- Services should be @Observable classes injected via environment (or enums for stateless)
+- Views verify by building and running in Simulator
+- Xcode project uses ModelContainer initialization in App entry with empty Schema initially
+- Folder structure: Booki/Models, Booki/Views, Booki/ViewModels, Booki/Services
+- Models added to Schema array in BookiApp.swift must be imported via the same file scope (Models/ folder)
+- One-to-many relationships: use @Relationship(deleteRule: .cascade, inverse: \ChildModel.parentProperty) on parent
+- New model files must be added to project.pbxproj in 4 places: PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase
+- Decimal division has precision issues - use tolerance comparison (0.01) in tests for monetary calculations
+- Build command: DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project Booki.xcodeproj -scheme Booki build
+- Test command: DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -scheme BookiTests -destination 'platform=iOS Simulator,name=iPhone 16' test
+- Test mode toggle added: @AppStorage("isPlayerMode") and @AppStorage("selectedPlayerID") in ContentView for switching between bookie/player views
+
+---
+

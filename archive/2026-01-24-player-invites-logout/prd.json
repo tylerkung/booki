@@ -1,0 +1,162 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/player-experience-v2",
+  "description": "Phase 4: Player Invites + Logout - Implement bookie logout functionality and player invite system where bookies generate unique codes for players to claim their accounts. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first) + Supabase (cloud)",
+    "architecture": "MVVM with Services layer",
+    "backend": "Supabase (Auth + Postgres + Realtime + RLS)"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add Logout Button to Settings",
+      "description": "As a bookie, I want to logout from the app so I can sign in with a different account.",
+      "acceptanceCriteria": [
+        "Add new 'Account' section to SettingsView.swift before the 'About' section",
+        "Add 'Log Out' button with destructive style (red text)",
+        "Show confirmation alert before logging out: 'Are you sure you want to log out?'",
+        "On confirm: call authManager.signOut() to sign out from Supabase",
+        "Handle logout errors gracefully with error alert",
+        "After logout, user should see the login screen (AuthGateView handles this)",
+        "Use Theme styling for consistency",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Added Account section with Log Out button to SettingsView with confirmation dialog"
+    },
+    {
+      "id": "US-002",
+      "title": "Add Invite Code Fields to Player Model",
+      "description": "As a developer, I need invite code fields on the Player model to track invitation status.",
+      "acceptanceCriteria": [
+        "Add inviteCode: String? field to Player model - unique 8-character alphanumeric code",
+        "Add inviteCodeGeneratedAt: Date? field - when the code was generated",
+        "Add inviteCodeExpiresAt: Date? field - when the code expires (optional, nil = never)",
+        "Add claimedAt: Date? field - when the player claimed their account",
+        "Add authUserId: UUID? field - links to Supabase auth user after claim",
+        "Update Player initializer to include new fields with nil defaults",
+        "Existing players will have nil invite codes (unclaimed legacy players)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Added 5 new fields to Player model for invite system - needs Supabase migration"
+    },
+    {
+      "id": "US-003",
+      "title": "Create Invite Code Generator Service",
+      "description": "As a developer, I need a service to generate and validate unique invite codes.",
+      "acceptanceCriteria": [
+        "Create InviteCodeService.swift in Booki/Services/",
+        "Add generateCode() -> String that creates 8-character alphanumeric code (uppercase letters + digits, excluding confusing chars like 0/O, 1/I/L)",
+        "Add generateInviteForPlayer(player: Player, expiresIn: TimeInterval?) -> assigns code to player",
+        "Add validateCode(_ code: String) async -> Player? that looks up player by invite code",
+        "Add revokeCode(for player: Player) that clears the invite code fields",
+        "Inject ModelContext for SwiftData queries",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Created InviteCodeService with all methods - excludes confusing chars like 0/O, 1/I/L"
+    },
+    {
+      "id": "US-004",
+      "title": "Add Generate Invite UI to Player Detail",
+      "description": "As a bookie, I want to generate an invite code for a player so they can claim their account.",
+      "acceptanceCriteria": [
+        "Find the player detail/edit view (likely PlayerDetailView or similar)",
+        "Add 'Invite Code' section showing current invite status",
+        "If no code: show 'Generate Invite Code' button",
+        "If code exists and not claimed: show code with copy button, show 'Revoke Code' button",
+        "If claimed: show 'Account Claimed' with claimed date, no generate button",
+        "Copy button copies code to clipboard with haptic feedback",
+        "Show code in large, easily readable format (monospace font)",
+        "Use Theme styling",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Added Player Account section to PlayerDetailView with generate/copy/revoke functionality"
+    },
+    {
+      "id": "US-005",
+      "title": "Create Player Claim View",
+      "description": "As a player, I want to enter my invite code to claim my account.",
+      "acceptanceCriteria": [
+        "Create PlayerClaimView.swift in Booki/Views/",
+        "Show text field for entering 8-character invite code",
+        "Auto-capitalize input and strip non-alphanumeric characters",
+        "Show 'Claim Account' button, disabled until 8 characters entered",
+        "On submit: validate code via InviteCodeService",
+        "If valid: show player name and 'This is you!' confirmation",
+        "If invalid/expired: show error message",
+        "After confirmation: create Supabase auth account for player",
+        "Set player.claimedAt and player.authUserId after successful claim",
+        "Use Theme styling with same dark aesthetic",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Created PlayerClaimView with code validation and Supabase auth account creation"
+    },
+    {
+      "id": "US-006",
+      "title": "Add Player Login Option to Auth Flow",
+      "description": "As a player, I want to access the player login from the main auth screen.",
+      "acceptanceCriteria": [
+        "Modify AuthGateView to support both bookie and player auth flows",
+        "Add 'I'm a Player' link/button below the bookie login form in LoginView",
+        "Add playerClaim case to AuthViewType enum",
+        "Tapping 'I'm a Player' shows PlayerClaimView",
+        "Add 'Back to Bookie Login' link in PlayerClaimView",
+        "After player claims account, they should be able to login with email/password",
+        "Add player-specific login flow that sets userRole = .player",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Extended auth flow with playerClaim case and I'm a Player link in LoginView"
+    },
+    {
+      "id": "US-007",
+      "title": "Create Player Main View",
+      "description": "As a player, I want to see my bets and balance after logging in.",
+      "acceptanceCriteria": [
+        "Create PlayerMainView.swift in Booki/Views/",
+        "Show player's name and current balance prominently at top",
+        "Show list of player's active bets (pending, accepted status)",
+        "Show list of player's settled bets (win/loss/push)",
+        "Show recent ledger entries (deposits, withdrawals, bet settlements)",
+        "Add 'Log Out' button that calls authManager.signOut()",
+        "Use Theme styling with same dark aesthetic",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Created PlayerMainView with balance, active/settled bets, ledger entries, and logout"
+    },
+    {
+      "id": "US-008",
+      "title": "Route Player to PlayerMainView After Login",
+      "description": "As a developer, I need to route authenticated players to their view instead of bookie view.",
+      "acceptanceCriteria": [
+        "Modify AuthGateView to check authManager.userRole after authentication",
+        "If userRole == .bookie: show ContentView (existing bookie app)",
+        "If userRole == .player: show PlayerMainView",
+        "AuthManager should determine role by checking if user has bookie record or player record",
+        "Add method to AuthManager: determineUserRole() that queries both tables",
+        "On login: first try to find bookie record, if not found try player record",
+        "Set appropriate role and ID (currentBookieId or currentPlayerId)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "AuthGateView routes to PlayerMainView or ContentView based on userRole"
+    }
+  ]
+}

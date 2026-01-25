@@ -244,24 +244,22 @@ struct SignUpView: View {
 
     /// Maps Supabase auth errors to user-friendly messages
     private func mapAuthError(_ error: AuthError) -> String {
-        switch error {
-        case .api(let apiError):
-            // Check for common error codes
-            if let message = apiError.message?.lowercased() {
-                if message.contains("already registered") || message.contains("already exists") {
-                    return "This email is already registered. Please log in instead."
-                }
-                if message.contains("weak password") || message.contains("password") {
-                    return "Please choose a stronger password."
-                }
-                if message.contains("invalid email") {
-                    return "Please enter a valid email address."
-                }
-            }
-            return apiError.message ?? "Sign up failed. Please try again."
-        default:
+        let message = error.localizedDescription.lowercased()
+
+        if message.contains("already registered") || message.contains("already exists") {
+            return "This email is already registered. Please log in instead."
+        }
+        if message.contains("weak password") || message.contains("password") && message.contains("invalid") {
+            return "Please choose a stronger password."
+        }
+        if message.contains("invalid email") {
+            return "Please enter a valid email address."
+        }
+        if message.contains("network") || message.contains("connection") {
             return "Network error. Please check your connection and try again."
         }
+
+        return "Sign up failed. Please try again."
     }
 }
 
@@ -303,21 +301,6 @@ struct PrimaryButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.8 : 1.0)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-    }
-}
-
-// MARK: - Placeholder Modifier
-
-extension View {
-    func placeholder<Content: View>(
-        when shouldShow: Bool,
-        alignment: Alignment = .leading,
-        @ViewBuilder placeholder: () -> Content
-    ) -> some View {
-        ZStack(alignment: alignment) {
-            placeholder().opacity(shouldShow ? 1 : 0)
-            self
-        }
     }
 }
 

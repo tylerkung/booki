@@ -53,6 +53,21 @@ final class Player: Syncable {
     /// Optional password hash for player authentication (never store plain text passwords)
     var passwordHash: String?
 
+    /// Unique 8-character alphanumeric invite code for player to claim account
+    var inviteCode: String?
+
+    /// When the invite code was generated
+    var inviteCodeGeneratedAt: Date?
+
+    /// When the invite code expires (nil = never expires)
+    var inviteCodeExpiresAt: Date?
+
+    /// When the player claimed their account
+    var claimedAt: Date?
+
+    /// Links to Supabase auth user after player claims account
+    var authUserId: UUID?
+
     /// Collection status for tracking outstanding balance follow-ups
     var collectionStatus: CollectionStatus?
 
@@ -88,6 +103,11 @@ final class Player: Syncable {
         bookie: Bookie? = nil,
         username: String? = nil,
         passwordHash: String? = nil,
+        inviteCode: String? = nil,
+        inviteCodeGeneratedAt: Date? = nil,
+        inviteCodeExpiresAt: Date? = nil,
+        claimedAt: Date? = nil,
+        authUserId: UUID? = nil,
         collectionStatus: CollectionStatus? = nil,
         collectionStatusDate: Date? = nil,
         promisedPaymentDate: Date? = nil,
@@ -106,6 +126,11 @@ final class Player: Syncable {
         self.bookie = bookie
         self.username = username
         self.passwordHash = passwordHash
+        self.inviteCode = inviteCode
+        self.inviteCodeGeneratedAt = inviteCodeGeneratedAt
+        self.inviteCodeExpiresAt = inviteCodeExpiresAt
+        self.claimedAt = claimedAt
+        self.authUserId = authUserId
         self.collectionStatus = collectionStatus
         self.collectionStatusDate = collectionStatusDate
         self.promisedPaymentDate = promisedPaymentDate

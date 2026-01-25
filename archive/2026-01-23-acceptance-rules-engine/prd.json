@@ -1,0 +1,196 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/acceptance-rules-engine",
+  "description": "Bookie Acceptance Rules Engine & Event Locking - Configurable auto-accept policies, manual review queue with violation reasons, event lock times. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first, backend-ready architecture)",
+    "architecture": "MVVM with Services layer"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create AcceptancePolicy Model",
+      "description": "As a developer, I need a model to store bookie's acceptance policy configuration.",
+      "acceptanceCriteria": [
+        "Create AcceptancePolicy.swift in Booki/Models/",
+        "Model is a SwiftData @Model class",
+        "Add autoAcceptMaxStake: Decimal (default 100)",
+        "Add requireReviewAboveStake: Decimal (default 500)",
+        "Add autoAcceptNewPlayers: Bool (default false)",
+        "Add newPlayerBetThreshold: Int (default 5)",
+        "Add autoAcceptParlays: Bool (default false)",
+        "Add parlayMaxLegs: Int (default 4)",
+        "Add eventLockOffsetMinutes: Int (default 0)",
+        "Add relationship to Bookie if applicable, or make it a singleton query",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Foundation model - keep simple, can extend later"
+    },
+    {
+      "id": "US-002",
+      "title": "Add Policy Violation Reason to Bet Model",
+      "description": "As a developer, I need to store why a bet was queued for review.",
+      "acceptanceCriteria": [
+        "Add policyViolationReason: String? field to Bet model in Bet.swift",
+        "Field is nil for auto-accepted bets or bets without policy evaluation",
+        "Field stores human-readable reason when bet is queued",
+        "Update Bet init to include optional policyViolationReason parameter",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Simple string field - can store multiple reasons comma-separated if needed"
+    },
+    {
+      "id": "US-003",
+      "title": "Create Acceptance Policy Service",
+      "description": "As a developer, I need logic to evaluate if a bet should be auto-accepted or queued.",
+      "acceptanceCriteria": [
+        "Create AcceptancePolicyService.swift in Booki/Services/",
+        "Add enum PolicyViolation with cases: stakeTooHigh, stakeRequiresReview, newPlayer, parlayNotAllowed, parlayTooManyLegs, eventLocked",
+        "Add static function evaluateBet(stake:isParlay:parlayLegs:playerBetCount:event:policy:) -> [PolicyViolation]",
+        "Stake check: stake > policy.autoAcceptMaxStake returns .stakeTooHigh",
+        "Stake check: stake > policy.requireReviewAboveStake returns .stakeRequiresReview",
+        "New player check: playerBetCount < policy.newPlayerBetThreshold AND !policy.autoAcceptNewPlayers returns .newPlayer",
+        "Parlay check: isParlay AND !policy.autoAcceptParlays returns .parlayNotAllowed",
+        "Parlay legs check: isParlay AND parlayLegs > policy.parlayMaxLegs returns .parlayTooManyLegs",
+        "Event lock check: event.startTime <= Date() + policy.eventLockOffsetMinutes returns .eventLocked",
+        "Add function violationDescription(_:) -> String that returns human-readable text for each violation",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Pure logic service - no side effects, easy to test"
+    },
+    {
+      "id": "US-004",
+      "title": "Integrate Policy Evaluation into Bet Submission",
+      "description": "As a developer, I need to apply policy rules when bets are submitted.",
+      "acceptanceCriteria": [
+        "Modify BetService.submitBet to accept optional policy: AcceptancePolicy? parameter",
+        "Modify BetService.submitBet to accept isParlay: Bool and parlayLegs: Int parameters",
+        "Modify BetService.submitBet to accept playerBetCount: Int parameter",
+        "When policy provided, call AcceptancePolicyService.evaluateBet",
+        "If no violations (empty array): set bet status to .accepted",
+        "If violations present: set bet status to .pending and store violation reasons in policyViolationReason",
+        "If .eventLocked violation: return failure with appropriate error instead of creating bet",
+        "If no policy provided: default to .pending (backwards compatible)",
+        "Update BetSlipSheet.submitBets to query AcceptancePolicy and pass to BetService",
+        "Update BetSlipSheet.submitBets to pass isParlay, parlayLegs, playerBetCount",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Core integration - connects policy to submission flow"
+    },
+    {
+      "id": "US-005",
+      "title": "Create Acceptance Policy Settings UI",
+      "description": "As a bookie, I want to configure my acceptance rules in Settings.",
+      "acceptanceCriteria": [
+        "Create AcceptancePolicySettingsView.swift in Booki/Views/",
+        "Query or create AcceptancePolicy on view appear",
+        "Stake thresholds section: TextField for autoAcceptMaxStake and requireReviewAboveStake with currency formatting",
+        "Player rules section: Toggle for autoAcceptNewPlayers, Stepper for newPlayerBetThreshold (1-20 range)",
+        "Parlay rules section: Toggle for autoAcceptParlays, Stepper for parlayMaxLegs (2-10 range)",
+        "Event lock section: Picker for eventLockOffsetMinutes with options 0, 1, 2, 5, 10, 15, 30",
+        "Add navigation link to AcceptancePolicySettingsView from SettingsView.swift",
+        "Use Theme styling (Theme.cardBackground, Theme.textPrimary, etc.)",
+        "Changes auto-save via SwiftData observation",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Bookie-facing settings UI - keep it simple and clear"
+    },
+    {
+      "id": "US-006",
+      "title": "Display Policy Violation Reasons in Pending Bets",
+      "description": "As a bookie, I want to see why a bet is pending review.",
+      "acceptanceCriteria": [
+        "Locate where pending bets are displayed (BetsListView or similar)",
+        "For pending bets with non-nil policyViolationReason, show the reason",
+        "Display as subtitle text below bet info, styled with Theme.warning color",
+        "Format: 'Review: [reason]' or just the reason text",
+        "Only show for .pending status bets with violation reasons",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Helps bookie understand why bet needs attention"
+    },
+    {
+      "id": "US-007",
+      "title": "Add Event Lock Computed Property",
+      "description": "As a developer, I need to compute if an event is locked for betting.",
+      "acceptanceCriteria": [
+        "Add function isLocked(offsetMinutes: Int) -> Bool to Event model",
+        "Returns true if Date() >= startTime.addingTimeInterval(-Double(offsetMinutes * 60))",
+        "Returns true if status is .live or .final regardless of offset",
+        "Add function lockTime(offsetMinutes: Int) -> Date that returns startTime minus offset",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Computed property - no storage needed"
+    },
+    {
+      "id": "US-008",
+      "title": "Display Lock Status in Game Cards",
+      "description": "As a player, I want to see if an event is locked before trying to bet.",
+      "acceptanceCriteria": [
+        "Modify GameCardView to accept optional lockOffsetMinutes parameter (default 0)",
+        "Check event.isLocked(offsetMinutes:) to determine lock status",
+        "When locked: show lock icon (lock.fill) next to time or as overlay",
+        "When locked: reduce opacity on odds buttons to 0.5",
+        "When locked: disable onSelectOdds action (don't add to slip)",
+        "Optional: show toast or brief message when tapping locked odds",
+        "Update GamesView to pass lockOffsetMinutes from policy (query policy or use default)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Player-facing lock indication - clear visual feedback"
+    },
+    {
+      "id": "US-009",
+      "title": "Prevent Locked Event Bets in Bet Slip",
+      "description": "As a system, I need to validate bet slip doesn't contain locked events on submit.",
+      "acceptanceCriteria": [
+        "In BetSlipSheet, before submission check if any selected events are locked",
+        "Query events for each bet slip item and check isLocked",
+        "If any locked events found: show error alert listing which events are locked",
+        "Prevent submission until locked events are removed from slip",
+        "Add helper to BetSlipManager or create function to validate slip",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Belt-and-suspenders check at submission time"
+    },
+    {
+      "id": "US-010",
+      "title": "Handle Postponed and Canceled Events",
+      "description": "As a bookie, I need proper handling when events are postponed or canceled.",
+      "acceptanceCriteria": [
+        "Add .postponed and .canceled cases to EventStatus enum if not present",
+        "Postponed events: isLocked returns false (allow betting on new time)",
+        "Postponed events: show 'POSTPONED' badge in GameCardView",
+        "Canceled events: isLocked returns true always",
+        "Canceled events: show 'CANCELED' badge in GameCardView, hide odds buttons",
+        "Add BetService.voidBetsForEvent(eventId:) function",
+        "When event status changes to .canceled, bookie can trigger void of pending/accepted bets",
+        "Add void action button in event detail or bets list for canceled events",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Edge case handling - important for real-world usage"
+    }
+  ]
+}

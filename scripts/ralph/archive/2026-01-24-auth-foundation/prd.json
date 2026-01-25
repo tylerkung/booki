@@ -1,0 +1,204 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/multi-tenancy-sync",
+  "description": "Phase 2 & 3: Multi-Tenancy and Sync - Database schema with bookie_id, Row Level Security policies, sync service, realtime subscriptions, offline mode. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first) + Supabase (cloud)",
+    "architecture": "MVVM with Services layer",
+    "backend": "Supabase (Auth + Postgres + Realtime + RLS)"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create Supabase Database Schema",
+      "description": "As a developer, I need the database schema in Supabase to store all app data with multi-tenant support.",
+      "acceptanceCriteria": [
+        "Create SQL migration file at supabase/migrations/001_initial_schema.sql",
+        "Create bookies table: id (uuid pk), auth_user_id (uuid references auth.users), name (text), created_at (timestamptz)",
+        "Create players table: id (uuid pk), bookie_id (uuid fk), auth_user_id (uuid nullable), name (text), status (text), collection_status (text nullable), created_at, updated_at",
+        "Create events table: id (uuid pk), bookie_id (uuid fk), name (text), sport (text), start_time (timestamptz), status (text), home_team (text), away_team (text), created_at, updated_at",
+        "Create bets table: id (uuid pk), bookie_id (uuid fk), player_id (uuid fk), event_id (text), ticket_id (uuid), stake (decimal), odds (int), side (text), status (text), grade_result (text nullable), is_parlay (bool), parlay_legs (int), created_at, updated_at",
+        "Create ledger_entries table: id (uuid pk), bookie_id (uuid fk), player_id (uuid fk), bet_id (uuid nullable fk), amount (decimal), type (text), description (text), created_at",
+        "Create acceptance_policies table: id (uuid pk), bookie_id (uuid fk unique), max_stake (decimal), require_approval_above (decimal nullable), auto_accept_enabled (bool), created_at, updated_at",
+        "All tables have bookie_id for tenant isolation",
+        "Add indexes on bookie_id for all tables",
+        "Document schema in supabase/README.md",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Foundation schema - run this migration in Supabase SQL editor"
+    },
+    {
+      "id": "US-002",
+      "title": "Implement Row Level Security Policies",
+      "description": "As a developer, I need RLS policies so bookies only see their own data.",
+      "acceptanceCriteria": [
+        "Create SQL migration file at supabase/migrations/002_rls_policies.sql",
+        "Enable RLS on all tables: ALTER TABLE tablename ENABLE ROW LEVEL SECURITY",
+        "Create helper function get_user_bookie_id() that returns bookie_id for current auth.uid()",
+        "Bookies policy: SELECT/INSERT/UPDATE/DELETE where bookie_id = get_user_bookie_id()",
+        "Players policy: bookie can CRUD all players, player can SELECT own record only",
+        "Events policy: bookie can CRUD, players can SELECT events from their bookie",
+        "Bets policy: bookie can CRUD all bets, player can SELECT/INSERT own bets only",
+        "Ledger policy: bookie can CRUD, player can SELECT own entries",
+        "Acceptance policies: bookie only, full CRUD on own record",
+        "Document policies in supabase/README.md",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "RLS enforces data isolation at database level - even if client code has bugs, data is protected"
+    },
+    {
+      "id": "US-003",
+      "title": "Add Sync Fields to SwiftData Models",
+      "description": "As a developer, I need sync-related fields on local models to track sync state.",
+      "acceptanceCriteria": [
+        "Add to all syncable models (Player, Event, Bet, LedgerEntry, AcceptancePolicy): bookieId (UUID?), needsSync (Bool default true), lastSyncedAt (Date?), version (Int default 1)",
+        "Add syncable models: SettlementPeriod, PlayerSettlement with same sync fields",
+        "Create protocol Syncable with these properties for type consistency",
+        "Update model initializers to set bookieId from AuthManager.currentBookieId",
+        "Existing local data will have nil bookieId until first sync",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Prepares local models for bidirectional sync"
+    },
+    {
+      "id": "US-004",
+      "title": "Create Bookie Record on Signup",
+      "description": "As a developer, I need a bookie record created in Supabase when a new bookie signs up.",
+      "acceptanceCriteria": [
+        "After successful auth.signUp or Apple Sign-In, insert row into bookies table",
+        "Set auth_user_id to the new user's ID",
+        "Set name from email prefix or Apple provided name",
+        "Store bookie.id in AuthManager as currentBookieId",
+        "On login, fetch bookie record and set currentBookieId",
+        "If bookie record doesn't exist on login (edge case), create it",
+        "Handle errors gracefully with user feedback",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Links auth user to bookie record for RLS policies to work"
+    },
+    {
+      "id": "US-005",
+      "title": "Create Sync Service Infrastructure",
+      "description": "As a developer, I need a sync service to coordinate data between SwiftData and Supabase.",
+      "acceptanceCriteria": [
+        "Create SyncService.swift in Booki/Services/ as ObservableObject",
+        "Add SyncStatus enum: idle, syncing, error(String), offline",
+        "Add published properties: syncStatus, lastSyncedAt (Date?), pendingChangesCount (Int)",
+        "Add method sync() that coordinates full sync cycle",
+        "Add method syncTable(_ table: SyncableTable) for targeted sync",
+        "Create SyncableTable enum listing all syncable tables",
+        "Inject SyncService via environment in BookiApp.swift",
+        "Show sync status indicator in main UI (e.g., toolbar)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Central coordinator for all sync operations"
+    },
+    {
+      "id": "US-006",
+      "title": "Implement Download Sync",
+      "description": "As a bookie, I want server data to sync to my device so I see the latest state.",
+      "acceptanceCriteria": [
+        "Create downloadAll() method in SyncService",
+        "On app launch (if authenticated), trigger download sync",
+        "Fetch from Supabase: players, events, bets, ledger_entries, acceptance_policies",
+        "For each record: if exists locally, update if server.updated_at > local.updated_at",
+        "For each record: if not exists locally, insert into SwiftData",
+        "Set needsSync = false and lastSyncedAt = now for downloaded records",
+        "Handle pagination for tables with many records (limit 1000)",
+        "Show progress during sync",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Server is source of truth for download sync"
+    },
+    {
+      "id": "US-007",
+      "title": "Implement Upload Sync",
+      "description": "As a bookie, I want local changes to upload to the server so other devices see them.",
+      "acceptanceCriteria": [
+        "Create uploadPendingChanges() method in SyncService",
+        "Find all records where needsSync = true",
+        "For each pending record: upsert to Supabase (insert or update based on id)",
+        "Include version number in upsert for conflict detection",
+        "On success: set needsSync = false, increment version, update lastSyncedAt",
+        "On failure: keep needsSync = true, log error, continue with other records",
+        "Trigger upload after any local write (create/update/delete)",
+        "Batch uploads when possible for efficiency",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Local changes push to server when online"
+    },
+    {
+      "id": "US-008",
+      "title": "Implement Realtime Subscriptions",
+      "description": "As a bookie, I want changes from other devices to appear automatically.",
+      "acceptanceCriteria": [
+        "Create RealtimeService.swift in Booki/Services/",
+        "On login: subscribe to Supabase Realtime channels for all tenant tables",
+        "Filter subscriptions by bookie_id using RLS (automatic)",
+        "Listen for INSERT, UPDATE, DELETE events",
+        "On INSERT/UPDATE: upsert into local SwiftData",
+        "On DELETE: remove from local SwiftData",
+        "On logout: unsubscribe from all channels",
+        "Handle reconnection after network loss",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Enables real-time cross-device sync"
+    },
+    {
+      "id": "US-009",
+      "title": "Implement Conflict Resolution",
+      "description": "As a bookie, I want to be notified if my change conflicts with another device.",
+      "acceptanceCriteria": [
+        "Before upload: check if server version > local version",
+        "If conflict detected: abort upload for that record",
+        "Fetch latest server version and update local copy",
+        "Show alert: 'This record was modified elsewhere. Your changes were not saved.'",
+        "Provide 'View Current' button to see the server version",
+        "Log conflicts for debugging (record id, local version, server version)",
+        "First-write-wins: the first successful write is kept",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Prevents silent data loss from concurrent edits"
+    },
+    {
+      "id": "US-010",
+      "title": "Add Network Monitor and Offline Mode",
+      "description": "As a bookie, I want to know when I'm offline and understand limitations.",
+      "acceptanceCriteria": [
+        "Create NetworkMonitor.swift using NWPathMonitor",
+        "Publish isConnected: Bool property",
+        "Add as environment object in BookiApp.swift",
+        "When offline: show banner 'You are offline' at top of main views",
+        "When offline: disable write operations with message 'Requires internet connection'",
+        "Allow viewing/reading all local data while offline",
+        "When connection restored: hide banner, trigger sync",
+        "Debounce connection changes to avoid flicker",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "User always knows connectivity state and what they can do"
+    }
+  ]
+}

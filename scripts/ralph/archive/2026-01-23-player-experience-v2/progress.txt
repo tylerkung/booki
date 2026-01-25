@@ -1,0 +1,22 @@
+# Ralph Progress Log
+Started: Thu Jan 23 2026
+---
+
+## Codebase Patterns
+- Player mode tabs are defined in `ContentView.swift` in the `playerModeView` function
+- Tab styling uses `Theme.accent` for tint color
+- NavigationStack wraps each tab content view for navigation support
+- Cannot run xcodebuild directly - Xcode command line tools not configured for full builds
+- Use `swiftc -parse` for basic Swift syntax validation
+- Player mode tabs use `PlayerTabView` wrapper that provides AppHeaderView + NavigationStack
+- Use generic wrapper pattern for adding common UI across multiple views
+- AccountView takes `Player` parameter and is the destination for header navigation
+- Track tab view is `TrackView` in `Booki/Views/TrackView.swift` (renamed from PlayerHistoryView)
+- Bet model has `ticketId: UUID` field - bets placed in same submission share the same ticketId
+- BetService.submitBet creates Bet objects - update it when adding new Bet fields
+- TrackView groups bets by ticketId using `Ticket` struct with `TicketHeaderView` and `TicketBetRowView`
+- LiabilityService.calculatePayout(stake:odds:) returns profit only (not including stake return)
+- GameCardView.swift contains SpreadButton, MLButton, OddsButton components
+- Total market already exists in model (Market.type == .total) with totalMarket computed property
+
+---

@@ -1,0 +1,20 @@
+# Ralph Progress Log
+Started: Thu Jan 23 2026
+---
+
+## Codebase Patterns
+- Bet model in Booki/Models/Bet.swift with BetStatus and GradeResult enums
+- GradingService.swift handles grading (gradeBet) and settlement (settleBet)
+- LiabilityService.calculatePayout(stake:odds:) calculates payout from American odds
+- Bets grouped by ticketId - parlays share same ticketId, singles have unique ticketIds
+- TrackView groups bets into Ticket structs based on ticketId
+- AcceptancePolicy model stores bookie configuration settings
+- AcceptancePolicySettingsView for bookie settings UI
+- Services are implemented as `enum` types with static functions (pure logic, no state)
+- Theme.swift for all styling - use Theme.warning, Theme.accent, Theme.danger etc.
+- For switch statements on EventStatus: handle .scheduled, .live, .final, .postponed, .canceled
+- SwiftData models use @Model decorator with @Attribute(.unique) for id field
+- All new models must be added to Schema array in BookiApp.swift
+- New Swift files need 4 edits to project.pbxproj: PBXBuildFile, PBXFileReference, group children, Sources build phase
+
+---

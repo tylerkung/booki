@@ -1,0 +1,147 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/booki-v3.0",
+  "description": "Game Card Totals & Layout Update - Add Totals column to game cards, remove All Markets toggle, fix bet slip UX issues, correct balance display logic, and standardize card backgrounds. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift) - do NOT revert to default iOS styling.",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first, backend-ready architecture)",
+    "architecture": "MVVM with Services layer"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Remove All Markets Toggle Button",
+      "description": "As a developer, I want to remove the All Markets expand button from game cards so the card is cleaner and additional markets are accessed via the detail view.",
+      "acceptanceCriteria": [
+        "Remove expandButton view builder from GameCardView.swift",
+        "Remove isExpanded state variable",
+        "Remove expandedMarketsSection view builder",
+        "Remove the conditional rendering of expandedMarketsSection in the body",
+        "Card now shows only the main betting grid (will have Spread, ML, Total after US-004)",
+        "Tapping the card still navigates to MarketSelectionView for full market access",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Modify existing GameCardView.swift - just remove expand functionality, don't add Total column yet"
+    },
+    {
+      "id": "US-002",
+      "title": "Create TotalButton Component and Helper",
+      "description": "As a developer, I need a TotalButton component styled like SpreadButton with line value as main text and odds as secondary.",
+      "acceptanceCriteria": [
+        "Create formatTotalValue function that extracts line from 'Over 220.5' -> 'o220.5' or 'Under 220.5' -> 'u220.5'",
+        "Create TotalButton struct in GameCardView.swift modeled after SpreadButton",
+        "Button takes totalValue (e.g., 'o220.5'), odds (Int), isSelected (Bool), and action closure",
+        "Main text shows totalValue (font size 14, black weight)",
+        "Secondary text shows formatted odds below (font size 10, semibold)",
+        "Use same selected/unselected styling as SpreadButton (gradients, borders, animations)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Create component first before integrating - model after SpreadButton structure"
+    },
+    {
+      "id": "US-003",
+      "title": "Reduce Button Sizes for Three-Column Layout",
+      "description": "As a developer, I need to adjust button and text sizes so three columns fit comfortably on screen.",
+      "acceptanceCriteria": [
+        "Reduce oddsButtonSize from 72 to 60 in GameCardView",
+        "In SpreadButton: reduce main text from 16 to 14, secondary text from 11 to 10",
+        "In MLButton: reduce text from 16 to 14",
+        "In TotalButton (from US-002): use 14 for main, 10 for secondary",
+        "Reduce team name font size from 15 to 14 in teamOddsRow",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Size adjustments to make room for third column"
+    },
+    {
+      "id": "US-004",
+      "title": "Add Total Column to Game Card",
+      "description": "As a player, I want to see and tap Over/Under totals directly on the game card alongside Spread and ML.",
+      "acceptanceCriteria": [
+        "Add 'TOTAL' header in teamsWithOddsSection after ML column (same styling as SPREAD/ML headers)",
+        "TOTAL header only shows if totalMarket is available",
+        "Modify teamOddsRow to accept totalMarket parameter",
+        "Away team row (top) shows Over button using TotalButton",
+        "Home team row (bottom) shows Under button using TotalButton",
+        "TotalButton receives correct line value from formatTotalValue (sideA for Over, sideB for Under)",
+        "Tapping Over/Under adds selection to bet slip via onSelectOdds callback",
+        "Selection state reflects correctly (highlighted when in bet slip)",
+        "Column order is: Team Name | SPREAD | ML | TOTAL",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "This integrates the TotalButton from US-002 into the game card layout"
+    },
+    {
+      "id": "US-005",
+      "title": "Fix Bet Slip Segmented Control Tap Area",
+      "description": "As a player, I want to tap anywhere on the Singles/Parlay segment to switch modes, not just the text.",
+      "acceptanceCriteria": [
+        "Locate the Singles/Parlay segmented control (likely in BetSlipSheet.swift or BetConfirmationSheet.swift)",
+        "Add .contentShape(Rectangle()) to the segment buttons to expand tap area",
+        "Ensure entire segment button area is tappable, not just the text label",
+        "Both Singles and Parlay segments respond to taps on full button area",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "UX fix for segmented control - may need to examine multiple bet slip related files"
+    },
+    {
+      "id": "US-006",
+      "title": "Remove Redundant Review Screen from Bet Submission",
+      "description": "As a player, I want to submit my bet directly after entering my stake without an extra review step.",
+      "acceptanceCriteria": [
+        "Identify the review/confirmation step in bet submission flow (likely BetConfirmationSheet.swift)",
+        "Remove or bypass the intermediate review screen state",
+        "User enters stake and taps submit to place bet immediately",
+        "Confirmation feedback (success toast/alert) still shows after successful submission",
+        "Error handling still works for failed submissions",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Streamline bet submission - check BetConfirmationSheet for step/state management"
+    },
+    {
+      "id": "US-007",
+      "title": "Fix Player Balance Display Logic",
+      "description": "As a player, I want the balance display to show positive when I'm in good standing and negative when I owe money.",
+      "acceptanceCriteria": [
+        "Review balance calculation in BalanceService.swift",
+        "Positive balance = player is in credit (good standing, bookie owes player)",
+        "Negative balance = player owes money to the bookie (debt)",
+        "Update any inverted logic in balance calculations or display",
+        "Update AppHeaderView.swift balance color logic if needed: green for positive (credit), red for negative (debt)",
+        "Verify AccountView.swift shows balance correctly",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Check BalanceService, AppHeaderView, AccountView for balance semantics"
+    },
+    {
+      "id": "US-008",
+      "title": "Standardize Card Background Colors",
+      "description": "As a user, I want consistent card background styling across the app using the Account page card color.",
+      "acceptanceCriteria": [
+        "Identify the card background color used on Player AccountView (should be Theme.cardBackground)",
+        "Update Settings tab (PlayerSettingsView or PlayerSettingsContent) to use Theme.cardBackground for section backgrounds",
+        "Update Bookie dashboard cards (BookieDashboardView or similar) to use Theme.cardBackground",
+        "All card/section backgrounds should use consistent Theme.cardBackground color",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Ensure visual consistency - may need to check multiple view files"
+    }
+  ]
+}

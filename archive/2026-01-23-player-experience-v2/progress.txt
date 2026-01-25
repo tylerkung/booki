@@ -1,0 +1,185 @@
+# Ralph Progress Log
+Started: Fri Jan 23 01:45:37 PST 2026
+---
+
+## Codebase Patterns
+- Player mode tabs are defined in `ContentView.swift` in the `playerModeView` function
+- Tab styling uses `Theme.accent` for tint color
+- NavigationStack wraps each tab content view for navigation support
+- Cannot run xcodebuild directly - Xcode command line tools not configured for full builds
+- Use `swiftc -parse` for basic Swift syntax validation
+- Player mode tabs use `PlayerTabView` wrapper that provides AppHeaderView + NavigationStack
+- Use generic wrapper pattern for adding common UI across multiple views
+- AccountView takes `Player` parameter and is the destination for header navigation
+- Track tab view is `TrackView` in `Booki/Views/TrackView.swift` (renamed from PlayerHistoryView)
+- Bet model has `ticketId: UUID` field - bets placed in same submission share the same ticketId
+- BetService.submitBet creates Bet objects - update it when adding new Bet fields
+- TrackView groups bets by ticketId using `Ticket` struct with `TicketHeaderView` and `TicketBetRowView`
+- LiabilityService.calculatePayout(stake:odds:) returns profit only (not including stake return)
+
+---
+
+## 2026-01-23 - US-001
+- **What was implemented**: Reordered player mode tabs from (Account, Games, My Bets, Settings) to (Games, Track, Settings)
+- **Files changed**: Booki/ContentView.swift
+- **Changes made**:
+  - Removed Account tab from player mode (will be accessible via header in US-003)
+  - Made Games the first tab with `house.fill` icon
+  - Renamed "My Bets" to "Track" as second tab with `list.bullet.rectangle` icon
+  - Settings remains third tab with `gearshape.fill` icon
+- **Learnings for future iterations:**
+  - The `playerModeView` function in ContentView.swift controls all player mode tabs
+  - Account tab was intentionally removed - user info will come from header component
+  - Tab labels and icons are configured via SwiftUI's `Label` within `.tabItem` modifier
+---
+
+## 2026-01-23 - US-002
+- **What was implemented**: Created AppHeaderView.swift - a persistent header component showing user profile and balance
+- **Files changed**: Booki/Views/AppHeaderView.swift (new file)
+- **Changes made**:
+  - Created AppHeaderView with circular avatar (~36pt) showing user initials
+  - Initials are first letter of first name + first letter of last name (or first 2 letters if single name)
+  - Left side shows avatar + player name, tappable with optional navigation callback
+  - Right side shows current balance formatted as currency
+  - Balance color uses Theme colors: green (Theme.accent) for negative (player winning), red (Theme.danger) for positive (player owes)
+  - Header has subtle bottom border using Theme.divider
+  - Header background uses Theme.cardBackground
+  - Avatar background color is deterministic based on player name hash
+- **Learnings for future iterations:**
+  - Use closure/callback pattern (`navigateToAccount: (() -> Void)?`) for optional navigation actions
+  - Balance semantics: positive = player owes bookie (debt), negative = bookie owes player (credit)
+  - Use `BalanceService.balanceOwed()` to get the balance from ledger entries
+  - Theme colors for balance: Theme.danger for debt (red), Theme.accent for credit (green)
+  - Avatar colors array: Theme.accent, Theme.accentSecondary, Theme.accentTertiary, Theme.gold, Theme.scheduled
+---
+
+## 2026-01-23 - US-003
+- **What was implemented**: Integrated AppHeaderView into all player mode tabs with navigation to AccountView
+- **Files changed**: Booki/ContentView.swift
+- **Changes made**:
+  - Created `PlayerTabView<Content>` generic wrapper that adds header above any tab content
+  - Added `playerBalance(for:)` function to calculate balance from ledger entries using BalanceService
+  - Wrapped GamesView, PlayerHistoryView, and PlayerSettingsContent in PlayerTabView
+  - Created `PlayerSettingsContent` (without NavigationStack) to replace `PlayerSettingsView`
+  - Added navigationDestination to navigate to AccountView when tapping user section in header
+  - Removed old PlayerSettingsView (now uses PlayerSettingsContent inside PlayerTabView wrapper)
+- **Learnings for future iterations:**
+  - Use generic View wrapper pattern (`struct PlayerTabView<Content: View>: View`) to add common UI to multiple views
+  - NavigationStack should be in wrapper, not in content views, to avoid nested navigation stacks
+  - Use `@State` + `navigationDestination(isPresented:)` pattern for programmatic navigation
+  - Query ledger entries at ContentView level and pass balance down to avoid duplicate queries
+---
+
+## 2026-01-23 - US-004
+- **What was implemented**: Removed the "Your Account" card from GamesView since the header now shows balance
+- **Files changed**: Booki/Views/GamesView.swift
+- **Changes made**:
+  - Removed `accountInfoCard` view builder that displayed "Your Account" section with Available Credit and Credit Limit
+  - Removed `accountInfoCard` reference from `gamesList` LazyVStack
+  - Removed `availableCreditColor` computed property (no longer needed)
+  - Kept `balanceSummary` computed property as it's still used by `BetSlipSheet`
+  - Games list now starts directly with favorites section (if any) or sport sections
+- **Learnings for future iterations:**
+  - `balanceSummary` in GamesView is also used by BetSlipSheet, so don't remove it when cleaning up account card
+  - GamesView uses `formatCurrency()` helper function at the bottom of the file for currency formatting
+---
+
+## 2026-01-23 - US-005
+- **What was implemented**: Removed the Account Summary section from PlayerHistoryView (Track tab) since the header now shows the balance
+- **Files changed**: Booki/Views/PlayerHistoryView.swift
+- **Changes made**:
+  - Removed `balanceSection` view builder that displayed Current Balance, Available Credit, Credit Limit, and Open Liability
+  - Removed `balanceSection` reference from the `body` List
+  - Removed unused `@Query private var allLedgerEntries: [LedgerEntry]` query
+  - Removed unused computed properties: `playerLedgerEntries`, `balanceSummary`, `balanceColor`, `availableCreditColor`
+  - Removed unused `formatCurrency` function from PlayerHistoryView (HistoryBetRowView has its own)
+  - Removed unused `@Environment(\.modelContext) private var modelContext`
+  - Bet history section now takes the full space of the List
+- **Learnings for future iterations:**
+  - When removing a section, check for all unused queries, computed properties, and helper functions that were only used by that section
+  - `HistoryBetRowView` has its own `formatCurrency` function, separate from the one in `PlayerHistoryView`
+  - Always verify nothing else depends on the properties being removed before deleting them
+---
+
+## 2026-01-23 - US-006
+- **What was implemented**: Renamed PlayerHistoryView to TrackView for consistency with the tab name
+- **Files changed**:
+  - Booki/Views/PlayerHistoryView.swift → Booki/Views/TrackView.swift (renamed)
+  - Booki/ContentView.swift
+- **Changes made**:
+  - Renamed file from `PlayerHistoryView.swift` to `TrackView.swift`
+  - Renamed struct from `PlayerHistoryView` to `TrackView`
+  - Updated doc comment to say "track" instead of "see"
+  - Updated navigation title from "My Bets" to "Track"
+  - Updated ContentView.swift to use `TrackView(player: player)` instead of `PlayerHistoryView(player: player)`
+  - Updated #Preview to use `TrackView`
+- **Learnings for future iterations:**
+  - Git properly recognizes file renames when you `mv` then `git add` both the old and new paths
+  - The Track tab view is now at `Booki/Views/TrackView.swift`
+  - HistoryBetRowView remains in TrackView.swift (not renamed as it's used for bet history display)
+---
+
+## 2026-01-23 - US-007
+- **What was implemented**: Added ticketId field to Bet model to group bets placed together in the same submission
+- **Files changed**:
+  - Booki/Models/Bet.swift
+  - Booki/Services/BetService.swift
+  - Booki/Views/BetConfirmationSheet.swift
+- **Changes made**:
+  - Added `var ticketId: UUID` field to Bet model (required, not optional)
+  - Added `ticketId` parameter to Bet init with default value `UUID()` for backwards compatibility
+  - Updated BetService.submitBet to accept optional `ticketId` parameter (defaults to new UUID)
+  - Modified BetConfirmationSheet.submitBets() to generate ONE shared ticketId for all bets in the submission
+  - All bets created in the same submission loop now share the same ticketId
+- **Learnings for future iterations:**
+  - BetService.submitBet is responsible for creating Bet objects - update it when adding new fields
+  - Bet objects are created in the `for item in betSlipManager.items` loop in BetConfirmationSheet
+  - Use default parameter values for backwards compatibility with existing call sites
+  - Model changes may require app reinstall to clear old SwiftData database
+---
+
+## 2026-01-23 - US-008
+- **What was implemented**: Grouped bets by ticketId in Track view with ticket summary headers
+- **Files changed**:
+  - Booki/Views/TrackView.swift
+- **Changes made**:
+  - Created `Ticket` struct to represent a grouped ticket containing multiple bets
+  - Added computed property `tickets` to group bets by ticketId and sort by most recent first
+  - Created `TicketHeaderView` to display ticket summary (type, stake, potential payout, combined status)
+  - Created `TicketBetRowView` to display individual bets within a ticket (event name, side, odds, stake)
+  - Replaced flat bet list with grouped sections - each ticket is a section with header and bet rows
+  - Implemented combined status logic: pending > void > declined > accepted > readyToGrade > graded > settled
+  - Parlay potential payout uses multiplied decimal odds; singles sum individual payouts
+  - Replaced old `HistoryBetRowView` with new `TicketBetRowView`
+  - All styling uses Theme colors (Theme.warning, Theme.accent, Theme.danger, etc.)
+- **Learnings for future iterations:**
+  - Use `Dictionary(grouping:)` to group arrays by a key, then map to custom structs
+  - For parlay odds, convert American to decimal (1 + odds/100 for positive, 1 + 100/abs(odds) for negative)
+  - Section headers in SwiftUI List need `.textCase(nil)` to prevent uppercase transformation
+  - LiabilityService.calculatePayout returns profit only (not including stake return)
+---
+
+## 2026-01-23 - US-009
+- **What was implemented**: Created TicketDetailView.swift for comprehensive ticket details with navigation from Track view
+- **Files changed**:
+  - Booki/Views/TicketDetailView.swift (new file)
+  - Booki/Views/TrackView.swift
+- **Changes made**:
+  - Created `TicketDetailView` with full ticket information including:
+    - Ticket summary section (type, status, total stake, combined odds)
+    - Odds breakdown section for parlays (shows each leg's decimal multiplier and combined multiplier)
+    - Bets section with `TicketDetailBetRowView` showing event, market, selection, odds, stake, timestamps
+    - Payout section (potential profit, total return, actual result for settled tickets)
+    - Details section (placed date, ticket ID)
+  - `TicketDetailBetRowView` shows comprehensive bet info: event name, sport/league, status, market, side, odds, stake, potential/actual payout, event time, event status, and final score if available
+  - Added NavigationLink wrapper around `TicketHeaderView` in TrackView to enable navigation to TicketDetailView
+  - Added chevron indicator in ticket header to show tappability
+  - Parlay actual payout handles win, loss, and push scenarios (pushed legs are excluded from parlay calculation)
+  - All styling uses Theme colors consistently (Theme.background, Theme.cardBackground, Theme.accent, Theme.gold, etc.)
+- **Learnings for future iterations:**
+  - Wrap Section headers in NavigationLink for tappable navigation - use `.buttonStyle(.plain)` to prevent default button styling
+  - For parlay actual payout calculation: if any leg pushes, recalculate odds excluding that leg
+  - Converting American odds to decimal: positive odds = 1 + (odds/100), negative odds = 1 + (100/|odds|)
+  - Converting decimal odds back to American: if decimal >= 2 then positive American = (decimal-1)*100, else negative American = -100/(decimal-1)
+  - Event model has `status: EventStatus` and optional `finalScore: String?` fields useful for detail views
+---

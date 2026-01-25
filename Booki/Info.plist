@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>SUPABASE_URL</key>
-	<string>YOUR_SUPABASE_URL_HERE</string>
+	<string>https://vstfauqufwpdytmvjyfz.supabase.co</string>
 	<key>SUPABASE_ANON_KEY</key>
-	<string>YOUR_SUPABASE_ANON_KEY_HERE</string>
+	<string>sb_publishable_s7yECdf2DfdcD3m_9f2QFw_7rJpCJku</string>
 </dict>
 </plist>

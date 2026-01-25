@@ -1,239 +1,239 @@
 {
   "project": "Booki",
-  "branchName": "ralph/games-density-v1",
-  "description": "Games View UX Improvements - Increase information density by replacing card-based layout with compact table-style rows. Reference patterns from Caesars, FanDuel, DraftKings sportsbook apps.",
+  "branchName": "ralph/odds-api-integration",
+  "description": "Integrate The Odds API to fetch sporting events, betting lines, and scores. Enables auto-import of events and auto-grading of bets.",
   "techStack": {
     "platform": "iOS 17+",
     "language": "Swift 5.9+",
     "ui": "SwiftUI",
     "persistence": "SwiftData (local-first) + Supabase (cloud)",
-    "architecture": "MVVM with Services layer"
+    "architecture": "MVVM with Services layer",
+    "externalAPI": "The Odds API (https://api.the-odds-api.com)"
   },
   "userStories": [
     {
       "id": "US-001",
-      "title": "Replace GameCardView with CompactGameRow",
-      "description": "As a player, I want to see more games on screen so I can quickly scan available betting options.",
+      "title": "Create OddsAPIService",
+      "description": "As a developer, I need a service to communicate with The Odds API.",
       "acceptanceCriteria": [
-        "Create new CompactGameRow.swift component in Booki/Views/",
-        "Row height reduced to ~80-90pt (from ~140pt cards)",
-        "No card shadows, gradient borders, or decorative overlays",
-        "Use Theme.cardBackground with single 0.5pt Theme.border bottom divider",
-        "Accept same parameters as GameCardView: event, selections, onSelectOdds, onTapCard, lockOffsetMinutes",
-        "Selection state (highlight when odds added to slip) still works",
+        "Create OddsAPIService.swift in Booki/Services/",
+        "Base URL: https://api.the-odds-api.com",
+        "Use @AppStorage for API key temporarily (will move to Keychain later)",
+        "Implement async request method with URLSession",
+        "Parse x-requests-remaining header to track quota",
+        "Handle errors: 401 (invalid key), 429 (rate limit), 500 (server error)",
+        "Create OddsAPIError enum for typed errors",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Typecheck requires Xcode IDE verification per CLAUDE.md"
+      "notes": "Created OddsAPIService.swift with OddsAPIError enum, async request methods, quota header parsing"
     },
     {
       "id": "US-002",
-      "title": "Implement Table-Style Odds Layout",
-      "description": "As a player, I want odds displayed in aligned columns so I can quickly compare spreads, moneylines, and totals across games.",
+      "title": "Create API Response Models",
+      "description": "As a developer, I need models to decode The Odds API responses.",
       "acceptanceCriteria": [
-        "Odds buttons sized at 52x44pt (reduced from 60x60pt)",
-        "Away team row: Team name | Spread | ML | Total",
-        "Home team row: Team name | Spread | ML | Total",
-        "Buttons display spread/total value and odds on single line (e.g. '-3.5 -110')",
-        "Use HStack with fixed-width columns for alignment",
+        "Create OddsAPIModels.swift in Booki/Models/",
+        "OddsSport: key, group, title, description, active, hasOutrights",
+        "OddsEvent: id, sportKey, sportTitle, commenceTime, homeTeam, awayTeam, bookmakers",
+        "OddsBookmaker: key, title, lastUpdate, markets",
+        "OddsMarket: key, lastUpdate, outcomes",
+        "OddsOutcome: name, price, point (optional for spreads/totals)",
+        "OddsScore: id, sportKey, commenceTime, completed, homeTeam, awayTeam, scores",
+        "All models conform to Codable with proper CodingKeys for snake_case",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Implemented as part of US-001 - CompactGameRow already includes table-style layout"
+      "notes": "Created OddsAPIModels.swift with all Codable models"
     },
     {
       "id": "US-003",
-      "title": "Compact Team Name Display",
-      "description": "As a player, I want team names displayed clearly without excessive spacing.",
+      "title": "Fetch Available Sports",
+      "description": "As a developer, I need to fetch the list of available sports from the API.",
       "acceptanceCriteria": [
-        "Team name uses .system(size: 13, weight: .semibold)",
-        "Team name row height is 36pt total",
-        "Team names left-aligned, truncated with ellipsis if needed",
-        "lineLimit(1) applied to team names",
+        "Add fetchSports() async throws -> [OddsSport] to OddsAPIService",
+        "Endpoint: GET /v4/sports/?apiKey={key}",
+        "Filter to only active sports (active == true)",
+        "This endpoint is free (doesn't count against quota)",
         "Typecheck passes"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "Implemented as part of US-001 - CompactGameRow already has compact team name styling"
+      "notes": "Added fetchSports() method to OddsAPIService"
     },
     {
       "id": "US-004",
-      "title": "Simplified Game Time Display",
-      "description": "As a player, I want game time shown compactly.",
+      "title": "Fetch Events with Odds",
+      "description": "As a developer, I need to fetch upcoming events with betting odds.",
       "acceptanceCriteria": [
-        "Game time shown as single line above the matchup: 'Today 7:00 PM' or 'Sat, Jan 25'",
-        "Font size .caption2 (11pt) with Theme.textSecondary color",
-        "Remove clock icon to save horizontal space",
-        "Live indicator reduced to small 'LIVE' text badge without pulsing animation",
-        "Lock icon shows inline when event is locked",
+        "Add fetchOdds(sport: String) async throws -> [OddsEvent] to OddsAPIService",
+        "Endpoint: GET /v4/sports/{sport}/odds/",
+        "Parameters: apiKey, regions=us, markets=h2h,spreads,totals, oddsFormat=american",
+        "Store preferred bookmaker in @AppStorage (default: draftkings)",
+        "Parse response into [OddsEvent] array",
         "Typecheck passes"
       ],
       "priority": 4,
       "passes": true,
-      "notes": "Implemented as part of US-001 - CompactGameRow timeHeader already has simplified styling"
+      "notes": "Added fetchOdds() method to OddsAPIService with all parameters"
     },
     {
       "id": "US-005",
-      "title": "Streamlined Odds Buttons",
-      "description": "As a player, I want odds buttons that are easy to tap but don't waste space with excessive styling.",
+      "title": "Add External ID Fields to Event Model",
+      "description": "As a developer, I need to track which events came from the API.",
       "acceptanceCriteria": [
-        "Create CompactOddsButton component replacing SpreadButton, MLButton, TotalButton",
-        "Odds button background: Theme.elevatedBackground (unselected) or Theme.accent (selected)",
-        "No gradient backgrounds - solid colors only",
-        "No outer glow/shadow effects",
-        "Border: 1pt Theme.border (unselected) or Theme.accent (selected)",
-        "Corner radius: 6pt",
-        "Maintain spring animation on tap but remove selection highlight radial gradient",
+        "Add externalId: String? to Event model",
+        "Add externalSource: String? to Event model (e.g. 'the-odds-api')",
+        "Add lastOddsUpdate: Date? to Event model",
+        "Add homeScore: Int? to Event model",
+        "Add awayScore: Int? to Event model",
+        "Update Event initializer with new optional fields (default nil)",
         "Typecheck passes"
       ],
       "priority": 5,
       "passes": true,
-      "notes": "Implemented as compactOddsButton method in CompactGameRow - may need extraction for US-011 reuse"
+      "notes": "Added externalId, externalSource, lastOddsUpdate, homeScore, awayScore to Event model. Supabase migration applied."
     },
     {
       "id": "US-006",
-      "title": "Sticky Column Headers",
-      "description": "As a player, I want the SPREAD/MONEY/TOTAL column headers to stay visible while scrolling.",
+      "title": "Create OddsAPIMapper",
+      "description": "As a developer, I need to convert API responses to app models.",
       "acceptanceCriteria": [
-        "Column headers row sticks below sport tabs when scrolling",
-        "Headers use .system(size: 10, weight: .semibold) with Theme.textMuted",
-        "Headers row has Theme.background background",
-        "0.5pt bottom border using Theme.divider",
-        "Use LazyVStack(pinnedViews: [.sectionHeaders]) for sticky behavior",
+        "Create OddsAPIMapper.swift in Booki/Services/",
+        "Method: mapToEvent(from: OddsEvent, bookmaker: String) -> Event",
+        "Map commenceTime -> startTime, homeTeam/awayTeam directly",
+        "Map sportKey to sport and league (e.g. basketball_nba -> Basketball, NBA)",
+        "Set externalId to OddsEvent.id, externalSource to 'the-odds-api'",
+        "Method: mapToMarkets(from: OddsEvent, bookmaker: String, event: Event) -> [Market]",
+        "Convert h2h outcomes to moneyline Market with team names as sideA/sideB",
+        "Convert spreads outcomes to spread Market with point values in labels",
+        "Convert totals outcomes to total Market with Over/Under labels",
+        "Handle missing markets gracefully (return empty array)",
         "Typecheck passes"
       ],
       "priority": 6,
       "passes": true,
-      "notes": "Added columnHeadersRow with LazyVStack pinnedViews in GamesView"
+      "notes": "Created OddsAPIMapper.swift with mapToEvent and mapToMarkets methods"
     },
     {
       "id": "US-007",
-      "title": "Sport Section Headers Inline",
-      "description": "As a player, I want sport/league headers to be compact.",
+      "title": "Import Events UI",
+      "description": "As a bookie, I want a button to import events from the API.",
       "acceptanceCriteria": [
-        "Section header format: 'NBA • Eastern Conference' in single line",
-        "Font: .system(size: 12, weight: .medium) with Theme.textSecondary",
-        "Top padding 16pt, bottom padding 8pt",
-        "No background color - just text",
+        "Add Import Events button to EventsListView toolbar",
+        "Show sheet with sport picker (populated from fetchSports)",
+        "Show Import button that fetches odds for selected sport",
+        "Show loading indicator during fetch",
+        "Use OddsAPIMapper to create Event and Market objects",
+        "Save to SwiftData modelContext",
+        "Skip events that already exist (match by externalId)",
+        "Show success: 'Imported X events' or error alert",
         "Typecheck passes"
       ],
       "priority": 7,
       "passes": true,
-      "notes": "Implemented in sportSection alongside US-006 sticky headers"
+      "notes": "Created ImportEventsView.swift with sport picker and import functionality"
     },
     {
       "id": "US-008",
-      "title": "Update GamesView to Use Compact Rows",
-      "description": "As a developer, I need to update GamesView to use the new compact row component.",
+      "title": "Fetch Scores",
+      "description": "As a developer, I need to fetch scores for completed games.",
       "acceptanceCriteria": [
-        "GamesView uses CompactGameRow instead of GameCardView",
-        "LazyVStack spacing reduced to 0 (dividers handle separation)",
-        "Horizontal padding reduced to 12pt (from 16pt)",
-        "Favorites section uses same compact row style",
-        "All existing functionality preserved: search, sport tabs, favorites, bet slip",
+        "Add fetchScores(sport: String, daysFrom: Int) async throws -> [OddsScore] to OddsAPIService",
+        "Endpoint: GET /v4/sports/{sport}/scores/",
+        "Parameters: apiKey, daysFrom (1-3)",
+        "OddsScore.scores is array of {name: String, score: String}",
+        "Filter to completed games (completed == true)",
         "Typecheck passes"
       ],
       "priority": 8,
       "passes": true,
-      "notes": "Replaced GameCardView with CompactGameRow in GamesView"
+      "notes": "Added fetchScores() method to OddsAPIService"
     },
     {
       "id": "US-009",
-      "title": "Clean Up Legacy Components",
-      "description": "As a developer, I want to remove unused components to keep codebase clean.",
+      "title": "Update Events with Scores",
+      "description": "As a developer, I need to update events with final scores from the API.",
       "acceptanceCriteria": [
-        "Remove or deprecate SpreadButton, MLButton, TotalButton from GameCardView.swift",
-        "Keep GameCardView.swift for potential future use but mark as legacy",
-        "Keep BetSlipSelection model unchanged",
-        "Keep OddsButton for use in MarketSelectionView",
+        "Create method updateEventsWithScores(scores: [OddsScore], context: ModelContext)",
+        "Match OddsScore to Event by externalId",
+        "Parse score strings to integers",
+        "Set event.homeScore and event.awayScore",
+        "Set event.status to .completed",
+        "Save context",
         "Typecheck passes"
       ],
       "priority": 9,
       "passes": true,
-      "notes": "Marked legacy components with deprecation comments"
+      "notes": "Implemented updateEventsWithScores in FetchScoresView"
     },
     {
       "id": "US-010",
-      "title": "Create Game Detail View",
-      "description": "As a player, I want to tap into a game and see all available betting markets so I can explore more options.",
+      "title": "Fetch Scores UI",
+      "description": "As a bookie, I want a button to fetch scores and update events.",
       "acceptanceCriteria": [
-        "Create GameDetailView.swift in Booki/Views/ (replaces MarketSelectionView for players)",
-        "Game header shows: Away team vs Home team, game time, live status if applicable",
-        "Header uses Theme.cardBackground with team names in .title3 weight",
-        "Display game time in format 'Today 7:00 PM' or 'Sat, Jan 25 • 1:00 PM'",
-        "Tapping game row in GamesView navigates to GameDetailView",
+        "Add Fetch Scores button to GradingView or EventsListView",
+        "Fetch scores for all sports with imported events",
+        "Call updateEventsWithScores to update local events",
+        "Show count of events updated: 'Updated scores for X games'",
+        "Trigger sync to upload changes to Supabase",
         "Typecheck passes"
       ],
       "priority": 10,
       "passes": true,
-      "notes": "Created GameDetailView.swift and updated GamesView navigation"
+      "notes": "Created FetchScoresView.swift with score fetching UI"
     },
     {
       "id": "US-011",
-      "title": "Game Detail Main Markets Section",
-      "description": "As a player, I want to see the main betting markets prominently displayed at the top of the game detail page.",
+      "title": "API Settings Section",
+      "description": "As a bookie, I want to configure my Odds API settings.",
       "acceptanceCriteria": [
-        "Main Lines section displays spread, moneyline, and total markets",
-        "Each market shows both sides in a horizontal row using CompactOddsButton",
-        "Tapping an odds button adds selection to bet slip via BetSlipManager",
-        "Selected state highlights with Theme.accent",
-        "Section header uses .system(size: 14, weight: .semibold) with Theme.textPrimary",
+        "Add 'Odds API' section to SettingsView",
+        "SecureField for API key (stored in @AppStorage for now)",
+        "Picker for preferred bookmaker: DraftKings, FanDuel, BetMGM, Caesars",
+        "Display quota: 'API Calls Remaining: X'",
+        "Test Connection button that calls fetchSports and shows success/error",
+        "Use Theme styling consistent with rest of app",
         "Typecheck passes"
       ],
       "priority": 11,
       "passes": true,
-      "notes": "Created CompactOddsButton.swift and added mainLinesSection to GameDetailView"
+      "notes": "Added Odds API section to SettingsView with API key, bookmaker picker, quota display, test connection"
     },
     {
       "id": "US-012",
-      "title": "Game Detail Market Categories",
-      "description": "As a player, I want to browse different market categories so I can find specific bets.",
+      "title": "Quota Tracking",
+      "description": "As a bookie, I want to see my API usage to avoid exceeding limits.",
       "acceptanceCriteria": [
-        "Horizontal scrolling category tabs below main markets",
-        "Categories: All Markets, Alternate Lines, Player Props, Game Props",
-        "Tab style matches sport tabs in GamesView (capsule buttons)",
-        "All Markets selected by default, shows all available markets grouped by type",
-        "Each category filters the displayed markets below",
-        "Empty state shown if category has no markets",
+        "Add @Published var quotaRemaining: Int? to OddsAPIService",
+        "Add @Published var quotaUsed: Int? to OddsAPIService",
+        "Parse x-requests-remaining and x-requests-used from response headers",
+        "Update quota after each API call",
+        "Show warning in Settings when quota < 100: 'Low API quota'",
+        "Persist quota to @AppStorage for display between sessions",
         "Typecheck passes"
       ],
       "priority": 12,
       "passes": true,
-      "notes": "Added MarketCategory enum, marketCategoryTabs, MarketCategoryTabButton, and empty state"
+      "notes": "Added @Published quota properties and @AppStorage persistence to OddsAPIService"
     },
     {
       "id": "US-013",
-      "title": "Game Detail Market List",
-      "description": "As a player, I want to see all markets for the selected category in a scannable list.",
+      "title": "Refresh Odds for Existing Events",
+      "description": "As a bookie, I want to refresh odds for events to get line movements.",
       "acceptanceCriteria": [
-        "Markets grouped by type with section headers (Spread, Total, Moneyline)",
-        "Each market row shows both sides with odds buttons",
-        "For alternate lines: show line value prominently (e.g. 'Alt Spread -5.5')",
-        "Use same compact styling as main games list (no decorative cards)",
-        "Scrollable list with Theme.background",
+        "Add Refresh Odds button to GamesView or EventsListView",
+        "Fetch fresh odds for events with externalId that start within 24 hours",
+        "Update existing Market odds (oddsA, oddsB) and point values",
+        "Update event.lastOddsUpdate timestamp",
+        "Show count: 'Refreshed odds for X events'",
         "Typecheck passes"
       ],
       "priority": 13,
       "passes": true,
-      "notes": "Added marketListSection with marketTypeSection and marketRow components for grouped market display"
-    },
-    {
-      "id": "US-014",
-      "title": "Game Detail Bet Slip Integration",
-      "description": "As a player, I want selections from the game detail page to appear in my bet slip.",
-      "acceptanceCriteria": [
-        "Selections made in GameDetailView add to BetSlipManager",
-        "Floating bet slip indicator appears at bottom (same as GamesView)",
-        "Tapping indicator opens BetSlipSheet",
-        "Multiple selections from same game allowed (for parlays)",
-        "Navigating back to GamesView preserves bet slip selections",
-        "Typecheck passes"
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": "Implementation completed as part of US-010/US-011 - verified all criteria met"
+      "notes": "Created RefreshOddsView.swift with odds refresh functionality for events within 24 hours"
     }
   ]
 }

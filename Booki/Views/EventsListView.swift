@@ -6,6 +6,9 @@ struct EventsListView: View {
     @Query(sort: \Event.startTime) private var events: [Event]
 
     @State private var showingAddEvent = false
+    @State private var showingImportEvents = false
+    @State private var showingFetchScores = false
+    @State private var showingRefreshOdds = false
 
     /// Group events by sport and league
     private var groupedEvents: [(key: String, events: [Event])] {
@@ -51,8 +54,30 @@ struct EventsListView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingAddEvent = true
+                    Menu {
+                        Button {
+                            showingAddEvent = true
+                        } label: {
+                            Label("Add Event Manually", systemImage: "plus")
+                        }
+
+                        Button {
+                            showingImportEvents = true
+                        } label: {
+                            Label("Import from Odds API", systemImage: "square.and.arrow.down")
+                        }
+
+                        Button {
+                            showingFetchScores = true
+                        } label: {
+                            Label("Fetch Scores", systemImage: "sportscourt")
+                        }
+
+                        Button {
+                            showingRefreshOdds = true
+                        } label: {
+                            Label("Refresh Odds", systemImage: "arrow.triangle.2.circlepath")
+                        }
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -60,6 +85,15 @@ struct EventsListView: View {
             }
             .sheet(isPresented: $showingAddEvent) {
                 AddEventSheet()
+            }
+            .sheet(isPresented: $showingImportEvents) {
+                ImportEventsView()
+            }
+            .sheet(isPresented: $showingFetchScores) {
+                FetchScoresView()
+            }
+            .sheet(isPresented: $showingRefreshOdds) {
+                RefreshOddsView()
             }
         }
     }

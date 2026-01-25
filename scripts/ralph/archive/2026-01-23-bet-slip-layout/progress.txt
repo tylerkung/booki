@@ -1,0 +1,17 @@
+# Ralph Progress Log
+Started: Thu Jan 23 2026
+---
+
+## Codebase Patterns
+- Models are SwiftData @Model classes in Booki/Models/
+- Services are static/singleton classes in Booki/Services/
+- BetService.submitBet is the main entry point for creating bets
+- BetStatus enum: .pending, .accepted, .declined, .void, .readyToGrade, .graded, .settled
+- EventStatus enum: .scheduled, .live, .final (may need .postponed, .canceled)
+- Theme.swift provides all colors - use Theme.cardBackground, Theme.warning, Theme.textPrimary etc.
+- Settings are in SettingsView.swift (bookie) - add navigation links for new settings views
+- For SwiftUI List with dark theme: .scrollContentBackground(.hidden) + .background(Theme.background) + .listRowBackground(Theme.cardBackground)
+- GameCardView.swift handles game display with odds buttons
+- BetSlipSheet.swift handles bet submission flow
+
+---

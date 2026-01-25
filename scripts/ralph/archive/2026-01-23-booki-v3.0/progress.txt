@@ -1,0 +1,13 @@
+# Ralph Progress Log
+Started: Thu Jan 23 2026
+---
+
+## Codebase Patterns
+- BetSlipSheet.swift contains the full bet slip UI with PremiumBetSlipItemCard, stakeEntrySection, submitSection
+- BetSlipManager.swift is the shared singleton managing bet slip state (items, stake, betMode)
+- Presentation detents are set in GamesView.swift where .sheet(isPresented: $showingBetSlipSheet) is called
+- Use Theme.cardBackground for card backgrounds, Theme.elevatedBackground for input fields
+- Button components use .contentShape(Rectangle()) to expand tap areas
+- Balance display: positive = credit (green), negative = debt (red) for player-facing views
+
+---

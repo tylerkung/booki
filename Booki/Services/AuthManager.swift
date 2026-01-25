@@ -30,6 +30,10 @@ final class AuthManager: ObservableObject {
     /// This is set after login/signup when the bookie record is fetched/created
     @Published private(set) var currentBookieId: UUID?
 
+    /// The current player's auth user ID (nil if not authenticated as player)
+    /// This links to player.authUserId in SwiftData
+    @Published private(set) var currentPlayerId: UUID?
+
     /// Error message from bookie record operations (nil if no error)
     @Published private(set) var bookieError: String?
 
@@ -65,24 +69,54 @@ final class AuthManager: ObservableObject {
         // Auth state listener will handle updating the published properties
     }
 
-    /// Fetches or creates the bookie record for the current user
-    /// Call this after successful login/signup to ensure bookie record exists
+    /// Determines the user's role and fetches appropriate record
+    /// Call this after successful login/signup to determine if user is bookie or player
     /// - Parameter name: Optional name to use when creating a new bookie record
     func ensureBookieRecord(name: String? = nil) async {
         isLoadingBookie = true
         bookieError = nil
 
+        // First, try to find an existing bookie record for this user
+        do {
+            let bookie = try await BookieService.fetchCurrentBookie()
+            currentBookieId = bookie.id
+            currentPlayerId = nil
+            userRole = .bookie
+            isLoadingBookie = false
+            return
+        } catch {
+            // No existing bookie record found - this is expected for new users or players
+            // Continue to try creating one or checking if they're a player
+        }
+
+        // Try to create a bookie record (for new bookie signups)
         do {
             let bookie = try await BookieService.fetchOrCreateBookie(name: name)
             currentBookieId = bookie.id
+            currentPlayerId = nil
             userRole = .bookie
         } catch {
-            bookieError = error.localizedDescription
-            // Don't block the user from using the app, but log the error
-            print("Failed to fetch/create bookie record: \(error)")
+            // If we can't create/fetch bookie record, user might be a player
+            // Set as player role - the app will check if they have a valid player record
+            if let userId = currentUserId, let uuid = UUID(uuidString: userId) {
+                currentPlayerId = uuid
+                currentBookieId = nil
+                userRole = .player
+            } else {
+                bookieError = error.localizedDescription
+                print("Failed to determine user role: \(error)")
+            }
         }
 
         isLoadingBookie = false
+    }
+
+    /// Sets the current user as a player
+    /// Called when a player successfully claims their account
+    func setAsPlayer(authUserId: UUID) {
+        currentPlayerId = authUserId
+        currentBookieId = nil
+        userRole = .player
     }
 
     /// Sets the current bookie ID directly (used when bookie record is already known)
@@ -155,6 +189,7 @@ final class AuthManager: ObservableObject {
         if !isAuthenticated {
             self.userRole = nil
             self.currentBookieId = nil
+            self.currentPlayerId = nil
             self.bookieError = nil
         }
     }

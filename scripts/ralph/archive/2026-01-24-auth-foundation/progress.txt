@@ -1,0 +1,21 @@
+# Ralph Progress Log
+Started: Fri Jan 24 2026
+---
+
+## Codebase Patterns
+- SwiftData @Model classes need @Attribute(.unique) for id fields
+- Use Theme.swift for all styling (Theme.background, Theme.cardBackground, Theme.accent, Theme.danger, etc.)
+- Services are ObservableObject classes or enums with static functions
+- Views go in Booki/Views/, Services in Booki/Services/, Models in Booki/Models/
+- New files must be added to project.pbxproj in 4 places: PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase
+- Use `contains(where:)` not `contains {}` for closure-based contains checks
+- BookiApp.swift is the main app entry point with modelContainer and environment setup
+- AuthManager is an ObservableObject managing auth state, injected via .environmentObject()
+- SupabaseClientManager.shared.client provides access to Supabase auth and database
+- Supabase credentials are in Info.plist (SUPABASE_URL, SUPABASE_ANON_KEY)
+- AuthError handling: use error.localizedDescription, don't destructure .api case
+- Auth views are in Booki/Views/Auth/ directory
+- Use AuthTextFieldStyle and PrimaryButtonStyle for consistent auth UI (defined in SignUpView.swift)
+- Supabase auth state changes via `client.auth.authStateChanges` async sequence
+
+---

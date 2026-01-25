@@ -1,0 +1,343 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/ux-improvements-v3",
+  "description": "UX Improvements - Header, Bet History & Bet Slip. Streamlined navigation with persistent header showing user info and balance, improved bet history grouped by ticket, enhanced game card odds grid with totals, and better bet slip UX.",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first, backend-ready architecture)",
+    "architecture": "MVVM with Services layer"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Reorder tabs to Games, Track, Settings",
+      "description": "As a user, I want the tab bar ordered logically so Games is my home screen and settings are secondary.",
+      "acceptanceCriteria": [
+        "Tab order is: Games (1st), Track (2nd), Settings (3rd)",
+        "Games tab is selected by default on app launch",
+        "Tab icons and labels remain unchanged",
+        "Project builds successfully"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Fix player balance color logic",
+      "description": "As a user, I want balance colors to make sense: positive = good (I have credit), negative = I owe money.",
+      "acceptanceCriteria": [
+        "Positive balance displayed in accent/green (player has credit)",
+        "Negative balance displayed in danger/red (player owes bookie)",
+        "Zero balance displayed in neutral/secondary color",
+        "Update any existing balance displays to follow this logic",
+        "Project builds successfully"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Standardize card background color across app",
+      "description": "As a user, I want consistent card styling so the app feels cohesive.",
+      "acceptanceCriteria": [
+        "Identify Account page card background color as the standard",
+        "Settings tab uses Theme.cardBackground (replace any gray backgrounds)",
+        "Bookie dashboard cards use Theme.cardBackground",
+        "All cards consistently use Theme.cardStyle() or Theme.cardBackground",
+        "Project builds successfully"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create persistent header component",
+      "description": "As a user, I want a consistent header across all tabs so I always see my identity and balance.",
+      "acceptanceCriteria": [
+        "Create new AppHeaderView component",
+        "Header has consistent height (~44-56pt) and styling",
+        "Header uses Theme colors and gradients",
+        "Header is reusable and can be added to any tab view",
+        "Project builds successfully"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Add user photo and name to header (left side)",
+      "description": "As a user, I want to see my photo and username in the header so I know I'm logged in.",
+      "acceptanceCriteria": [
+        "Left side of header shows user photo (circular, ~32pt)",
+        "If no photo exists, show initials (first 2 letters of username)",
+        "Username displayed next to photo",
+        "Initials use Theme.accentSecondary background with contrasting text",
+        "Project builds successfully"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Add balance display to header (right side)",
+      "description": "As a user, I want to see my current balance at a glance so I know my financial position.",
+      "acceptanceCriteria": [
+        "Right side of header shows current balance",
+        "Balance formatted as currency (e.g., '$1,250.00')",
+        "Positive balance in Theme.accent (green)",
+        "Negative balance in Theme.danger (red)",
+        "Zero balance in Theme.textSecondary",
+        "Balance is NOT tappable (informational only)",
+        "Project builds successfully"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Make header user section tappable to Account",
+      "description": "As a user, I want to tap my photo/name to access my account settings quickly.",
+      "acceptanceCriteria": [
+        "Tapping user photo or username navigates to Account page",
+        "Navigation uses standard NavigationLink push transition",
+        "Account page has back button to return to previous tab",
+        "Project builds successfully"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Add header to Games, Track, and Settings tabs",
+      "description": "As a user, I want the header visible on all main tabs.",
+      "acceptanceCriteria": [
+        "AppHeaderView appears at top of Games tab",
+        "AppHeaderView appears at top of Track tab",
+        "AppHeaderView appears at top of Settings tab",
+        "Header is positioned below safe area, above content",
+        "Project builds successfully"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Remove Your Account section from Games tab",
+      "description": "As a user, I no longer need the account section on Games since it's now in the header.",
+      "acceptanceCriteria": [
+        "Your Account section removed from Games/Home view",
+        "No empty space left where section was removed",
+        "Games tab layout adjusts properly",
+        "Project builds successfully"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Remove Account Summary from Track tab",
+      "description": "As a user, I no longer need the account summary in Track since balance is in the header.",
+      "acceptanceCriteria": [
+        "Account summary section removed from Track/My Bets view",
+        "Bet history section takes full available space",
+        "No empty space left where section was removed",
+        "Project builds successfully"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Remove All Markets expand button from game cards",
+      "description": "As a user, I don't need the expand button since all key markets will be visible by default.",
+      "acceptanceCriteria": [
+        "All Markets / Show Less button removed from GameCardView",
+        "expandedMarketsSection removed from GameCardView",
+        "isExpanded state removed",
+        "Card height adjusts appropriately",
+        "Project builds successfully"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Create TotalButton component for totals market",
+      "description": "As a developer, I need a button component for displaying over/under totals.",
+      "acceptanceCriteria": [
+        "Create TotalButton component similar to SpreadButton",
+        "Main text shows value with O/U prefix (e.g., 'O 7.5' or 'U 7.5')",
+        "Secondary text shows odds (e.g., '-110')",
+        "Same selection state styling as SpreadButton (gradient when selected)",
+        "Same tap animation and glow effects",
+        "Project builds successfully"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Add Total column to game card odds grid",
+      "description": "As a user, I want to see spread, moneyline, AND totals at a glance.",
+      "acceptanceCriteria": [
+        "Three columns displayed: SPREAD | ML | TOTAL (left to right)",
+        "Column headers show 'SPREAD', 'ML', 'TOTAL'",
+        "Total column shows Over on away team row, Under on home team row",
+        "All three columns have equal width boxes",
+        "Project builds successfully"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Reduce odds button size for three-column layout",
+      "description": "As a user, I need the buttons to fit three across while remaining readable.",
+      "acceptanceCriteria": [
+        "oddsButtonSize reduced from 72pt to ~60-64pt",
+        "Main text size reduced to ~13-14pt",
+        "Secondary text size reduced to ~9-10pt",
+        "Team name can truncate with ellipsis if needed",
+        "All text remains readable",
+        "Project builds successfully"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Expand bet slip to fuller height",
+      "description": "As a user, I want the bet slip to open taller so I can see more of my selections.",
+      "acceptanceCriteria": [
+        "Bet slip slides open to ~85-90% of screen height",
+        "Maintains smooth slide animation",
+        "Can still be dismissed by swiping down or tapping outside",
+        "Project builds successfully"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Remove bet preselections from bet slip",
+      "description": "As a user, I don't need preset stake buttons cluttering the bet slip.",
+      "acceptanceCriteria": [
+        "Preset stake buttons (e.g., $10, $25, $50, $100) are removed",
+        "Only the manual stake input field remains",
+        "Layout adjusts to use freed space",
+        "Project builds successfully"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Create sticky stake/payout section at bottom of bet slip",
+      "description": "As a user, I want the stake input and payout always visible so I can adjust my bet without scrolling.",
+      "acceptanceCriteria": [
+        "Stake input section is fixed/sticky at bottom of bet slip",
+        "Potential payout displayed in the sticky section",
+        "Sticky section has top border or shadow for visual separation",
+        "Sticky section remains visible regardless of scroll position",
+        "Project builds successfully"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Make bet selections scrollable above sticky section",
+      "description": "As a user, I want to scroll through my bet selections while keeping stake/payout visible.",
+      "acceptanceCriteria": [
+        "Bet selection cards are in a ScrollView",
+        "Scrollable area is above the sticky stake/payout section",
+        "Proper padding so last item isn't hidden behind sticky section",
+        "Project builds successfully"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Fix segmented control tap area on bet slip",
+      "description": "As a user, I want to tap anywhere on the Singles/Parlay segment to switch, not just the text.",
+      "acceptanceCriteria": [
+        "Entire segment area is tappable (not just the label text)",
+        "Tap target covers full width and height of each segment",
+        "Visual feedback on tap covers full segment",
+        "Project builds successfully"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Remove bet review screen",
+      "description": "As a user, I want to submit my bet directly after entering stake without an extra confirmation screen.",
+      "acceptanceCriteria": [
+        "Place Bet button submits bet immediately (no intermediate review screen)",
+        "Bet confirmation shown as toast or alert after successful submission",
+        "Error handling shown inline if submission fails",
+        "Bet slip closes after successful submission",
+        "Project builds successfully"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Group bets by ticket in Track tab",
+      "description": "As a user, I want my bets grouped by ticket so I can see related bets together.",
+      "acceptanceCriteria": [
+        "Bets are grouped by ticket/transaction (bets placed at same time)",
+        "Each ticket displays as a summary card showing ticket type, leg count, total stake, payout, status",
+        "Ticket types: Single (1 leg), Parlay (2+ legs)",
+        "Status: Pending, Won, Lost, Partial",
+        "Cards sorted by date (newest first)",
+        "Project builds successfully"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Create bet detail page",
+      "description": "As a user, I want to tap a bet ticket to see full details.",
+      "acceptanceCriteria": [
+        "Tapping a ticket card navigates to BetDetailView",
+        "Detail page shows all legs with team names, odds, and individual status",
+        "Shows total stake and potential/actual payout",
+        "Shows bet placed timestamp",
+        "Shows result timestamp if settled",
+        "Back button returns to Track tab",
+        "Project builds successfully"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

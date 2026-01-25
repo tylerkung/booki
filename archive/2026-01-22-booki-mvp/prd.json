@@ -1,0 +1,480 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/booki-mvp",
+  "description": "Booki MVP - Native iOS app for independent sports bookies to manage their book, players, and bets. Built with Swift and SwiftUI, using SwiftData for local persistence with architecture designed to support cloud backend migration later.",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first, backend-ready architecture)",
+    "architecture": "MVVM with Services layer"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Initialize iOS project structure",
+      "description": "As a developer, I need the base Xcode project with proper architecture.",
+      "acceptanceCriteria": [
+        "Create Xcode project with SwiftUI App lifecycle",
+        "Set up folder structure: Models, Views, ViewModels, Services",
+        "Configure SwiftData ModelContainer in App entry point",
+        "Add .gitignore for Xcode/Swift projects",
+        "Project builds successfully"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create Bookie model with SwiftData",
+      "description": "As a developer, I need to store bookie accounts locally.",
+      "acceptanceCriteria": [
+        "Create Bookie @Model class with id (UUID), email, name, createdAt, updatedAt",
+        "Add subscriptionStatus enum: active, inactive, trial",
+        "Model integrates with SwiftData ModelContainer",
+        "Project builds successfully"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create Player model with SwiftData",
+      "description": "As a developer, I need to store player seats that belong to bookies.",
+      "acceptanceCriteria": [
+        "Create Player @Model class with id, name, email (optional), creditLimit, status",
+        "Add playerStatus enum: active, archived, banned",
+        "Add relationship to Bookie (many players to one bookie)",
+        "Project builds successfully"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create Bet model with lifecycle states",
+      "description": "As a developer, I need to store bets with their full lifecycle state machine.",
+      "acceptanceCriteria": [
+        "Create Bet @Model class with id, eventId, market, side, odds (Int for American odds), stake (Decimal), status, createdAt",
+        "Add betStatus enum: pending, accepted, declined, readyToGrade, graded, settled, void",
+        "Add gradeResult enum: win, loss, push (optional field)",
+        "Add relationship to Player",
+        "Project builds successfully"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Create LedgerEntry model for append-only financial records",
+      "description": "As a developer, I need an append-only ledger for tracking all balance changes.",
+      "acceptanceCriteria": [
+        "Create LedgerEntry @Model class with id, amount (Decimal), type, description, createdAt",
+        "Add entryType enum: settlement, adjustment, paymentLogged, reversal",
+        "Add relationship to Player (required) and Bet (optional)",
+        "No update methods - append-only by design",
+        "Project builds successfully"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Create Event and Market models for odds data",
+      "description": "As a developer, I need to store sports events and their betting markets.",
+      "acceptanceCriteria": [
+        "Create Event @Model class with id, sport, league, homeTeam, awayTeam, startTime, status, finalScore (optional)",
+        "Add eventStatus enum: scheduled, live, final",
+        "Create Market @Model class with id, type, sideA, sideB, oddsA (Int), oddsB (Int), updatedAt",
+        "Add marketType enum: spread, total, moneyline",
+        "Add relationship: Market belongs to Event",
+        "Project builds successfully"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Implement LiabilityService for odds calculations",
+      "description": "As a bookie, I need accurate liability calculations based on American odds.",
+      "acceptanceCriteria": [
+        "Create LiabilityService with static calculation methods",
+        "Negative odds payout: stake * (100 / abs(odds))",
+        "Positive odds payout: stake * (odds / 100)",
+        "Function handles both accepted and pending bets",
+        "Add unit tests for liability calculations",
+        "Tests pass"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Implement ExposureService for risk calculations",
+      "description": "As a bookie, I need to see my exposure per event grouped by side.",
+      "acceptanceCriteria": [
+        "Create ExposureService that queries bets by event",
+        "Calculate exposure by grouping bets by event and side",
+        "Include pending (soft exposure) and accepted (hard exposure) bets",
+        "Exclude declined, void, graded, and settled bets",
+        "Event exposure = max(total liability per side)",
+        "Add unit tests for exposure calculations",
+        "Tests pass"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Implement BalanceService derived from ledger",
+      "description": "As a developer, I need to derive player balances from the append-only ledger.",
+      "acceptanceCriteria": [
+        "Create BalanceService that calculates balance from ledger entries",
+        "Calculate available credit: creditLimit - openLiability - balanceOwed",
+        "No stored balance field - always derived from ledger",
+        "Add unit tests for balance calculations",
+        "Tests pass"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Implement BetService for bet operations",
+      "description": "As a developer, I need a service layer for all bet-related operations.",
+      "acceptanceCriteria": [
+        "Create BetService with submitBet method (creates pending bet, snapshots odds)",
+        "Add acceptBet method (pending -> accepted)",
+        "Add declineBet method (pending -> declined)",
+        "Add voidBet method (accepted -> void)",
+        "Validate stake against available credit",
+        "Project builds successfully"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Implement GradingService for bet outcomes",
+      "description": "As a developer, I need a service for grading and settling bets.",
+      "acceptanceCriteria": [
+        "Create GradingService with gradeBet method (accepted -> graded, sets gradeResult)",
+        "Add settleBet method that creates ledger entries based on outcome",
+        "Win: positive ledger entry for payout amount",
+        "Loss: negative ledger entry for stake amount",
+        "Push: zero-sum ledger entry (stake returned)",
+        "Project builds successfully"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Implement PlayerService for player management",
+      "description": "As a developer, I need a service for player CRUD and status changes.",
+      "acceptanceCriteria": [
+        "Create PlayerService with addPlayer method",
+        "Add archivePlayer method (sets status to archived)",
+        "Add banPlayer method (sets status to banned)",
+        "Add adjustBalance method (creates adjustment ledger entry)",
+        "Archived players retain history but excluded from active counts",
+        "Banned players cannot submit bets",
+        "Project builds successfully"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Build main TabView navigation structure",
+      "description": "As a user, I need tab-based navigation to access different sections.",
+      "acceptanceCriteria": [
+        "Create TabView with tabs: Dashboard, Bets, Players, Grading, Settings",
+        "Each tab shows appropriate SF Symbol icon",
+        "Tab selection persists during app use",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Build DashboardView with exposure overview",
+      "description": "As a bookie, I want to see a dashboard overview of my book.",
+      "acceptanceCriteria": [
+        "Create DashboardView as first tab",
+        "Display total open exposure prominently",
+        "Show count of pending bets requiring action",
+        "List top 5 risk events by exposure",
+        "Pull-to-refresh updates data",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Build pending bets queue on dashboard",
+      "description": "As a bookie, I want to see and act on pending bets from the dashboard.",
+      "acceptanceCriteria": [
+        "Display List of pending bets on DashboardView",
+        "Show player name, event, side, stake, odds for each bet",
+        "Swipe actions: swipe right to Accept, swipe left to Decline",
+        "Alternative: Accept/Decline buttons visible on each row",
+        "UI updates immediately after action",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Build BetsListView with status filtering",
+      "description": "As a bookie, I want to view all bets organized by status.",
+      "acceptanceCriteria": [
+        "Create BetsListView for Bets tab",
+        "Add Picker/SegmentedControl for status filter: Pending, Open, Ready to Grade, Settled, All",
+        "List shows bet details: player, event, market, side, odds, stake",
+        "Tapping bet navigates to BetDetailView",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Build BetDetailView with actions",
+      "description": "As a bookie, I want to view bet details and take actions.",
+      "acceptanceCriteria": [
+        "Create BetDetailView showing all bet information",
+        "Show contextual actions based on bet status",
+        "Pending: Accept, Decline buttons",
+        "Accepted: Void button",
+        "Graded: Settle button",
+        "Display potential payout calculation",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Build EventDetailView with exposure breakdown",
+      "description": "As a bookie, I want to see detailed exposure for a specific event.",
+      "acceptanceCriteria": [
+        "Create EventDetailView accessible from dashboard risk list",
+        "Show event info: teams, start time, status",
+        "Display exposure breakdown by side (e.g., Team A vs Team B)",
+        "List all bets for this event with player, side, stake, odds",
+        "Show total liability per side",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Build GradingView for bet outcomes",
+      "description": "As a bookie, I want to grade bets from a dedicated grading center.",
+      "acceptanceCriteria": [
+        "Create GradingView for Grading tab",
+        "List bets with status readyToGrade",
+        "Show suggested outcome based on event finalScore if available",
+        "Add Win/Loss/Push buttons for each bet",
+        "Support multi-select for bulk grading",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Build PlayersListView",
+      "description": "As a bookie, I want to see all my players with their balances.",
+      "acceptanceCriteria": [
+        "Create PlayersListView for Players tab",
+        "List players with name, balance, credit limit, utilization %",
+        "Show status badge (active, archived, banned) with color coding",
+        "Add toggle/filter to show/hide archived players",
+        "Add button to add new player",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 20,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Build PlayerDetailView with controls",
+      "description": "As a bookie, I want to manage individual players.",
+      "acceptanceCriteria": [
+        "Create PlayerDetailView accessible from players list",
+        "Show player balance, credit limit, status",
+        "Show bet history for this player as a List",
+        "Add Archive/Ban buttons (with confirmation)",
+        "Add balance adjustment sheet (amount + description)",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 21,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Build AddPlayerSheet",
+      "description": "As a bookie, I want to add new players to my book.",
+      "acceptanceCriteria": [
+        "Create AddPlayerSheet as a modal sheet",
+        "Form fields: name (required), email (optional), creditLimit",
+        "Validate required fields before allowing save",
+        "Save creates player via PlayerService",
+        "Sheet dismisses and list updates on success",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 22,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Build player bet submission flow - Event selection",
+      "description": "As a player, I want to browse available events to bet on.",
+      "acceptanceCriteria": [
+        "Create SubmitBetView accessible from a player context",
+        "List available events grouped by sport/league using Section",
+        "Show event: teams, start time",
+        "Tapping event navigates to market selection",
+        "Use compliant language: 'Submit Request' not 'Place Bet'",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 23,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Build player bet submission flow - Market selection",
+      "description": "As a player, I want to select a market and side for my bet submission.",
+      "acceptanceCriteria": [
+        "Create MarketSelectionView showing markets for selected event",
+        "Display market types: Spread, Total, Moneyline",
+        "Show current odds for each side as tappable buttons",
+        "Selection highlights chosen side",
+        "Continue button proceeds to stake entry",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 24,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Build player bet submission flow - Stake and review",
+      "description": "As a player, I want to enter my stake and submit my bet request.",
+      "acceptanceCriteria": [
+        "Create StakeEntryView with numeric input for stake",
+        "Display potential payout calculated from odds",
+        "Show available credit if credit enabled",
+        "Validate stake against available credit",
+        "Show review summary: event, market, side, odds, stake, potential payout",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 25,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Add compliance disclosure to player submission",
+      "description": "As a product, we need compliance disclosure on bet submission.",
+      "acceptanceCriteria": [
+        "Display disclosure text on review screen: 'This submission records a bet request with your book. No money is wagered or transferred in this app.'",
+        "Disclosure visible above Submit button",
+        "Submit button triggers BetService.submitBet",
+        "Success shows confirmation and returns to event list",
+        "Use compliant language throughout: Submit, Record, Review, Pending",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 26,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "Build player bet history view",
+      "description": "As a player, I want to see my submitted bets and their status.",
+      "acceptanceCriteria": [
+        "Create PlayerHistoryView showing player's bets",
+        "List bets with event, market, side, odds, stake, status",
+        "Show outcome and payout for settled bets",
+        "Display current balance prominently at top",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 27,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "Build SettingsView with data management",
+      "description": "As a bookie, I want app settings and data export options.",
+      "acceptanceCriteria": [
+        "Create SettingsView for Settings tab",
+        "Add bookie profile section (name, email)",
+        "Add Export Data button (prepares for future CSV/sharing)",
+        "Add app version display",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 28,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Implement CSV export for bets",
+      "description": "As a bookie, I want to export bet data to CSV.",
+      "acceptanceCriteria": [
+        "Add export function in SettingsView or BetsListView",
+        "Generate CSV with: date, player, event, market, side, odds, stake, status, result, payout",
+        "Use ShareLink or UIActivityViewController to share file",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 29,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "Implement CSV export for ledger",
+      "description": "As a bookie, I want to export ledger entries to CSV.",
+      "acceptanceCriteria": [
+        "Add ledger export option in SettingsView",
+        "Generate CSV with: date, player, type, amount, description, related bet",
+        "Use ShareLink or UIActivityViewController to share file",
+        "Project builds and runs in Simulator"
+      ],
+      "priority": 30,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}

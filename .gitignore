@@ -53,6 +53,9 @@ fastlane/test_output
 .env
 .env.local
 
+# Supabase credentials (keep Info.plist.template in repo)
+Booki/Info.plist
+
 # IDE
 .idea
 .vscode

@@ -1,0 +1,145 @@
+# Ralph Progress Log
+Started: Fri Jan 23 12:48:18 PST 2026
+---
+
+## Codebase Patterns
+- GameCardView.swift contains button components (SpreadButton, MLButton, TotalButton, OddsButton) that follow a consistent pattern with isPressed/showSelectionHighlight states, gradient backgrounds, and spring animations
+- Theme.swift provides consistent styling - use Theme.cardGradient, Theme.accent, Theme.textPrimary, etc.
+- Market types are accessed via event.markets?.first { $0.type == .spread/.moneyline/.total }
+- Xcode command line build is not available (xcodebuild requires full Xcode, not just Command Line Tools)
+- For SwiftUI Buttons with transparent backgrounds, use .contentShape(Rectangle()) to expand tap area
+- Balance display convention: Internal (BalanceService) uses positive = player owes, but player-facing displays negate this so positive = player credit (green), negative = debt (red)
+- For SwiftUI List/Form views with dark theme: use .scrollContentBackground(.hidden) + .background(Theme.background) + .listRowBackground(Theme.cardBackground) on sections
+
+---
+
+## 2026-01-23 - US-001
+- What was implemented: Removed All Markets toggle button from GameCardView
+- Files changed: Booki/Views/GameCardView.swift
+- Changes made:
+  - Removed isExpanded state variable
+  - Removed allMarkets computed property
+  - Removed expandedMarketsSection conditional rendering from body
+  - Removed expandButton from cardContent
+  - Removed expandButton view builder
+  - Removed expandedMarketsSection view builder
+  - Removed expandedMarketRow function
+  - Removed marketTypeName function
+- **Learnings for future iterations:**
+  - OddsButton struct is kept as "Legacy Odds Button" - may be used elsewhere or in future expanded market views
+  - Card now shows only Spread and ML columns; Total column will be added in US-004
+  - totalMarket computed property is preserved for future Total column implementation
+---
+
+## 2026-01-23 - US-002
+- What was implemented: Created TotalButton component and formatTotalValue helper function
+- Files changed: Booki/Views/GameCardView.swift
+- Changes made:
+  - Added formatTotalValue() function that converts "Over 220.5" -> "o220.5" or "Under 220.5" -> "u220.5"
+  - Created TotalButton struct modeled after SpreadButton with:
+    - totalValue (String), odds (Int), isSelected (Bool), action closure parameters
+    - Main text font size 14, black weight (per acceptance criteria)
+    - Secondary odds text font size 10, semibold weight
+    - Same gradient backgrounds, borders, spring animations as SpreadButton
+- **Learnings for future iterations:**
+  - TotalButton is now available for US-004 integration into game card layout
+  - formatTotalValue is inside GameCardView struct (not global) - can be called within teamOddsRow
+  - Button components follow same pattern: isPressed state, showSelectionHighlight state, formattedOdds computed property
+---
+
+## 2026-01-23 - US-003
+- What was implemented: Reduced button and text sizes for three-column layout
+- Files changed: Booki/Views/GameCardView.swift
+- Changes made:
+  - Reduced oddsButtonSize from 72 to 60
+  - SpreadButton: main text 16->14, secondary text 11->10
+  - MLButton: text 16->14
+  - TotalButton: already at correct sizes (14, 10) from US-002
+  - Team name font: 15->14 in teamOddsRow
+- **Learnings for future iterations:**
+  - All button components now use consistent sizing: main text 14pt black weight, secondary 10pt semibold
+  - oddsButtonSize of 60 allows three columns (Spread, ML, Total) to fit comfortably
+  - Swift syntax parsing can be done with `swiftc -parse` to verify changes compile
+---
+
+## 2026-01-23 - US-004
+- What was implemented: Added Total column to game card with Over/Under buttons
+- Files changed: Booki/Views/GameCardView.swift
+- Changes made:
+  - Added TOTAL header in teamsWithOddsSection (same styling as SPREAD/ML headers)
+  - TOTAL header only shows if totalMarket is available
+  - Modified teamOddsRow to accept totalMarket parameter
+  - Away team row (top) shows Over button (sideA) using TotalButton
+  - Home team row (bottom) shows Under button (sideB) using TotalButton
+  - TotalButton receives formatted line value (o220.5/u220.5) from formatTotalValue
+  - Selection/tap behavior integrates with bet slip via onSelectOdds callback
+- **Learnings for future iterations:**
+  - Game card now has three columns: SPREAD | ML | TOTAL
+  - Total market uses sideA for Over, sideB for Under (consistent with spread/ml pattern)
+  - The preview data already included totalMarket so the Preview shows all three columns
+---
+
+## 2026-01-23 - US-005
+- What was implemented: Fixed Singles/Parlay segmented control tap area in BetSlipSheet
+- Files changed: Booki/Views/BetSlipSheet.swift
+- Changes made:
+  - Added .contentShape(Rectangle()) modifier to the Button content in the Singles/Parlay toggle
+  - This expands the tap area to cover the full button background, not just the text label
+- **Learnings for future iterations:**
+  - SwiftUI Buttons with .buttonStyle(.plain) may have tap areas limited to visible content
+  - Use .contentShape(Rectangle()) after .background() to expand tap area to full frame
+  - BetSlipSheet.swift contains the Singles/Parlay toggle (lines 122-147)
+  - BetConfirmationSheet.swift is a separate confirmation flow shown after tapping "Review & Confirm"
+---
+
+## 2026-01-23 - US-006
+- What was implemented: Removed redundant review screen from bet submission flow
+- Files changed: Booki/Views/BetSlipSheet.swift
+- Changes made:
+  - Removed .sheet presentation to BetConfirmationSheet
+  - Added submission logic directly to BetSlipSheet (moved from BetConfirmationSheet)
+  - Added @Query for bets and ledgerEntries to support submission
+  - Added submission state variables: isSubmitting, submissionComplete, submissionError, submittedCount
+  - Added success view with celebration animation (pulsing rings, checkmark)
+  - Changed button from "Review & Confirm" to "Place Bet"
+  - Added error alert for failed submissions
+  - User can now submit bets directly after entering stake without extra review step
+- **Learnings for future iterations:**
+  - BetSlipSheet now handles the full bet submission flow in one sheet
+  - BetConfirmationSheet.swift still exists in project but is no longer presented (could be removed)
+  - The submission logic uses BetService.submitBet and generates a shared ticketId for all bets
+  - Success animation uses outerRingScale/outerRingOpacity for pulsing effect
+---
+
+## 2026-01-23 - US-007
+- What was implemented: Fixed player balance display logic to show correct semantics
+- Files changed: Booki/ContentView.swift, Booki/Services/BalanceService.swift, Booki/Views/AccountView.swift, Booki/Views/AppHeaderView.swift
+- Changes made:
+  - ContentView: Negate internal balance for display in playerBalance() function
+  - AppHeaderView: Updated balanceColor to show green for positive (credit), red for negative (debt)
+  - AccountView: Added displayBalance computed property that negates internal balance
+  - AccountView: Updated heroBalanceSection to use displayBalance with correct colors and text
+  - BalanceService: Updated comments to clarify internal vs display conventions
+- **Learnings for future iterations:**
+  - Internal balance convention (BalanceService): positive = player owes bookie, negative = bookie owes player
+  - Display balance convention (player-facing): positive = player in credit (green), negative = player in debt (red)
+  - Bookie views (DashboardView, PlayersListView) use internal convention directly - no negation needed there
+  - The formula `availableCredit = creditLimit - liability - balance` is correct with internal convention
+  - GradingService creates Win = +payout, Loss = -stake entries which seems opposite but works with the negation
+---
+
+## 2026-01-23 - US-008
+- What was implemented: Standardized card background colors across the app
+- Files changed: Booki/Views/SettingsView.swift, Booki/Views/DashboardView.swift
+- Changes made:
+  - SettingsView: Added .listRowBackground(Theme.cardBackground) to all 5 sections
+  - DashboardView: Added .listRowBackground(Theme.cardBackground) to all sections (Exposure, Pending Bets Count, Pending Bets Queue, Top Risk Events, Settlements, Players Owe You, You Owe Players)
+  - FlaggedPlayersView: Added .listRowBackground(Theme.cardBackground) to list rows
+  - EditProfileSheet: Added .listRowBackground(Theme.cardBackground) to both sections, plus .scrollContentBackground(.hidden) and .background(Theme.background)
+  - ExportDataView: Added .listRowBackground(Theme.cardBackground), plus .scrollContentBackground(.hidden) and .background(Theme.background)
+- **Learnings for future iterations:**
+  - SwiftUI List sections need .listRowBackground(Theme.cardBackground) to show themed background
+  - Always pair .scrollContentBackground(.hidden) with .background(Theme.background) for List/Form views
+  - AccountView already had the correct pattern - use it as reference for consistent styling
+  - The key files for bookie-facing UI are: SettingsView.swift, DashboardView.swift (and their nested views)
+---

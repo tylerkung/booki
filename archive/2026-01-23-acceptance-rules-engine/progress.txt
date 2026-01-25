@@ -1,0 +1,141 @@
+# Ralph Progress Log
+Started: Fri Jan 23 14:18:44 PST 2026
+---
+
+## Codebase Patterns
+- SwiftData models use `@Model` decorator with `@Attribute(.unique)` for id field
+- All models should be registered in BookiApp.swift schema array
+- New Swift files must be added to project.pbxproj (PBXFileReference, PBXBuildFile, group children, and Sources build phase)
+- Xcode project file IDs follow pattern `8A123455XXXX` for file refs and `8A123456XXXX` for build files
+- Use `swiftc -parse` for syntax validation but expect SwiftData macro errors (normal)
+
+---
+
+## 2026-01-23 - US-001
+- **What was implemented:** AcceptancePolicy SwiftData model for bookie acceptance rules
+- **Files changed:**
+  - Booki/Models/AcceptancePolicy.swift (new)
+  - Booki/BookiApp.swift (added to schema)
+  - Booki.xcodeproj/project.pbxproj (added file references)
+- **Learnings for future iterations:**
+  - SwiftData models follow a consistent pattern: @Model class with @Attribute(.unique) var id: UUID
+  - All new models must be added to the Schema array in BookiApp.swift
+  - Xcode project file requires 4 edits to add a new source file: PBXBuildFile, PBXFileReference, group children, and Sources build phase
+---
+
+## 2026-01-23 - US-002
+- **What was implemented:** Added policyViolationReason field to Bet model for storing review reasons
+- **Files changed:**
+  - Booki/Models/Bet.swift (added policyViolationReason: String? field and updated init)
+- **Learnings for future iterations:**
+  - Adding optional fields to existing SwiftData models is straightforward - just add the property and update init with default nil
+  - No need to modify project.pbxproj or BookiApp.swift schema when modifying existing files
+  - SwiftData handles optional String fields without additional configuration
+---
+
+## 2026-01-23 - US-003
+- **What was implemented:** AcceptancePolicyService for evaluating bets against acceptance policy rules
+- **Files changed:**
+  - Booki/Services/AcceptancePolicyService.swift (new)
+  - Booki.xcodeproj/project.pbxproj (added file references)
+- **Learnings for future iterations:**
+  - Services in this codebase are implemented as `enum` types with static functions (pure logic, no state)
+  - PolicyViolation enum captures all the reasons a bet may fail policy: stakeTooHigh, stakeRequiresReview, newPlayer, parlayNotAllowed, parlayTooManyLegs, eventLocked
+  - evaluateBet function returns an array of violations - empty array means bet should be auto-accepted
+  - Event lock check also considers event status (.live, .final) regardless of offset
+---
+
+## 2026-01-23 - US-004
+- **What was implemented:** Integrated policy evaluation into bet submission flow
+- **Files changed:**
+  - Booki/Services/BetService.swift (added policy parameters and evaluation logic)
+  - Booki/Views/BetSlipSheet.swift (added @Query for events and acceptancePolicies, updated submitBets)
+- **Learnings for future iterations:**
+  - BetService.submitBet now accepts optional policy, isParlay, parlayLegs, playerBetCount, and event parameters
+  - When policy is provided: evaluates bet, auto-accepts if no violations, queues for review if violations
+  - When .eventLocked violation occurs, returns .failure(.eventLocked) instead of creating a bet
+  - BetSlipSheet queries AcceptancePolicy and Events via @Query and passes to BetService
+  - Player bet count is calculated from existing bets for new player threshold check
+  - Parlay detection uses betMode == .parlay && count > 1
+---
+
+## 2026-01-23 - US-005
+- **What was implemented:** Acceptance Policy Settings UI for bookie configuration
+- **Files changed:**
+  - Booki/Views/AcceptancePolicySettingsView.swift (new)
+  - Booki/Views/SettingsView.swift (added navigation link under new "Bet Management" section)
+  - Booki.xcodeproj/project.pbxproj (added file references)
+- **Learnings for future iterations:**
+  - Settings views use List with Sections and `.listRowBackground(Theme.cardBackground)` for dark theme
+  - Use `.scrollContentBackground(.hidden).background(Theme.background)` for dark list backgrounds
+  - SwiftData @Query can be used with computed properties to get first item: `policies.first`
+  - Bindings to optional SwiftData properties can use pattern: `Binding(get: { policy?.property ?? default }, set: { getOrCreatePolicy().property = $0 })`
+  - ensurePolicyExists() pattern on onAppear creates singleton-like policy record
+  - NavigationLink placement in SettingsView follows pattern of section with header and footer
+---
+
+## 2026-01-23 - US-006
+- **What was implemented:** Display policy violation reasons for pending bets in BetsListView
+- **Files changed:**
+  - Booki/Views/BetsListView.swift (added policyViolationReason parameter to BetRowView, display violation reason text)
+- **Learnings for future iterations:**
+  - BetRowView accepts optional policyViolationReason parameter with default nil for backwards compatibility
+  - Violation reason displayed with Theme.warning color and "Review: " prefix
+  - Only shows for bets with .pending status AND non-nil, non-empty policyViolationReason
+  - Use `foregroundStyle(Theme.warning)` for warning-colored text display
+---
+
+## 2026-01-23 - US-007
+- **What was implemented:** Added event lock computed functions to Event model
+- **Files changed:**
+  - Booki/Models/Event.swift (added isLocked and lockTime functions)
+- **Learnings for future iterations:**
+  - Event lock logic uses two functions: `lockTime(offsetMinutes:)` returns the lock Date, `isLocked(offsetMinutes:)` checks if locked
+  - isLocked returns true if status is .live or .final (always locked regardless of offset)
+  - isLocked also returns true if Date() >= lockTime (i.e., current time past the lock time)
+  - Lock time is calculated as startTime minus offsetMinutes converted to seconds
+---
+
+## 2026-01-23 - US-008
+- **What was implemented:** Display lock status in game cards with visual indicators
+- **Files changed:**
+  - Booki/Views/GameCardView.swift (added lockOffsetMinutes parameter, lock icon, disabled/dimmed odds buttons)
+  - Booki/Views/GamesView.swift (query AcceptancePolicy and pass lockOffsetMinutes to GameCardView)
+- **Learnings for future iterations:**
+  - GameCardView uses computed `isEventLocked` property that calls `event.isLocked(offsetMinutes:)`
+  - Lock icon uses SF Symbol "lock.fill" with Theme.warning color
+  - Button components (SpreadButton, MLButton, TotalButton) now accept optional `isDisabled` parameter
+  - When locked: opacity reduced to 0.5 via `.opacity()` modifier, button disabled via `.disabled()` modifier
+  - GamesView queries AcceptancePolicy via @Query and uses computed property `lockOffsetMinutes` with default 0
+  - No need to modify project.pbxproj when only modifying existing files
+---
+
+## 2026-01-23 - US-009
+- **What was implemented:** Validate bet slip for locked events before submission
+- **Files changed:**
+  - Booki/Views/BetSlipSheet.swift (added getLockedEventNames() function, locked events alert, pre-submission validation)
+- **Learnings for future iterations:**
+  - BetSlipSheet already has @Query for events and acceptancePolicies from US-004
+  - getLockedEventNames() iterates bet slip items, finds matching events, and checks isLocked
+  - Uses item.eventDescription for user-friendly event names in the alert
+  - Alert shows list of locked events with newline separators and prompts user to remove them
+  - Validation check runs at start of submitBets() and returns early if locked events found
+  - This is a "belt-and-suspenders" check complementing the UI lock indicators from US-008
+---
+
+## 2026-01-23 - US-010
+- **What was implemented:** Handle postponed and canceled events with proper locking behavior and UI
+- **Files changed:**
+  - Booki/Models/Event.swift (added .postponed and .canceled to EventStatus, updated isLocked function)
+  - Booki/Services/BetService.swift (added voidBetsForEvent function for bulk voiding bets)
+  - Booki/Views/GameCardView.swift (added POSTPONED/CANCELED badges, hide odds for canceled events)
+  - Booki/Views/EventDetailView.swift (added postponed/canceled to status picker, void all bets button with confirmation alert)
+- **Learnings for future iterations:**
+  - EventStatus enum extended with .postponed and .canceled cases
+  - isLocked logic: canceled = always locked, postponed = never locked (allows betting on rescheduled time), live/final = always locked
+  - GameCardView badges use similar styling to liveIndicator: Capsule with fill and stroke, Theme.warning for postponed, Theme.danger for canceled
+  - To hide odds buttons for canceled events: pass nil markets to teamOddsRow function
+  - BetService.voidBetsForEvent uses @discardableResult to optionally capture voided count
+  - EventDetailView shows "Void All Bets" button only when status == .canceled AND activeBets is not empty
+  - Use .alert modifier with destructive role for confirmation dialogs
+---

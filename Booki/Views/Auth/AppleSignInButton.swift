@@ -128,6 +128,8 @@ struct AppleSignInButton: View {
                 setError("Sign in requires user interaction.")
             case .unknown:
                 setError("An unknown error occurred. Please try again.")
+            case .matchedExcludedCredential, .credentialImport, .credentialExport:
+                setError("Credential operation failed. Please try again.")
             @unknown default:
                 setError("An unexpected error occurred. Please try again.")
             }
@@ -146,20 +148,19 @@ struct AppleSignInButton: View {
 
     /// Maps Supabase auth errors to user-friendly messages
     private func mapAuthError(_ error: AuthError) -> String {
-        switch error {
-        case .api(let apiError):
-            if let message = apiError.message?.lowercased() {
-                if message.contains("provider") || message.contains("apple") {
-                    return "Apple Sign-In is not configured. Please contact support."
-                }
-                if message.contains("token") {
-                    return "Authentication token is invalid. Please try again."
-                }
-            }
-            return apiError.message ?? "Sign in failed. Please try again."
-        default:
+        let message = error.localizedDescription.lowercased()
+
+        if message.contains("provider") || message.contains("apple") {
+            return "Apple Sign-In is not configured. Please contact support."
+        }
+        if message.contains("token") {
+            return "Authentication token is invalid. Please try again."
+        }
+        if message.contains("network") || message.contains("connection") {
             return "Network error. Please check your connection and try again."
         }
+
+        return "Sign in failed. Please try again."
     }
 }
 

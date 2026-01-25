@@ -40,6 +40,23 @@ final class Event: Syncable {
     /// Version number for optimistic locking / conflict detection
     var version: Int
 
+    // MARK: - US-005: External API Fields
+
+    /// External ID from the API (e.g., The Odds API event ID)
+    var externalId: String?
+
+    /// Source of the external data (e.g., "the-odds-api")
+    var externalSource: String?
+
+    /// When odds were last updated from the API
+    var lastOddsUpdate: Date?
+
+    /// Final home team score (for auto-grading)
+    var homeScore: Int?
+
+    /// Final away team score (for auto-grading)
+    var awayScore: Int?
+
     init(
         id: UUID = UUID(),
         sport: String,
@@ -53,7 +70,12 @@ final class Event: Syncable {
         bookieId: UUID? = nil,
         needsSync: Bool = true,
         lastSyncedAt: Date? = nil,
-        version: Int = 1
+        version: Int = 1,
+        externalId: String? = nil,
+        externalSource: String? = nil,
+        lastOddsUpdate: Date? = nil,
+        homeScore: Int? = nil,
+        awayScore: Int? = nil
     ) {
         self.id = id
         self.sport = sport
@@ -68,6 +90,11 @@ final class Event: Syncable {
         self.needsSync = needsSync
         self.lastSyncedAt = lastSyncedAt
         self.version = version
+        self.externalId = externalId
+        self.externalSource = externalSource
+        self.lastOddsUpdate = lastOddsUpdate
+        self.homeScore = homeScore
+        self.awayScore = awayScore
     }
 
     // MARK: - Event Lock Logic
