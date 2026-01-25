@@ -216,3 +216,20 @@ Started: Sat Jan 24 22:34:47 PST 2026
   - Note: Current Market model only supports spread/total/moneyline - alternate lines would need model changes
   - Note: When multiple markets of same type exist, index > 0 shows "Alt" prefix for alternate lines
 ---
+
+## 2026-01-24 - US-014
+- **What was implemented**: Verified that Game Detail bet slip integration was already implemented in US-010/US-011
+- **Files changed**:
+  - Updated: prd.json (marked US-014 as passes: true)
+- **Key verification**:
+  - Selections add to BetSlipManager via `handleOddsSelection` method (line 169-172)
+  - `betSlipIndicator` appears at bottom when `!betSlipManager.isEmpty` (lines 203-207, 629-653)
+  - Tapping indicator sets `showingBetSlipSheet = true` (line 631-632)
+  - Sheet presented with `BetSlipSheet` via `.sheet(isPresented:)` (lines 211-214)
+  - Multiple selections allowed - `BetSlipManager.toggle()` checks eventId+marketId+side uniqueness
+  - Persistence via `BetSlipManager.shared` singleton with UserDefaults storage
+- **Learnings for future iterations:**
+  - Pattern: Bet slip integration was implemented alongside the view creation (US-010/US-011)
+  - Note: BetSlipManager is a singleton shared across all views - selections persist across navigation
+  - Note: Future PRDs should verify if acceptance criteria are already met by earlier stories
+---
