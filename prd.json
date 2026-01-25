@@ -55,8 +55,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented as part of US-001 - CompactGameRow already has compact team name styling"
     },
     {
       "id": "US-004",

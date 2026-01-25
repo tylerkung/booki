@@ -43,3 +43,17 @@ Started: Sat Jan 24 22:34:47 PST 2026
   - Pattern: When implementing compact rows, build the table-style layout (fixed-width columns) into the initial component
   - Gotcha: US-002 acceptance criteria were largely satisfied by US-001 implementation - check for overlap
 ---
+
+## 2026-01-24 - US-003
+- **What was implemented**: Verified that compact team name display was already implemented in US-001's CompactGameRow
+- **Files changed**:
+  - Updated: prd.json (marked US-003 as passes: true)
+- **Key verification**:
+  - Font: .system(size: 13, weight: .semibold) at line 182
+  - Row height: 36pt via .frame(height: 36) at line 244
+  - Left-aligned via .frame(maxWidth: .infinity, alignment: .leading) at line 185
+  - lineLimit(1) at line 184
+- **Learnings for future iterations:**
+  - Pattern: Multiple granular stories (US-002, US-003) can be satisfied by a single well-designed component
+  - Note: The PRD broke down styling into separate stories for granularity but implementation consolidated them
+---
