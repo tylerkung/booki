@@ -1,8 +1,19 @@
 import SwiftUI
 import SwiftData
 
+/// US-012: Market category for filtering
+enum MarketCategory: String, CaseIterable, Identifiable {
+    case allMarkets = "All Markets"
+    case alternateLines = "Alternate Lines"
+    case playerProps = "Player Props"
+    case gameProps = "Game Props"
+
+    var id: String { rawValue }
+}
+
 /// US-010: Game Detail View
 /// US-011: Main Markets Section
+/// US-012: Market Categories
 /// Displays comprehensive game info with all available betting markets
 /// Replaces MarketSelectionView for players with a more compact, sports-app style layout
 struct GameDetailView: View {
@@ -14,6 +25,9 @@ struct GameDetailView: View {
 
     /// Show bet slip sheet
     @State private var showingBetSlipSheet: Bool = false
+
+    /// US-012: Selected market category
+    @State private var selectedCategory: MarketCategory = .allMarkets
 
     /// Query bets and ledger for balance calculation
     @Query private var bets: [Bet]
@@ -67,6 +81,42 @@ struct GameDetailView: View {
         event.isLocked(offsetMinutes: 0)
     }
 
+    /// US-012: Check if category has any markets
+    private func hasMarketsForCategory(_ category: MarketCategory) -> Bool {
+        guard let markets = event.markets else { return false }
+
+        switch category {
+        case .allMarkets:
+            return !markets.isEmpty
+        case .alternateLines:
+            // Future: filter for alternate spread/total markets
+            // Currently no alternate lines support in model
+            return false
+        case .playerProps:
+            // Future: filter for player prop markets
+            // Currently no player props support in model
+            return false
+        case .gameProps:
+            // Future: filter for game prop markets
+            // Currently no game props support in model
+            return false
+        }
+    }
+
+    /// US-012: Description for empty state based on category
+    private var emptyStateDescription: String {
+        switch selectedCategory {
+        case .allMarkets:
+            return "No markets available for this game."
+        case .alternateLines:
+            return "No alternate lines available for this game."
+        case .playerProps:
+            return "No player props available for this game."
+        case .gameProps:
+            return "No game props available for this game."
+        }
+    }
+
     /// Check if a specific selection is in the bet slip
     private func isSelected(_ selection: BetSlipSelection) -> Bool {
         betSlipManager.contains(selection)
@@ -99,11 +149,20 @@ struct GameDetailView: View {
             // Markets content
             ScrollView {
                 LazyVStack(spacing: 16) {
-                    // US-011: Main Lines section
+                    // US-011: Main Lines section (always visible at top)
                     mainLinesSection
 
-                    // Placeholder for US-012, US-013 content
-                    // (Market categories and additional markets)
+                    // US-012: Category tabs
+                    marketCategoryTabs
+
+                    // US-012/US-013: Filtered market content or empty state
+                    if hasMarketsForCategory(selectedCategory) {
+                        // US-013: Market list (to be implemented)
+                        // Placeholder for filtered markets by category
+                    } else {
+                        // US-012: Empty state for category
+                        marketCategoryEmptyState
+                    }
                 }
                 .padding(.top, 16)
             }
@@ -301,6 +360,51 @@ struct GameDetailView: View {
         .cornerRadius(8)
     }
 
+    // MARK: - Market Category Tabs (US-012)
+
+    @ViewBuilder
+    private var marketCategoryTabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                ForEach(MarketCategory.allCases) { category in
+                    MarketCategoryTabButton(
+                        title: category.rawValue,
+                        isSelected: selectedCategory == category,
+                        action: { selectedCategory = category }
+                    )
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .background(Theme.background)
+        .overlay(
+            Rectangle()
+                .fill(Theme.divider)
+                .frame(height: 0.5),
+            alignment: .bottom
+        )
+    }
+
+    // MARK: - Market Category Empty State (US-012)
+
+    @ViewBuilder
+    private var marketCategoryEmptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 40))
+                .foregroundColor(Theme.textMuted)
+
+            Text(emptyStateDescription)
+                .font(.subheadline)
+                .foregroundColor(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .padding(.horizontal, 16)
+    }
+
     // MARK: - Helpers
 
     /// Extract spread number from label (e.g., "Lakers -3.5" -> "-3.5")
@@ -412,4 +516,50 @@ struct GameDetailView: View {
     }
     .modelContainer(for: [Player.self, Event.self, Bet.self, LedgerEntry.self], inMemory: true)
     .preferredColorScheme(.dark)
+}
+
+// MARK: - Market Category Tab Button (US-012)
+
+/// Button for market category filter tabs with selected state styling
+/// Matches SportTabButton styling from GamesView for consistency
+struct MarketCategoryTabButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    /// Press state for scale animation
+    @State private var isPressed: Bool = false
+
+    var body: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                action()
+            }
+        }) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .semibold : .medium)
+                .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(isSelected ? Theme.accent : Theme.cardBackground)
+                .clipShape(Capsule())
+                .scaleEffect(isPressed ? 0.95 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isSelected)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        isPressed = true
+                    }
+                }
+                .onEnded { _ in
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        isPressed = false
+                    }
+                }
+        )
+    }
 }
