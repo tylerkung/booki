@@ -42,6 +42,16 @@ List {
 - `Theme.swift` - All colors and styling constants
 - `AuthManager.swift` - Login/logout and user role state
 - `SyncService.swift` - Cloud sync coordinator
+- `OddsAPIService.swift` - The Odds API communication (singleton)
+- `OddsAPIMapper.swift` - Maps API responses to Event/Market models
+
+## Odds API Integration
+
+- **Manual triggers only** - Import/Fetch/Refresh are manual to conserve API quota (500 free calls/month)
+- **OddsAPIService.shared** - Singleton with @Published quota tracking
+- **API key stored in @AppStorage** - Settings > Odds API section
+- **Event.externalId** - Links imported events to API for score updates
+- **Supabase migration required** - See SUPABASE_MIGRATIONS.md for events table columns
 
 ## Build & Test
 
@@ -55,4 +65,11 @@ See `README.md` for comprehensive app documentation including:
 - How it's organized
 - All models, views, and services explained
 - Key concepts (balances, bets, auth, sync)
-- What's been implemented (Phases 1-5)
+- What's been implemented (Phases 1-6)
+
+## Current State (January 25, 2026)
+
+- **Branch**: `ralph/games-density-v1`
+- **Phases complete**: 1-6 (Core, Player Experience, Auth, Sync, Invites, Odds API)
+- **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
+- **Odds API key**: Configured in Settings (free tier, 500 calls/month)

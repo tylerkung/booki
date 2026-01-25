@@ -92,6 +92,8 @@ These handle the business rules and calculations:
 | **SyncService** | Syncs data between device and cloud |
 | **RealtimeService** | Receives live updates from other devices |
 | **InviteCodeService** | Generates and validates player invite codes |
+| **OddsAPIService** | Fetches sports, odds, and scores from The Odds API |
+| **OddsAPIMapper** | Converts API responses to app models |
 
 ---
 
@@ -181,6 +183,16 @@ The app is **local-first** with cloud sync:
 - Read-only player view (PlayerMainView)
 - Role-based routing (bookie vs player)
 
+### Phase 6: Odds API Integration
+- The Odds API service for fetching sports data
+- Import events from API by sport (NBA, NFL, MLB, etc.)
+- Fetch scores for completed games
+- Auto-update events with final scores
+- Refresh odds for upcoming events (line movements)
+- API quota tracking and persistence
+- Settings UI for API key and bookmaker preference
+- Manual import triggers (quota-conscious design)
+
 ---
 
 ## Technical Details
@@ -223,12 +235,14 @@ All tables have `bookie_id` for multi-tenant isolation.
 
 ## Saved for Future
 
-### Odds & Results Ingestion (API Integration)
-- Integrate with The Odds API for live odds
-- Auto-populate events from API
-- Fetch final scores and auto-grade bets
-- Background jobs for automatic updates
-- *Waiting for API keys*
+### Automatic Background Refresh
+- Scheduled odds refresh (currently manual to conserve API quota)
+- Push notifications for line movements
+- Background score fetching
+
+### Enhanced Grading
+- Auto-trigger grading when scores are fetched
+- Batch grading for multiple events
 
 ---
 
@@ -246,4 +260,4 @@ All tables have `bookie_id` for multi-tenant isolation.
 
 ---
 
-*Last updated: January 24, 2026 - Phase 5 (Player Invites & Accounts) completed*
+*Last updated: January 25, 2026 - Phase 6 (Odds API Integration) completed*
