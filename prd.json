@@ -1,204 +1,239 @@
 {
   "project": "Booki",
-  "branchName": "ralph/multi-tenancy-sync",
-  "description": "Phase 2 & 3: Multi-Tenancy and Sync - Database schema with bookie_id, Row Level Security policies, sync service, realtime subscriptions, offline mode. IMPORTANT: Maintain the existing dark sports-betting theme styling (Theme.swift).",
+  "branchName": "ralph/games-density-v1",
+  "description": "Games View UX Improvements - Increase information density by replacing card-based layout with compact table-style rows. Reference patterns from Caesars, FanDuel, DraftKings sportsbook apps.",
   "techStack": {
     "platform": "iOS 17+",
     "language": "Swift 5.9+",
     "ui": "SwiftUI",
     "persistence": "SwiftData (local-first) + Supabase (cloud)",
-    "architecture": "MVVM with Services layer",
-    "backend": "Supabase (Auth + Postgres + Realtime + RLS)"
+    "architecture": "MVVM with Services layer"
   },
   "userStories": [
     {
       "id": "US-001",
-      "title": "Create Supabase Database Schema",
-      "description": "As a developer, I need the database schema in Supabase to store all app data with multi-tenant support.",
+      "title": "Replace GameCardView with CompactGameRow",
+      "description": "As a player, I want to see more games on screen so I can quickly scan available betting options.",
       "acceptanceCriteria": [
-        "Create SQL migration file at supabase/migrations/001_initial_schema.sql",
-        "Create bookies table: id (uuid pk), auth_user_id (uuid references auth.users), name (text), created_at (timestamptz)",
-        "Create players table: id (uuid pk), bookie_id (uuid fk), auth_user_id (uuid nullable), name (text), status (text), collection_status (text nullable), created_at, updated_at",
-        "Create events table: id (uuid pk), bookie_id (uuid fk), name (text), sport (text), start_time (timestamptz), status (text), home_team (text), away_team (text), created_at, updated_at",
-        "Create bets table: id (uuid pk), bookie_id (uuid fk), player_id (uuid fk), event_id (text), ticket_id (uuid), stake (decimal), odds (int), side (text), status (text), grade_result (text nullable), is_parlay (bool), parlay_legs (int), created_at, updated_at",
-        "Create ledger_entries table: id (uuid pk), bookie_id (uuid fk), player_id (uuid fk), bet_id (uuid nullable fk), amount (decimal), type (text), description (text), created_at",
-        "Create acceptance_policies table: id (uuid pk), bookie_id (uuid fk unique), max_stake (decimal), require_approval_above (decimal nullable), auto_accept_enabled (bool), created_at, updated_at",
-        "All tables have bookie_id for tenant isolation",
-        "Add indexes on bookie_id for all tables",
-        "Document schema in supabase/README.md",
-        "Project builds and runs in Simulator"
+        "Create new CompactGameRow.swift component in Booki/Views/",
+        "Row height reduced to ~80-90pt (from ~140pt cards)",
+        "No card shadows, gradient borders, or decorative overlays",
+        "Use Theme.cardBackground with single 0.5pt Theme.border bottom divider",
+        "Accept same parameters as GameCardView: event, selections, onSelectOdds, onTapCard, lockOffsetMinutes",
+        "Selection state (highlight when odds added to slip) still works",
+        "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Foundation schema - run this migration in Supabase SQL editor"
+      "notes": "Typecheck requires Xcode IDE verification per CLAUDE.md"
     },
     {
       "id": "US-002",
-      "title": "Implement Row Level Security Policies",
-      "description": "As a developer, I need RLS policies so bookies only see their own data.",
+      "title": "Implement Table-Style Odds Layout",
+      "description": "As a player, I want odds displayed in aligned columns so I can quickly compare spreads, moneylines, and totals across games.",
       "acceptanceCriteria": [
-        "Create SQL migration file at supabase/migrations/002_rls_policies.sql",
-        "Enable RLS on all tables: ALTER TABLE tablename ENABLE ROW LEVEL SECURITY",
-        "Create helper function get_user_bookie_id() that returns bookie_id for current auth.uid()",
-        "Bookies policy: SELECT/INSERT/UPDATE/DELETE where bookie_id = get_user_bookie_id()",
-        "Players policy: bookie can CRUD all players, player can SELECT own record only",
-        "Events policy: bookie can CRUD, players can SELECT events from their bookie",
-        "Bets policy: bookie can CRUD all bets, player can SELECT/INSERT own bets only",
-        "Ledger policy: bookie can CRUD, player can SELECT own entries",
-        "Acceptance policies: bookie only, full CRUD on own record",
-        "Document policies in supabase/README.md",
-        "Project builds and runs in Simulator"
+        "Odds buttons sized at 52x44pt (reduced from 60x60pt)",
+        "Away team row: Team name | Spread | ML | Total",
+        "Home team row: Team name | Spread | ML | Total",
+        "Buttons display spread/total value and odds on single line (e.g. '-3.5 -110')",
+        "Use HStack with fixed-width columns for alignment",
+        "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "RLS enforces data isolation at database level - even if client code has bugs, data is protected"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Add Sync Fields to SwiftData Models",
-      "description": "As a developer, I need sync-related fields on local models to track sync state.",
+      "title": "Compact Team Name Display",
+      "description": "As a player, I want team names displayed clearly without excessive spacing.",
       "acceptanceCriteria": [
-        "Add to all syncable models (Player, Event, Bet, LedgerEntry, AcceptancePolicy): bookieId (UUID?), needsSync (Bool default true), lastSyncedAt (Date?), version (Int default 1)",
-        "Add syncable models: SettlementPeriod, PlayerSettlement with same sync fields",
-        "Create protocol Syncable with these properties for type consistency",
-        "Update model initializers to set bookieId from AuthManager.currentBookieId",
-        "Existing local data will have nil bookieId until first sync",
-        "Project builds and runs in Simulator"
+        "Team name uses .system(size: 13, weight: .semibold)",
+        "Team name row height is 36pt total",
+        "Team names left-aligned, truncated with ellipsis if needed",
+        "lineLimit(1) applied to team names",
+        "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Prepares local models for bidirectional sync"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Create Bookie Record on Signup",
-      "description": "As a developer, I need a bookie record created in Supabase when a new bookie signs up.",
+      "title": "Simplified Game Time Display",
+      "description": "As a player, I want game time shown compactly.",
       "acceptanceCriteria": [
-        "After successful auth.signUp or Apple Sign-In, insert row into bookies table",
-        "Set auth_user_id to the new user's ID",
-        "Set name from email prefix or Apple provided name",
-        "Store bookie.id in AuthManager as currentBookieId",
-        "On login, fetch bookie record and set currentBookieId",
-        "If bookie record doesn't exist on login (edge case), create it",
-        "Handle errors gracefully with user feedback",
-        "Project builds and runs in Simulator"
+        "Game time shown as single line above the matchup: 'Today 7:00 PM' or 'Sat, Jan 25'",
+        "Font size .caption2 (11pt) with Theme.textSecondary color",
+        "Remove clock icon to save horizontal space",
+        "Live indicator reduced to small 'LIVE' text badge without pulsing animation",
+        "Lock icon shows inline when event is locked",
+        "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Links auth user to bookie record for RLS policies to work"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Create Sync Service Infrastructure",
-      "description": "As a developer, I need a sync service to coordinate data between SwiftData and Supabase.",
+      "title": "Streamlined Odds Buttons",
+      "description": "As a player, I want odds buttons that are easy to tap but don't waste space with excessive styling.",
       "acceptanceCriteria": [
-        "Create SyncService.swift in Booki/Services/ as ObservableObject",
-        "Add SyncStatus enum: idle, syncing, error(String), offline",
-        "Add published properties: syncStatus, lastSyncedAt (Date?), pendingChangesCount (Int)",
-        "Add method sync() that coordinates full sync cycle",
-        "Add method syncTable(_ table: SyncableTable) for targeted sync",
-        "Create SyncableTable enum listing all syncable tables",
-        "Inject SyncService via environment in BookiApp.swift",
-        "Show sync status indicator in main UI (e.g., toolbar)",
-        "Project builds and runs in Simulator"
+        "Create CompactOddsButton component replacing SpreadButton, MLButton, TotalButton",
+        "Odds button background: Theme.elevatedBackground (unselected) or Theme.accent (selected)",
+        "No gradient backgrounds - solid colors only",
+        "No outer glow/shadow effects",
+        "Border: 1pt Theme.border (unselected) or Theme.accent (selected)",
+        "Corner radius: 6pt",
+        "Maintain spring animation on tap but remove selection highlight radial gradient",
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Central coordinator for all sync operations"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-006",
-      "title": "Implement Download Sync",
-      "description": "As a bookie, I want server data to sync to my device so I see the latest state.",
+      "title": "Sticky Column Headers",
+      "description": "As a player, I want the SPREAD/MONEY/TOTAL column headers to stay visible while scrolling.",
       "acceptanceCriteria": [
-        "Create downloadAll() method in SyncService",
-        "On app launch (if authenticated), trigger download sync",
-        "Fetch from Supabase: players, events, bets, ledger_entries, acceptance_policies",
-        "For each record: if exists locally, update if server.updated_at > local.updated_at",
-        "For each record: if not exists locally, insert into SwiftData",
-        "Set needsSync = false and lastSyncedAt = now for downloaded records",
-        "Handle pagination for tables with many records (limit 1000)",
-        "Show progress during sync",
-        "Project builds and runs in Simulator"
+        "Column headers row sticks below sport tabs when scrolling",
+        "Headers use .system(size: 10, weight: .semibold) with Theme.textMuted",
+        "Headers row has Theme.background background",
+        "0.5pt bottom border using Theme.divider",
+        "Use LazyVStack(pinnedViews: [.sectionHeaders]) for sticky behavior",
+        "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Server is source of truth for download sync"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-007",
-      "title": "Implement Upload Sync",
-      "description": "As a bookie, I want local changes to upload to the server so other devices see them.",
+      "title": "Sport Section Headers Inline",
+      "description": "As a player, I want sport/league headers to be compact.",
       "acceptanceCriteria": [
-        "Create uploadPendingChanges() method in SyncService",
-        "Find all records where needsSync = true",
-        "For each pending record: upsert to Supabase (insert or update based on id)",
-        "Include version number in upsert for conflict detection",
-        "On success: set needsSync = false, increment version, update lastSyncedAt",
-        "On failure: keep needsSync = true, log error, continue with other records",
-        "Trigger upload after any local write (create/update/delete)",
-        "Batch uploads when possible for efficiency",
-        "Project builds and runs in Simulator"
+        "Section header format: 'NBA • Eastern Conference' in single line",
+        "Font: .system(size: 12, weight: .medium) with Theme.textSecondary",
+        "Top padding 16pt, bottom padding 8pt",
+        "No background color - just text",
+        "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Local changes push to server when online"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-008",
-      "title": "Implement Realtime Subscriptions",
-      "description": "As a bookie, I want changes from other devices to appear automatically.",
+      "title": "Update GamesView to Use Compact Rows",
+      "description": "As a developer, I need to update GamesView to use the new compact row component.",
       "acceptanceCriteria": [
-        "Create RealtimeService.swift in Booki/Services/",
-        "On login: subscribe to Supabase Realtime channels for all tenant tables",
-        "Filter subscriptions by bookie_id using RLS (automatic)",
-        "Listen for INSERT, UPDATE, DELETE events",
-        "On INSERT/UPDATE: upsert into local SwiftData",
-        "On DELETE: remove from local SwiftData",
-        "On logout: unsubscribe from all channels",
-        "Handle reconnection after network loss",
-        "Project builds and runs in Simulator"
+        "GamesView uses CompactGameRow instead of GameCardView",
+        "LazyVStack spacing reduced to 0 (dividers handle separation)",
+        "Horizontal padding reduced to 12pt (from 16pt)",
+        "Favorites section uses same compact row style",
+        "All existing functionality preserved: search, sport tabs, favorites, bet slip",
+        "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "Enables real-time cross-device sync"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-009",
-      "title": "Implement Conflict Resolution",
-      "description": "As a bookie, I want to be notified if my change conflicts with another device.",
+      "title": "Clean Up Legacy Components",
+      "description": "As a developer, I want to remove unused components to keep codebase clean.",
       "acceptanceCriteria": [
-        "Before upload: check if server version > local version",
-        "If conflict detected: abort upload for that record",
-        "Fetch latest server version and update local copy",
-        "Show alert: 'This record was modified elsewhere. Your changes were not saved.'",
-        "Provide 'View Current' button to see the server version",
-        "Log conflicts for debugging (record id, local version, server version)",
-        "First-write-wins: the first successful write is kept",
-        "Project builds and runs in Simulator"
+        "Remove or deprecate SpreadButton, MLButton, TotalButton from GameCardView.swift",
+        "Keep GameCardView.swift for potential future use but mark as legacy",
+        "Keep BetSlipSelection model unchanged",
+        "Keep OddsButton for use in MarketSelectionView",
+        "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "Prevents silent data loss from concurrent edits"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-010",
-      "title": "Add Network Monitor and Offline Mode",
-      "description": "As a bookie, I want to know when I'm offline and understand limitations.",
+      "title": "Create Game Detail View",
+      "description": "As a player, I want to tap into a game and see all available betting markets so I can explore more options.",
       "acceptanceCriteria": [
-        "Create NetworkMonitor.swift using NWPathMonitor",
-        "Publish isConnected: Bool property",
-        "Add as environment object in BookiApp.swift",
-        "When offline: show banner 'You are offline' at top of main views",
-        "When offline: disable write operations with message 'Requires internet connection'",
-        "Allow viewing/reading all local data while offline",
-        "When connection restored: hide banner, trigger sync",
-        "Debounce connection changes to avoid flicker",
-        "Project builds and runs in Simulator"
+        "Create GameDetailView.swift in Booki/Views/ (replaces MarketSelectionView for players)",
+        "Game header shows: Away team vs Home team, game time, live status if applicable",
+        "Header uses Theme.cardBackground with team names in .title3 weight",
+        "Display game time in format 'Today 7:00 PM' or 'Sat, Jan 25 • 1:00 PM'",
+        "Tapping game row in GamesView navigates to GameDetailView",
+        "Typecheck passes"
       ],
       "priority": 10,
-      "passes": true,
-      "notes": "User always knows connectivity state and what they can do"
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Game Detail Main Markets Section",
+      "description": "As a player, I want to see the main betting markets prominently displayed at the top of the game detail page.",
+      "acceptanceCriteria": [
+        "Main Lines section displays spread, moneyline, and total markets",
+        "Each market shows both sides in a horizontal row using CompactOddsButton",
+        "Tapping an odds button adds selection to bet slip via BetSlipManager",
+        "Selected state highlights with Theme.accent",
+        "Section header uses .system(size: 14, weight: .semibold) with Theme.textPrimary",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Game Detail Market Categories",
+      "description": "As a player, I want to browse different market categories so I can find specific bets.",
+      "acceptanceCriteria": [
+        "Horizontal scrolling category tabs below main markets",
+        "Categories: All Markets, Alternate Lines, Player Props, Game Props",
+        "Tab style matches sport tabs in GamesView (capsule buttons)",
+        "All Markets selected by default, shows all available markets grouped by type",
+        "Each category filters the displayed markets below",
+        "Empty state shown if category has no markets",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Game Detail Market List",
+      "description": "As a player, I want to see all markets for the selected category in a scannable list.",
+      "acceptanceCriteria": [
+        "Markets grouped by type with section headers (Spread, Total, Moneyline)",
+        "Each market row shows both sides with odds buttons",
+        "For alternate lines: show line value prominently (e.g. 'Alt Spread -5.5')",
+        "Use same compact styling as main games list (no decorative cards)",
+        "Scrollable list with Theme.background",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Game Detail Bet Slip Integration",
+      "description": "As a player, I want selections from the game detail page to appear in my bet slip.",
+      "acceptanceCriteria": [
+        "Selections made in GameDetailView add to BetSlipManager",
+        "Floating bet slip indicator appears at bottom (same as GamesView)",
+        "Tapping indicator opens BetSlipSheet",
+        "Multiple selections from same game allowed (for parlays)",
+        "Navigating back to GamesView preserves bet slip selections",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
     }
   ]
 }
