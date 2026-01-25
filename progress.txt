@@ -28,3 +28,18 @@ Started: Sat Jan 24 22:34:47 PST 2026
   - Gotcha: Xcode IDE required for typecheck - command line tools don't support full iOS builds
   - Context: BetSlipSelection is used to track selections and highlight selected odds buttons
 ---
+
+## 2026-01-24 - US-002
+- **What was implemented**: Verified that table-style odds layout was already implemented in US-001's CompactGameRow
+- **Files changed**:
+  - Updated: prd.json (marked US-002 as passes: true)
+- **Key verification**:
+  - Odds buttons: 52x44pt (lines 167-168)
+  - Team rows structured as: Team name | Spread | ML | Total (teamOddsRow function)
+  - Single-line format with value + odds (e.g., "-3.5 -110") via formatSpreadValue/formatTotalValue helpers
+  - HStack with fixed-width columns ensures alignment
+  - Color.clear placeholders maintain alignment when markets are missing
+- **Learnings for future iterations:**
+  - Pattern: When implementing compact rows, build the table-style layout (fixed-width columns) into the initial component
+  - Gotcha: US-002 acceptance criteria were largely satisfied by US-001 implementation - check for overlap
+---

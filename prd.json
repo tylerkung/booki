@@ -40,8 +40,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented as part of US-001 - CompactGameRow already includes table-style layout"
     },
     {
       "id": "US-003",
