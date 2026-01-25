@@ -89,8 +89,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented as compactOddsButton method in CompactGameRow - may need extraction for US-011 reuse"
     },
     {
       "id": "US-006",

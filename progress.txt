@@ -71,3 +71,19 @@ Started: Sat Jan 24 22:34:47 PST 2026
 - **Learnings for future iterations:**
   - Pattern: Date formatting for sports apps uses "Today/Tomorrow" shortcuts plus abbreviated weekday format
 ---
+
+## 2026-01-24 - US-005
+- **What was implemented**: Verified that streamlined odds buttons were already implemented in US-001's CompactGameRow
+- **Files changed**:
+  - Updated: prd.json (marked US-005 as passes: true)
+- **Key verification**:
+  - compactOddsButton method (lines 249-282) implements the design
+  - Background: Theme.elevatedBackground (unselected) or Theme.accent (selected)
+  - Solid colors only - no gradients
+  - Border: 1pt Theme.border/Theme.accent
+  - Corner radius: 6pt
+  - Spring animation preserved, no radial gradient highlight
+- **Learnings for future iterations:**
+  - Note: compactOddsButton is currently a private method in CompactGameRow
+  - Gotcha: For US-011 (GameDetailView) reuse, may need to extract to standalone CompactOddsButton struct
+---
