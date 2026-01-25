@@ -183,8 +183,8 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created CompactOddsButton.swift and added mainLinesSection to GameDetailView"
     },
     {
       "id": "US-012",
@@ -200,8 +200,8 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added MarketCategory enum, marketCategoryTabs, MarketCategoryTabButton, and empty state"
     },
     {
       "id": "US-013",
@@ -216,8 +216,8 @@
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added marketListSection with marketTypeSection and marketRow components for grouped market display"
     },
     {
       "id": "US-014",

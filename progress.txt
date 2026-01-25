@@ -155,3 +155,64 @@ Started: Sat Jan 24 22:34:47 PST 2026
   - Pattern: GameDetailView follows similar structure to GamesView with bet slip integration
   - Note: Markets content will be added in US-011, US-012, US-013
 ---
+
+## 2026-01-24 - US-011
+- **What was implemented**: Added Main Lines section to GameDetailView with spread, moneyline, and total markets
+- **Files changed**:
+  - Created: Booki/Views/CompactOddsButton.swift (extracted reusable component)
+  - Modified: Booki/Views/GameDetailView.swift (added mainLinesSection)
+  - Updated: prd.json (marked US-011 as passes: true)
+- **Key implementation details**:
+  - Created CompactOddsButton.swift as a reusable component for odds buttons
+  - Main Lines section displays spread, moneyline, and total markets
+  - Each market shows both sides (away/over, home/under) in horizontal row
+  - Tapping an odds button toggles selection via BetSlipManager.toggle()
+  - Section header: .system(size: 14, weight: .semibold) Theme.textPrimary
+  - Market rows wrapped in cards with Theme.cardBackground and 8pt corner radius
+- **Learnings for future iterations:**
+  - Pattern: CompactOddsButton is now a reusable component in Booki/Views/CompactOddsButton.swift
+  - Pattern: Use BetSlipManager.toggle() with eventDescription and marketDescription for bet slip integration
+  - Pattern: Market labels are formatted differently - spread extracts value from "Lakers -3.5", total uses "O/U" prefix
+  - Note: CompactGameRow still has inline compactOddsButton method - could be refactored to use CompactOddsButton struct
+---
+
+## 2026-01-24 - US-012
+- **What was implemented**: Added market category tabs to GameDetailView for browsing different market types
+- **Files changed**:
+  - Modified: Booki/Views/GameDetailView.swift
+  - Updated: prd.json (marked US-012 as passes: true)
+- **Key implementation details**:
+  - Created MarketCategory enum with cases: allMarkets, alternateLines, playerProps, gameProps
+  - Added horizontal scrolling tabs via marketCategoryTabs component
+  - Created MarketCategoryTabButton matching SportTabButton styling (capsule, spring animation)
+  - Added hasMarketsForCategory(_:) to filter markets by category
+  - Added empty state view (marketCategoryEmptyState) with icon and descriptive text
+  - Category tabs positioned below Main Lines section, above filtered market content
+- **Learnings for future iterations:**
+  - Pattern: MarketCategoryTabButton is a copy of SportTabButton - could be generalized to shared CapsuleTabButton component
+  - Note: Alternate Lines, Player Props, Game Props currently show empty state - Market model only supports spread/total/moneyline
+  - Pattern: Category filtering prepared for US-013 market list implementation
+---
+
+## 2026-01-24 - US-013
+- **What was implemented**: Added market list section to GameDetailView that displays markets grouped by type
+- **Files changed**:
+  - Modified: Booki/Views/GameDetailView.swift
+  - Updated: prd.json (marked US-013 as passes: true)
+- **Key implementation details**:
+  - Added marketsForSelectedCategory computed property for category filtering
+  - Added spreadMarkets, moneylineMarkets, totalMarkets computed properties for grouping
+  - Created marketListSection that displays markets in order: Spread, Moneyline, Total
+  - Created marketTypeSection for each market type with section header and rows
+  - Created marketRow for individual market display with both sides
+  - Section headers use .system(size: 12, weight: .semibold) with textCase(.uppercase)
+  - Rows wrapped in Theme.cardBackground with 8pt corner radius
+  - Dividers between rows (0.5pt Theme.divider) but not after last row
+  - Added extractLineValue(from:) for alternate line display (e.g., "Alt Spread -5.5")
+  - showAlternatePrefix flag shows alternate label for markets after the first in a group
+- **Learnings for future iterations:**
+  - Pattern: Use ForEach with Array(markets.enumerated()) to get both index and element
+  - Pattern: Section headers for market groups use UPPERCASE text case
+  - Note: Current Market model only supports spread/total/moneyline - alternate lines would need model changes
+  - Note: When multiple markets of same type exist, index > 0 shows "Alt" prefix for alternate lines
+---

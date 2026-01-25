@@ -103,6 +103,38 @@ struct GameDetailView: View {
         }
     }
 
+    /// US-013: Get markets for the selected category
+    private var marketsForSelectedCategory: [Market] {
+        guard let markets = event.markets else { return [] }
+
+        switch selectedCategory {
+        case .allMarkets:
+            return markets
+        case .alternateLines:
+            // Future: filter for alternate spread/total markets
+            return []
+        case .playerProps:
+            // Future: filter for player prop markets
+            return []
+        case .gameProps:
+            // Future: filter for game prop markets
+            return []
+        }
+    }
+
+    /// US-013: Group markets by type for display
+    private var spreadMarkets: [Market] {
+        marketsForSelectedCategory.filter { $0.type == .spread }
+    }
+
+    private var moneylineMarkets: [Market] {
+        marketsForSelectedCategory.filter { $0.type == .moneyline }
+    }
+
+    private var totalMarkets: [Market] {
+        marketsForSelectedCategory.filter { $0.type == .total }
+    }
+
     /// US-012: Description for empty state based on category
     private var emptyStateDescription: String {
         switch selectedCategory {
@@ -157,8 +189,8 @@ struct GameDetailView: View {
 
                     // US-012/US-013: Filtered market content or empty state
                     if hasMarketsForCategory(selectedCategory) {
-                        // US-013: Market list (to be implemented)
-                        // Placeholder for filtered markets by category
+                        // US-013: Market list grouped by type
+                        marketListSection
                     } else {
                         // US-012: Empty state for category
                         marketCategoryEmptyState
@@ -384,6 +416,161 @@ struct GameDetailView: View {
                 .frame(height: 0.5),
             alignment: .bottom
         )
+    }
+
+    // MARK: - Market List Section (US-013)
+
+    @ViewBuilder
+    private var marketListSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Spread markets section
+            if !spreadMarkets.isEmpty {
+                marketTypeSection(
+                    title: "Spread",
+                    markets: spreadMarkets,
+                    formatSideA: formatSpreadValue,
+                    formatSideB: formatSpreadValue
+                )
+            }
+
+            // Moneyline markets section
+            if !moneylineMarkets.isEmpty {
+                marketTypeSection(
+                    title: "Moneyline",
+                    markets: moneylineMarkets,
+                    formatSideA: { _ in event.awayTeam },
+                    formatSideB: { _ in event.homeTeam }
+                )
+            }
+
+            // Total markets section
+            if !totalMarkets.isEmpty {
+                marketTypeSection(
+                    title: "Total",
+                    markets: totalMarkets,
+                    formatSideA: formatTotalLabel,
+                    formatSideB: formatTotalLabel
+                )
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    /// US-013: Section for a specific market type
+    @ViewBuilder
+    private func marketTypeSection(
+        title: String,
+        markets: [Market],
+        formatSideA: (String) -> String,
+        formatSideB: (String) -> String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Section header
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Theme.textSecondary)
+                .textCase(.uppercase)
+
+            // Market rows
+            VStack(spacing: 0) {
+                ForEach(Array(markets.enumerated()), id: \.element.id) { index, market in
+                    marketRow(
+                        market: market,
+                        marketTypeLabel: title,
+                        sideALabel: formatSideA(market.sideA),
+                        sideBLabel: formatSideB(market.sideB),
+                        showAlternatePrefix: markets.count > 1 && index > 0
+                    )
+
+                    // Divider between rows (not after last)
+                    if index < markets.count - 1 {
+                        Rectangle()
+                            .fill(Theme.divider)
+                            .frame(height: 0.5)
+                    }
+                }
+            }
+            .background(Theme.cardBackground)
+            .cornerRadius(8)
+        }
+    }
+
+    /// US-013: Single market row with both sides
+    @ViewBuilder
+    private func marketRow(
+        market: Market,
+        marketTypeLabel: String,
+        sideALabel: String,
+        sideBLabel: String,
+        showAlternatePrefix: Bool
+    ) -> some View {
+        VStack(spacing: 4) {
+            // Market label (for alternate lines, show "Alt Spread -5.5" style)
+            if showAlternatePrefix {
+                HStack {
+                    Text("Alt \(marketTypeLabel) \(extractLineValue(from: market))")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Theme.textMuted)
+                    Spacer()
+                }
+            }
+
+            // Both sides
+            HStack(spacing: 8) {
+                // Side A (away team / over)
+                let selectionA = makeSelection(market: market, side: market.sideA, odds: market.oddsA)
+                let descriptionA = "\(marketTypeLabel): \(sideALabel)"
+
+                CompactOddsButton(
+                    topText: sideALabel,
+                    odds: market.oddsA,
+                    isSelected: isSelected(selectionA),
+                    isDisabled: isEventLocked,
+                    action: { handleOddsSelection(selectionA, marketDescription: descriptionA) }
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: oddsButtonHeight)
+
+                // Side B (home team / under)
+                let selectionB = makeSelection(market: market, side: market.sideB, odds: market.oddsB)
+                let descriptionB = "\(marketTypeLabel): \(sideBLabel)"
+
+                CompactOddsButton(
+                    topText: sideBLabel,
+                    odds: market.oddsB,
+                    isSelected: isSelected(selectionB),
+                    isDisabled: isEventLocked,
+                    action: { handleOddsSelection(selectionB, marketDescription: descriptionB) }
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: oddsButtonHeight)
+            }
+        }
+        .padding(12)
+    }
+
+    /// US-013: Extract line value from market for alternate line display
+    /// For spread: extracts the spread value (e.g., "-3.5" from "Lakers -3.5")
+    /// For total: extracts the total value (e.g., "220.5" from "Over 220.5")
+    private func extractLineValue(from market: Market) -> String {
+        switch market.type {
+        case .spread:
+            // Extract spread value from sideB (home team line)
+            let components = market.sideB.components(separatedBy: " ")
+            if let last = components.last, (last.hasPrefix("+") || last.hasPrefix("-")) {
+                return last
+            }
+            return ""
+        case .total:
+            // Extract total value from sideA
+            let components = market.sideA.components(separatedBy: " ")
+            if components.count >= 2 {
+                return components[1]
+            }
+            return ""
+        case .moneyline:
+            return ""
+        }
     }
 
     // MARK: - Market Category Empty State (US-012)
