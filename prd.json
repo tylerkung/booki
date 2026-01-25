@@ -167,8 +167,8 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created GameDetailView.swift and updated GamesView navigation"
     },
     {
       "id": "US-011",

@@ -138,3 +138,20 @@ Started: Sat Jan 24 22:34:47 PST 2026
   - Note: BetSlipSelection is shared between GameCardView and CompactGameRow
   - Note: OddsButton is still needed for MarketSelectionView expanded markets
 ---
+
+## 2026-01-24 - US-010
+- **What was implemented**: Created GameDetailView.swift with game header and basic structure
+- **Files changed**:
+  - Created: Booki/Views/GameDetailView.swift
+  - Modified: Booki/Views/GamesView.swift (updated navigation to GameDetailView)
+  - Updated: prd.json (marked US-010 as passes: true)
+- **Key implementation details**:
+  - Game header with Away vs Home, game time, live/postponed/canceled status
+  - Header uses Theme.cardBackground with .title3 team names
+  - Time formatted as "Today 7:00 PM" or "Sat, Jan 25 • 1:00 PM"
+  - Bet slip indicator for US-014 compatibility
+  - Placeholder for markets (US-011, US-012, US-013)
+- **Learnings for future iterations:**
+  - Pattern: GameDetailView follows similar structure to GamesView with bet slip integration
+  - Note: Markets content will be added in US-011, US-012, US-013
+---

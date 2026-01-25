@@ -211,11 +211,12 @@ struct GamesView: View {
         .background(Theme.background)
         .navigationTitle("Games")
         .navigationBarTitleDisplayMode(.inline)
+        // US-010: Navigate to GameDetailView instead of MarketSelectionView
         .navigationDestination(for: Event.self) { event in
-            MarketSelectionView(player: player, event: event)
+            GameDetailView(player: player, event: event)
         }
         .navigationDestination(item: $selectedEventForNavigation) { event in
-            MarketSelectionView(player: player, event: event)
+            GameDetailView(player: player, event: event)
         }
         .sheet(isPresented: $showingFilterSheet) {
             TimeFilterSheet(selectedFilter: $timeFilter)
