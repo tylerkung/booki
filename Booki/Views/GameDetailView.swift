@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 /// US-010: Game Detail View
+/// US-011: Main Markets Section
 /// Displays comprehensive game info with all available betting markets
 /// Replaces MarketSelectionView for players with a more compact, sports-app style layout
 struct GameDetailView: View {
@@ -46,6 +47,48 @@ struct GameDetailView: View {
         )
     }
 
+    /// Get spread market if available
+    private var spreadMarket: Market? {
+        event.markets?.first { $0.type == .spread }
+    }
+
+    /// Get moneyline market if available
+    private var moneylineMarket: Market? {
+        event.markets?.first { $0.type == .moneyline }
+    }
+
+    /// Get total market if available
+    private var totalMarket: Market? {
+        event.markets?.first { $0.type == .total }
+    }
+
+    /// Check if event is locked for betting
+    private var isEventLocked: Bool {
+        event.isLocked(offsetMinutes: 0)
+    }
+
+    /// Check if a specific selection is in the bet slip
+    private func isSelected(_ selection: BetSlipSelection) -> Bool {
+        betSlipManager.contains(selection)
+    }
+
+    /// Create a selection for a given market and side
+    private func makeSelection(market: Market, side: String, odds: Int) -> BetSlipSelection {
+        BetSlipSelection(
+            eventId: event.id,
+            marketId: market.id,
+            side: side,
+            odds: odds,
+            marketType: market.type
+        )
+    }
+
+    /// Handle odds button tap
+    private func handleOddsSelection(_ selection: BetSlipSelection, marketDescription: String) {
+        let eventDescription = "\(event.awayTeam) vs \(event.homeTeam)"
+        betSlipManager.toggle(selection, eventDescription: eventDescription, marketDescription: marketDescription)
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -55,12 +98,14 @@ struct GameDetailView: View {
 
             // Markets content
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    // Placeholder for US-011, US-012, US-013 content
-                    Text("Markets coming soon")
-                        .foregroundColor(Theme.textSecondary)
-                        .padding(.top, 40)
+                LazyVStack(spacing: 16) {
+                    // US-011: Main Lines section
+                    mainLinesSection
+
+                    // Placeholder for US-012, US-013 content
+                    // (Market categories and additional markets)
                 }
+                .padding(.top, 16)
             }
             .background(Theme.background)
 
@@ -152,6 +197,142 @@ struct GameDetailView: View {
         .background(Theme.cardBackground)
     }
 
+    // MARK: - Main Lines Section (US-011)
+
+    /// Fixed button dimensions for consistent layout
+    private let oddsButtonWidth: CGFloat = 80
+    private let oddsButtonHeight: CGFloat = 44
+
+    @ViewBuilder
+    private var mainLinesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Section header
+            Text("Main Lines")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Theme.textPrimary)
+                .padding(.horizontal, 16)
+
+            // Market rows
+            VStack(spacing: 8) {
+                // Spread market
+                if let spread = spreadMarket {
+                    mainMarketRow(
+                        market: spread,
+                        label: "Spread",
+                        sideALabel: formatSpreadValue(spread.sideA),
+                        sideBLabel: formatSpreadValue(spread.sideB)
+                    )
+                }
+
+                // Moneyline market
+                if let ml = moneylineMarket {
+                    mainMarketRow(
+                        market: ml,
+                        label: "Moneyline",
+                        sideALabel: event.awayTeam,
+                        sideBLabel: event.homeTeam
+                    )
+                }
+
+                // Total market
+                if let total = totalMarket {
+                    mainMarketRow(
+                        market: total,
+                        label: "Total",
+                        sideALabel: formatTotalLabel(total.sideA),
+                        sideBLabel: formatTotalLabel(total.sideB)
+                    )
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    /// Single market row with both sides
+    @ViewBuilder
+    private func mainMarketRow(
+        market: Market,
+        label: String,
+        sideALabel: String,
+        sideBLabel: String
+    ) -> some View {
+        VStack(spacing: 4) {
+            // Market type label
+            HStack {
+                Text(label)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Theme.textSecondary)
+                Spacer()
+            }
+
+            // Both sides
+            HStack(spacing: 8) {
+                // Side A (away team / over)
+                let selectionA = makeSelection(market: market, side: market.sideA, odds: market.oddsA)
+                let descriptionA = "\(label): \(sideALabel)"
+
+                CompactOddsButton(
+                    topText: sideALabel,
+                    odds: market.oddsA,
+                    isSelected: isSelected(selectionA),
+                    isDisabled: isEventLocked,
+                    action: { handleOddsSelection(selectionA, marketDescription: descriptionA) }
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: oddsButtonHeight)
+
+                // Side B (home team / under)
+                let selectionB = makeSelection(market: market, side: market.sideB, odds: market.oddsB)
+                let descriptionB = "\(label): \(sideBLabel)"
+
+                CompactOddsButton(
+                    topText: sideBLabel,
+                    odds: market.oddsB,
+                    isSelected: isSelected(selectionB),
+                    isDisabled: isEventLocked,
+                    action: { handleOddsSelection(selectionB, marketDescription: descriptionB) }
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: oddsButtonHeight)
+            }
+        }
+        .padding(12)
+        .background(Theme.cardBackground)
+        .cornerRadius(8)
+    }
+
+    // MARK: - Helpers
+
+    /// Extract spread number from label (e.g., "Lakers -3.5" -> "-3.5")
+    private func formatSpreadValue(_ label: String) -> String {
+        let components = label.components(separatedBy: " ")
+        if let last = components.last, (last.hasPrefix("+") || last.hasPrefix("-")) {
+            return last
+        }
+        return label
+    }
+
+    /// Format total label (e.g., "Over 220.5" -> "O 220.5")
+    private func formatTotalLabel(_ label: String) -> String {
+        let components = label.components(separatedBy: " ")
+        guard components.count >= 2 else { return label }
+
+        let direction = components[0].lowercased()
+        let value = components[1]
+
+        if direction == "over" {
+            return "O \(value)"
+        } else if direction == "under" {
+            return "U \(value)"
+        }
+        return label
+    }
+
+    /// Format odds for display
+    private func formatOdds(_ odds: Int) -> String {
+        odds >= 0 ? "+\(odds)" : "\(odds)"
+    }
+
     // MARK: - Bet Slip Indicator (US-014)
 
     @ViewBuilder
@@ -192,6 +373,36 @@ struct GameDetailView: View {
         startTime: Date(),
         status: .live
     )
+
+    // Add sample markets for preview
+    let spread = Market(
+        type: .spread,
+        sideA: "Celtics +3.5",
+        sideB: "Lakers -3.5",
+        oddsA: -110,
+        oddsB: -110,
+        event: event
+    )
+
+    let ml = Market(
+        type: .moneyline,
+        sideA: "Celtics",
+        sideB: "Lakers",
+        oddsA: 150,
+        oddsB: -170,
+        event: event
+    )
+
+    let total = Market(
+        type: .total,
+        sideA: "Over 220.5",
+        sideB: "Under 220.5",
+        oddsA: -110,
+        oddsB: -110,
+        event: event
+    )
+
+    event.markets = [spread, ml, total]
 
     return NavigationStack {
         GameDetailView(
