@@ -136,8 +136,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Replaced GameCardView with CompactGameRow in GamesView"
     },
     {
       "id": "US-009",

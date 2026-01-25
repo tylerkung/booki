@@ -107,3 +107,18 @@ Started: Sat Jan 24 22:34:47 PST 2026
   - Pattern: Fixed widths (52pt) must match between headers and button columns
   - Note: Diagnostic warnings outside Xcode are expected (SwiftData macros not resolvable)
 ---
+
+## 2026-01-24 - US-008
+- **What was implemented**: Updated GamesView to use CompactGameRow instead of GameCardView
+- **Files changed**:
+  - Modified: Booki/Views/GamesView.swift
+  - Updated: prd.json (marked US-008 as passes: true)
+- **Key implementation details**:
+  - Replaced GameCardView with CompactGameRow in sportSection and favoritesSection
+  - LazyVStack spacing already set to 0 from US-006
+  - Horizontal padding handled by CompactGameRow internally (12pt)
+  - All existing functionality preserved: search, sport tabs, favorites, bet slip
+- **Learnings for future iterations:**
+  - Pattern: CompactGameRow is a drop-in replacement for GameCardView (same parameters)
+  - Gotcha: Favorites section header styled to match sport headers for consistency
+---

@@ -348,11 +348,9 @@ struct GamesView: View {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                 // Column headers section - sticks below sport tabs
                 Section(header: columnHeadersRow) {
-                    // Favorites section at top of All games (US-039)
+                    // US-008: Favorites section at top of All games (US-039)
                     if timeFilter == .all && selectedSport == nil && !favoriteEvents.isEmpty {
                         favoritesSection
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 12)
                     }
 
                     // Events grouped by sport and league
@@ -402,23 +400,28 @@ struct GamesView: View {
         }
     }
 
-    // MARK: - Favorites Section (US-039)
+    // MARK: - Favorites Section (US-039, US-008)
 
     @ViewBuilder
     private var favoritesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Section header
+        VStack(alignment: .leading, spacing: 0) {
+            // Section header - styled similar to sport headers
             HStack {
                 Image(systemName: "star.fill")
                     .foregroundStyle(.yellow)
+                    .font(.system(size: 10))
                 Text("Favorites")
-                    .fontWeight(.semibold)
+                    .fontWeight(.medium)
             }
-            .font(.subheadline)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(Theme.textSecondary)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+            .padding(.horizontal, 12)
 
-            // Favorite game cards
+            // US-008: Favorite games using CompactGameRow
             ForEach(favoriteEvents, id: \.id) { event in
-                GameCardView(
+                CompactGameRow(
                     event: event,
                     selections: betSlipManager.selectionsSet,
                     onSelectOdds: { selection in
@@ -457,9 +460,9 @@ struct GamesView: View {
                 .padding(.bottom, 8)
                 .padding(.horizontal, 12)
 
-                // Game cards
+                // US-008: Game rows using CompactGameRow
                 ForEach(leaguesByEvent[league] ?? [], id: \.id) { event in
-                    GameCardView(
+                    CompactGameRow(
                         event: event,
                         selections: betSlipManager.selectionsSet,
                         onSelectOdds: { selection in
