@@ -57,3 +57,17 @@ Started: Sat Jan 24 22:34:47 PST 2026
   - Pattern: Multiple granular stories (US-002, US-003) can be satisfied by a single well-designed component
   - Note: The PRD broke down styling into separate stories for granularity but implementation consolidated them
 ---
+
+## 2026-01-24 - US-004
+- **What was implemented**: Verified that simplified game time display was already implemented in US-001's CompactGameRow
+- **Files changed**:
+  - Updated: prd.json (marked US-004 as passes: true)
+- **Key verification**:
+  - formattedStartTime computed property (lines 29-41) formats as "Today 7:00 PM" or "Sat, Jan 25"
+  - timeHeader uses .caption2 font and Theme.textSecondary color (lines 123-124)
+  - No clock icon - removed for horizontal space
+  - LIVE badge is simple text without pulsing animation (lines 134-144)
+  - Lock icon inline with .caption2 font (lines 127-131)
+- **Learnings for future iterations:**
+  - Pattern: Date formatting for sports apps uses "Today/Tomorrow" shortcuts plus abbreviated weekday format
+---

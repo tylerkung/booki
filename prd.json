@@ -71,8 +71,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented as part of US-001 - CompactGameRow timeHeader already has simplified styling"
     },
     {
       "id": "US-005",
