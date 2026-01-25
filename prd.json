@@ -105,8 +105,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added columnHeadersRow with LazyVStack pinnedViews in GamesView"
     },
     {
       "id": "US-007",
@@ -120,8 +120,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in sportSection alongside US-006 sticky headers"
     },
     {
       "id": "US-008",

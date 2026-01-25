@@ -344,21 +344,62 @@ struct GamesView: View {
     @ViewBuilder
     private var gamesList: some View {
         ScrollView {
-            LazyVStack(spacing: 16) {
-                // Favorites section at top of All games (US-039)
-                if timeFilter == .all && selectedSport == nil && !favoriteEvents.isEmpty {
-                    favoritesSection
-                }
+            // US-006: Use LazyVStack with pinnedViews for sticky column headers
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                // Column headers section - sticks below sport tabs
+                Section(header: columnHeadersRow) {
+                    // Favorites section at top of All games (US-039)
+                    if timeFilter == .all && selectedSport == nil && !favoriteEvents.isEmpty {
+                        favoritesSection
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                    }
 
-                // Events grouped by sport and league
-                ForEach(sortedSports, id: \.self) { sport in
-                    sportSection(sport: sport)
+                    // Events grouped by sport and league
+                    ForEach(sortedSports, id: \.self) { sport in
+                        sportSection(sport: sport)
+                    }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
         }
         .background(Theme.background)
+    }
+
+    // MARK: - Column Headers Row (US-006)
+
+    /// Sticky column headers for SPREAD/MONEY/TOTAL columns
+    @ViewBuilder
+    private var columnHeadersRow: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                // Spacer for team name column
+                Spacer()
+
+                // Column headers aligned with odds buttons
+                Text("SPREAD")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(Theme.textMuted)
+                    .frame(width: 52)
+
+                Text("MONEY")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(Theme.textMuted)
+                    .frame(width: 52)
+
+                Text("TOTAL")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(Theme.textMuted)
+                    .frame(width: 52)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.background)
+
+            // Bottom border
+            Rectangle()
+                .fill(Theme.divider)
+                .frame(height: 0.5)
+        }
     }
 
     // MARK: - Favorites Section (US-039)
@@ -400,17 +441,21 @@ struct GamesView: View {
         let sortedLeagues = leaguesByEvent.keys.sorted()
 
         ForEach(sortedLeagues, id: \.self) { league in
-            VStack(alignment: .leading, spacing: 12) {
-                // Section header
+            VStack(alignment: .leading, spacing: 0) {
+                // US-007: Section header - compact inline format
                 HStack {
                     Text(sport)
-                        .fontWeight(.semibold)
+                        .fontWeight(.medium)
                     Text("•")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                     Text(league)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
-                .font(.subheadline)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
+                .padding(.horizontal, 12)
 
                 // Game cards
                 ForEach(leaguesByEvent[league] ?? [], id: \.id) { event in

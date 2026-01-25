@@ -87,3 +87,23 @@ Started: Sat Jan 24 22:34:47 PST 2026
   - Note: compactOddsButton is currently a private method in CompactGameRow
   - Gotcha: For US-011 (GameDetailView) reuse, may need to extract to standalone CompactOddsButton struct
 ---
+
+## 2026-01-24 - US-006 & US-007
+- **What was implemented**:
+  - US-006: Added sticky column headers (SPREAD/MONEY/TOTAL) to GamesView
+  - US-007: Updated sport section headers to compact inline format
+- **Files changed**:
+  - Modified: Booki/Views/GamesView.swift
+  - Updated: prd.json (marked US-006 and US-007 as passes: true)
+- **Key implementation details**:
+  - columnHeadersRow component with headers aligned to 52pt button widths
+  - LazyVStack(pinnedViews: [.sectionHeaders]) for sticky behavior
+  - Headers use .system(size: 10, weight: .semibold) with Theme.textMuted
+  - 0.5pt bottom border using Theme.divider
+  - Sport headers: "NBA • League" format with .system(size: 12, weight: .medium)
+  - Top padding 16pt, bottom padding 8pt for sport headers
+- **Learnings for future iterations:**
+  - Pattern: Use Section(header:) inside LazyVStack(pinnedViews: [.sectionHeaders]) for sticky headers
+  - Pattern: Fixed widths (52pt) must match between headers and button columns
+  - Note: Diagnostic warnings outside Xcode are expected (SwiftData macros not resolvable)
+---
