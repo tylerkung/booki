@@ -89,25 +89,7 @@ struct UserAgreementView: View {
 
     private var summaryView: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Placeholder summary text - will be replaced by TermsOfService.summary in US-005
-            Text("IMPORTANT: Please read carefully before continuing.")
-                .font(.headline)
-                .foregroundStyle(Theme.textPrimary)
-
-            Text("""
-                Booki is a record-keeping and bet management tool. By using Booki, you acknowledge and agree that:
-
-                • Booki does NOT place, accept, or process bets on your behalf
-                • Booki does NOT hold, transfer, or process any money or payments
-                • All financial arrangements between bookies and players occur entirely outside this app
-                • Booki serves only as an organizational tool to track bets and balances
-                • You are solely responsible for ensuring your activities comply with all applicable local, state, and federal laws
-                • Booki makes no representations about the legality of sports betting in your jurisdiction
-
-                This app is provided for record-keeping and entertainment purposes only. Booki is not a licensed sportsbook, gambling operator, or financial institution.
-
-                By continuing, you confirm that you are at least 18 years old (or the legal age in your jurisdiction) and accept these terms.
-                """)
+            Text(TermsOfService.summary)
                 .font(.body)
                 .foregroundStyle(Theme.textSecondary)
                 .lineSpacing(4)
@@ -181,60 +163,7 @@ private struct FullTermsSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    // Placeholder full terms - will be replaced by TermsOfService.fullTerms in US-005
-                    Text("""
-                        BOOKI TERMS OF SERVICE
-
-                        Last Updated: January 2026
-
-                        1. ACCEPTANCE OF TERMS
-
-                        By accessing or using the Booki application ("App"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the App.
-
-                        2. DESCRIPTION OF SERVICE
-
-                        Booki is a record-keeping and bet management tool designed to help users track bets and balances. Booki does NOT:
-                        - Place, accept, or process bets on behalf of users
-                        - Hold, transfer, or process any money or payments
-                        - Function as a sportsbook, gambling operator, or financial institution
-
-                        All financial arrangements between users occur entirely outside this App.
-
-                        3. USER RESPONSIBILITIES
-
-                        You are solely responsible for:
-                        - Ensuring your activities comply with all applicable local, state, and federal laws
-                        - Any financial arrangements made outside of this App
-                        - Maintaining the security of your account credentials
-
-                        4. AGE REQUIREMENT
-
-                        You must be at least 18 years old (or the legal age in your jurisdiction) to use this App.
-
-                        5. DISCLAIMER OF WARRANTIES
-
-                        THE APP IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. BOOKI MAKES NO REPRESENTATIONS ABOUT THE LEGALITY OF SPORTS BETTING IN YOUR JURISDICTION.
-
-                        6. LIMITATION OF LIABILITY
-
-                        IN NO EVENT SHALL BOOKI BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF YOUR USE OF THE APP.
-
-                        7. DATA USAGE
-
-                        Booki may collect and store data necessary for the operation of the App. Your data is used solely for providing the service and is not sold to third parties.
-
-                        8. TERMINATION
-
-                        Booki reserves the right to terminate or suspend your access to the App at any time, for any reason, without notice.
-
-                        9. CHANGES TO TERMS
-
-                        Booki may modify these Terms at any time. Continued use of the App after changes constitutes acceptance of the modified Terms.
-
-                        10. CONTACT
-
-                        For questions about these Terms, please contact support through the App.
-                        """)
+                    Text(TermsOfService.fullTerms)
                         .font(.body)
                         .foregroundStyle(Theme.textSecondary)
                         .lineSpacing(4)
