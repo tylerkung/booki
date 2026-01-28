@@ -35,6 +35,15 @@ CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 
 ## Completed Migrations
 
+### 2026-01-27: Bets accepted_at Column
+
+**Required for:** Phase - Server Authority & Legal Acknowledgment (accept_bet Edge Function)
+
+```sql
+-- Add accepted_at column to bets table for tracking when bets are accepted by bookies
+ALTER TABLE bets ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ;
+```
+
 ### 2026-01-27: Idempotency Keys Table
 
 **Required for:** Phase - Server Authority & Legal Acknowledgment (Edge Functions)
