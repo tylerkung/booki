@@ -35,6 +35,37 @@ CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 
 ## Completed Migrations
 
+### 2026-01-27: User Agreements Table
+
+**Required for:** Phase - Server Authority & Legal Acknowledgment (ToS)
+
+```sql
+-- Create user_agreements table for storing legal acknowledgments
+CREATE TABLE IF NOT EXISTS user_agreements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('bookie', 'player')),
+    version TEXT NOT NULL,
+    accepted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ip_address TEXT,
+    user_agent TEXT
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_user_agreements_user_id ON user_agreements(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_agreements_version ON user_agreements(version);
+
+-- Enable RLS
+ALTER TABLE user_agreements ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies: Users can only SELECT their own, INSERT their own, no UPDATE/DELETE
+CREATE POLICY user_agreements_select_own ON user_agreements
+    FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY user_agreements_insert_own ON user_agreements
+    FOR INSERT WITH CHECK (user_id = auth.uid());
+```
+
 ### 2026-01-25: Player Invite System
 
 **Required for:** Phase 4 - Player Invites feature
