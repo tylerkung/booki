@@ -32,3 +32,15 @@ Started: Tue Jan 27 18:12:54 PST 2026
   - SourceKit errors about SwiftDataMacros are expected when checking files outside Xcode - syntax validation with `swiftc -parse` is sufficient
   - Per CLAUDE.md: "Xcode command line tools don't support full builds - use Xcode IDE"
 ---
+
+## 2026-01-27 - US-003
+- **What was implemented**: AgreementService for checking and submitting user agreement acceptances to Supabase
+- **Files changed**:
+  - Created: Booki/Services/AgreementService.swift
+- **Learnings for future iterations:**
+  - Services that query Supabase use `SupabaseClientManager.shared.client` singleton
+  - Use Codable structs with CodingKeys for snake_case to camelCase mapping (e.g., `user_id` -> `userId`)
+  - AgreementStatus enum has three states: accepted, required, outdated
+  - currentAgreementVersion is "1.0" - increment when terms change to require re-acceptance
+  - UserAgreementRecord/UserAgreementInsert are private structs for Supabase serialization
+---
