@@ -29,9 +29,9 @@ struct AuthGateView: View {
             if authManager.isLoading || (authManager.isAuthenticated && authManager.isLoadingBookie) {
                 loadingView
             } else if authManager.isAuthenticated {
-                // Check if agreement is required for bookie role
-                if authManager.agreementRequired && authManager.userRole == .bookie {
-                    bookieAgreementView
+                // Check if agreement is required for any authenticated user (bookie or player)
+                if authManager.agreementRequired {
+                    agreementView
                 } else {
                     // Route based on user role
                     switch authManager.userRole {
@@ -99,21 +99,40 @@ struct AuthGateView: View {
         }
     }
 
-    // MARK: - Bookie Agreement View
+    // MARK: - Agreement View
 
-    /// Agreement view for bookies who need to accept terms
-    private var bookieAgreementView: some View {
+    /// Agreement view for users who need to accept terms (bookies or players)
+    private var agreementView: some View {
         UserAgreementView(
             onAccept: {
                 Task {
-                    guard let userId = authManager.currentBookieId else { return }
+                    // Determine user ID and role based on current authentication state
+                    let userId: UUID?
+                    let role: String
+
+                    switch authManager.userRole {
+                    case .bookie:
+                        userId = authManager.currentBookieId
+                        role = "bookie"
+                    case .player:
+                        userId = authManager.currentPlayerId
+                        role = "player"
+                    case nil:
+                        return
+                    }
+
+                    guard let userId = userId else { return }
+
                     do {
-                        try await authManager.submitAgreement(for: userId, role: "bookie")
+                        try await authManager.submitAgreement(for: userId, role: role)
                     } catch {
                         print("Failed to submit agreement: \(error)")
                     }
                 }
-            }
+            },
+            message: authManager.agreementIsOutdated
+                ? "We have updated our Terms of Service. Please review and accept to continue."
+                : nil
         )
     }
 

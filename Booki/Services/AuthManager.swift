@@ -43,6 +43,10 @@ final class AuthManager: ObservableObject {
     /// Whether user agreement is required before accessing the app
     @Published var agreementRequired: Bool = false
 
+    /// Whether the agreement is outdated (true) vs never accepted (false)
+    /// Used to display appropriate message to user
+    @Published private(set) var agreementIsOutdated: Bool = false
+
     // MARK: - Private Properties
 
     private let agreementService: AgreementService
@@ -112,6 +116,8 @@ final class AuthManager: ObservableObject {
                 currentPlayerId = uuid
                 currentBookieId = nil
                 userRole = .player
+                // Check agreement status for player on app launch
+                await checkAgreementRequired(for: uuid)
             } else {
                 bookieError = error.localizedDescription
                 print("Failed to determine user role: \(error)")
@@ -123,10 +129,19 @@ final class AuthManager: ObservableObject {
 
     /// Sets the current user as a player
     /// Called when a player successfully claims their account
-    func setAsPlayer(authUserId: UUID) {
+    /// - Parameter authUserId: The player's auth user UUID
+    /// - Parameter checkAgreement: Whether to check agreement status (default true)
+    func setAsPlayer(authUserId: UUID, checkAgreement: Bool = true) {
         currentPlayerId = authUserId
         currentBookieId = nil
         userRole = .player
+
+        // Check agreement status for players on app launch
+        if checkAgreement {
+            Task {
+                await checkAgreementRequired(for: authUserId)
+            }
+        }
     }
 
     /// Sets the current bookie ID directly (used when bookie record is already known)
@@ -141,10 +156,12 @@ final class AuthManager: ObservableObject {
         do {
             let status = try await agreementService.checkAgreementStatus(userId: userId)
             agreementRequired = (status == .required || status == .outdated)
+            agreementIsOutdated = (status == .outdated)
         } catch {
             // On error, don't block the user - agreement check will happen on next launch
             print("Failed to check agreement status: \(error)")
             agreementRequired = false
+            agreementIsOutdated = false
         }
     }
 
@@ -159,6 +176,7 @@ final class AuthManager: ObservableObject {
             version: AgreementService.currentAgreementVersion
         )
         agreementRequired = false
+        agreementIsOutdated = false
     }
 
     // MARK: - Private Methods
@@ -228,6 +246,7 @@ final class AuthManager: ObservableObject {
             self.currentPlayerId = nil
             self.bookieError = nil
             self.agreementRequired = false
+            self.agreementIsOutdated = false
         }
     }
 }
