@@ -35,6 +35,30 @@ CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 
 ## Completed Migrations
 
+### 2026-01-27: Idempotency Keys Table
+
+**Required for:** Phase - Server Authority & Legal Acknowledgment (Edge Functions)
+
+```sql
+-- Create idempotency_keys table for Edge Functions deduplication
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    response TEXT NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours'),
+    UNIQUE(key, operation)
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_key_operation ON idempotency_keys(key, operation);
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_expires_at ON idempotency_keys(expires_at);
+
+-- NO RLS - Service role access only from Edge Functions
+```
+
 ### 2026-01-27: User Agreements Table
 
 **Required for:** Phase - Server Authority & Legal Acknowledgment (ToS)

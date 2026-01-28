@@ -7,6 +7,10 @@ Started: Tue Jan 27 18:12:54 PST 2026
 - RLS policies follow naming pattern: `tablename_action_description`
 - Document all migrations in SUPABASE_MIGRATIONS.md under "Completed Migrations"
 - auth.uid() is used for RLS policies to reference current authenticated user
+- Edge Functions go in supabase/functions/<function-name>/index.ts
+- Shared Edge Function utilities in supabase/functions/_shared/
+- Use `https://esm.sh/@supabase/supabase-js@2` for Deno imports
+- Edge Functions access env vars via Deno.env.get('VARIABLE_NAME')
 
 ---
 
@@ -43,4 +47,103 @@ Started: Tue Jan 27 18:12:54 PST 2026
   - AgreementStatus enum has three states: accepted, required, outdated
   - currentAgreementVersion is "1.0" - increment when terms change to require re-acceptance
   - UserAgreementRecord/UserAgreementInsert are private structs for Supabase serialization
+---
+
+## 2026-01-27 - US-004
+- **What was implemented**: UserAgreementView UI for displaying and accepting Terms of Service
+- **Files changed**:
+  - Created: Booki/Views/UserAgreementView.swift
+- **Learnings for future iterations:**
+  - Views follow pattern: ZStack with Theme.backgroundGradient ignoresSafeArea, then ScrollView with content
+  - Use Theme colors consistently: Theme.accent, Theme.textPrimary, Theme.textSecondary, Theme.cardBackground, Theme.cornerRadius, Theme.cornerRadiusSmall
+  - Checkbox-style toggle implemented as a Button with Image(systemName: "checkmark.square.fill"/"square")
+  - Sheet presentation uses NavigationStack with toolbar for Done button
+  - Added optional `message` parameter to UserAgreementView for displaying update notices (used in US-008)
+  - Continue button uses disabled state with opacity changes (hasAgreed ? Theme.accent : Theme.accent.opacity(0.5))
+---
+
+## 2026-01-27 - US-005
+- **What was implemented**: Terms of Service content as static strings in a dedicated file
+- **Files changed**:
+  - Created: Booki/Views/TermsOfService.swift
+  - Updated: Booki/Views/UserAgreementView.swift (now uses TermsOfService.summary and TermsOfService.fullTerms)
+- **Learnings for future iterations:**
+  - TermsOfService is an enum with static let properties (not a struct) since it only contains constants
+  - Summary text is displayed on the main agreement screen, fullTerms shown in the sheet
+  - TermsOfService.version constant added ("1.0") for reference - should match AgreementService.currentAgreementVersion
+  - The fullTerms includes string interpolation to embed the version: `Version: \(version)`
+---
+
+## 2026-01-27 - US-006
+- **What was implemented**: Agreement integration into bookie signup/login flow
+- **Files changed**:
+  - Updated: Booki/Services/AuthManager.swift (added agreementRequired property, agreement methods)
+  - Updated: Booki/Views/AuthGateView.swift (added bookieAgreementView and conditional routing)
+- **Learnings for future iterations:**
+  - AuthManager owns the agreementRequired state and agreement operations (check/submit)
+  - AgreementService instance is held by AuthManager, not created per call
+  - Agreement check happens in ensureBookieRecord() after bookie record is established
+  - AuthGateView conditionally shows UserAgreementView when agreementRequired && userRole == .bookie
+  - The bookie's UUID (currentBookieId) is used for agreement submissions, not the auth user ID
+  - agreementRequired is reset to false in updateAuthState when user signs out
+---
+
+## 2026-01-27 - US-007
+- **What was implemented**: Agreement integration into player claim flow
+- **Files changed**:
+  - Updated: Booki/Views/PlayerClaimView.swift (added agreement state, showAgreement logic, submitPlayerAgreement function)
+- **Learnings for future iterations:**
+  - PlayerClaimView now shows UserAgreementView after account creation, before showing success screen
+  - The flow is: validate code → create account → show agreement → submit agreement → show success → navigate to login
+  - createdAuthUserId stores the auth user ID from signup response for agreement submission
+  - If agreement submission fails, the player still proceeds to success screen - agreement will be required on next login
+  - The view conditionally shows UserAgreementView at the top level (outside the ZStack) to avoid nested ScrollViews
+  - AgreementService is instantiated locally in submitPlayerAgreement() rather than held as a property
+---
+
+## 2026-01-27 - US-008
+- **What was implemented**: Enforce agreement check on app launch for all authenticated users (bookies and players)
+- **Files changed**:
+  - Updated: Booki/Services/AuthManager.swift (added agreementIsOutdated property, player agreement check)
+  - Updated: Booki/Views/AuthGateView.swift (generalized agreement view for both roles, added update message)
+- **Learnings for future iterations:**
+  - agreementIsOutdated (Bool) tracks whether it's an updated terms vs never-accepted, to show appropriate message
+  - AuthGateView now blocks BOTH bookies and players when agreementRequired is true (was only bookies before)
+  - Player agreement check happens in ensureBookieRecord() when user is identified as player (not bookie)
+  - setAsPlayer() method now has optional checkAgreement parameter (default true) to trigger agreement check
+  - The message "We have updated our Terms of Service. Please review and accept to continue." is shown when agreementIsOutdated is true
+  - agreementIsOutdated is reset in: updateAuthState (sign out), submitAgreement (on acceptance), checkAgreementRequired (on error)
+---
+
+## 2026-01-27 - US-009
+- **What was implemented**: Supabase Edge Functions infrastructure with shared utilities
+- **Files changed**:
+  - Created: supabase/functions/_shared/cors.ts (CORS headers constant)
+  - Created: supabase/functions/_shared/supabase.ts (createServiceClient, createUserClient, getUserIdFromAuthHeader helpers)
+  - Created: supabase/functions/README.md (documentation and deployment instructions)
+- **Learnings for future iterations:**
+  - Edge Functions use Deno runtime with ESM imports from https://esm.sh/
+  - CORS headers must be included in all responses for iOS app to communicate with functions
+  - createServiceClient() uses SUPABASE_SERVICE_ROLE_KEY to bypass RLS
+  - createUserClient() uses the user's JWT token to respect RLS
+  - getUserIdFromAuthHeader() extracts user ID from JWT by calling client.auth.getUser()
+  - Deno is not installed locally; typecheck happens during Supabase deployment
+  - All mutation functions should use idempotency_key pattern to prevent duplicate operations
+  - Idempotency keys table stores: key (client-provided), operation (function name), response (cached JSON), user_id, expires_at
+  - submit_bet validates: player ownership, event existence, event not locked (status != locked AND start_time > now)
+---
+
+## 2026-01-27 - US-010
+- **What was implemented**: submit_bet Edge Function for server-authoritative bet submissions
+- **Files changed**:
+  - Created: supabase/functions/submit_bet/index.ts
+  - Created: supabase/migrations/004_idempotency_keys.sql
+  - Updated: SUPABASE_MIGRATIONS.md
+- **Learnings for future iterations:**
+  - Edge Functions use createServiceClient() for operations that need to bypass RLS (like inserting bets on behalf of players)
+  - Idempotency check happens BEFORE any validation to return cached response immediately
+  - Event locking is determined by: status === 'locked' OR start_time <= now
+  - ticket_id is generated server-side with crypto.randomUUID() for grouping bets from the same submission
+  - The market_id from request maps to `market` column in bets table (historical naming)
+  - Player validation ensures: 1) player exists, 2) belongs to bookie, 3) auth_user_id matches JWT user
 ---
