@@ -21,6 +21,9 @@ struct PlayerClaimView: View {
     @State private var isCreatingAccount: Bool = false
     @State private var accountCreationError: String?
     @State private var accountCreated: Bool = false
+    @State private var showAgreement: Bool = false
+    @State private var createdAuthUserId: UUID?
+    @State private var isSubmittingAgreement: Bool = false
 
     // MARK: - Callbacks
 
@@ -46,6 +49,20 @@ struct PlayerClaimView: View {
     // MARK: - Body
 
     var body: some View {
+        if showAgreement {
+            // Show full-screen UserAgreementView after account creation
+            UserAgreementView(
+                onAccept: {
+                    submitPlayerAgreement()
+                }
+            )
+        } else {
+            claimFlowView
+        }
+    }
+
+    /// The main claim flow view (code entry, confirmation, success states)
+    private var claimFlowView: some View {
         ZStack {
             Theme.backgroundGradient
                 .ignoresSafeArea()
@@ -328,16 +345,56 @@ struct PlayerClaimView: View {
                 inviteCodeService.claimAccount(for: player, authUserId: response.user.id)
                 print("DEBUG: Player account claimed")
 
-                // Show success state
+                // Store the auth user ID and show agreement view
                 await MainActor.run {
                     isCreatingAccount = false
-                    accountCreated = true
+                    createdAuthUserId = response.user.id
+                    showAgreement = true
                 }
             } catch {
                 print("DEBUG: Error creating account: \(error)")
                 await MainActor.run {
                     isCreatingAccount = false
                     accountCreationError = "Failed to create account: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func submitPlayerAgreement() {
+        guard let userId = createdAuthUserId else {
+            print("DEBUG: No user ID available for agreement submission")
+            // Fall back to showing success screen anyway
+            showAgreement = false
+            accountCreated = true
+            return
+        }
+
+        isSubmittingAgreement = true
+
+        Task {
+            do {
+                let agreementService = AgreementService()
+                try await agreementService.submitAgreement(
+                    userId: userId,
+                    role: "player",
+                    version: AgreementService.currentAgreementVersion
+                )
+                print("DEBUG: Player agreement submitted successfully")
+
+                await MainActor.run {
+                    isSubmittingAgreement = false
+                    showAgreement = false
+                    accountCreated = true
+                }
+            } catch {
+                print("DEBUG: Failed to submit agreement: \(error)")
+                // Even on failure, proceed to success screen
+                // Agreement will be required on next login
+                await MainActor.run {
+                    isSubmittingAgreement = false
+                    showAgreement = false
+                    accountCreated = true
                 }
             }
         }
