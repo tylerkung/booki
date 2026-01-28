@@ -1,0 +1,9 @@
+/**
+ * CORS headers for Supabase Edge Functions
+ * Include these headers in all responses to allow cross-origin requests
+ */
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
+};
