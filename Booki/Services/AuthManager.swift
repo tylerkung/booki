@@ -40,7 +40,12 @@ final class AuthManager: ObservableObject {
     /// Whether bookie record is being loaded
     @Published private(set) var isLoadingBookie: Bool = false
 
+    /// Whether user agreement is required before accessing the app
+    @Published var agreementRequired: Bool = false
+
     // MARK: - Private Properties
+
+    private let agreementService: AgreementService
 
     private let supabase: SupabaseClient
     private var authStateTask: Task<Void, Never>?
@@ -49,6 +54,7 @@ final class AuthManager: ObservableObject {
 
     init() {
         self.supabase = SupabaseClientManager.shared.client
+        self.agreementService = AgreementService()
 
         // Check current session on init
         Task {
@@ -82,6 +88,8 @@ final class AuthManager: ObservableObject {
             currentBookieId = bookie.id
             currentPlayerId = nil
             userRole = .bookie
+            // Check agreement status for existing bookie
+            await checkAgreementRequired(for: bookie.id)
             isLoadingBookie = false
             return
         } catch {
@@ -95,6 +103,8 @@ final class AuthManager: ObservableObject {
             currentBookieId = bookie.id
             currentPlayerId = nil
             userRole = .bookie
+            // Check agreement status for new bookie
+            await checkAgreementRequired(for: bookie.id)
         } catch {
             // If we can't create/fetch bookie record, user might be a player
             // Set as player role - the app will check if they have a valid player record
@@ -123,6 +133,32 @@ final class AuthManager: ObservableObject {
     func setCurrentBookieId(_ bookieId: UUID) {
         currentBookieId = bookieId
         userRole = .bookie
+    }
+
+    /// Check if user agreement is required and update agreementRequired flag
+    /// - Parameter userId: The user's UUID
+    func checkAgreementRequired(for userId: UUID) async {
+        do {
+            let status = try await agreementService.checkAgreementStatus(userId: userId)
+            agreementRequired = (status == .required || status == .outdated)
+        } catch {
+            // On error, don't block the user - agreement check will happen on next launch
+            print("Failed to check agreement status: \(error)")
+            agreementRequired = false
+        }
+    }
+
+    /// Submit agreement acceptance for a user
+    /// - Parameters:
+    ///   - userId: The user's UUID
+    ///   - role: The user's role (bookie or player)
+    func submitAgreement(for userId: UUID, role: String) async throws {
+        try await agreementService.submitAgreement(
+            userId: userId,
+            role: role,
+            version: AgreementService.currentAgreementVersion
+        )
+        agreementRequired = false
     }
 
     // MARK: - Private Methods
@@ -191,6 +227,7 @@ final class AuthManager: ObservableObject {
             self.currentBookieId = nil
             self.currentPlayerId = nil
             self.bookieError = nil
+            self.agreementRequired = false
         }
     }
 }

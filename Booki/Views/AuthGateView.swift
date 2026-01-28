@@ -29,12 +29,17 @@ struct AuthGateView: View {
             if authManager.isLoading || (authManager.isAuthenticated && authManager.isLoadingBookie) {
                 loadingView
             } else if authManager.isAuthenticated {
-                // Route based on user role
-                switch authManager.userRole {
-                case .player:
-                    PlayerMainView()
-                case .bookie, nil:
-                    ContentView()
+                // Check if agreement is required for bookie role
+                if authManager.agreementRequired && authManager.userRole == .bookie {
+                    bookieAgreementView
+                } else {
+                    // Route based on user role
+                    switch authManager.userRole {
+                    case .player:
+                        PlayerMainView()
+                    case .bookie, nil:
+                        ContentView()
+                    }
                 }
             } else {
                 authFlowView
@@ -92,6 +97,24 @@ struct AuthGateView: View {
                 syncService.setOffline()
             }
         }
+    }
+
+    // MARK: - Bookie Agreement View
+
+    /// Agreement view for bookies who need to accept terms
+    private var bookieAgreementView: some View {
+        UserAgreementView(
+            onAccept: {
+                Task {
+                    guard let userId = authManager.currentBookieId else { return }
+                    do {
+                        try await authManager.submitAgreement(for: userId, role: "bookie")
+                    } catch {
+                        print("Failed to submit agreement: \(error)")
+                    }
+                }
+            }
+        )
     }
 
     // MARK: - Loading View
