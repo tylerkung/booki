@@ -1,239 +1,300 @@
 {
   "project": "Booki",
-  "branchName": "ralph/odds-api-integration",
-  "description": "Integrate The Odds API to fetch sporting events, betting lines, and scores. Enables auto-import of events and auto-grading of bets.",
+  "branchName": "ralph/server-authority-legal",
+  "description": "Server Authority & Legal Acknowledgment - Phase 1 (ToS) and Phase 2 (Edge Functions) for production-safe operations.",
   "techStack": {
     "platform": "iOS 17+",
     "language": "Swift 5.9+",
     "ui": "SwiftUI",
     "persistence": "SwiftData (local-first) + Supabase (cloud)",
     "architecture": "MVVM with Services layer",
-    "externalAPI": "The Odds API (https://api.the-odds-api.com)"
+    "serverFunctions": "Supabase Edge Functions (Deno/TypeScript)"
   },
   "userStories": [
     {
       "id": "US-001",
-      "title": "Create OddsAPIService",
-      "description": "As a developer, I need a service to communicate with The Odds API.",
+      "title": "Create User Agreements Database Schema",
+      "description": "As a developer, I need to store user agreement acceptances so we can track legal acknowledgments.",
       "acceptanceCriteria": [
-        "Create OddsAPIService.swift in Booki/Services/",
-        "Base URL: https://api.the-odds-api.com",
-        "Use @AppStorage for API key temporarily (will move to Keychain later)",
-        "Implement async request method with URLSession",
-        "Parse x-requests-remaining header to track quota",
-        "Handle errors: 401 (invalid key), 429 (rate limit), 500 (server error)",
-        "Create OddsAPIError enum for typed errors",
+        "Create Supabase migration file in supabase/migrations/ for user_agreements table",
+        "Table columns: id (UUID primary key), user_id (UUID references auth.users), role (text: bookie or player), version (text), accepted_at (timestamptz), ip_address (text nullable), user_agent (text nullable)",
+        "Add RLS policy: users can only SELECT their own agreements (user_id = auth.uid())",
+        "Add RLS policy: authenticated users can INSERT their own agreements",
+        "Add RLS policy: no UPDATE or DELETE allowed (immutable)",
+        "Document migration in SUPABASE_MIGRATIONS.md",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Created OddsAPIService.swift with OddsAPIError enum, async request methods, quota header parsing"
+      "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Create API Response Models",
-      "description": "As a developer, I need models to decode The Odds API responses.",
+      "title": "Create UserAgreement SwiftData Model",
+      "description": "As a developer, I need a local model to cache agreement status for offline access.",
       "acceptanceCriteria": [
-        "Create OddsAPIModels.swift in Booki/Models/",
-        "OddsSport: key, group, title, description, active, hasOutrights",
-        "OddsEvent: id, sportKey, sportTitle, commenceTime, homeTeam, awayTeam, bookmakers",
-        "OddsBookmaker: key, title, lastUpdate, markets",
-        "OddsMarket: key, lastUpdate, outcomes",
-        "OddsOutcome: name, price, point (optional for spreads/totals)",
-        "OddsScore: id, sportKey, commenceTime, completed, homeTeam, awayTeam, scores",
-        "All models conform to Codable with proper CodingKeys for snake_case",
+        "Create UserAgreement.swift in Booki/Models/",
+        "Properties: id (UUID), userId (UUID), role (String), version (String), acceptedAt (Date)",
+        "Conform to SwiftData @Model",
+        "Add to model container in BookiApp.swift alongside existing models",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Created OddsAPIModels.swift with all Codable models"
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Fetch Available Sports",
-      "description": "As a developer, I need to fetch the list of available sports from the API.",
+      "title": "Create AgreementService for Server Communication",
+      "description": "As a developer, I need a service to check and submit agreement acceptance to Supabase.",
       "acceptanceCriteria": [
-        "Add fetchSports() async throws -> [OddsSport] to OddsAPIService",
-        "Endpoint: GET /v4/sports/?apiKey={key}",
-        "Filter to only active sports (active == true)",
-        "This endpoint is free (doesn't count against quota)",
+        "Create AgreementService.swift in Booki/Services/",
+        "Add enum AgreementStatus with cases: accepted, required, outdated",
+        "Add static constant: currentAgreementVersion = '1.0'",
+        "Method: checkAgreementStatus(userId: UUID) async throws -> AgreementStatus - queries user_agreements table for latest version",
+        "Method: submitAgreement(userId: UUID, role: String, version: String) async throws - inserts new agreement record",
+        "Use SupabaseClientManager.shared.client for database access",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Added fetchSports() method to OddsAPIService"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Fetch Events with Odds",
-      "description": "As a developer, I need to fetch upcoming events with betting odds.",
+      "title": "Create UserAgreementView UI",
+      "description": "As a user, I need to see and accept the terms of service before using Booki.",
       "acceptanceCriteria": [
-        "Add fetchOdds(sport: String) async throws -> [OddsEvent] to OddsAPIService",
-        "Endpoint: GET /v4/sports/{sport}/odds/",
-        "Parameters: apiKey, regions=us, markets=h2h,spreads,totals, oddsFormat=american",
-        "Store preferred bookmaker in @AppStorage (default: draftkings)",
-        "Parse response into [OddsEvent] array",
+        "Create UserAgreementView.swift in Booki/Views/",
+        "ScrollView with agreement summary text (placeholder for now, US-005 adds real content)",
+        "Toggle or Checkbox with label: 'I have read and agree to the Terms of Service'",
+        "Button labeled 'View Full Terms' that shows a sheet with full terms text",
+        "Continue button that is disabled until checkbox is checked",
+        "Use Theme.background, Theme.cardBackground, Theme.textPrimary, Theme.accent for styling",
+        "Accept callback closure parameter: onAccept: () -> Void",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Added fetchOdds() method to OddsAPIService with all parameters"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Add External ID Fields to Event Model",
-      "description": "As a developer, I need to track which events came from the API.",
+      "title": "Draft Terms of Service Content",
+      "description": "As a user, I need clear language explaining what Booki is and is not.",
       "acceptanceCriteria": [
-        "Add externalId: String? to Event model",
-        "Add externalSource: String? to Event model (e.g. 'the-odds-api')",
-        "Add lastOddsUpdate: Date? to Event model",
-        "Add homeScore: Int? to Event model",
-        "Add awayScore: Int? to Event model",
-        "Update Event initializer with new optional fields (default nil)",
+        "Create TermsOfService.swift in Booki/Views/ or Booki/Constants/",
+        "Add static let summary: String with the following text: 'IMPORTANT: Please read carefully before continuing.\\n\\nBooki is a record-keeping and bet management tool. By using Booki, you acknowledge and agree that:\\n\\n• Booki does NOT place, accept, or process bets on your behalf\\n• Booki does NOT hold, transfer, or process any money or payments\\n• All financial arrangements between bookies and players occur entirely outside this app\\n• Booki serves only as an organizational tool to track bets and balances\\n• You are solely responsible for ensuring your activities comply with all applicable local, state, and federal laws\\n• Booki makes no representations about the legality of sports betting in your jurisdiction\\n\\nThis app is provided for record-keeping and entertainment purposes only. Booki is not a licensed sportsbook, gambling operator, or financial institution.\\n\\nBy continuing, you confirm that you are at least 18 years old (or the legal age in your jurisdiction) and accept these terms.'",
+        "Add static let fullTerms: String with extended legal text including liability disclaimers, data usage, and termination clauses",
+        "Update UserAgreementView to use TermsOfService.summary and TermsOfService.fullTerms",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Added externalId, externalSource, lastOddsUpdate, homeScore, awayScore to Event model. Supabase migration applied."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-006",
-      "title": "Create OddsAPIMapper",
-      "description": "As a developer, I need to convert API responses to app models.",
+      "title": "Integrate Agreement into Bookie Signup Flow",
+      "description": "As a new bookie, I must accept the terms before accessing the app.",
       "acceptanceCriteria": [
-        "Create OddsAPIMapper.swift in Booki/Services/",
-        "Method: mapToEvent(from: OddsEvent, bookmaker: String) -> Event",
-        "Map commenceTime -> startTime, homeTeam/awayTeam directly",
-        "Map sportKey to sport and league (e.g. basketball_nba -> Basketball, NBA)",
-        "Set externalId to OddsEvent.id, externalSource to 'the-odds-api'",
-        "Method: mapToMarkets(from: OddsEvent, bookmaker: String, event: Event) -> [Market]",
-        "Convert h2h outcomes to moneyline Market with team names as sideA/sideB",
-        "Convert spreads outcomes to spread Market with point values in labels",
-        "Convert totals outcomes to total Market with Over/Under labels",
-        "Handle missing markets gracefully (return empty array)",
+        "In AuthManager or AuthGateView, after successful bookie signup/login, check agreement status via AgreementService.checkAgreementStatus()",
+        "Add @Published var agreementRequired: Bool = false to AuthManager",
+        "If status is .required or .outdated, set agreementRequired = true",
+        "In AuthGateView, if agreementRequired is true for bookie role, show UserAgreementView instead of BookieMainView",
+        "On UserAgreementView acceptance, call AgreementService.submitAgreement() with role 'bookie'",
+        "After successful submission, set agreementRequired = false to proceed to BookieMainView",
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Created OddsAPIMapper.swift with mapToEvent and mapToMarkets methods"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-007",
-      "title": "Import Events UI",
-      "description": "As a bookie, I want a button to import events from the API.",
+      "title": "Integrate Agreement into Player Claim Flow",
+      "description": "As a new player claiming an invite, I must accept the terms before accessing the app.",
       "acceptanceCriteria": [
-        "Add Import Events button to EventsListView toolbar",
-        "Show sheet with sport picker (populated from fetchSports)",
-        "Show Import button that fetches odds for selected sport",
-        "Show loading indicator during fetch",
-        "Use OddsAPIMapper to create Event and Market objects",
-        "Save to SwiftData modelContext",
-        "Skip events that already exist (match by externalId)",
-        "Show success: 'Imported X events' or error alert",
+        "In PlayerClaimView, after successful account creation and claim, check agreement status",
+        "If agreement not accepted, show UserAgreementView before navigating to player content",
+        "On acceptance, call AgreementService.submitAgreement() with role 'player'",
+        "Player cannot access PlayerMainView until agreement is submitted",
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Created ImportEventsView.swift with sport picker and import functionality"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-008",
-      "title": "Fetch Scores",
-      "description": "As a developer, I need to fetch scores for completed games.",
+      "title": "Enforce Agreement on App Launch",
+      "description": "As a returning user, I should be blocked if I have not accepted the latest terms.",
       "acceptanceCriteria": [
-        "Add fetchScores(sport: String, daysFrom: Int) async throws -> [OddsScore] to OddsAPIService",
-        "Endpoint: GET /v4/sports/{sport}/scores/",
-        "Parameters: apiKey, daysFrom (1-3)",
-        "OddsScore.scores is array of {name: String, score: String}",
-        "Filter to completed games (completed == true)",
+        "On app launch in AuthGateView, for authenticated users, check agreement status",
+        "If agreement version is outdated or missing, show UserAgreementView with message: 'We have updated our Terms of Service. Please review and accept to continue.'",
+        "User cannot access any betting features until agreement is current",
+        "This applies to both bookies and players",
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "Added fetchScores() method to OddsAPIService"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-009",
-      "title": "Update Events with Scores",
-      "description": "As a developer, I need to update events with final scores from the API.",
+      "title": "Set Up Supabase Edge Functions Infrastructure",
+      "description": "As a developer, I need the Edge Functions directory structure and shared utilities.",
       "acceptanceCriteria": [
-        "Create method updateEventsWithScores(scores: [OddsScore], context: ModelContext)",
-        "Match OddsScore to Event by externalId",
-        "Parse score strings to integers",
-        "Set event.homeScore and event.awayScore",
-        "Set event.status to .completed",
-        "Save context",
-        "Typecheck passes"
+        "Create directory: supabase/functions/",
+        "Create directory: supabase/functions/_shared/",
+        "Create supabase/functions/_shared/cors.ts with corsHeaders constant for CORS headers (Access-Control-Allow-Origin: *, etc.)",
+        "Create supabase/functions/_shared/supabase.ts with createClient helper that uses service role key from env",
+        "Create supabase/functions/README.md documenting the Edge Functions structure and deployment: 'supabase functions deploy <function-name>'",
+        "Typecheck passes (Deno syntax)"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "Implemented updateEventsWithScores in FetchScoresView"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-010",
-      "title": "Fetch Scores UI",
-      "description": "As a bookie, I want a button to fetch scores and update events.",
+      "title": "Create submit_bet Edge Function",
+      "description": "As a player, my bet submissions must be validated and created server-side.",
       "acceptanceCriteria": [
-        "Add Fetch Scores button to GradingView or EventsListView",
-        "Fetch scores for all sports with imported events",
-        "Call updateEventsWithScores to update local events",
-        "Show count of events updated: 'Updated scores for X games'",
-        "Trigger sync to upload changes to Supabase",
-        "Typecheck passes"
+        "Create supabase/functions/submit_bet/index.ts",
+        "Handle OPTIONS request for CORS preflight",
+        "Extract and validate JWT from Authorization header to get user_id",
+        "Accept JSON body: event_id, market_id, side (a or b), odds (Int), stake (Decimal string), player_id, bookie_id, idempotency_key",
+        "Validate: event exists and is not locked (start_time > now or status != locked)",
+        "Check idempotency_key - if exists, return cached response",
+        "Insert bet record with status 'pending', needsSync false",
+        "Store idempotency key with response",
+        "Return JSON: { success: true, bet: <created bet object> }",
+        "Return appropriate error responses for validation failures",
+        "Typecheck passes (Deno)"
       ],
       "priority": 10,
-      "passes": true,
-      "notes": "Created FetchScoresView.swift with score fetching UI"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-011",
-      "title": "API Settings Section",
-      "description": "As a bookie, I want to configure my Odds API settings.",
+      "title": "Create accept_bet Edge Function",
+      "description": "As a bookie, accepting a bet must be server-authoritative.",
       "acceptanceCriteria": [
-        "Add 'Odds API' section to SettingsView",
-        "SecureField for API key (stored in @AppStorage for now)",
-        "Picker for preferred bookmaker: DraftKings, FanDuel, BetMGM, Caesars",
-        "Display quota: 'API Calls Remaining: X'",
-        "Test Connection button that calls fetchSports and shows success/error",
-        "Use Theme styling consistent with rest of app",
-        "Typecheck passes"
+        "Create supabase/functions/accept_bet/index.ts",
+        "Handle OPTIONS request for CORS",
+        "Extract user_id from JWT",
+        "Accept JSON body: bet_id, idempotency_key",
+        "Validate: bet exists, bet.bookie_id matches user's bookie record, bet.status is 'pending'",
+        "Check idempotency - return cached response if key exists",
+        "Update bet status to 'accepted', set accepted_at timestamp",
+        "Store idempotency key",
+        "Return { success: true, bet: <updated bet> }",
+        "Return error if bet already accepted/declined/graded/settled",
+        "Typecheck passes (Deno)"
       ],
       "priority": 11,
-      "passes": true,
-      "notes": "Added Odds API section to SettingsView with API key, bookmaker picker, quota display, test connection"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-012",
-      "title": "Quota Tracking",
-      "description": "As a bookie, I want to see my API usage to avoid exceeding limits.",
+      "title": "Create grade_bet Edge Function",
+      "description": "As a bookie, grading a bet must be server-authoritative.",
       "acceptanceCriteria": [
-        "Add @Published var quotaRemaining: Int? to OddsAPIService",
-        "Add @Published var quotaUsed: Int? to OddsAPIService",
-        "Parse x-requests-remaining and x-requests-used from response headers",
-        "Update quota after each API call",
-        "Show warning in Settings when quota < 100: 'Low API quota'",
-        "Persist quota to @AppStorage for display between sessions",
-        "Typecheck passes"
+        "Create supabase/functions/grade_bet/index.ts",
+        "Handle OPTIONS for CORS",
+        "Extract user_id from JWT",
+        "Accept JSON body: bet_id, outcome (win, loss, push, void), idempotency_key",
+        "Validate: bet exists, belongs to bookie, status is 'accepted' (not already graded or settled)",
+        "Check idempotency",
+        "Update bet with outcome field",
+        "Store idempotency key",
+        "Return { success: true, bet: <updated bet> }",
+        "Typecheck passes (Deno)"
       ],
       "priority": 12,
-      "passes": true,
-      "notes": "Added @Published quota properties and @AppStorage persistence to OddsAPIService"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-013",
-      "title": "Refresh Odds for Existing Events",
-      "description": "As a bookie, I want to refresh odds for events to get line movements.",
+      "title": "Create settle_bet Edge Function",
+      "description": "As a bookie, settling a bet must atomically update bet status and create ledger entries.",
       "acceptanceCriteria": [
-        "Add Refresh Odds button to GamesView or EventsListView",
-        "Fetch fresh odds for events with externalId that start within 24 hours",
-        "Update existing Market odds (oddsA, oddsB) and point values",
-        "Update event.lastOddsUpdate timestamp",
-        "Show count: 'Refreshed odds for X events'",
-        "Typecheck passes"
+        "Create supabase/functions/settle_bet/index.ts",
+        "Handle OPTIONS for CORS",
+        "Extract user_id from JWT",
+        "Accept JSON body: bet_id, idempotency_key",
+        "Validate: bet is graded (has outcome), not already settled",
+        "Check idempotency",
+        "Calculate payout based on outcome: win = stake * odds profit, loss = -stake, push = 0, void = 0",
+        "In transaction: update bet.status to 'settled', insert ledger_entry for player with calculated amount",
+        "Store idempotency key",
+        "Return { success: true, bet: <updated bet>, ledger_entry: <created entry> }",
+        "Typecheck passes (Deno)"
       ],
       "priority": 13,
-      "passes": true,
-      "notes": "Created RefreshOddsView.swift with odds refresh functionality for events within 24 hours"
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Create adjust_balance Edge Function",
+      "description": "As a bookie, manual balance adjustments must be server-authoritative with required reason.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/adjust_balance/index.ts",
+        "Handle OPTIONS for CORS",
+        "Extract user_id from JWT",
+        "Accept JSON body: player_id, amount (Decimal string, positive or negative), reason (required string), idempotency_key",
+        "Validate: player belongs to bookie, reason is not empty",
+        "Check idempotency",
+        "Insert ledger_entry with type 'adjustment', amount, reason, player_id, bookie_id",
+        "Store idempotency key",
+        "Return { success: true, ledger_entry: <created entry> }",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Create EdgeFunctionService for iOS",
+      "description": "As a developer, I need a service to call Edge Functions from the iOS app.",
+      "acceptanceCriteria": [
+        "Create EdgeFunctionService.swift in Booki/Services/",
+        "Property: static let shared = EdgeFunctionService() (singleton)",
+        "Method: callFunction<T: Decodable>(name: String, body: Encodable) async throws -> T",
+        "Construct URL: supabase project URL + /functions/v1/ + name",
+        "Add Authorization header with Bearer token from current session",
+        "Add Content-Type: application/json header",
+        "POST request with JSON-encoded body",
+        "Decode response as T or throw appropriate error",
+        "Create EdgeFunctionError enum for error handling",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Update iOS BetService to Use submit_bet Edge Function",
+      "description": "As a developer, bet submissions from players must use the server-authoritative Edge Function.",
+      "acceptanceCriteria": [
+        "In BetService or BetSlipManager where bets are submitted, replace direct Supabase insert with EdgeFunctionService.callFunction('submit_bet', ...)",
+        "Generate idempotency_key as UUID().uuidString for each submission",
+        "Create SubmitBetRequest struct with: event_id, market_id, side, odds, stake, player_id, bookie_id, idempotency_key",
+        "Create SubmitBetResponse struct matching Edge Function response",
+        "Handle errors from Edge Function and display appropriate feedback",
+        "On success, insert/update local SwiftData Bet record with returned data",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
     }
   ]
 }
