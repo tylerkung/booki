@@ -1,19 +1,203 @@
 import Foundation
 
 /// Errors that can occur during bet operations
-enum BetServiceError: Error, Equatable {
+enum BetServiceError: Error {
     case insufficientCredit(available: Decimal, required: Decimal)
     case invalidBetStatus(current: BetStatus, expected: BetStatus)
     case playerNotActive(status: PlayerStatus)
     case betNotFound
     case playerRequired
     case eventLocked
+    case edgeFunctionError(String)
+}
+
+extension BetServiceError: Equatable {
+    static func == (lhs: BetServiceError, rhs: BetServiceError) -> Bool {
+        switch (lhs, rhs) {
+        case (.insufficientCredit(let a1, let r1), .insufficientCredit(let a2, let r2)):
+            return a1 == a2 && r1 == r2
+        case (.invalidBetStatus(let c1, let e1), .invalidBetStatus(let c2, let e2)):
+            return c1 == c2 && e1 == e2
+        case (.playerNotActive(let s1), .playerNotActive(let s2)):
+            return s1 == s2
+        case (.betNotFound, .betNotFound):
+            return true
+        case (.playerRequired, .playerRequired):
+            return true
+        case (.eventLocked, .eventLocked):
+            return true
+        case (.edgeFunctionError(let m1), .edgeFunctionError(let m2)):
+            return m1 == m2
+        default:
+            return false
+        }
+    }
+}
+
+// MARK: - Edge Function Types
+
+/// Request body for submit_bet Edge Function
+struct SubmitBetRequest: Encodable {
+    let eventId: String
+    let marketId: String
+    let side: String
+    let odds: Int
+    let stake: String
+    let playerId: String
+    let bookieId: String
+    let idempotencyKey: String
+
+    enum CodingKeys: String, CodingKey {
+        case eventId = "event_id"
+        case marketId = "market_id"
+        case side
+        case odds
+        case stake
+        case playerId = "player_id"
+        case bookieId = "bookie_id"
+        case idempotencyKey = "idempotency_key"
+    }
+}
+
+/// Bet record returned from submit_bet Edge Function
+struct SubmitBetResponseBet: Decodable {
+    let id: String
+    let bookieId: String
+    let playerId: String
+    let eventId: String
+    let ticketId: String
+    let market: String
+    let side: String
+    let odds: Int
+    let stake: Double
+    let status: String
+    let createdAt: String
+    let updatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case bookieId = "bookie_id"
+        case playerId = "player_id"
+        case eventId = "event_id"
+        case ticketId = "ticket_id"
+        case market
+        case side
+        case odds
+        case stake
+        case status
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+/// Response from submit_bet Edge Function
+struct SubmitBetResponse: Decodable {
+    let success: Bool
+    let bet: SubmitBetResponseBet?
+    let error: String?
 }
 
 /// Service for bet operations including submission and status transitions
 enum BetService {
 
-    // MARK: - Bet Submission
+    // MARK: - Server-Side Bet Submission (Edge Function)
+
+    /// Submits a bet via the submit_bet Edge Function for server-authoritative validation
+    /// - Parameters:
+    ///   - eventId: The event UUID
+    ///   - marketId: The market UUID
+    ///   - side: The side selected (e.g., "a", "b", or team name)
+    ///   - odds: The American odds at time of submission
+    ///   - stake: The amount being wagered
+    ///   - playerId: The player's UUID
+    ///   - bookieId: The bookie's UUID
+    /// - Returns: Result with SubmitBetResponse on success, or Error on failure
+    static func submitBetToServer(
+        eventId: UUID,
+        marketId: UUID,
+        side: String,
+        odds: Int,
+        stake: Decimal,
+        playerId: UUID,
+        bookieId: UUID
+    ) async -> Result<SubmitBetResponse, Error> {
+        let idempotencyKey = UUID().uuidString
+
+        let request = SubmitBetRequest(
+            eventId: eventId.uuidString,
+            marketId: marketId.uuidString,
+            side: side,
+            odds: odds,
+            stake: "\(stake)",
+            playerId: playerId.uuidString,
+            bookieId: bookieId.uuidString,
+            idempotencyKey: idempotencyKey
+        )
+
+        do {
+            let response: SubmitBetResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "submit_bet",
+                body: request
+            )
+
+            if response.success {
+                return .success(response)
+            } else {
+                let errorMessage = response.error ?? "Unknown error"
+                return .failure(BetServiceError.edgeFunctionError(errorMessage))
+            }
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    /// Creates a local Bet model from a SubmitBetResponse
+    /// - Parameters:
+    ///   - response: The successful response from submit_bet Edge Function
+    ///   - player: The Player to associate with the bet
+    ///   - localSide: The local side value (actual team name) to store locally
+    ///   - localMarket: The local market value to store locally
+    /// - Returns: A Bet model populated with server and local data
+    static func createLocalBetFromResponse(
+        _ response: SubmitBetResponse,
+        player: Player,
+        localSide: String,
+        localMarket: String
+    ) -> Bet? {
+        guard let betResponse = response.bet,
+              let betId = UUID(uuidString: betResponse.id),
+              let ticketId = UUID(uuidString: betResponse.ticketId),
+              let bookieId = UUID(uuidString: betResponse.bookieId) else {
+            return nil
+        }
+
+        let status = BetStatus(rawValue: betResponse.status) ?? .pending
+
+        let bet = Bet(
+            id: betId,
+            eventId: betResponse.eventId,
+            market: localMarket,
+            side: localSide,
+            odds: betResponse.odds,
+            stake: Decimal(betResponse.stake),
+            status: status,
+            gradeResult: nil,
+            player: player,
+            createdAt: Date(),
+            ticketId: ticketId,
+            policyViolationReason: nil,
+            isParlay: false,
+            parlayLegs: 1,
+            bookieId: bookieId,
+            needsSync: false,
+            lastSyncedAt: Date(),
+            version: 1
+        )
+
+        return bet
+    }
+
+    // MARK: - Local Bet Submission
 
     /// Submits a new bet request, creating a pending or accepted bet with snapshotted odds
     /// Validates that the player has sufficient available credit and optionally evaluates acceptance policy

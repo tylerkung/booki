@@ -778,40 +778,67 @@ struct StakeEntryView: View {
         .background(.ultraThinMaterial)
     }
 
-    // MARK: - Actions
+    // MARK: - Actions (US-016: Edge Function)
 
     private func submitRequest() {
         guard let stakeValue = stake else { return }
 
-        // Get player's existing bets and ledger entries
-        let playerBets = bets.filter { $0.player?.id == player.id }
-        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+        // Get bookieId from player
+        guard let bookieId = player.bookieId else {
+            submissionError = "Player is not associated with a bookie"
+            return
+        }
 
-        // Submit bet via BetService
-        let result = BetService.submitBet(
-            player: player,
-            eventId: event.id.uuidString,
-            market: selection.market.type.rawValue,
-            side: selection.side,
-            odds: selection.odds,
-            stake: stakeValue,
-            existingBets: playerBets,
-            ledgerEntries: playerLedgerEntries
-        )
+        // Submit bet via Edge Function
+        Task {
+            let result = await BetService.submitBetToServer(
+                eventId: event.id,
+                marketId: selection.market.id,
+                side: selection.side,
+                odds: selection.odds,
+                stake: stakeValue,
+                playerId: player.id,
+                bookieId: bookieId
+            )
 
-        switch result {
-        case .success(let bet):
-            // Insert the bet into the model context
-            modelContext.insert(bet)
-            showingSuccess = true
-        case .failure(let error):
-            switch error {
-            case .insufficientCredit(let available, let required):
-                submissionError = "Insufficient credit. Available: \(formatCurrency(available)), Required: \(formatCurrency(required))"
-            case .playerNotActive(let status):
-                submissionError = "Your account is \(status.rawValue). You cannot submit bet requests."
-            default:
-                submissionError = "Failed to submit request. Please try again."
+            await MainActor.run {
+                switch result {
+                case .success(let response):
+                    // Create local Bet from server response
+                    if let bet = BetService.createLocalBetFromResponse(
+                        response,
+                        player: player,
+                        localSide: selection.side,
+                        localMarket: selection.market.type.rawValue
+                    ) {
+                        modelContext.insert(bet)
+                        showingSuccess = true
+                    } else {
+                        submissionError = "Failed to process server response"
+                    }
+
+                case .failure(let error):
+                    // Handle different error types
+                    if let edgeFunctionError = error as? EdgeFunctionError {
+                        switch edgeFunctionError {
+                        case .notAuthenticated:
+                            submissionError = "Not authenticated - please sign in again"
+                        case .serverError(_, let message):
+                            submissionError = message ?? "Server error"
+                        default:
+                            submissionError = edgeFunctionError.localizedDescription
+                        }
+                    } else if let betError = error as? BetServiceError {
+                        switch betError {
+                        case .edgeFunctionError(let message):
+                            submissionError = message
+                        default:
+                            submissionError = "Failed to submit request. Please try again."
+                        }
+                    } else {
+                        submissionError = "Failed to submit request: \(error.localizedDescription)"
+                    }
+                }
             }
         }
     }

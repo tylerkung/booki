@@ -333,84 +333,116 @@ struct BetConfirmationSheet: View {
         .padding()
     }
 
-    // MARK: - Submission Logic
+    // MARK: - Submission Logic (US-016: Edge Function)
 
     private func submitBets() {
         guard canSubmit else { return }
 
+        // Get bookieId from player
+        guard let bookieId = player.bookieId else {
+            submissionError = "Player is not associated with a bookie"
+            return
+        }
+
         isSubmitting = true
 
-        // Get player's existing bets and ledger entries
-        let playerBets = bets.filter { $0.player?.id == player.id }
-        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+        // Capture items to submit before async call
+        let itemsToSubmit = betSlipManager.items
+        let betMode = betSlipManager.betMode
+        let sharedStake = betSlipManager.stake
 
-        var successCount = 0
-        var errors: [String] = []
+        // Submit bets via Edge Function
+        Task {
+            var successCount = 0
+            var errors: [String] = []
 
-        // Generate a single ticketId for all bets in this submission
-        let ticketId = UUID()
+            for item in itemsToSubmit {
+                // Calculate stake for this bet
+                let betStake: Decimal
+                switch betMode {
+                case .singles:
+                    betStake = sharedStake
+                case .parlay:
+                    // For parlay, we create a single combined bet
+                    // Note: This simplified version creates individual bets
+                    betStake = sharedStake / Decimal(itemsToSubmit.count)
+                }
 
-        // Submit each bet from the slip
-        for item in betSlipManager.items {
-            // Calculate stake for this bet
-            let betStake: Decimal
-            switch betSlipManager.betMode {
-            case .singles:
-                betStake = betSlipManager.stake
-            case .parlay:
-                // For parlay, we create a single combined bet
-                // Note: This simplified version creates individual bets
-                // A full parlay implementation would need a ParlayBet model
-                betStake = betSlipManager.stake / Decimal(betSlipManager.count)
-            }
+                // Call submit_bet Edge Function
+                let result = await BetService.submitBetToServer(
+                    eventId: item.eventId,
+                    marketId: item.marketId,
+                    side: item.side,
+                    odds: item.odds,
+                    stake: betStake,
+                    playerId: player.id,
+                    bookieId: bookieId
+                )
 
-            let result = BetService.submitBet(
-                player: player,
-                eventId: item.eventId.uuidString,
-                market: item.marketType.rawValue,
-                side: item.side,
-                odds: item.odds,
-                stake: betStake,
-                existingBets: playerBets,
-                ledgerEntries: playerLedgerEntries,
-                ticketId: ticketId
-            )
+                switch result {
+                case .success(let response):
+                    // Create local Bet from server response
+                    if let bet = BetService.createLocalBetFromResponse(
+                        response,
+                        player: player,
+                        localSide: item.side,
+                        localMarket: item.marketType.rawValue
+                    ) {
+                        await MainActor.run {
+                            modelContext.insert(bet)
+                        }
+                        successCount += 1
+                    } else {
+                        errors.append("Failed to process server response for \(item.side)")
+                    }
 
-            switch result {
-            case .success(let bet):
-                modelContext.insert(bet)
-                successCount += 1
-            case .failure(let error):
-                switch error {
-                case .insufficientCredit(let available, let required):
-                    errors.append("Insufficient credit for \(item.side): Need \(formatCurrency(required)), have \(formatCurrency(available))")
-                case .playerNotActive(let status):
-                    errors.append("Account is \(status.rawValue)")
-                default:
-                    errors.append("Failed to submit \(item.side)")
+                case .failure(let error):
+                    // Handle different error types
+                    if let edgeFunctionError = error as? EdgeFunctionError {
+                        switch edgeFunctionError {
+                        case .notAuthenticated:
+                            errors.append("Not authenticated - please sign in again")
+                        case .serverError(_, let message):
+                            errors.append(message ?? "Server error for \(item.side)")
+                        default:
+                            errors.append(edgeFunctionError.localizedDescription)
+                        }
+                    } else if let betError = error as? BetServiceError {
+                        switch betError {
+                        case .edgeFunctionError(let message):
+                            errors.append(message)
+                        default:
+                            errors.append("Failed to submit \(item.side)")
+                        }
+                    } else {
+                        errors.append("Failed to submit \(item.side): \(error.localizedDescription)")
+                    }
                 }
             }
-        }
 
-        isSubmitting = false
+            // Update UI on main thread
+            await MainActor.run {
+                isSubmitting = false
 
-        if successCount > 0 {
-            submittedCount = successCount
-            // Clear bet slip and stake
-            betSlipManager.clearAll()
-            betSlipManager.stake = 0
+                if successCount > 0 {
+                    submittedCount = successCount
+                    // Clear bet slip and stake
+                    betSlipManager.clearAll()
+                    betSlipManager.stake = 0
 
-            // Show success animation
-            withAnimation(.easeInOut(duration: 0.3)) {
-                submissionComplete = true
+                    // Show success animation
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        submissionComplete = true
+                    }
+                }
+
+                if !errors.isEmpty && successCount == 0 {
+                    submissionError = errors.joined(separator: "\n")
+                } else if !errors.isEmpty {
+                    // Partial success - some bets failed
+                    submissionError = "\(successCount) bets submitted. Some failed:\n" + errors.joined(separator: "\n")
+                }
             }
-        }
-
-        if !errors.isEmpty && successCount == 0 {
-            submissionError = errors.joined(separator: "\n")
-        } else if !errors.isEmpty {
-            // Partial success - some bets failed
-            submissionError = "\(successCount) bets submitted. Some failed:\n" + errors.joined(separator: "\n")
         }
     }
 
