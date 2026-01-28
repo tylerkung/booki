@@ -147,3 +147,28 @@ Started: Tue Jan 27 18:12:54 PST 2026
   - The market_id from request maps to `market` column in bets table (historical naming)
   - Player validation ensures: 1) player exists, 2) belongs to bookie, 3) auth_user_id matches JWT user
 ---
+
+## 2026-01-27 - US-011
+- **What was implemented**: accept_bet Edge Function for server-authoritative bet acceptance by bookies
+- **Files changed**:
+  - Created: supabase/functions/accept_bet/index.ts
+  - Created: supabase/migrations/005_bets_accepted_at.sql (adds accepted_at column to bets table)
+  - Updated: SUPABASE_MIGRATIONS.md
+- **Learnings for future iterations:**
+  - Bookie validation pattern: lookup bookie by auth_user_id from JWT, then verify bet.bookie_id matches bookie.id
+  - Status validation should provide specific error messages for each invalid status (accepted, declined, graded, settled)
+  - accepted_at column was added to bets table to track acceptance timestamp (was not in original schema)
+  - Same patterns as submit_bet: CORS preflight, idempotency check early, createServiceClient() for mutations
+---
+
+## 2026-01-27 - US-012
+- **What was implemented**: grade_bet Edge Function for server-authoritative bet grading by bookies
+- **Files changed**:
+  - Created: supabase/functions/grade_bet/index.ts
+- **Learnings for future iterations:**
+  - Outcome values stored in `grade_result` column (not `outcome`) - matches existing bets table schema
+  - Valid outcomes are: win, loss, push, void - validated against VALID_OUTCOMES array
+  - Status changes from 'accepted' to 'graded' when outcome is recorded
+  - Grading requires bet to be 'accepted' status - pending bets must be accepted first, settled bets cannot be regraded
+  - Same pattern as accept_bet: bookie validation via auth_user_id lookup, idempotency check, createServiceClient()
+---
