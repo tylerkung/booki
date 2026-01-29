@@ -35,6 +35,107 @@ CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 
 ## Completed Migrations
 
+### 2026-01-29: Cron Jobs for Auto Refresh
+
+**Required for:** PRD - Automatic Server-Side Odds & Score Refresh (scheduled triggers)
+
+This migration creates pg_cron jobs that call the `auto_refresh_games` Edge Function twice daily.
+
+**Setup Instructions:**
+
+1. **Enable extensions** in Supabase Dashboard:
+   - Go to Database > Extensions
+   - Enable `pg_cron` (for scheduled jobs)
+   - Enable `pg_net` (for HTTP requests)
+
+2. **Set the Edge Function base URL:**
+   ```sql
+   ALTER DATABASE postgres SET app.edge_function_base_url =
+       'https://YOUR_PROJECT_REF.supabase.co/functions/v1';
+   ```
+   Replace `YOUR_PROJECT_REF` with your actual project reference (found in Settings > General).
+
+3. **Store the service role key in vault:**
+   ```sql
+   SELECT vault.create_secret('your-service-role-key', 'service_role_key');
+   ```
+   The service role key is found in Settings > API > `service_role` (secret).
+
+4. **Run the migration** in SQL Editor.
+
+5. **Verify jobs are scheduled:**
+   ```sql
+   SELECT jobname, schedule, active FROM cron.job WHERE jobname LIKE 'auto-refresh%';
+   ```
+
+6. **Monitor job execution:**
+   ```sql
+   SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
+   ```
+
+**Schedule:**
+- Morning: 17:00 UTC (09:00 PT / 12:00 ET) - `'0 17 * * *'`
+- Afternoon: 21:00 UTC (13:00 PT / 16:00 ET) - `'0 21 * * *'`
+
+**Troubleshooting:**
+- If jobs aren't running, verify extensions are enabled
+- Check `cron.job_run_details` for error messages
+- Ensure the service role key is correctly stored in vault
+- Verify the Edge Function URL is correct
+
+```sql
+-- Enable extensions
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
+
+-- Wrapper function to call Edge Function
+CREATE OR REPLACE FUNCTION call_auto_refresh_games()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    edge_function_url TEXT;
+    service_key TEXT;
+BEGIN
+    edge_function_url := current_setting('app.edge_function_base_url', true)
+        || '/auto_refresh_games';
+
+    SELECT decrypted_secret INTO service_key
+    FROM vault.decrypted_secrets
+    WHERE name = 'service_role_key';
+
+    IF service_key IS NULL THEN
+        RAISE WARNING 'Service role key not found in vault. Auto-refresh skipped.';
+        RETURN;
+    END IF;
+
+    PERFORM net.http_post(
+        url := edge_function_url,
+        headers := jsonb_build_object(
+            'Content-Type', 'application/json',
+            'Authorization', 'Bearer ' || service_key
+        ),
+        body := '{}'::jsonb
+    );
+END;
+$$;
+
+-- Schedule morning refresh (17:00 UTC)
+SELECT cron.schedule(
+    'auto-refresh-morning',
+    '0 17 * * *',
+    $$SELECT call_auto_refresh_games()$$
+);
+
+-- Schedule afternoon refresh (21:00 UTC)
+SELECT cron.schedule(
+    'auto-refresh-afternoon',
+    '0 21 * * *',
+    $$SELECT call_auto_refresh_games()$$
+);
+```
+
 ### 2026-01-29: Auto Refresh Timestamp Fields
 
 **Required for:** PRD - Automatic Server-Side Odds & Score Refresh (auto_refresh_games Edge Function)
