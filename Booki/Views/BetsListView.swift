@@ -283,13 +283,20 @@ struct BetDetailView: View {
 
     @State private var showingVoidConfirmation = false
     @State private var showingSettleConfirmation = false
-    @State private var showingReverseConfirmation = false
     @State private var showingOverrideGradeSheet = false
     @State private var overrideNewOutcome: String = "win"
     @State private var overrideReason: String = ""
     @State private var overrideIsLoading = false
     @State private var overrideErrorMessage: String?
     @State private var showingOverrideError = false
+
+    // Reverse Settlement state
+    @State private var showingReverseSettlementSheet = false
+    @State private var reverseReason: String = ""
+    @State private var reverseIsLoading = false
+    @State private var reverseErrorMessage: String?
+    @State private var showingReverseError = false
+    @State private var showingReverseSuccess = false
 
     // MARK: - Computed Properties
 
@@ -517,20 +524,21 @@ struct BetDetailView: View {
                 Text("This will create a ledger entry for the settlement.")
             }
         }
-        .confirmationDialog(
-            "Reverse this settlement?",
-            isPresented: $showingReverseConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Reverse Settlement", role: .destructive) {
-                reverseBet()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("\(reversalImpactDescription) The bet will return to 'graded' status and can be re-settled if needed.")
+        .sheet(isPresented: $showingReverseSettlementSheet) {
+            reverseSettlementSheetContent
         }
         .sheet(isPresented: $showingOverrideGradeSheet) {
             overrideGradeSheetContent
+        }
+        .alert("Reversal Successful", isPresented: $showingReverseSuccess) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("The settlement has been reversed. The bet has returned to 'graded' status.")
+        }
+        .alert("Reversal Failed", isPresented: $showingReverseError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(reverseErrorMessage ?? "An unknown error occurred.")
         }
         .alert("Override Failed", isPresented: $showingOverrideError) {
             Button("OK", role: .cancel) {}
@@ -659,7 +667,7 @@ struct BetDetailView: View {
 
         case .settled:
             Button(role: .destructive) {
-                showingReverseConfirmation = true
+                prepareReverseSettlementSheet()
             } label: {
                 Label("Reverse Settlement", systemImage: "arrow.uturn.backward.circle.fill")
             }
@@ -937,6 +945,161 @@ struct BetDetailView: View {
         }
     }
 
+    // MARK: - Reverse Settlement
+
+    /// Prepare the reverse settlement sheet with reset values
+    private func prepareReverseSettlementSheet() {
+        reverseReason = ""
+        reverseIsLoading = false
+        reverseErrorMessage = nil
+        showingReverseSettlementSheet = true
+    }
+
+    /// Whether the reverse confirm button should be disabled
+    private var isReverseConfirmDisabled: Bool {
+        reverseReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || reverseIsLoading
+    }
+
+    /// The sheet content for reversing a settlement
+    @ViewBuilder
+    private var reverseSettlementSheetContent: some View {
+        NavigationStack {
+            ZStack {
+                Theme.background.ignoresSafeArea()
+
+                VStack(spacing: 24) {
+                    // Warning Section
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.largeTitle)
+                            .foregroundStyle(Theme.warning)
+
+                        Text("Reverse Settlement")
+                            .font(.title2.bold())
+                            .foregroundStyle(Theme.textPrimary)
+
+                        Text("This will undo the ledger entry created when this bet was settled. The player's balance will be adjusted accordingly.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Theme.cardBackground)
+                    .cornerRadius(Theme.cornerRadius)
+
+                    // Impact Description
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Balance Impact")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        Text(reversalImpactDescription)
+                            .font(.body)
+                            .foregroundStyle(Theme.textPrimary)
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.cardBackground)
+                            .cornerRadius(Theme.cornerRadiusSmall)
+                    }
+
+                    // Reason TextField
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Reason (Required)")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        TextField("Enter reason for reversal...", text: $reverseReason, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .padding()
+                            .background(Theme.cardBackground)
+                            .cornerRadius(Theme.cornerRadiusSmall)
+                            .lineLimit(3...6)
+                    }
+
+                    Spacer()
+
+                    // Confirm Button
+                    Button {
+                        Task {
+                            await submitReverseSettlement()
+                        }
+                    } label: {
+                        if reverseIsLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        } else {
+                            Text("Confirm Reversal")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        }
+                    }
+                    .background(isReverseConfirmDisabled ? Theme.danger.opacity(0.5) : Theme.danger)
+                    .cornerRadius(Theme.cornerRadiusSmall)
+                    .disabled(isReverseConfirmDisabled)
+                }
+                .padding()
+            }
+            .navigationTitle("Reverse Settlement")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showingReverseSettlementSheet = false
+                    }
+                    .foregroundStyle(Theme.accent)
+                }
+            }
+        }
+    }
+
+    /// Submit the reverse settlement request to the Edge Function
+    private func submitReverseSettlement() async {
+        reverseIsLoading = true
+
+        do {
+            let request = ReverseSettlementRequest(
+                betId: bet.id,
+                reason: reverseReason.trimmingCharacters(in: .whitespacesAndNewlines),
+                idempotencyKey: UUID().uuidString
+            )
+
+            let response: ReverseSettlementResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "reverse_settlement",
+                body: request
+            )
+
+            // Update local bet with response
+            await MainActor.run {
+                if let newStatus = BetStatus(rawValue: response.bet.status) {
+                    bet.status = newStatus
+                }
+
+                reverseIsLoading = false
+                showingReverseSettlementSheet = false
+                showingReverseSuccess = true
+            }
+        } catch let error as EdgeFunctionError {
+            await MainActor.run {
+                reverseIsLoading = false
+                reverseErrorMessage = error.errorDescription
+                showingReverseSettlementSheet = false
+                showingReverseError = true
+            }
+        } catch {
+            await MainActor.run {
+                reverseIsLoading = false
+                reverseErrorMessage = error.localizedDescription
+                showingReverseSettlementSheet = false
+                showingReverseError = true
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private func formatCurrency(_ value: Decimal) -> String {
@@ -995,6 +1158,58 @@ private struct OverrideGradeBetResponse: Decodable {
         case id
         case status
         case gradeResult = "grade_result"
+    }
+}
+
+// MARK: - Reverse Settlement Request/Response
+
+/// Request body for reverse_settlement Edge Function
+private struct ReverseSettlementRequest: Encodable {
+    let betId: UUID
+    let reason: String
+    let idempotencyKey: String
+
+    enum CodingKeys: String, CodingKey {
+        case betId = "bet_id"
+        case reason
+        case idempotencyKey = "idempotency_key"
+    }
+}
+
+/// Response from reverse_settlement Edge Function
+private struct ReverseSettlementResponse: Decodable {
+    let success: Bool
+    let bet: ReverseSettlementBetResponse
+    let reversalEntry: ReverseSettlementLedgerResponse
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case bet
+        case reversalEntry = "reversal_entry"
+    }
+}
+
+/// Bet data from reverse_settlement response
+private struct ReverseSettlementBetResponse: Decodable {
+    let id: UUID
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case status
+    }
+}
+
+/// Ledger entry data from reverse_settlement response
+private struct ReverseSettlementLedgerResponse: Decodable {
+    let id: UUID
+    let amount: String
+    let type: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case amount
+        case type
     }
 }
 
