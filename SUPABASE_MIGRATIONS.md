@@ -35,6 +35,42 @@ CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 
 ## Completed Migrations
 
+### 2026-01-29: Audit Events Table
+
+**Required for:** Phase - Server Authority & Legal Acknowledgment (Audit Trail & Dispute Resolution)
+
+```sql
+-- Create audit_events table for comprehensive audit logging
+CREATE TABLE IF NOT EXISTS audit_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    bookie_id UUID REFERENCES bookies(id) ON DELETE CASCADE NOT NULL,
+    actor_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    entity_type TEXT NOT NULL,
+    entity_id UUID NOT NULL,
+    action_type TEXT NOT NULL,
+    previous_state JSONB,
+    new_state JSONB NOT NULL,
+    reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Index for fast lookups by entity (bookie_id, entity_type, entity_id)
+CREATE INDEX IF NOT EXISTS idx_audit_events_entity ON audit_events(bookie_id, entity_type, entity_id);
+
+-- Index for timeline queries (bookie_id, created_at)
+CREATE INDEX IF NOT EXISTS idx_audit_events_timeline ON audit_events(bookie_id, created_at);
+
+-- Enable RLS
+ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Bookies can only SELECT their own audit events
+CREATE POLICY audit_events_select_own ON audit_events
+    FOR SELECT
+    USING (bookie_id IN (SELECT id FROM bookies WHERE auth_user_id = auth.uid()));
+
+-- No INSERT/UPDATE/DELETE policies - Edge Functions use service role
+```
+
 ### 2026-01-27: Bets accepted_at Column
 
 **Required for:** Phase - Server Authority & Legal Acknowledgment (accept_bet Edge Function)
