@@ -20,6 +20,7 @@ struct BookiApp: App {
             SettlementPeriod.self,
             PlayerSettlement.self,
             UserAgreement.self,
+            AuditEvent.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
