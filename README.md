@@ -58,6 +58,8 @@ These define what information the app stores:
 | **AcceptancePolicy** | Rules for auto-accepting bets |
 | **SettlementPeriod** | A weekly settlement window |
 | **PlayerSettlement** | A player's settlement within a period |
+| **UserAgreement** | Record of a user accepting Terms of Service |
+| **AuditEvent** | A logged action for audit trail (bet changes, settlements) |
 
 ### Views (The Screens)
 
@@ -75,6 +77,8 @@ These are what users see and interact with:
 | **SettingsView** | App settings and account |
 | **PlayerMainView** | Player's read-only view of their account |
 | **PlayerClaimView** | Where players claim their account with invite code |
+| **UserAgreementView** | Terms of Service acceptance screen |
+| **BetHistoryView** | Timeline of all changes to a bet (audit trail) |
 
 ### Services (The Logic)
 
@@ -94,6 +98,9 @@ These handle the business rules and calculations:
 | **InviteCodeService** | Generates and validates player invite codes |
 | **OddsAPIService** | Fetches sports, odds, and scores from The Odds API |
 | **OddsAPIMapper** | Converts API responses to app models |
+| **AgreementService** | Checks and submits Terms of Service acceptance |
+| **EdgeFunctionService** | Calls Supabase Edge Functions with auth and retry logic |
+| **AuditService** | Fetches audit history for bets and entities |
 
 ---
 
@@ -193,6 +200,35 @@ The app is **local-first** with cloud sync:
 - Settings UI for API key and bookmaker preference
 - Manual import triggers (quota-conscious design)
 
+### Phase 7: Server Authority & Legal Acknowledgment
+- **Terms of Service Flow**
+  - Required legal acknowledgment before using the app
+  - Version tracking for ToS updates (force re-acceptance when terms change)
+  - Immutable audit trail of all acceptances
+  - Integrated into both bookie signup and player claim flows
+
+- **Server-Authoritative Edge Functions**
+  - All critical betting operations run server-side (not client)
+  - `submit_bet` - Player bet submission with event lock validation
+  - `accept_bet` - Bookie bet acceptance with ownership validation
+  - `grade_bet` - Bookie grading with status validation
+  - `settle_bet` - Atomic settlement with ledger entry creation
+  - `adjust_balance` - Manual balance adjustments with required reason
+  - `reverse_settlement` - Undo settlements for mistake correction
+  - `override_grade` - Change grades with auto-reversal if settled
+
+- **Idempotency & Retry Safety**
+  - All Edge Functions use idempotency keys to prevent duplicates
+  - iOS app retries network failures with exponential backoff (1s, 2s, 4s)
+  - Same idempotency key returns cached response on retry
+
+- **Audit Trail & Dispute Resolution**
+  - Every bet action logged with actor, timestamp, before/after state
+  - BetHistoryView shows complete timeline of bet changes
+  - Bookies can override grades with required reason
+  - Bookies can reverse settlements with required reason
+  - All corrections create audit records for accountability
+
 ---
 
 ## Technical Details
@@ -225,11 +261,31 @@ The Supabase database has these tables:
 - `bookies` - Bookie accounts (linked to auth.users)
 - `players` - Player records (belong to a bookie)
 - `events` - Sporting events
+- `markets` - Betting lines on events
 - `bets` - All bets placed
 - `ledger_entries` - Financial transactions
 - `acceptance_policies` - Bet acceptance rules
+- `user_agreements` - Terms of Service acceptances (immutable)
+- `idempotency_keys` - Deduplication for Edge Functions
+- `audit_events` - Audit trail for all bet actions
 
 All tables have `bookie_id` for multi-tenant isolation.
+
+### Edge Functions
+
+Server-authoritative functions running on Supabase (Deno/TypeScript):
+
+| Function | Purpose |
+|----------|---------|
+| `submit_bet` | Player submits a bet (validates event not locked) |
+| `accept_bet` | Bookie accepts a pending bet |
+| `grade_bet` | Bookie grades bet as win/loss/push/void |
+| `settle_bet` | Bookie settles bet (creates ledger entry atomically) |
+| `adjust_balance` | Bookie adjusts player balance with reason |
+| `reverse_settlement` | Bookie undoes a settlement (creates reversal entry) |
+| `override_grade` | Bookie changes a grade (auto-reverses if settled) |
+
+All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
@@ -260,4 +316,4 @@ All tables have `bookie_id` for multi-tenant isolation.
 
 ---
 
-*Last updated: January 25, 2026 - Phase 6 (Odds API Integration) completed*
+*Last updated: January 29, 2026 - Phase 7 (Server Authority & Legal Acknowledgment) completed*

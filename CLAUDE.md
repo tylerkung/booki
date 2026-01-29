@@ -44,6 +44,9 @@ List {
 - `SyncService.swift` - Cloud sync coordinator
 - `OddsAPIService.swift` - The Odds API communication (singleton)
 - `OddsAPIMapper.swift` - Maps API responses to Event/Market models
+- `EdgeFunctionService.swift` - Calls Supabase Edge Functions with retry logic
+- `AgreementService.swift` - ToS acceptance checking and submission
+- `AuditService.swift` - Fetches audit trail history
 
 ## Odds API Integration
 
@@ -58,6 +61,22 @@ List {
 - Xcode command line tools don't support full builds - use Xcode IDE
 - Delete app from Simulator when SwiftData schema changes
 
+## Edge Functions
+
+All critical betting operations are server-authoritative via Supabase Edge Functions:
+
+- **Location**: `supabase/functions/`
+- **Shared helpers**: `_shared/cors.ts`, `_shared/supabase.ts`, `_shared/idempotency.ts`, `_shared/audit.ts`
+- **Functions**: `submit_bet`, `accept_bet`, `grade_bet`, `settle_bet`, `adjust_balance`, `reverse_settlement`, `override_grade`
+- **Deploy**: `supabase functions deploy <function-name>`
+
+All functions:
+1. Validate JWT authorization
+2. Check idempotency key (prevent duplicates)
+3. Validate business rules
+4. Emit audit events
+5. Return cached response on duplicate requests
+
 ## Documentation
 
 See `README.md` for comprehensive app documentation including:
@@ -65,11 +84,12 @@ See `README.md` for comprehensive app documentation including:
 - How it's organized
 - All models, views, and services explained
 - Key concepts (balances, bets, auth, sync)
-- What's been implemented (Phases 1-6)
+- What's been implemented (Phases 1-7)
 
-## Current State (January 25, 2026)
+## Current State (January 29, 2026)
 
-- **Branch**: `ralph/games-density-v1`
-- **Phases complete**: 1-6 (Core, Player Experience, Auth, Sync, Invites, Odds API)
+- **Branch**: `ralph/server-authority-legal`
+- **Phases complete**: 1-7 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
+- **Edge Functions**: 7 functions for server-authoritative operations
 - **Odds API key**: Configured in Settings (free tier, 500 calls/month)
