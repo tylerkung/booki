@@ -454,6 +454,24 @@ struct BetDetailView: View {
                     .font(.caption)
             }
 
+            // MARK: - History Section
+            Section("History") {
+                NavigationLink {
+                    BetHistoryView(betId: bet.id)
+                } label: {
+                    HStack {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .foregroundStyle(Theme.accent)
+                        Text("View History")
+                            .foregroundStyle(Theme.textPrimary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                }
+            }
+
             // MARK: - Actions Section
             if shouldShowActions {
                 Section("Actions") {
