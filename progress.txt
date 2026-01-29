@@ -11,6 +11,8 @@ Started: Tue Jan 27 18:12:54 PST 2026
 - Shared Edge Function utilities in supabase/functions/_shared/
 - Use `https://esm.sh/@supabase/supabase-js@2` for Deno imports
 - Edge Functions access env vars via Deno.env.get('VARIABLE_NAME')
+- Use shared idempotency helper (checkIdempotency, storeIdempotency) from _shared/idempotency.ts for all mutation Edge Functions
+- Use shared audit helper (emitAuditEvent) from _shared/audit.ts to emit audit events after state changes
 
 ---
 
@@ -171,4 +173,125 @@ Started: Tue Jan 27 18:12:54 PST 2026
   - Status changes from 'accepted' to 'graded' when outcome is recorded
   - Grading requires bet to be 'accepted' status - pending bets must be accepted first, settled bets cannot be regraded
   - Same pattern as accept_bet: bookie validation via auth_user_id lookup, idempotency check, createServiceClient()
+---
+
+## 2026-01-27 - US-014
+- **What was implemented**: adjust_balance Edge Function for server-authoritative manual balance adjustments
+- **Files changed**:
+  - Created: supabase/functions/adjust_balance/index.ts
+- **Learnings for future iterations:**
+  - Manual adjustments use ledger_entry type 'adjustment' (not 'settlement')
+  - Adjustments are NOT tied to bets, so bet_id is null in the ledger entry
+  - Amount is passed as Decimal string in request, parsed as float for validation and storage
+  - Reason is required and used as the ledger entry description (trimmed for whitespace)
+  - Player ownership validation: first lookup bookie by auth_user_id, then verify player.bookie_id matches bookie.id
+  - Same pattern as other Edge Functions: CORS preflight, idempotency check early, createServiceClient() for mutations
+  - Response includes only the created ledger_entry (no bet since this is a manual adjustment)
+---
+
+## 2026-01-27 - US-015
+- **What was implemented**: EdgeFunctionService for calling Supabase Edge Functions from iOS app
+- **Files changed**:
+  - Created: Booki/Services/EdgeFunctionService.swift
+- **Learnings for future iterations:**
+  - EdgeFunctionService is a singleton (static let shared) matching pattern of other services
+  - Uses SupabaseClientManager.shared.client to access the Supabase client
+  - Access token obtained via `supabase.auth.session.accessToken`
+  - URL constructed as: SupabaseConfig.url + /functions/v1/ + functionName
+  - AnyEncodable type-erasure wrapper needed to encode generic Encodable body
+  - EdgeFunctionError enum handles: notAuthenticated, invalidURL, networkError, serverError (with message), decodingError, encodingError
+  - Uses URLSession.shared.data(for:) for the actual HTTP request
+  - JSONDecoder uses .iso8601 date decoding strategy
+---
+
+## 2026-01-27 - US-016
+- **What was implemented**: Updated iOS bet submission to use submit_bet Edge Function instead of direct Supabase inserts
+- **Files changed**:
+  - Updated: Booki/Services/BetService.swift (added SubmitBetRequest, SubmitBetResponse structs, submitBetToServer method, createLocalBetFromResponse helper)
+  - Updated: Booki/Views/BetSlipSheet.swift (submitBets now uses EdgeFunctionService)
+  - Updated: Booki/Views/BetConfirmationSheet.swift (submitBets now uses EdgeFunctionService)
+  - Updated: Booki/Views/SubmitBetView.swift (submitRequest now uses EdgeFunctionService)
+- **Learnings for future iterations:**
+  - BetServiceError extended with .edgeFunctionError(String) case for Edge Function errors
+  - Equatable conformance for BetServiceError now uses explicit implementation due to associated String value
+  - SubmitBetRequest uses CodingKeys for snake_case conversion (event_id, player_id, etc.)
+  - submitBetToServer generates idempotency_key as UUID().uuidString for each submission
+  - createLocalBetFromResponse creates local Bet from server response, using localSide and localMarket params to preserve iOS naming
+  - Bet submission views now use Task { } for async Edge Function calls with MainActor.run for UI updates
+  - player.bookieId is required for Edge Function calls - returns error if nil
+  - Server returns bet with needsSync: false since it's already on server
+---
+
+## 2026-01-29 - US-017
+- **What was implemented**: Shared idempotency helper for Edge Functions to eliminate code duplication
+- **Files changed**:
+  - Created: supabase/functions/_shared/idempotency.ts (checkIdempotency, storeIdempotency functions)
+  - Updated: supabase/functions/submit_bet/index.ts (uses shared idempotency helper)
+  - Updated: supabase/functions/accept_bet/index.ts (uses shared idempotency helper)
+  - Updated: supabase/functions/grade_bet/index.ts (uses shared idempotency helper)
+  - Updated: supabase/functions/settle_bet/index.ts (uses shared idempotency helper)
+  - Updated: supabase/functions/adjust_balance/index.ts (uses shared idempotency helper)
+- **Learnings for future iterations:**
+  - Shared Edge Function helpers go in supabase/functions/_shared/ directory
+  - checkIdempotency returns the cached response string if key exists, null otherwise
+  - storeIdempotency handles its own error logging (swallows errors since mutation already succeeded)
+  - SupabaseClient type is imported from https://esm.sh/@supabase/supabase-js@2
+  - Deno is not installed locally - typecheck happens during Supabase deployment
+---
+
+## 2026-01-29 - US-018
+- **What was implemented**: Retry logic with exponential backoff for iOS Edge Function calls
+- **Files changed**:
+  - Updated: Booki/Services/EdgeFunctionService.swift (added retryWithBackoff method, updated callFunction to use it)
+- **Learnings for future iterations:**
+  - URLError is the Swift type for network-level errors (connection lost, timeout, etc.)
+  - Exponential backoff formula: `pow(2.0, Double(attempt - 1))` gives 1, 2, 4 for attempts 1, 2, 3
+  - Task.sleep uses nanoseconds: multiply seconds by 1_000_000_000
+  - The retry logic preserves the same URLRequest (including idempotency key in the body) across retries
+  - Server errors (4xx/5xx) are NOT retried - only URLError (network issues)
+  - The retryWithBackoff method is generic and could be reused for other network operations if needed
+---
+
+## 2026-01-29 - US-019
+- **What was implemented**: Audit events database schema for comprehensive state change logging
+- **Files changed**:
+  - Created: supabase/migrations/006_audit_events.sql
+  - Updated: SUPABASE_MIGRATIONS.md
+- **Learnings for future iterations:**
+  - Audit events use JSONB for previous_state and new_state to store flexible JSON snapshots
+  - RLS policy uses subquery pattern: `bookie_id IN (SELECT id FROM bookies WHERE auth_user_id = auth.uid())`
+  - No INSERT/UPDATE/DELETE policies for audit_events - Edge Functions use service role to insert
+  - Two indexes: composite (bookie_id, entity_type, entity_id) for entity lookups, composite (bookie_id, created_at) for timeline queries
+  - actor_user_id uses ON DELETE SET NULL (not CASCADE) to preserve audit history even if user is deleted
+---
+
+## 2026-01-29 - US-020
+- **What was implemented**: Shared audit helper for emitting audit events from Edge Functions
+- **Files changed**:
+  - Created: supabase/functions/_shared/audit.ts
+- **Learnings for future iterations:**
+  - emitAuditEvent accepts a params object with: bookieId, actorUserId, entityType, entityId, actionType, previousState?, newState, reason?
+  - EntityType is a union type: 'bet' | 'ledger_entry' | 'player' | 'event'
+  - ActionType is a union type: 'create' | 'accept' | 'grade' | 'settle' | 'adjust' | 'reverse' | 'override'
+  - Errors are logged but not thrown (matches idempotency pattern) since the mutation already succeeded
+  - Uses Record<string, unknown> for JSONB fields to allow flexible JSON objects
+  - Import from '_shared/audit.ts' with: `import { emitAuditEvent } from '../_shared/audit.ts';`
+---
+
+## 2026-01-29 - US-021
+- **What was implemented**: Emit audit events from all existing Edge Functions for traceability
+- **Files changed**:
+  - Updated: supabase/functions/submit_bet/index.ts (emits 'create' audit for bet)
+  - Updated: supabase/functions/accept_bet/index.ts (emits 'accept' audit for bet)
+  - Updated: supabase/functions/grade_bet/index.ts (emits 'grade' audit for bet)
+  - Updated: supabase/functions/settle_bet/index.ts (emits 'settle' audit for bet, 'create' audit for ledger_entry)
+  - Updated: supabase/functions/adjust_balance/index.ts (emits 'adjust' audit for ledger_entry with reason)
+- **Learnings for future iterations:**
+  - All audit events must include bookieId and actorUserId (from JWT)
+  - For bet operations: use bet.bookie_id for bookieId
+  - For adjust_balance: use bookie.id (looked up from auth_user_id) for bookieId
+  - submit_bet actor is the player (userId), other bet operations actor is the bookie
+  - settle_bet emits TWO audit events: one for bet settlement, one for ledger entry creation
+  - Use `as unknown as Record<string, unknown>` for type assertion when passing full objects to newState
+  - Audit events are emitted AFTER successful mutation but BEFORE idempotency key storage
 ---

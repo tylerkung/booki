@@ -1,6 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
+import { emitAuditEvent } from '../_shared/audit.ts';
 
 interface GradeBetRequest {
   bet_id: string;
@@ -160,6 +161,17 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Emit audit event for bet grading
+    await emitAuditEvent(client, {
+      bookieId: bet.bookie_id,
+      actorUserId: userId,
+      entityType: 'bet',
+      entityId: bet.id,
+      actionType: 'grade',
+      previousState: { status: 'accepted', grade_result: null },
+      newState: { status: 'graded', grade_result: body.outcome },
+    });
 
     // Prepare success response
     const response = JSON.stringify({ success: true, bet: updatedBet });

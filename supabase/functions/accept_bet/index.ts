@@ -1,6 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
+import { emitAuditEvent } from '../_shared/audit.ts';
 
 interface AcceptBetRequest {
   bet_id: string;
@@ -143,6 +144,17 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Emit audit event for bet acceptance
+    await emitAuditEvent(client, {
+      bookieId: bet.bookie_id,
+      actorUserId: userId,
+      entityType: 'bet',
+      entityId: bet.id,
+      actionType: 'accept',
+      previousState: { status: 'pending' },
+      newState: { status: 'accepted', accepted_at: now },
+    });
 
     // Prepare success response
     const response = JSON.stringify({ success: true, bet: updatedBet });

@@ -1,6 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
+import { emitAuditEvent } from '../_shared/audit.ts';
 
 interface AdjustBalanceRequest {
   player_id: string;
@@ -146,6 +147,18 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Emit audit event for balance adjustment
+    await emitAuditEvent(client, {
+      bookieId: bookie.id,
+      actorUserId: userId,
+      entityType: 'ledger_entry',
+      entityId: ledgerEntry.id,
+      actionType: 'adjust',
+      previousState: null,
+      newState: ledgerEntry as unknown as Record<string, unknown>,
+      reason: body.reason.trim(),
+    });
 
     // Prepare success response
     const response = JSON.stringify({
