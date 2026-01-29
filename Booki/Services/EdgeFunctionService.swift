@@ -87,13 +87,11 @@ final class EdgeFunctionService {
             throw EdgeFunctionError.encodingError(error)
         }
 
-        // Make the request
+        // Make the request with retry logic for network errors
         let data: Data
         let response: URLResponse
-        do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch {
-            throw EdgeFunctionError.networkError(error)
+        (data, response) = try await retryWithBackoff(attempt: 1, maxAttempts: 3) {
+            try await URLSession.shared.data(for: request)
         }
 
         // Check HTTP status code
@@ -112,6 +110,44 @@ final class EdgeFunctionService {
             return try decoder.decode(T.self, from: data)
         } catch {
             throw EdgeFunctionError.decodingError(error)
+        }
+    }
+
+    // MARK: - Private Methods
+
+    /// Retry an operation with exponential backoff on network failures
+    /// - Parameters:
+    ///   - attempt: Current attempt number (1-indexed)
+    ///   - maxAttempts: Maximum number of attempts before giving up
+    ///   - operation: The async operation to retry
+    /// - Returns: The result of the successful operation
+    /// - Throws: EdgeFunctionError.networkError if all retries fail, or rethrows non-URLError errors
+    private func retryWithBackoff<T>(
+        attempt: Int,
+        maxAttempts: Int,
+        operation: () async throws -> T
+    ) async throws -> T {
+        do {
+            return try await operation()
+        } catch let error as URLError {
+            // Only retry on URLError (network issues)
+            guard attempt < maxAttempts else {
+                throw EdgeFunctionError.networkError(error)
+            }
+
+            // Calculate delay with exponential backoff: 1s, 2s, 4s
+            let delaySeconds = pow(2.0, Double(attempt - 1))
+            try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+
+            // Retry the operation
+            return try await retryWithBackoff(
+                attempt: attempt + 1,
+                maxAttempts: maxAttempts,
+                operation: operation
+            )
+        } catch {
+            // Non-URLError errors are not retried (e.g., encoding errors)
+            throw error
         }
     }
 }
