@@ -57,6 +57,14 @@ final class Event: Syncable {
     /// Final away team score (for auto-grading)
     var awayScore: Int?
 
+    // MARK: - Auto-Refresh Tracking
+
+    /// When odds were last automatically refreshed by the server
+    var lastAutoOddsRefresh: Date?
+
+    /// When scores were last automatically refreshed by the server
+    var lastAutoScoreRefresh: Date?
+
     init(
         id: UUID = UUID(),
         sport: String,
@@ -75,7 +83,9 @@ final class Event: Syncable {
         externalSource: String? = nil,
         lastOddsUpdate: Date? = nil,
         homeScore: Int? = nil,
-        awayScore: Int? = nil
+        awayScore: Int? = nil,
+        lastAutoOddsRefresh: Date? = nil,
+        lastAutoScoreRefresh: Date? = nil
     ) {
         self.id = id
         self.sport = sport
@@ -95,6 +105,8 @@ final class Event: Syncable {
         self.lastOddsUpdate = lastOddsUpdate
         self.homeScore = homeScore
         self.awayScore = awayScore
+        self.lastAutoOddsRefresh = lastAutoOddsRefresh
+        self.lastAutoScoreRefresh = lastAutoScoreRefresh
     }
 
     // MARK: - Event Lock Logic
