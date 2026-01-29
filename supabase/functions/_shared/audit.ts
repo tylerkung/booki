@@ -15,7 +15,18 @@ export type EntityType = 'bet' | 'ledger_entry' | 'player' | 'event';
 /**
  * Valid action types for audit events.
  */
-export type ActionType = 'create' | 'accept' | 'grade' | 'settle' | 'adjust' | 'reverse' | 'override';
+export type ActionType =
+  | 'create'
+  | 'accept'
+  | 'grade'
+  | 'settle'
+  | 'adjust'
+  | 'reverse'
+  | 'override'
+  | 'odds_refreshed_auto'
+  | 'score_refreshed_auto'
+  | 'event_finalized_auto'
+  | 'auto_refresh_failed';
 
 /**
  * Parameters for emitting an audit event.
@@ -29,7 +40,7 @@ export interface AuditEventParams {
   entityType: EntityType;
   /** UUID of the entity that was modified */
   entityId: string;
-  /** Type of action: create, accept, grade, settle, adjust, reverse, override */
+  /** Type of action: create, accept, grade, settle, adjust, reverse, override, odds_refreshed_auto, score_refreshed_auto, event_finalized_auto, auto_refresh_failed */
   actionType: ActionType;
   /** JSON-serializable snapshot of entity state before the action (null for create) */
   previousState?: Record<string, unknown> | null;
