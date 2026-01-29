@@ -35,6 +35,17 @@ CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 
 ## Completed Migrations
 
+### 2026-01-29: Auto Refresh Timestamp Fields
+
+**Required for:** PRD - Automatic Server-Side Odds & Score Refresh (auto_refresh_games Edge Function)
+
+```sql
+-- Add auto-refresh timestamp fields to events table
+ALTER TABLE events
+ADD COLUMN IF NOT EXISTS last_auto_odds_refresh TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS last_auto_score_refresh TIMESTAMPTZ;
+```
+
 ### 2026-01-29: Audit Events Table
 
 **Required for:** Phase - Server Authority & Legal Acknowledgment (Audit Trail & Dispute Resolution)
