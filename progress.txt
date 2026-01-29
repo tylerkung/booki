@@ -295,3 +295,16 @@ Started: Tue Jan 27 18:12:54 PST 2026
   - Use `as unknown as Record<string, unknown>` for type assertion when passing full objects to newState
   - Audit events are emitted AFTER successful mutation but BEFORE idempotency key storage
 ---
+
+## 2026-01-29 - US-022
+- **What was implemented**: reverse_settlement Edge Function to undo bet settlements
+- **Files changed**:
+  - Created: supabase/functions/reverse_settlement/index.ts
+- **Learnings for future iterations:**
+  - Reversal creates a new ledger_entry with type 'reversal' and negative of original settlement amount
+  - The original settlement ledger_entry is found by querying ledger_entries where bet_id matches and type='settlement'
+  - Bet status is changed back from 'settled' to 'graded' (preserving grade_result)
+  - Reason is required and non-empty for reversals - used in audit event and ledger entry description
+  - Emits TWO audit events: one for bet reversal (action_type='reverse'), one for reversal ledger entry creation
+  - Same patterns as other Edge Functions: CORS preflight, idempotency check early, createServiceClient() for mutations
+---
