@@ -1,0 +1,300 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/server-authority-legal",
+  "description": "Server Authority & Legal Acknowledgment - Phase 1 (ToS) and Phase 2 (Edge Functions) for production-safe operations.",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first) + Supabase (cloud)",
+    "architecture": "MVVM with Services layer",
+    "serverFunctions": "Supabase Edge Functions (Deno/TypeScript)"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create User Agreements Database Schema",
+      "description": "As a developer, I need to store user agreement acceptances so we can track legal acknowledgments.",
+      "acceptanceCriteria": [
+        "Create Supabase migration file in supabase/migrations/ for user_agreements table",
+        "Table columns: id (UUID primary key), user_id (UUID references auth.users), role (text: bookie or player), version (text), accepted_at (timestamptz), ip_address (text nullable), user_agent (text nullable)",
+        "Add RLS policy: users can only SELECT their own agreements (user_id = auth.uid())",
+        "Add RLS policy: authenticated users can INSERT their own agreements",
+        "Add RLS policy: no UPDATE or DELETE allowed (immutable)",
+        "Document migration in SUPABASE_MIGRATIONS.md",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create UserAgreement SwiftData Model",
+      "description": "As a developer, I need a local model to cache agreement status for offline access.",
+      "acceptanceCriteria": [
+        "Create UserAgreement.swift in Booki/Models/",
+        "Properties: id (UUID), userId (UUID), role (String), version (String), acceptedAt (Date)",
+        "Conform to SwiftData @Model",
+        "Add to model container in BookiApp.swift alongside existing models",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create AgreementService for Server Communication",
+      "description": "As a developer, I need a service to check and submit agreement acceptance to Supabase.",
+      "acceptanceCriteria": [
+        "Create AgreementService.swift in Booki/Services/",
+        "Add enum AgreementStatus with cases: accepted, required, outdated",
+        "Add static constant: currentAgreementVersion = '1.0'",
+        "Method: checkAgreementStatus(userId: UUID) async throws -> AgreementStatus - queries user_agreements table for latest version",
+        "Method: submitAgreement(userId: UUID, role: String, version: String) async throws - inserts new agreement record",
+        "Use SupabaseClientManager.shared.client for database access",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create UserAgreementView UI",
+      "description": "As a user, I need to see and accept the terms of service before using Booki.",
+      "acceptanceCriteria": [
+        "Create UserAgreementView.swift in Booki/Views/",
+        "ScrollView with agreement summary text (placeholder for now, US-005 adds real content)",
+        "Toggle or Checkbox with label: 'I have read and agree to the Terms of Service'",
+        "Button labeled 'View Full Terms' that shows a sheet with full terms text",
+        "Continue button that is disabled until checkbox is checked",
+        "Use Theme.background, Theme.cardBackground, Theme.textPrimary, Theme.accent for styling",
+        "Accept callback closure parameter: onAccept: () -> Void",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Draft Terms of Service Content",
+      "description": "As a user, I need clear language explaining what Booki is and is not.",
+      "acceptanceCriteria": [
+        "Create TermsOfService.swift in Booki/Views/ or Booki/Constants/",
+        "Add static let summary: String with the following text: 'IMPORTANT: Please read carefully before continuing.\\n\\nBooki is a record-keeping and bet management tool. By using Booki, you acknowledge and agree that:\\n\\n• Booki does NOT place, accept, or process bets on your behalf\\n• Booki does NOT hold, transfer, or process any money or payments\\n• All financial arrangements between bookies and players occur entirely outside this app\\n• Booki serves only as an organizational tool to track bets and balances\\n• You are solely responsible for ensuring your activities comply with all applicable local, state, and federal laws\\n• Booki makes no representations about the legality of sports betting in your jurisdiction\\n\\nThis app is provided for record-keeping and entertainment purposes only. Booki is not a licensed sportsbook, gambling operator, or financial institution.\\n\\nBy continuing, you confirm that you are at least 18 years old (or the legal age in your jurisdiction) and accept these terms.'",
+        "Add static let fullTerms: String with extended legal text including liability disclaimers, data usage, and termination clauses",
+        "Update UserAgreementView to use TermsOfService.summary and TermsOfService.fullTerms",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Integrate Agreement into Bookie Signup Flow",
+      "description": "As a new bookie, I must accept the terms before accessing the app.",
+      "acceptanceCriteria": [
+        "In AuthManager or AuthGateView, after successful bookie signup/login, check agreement status via AgreementService.checkAgreementStatus()",
+        "Add @Published var agreementRequired: Bool = false to AuthManager",
+        "If status is .required or .outdated, set agreementRequired = true",
+        "In AuthGateView, if agreementRequired is true for bookie role, show UserAgreementView instead of BookieMainView",
+        "On UserAgreementView acceptance, call AgreementService.submitAgreement() with role 'bookie'",
+        "After successful submission, set agreementRequired = false to proceed to BookieMainView",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Integrate Agreement into Player Claim Flow",
+      "description": "As a new player claiming an invite, I must accept the terms before accessing the app.",
+      "acceptanceCriteria": [
+        "In PlayerClaimView, after successful account creation and claim, check agreement status",
+        "If agreement not accepted, show UserAgreementView before navigating to player content",
+        "On acceptance, call AgreementService.submitAgreement() with role 'player'",
+        "Player cannot access PlayerMainView until agreement is submitted",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Enforce Agreement on App Launch",
+      "description": "As a returning user, I should be blocked if I have not accepted the latest terms.",
+      "acceptanceCriteria": [
+        "On app launch in AuthGateView, for authenticated users, check agreement status",
+        "If agreement version is outdated or missing, show UserAgreementView with message: 'We have updated our Terms of Service. Please review and accept to continue.'",
+        "User cannot access any betting features until agreement is current",
+        "This applies to both bookies and players",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Set Up Supabase Edge Functions Infrastructure",
+      "description": "As a developer, I need the Edge Functions directory structure and shared utilities.",
+      "acceptanceCriteria": [
+        "Create directory: supabase/functions/",
+        "Create directory: supabase/functions/_shared/",
+        "Create supabase/functions/_shared/cors.ts with corsHeaders constant for CORS headers (Access-Control-Allow-Origin: *, etc.)",
+        "Create supabase/functions/_shared/supabase.ts with createClient helper that uses service role key from env",
+        "Create supabase/functions/README.md documenting the Edge Functions structure and deployment: 'supabase functions deploy <function-name>'",
+        "Typecheck passes (Deno syntax)"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Create submit_bet Edge Function",
+      "description": "As a player, my bet submissions must be validated and created server-side.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/submit_bet/index.ts",
+        "Handle OPTIONS request for CORS preflight",
+        "Extract and validate JWT from Authorization header to get user_id",
+        "Accept JSON body: event_id, market_id, side (a or b), odds (Int), stake (Decimal string), player_id, bookie_id, idempotency_key",
+        "Validate: event exists and is not locked (start_time > now or status != locked)",
+        "Check idempotency_key - if exists, return cached response",
+        "Insert bet record with status 'pending', needsSync false",
+        "Store idempotency key with response",
+        "Return JSON: { success: true, bet: <created bet object> }",
+        "Return appropriate error responses for validation failures",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Create accept_bet Edge Function",
+      "description": "As a bookie, accepting a bet must be server-authoritative.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/accept_bet/index.ts",
+        "Handle OPTIONS request for CORS",
+        "Extract user_id from JWT",
+        "Accept JSON body: bet_id, idempotency_key",
+        "Validate: bet exists, bet.bookie_id matches user's bookie record, bet.status is 'pending'",
+        "Check idempotency - return cached response if key exists",
+        "Update bet status to 'accepted', set accepted_at timestamp",
+        "Store idempotency key",
+        "Return { success: true, bet: <updated bet> }",
+        "Return error if bet already accepted/declined/graded/settled",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Create grade_bet Edge Function",
+      "description": "As a bookie, grading a bet must be server-authoritative.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/grade_bet/index.ts",
+        "Handle OPTIONS for CORS",
+        "Extract user_id from JWT",
+        "Accept JSON body: bet_id, outcome (win, loss, push, void), idempotency_key",
+        "Validate: bet exists, belongs to bookie, status is 'accepted' (not already graded or settled)",
+        "Check idempotency",
+        "Update bet with outcome field",
+        "Store idempotency key",
+        "Return { success: true, bet: <updated bet> }",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Create settle_bet Edge Function",
+      "description": "As a bookie, settling a bet must atomically update bet status and create ledger entries.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/settle_bet/index.ts",
+        "Handle OPTIONS for CORS",
+        "Extract user_id from JWT",
+        "Accept JSON body: bet_id, idempotency_key",
+        "Validate: bet is graded (has outcome), not already settled",
+        "Check idempotency",
+        "Calculate payout based on outcome: win = stake * odds profit, loss = -stake, push = 0, void = 0",
+        "In transaction: update bet.status to 'settled', insert ledger_entry for player with calculated amount",
+        "Store idempotency key",
+        "Return { success: true, bet: <updated bet>, ledger_entry: <created entry> }",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Create adjust_balance Edge Function",
+      "description": "As a bookie, manual balance adjustments must be server-authoritative with required reason.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/adjust_balance/index.ts",
+        "Handle OPTIONS for CORS",
+        "Extract user_id from JWT",
+        "Accept JSON body: player_id, amount (Decimal string, positive or negative), reason (required string), idempotency_key",
+        "Validate: player belongs to bookie, reason is not empty",
+        "Check idempotency",
+        "Insert ledger_entry with type 'adjustment', amount, reason, player_id, bookie_id",
+        "Store idempotency key",
+        "Return { success: true, ledger_entry: <created entry> }",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Create EdgeFunctionService for iOS",
+      "description": "As a developer, I need a service to call Edge Functions from the iOS app.",
+      "acceptanceCriteria": [
+        "Create EdgeFunctionService.swift in Booki/Services/",
+        "Property: static let shared = EdgeFunctionService() (singleton)",
+        "Method: callFunction<T: Decodable>(name: String, body: Encodable) async throws -> T",
+        "Construct URL: supabase project URL + /functions/v1/ + name",
+        "Add Authorization header with Bearer token from current session",
+        "Add Content-Type: application/json header",
+        "POST request with JSON-encoded body",
+        "Decode response as T or throw appropriate error",
+        "Create EdgeFunctionError enum for error handling",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Update iOS BetService to Use submit_bet Edge Function",
+      "description": "As a developer, bet submissions from players must use the server-authoritative Edge Function.",
+      "acceptanceCriteria": [
+        "In BetService or BetSlipManager where bets are submitted, replace direct Supabase insert with EdgeFunctionService.callFunction('submit_bet', ...)",
+        "Generate idempotency_key as UUID().uuidString for each submission",
+        "Create SubmitBetRequest struct with: event_id, market_id, side, odds, stake, player_id, bookie_id, idempotency_key",
+        "Create SubmitBetResponse struct matching Edge Function response",
+        "Handle errors from Edge Function and display appropriate feedback",
+        "On success, insert/update local SwiftData Bet record with returned data",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

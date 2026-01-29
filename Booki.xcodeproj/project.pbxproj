@@ -16,6 +16,14 @@
 		50C083FB2F26174D001A0FE5 /* FetchScoresView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083F82F26174D001A0FE5 /* FetchScoresView.swift */; };
 		50C083FC2F26174D001A0FE5 /* RefreshOddsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083FA2F26174D001A0FE5 /* RefreshOddsView.swift */; };
 		50C083FD2F26174D001A0FE5 /* ImportEventsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083F92F26174D001A0FE5 /* ImportEventsView.swift */; };
+		50C084002F2BF471001A0FE5 /* UserAgreement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083FF2F2BF471001A0FE5 /* UserAgreement.swift */; };
+		50C084012F2BF471001A0FE5 /* AuditEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083FE2F2BF471001A0FE5 /* AuditEvent.swift */; };
+		50C084052F2BF49A001A0FE5 /* AgreementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084022F2BF49A001A0FE5 /* AgreementService.swift */; };
+		50C084062F2BF49A001A0FE5 /* AuditService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084032F2BF49A001A0FE5 /* AuditService.swift */; };
+		50C084072F2BF49A001A0FE5 /* EdgeFunctionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084042F2BF49A001A0FE5 /* EdgeFunctionService.swift */; };
+		50C0840B2F2BF4B0001A0FE5 /* UserAgreementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C0840A2F2BF4B0001A0FE5 /* UserAgreementView.swift */; };
+		50C0840C2F2BF4B0001A0FE5 /* BetHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084082F2BF4B0001A0FE5 /* BetHistoryView.swift */; };
+		50C0840D2F2BF4B0001A0FE5 /* TermsOfService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084092F2BF4B0001A0FE5 /* TermsOfService.swift */; };
 		8A1234560001 /* BookiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550001 /* BookiApp.swift */; };
 		8A1234560002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550002 /* ContentView.swift */; };
 		8A1234560003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550003 /* Assets.xcassets */; };
@@ -110,6 +118,14 @@
 		50C083F82F26174D001A0FE5 /* FetchScoresView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FetchScoresView.swift; sourceTree = "<group>"; };
 		50C083F92F26174D001A0FE5 /* ImportEventsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportEventsView.swift; sourceTree = "<group>"; };
 		50C083FA2F26174D001A0FE5 /* RefreshOddsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshOddsView.swift; sourceTree = "<group>"; };
+		50C083FE2F2BF471001A0FE5 /* AuditEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditEvent.swift; sourceTree = "<group>"; };
+		50C083FF2F2BF471001A0FE5 /* UserAgreement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAgreement.swift; sourceTree = "<group>"; };
+		50C084022F2BF49A001A0FE5 /* AgreementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgreementService.swift; sourceTree = "<group>"; };
+		50C084032F2BF49A001A0FE5 /* AuditService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditService.swift; sourceTree = "<group>"; };
+		50C084042F2BF49A001A0FE5 /* EdgeFunctionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeFunctionService.swift; sourceTree = "<group>"; };
+		50C084082F2BF4B0001A0FE5 /* BetHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetHistoryView.swift; sourceTree = "<group>"; };
+		50C084092F2BF4B0001A0FE5 /* TermsOfService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermsOfService.swift; sourceTree = "<group>"; };
+		50C0840A2F2BF4B0001A0FE5 /* UserAgreementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAgreementView.swift; sourceTree = "<group>"; };
 		8A1234550000 /* Booki.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Booki.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1234550001 /* BookiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookiApp.swift; sourceTree = "<group>"; };
 		8A1234550002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -244,6 +260,8 @@
 		8A1234530003 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				50C083FE2F2BF471001A0FE5 /* AuditEvent.swift */,
+				50C083FF2F2BF471001A0FE5 /* UserAgreement.swift */,
 				50C083F62F2616D4001A0FE5 /* OddsAPIModels.swift */,
 				8A1234550005 /* Bookie.swift */,
 				8A1234550006 /* Player.swift */,
@@ -262,6 +280,9 @@
 		8A1234530004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				50C084082F2BF4B0001A0FE5 /* BetHistoryView.swift */,
+				50C084092F2BF4B0001A0FE5 /* TermsOfService.swift */,
+				50C0840A2F2BF4B0001A0FE5 /* UserAgreementView.swift */,
 				50C083F82F26174D001A0FE5 /* FetchScoresView.swift */,
 				50C083F92F26174D001A0FE5 /* ImportEventsView.swift */,
 				50C083FA2F26174D001A0FE5 /* RefreshOddsView.swift */,
@@ -327,6 +348,9 @@
 				8A1234550055 /* SettlementService.swift */,
 				8A1234550057 /* SupabaseClient.swift */,
 				8A1234550059 /* AuthManager.swift */,
+				50C084022F2BF49A001A0FE5 /* AgreementService.swift */,
+				50C084032F2BF49A001A0FE5 /* AuditService.swift */,
+				50C084042F2BF49A001A0FE5 /* EdgeFunctionService.swift */,
 				8A1234550065 /* BookieService.swift */,
 				8A1234550066 /* SyncService.swift */,
 				8A1234550067 /* RealtimeService.swift */,
@@ -500,6 +524,9 @@
 				8A1234560035 /* GameCardView.swift in Sources */,
 				8A1234560036 /* FavoritesManager.swift in Sources */,
 				8A1234560037 /* BetSlipManager.swift in Sources */,
+				50C0840B2F2BF4B0001A0FE5 /* UserAgreementView.swift in Sources */,
+				50C0840C2F2BF4B0001A0FE5 /* BetHistoryView.swift in Sources */,
+				50C0840D2F2BF4B0001A0FE5 /* TermsOfService.swift in Sources */,
 				8A1234560038 /* BetSlipSheet.swift in Sources */,
 				50C083FB2F26174D001A0FE5 /* FetchScoresView.swift in Sources */,
 				50C083FC2F26174D001A0FE5 /* RefreshOddsView.swift in Sources */,
@@ -509,6 +536,8 @@
 				8A1234560041 /* Theme.swift in Sources */,
 				8A1234560042 /* PlayerLoginView.swift in Sources */,
 				8A1234560043 /* GradeEventSheet.swift in Sources */,
+				50C084002F2BF471001A0FE5 /* UserAgreement.swift in Sources */,
+				50C084012F2BF471001A0FE5 /* AuditEvent.swift in Sources */,
 				8A1234560044 /* PaymentSheet.swift in Sources */,
 				8A1234560045 /* WeeklySettlementView.swift in Sources */,
 				8A1234560046 /* AppHeaderView.swift in Sources */,
@@ -539,6 +568,9 @@
 				8A1234560067 /* RealtimeService.swift in Sources */,
 				8A1234560068 /* NetworkMonitor.swift in Sources */,
 				8A1234560069 /* Syncable.swift in Sources */,
+				50C084052F2BF49A001A0FE5 /* AgreementService.swift in Sources */,
+				50C084062F2BF49A001A0FE5 /* AuditService.swift in Sources */,
+				50C084072F2BF49A001A0FE5 /* EdgeFunctionService.swift in Sources */,
 				8A1234560070 /* SyncModels.swift in Sources */,
 				8A1234560071 /* InviteCodeService.swift in Sources */,
 				8A1234560072 /* PlayerClaimView.swift in Sources */,

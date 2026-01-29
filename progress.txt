@@ -385,3 +385,16 @@ Started: Tue Jan 27 18:12:54 PST 2026
   - Warning color (Theme.warning) used for override button tint to indicate caution
   - Button disabled state: combine multiple conditions with || in computed property
 ---
+
+## 2026-01-29 - US-029
+- **What was implemented**: Reverse Settlement sheet in BetDetailView for bookies to undo settled bets
+- **Files changed**:
+  - Updated: Booki/Views/BetsListView.swift (replaced confirmation dialog with full sheet, added Edge Function call)
+- **Learnings for future iterations:**
+  - Reverse settlement replaced simple confirmation dialog with full sheet for required reason field
+  - Sheet pattern same as override grade: NavigationStack with ZStack (Theme.background.ignoresSafeArea) then VStack
+  - Use Theme.danger color for destructive confirmation buttons (reversal) vs Theme.accent for normal actions
+  - Success alert shown after sheet dismissal to confirm action completed
+  - ReverseSettlementResponse includes both updated bet and the reversal ledger entry
+  - reversalImpactDescription computed property reused from existing code to show balance impact in sheet
+---

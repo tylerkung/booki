@@ -1,0 +1,235 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/games-density-v1",
+  "description": "Games View UX Improvements - Increase information density with compact row layout, table-style odds columns, and game detail page.",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first) + Supabase (cloud)",
+    "architecture": "MVVM with Services layer"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Replace GameCardView with CompactGameRow",
+      "description": "As a player, I want to see more games on screen so I can quickly scan available betting options.",
+      "acceptanceCriteria": [
+        "Create new CompactGameRow component replacing GameCardView",
+        "Row height reduced to ~80-90pt (from ~140pt cards)",
+        "No card shadows, gradient borders, or decorative overlays",
+        "Simple Theme.cardBackground with single 0.5pt Theme.border bottom divider",
+        "Existing selection state (highlight when odds added to slip) still works",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Implement Table-Style Odds Layout",
+      "description": "As a player, I want odds displayed in aligned columns so I can quickly compare spreads, moneylines, and totals across games.",
+      "acceptanceCriteria": [
+        "Column headers (SPREAD, MONEY, TOTAL) displayed once at top of game list, not per-game",
+        "Odds buttons sized at 52x44pt (reduced from 60x60pt)",
+        "Away team row and home team row each show: Team name | Spread | ML | Total",
+        "Remove VStack layout inside odds buttons - single line with spread/total value and odds combined (e.g., '-3.5 -110')",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Compact Team Name Display",
+      "description": "As a player, I want team names displayed clearly without excessive spacing so more content fits on screen.",
+      "acceptanceCriteria": [
+        "Team name uses .system(size: 13, weight: .semibold) (reduced from 14 bold)",
+        "Team name row height is 36pt total",
+        "Team names left-aligned, truncated with '...' if needed",
+        "No team logos (keep text-only for simplicity)",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Simplified Game Time Display",
+      "description": "As a player, I want game time shown compactly so it doesn't dominate the row.",
+      "acceptanceCriteria": [
+        "Game time shown as single line above the matchup: 'Today 7:00 PM' or 'Sat, Jan 25'",
+        "Font size .caption2 (11pt) with Theme.textSecondary color",
+        "Remove clock icon to save horizontal space",
+        "Live indicator reduced to small 'LIVE' badge without pulsing animation",
+        "Lock icon shows inline when event is locked",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Streamlined Odds Buttons",
+      "description": "As a player, I want odds buttons that are easy to tap but don't waste space with excessive styling.",
+      "acceptanceCriteria": [
+        "Odds button background: Theme.elevatedBackground (unselected) or Theme.accent (selected)",
+        "No gradient backgrounds - solid colors only",
+        "No outer glow/shadow effects",
+        "Border: 1pt Theme.border (unselected) or Theme.accent (selected)",
+        "Corner radius: 6pt (Theme.cornerRadiusSmall)",
+        "Maintain spring animation on tap but remove selection highlight radial gradient",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Sticky Column Headers",
+      "description": "As a player, I want the SPREAD/MONEY/TOTAL column headers to stay visible while scrolling so I know which column is which.",
+      "acceptanceCriteria": [
+        "Column headers row sticks below sport tabs when scrolling",
+        "Headers use .system(size: 10, weight: .semibold) with Theme.textMuted",
+        "Headers row has Theme.background background",
+        "0.5pt bottom border using Theme.divider",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Sport Section Headers Inline",
+      "description": "As a player, I want sport/league headers to be compact so they don't interrupt the flow of games.",
+      "acceptanceCriteria": [
+        "Section header format: 'NBA - Eastern Conference' in single line",
+        "Font: .system(size: 12, weight: .medium) with Theme.textSecondary",
+        "Top padding 16pt, bottom padding 8pt",
+        "No background color - just text",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Remove Card Decorations from GamesView",
+      "description": "As a developer, I need to update GamesView to use the new compact row component.",
+      "acceptanceCriteria": [
+        "GamesView uses CompactGameRow instead of GameCardView",
+        "LazyVStack spacing reduced to 0 (dividers handle separation)",
+        "Horizontal padding reduced to 12pt (from 16pt)",
+        "Remove ForEach wrapper VStack with 12pt spacing",
+        "Favorites section uses same compact row style",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Consolidate Odds Button Components",
+      "description": "As a developer, I want a single reusable odds button component to reduce code duplication.",
+      "acceptanceCriteria": [
+        "Create single CompactOddsButton component replacing SpreadButton, MLButton, TotalButton if they exist",
+        "Parameters: label: String (e.g., '-3.5'), odds: Int, isSelected: Bool, isDisabled: Bool, action: () -> Void",
+        "For spread/total: show label and odds combined on single line (e.g., '-3.5 -110')",
+        "For moneyline: show odds only (centered)",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Create Game Detail View",
+      "description": "As a player, I want to tap into a game and see all available betting markets so I can explore more options beyond the main lines.",
+      "acceptanceCriteria": [
+        "Create GameDetailView.swift in Booki/Views/",
+        "Game header shows: Away team vs Home team, game time, live status if applicable",
+        "Header uses Theme.cardBackground with team names in .title3 weight",
+        "Display game time in format 'Today 7:00 PM' or 'Sat, Jan 25 - 1:00 PM'",
+        "Tapping game row in GamesView navigates to GameDetailView",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Game Detail Main Markets Section",
+      "description": "As a player, I want to see the main betting markets (spread, moneyline, total) prominently displayed at the top of the game detail page.",
+      "acceptanceCriteria": [
+        "'Main Lines' section displays spread, moneyline, and total markets",
+        "Each market shows both sides in a horizontal row using CompactOddsButton",
+        "Tapping an odds button adds selection to bet slip via BetSlipManager",
+        "Selected state highlights with Theme.accent",
+        "Section header uses .system(size: 14, weight: .semibold) with Theme.textPrimary",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Game Detail Market Categories",
+      "description": "As a player, I want to browse different market categories (alternate lines, player props, game props) so I can find specific bets.",
+      "acceptanceCriteria": [
+        "Horizontal scrolling category tabs below main markets: 'All Markets', 'Alternate Lines', 'Player Props', 'Game Props'",
+        "Tab style matches sport tabs in GamesView (capsule buttons)",
+        "'All Markets' selected by default, shows all available markets grouped by type",
+        "Each category filters the displayed markets below",
+        "Empty state shown if category has no markets: 'No [category] markets available'",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Game Detail Market List",
+      "description": "As a player, I want to see all markets for the selected category in a scannable list format.",
+      "acceptanceCriteria": [
+        "Markets grouped by type with section headers (e.g., 'Spread', 'Total', 'Moneyline')",
+        "Each market row shows both sides with odds buttons",
+        "For alternate lines: show the line value prominently (e.g., 'Alt Spread -5.5')",
+        "For player props: show player name and prop type (e.g., 'LeBron James - Points')",
+        "Use same compact styling as main games list (no decorative cards)",
+        "Scrollable list with Theme.background",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Game Detail Bet Slip Integration",
+      "description": "As a player, I want my selections from the game detail page to appear in my bet slip so I can continue building my ticket.",
+      "acceptanceCriteria": [
+        "Selections made in GameDetailView add to BetSlipManager",
+        "Floating bet slip indicator appears at bottom (same as GamesView)",
+        "Tapping indicator opens BetSlipSheet",
+        "Multiple selections from same game allowed (for parlays)",
+        "Navigating back to GamesView preserves bet slip selections",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

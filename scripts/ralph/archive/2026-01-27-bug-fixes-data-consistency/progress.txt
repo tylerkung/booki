@@ -1,0 +1,138 @@
+# Ralph Progress Log
+Started: Sun Jan 25 19:00:39 PST 2026
+
+## Codebase Patterns
+- Use `SupabaseClientManager.shared.client` to access Supabase
+- PlayerRecord in SyncModels.swift has `authUserId: UUID?` (maps to `auth_user_id` in DB)
+- AuthManager is @MainActor - all state updates happen on main thread
+- BetSlipManager is @MainActor - thread-safe singleton for bet slip state
+- For Supabase queries, use `.eq("column_name", value: uuid.uuidString)` for UUID comparisons
+- Full Xcode builds required (xcodebuild CLI not available) - verify syntax correctness by code review
+
+---
+
+## 2026-01-25 19:XX - US-001
+- Implemented fix for player login incorrectly creating bookie records
+- Files changed:
+  - `Booki/Services/AuthManager.swift` - Renamed `ensureBookieRecord()` to `determineUserRole()`, added `isBookieSignup` parameter, added `checkPlayerExists()` method
+- **Learnings for future iterations:**
+  - The auth state listener's `signedIn` event fires for both login AND signup (after email verification)
+  - Role determination order matters: check bookie first, then player, then create new bookie only if explicit signup
+  - When querying Supabase for existence checks, use minimal struct (just `id`) to reduce data transfer
+  - The `players` table has `auth_user_id` column that links players to Supabase auth users
+---
+
+## 2026-01-25 20:XX - US-002
+- Fixed parlay stake display bug - a 2-leg $25 parlay now shows $25 total instead of $50
+- Files changed:
+  - `Booki/Views/TrackView.swift` - Modified `Ticket.totalStake` computed property to return `bets.first?.stake` when `isParlay` is true
+  - `Booki/Views/AccountView.swift` - Modified `totalStaked` to group settled bets by `ticketId` and use first bet's stake for parlay groups
+- **Learnings for future iterations:**
+  - In parlay bets, all legs share the same stake - it's stored on each bet record but they all have the same value
+  - Bets are grouped by `ticketId` (UUID) to form tickets; a parlay has multiple bets with the same ticketId
+  - The `Ticket` struct in TrackView.swift is a local grouping construct, not a persisted model
+  - When calculating totals involving parlays, always group by ticketId first to avoid double-counting
+---
+
+## 2026-01-25 21:XX - US-003
+- Fixed force-unwrapped URLs in OddsAPIService that could cause crashes with invalid API keys
+- Files changed:
+  - `Booki/Services/OddsAPIService.swift` - Added `OddsAPIError.invalidURL` case, replaced all force-unwrapped URL constructions with safe guard let unwrapping
+- **Learnings for future iterations:**
+  - OddsAPIService uses URLComponents for endpoints with multiple query parameters (fetchOdds, fetchScores)
+  - URLComponents automatically handles URL encoding for query items, so only need manual encoding for simple URL string construction (fetchSports)
+  - When force-unwraps appear in URL construction, there are typically two points to guard: the URLComponents initialization and the .url property access
+  - OddsAPIError is a LocalizedError enum - add both the case and its errorDescription in the switch
+---
+
+## 2026-01-25 22:XX - US-004
+- Fixed force-unwrapped date calculation in WeeklySettlementView that could cause crashes
+- Files changed:
+  - `Booki/Views/WeeklySettlementView.swift` - Replaced force-unwrapped `calendar.date(byAdding:)!` with safe `guard let` unwrapping in `mostRecentSunday()` static method
+- **Learnings for future iterations:**
+  - WeeklySettlementView.mostRecentSunday() is a static method used to compute the most recent Sunday for week-ending dates
+  - Calendar.date(byAdding:) returns Optional<Date> and should always be safely unwrapped
+  - When providing fallbacks for date calculations, using "today" is a reasonable fallback that keeps the app functional
+  - This is a common pattern in iOS - always use guard let or if let with Calendar date calculations
+---
+
+## 2026-01-25 23:XX - US-005
+- Made BetSlipManager thread-safe by adding @MainActor annotation
+- Files changed:
+  - `Booki/Services/BetSlipManager.swift` - Added `@MainActor` annotation to the class declaration
+- **Learnings for future iterations:**
+  - BetSlipManager is a singleton accessed via `BetSlipManager.shared` with `@Published` properties
+  - SwiftUI views are implicitly `@MainActor` isolated, so accessing the singleton from views works automatically
+  - All call sites are standard SwiftUI view patterns using `@ObservedObject` - no changes needed at call sites
+  - Adding `@MainActor` to an ObservableObject ensures all `@Published` property updates happen on the main thread
+  - This follows the same pattern as AuthManager which was already `@MainActor`
+---
+
+## 2026-01-25 23:XX - US-006
+- Fixed parlay stake assumption bug by adding explicit guard checks before accessing bets.first
+- Files changed:
+  - `Booki/Services/ParlayGradingService.swift` - Added guard let checks at lines 102-104 and 113-115 with `.zero` payout fallback, added inline comments explaining parlay stake sharing
+- **Learnings for future iterations:**
+  - ParlayGradingService.calculateParlayOutcome() has an early guard at line 28 for empty bets returning .pending
+  - The later guard checks (lines 102, 113) are defensive for code paths after filtering (e.g., validLegs)
+  - All parlay legs share the same stake value - the stake is duplicated on each bet but they're all identical
+  - When accessing `bets.first` where empty array is theoretically impossible due to earlier checks, still add guard for robustness
+---
+
+## 2026-01-25 23:XX - US-007
+- Added logging for missing player relationships in bet settlement
+- Files changed:
+  - `Booki/Services/GradingService.swift` - Added warning print statements before returning `.playerRequired` error in `settleBet()`, `settleParlayBets()`, and `reverseBet()`
+- **Learnings for future iterations:**
+  - GradingService has three methods that check for player relationship: settleBet(), settleParlayBets(), reverseBet()
+  - All three methods return `.failure(.playerRequired)` when player is missing - the error is already flagged, just adding observability via logging
+  - For parlay bets, the log includes ticketId for easier debugging since multiple legs share the same ticket
+  - The GradingServiceError enum already has `.playerRequired` case - error handling was already in place, just not observable
+---
+
+## 2026-01-25 23:XX - US-008
+- Handled missing player in RealtimeService bet sync to prevent race condition data loss
+- Files changed:
+  - `Booki/Services/RealtimeService.swift` - Added logging when player is not found locally during bet sync, set `needsSync = true` on bets with missing players so they get re-processed on next full sync
+- **Learnings for future iterations:**
+  - RealtimeService.upsertBet() already handled missing players gracefully (sets player = nil), just needed observability and re-sync flag
+  - The `needsSync` flag on models is used to mark records that need attention on next sync cycle
+  - Setting `needsSync = true` when player is missing allows the full sync to later resolve the player relationship when it becomes available
+  - This is a common pattern for handling race conditions in realtime sync - create the record, flag it, let full sync fix relationships later
+---
+
+## 2026-01-25 23:XX - US-009
+- Added empty bet array validation in views to prevent crashes and display graceful fallbacks
+- Files changed:
+  - `Booki/Views/TicketDetailView.swift` - Added guard let for stake in `parlaySettledAmount`, added "No bets" fallback in `parlayCalculationBreakdown`
+  - `Booki/Views/TrackView.swift` - Added guard checks in `Ticket.totalStake` and `Ticket.potentialPayout` for empty arrays
+- **Learnings for future iterations:**
+  - The `Ticket` struct's computed properties (totalStake, potentialPayout) should always guard against empty bets arrays first
+  - Use `guard !bets.isEmpty` at the start of computed properties to provide explicit early return
+  - Use `guard let stake = bets.first?.stake` instead of `let stake = bets.first?.stake ?? 0` for clearer intent
+  - Use `Decimal.zero` consistently instead of `0` for Decimal fallbacks to avoid implicit conversions
+  - When displaying bet data in views, show "No bets" text gracefully for edge cases
+---
+
+## 2026-01-25 23:XX - US-010
+- Added logging for silent UUID conversion failures in AuthManager
+- Files changed:
+  - `Booki/Services/AuthManager.swift` - Refactored `determineUserRole()` to use guard statements for currentUserId and UUID conversion, with explicit warning logs when either fails
+- **Learnings for future iterations:**
+  - AuthManager.determineUserRole() previously used combined `if let` that silently skipped player checks on UUID failures
+  - Separating guards allows distinct logging for "userId is nil" vs "userId failed UUID conversion"
+  - Always include the invalid value in warning logs (e.g., `\(userId)`) to help diagnose data issues
+  - The Supabase auth user.id is a UUID, but currentUserId stores it as String - conversion should always succeed but logging catches edge cases
+---
+
+## 2026-01-25 23:XX - US-011
+- Added odds validation in LiabilityService to handle invalid odds gracefully
+- Files changed:
+  - `Booki/Services/LiabilityService.swift` - Added `validOddsRange` constant (-10000...10000), added guard checks for zero odds and out-of-range odds, returns `.zero` with warning logs for invalid cases
+- **Learnings for future iterations:**
+  - LiabilityService.calculatePayout() is the core method called by calculateLiability() - validating at this level catches all invalid odds
+  - American odds valid range is typically -10000 to +10000 (corresponds to 1/100 and 100/1 implied probabilities)
+  - Odds of zero would cause division issues in the calculation and don't represent valid betting odds
+  - Using a closed range constant (`-10000...10000`) makes the validation clear and self-documenting
+  - The `contains()` method on ranges is a clean way to do bounds checking in Swift
+---

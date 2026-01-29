@@ -215,6 +215,7 @@ struct RefreshOddsView: View {
                     if marketsUpdated > 0 {
                         localEvent.lastOddsUpdate = Date()
                         localEvent.needsSync = true
+                        localEvent.version += 1  // Force SwiftData change detection
                         totalEventsRefreshed += 1
                         totalMarketsUpdated += marketsUpdated
                     }

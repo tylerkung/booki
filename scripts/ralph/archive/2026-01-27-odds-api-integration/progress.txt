@@ -1,0 +1,325 @@
+# Ralph Progress Log
+Started: Sat Jan 25 2026
+---
+
+## Codebase Patterns
+- Use Theme.swift for all colors and styling - never use default iOS colors
+- BetSlipSelection struct is defined in GameCardView.swift and shared across components
+- Event model has isLocked(offsetMinutes:) method for betting lock status
+- Market model contains sideA/sideB (team names with values) and oddsA/oddsB
+- Per CLAUDE.md: Xcode command line tools don't support full builds - use Xcode IDE for typecheck verification
+
+---
+
+## 2026-01-24 - US-001
+- **What was implemented**: Created CompactGameRow.swift - a streamlined row component for displaying games with inline odds
+- **Files changed**:
+  - Created: Booki/Views/CompactGameRow.swift
+  - Updated: prd.json (marked US-001 as passes: true)
+- **Key design decisions**:
+  - Row height ~80-90pt (vs ~140pt cards) using 36pt team rows + time header
+  - No decorative styling: removed shadows, gradient borders, overlay effects
+  - Used Theme.cardBackground with 0.5pt Theme.border bottom divider
+  - Inline compactOddsButton displays "value odds" on single line (e.g., "-3.5 -110")
+  - Preserved selection animation with spring effect
+- **Learnings for future iterations:**
+  - Pattern: CompactGameRow accepts same parameters as GameCardView for drop-in replacement
+  - Pattern: Use fixed button dimensions (52x44pt) with Color.clear placeholders for alignment
+  - Gotcha: Xcode IDE required for typecheck - command line tools don't support full iOS builds
+  - Context: BetSlipSelection is used to track selections and highlight selected odds buttons
+---
+
+## 2026-01-24 - US-002
+- **What was implemented**: Verified that table-style odds layout was already implemented in US-001's CompactGameRow
+- **Files changed**:
+  - Updated: prd.json (marked US-002 as passes: true)
+- **Key verification**:
+  - Odds buttons: 52x44pt (lines 167-168)
+  - Team rows structured as: Team name | Spread | ML | Total (teamOddsRow function)
+  - Single-line format with value + odds (e.g., "-3.5 -110") via formatSpreadValue/formatTotalValue helpers
+  - HStack with fixed-width columns ensures alignment
+  - Color.clear placeholders maintain alignment when markets are missing
+- **Learnings for future iterations:**
+  - Pattern: When implementing compact rows, build the table-style layout (fixed-width columns) into the initial component
+  - Gotcha: US-002 acceptance criteria were largely satisfied by US-001 implementation - check for overlap
+---
+
+## 2026-01-24 - US-003
+- **What was implemented**: Verified that compact team name display was already implemented in US-001's CompactGameRow
+- **Files changed**:
+  - Updated: prd.json (marked US-003 as passes: true)
+- **Key verification**:
+  - Font: .system(size: 13, weight: .semibold) at line 182
+  - Row height: 36pt via .frame(height: 36) at line 244
+  - Left-aligned via .frame(maxWidth: .infinity, alignment: .leading) at line 185
+  - lineLimit(1) at line 184
+- **Learnings for future iterations:**
+  - Pattern: Multiple granular stories (US-002, US-003) can be satisfied by a single well-designed component
+  - Note: The PRD broke down styling into separate stories for granularity but implementation consolidated them
+---
+
+## 2026-01-24 - US-004
+- **What was implemented**: Verified that simplified game time display was already implemented in US-001's CompactGameRow
+- **Files changed**:
+  - Updated: prd.json (marked US-004 as passes: true)
+- **Key verification**:
+  - formattedStartTime computed property (lines 29-41) formats as "Today 7:00 PM" or "Sat, Jan 25"
+  - timeHeader uses .caption2 font and Theme.textSecondary color (lines 123-124)
+  - No clock icon - removed for horizontal space
+  - LIVE badge is simple text without pulsing animation (lines 134-144)
+  - Lock icon inline with .caption2 font (lines 127-131)
+- **Learnings for future iterations:**
+  - Pattern: Date formatting for sports apps uses "Today/Tomorrow" shortcuts plus abbreviated weekday format
+---
+
+## 2026-01-24 - US-005
+- **What was implemented**: Verified that streamlined odds buttons were already implemented in US-001's CompactGameRow
+- **Files changed**:
+  - Updated: prd.json (marked US-005 as passes: true)
+- **Key verification**:
+  - compactOddsButton method (lines 249-282) implements the design
+  - Background: Theme.elevatedBackground (unselected) or Theme.accent (selected)
+  - Solid colors only - no gradients
+  - Border: 1pt Theme.border/Theme.accent
+  - Corner radius: 6pt
+  - Spring animation preserved, no radial gradient highlight
+- **Learnings for future iterations:**
+  - Note: compactOddsButton is currently a private method in CompactGameRow
+  - Gotcha: For US-011 (GameDetailView) reuse, may need to extract to standalone CompactOddsButton struct
+---
+
+## 2026-01-24 - US-006 & US-007
+- **What was implemented**:
+  - US-006: Added sticky column headers (SPREAD/MONEY/TOTAL) to GamesView
+  - US-007: Updated sport section headers to compact inline format
+- **Files changed**:
+  - Modified: Booki/Views/GamesView.swift
+  - Updated: prd.json (marked US-006 and US-007 as passes: true)
+- **Key implementation details**:
+  - columnHeadersRow component with headers aligned to 52pt button widths
+  - LazyVStack(pinnedViews: [.sectionHeaders]) for sticky behavior
+  - Headers use .system(size: 10, weight: .semibold) with Theme.textMuted
+  - 0.5pt bottom border using Theme.divider
+  - Sport headers: "NBA • League" format with .system(size: 12, weight: .medium)
+  - Top padding 16pt, bottom padding 8pt for sport headers
+- **Learnings for future iterations:**
+  - Pattern: Use Section(header:) inside LazyVStack(pinnedViews: [.sectionHeaders]) for sticky headers
+  - Pattern: Fixed widths (52pt) must match between headers and button columns
+  - Note: Diagnostic warnings outside Xcode are expected (SwiftData macros not resolvable)
+---
+
+## 2026-01-24 - US-008
+- **What was implemented**: Updated GamesView to use CompactGameRow instead of GameCardView
+- **Files changed**:
+  - Modified: Booki/Views/GamesView.swift
+  - Updated: prd.json (marked US-008 as passes: true)
+- **Key implementation details**:
+  - Replaced GameCardView with CompactGameRow in sportSection and favoritesSection
+  - LazyVStack spacing already set to 0 from US-006
+  - Horizontal padding handled by CompactGameRow internally (12pt)
+  - All existing functionality preserved: search, sport tabs, favorites, bet slip
+- **Learnings for future iterations:**
+  - Pattern: CompactGameRow is a drop-in replacement for GameCardView (same parameters)
+  - Gotcha: Favorites section header styled to match sport headers for consistency
+---
+
+## 2026-01-24 - US-009
+- **What was implemented**: Marked legacy components in GameCardView.swift with deprecation comments
+- **Files changed**:
+  - Modified: Booki/Views/GameCardView.swift
+  - Updated: prd.json (marked US-009 as passes: true)
+- **Key implementation details**:
+  - BetSlipSelection: Kept unchanged, marked as "Active - shared with CompactGameRow"
+  - GameCardView: Marked as "Legacy" with deprecation comment
+  - SpreadButton, MLButton, TotalButton: Marked as "Legacy (Deprecated)"
+  - OddsButton: Kept as "Active - used by MarketSelectionView"
+- **Learnings for future iterations:**
+  - Pattern: Use deprecation comments (@available(*, deprecated)) to mark legacy code
+  - Note: BetSlipSelection is shared between GameCardView and CompactGameRow
+  - Note: OddsButton is still needed for MarketSelectionView expanded markets
+---
+
+## 2026-01-24 - US-010
+- **What was implemented**: Created GameDetailView.swift with game header and basic structure
+- **Files changed**:
+  - Created: Booki/Views/GameDetailView.swift
+  - Modified: Booki/Views/GamesView.swift (updated navigation to GameDetailView)
+  - Updated: prd.json (marked US-010 as passes: true)
+- **Key implementation details**:
+  - Game header with Away vs Home, game time, live/postponed/canceled status
+  - Header uses Theme.cardBackground with .title3 team names
+  - Time formatted as "Today 7:00 PM" or "Sat, Jan 25 • 1:00 PM"
+  - Bet slip indicator for US-014 compatibility
+  - Placeholder for markets (US-011, US-012, US-013)
+- **Learnings for future iterations:**
+  - Pattern: GameDetailView follows similar structure to GamesView with bet slip integration
+  - Note: Markets content will be added in US-011, US-012, US-013
+---
+
+## 2026-01-24 - US-011
+- **What was implemented**: Added Main Lines section to GameDetailView with spread, moneyline, and total markets
+- **Files changed**:
+  - Created: Booki/Views/CompactOddsButton.swift (extracted reusable component)
+  - Modified: Booki/Views/GameDetailView.swift (added mainLinesSection)
+  - Updated: prd.json (marked US-011 as passes: true)
+- **Key implementation details**:
+  - Created CompactOddsButton.swift as a reusable component for odds buttons
+  - Main Lines section displays spread, moneyline, and total markets
+  - Each market shows both sides (away/over, home/under) in horizontal row
+  - Tapping an odds button toggles selection via BetSlipManager.toggle()
+  - Section header: .system(size: 14, weight: .semibold) Theme.textPrimary
+  - Market rows wrapped in cards with Theme.cardBackground and 8pt corner radius
+- **Learnings for future iterations:**
+  - Pattern: CompactOddsButton is now a reusable component in Booki/Views/CompactOddsButton.swift
+  - Pattern: Use BetSlipManager.toggle() with eventDescription and marketDescription for bet slip integration
+  - Pattern: Market labels are formatted differently - spread extracts value from "Lakers -3.5", total uses "O/U" prefix
+  - Note: CompactGameRow still has inline compactOddsButton method - could be refactored to use CompactOddsButton struct
+---
+
+## 2026-01-24 - US-012
+- **What was implemented**: Added market category tabs to GameDetailView for browsing different market types
+- **Files changed**:
+  - Modified: Booki/Views/GameDetailView.swift
+  - Updated: prd.json (marked US-012 as passes: true)
+- **Key implementation details**:
+  - Created MarketCategory enum with cases: allMarkets, alternateLines, playerProps, gameProps
+  - Added horizontal scrolling tabs via marketCategoryTabs component
+  - Created MarketCategoryTabButton matching SportTabButton styling (capsule, spring animation)
+  - Added hasMarketsForCategory(_:) to filter markets by category
+  - Added empty state view (marketCategoryEmptyState) with icon and descriptive text
+  - Category tabs positioned below Main Lines section, above filtered market content
+- **Learnings for future iterations:**
+  - Pattern: MarketCategoryTabButton is a copy of SportTabButton - could be generalized to shared CapsuleTabButton component
+  - Note: Alternate Lines, Player Props, Game Props currently show empty state - Market model only supports spread/total/moneyline
+  - Pattern: Category filtering prepared for US-013 market list implementation
+---
+
+## 2026-01-24 - US-013
+- **What was implemented**: Added market list section to GameDetailView that displays markets grouped by type
+- **Files changed**:
+  - Modified: Booki/Views/GameDetailView.swift
+  - Updated: prd.json (marked US-013 as passes: true)
+- **Key implementation details**:
+  - Added marketsForSelectedCategory computed property for category filtering
+  - Added spreadMarkets, moneylineMarkets, totalMarkets computed properties for grouping
+  - Created marketListSection that displays markets in order: Spread, Moneyline, Total
+  - Created marketTypeSection for each market type with section header and rows
+  - Created marketRow for individual market display with both sides
+  - Section headers use .system(size: 12, weight: .semibold) with textCase(.uppercase)
+  - Rows wrapped in Theme.cardBackground with 8pt corner radius
+  - Dividers between rows (0.5pt Theme.divider) but not after last row
+  - Added extractLineValue(from:) for alternate line display (e.g., "Alt Spread -5.5")
+  - showAlternatePrefix flag shows alternate label for markets after the first in a group
+- **Learnings for future iterations:**
+  - Pattern: Use ForEach with Array(markets.enumerated()) to get both index and element
+  - Pattern: Section headers for market groups use UPPERCASE text case
+  - Note: Current Market model only supports spread/total/moneyline - alternate lines would need model changes
+  - Note: When multiple markets of same type exist, index > 0 shows "Alt" prefix for alternate lines
+---
+
+## 2026-01-24 - US-014
+- **What was implemented**: Verified that Game Detail bet slip integration was already implemented in US-010/US-011
+- **Files changed**:
+  - Updated: prd.json (marked US-014 as passes: true)
+- **Key verification**:
+  - Selections add to BetSlipManager via `handleOddsSelection` method (line 169-172)
+  - `betSlipIndicator` appears at bottom when `!betSlipManager.isEmpty` (lines 203-207, 629-653)
+  - Tapping indicator sets `showingBetSlipSheet = true` (line 631-632)
+  - Sheet presented with `BetSlipSheet` via `.sheet(isPresented:)` (lines 211-214)
+  - Multiple selections allowed - `BetSlipManager.toggle()` checks eventId+marketId+side uniqueness
+  - Persistence via `BetSlipManager.shared` singleton with UserDefaults storage
+- **Learnings for future iterations:**
+  - Pattern: Bet slip integration was implemented alongside the view creation (US-010/US-011)
+  - Note: BetSlipManager is a singleton shared across all views - selections persist across navigation
+  - Note: Future PRDs should verify if acceptance criteria are already met by earlier stories
+---
+
+## 2026-01-25 - Odds API Integration (US-001 through US-013)
+
+### US-001: OddsAPIService
+- **What was implemented**: Created OddsAPIService.swift for communicating with The Odds API
+- **Files created**: Booki/Services/OddsAPIService.swift
+- **Key details**:
+  - OddsAPIError enum for typed errors (invalidAPIKey, rateLimitExceeded, serverError, networkError, decodingError, noAPIKey, quotaExhausted)
+  - Base URL: https://api.the-odds-api.com
+  - @AppStorage for API key and bookmaker preference
+  - Singleton pattern (OddsAPIService.shared)
+
+### US-002: API Response Models
+- **What was implemented**: Created Codable models for API responses
+- **Files created**: Booki/Models/OddsAPIModels.swift
+- **Models**: OddsSport, OddsEvent, OddsBookmaker, OddsMarket, OddsOutcome, OddsScore, TeamScore
+
+### US-003: Fetch Sports
+- **What was implemented**: fetchSports() async method
+- **Endpoint**: GET /v4/sports/?apiKey={key}
+- **Filters**: Only returns active sports
+
+### US-004: Fetch Events with Odds
+- **What was implemented**: fetchOdds(sport:) async method
+- **Endpoint**: GET /v4/sports/{sport}/odds/
+- **Parameters**: regions=us, markets=h2h,spreads,totals, oddsFormat=american
+
+### US-005: External ID Fields
+- **What was implemented**: Added fields to Event model
+- **Fields added**: externalId, externalSource, lastOddsUpdate, homeScore, awayScore
+- **Note**: Supabase migration must be applied
+
+### US-006: OddsAPIMapper
+- **What was implemented**: Created mapper to convert API responses to app models
+- **Files created**: Booki/Services/OddsAPIMapper.swift
+- **Methods**: mapToEvent(), mapToMarkets()
+- **Sport key mapping**: basketball_nba -> Basketball/NBA, etc.
+
+### US-007: Import Events UI
+- **What was implemented**: Sheet for importing events from API
+- **Files created**: Booki/Views/ImportEventsView.swift
+- **Features**: Sport picker, loading state, success/error states, skip duplicates
+
+### US-008: Fetch Scores
+- **What was implemented**: fetchScores(sport:daysFrom:) async method
+- **Endpoint**: GET /v4/sports/{sport}/scores/
+- **Filters**: Only returns completed games
+
+### US-009: Update Events with Scores
+- **What was implemented**: updateEventsWithScores() method in FetchScoresView
+- **Logic**: Matches by externalId, parses scores, sets homeScore/awayScore, marks status as .final
+
+### US-010: Fetch Scores UI
+- **What was implemented**: Sheet for fetching and applying scores
+- **Files created**: Booki/Views/FetchScoresView.swift
+- **Features**: Fetches scores for all sports with imported events
+
+### US-011: API Settings Section
+- **What was implemented**: Odds API section in SettingsView
+- **Features**: SecureField for API key, bookmaker picker, quota display, test connection button
+
+### US-012: Quota Tracking
+- **What was implemented**: Published quota properties with AppStorage persistence
+- **Properties**: quotaRemaining, quotaUsed
+- **Headers parsed**: x-requests-remaining, x-requests-used
+
+### US-013: Refresh Odds
+- **What was implemented**: Sheet for refreshing odds on upcoming events
+- **Files created**: Booki/Views/RefreshOddsView.swift
+- **Filters**: Only events within 24 hours with externalId
+
+### Files Changed Summary
+- **Created**:
+  - Booki/Services/OddsAPIService.swift
+  - Booki/Services/OddsAPIMapper.swift
+  - Booki/Models/OddsAPIModels.swift
+  - Booki/Views/ImportEventsView.swift
+  - Booki/Views/FetchScoresView.swift
+  - Booki/Views/RefreshOddsView.swift
+- **Modified**:
+  - Booki/Models/Event.swift (added external ID and score fields)
+  - Booki/Views/SettingsView.swift (added Odds API settings section)
+  - Booki/Views/EventsListView.swift (added Import/Fetch/Refresh menu options)
+
+### Learnings
+- Pattern: Use @AppStorage for simple settings, Keychain for production API keys
+- Pattern: Singleton service with @Published properties for reactive quota updates
+- Pattern: Sport key mapping dictionary for API key -> display name conversion
+- Note: EventsListView toolbar now uses Menu for multiple actions
+---

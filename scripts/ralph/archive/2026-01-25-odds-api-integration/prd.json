@@ -1,0 +1,170 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/bug-fixes-data-consistency",
+  "description": "Data Consistency & Financial Calculation Bug Fixes - Fix critical bugs affecting auth, parlay display, crash prevention, and data consistency.",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first) + Supabase (cloud)",
+    "architecture": "MVVM with Services layer"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Fix Player Login Creating Bookie Record",
+      "description": "As a player, I need to log in and be recognized as a player, not incorrectly assigned as a bookie.",
+      "acceptanceCriteria": [
+        "In AuthManager.swift, modify ensureBookieRecord() to check if user is a player BEFORE attempting to create a bookie record",
+        "Add async method to check if a player record exists in Supabase for the current auth user ID (query players table where auth_user_id matches)",
+        "Update role determination logic: 1) Try fetch bookie -> if found, set bookie role, 2) Try check player exists -> if found, set player role, 3) Only create bookie if this is an explicit signup (add isBookieSignup: Bool parameter defaulting to false)",
+        "In the auth listener signedIn case, call ensureBookieRecord(isBookieSignup: false) for logins",
+        "Rename ensureBookieRecord to determineUserRole for clarity",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Fix Parlay Stake Display Bug",
+      "description": "As a player, I need parlay stakes to display correctly so that a 2-leg $25 parlay shows as $25 total, not $50.",
+      "acceptanceCriteria": [
+        "In TrackView.swift, fix Ticket.totalStake computed property (line 16) to return bets.first?.stake when isParlay is true, otherwise sum all stakes",
+        "In AccountView.swift, fix totalStaked computed property (line 143) to correctly calculate stake totals - group settled bets by ticketId, use first bet's stake for groups where isParlay is true",
+        "Existing singles behavior must remain unchanged (stakes still sum correctly)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Fix Force-Unwrapped URLs in OddsAPIService",
+      "description": "As a user, I need the app to handle invalid API keys gracefully so the app doesn't crash when URL construction fails.",
+      "acceptanceCriteria": [
+        "In OddsAPIService.swift, replace force-unwrapped URL(string:)! with safe URL construction using guard let",
+        "Add URL encoding for the API key parameter using addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)",
+        "Throw OddsAPIError.networkError or create new OddsAPIError.invalidURL case when URL construction fails",
+        "Fix all three URL constructions: fetchSports (line 97), fetchOdds (line 128), fetchScores (line 167)",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Fix WeeklySettlementView Date Calculation Crash",
+      "description": "As a bookie, I need the weekly settlement view to load reliably without crashing due to date calculations.",
+      "acceptanceCriteria": [
+        "In WeeklySettlementView.swift (line 256), replace force-unwrapped date calculation with safe unwrapping using guard let",
+        "Provide sensible fallback (use today as fallback) if calendar.date(byAdding:) returns nil",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Make BetSlipManager Thread-Safe",
+      "description": "As a user, I need the bet slip to work reliably without crashes when updates come from different threads.",
+      "acceptanceCriteria": [
+        "In BetSlipManager.swift, add @MainActor annotation to the BetSlipManager class",
+        "Verify all @Published property updates will now happen on main thread due to @MainActor",
+        "Ensure no compiler errors from call sites (may need to wrap some calls in MainActor.run)",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Fix Parlay Stake Assumption Bug",
+      "description": "As a bookie, I need parlay payout calculations to be robust so that payouts are always correct even when edge cases occur.",
+      "acceptanceCriteria": [
+        "In ParlayGradingService.swift (lines 101, 108), add guard check to ensure bets array is not empty before accessing bets.first",
+        "Return .zero for payout when bets array is empty",
+        "Add inline comment: '// All parlay legs share the same stake - use first bet's stake'",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Add Player Relationship Validation in Bet Settlement",
+      "description": "As a bookie, I need all bets to have valid player relationships so that settlement always creates correct ledger entries.",
+      "acceptanceCriteria": [
+        "In GradingService.swift (around line 73-74), add logging when player relationship is missing: print(\"WARNING: Bet \\(bet.id) has no player relationship\")",
+        "Ensure orphaned bets are flagged in the settlement result rather than silently skipped",
+        "The existing guard let player = bet.player else return should log before returning",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Handle Missing Player in RealtimeService Bet Sync",
+      "description": "As a user, I need bet sync to handle race conditions gracefully so that bets are not silently dropped.",
+      "acceptanceCriteria": [
+        "In RealtimeService.swift (lines 410-414), add logging when a bet update arrives but the associated player is not found locally",
+        "Ensure the bet record is still created/updated with nil player so it can be fixed on next full sync",
+        "Set needsSync = true on such bets so they get re-processed",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Add Empty Bet Array Validation in Views",
+      "description": "As a user, I need ticket details to display correctly even if edge cases create empty tickets.",
+      "acceptanceCriteria": [
+        "In TicketDetailView.swift (lines 209, 642), add guard checks before accessing bets.first?.stake",
+        "In TrackView.swift (line 74), add guard check before accessing bets.first?.stake",
+        "Display 'No bets' or show $0.00 gracefully when bet array is empty instead of crashing",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Add Silent Failure Logging in AuthManager",
+      "description": "As a developer, I need to know when player ID conversion fails so authentication issues can be diagnosed.",
+      "acceptanceCriteria": [
+        "In AuthManager.swift (lines 101-108), add logging when UUID(uuidString:) conversion fails",
+        "Log should include the invalid userId value: print(\"WARNING: Failed to convert userId to UUID: \\(userId)\")",
+        "Keep existing behavior (silent failure for user) but make it observable in logs",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Add Odds Validation in LiabilityService",
+      "description": "As a bookie, I need liability calculations to handle invalid odds gracefully.",
+      "acceptanceCriteria": [
+        "In LiabilityService.swift (lines 12-21), add validation that odds are non-zero before calculating",
+        "Add validation that odds are within reasonable range (-10000 to +10000 for American odds)",
+        "Return zero payout for invalid odds and log a warning",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
