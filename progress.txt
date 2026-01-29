@@ -308,3 +308,80 @@ Started: Tue Jan 27 18:12:54 PST 2026
   - Emits TWO audit events: one for bet reversal (action_type='reverse'), one for reversal ledger entry creation
   - Same patterns as other Edge Functions: CORS preflight, idempotency check early, createServiceClient() for mutations
 ---
+
+## 2026-01-29 - US-023
+- **What was implemented**: override_grade Edge Function to change a bet's grade when disputes arise
+- **Files changed**:
+  - Created: supabase/functions/override_grade/index.ts
+- **Learnings for future iterations:**
+  - override_grade handles both graded and settled bets - if settled, it first reverses the settlement internally
+  - When reversing settlement internally, emits TWO audit events (reverse for bet, create for reversal ledger entry) before the override audit event
+  - Returns `settlement_reversed: boolean` to indicate whether a settlement was undone
+  - Validates that bet has been graded (grade_result is not null) before allowing override
+  - new_outcome field (not outcome) distinguishes this from grade_bet which uses just outcome
+  - Same patterns: CORS preflight, idempotency check, bookie ownership validation, audit event emission
+---
+
+## 2026-01-29 - US-024
+- **What was implemented**: AuditEvent SwiftData model for caching audit history locally
+- **Files changed**:
+  - Created: Booki/Models/AuditEvent.swift
+  - Updated: Booki/BookiApp.swift (added AuditEvent.self to Schema)
+- **Learnings for future iterations:**
+  - AuditEvent follows same pattern as UserAgreement: @Model class with @Attribute(.unique) for UUID primary key
+  - previousState and newState are String types to hold JSON - parsed as needed by consuming code
+  - SourceKit errors about SwiftDataMacros are expected outside Xcode - syntax validation with `swiftc -parse` is sufficient
+---
+
+## 2026-01-29 - US-025
+- **What was implemented**: AuditService for fetching audit history from Supabase
+- **Files changed**:
+  - Created: Booki/Services/AuditService.swift
+- **Learnings for future iterations:**
+  - AuditService follows same pattern as AgreementService: private SupabaseClient property, init() calls SupabaseClientManager.shared.client
+  - Use Codable structs with CodingKeys for snake_case to camelCase mapping (bookie_id -> bookieId)
+  - Private AuditEventRecord struct handles Supabase deserialization, toAuditEvent() method converts to model
+  - JSONB columns (previous_state, new_state) come back as String after Codable decoding - no JSON parsing needed
+  - Order by created_at descending for most recent first
+---
+
+## 2026-01-29 - US-026
+- **What was implemented**: BetHistoryView for displaying bet audit history in a timeline format
+- **Files changed**:
+  - Created: Booki/Views/BetHistoryView.swift
+- **Learnings for future iterations:**
+  - Views follow pattern: ZStack with Theme.background (not Theme.backgroundGradient for simpler views), then conditional content
+  - Loading state: ProgressView with CircularProgressViewStyle(tint: Theme.accent) and "Loading..." text
+  - Empty state: VStack with SF Symbol icon, headline title, and subheadline description
+  - Error state: Similar to empty with danger color and "Try Again" button
+  - Timeline pattern: LazyVStack with enumerated ForEach, using isFirst/isLast flags for line rendering
+  - Human-readable action mapping: switch on actionType string to return user-friendly labels (e.g., "create" -> "Bet Created")
+  - Action color mapping: different Theme colors for each action type to visually distinguish timeline events
+---
+
+## 2026-01-29 - US-027
+- **What was implemented**: View History button added to BetDetailView for bookies to access bet audit history
+- **Files changed**:
+  - Updated: Booki/Views/BetsListView.swift (added NavigationLink to BetHistoryView in BetDetailView)
+- **Learnings for future iterations:**
+  - BetDetailView is the bookie-facing bet detail view (defined in BetsListView.swift)
+  - TicketDetailView is the player-facing ticket detail view (used by TrackView for players)
+  - For bookie-only features, add them to BetDetailView since it's only accessible from BetsListView (bookie view)
+  - NavigationLink pattern: destination closure first, then label closure with HStack for icon + text + chevron
+  - Use clock.arrow.circlepath SF Symbol for history-related actions
+---
+
+## 2026-01-29 - US-028
+- **What was implemented**: Override Grade button and sheet in BetDetailView for bookies to change bet grades
+- **Files changed**:
+  - Updated: Booki/Views/BetsListView.swift (added override grade UI, state, sheet, and Edge Function call)
+- **Learnings for future iterations:**
+  - Override grade includes "void" as an option (win, loss, push, void) unlike regular grading
+  - Sheet pattern: NavigationStack with ZStack (Theme.background.ignoresSafeArea) then VStack with content
+  - For picker with strings, use ForEach with id: \.self and .tag(value) for binding
+  - TextField with axis: .vertical allows multi-line input
+  - EdgeFunctionService.callFunction returns decoded response; use private Request/Response structs with CodingKeys for snake_case
+  - Async call pattern: Task { await method() } inside button action, MainActor.run for UI updates
+  - Warning color (Theme.warning) used for override button tint to indicate caution
+  - Button disabled state: combine multiple conditions with || in computed property
+---

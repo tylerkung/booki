@@ -284,6 +284,12 @@ struct BetDetailView: View {
     @State private var showingVoidConfirmation = false
     @State private var showingSettleConfirmation = false
     @State private var showingReverseConfirmation = false
+    @State private var showingOverrideGradeSheet = false
+    @State private var overrideNewOutcome: String = "win"
+    @State private var overrideReason: String = ""
+    @State private var overrideIsLoading = false
+    @State private var overrideErrorMessage: String?
+    @State private var showingOverrideError = false
 
     // MARK: - Computed Properties
 
@@ -523,6 +529,14 @@ struct BetDetailView: View {
         } message: {
             Text("\(reversalImpactDescription) The bet will return to 'graded' status and can be re-settled if needed.")
         }
+        .sheet(isPresented: $showingOverrideGradeSheet) {
+            overrideGradeSheetContent
+        }
+        .alert("Override Failed", isPresented: $showingOverrideError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(overrideErrorMessage ?? "An unknown error occurred.")
+        }
     }
 
     // MARK: - Actions View
@@ -633,11 +647,31 @@ struct BetDetailView: View {
                 .tint(.green)
             }
 
+            // Override Grade button for graded bets (requires a grade to have been set)
+            if bet.gradeResult != nil {
+                Button {
+                    prepareOverrideGradeSheet()
+                } label: {
+                    Label("Override Grade", systemImage: "pencil.circle.fill")
+                }
+                .tint(Theme.warning)
+            }
+
         case .settled:
             Button(role: .destructive) {
                 showingReverseConfirmation = true
             } label: {
                 Label("Reverse Settlement", systemImage: "arrow.uturn.backward.circle.fill")
+            }
+
+            // Override Grade button for settled bets (will reverse settlement first)
+            if bet.gradeResult != nil {
+                Button {
+                    prepareOverrideGradeSheet()
+                } label: {
+                    Label("Override Grade", systemImage: "pencil.circle.fill")
+                }
+                .tint(Theme.warning)
             }
 
         default:
@@ -709,6 +743,200 @@ struct BetDetailView: View {
         }
     }
 
+    // MARK: - Override Grade
+
+    /// Available outcome options for override (includes void)
+    private let overrideOutcomeOptions = ["win", "loss", "push", "void"]
+
+    /// Prepare the override grade sheet with current values
+    private func prepareOverrideGradeSheet() {
+        overrideNewOutcome = bet.gradeResult?.rawValue ?? "win"
+        overrideReason = ""
+        overrideIsLoading = false
+        overrideErrorMessage = nil
+        showingOverrideGradeSheet = true
+    }
+
+    /// Whether the confirm button should be disabled
+    private var isOverrideConfirmDisabled: Bool {
+        overrideReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        overrideNewOutcome == bet.gradeResult?.rawValue ||
+        overrideIsLoading
+    }
+
+    /// Human-readable label for an outcome
+    private func outcomeLabel(_ outcome: String) -> String {
+        switch outcome {
+        case "win": return "Win"
+        case "loss": return "Loss"
+        case "push": return "Push"
+        case "void": return "Void"
+        default: return outcome.capitalized
+        }
+    }
+
+    /// Color for an outcome
+    private func outcomeColor(_ outcome: String) -> Color {
+        switch outcome {
+        case "win": return Theme.accent
+        case "loss": return Theme.danger
+        case "push": return Theme.warning
+        case "void": return Theme.textMuted
+        default: return Theme.textSecondary
+        }
+    }
+
+    /// The sheet content for overriding a grade
+    @ViewBuilder
+    private var overrideGradeSheetContent: some View {
+        NavigationStack {
+            ZStack {
+                Theme.background.ignoresSafeArea()
+
+                VStack(spacing: 24) {
+                    // Current Grade Display
+                    VStack(spacing: 8) {
+                        Text("Current Grade")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        if let currentGrade = bet.gradeResult {
+                            Text(outcomeLabel(currentGrade.rawValue))
+                                .font(.title2.bold())
+                                .foregroundStyle(outcomeColor(currentGrade.rawValue))
+                        } else {
+                            Text("Not Graded")
+                                .font(.title2.bold())
+                                .foregroundStyle(Theme.textMuted)
+                        }
+
+                        if bet.status == .settled {
+                            Text("Settlement will be reversed")
+                                .font(.caption)
+                                .foregroundStyle(Theme.warning)
+                                .padding(.top, 4)
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Theme.cardBackground)
+                    .cornerRadius(Theme.cornerRadius)
+
+                    // New Grade Picker
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("New Grade")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        Picker("New Grade", selection: $overrideNewOutcome) {
+                            ForEach(overrideOutcomeOptions, id: \.self) { outcome in
+                                Text(outcomeLabel(outcome))
+                                    .tag(outcome)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    // Reason TextField
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Reason (Required)")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        TextField("Enter reason for override...", text: $overrideReason, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .padding()
+                            .background(Theme.cardBackground)
+                            .cornerRadius(Theme.cornerRadiusSmall)
+                            .lineLimit(3...6)
+                    }
+
+                    Spacer()
+
+                    // Confirm Button
+                    Button {
+                        Task {
+                            await submitOverrideGrade()
+                        }
+                    } label: {
+                        if overrideIsLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        } else {
+                            Text("Confirm Override")
+                                .font(.headline)
+                                .foregroundStyle(Theme.background)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        }
+                    }
+                    .background(isOverrideConfirmDisabled ? Theme.accent.opacity(0.5) : Theme.accent)
+                    .cornerRadius(Theme.cornerRadiusSmall)
+                    .disabled(isOverrideConfirmDisabled)
+                }
+                .padding()
+            }
+            .navigationTitle("Override Grade")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showingOverrideGradeSheet = false
+                    }
+                    .foregroundStyle(Theme.accent)
+                }
+            }
+        }
+    }
+
+    /// Submit the override grade request to the Edge Function
+    private func submitOverrideGrade() async {
+        overrideIsLoading = true
+
+        do {
+            let request = OverrideGradeRequest(
+                betId: bet.id,
+                newOutcome: overrideNewOutcome,
+                reason: overrideReason.trimmingCharacters(in: .whitespacesAndNewlines),
+                idempotencyKey: UUID().uuidString
+            )
+
+            let response: OverrideGradeResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "override_grade",
+                body: request
+            )
+
+            // Update local bet with response
+            await MainActor.run {
+                if let newGradeResult = GradeResult(rawValue: response.bet.gradeResult ?? "") {
+                    bet.gradeResult = newGradeResult
+                }
+                if let newStatus = BetStatus(rawValue: response.bet.status) {
+                    bet.status = newStatus
+                }
+
+                overrideIsLoading = false
+                showingOverrideGradeSheet = false
+            }
+        } catch let error as EdgeFunctionError {
+            await MainActor.run {
+                overrideIsLoading = false
+                overrideErrorMessage = error.errorDescription
+                showingOverrideGradeSheet = false
+                showingOverrideError = true
+            }
+        } catch {
+            await MainActor.run {
+                overrideIsLoading = false
+                overrideErrorMessage = error.localizedDescription
+                showingOverrideGradeSheet = false
+                showingOverrideError = true
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private func formatCurrency(_ value: Decimal) -> String {
@@ -724,6 +952,49 @@ struct BetDetailView: View {
         case .loss: return .red
         case .push: return .orange
         }
+    }
+}
+
+// MARK: - Override Grade Request/Response
+
+/// Request body for override_grade Edge Function
+private struct OverrideGradeRequest: Encodable {
+    let betId: UUID
+    let newOutcome: String
+    let reason: String
+    let idempotencyKey: String
+
+    enum CodingKeys: String, CodingKey {
+        case betId = "bet_id"
+        case newOutcome = "new_outcome"
+        case reason
+        case idempotencyKey = "idempotency_key"
+    }
+}
+
+/// Response from override_grade Edge Function
+private struct OverrideGradeResponse: Decodable {
+    let success: Bool
+    let bet: OverrideGradeBetResponse
+    let settlementReversed: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case bet
+        case settlementReversed = "settlement_reversed"
+    }
+}
+
+/// Bet data from override_grade response
+private struct OverrideGradeBetResponse: Decodable {
+    let id: UUID
+    let status: String
+    let gradeResult: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case status
+        case gradeResult = "grade_result"
     }
 }
 
