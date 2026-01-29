@@ -1,5 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
+import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 
 interface SettleBetRequest {
   bet_id: string;
@@ -117,16 +118,10 @@ Deno.serve(async (req) => {
     const client = createServiceClient();
 
     // Check idempotency - if key exists, return cached response
-    const { data: existingIdempotency } = await client
-      .from('idempotency_keys')
-      .select('response')
-      .eq('key', body.idempotency_key)
-      .eq('operation', 'settle_bet')
-      .single();
-
-    if (existingIdempotency) {
+    const cachedResponse = await checkIdempotency(client, body.idempotency_key, 'settle_bet');
+    if (cachedResponse) {
       return new Response(
-        existingIdempotency.response,
+        cachedResponse,
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -259,16 +254,8 @@ Deno.serve(async (req) => {
       ledger_entry: ledgerEntry
     });
 
-    // Store idempotency key with response (ignore errors - operations were already completed)
-    await client
-      .from('idempotency_keys')
-      .insert({
-        key: body.idempotency_key,
-        operation: 'settle_bet',
-        response: response,
-        user_id: userId,
-      })
-      .catch((err) => console.error('Error storing idempotency key:', err));
+    // Store idempotency key with response
+    await storeIdempotency(client, body.idempotency_key, 'settle_bet', userId, response);
 
     return new Response(
       response,
