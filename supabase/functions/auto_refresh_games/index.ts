@@ -96,6 +96,25 @@ interface OddsEvent {
 }
 
 /**
+ * Score data from Odds API response.
+ */
+interface ScoreTeam {
+  name: string;
+  score: string;
+}
+
+interface ScoreEvent {
+  id: string;
+  sport_key: string;
+  sport_title: string;
+  commence_time: string;
+  completed: boolean;
+  home_team: string;
+  away_team: string;
+  scores: ScoreTeam[] | null;
+}
+
+/**
  * Fetches odds from The Odds API for a given sport.
  */
 async function fetchOddsFromApi(
@@ -112,6 +131,28 @@ async function fetchOddsFromApi(
 
   if (!response.ok) {
     throw new Error(`Odds API error: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Fetches scores from The Odds API for a given sport.
+ * Returns scores for games within the last few days.
+ */
+async function fetchScoresFromApi(
+  apiKey: string,
+  sportKey: string,
+  daysFrom: number = 3
+): Promise<ScoreEvent[]> {
+  const url = new URL(`https://api.the-odds-api.com/v4/sports/${sportKey}/scores/`);
+  url.searchParams.set('apiKey', apiKey);
+  url.searchParams.set('daysFrom', String(daysFrom));
+
+  const response = await fetch(url.toString());
+
+  if (!response.ok) {
+    throw new Error(`Scores API error: ${response.status} ${response.statusText}`);
   }
 
   return await response.json();
@@ -518,6 +559,146 @@ Deno.serve(async (req) => {
         }
       }
 
+      // ========================================
+      // US-005: Score Refresh Logic
+      // ========================================
+      let scoresRefreshed = 0;
+      const scoreErrors: { eventId: string; error: string }[] = [];
+
+      // Group games by sport key for score fetching
+      const gamesForScoresBySportKey = new Map<string, SelectedGame[]>();
+      for (const game of finalSelection) {
+        // Only fetch scores for games that have an external_id (imported from API)
+        if (!game.external_id) {
+          console.log(`Skipping score refresh for ${game.id} - no external_id`);
+          continue;
+        }
+
+        // Get the sport API key
+        const sportKey = getSportApiKey(game.sport, game.league);
+        if (!sportKey) {
+          console.log(`Unknown sport/league mapping for scores: ${game.sport}/${game.league}`);
+          scoreErrors.push({
+            eventId: game.id,
+            error: `Unknown sport/league mapping: ${game.sport}/${game.league}`,
+          });
+          continue;
+        }
+
+        const existing = gamesForScoresBySportKey.get(sportKey) || [];
+        existing.push(game);
+        gamesForScoresBySportKey.set(sportKey, existing);
+      }
+
+      // Fetch scores for each sport and update events
+      for (const [sportKey, games] of gamesForScoresBySportKey) {
+        try {
+          console.log(`Fetching scores for sport: ${sportKey}`);
+          const scoreEvents = await fetchScoresFromApi(oddsApiKey, sportKey, 3);
+
+          for (const game of games) {
+            try {
+              // Find matching score event by external_id
+              const scoreEvent = scoreEvents.find((e) => e.id === game.external_id);
+              if (!scoreEvent) {
+                console.log(`No scores found for event ${game.id} (external_id: ${game.external_id})`);
+                continue;
+              }
+
+              // Parse scores from the response
+              let homeScore: number | null = null;
+              let awayScore: number | null = null;
+
+              if (scoreEvent.scores && scoreEvent.scores.length > 0) {
+                const homeTeamScore = scoreEvent.scores.find((s) => s.name === scoreEvent.home_team);
+                const awayTeamScore = scoreEvent.scores.find((s) => s.name === scoreEvent.away_team);
+
+                if (homeTeamScore?.score) {
+                  homeScore = parseInt(homeTeamScore.score, 10);
+                  if (isNaN(homeScore)) homeScore = null;
+                }
+                if (awayTeamScore?.score) {
+                  awayScore = parseInt(awayTeamScore.score, 10);
+                  if (isNaN(awayScore)) awayScore = null;
+                }
+              }
+
+              // Build update object
+              const refreshTimestamp = now.toISOString();
+              const updateData: Record<string, unknown> = {
+                last_auto_score_refresh: refreshTimestamp,
+              };
+
+              // Update scores if available
+              if (homeScore !== null) {
+                updateData.home_score = homeScore;
+              }
+              if (awayScore !== null) {
+                updateData.away_score = awayScore;
+              }
+
+              // If game is completed, set status to final and build final_score string
+              if (scoreEvent.completed && homeScore !== null && awayScore !== null) {
+                updateData.status = 'final';
+                // Format: away-home (matches Swift convention)
+                updateData.final_score = `${awayScore}-${homeScore}`;
+              }
+
+              // Update the event
+              const { error: updateError } = await client
+                .from('events')
+                .update(updateData)
+                .eq('id', game.id);
+
+              if (updateError) {
+                console.error(`Error updating scores for ${game.id}:`, updateError);
+                scoreErrors.push({ eventId: game.id, error: 'Failed to update scores' });
+                continue;
+              }
+
+              // Emit audit event for successful score refresh
+              if (game.bookie_auth_user_id) {
+                await emitAuditEvent(client, {
+                  bookieId: game.bookie_id,
+                  actorUserId: game.bookie_auth_user_id,
+                  entityType: 'event',
+                  entityId: game.id,
+                  actionType: 'score_refreshed_auto',
+                  previousState: null,
+                  newState: {
+                    home_score: homeScore,
+                    away_score: awayScore,
+                    completed: scoreEvent.completed,
+                    status: scoreEvent.completed ? 'final' : game.status,
+                    last_auto_score_refresh: refreshTimestamp,
+                  },
+                });
+              }
+
+              scoresRefreshed++;
+              console.log(`Successfully refreshed scores for event ${game.id}: ${awayScore}-${homeScore} (completed: ${scoreEvent.completed})`);
+            } catch (gameError) {
+              console.error(`Error refreshing scores for game ${game.id}:`, gameError);
+              scoreErrors.push({
+                eventId: game.id,
+                error: gameError instanceof Error ? gameError.message : 'Unknown error',
+              });
+              // Continue processing other games
+            }
+          }
+        } catch (sportError) {
+          console.error(`Error fetching scores for sport ${sportKey}:`, sportError);
+          // Add errors for all games that couldn't be refreshed
+          for (const game of games) {
+            scoreErrors.push({
+              eventId: game.id,
+              error: `Scores API error for ${sportKey}: ${sportError instanceof Error ? sportError.message : 'Unknown error'}`,
+            });
+          }
+          // Continue processing other sports
+        }
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -525,6 +706,8 @@ Deno.serve(async (req) => {
           selected_games: finalSelection,
           odds_refreshed: oddsRefreshed,
           odds_errors: oddsErrors,
+          scores_refreshed: scoresRefreshed,
+          score_errors: scoreErrors,
         }),
         {
           status: 200,
