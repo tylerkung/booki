@@ -565,6 +565,12 @@ Deno.serve(async (req) => {
       let scoresRefreshed = 0;
       const scoreErrors: { eventId: string; error: string }[] = [];
 
+      // ========================================
+      // US-006: Track finalized events for bet transition
+      // ========================================
+      let eventsFinalized = 0;
+      let betsTransitioned = 0;
+
       // Group games by sport key for score fetching
       const gamesForScoresBySportKey = new Map<string, SelectedGame[]>();
       for (const game of finalSelection) {
@@ -677,6 +683,79 @@ Deno.serve(async (req) => {
 
               scoresRefreshed++;
               console.log(`Successfully refreshed scores for event ${game.id}: ${awayScore}-${homeScore} (completed: ${scoreEvent.completed})`);
+
+              // ========================================
+              // US-006: Auto-transition bets when event finalizes
+              // ========================================
+              if (scoreEvent.completed && homeScore !== null && awayScore !== null) {
+                // Event just became final - transition accepted bets to readyToGrade
+                try {
+                  // Query all bets for this event with status 'accepted'
+                  const { data: acceptedBets, error: betsQueryError } = await client
+                    .from('bets')
+                    .select('id')
+                    .eq('event_id', game.id)
+                    .eq('status', 'accepted');
+
+                  if (betsQueryError) {
+                    console.error(`Error querying accepted bets for event ${game.id}:`, betsQueryError);
+                  } else if (acceptedBets && acceptedBets.length > 0) {
+                    // Update bets to readyToGrade
+                    const betIds = acceptedBets.map((b) => b.id);
+                    const { error: betsUpdateError } = await client
+                      .from('bets')
+                      .update({ status: 'readyToGrade' })
+                      .in('id', betIds);
+
+                    if (betsUpdateError) {
+                      console.error(`Error updating bets to readyToGrade for event ${game.id}:`, betsUpdateError);
+                    } else {
+                      betsTransitioned += acceptedBets.length;
+                      eventsFinalized++;
+                      console.log(`Transitioned ${acceptedBets.length} bets to readyToGrade for event ${game.id}`);
+
+                      // Emit audit event for event finalization with bet count
+                      if (game.bookie_auth_user_id) {
+                        await emitAuditEvent(client, {
+                          bookieId: game.bookie_id,
+                          actorUserId: game.bookie_auth_user_id,
+                          entityType: 'event',
+                          entityId: game.id,
+                          actionType: 'event_finalized_auto',
+                          previousState: null,
+                          newState: {
+                            final_score: `${awayScore}-${homeScore}`,
+                            bets_transitioned: acceptedBets.length,
+                          },
+                        });
+                      }
+                    }
+                  } else {
+                    // Event finalized but no accepted bets
+                    eventsFinalized++;
+                    console.log(`Event ${game.id} finalized but no accepted bets to transition`);
+
+                    // Still emit audit event for tracking
+                    if (game.bookie_auth_user_id) {
+                      await emitAuditEvent(client, {
+                        bookieId: game.bookie_id,
+                        actorUserId: game.bookie_auth_user_id,
+                        entityType: 'event',
+                        entityId: game.id,
+                        actionType: 'event_finalized_auto',
+                        previousState: null,
+                        newState: {
+                          final_score: `${awayScore}-${homeScore}`,
+                          bets_transitioned: 0,
+                        },
+                      });
+                    }
+                  }
+                } catch (betTransitionError) {
+                  console.error(`Error transitioning bets for event ${game.id}:`, betTransitionError);
+                  // Don't fail the whole score refresh for bet transition errors
+                }
+              }
             } catch (gameError) {
               console.error(`Error refreshing scores for game ${game.id}:`, gameError);
               scoreErrors.push({
@@ -708,6 +787,8 @@ Deno.serve(async (req) => {
           odds_errors: oddsErrors,
           scores_refreshed: scoresRefreshed,
           score_errors: scoreErrors,
+          events_finalized: eventsFinalized,
+          bets_transitioned: betsTransitioned,
         }),
         {
           status: 200,
