@@ -193,7 +193,7 @@ struct FetchScoresView: View {
 
         do {
             for sportKey in sportKeys {
-                let scores = try await oddsService.fetchScores(sport: sportKey, daysFrom: 3)
+                let scores = try await oddsService.fetchScores(sport: sportKey, daysFrom: 7)
                 totalChecked += scores.count
 
                 let updated = updateEventsWithScores(scores)
@@ -275,6 +275,14 @@ struct FetchScoresView: View {
             "Hockey-NHL": "icehockey_nhl",
             "Soccer-EPL": "soccer_epl",
             "Soccer-MLS": "soccer_usa_mls",
+            "Soccer-Bundesliga": "soccer_germany_bundesliga",
+            "Soccer-La Liga": "soccer_spain_la_liga",
+            "Soccer-Serie A": "soccer_italy_serie_a",
+            "Soccer-Ligue 1": "soccer_france_ligue_one",
+            "MMA-UFC": "mma_mixed_martial_arts",
+            "Boxing-Boxing": "boxing_boxing",
+            "Golf-PGA": "golf_pga_championship",
+            "Tennis-ATP": "tennis_atp_australian_open",
         ]
 
         let key = "\(event.sport)-\(event.league)"
