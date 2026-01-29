@@ -1,6 +1,22 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
+import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
+
+/**
+ * Generates an idempotency key for auto-refresh operations.
+ * Format: auto_refresh_{YYYY-MM-DD}_{window}
+ * Window is 'morning' (before 12:00 UTC) or 'afternoon' (12:00 UTC and later)
+ */
+function generateIdempotencyKey(): string {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
+  const window = now.getUTCHours() < 12 ? 'morning' : 'afternoon';
+  return `auto_refresh_${dateStr}_${window}`;
+}
 
 /**
  * auto_refresh_games Edge Function
@@ -277,6 +293,22 @@ Deno.serve(async (req) => {
 
     const client = createServiceClient();
 
+    // ========================================
+    // US-007: Idempotency Check
+    // ========================================
+    const idempotencyKey = generateIdempotencyKey();
+    const operation = 'auto_refresh_games';
+
+    // Check if this refresh window has already been processed
+    const cachedResponse = await checkIdempotency(client, idempotencyKey, operation);
+    if (cachedResponse) {
+      console.log(`Idempotency key ${idempotencyKey} already exists, returning cached response`);
+      return new Response(cachedResponse, {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Query games that meet the selection criteria:
     // 1. Has at least one accepted bet
     // 2. Status is not 'final', 'live', or 'canceled' (i.e., still eligible for refresh)
@@ -310,18 +342,23 @@ Deno.serve(async (req) => {
       }
 
       if (!eventsWithBets || eventsWithBets.length === 0) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            message: 'No games with accepted bets found',
-            games_selected: 0,
-            selected_games: [],
-          }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
+        const responseBody = {
+          success: true,
+          message: 'No games with accepted bets found',
+          games_selected: 0,
+          odds_refreshed: 0,
+          scores_refreshed: 0,
+          events_finalized: 0,
+          bets_transitioned: 0,
+          errors: [],
+        };
+        const responseString = JSON.stringify(responseBody);
+        // Store idempotency key even for empty results
+        await storeIdempotency(client, idempotencyKey, operation, 'system', responseString);
+        return new Response(responseString, {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
       // Aggregate bet data by event_id
@@ -362,18 +399,23 @@ Deno.serve(async (req) => {
       }
 
       if (!events || events.length === 0) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            message: 'No eligible games found for refresh',
-            games_selected: 0,
-            selected_games: [],
-          }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
+        const responseBody = {
+          success: true,
+          message: 'No eligible games found for refresh',
+          games_selected: 0,
+          odds_refreshed: 0,
+          scores_refreshed: 0,
+          events_finalized: 0,
+          bets_transitioned: 0,
+          errors: [],
+        };
+        const responseString = JSON.stringify(responseBody);
+        // Store idempotency key even for empty results
+        await storeIdempotency(client, idempotencyKey, operation, 'system', responseString);
+        return new Response(responseString, {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
       // Combine event data with aggregate bet data
@@ -778,23 +820,69 @@ Deno.serve(async (req) => {
         }
       }
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          games_selected: finalSelection.length,
-          selected_games: finalSelection,
-          odds_refreshed: oddsRefreshed,
-          odds_errors: oddsErrors,
-          scores_refreshed: scoresRefreshed,
-          score_errors: scoreErrors,
-          events_finalized: eventsFinalized,
-          bets_transitioned: betsTransitioned,
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      // ========================================
+      // US-007: Emit auto_refresh_failed audit events for errors
+      // ========================================
+      const allErrors: { eventId: string; error: string; type: 'odds' | 'scores' }[] = [
+        ...oddsErrors.map((e) => ({ ...e, type: 'odds' as const })),
+        ...scoreErrors.map((e) => ({ ...e, type: 'scores' as const })),
+      ];
+
+      // Emit audit events for each error
+      for (const errorEntry of allErrors) {
+        // Find the game to get bookie info for the audit event
+        const game = finalSelection.find((g) => g.id === errorEntry.eventId);
+        if (game?.bookie_auth_user_id) {
+          try {
+            await emitAuditEvent(client, {
+              bookieId: game.bookie_id,
+              actorUserId: game.bookie_auth_user_id,
+              entityType: 'event',
+              entityId: errorEntry.eventId,
+              actionType: 'auto_refresh_failed',
+              previousState: null,
+              newState: {
+                error_type: errorEntry.type,
+                error_message: errorEntry.error,
+                idempotency_key: idempotencyKey,
+              },
+            });
+          } catch (auditError) {
+            console.error(`Error emitting auto_refresh_failed audit event for ${errorEntry.eventId}:`, auditError);
+          }
         }
+      }
+
+      // Build response object
+      const responseBody = {
+        success: true,
+        games_selected: finalSelection.length,
+        odds_refreshed: oddsRefreshed,
+        scores_refreshed: scoresRefreshed,
+        events_finalized: eventsFinalized,
+        bets_transitioned: betsTransitioned,
+        errors: allErrors,
+      };
+
+      const responseString = JSON.stringify(responseBody);
+
+      // ========================================
+      // US-007: Store idempotency key with response
+      // ========================================
+      // Use a system user ID for auto refresh operations (no specific user)
+      await storeIdempotency(
+        client,
+        idempotencyKey,
+        operation,
+        'system', // Auto-refresh is a system operation, not tied to a specific user
+        responseString
       );
+      console.log(`Stored idempotency key: ${idempotencyKey}`);
+
+      return new Response(responseString, {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // If RPC exists and works
