@@ -191,10 +191,24 @@ struct FetchScoresView: View {
         var totalUpdated = 0
         var totalChecked = 0
 
+        // Debug: Log imported events info
+        print("DEBUG: Total imported events: \(importedEvents.count)")
+        print("DEBUG: Sport keys to query: \(sportKeys)")
+        for event in importedEvents {
+            print("DEBUG: Event - \(event.awayTeam) @ \(event.homeTeam), externalId: \(event.externalId ?? "nil"), sport: \(event.sport), league: \(event.league), status: \(event.status)")
+        }
+
         do {
             for sportKey in sportKeys {
+                print("DEBUG: Fetching scores for sportKey: \(sportKey)")
                 let scores = try await oddsService.fetchScores(sport: sportKey, daysFrom: 7)
+                print("DEBUG: API returned \(scores.count) scores for \(sportKey)")
                 totalChecked += scores.count
+
+                // Debug: Log first few scores
+                for score in scores.prefix(3) {
+                    print("DEBUG: Score - id: \(score.id), \(score.awayTeam) @ \(score.homeTeam), completed: \(score.completed ?? false)")
+                }
 
                 let updated = updateEventsWithScores(scores)
                 totalUpdated += updated
@@ -228,16 +242,21 @@ struct FetchScoresView: View {
         for score in scores {
             // Find matching event by external ID
             guard let event = importedEvents.first(where: { $0.externalId == score.id }) else {
+                print("DEBUG: No local event found for score id: \(score.id)")
                 continue
             }
 
+            print("DEBUG: Found matching event for \(score.awayTeam) @ \(score.homeTeam)")
+
             // Skip if already completed with scores
             if event.status == .final && event.homeScore != nil && event.awayScore != nil {
+                print("DEBUG: Skipping - already has scores")
                 continue
             }
 
             // Parse scores
             if let teamScores = score.scores {
+                print("DEBUG: Score has teamScores: \(teamScores.map { "\($0.name): \($0.score ?? "nil")" })")
                 let homeScoreValue = teamScores.first(where: { $0.name == score.homeTeam })
                 let awayScoreValue = teamScores.first(where: { $0.name == score.awayTeam })
 
@@ -246,6 +265,7 @@ struct FetchScoresView: View {
                    let home = Int(homeStr),
                    let away = Int(awayStr) {
 
+                    print("DEBUG: Updating event with scores: \(away)-\(home)")
                     event.homeScore = home
                     event.awayScore = away
                     event.status = .final
@@ -254,7 +274,11 @@ struct FetchScoresView: View {
                     event.version += 1
 
                     updatedCount += 1
+                } else {
+                    print("DEBUG: Could not parse scores - homeStr: \(homeScoreValue?.score ?? "nil"), awayStr: \(awayScoreValue?.score ?? "nil")")
                 }
+            } else {
+                print("DEBUG: Score has no teamScores (game not completed?), completed: \(score.completed ?? false)")
             }
         }
 
