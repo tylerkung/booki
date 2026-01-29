@@ -14,17 +14,15 @@ struct RefreshOddsView: View {
     @State private var errorMessage: String?
     @State private var refreshResult: RefreshResult?
 
-    /// Events that were imported from the API and start within 24 hours
+    /// Events that were imported from the API and haven't started yet
     private var eligibleEvents: [Event] {
         let now = Date()
-        let tomorrow = now.addingTimeInterval(24 * 60 * 60)
 
         return events.filter { event in
             event.externalId != nil &&
             event.externalSource == "the-odds-api" &&
             event.status == .scheduled &&
-            event.startTime > now &&
-            event.startTime <= tomorrow
+            event.startTime > now
         }
     }
 
