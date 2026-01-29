@@ -19,6 +19,15 @@ struct EventDetailView: View {
         self._selectedStatus = State(initialValue: event.status)
     }
 
+    // MARK: - Formatters
+
+    /// Formatter for relative time display (e.g., "2 hours ago")
+    private var relativeFormatter: RelativeDateTimeFormatter {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }
+
     // MARK: - Computed Properties
 
     /// All bets for this event
@@ -201,6 +210,35 @@ struct EventDetailView: View {
                         if let sideBets = betsBySide[side] {
                             LiabilitySideRow(side: side, bets: sideBets)
                         }
+                    }
+                }
+            }
+
+            // MARK: - Auto Refresh Section
+            Section("Auto Refresh") {
+                HStack {
+                    Text("Last odds refresh:")
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    if let lastOdds = event.lastAutoOddsRefresh {
+                        Text(relativeFormatter.localizedString(for: lastOdds, relativeTo: Date()))
+                            .foregroundStyle(Theme.textPrimary)
+                    } else {
+                        Text("Never")
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                }
+
+                HStack {
+                    Text("Last score refresh:")
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    if let lastScore = event.lastAutoScoreRefresh {
+                        Text(relativeFormatter.localizedString(for: lastScore, relativeTo: Date()))
+                            .foregroundStyle(Theme.textPrimary)
+                    } else {
+                        Text("Never")
+                            .foregroundStyle(Theme.textMuted)
                     }
                 }
             }
