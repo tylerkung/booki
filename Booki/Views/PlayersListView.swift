@@ -31,6 +31,7 @@ struct PlayersListView: View {
 
     @State private var showArchived = false
     @State private var showingAddPlayer = false
+    @State private var showingAddPlayerInterstitial = false
     @State private var collectionFilter: CollectionFilter = .all
 
     private var filteredPlayers: [Player] {
@@ -135,7 +136,7 @@ struct PlayersListView: View {
 
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        showingAddPlayer = true
+                        showingAddPlayerInterstitial = true
                     } label: {
                         Label("Add Player", systemImage: "plus")
                     }
@@ -146,6 +147,9 @@ struct PlayersListView: View {
             }
             .sheet(isPresented: $showingAddPlayer) {
                 AddPlayerSheet()
+            }
+            .sheet(isPresented: $showingAddPlayerInterstitial) {
+                AddPlayerInterstitialSheet(showingAddPlayer: $showingAddPlayer)
             }
         }
     }
@@ -1295,6 +1299,138 @@ struct AddPlayerSheet: View {
         }
 
         dismiss()
+    }
+}
+
+// MARK: - Add Player Interstitial Sheet
+
+struct AddPlayerInterstitialSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var showingAddPlayer: Bool
+
+    @State private var showingComingSoonAlert = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.system(size: 48))
+                        .foregroundStyle(Theme.accent)
+
+                    Text("Add to Your Book")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text("Choose how you want to add players")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .padding(.top, 32)
+
+                Spacer()
+
+                // Options
+                VStack(spacing: 16) {
+                    // Add Player option
+                    Button {
+                        dismiss()
+                        // Small delay to let the interstitial dismiss before showing AddPlayerSheet
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            showingAddPlayer = true
+                        }
+                    } label: {
+                        HStack(spacing: 16) {
+                            Image(systemName: "person.fill.badge.plus")
+                                .font(.title2)
+                                .foregroundStyle(Theme.accent)
+                                .frame(width: 44, height: 44)
+                                .background(Theme.accent.opacity(0.15))
+                                .clipShape(Circle())
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Add Player")
+                                    .font(.headline)
+                                    .foregroundStyle(Theme.textPrimary)
+
+                                Text("Create a new player manually")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        .padding()
+                        .background(Theme.cardBackground)
+                        .cornerRadius(Theme.cornerRadius)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                .stroke(Theme.border, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    // Purchase Seats option
+                    Button {
+                        showingComingSoonAlert = true
+                    } label: {
+                        HStack(spacing: 16) {
+                            Image(systemName: "person.3.fill")
+                                .font(.title2)
+                                .foregroundStyle(Theme.gold)
+                                .frame(width: 44, height: 44)
+                                .background(Theme.gold.opacity(0.15))
+                                .clipShape(Circle())
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Purchase Seats")
+                                    .font(.headline)
+                                    .foregroundStyle(Theme.textPrimary)
+
+                                Text("Buy additional player slots")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        .padding()
+                        .background(Theme.cardBackground)
+                        .cornerRadius(Theme.cornerRadius)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                .stroke(Theme.border, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal)
+
+                Spacer()
+            }
+            .background(Theme.background)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+            .alert("Coming Soon", isPresented: $showingComingSoonAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Seat purchasing will be available in a future update.")
+            }
+        }
     }
 }
 
