@@ -1,127 +1,19 @@
 # Ralph Progress Log
-Started: Thu Jan 29 15:59:55 PST 2026
----
+Started: Thu Jan 29 16:58:37 PST 2026
 
 ## Codebase Patterns
-- Edge Functions expect side as 'a' or 'b', not display names - use sideIndicator field
-- BetSlipSelection and BetSlipItem must include sideIndicator for server communication
-- When isAwayTeam is true, use sideA/oddsA (sideIndicator = "a"); when false, use sideB/oddsB (sideIndicator = "b")
-- Dark theme List/Form styling: use `.scrollContentBackground(.hidden)`, `.background(Theme.background)`, and `.listRowBackground(Theme.cardBackground)` on each Section
-
+- BetSlipItem uses Hashable with eventId + marketId + side for unique identification
+- ForEach in SwiftUI requires unique id; when iterating over items that share a property (like marketId), use the item itself as id if it implements Hashable properly
+- Xcode command line tools don't support full builds - use Xcode IDE for typecheck verification
 ---
 
 ## 2026-01-29 - US-001
-- What was implemented: Fixed parlay submission Edge Function error by adding sideIndicator field
-- Files changed:
-  - Booki/Views/GameCardView.swift - Added sideIndicator to BetSlipSelection, updated makeSelection()
-  - Booki/Views/CompactGameRow.swift - Updated makeSelection() calls
-  - Booki/Views/GameDetailView.swift - Updated makeSelection() calls
-  - Booki/Services/BetSlipManager.swift - Added sideIndicator to BetSlipItem
-  - Booki/Views/BetConfirmationSheet.swift - Pass sideIndicator to Edge Function
+- **What was implemented**: Fixed duplicate team display when both moneylines are selected on the same game
+- **Files changed**: Booki/Views/BetSlipSheet.swift
+- **Root cause**: ForEach was using `\.element.marketId` as id, but two moneyline selections (e.g., Hawks ML and Rockets ML) share the same marketId
+- **Fix**: Changed ForEach id from `\.element.marketId` to `\.element` (the BetSlipItem itself), which uses Hashable including eventId + marketId + side
 - **Learnings for future iterations:**
-  - The submit_bet Edge Function validates that side must be exactly 'a' or 'b' (lines 65-69 of submit_bet/index.ts)
-  - Selection side strings like "Lakers -3.5" or "Over 220.5" are display values, not server values
-  - Always check Edge Function validation requirements when debugging submission errors
----
-
-## 2026-01-29 - US-002
-- What was implemented: Auto-close bet slip when 'Clear All' is tapped
-- Files changed:
-  - Booki/Views/BetSlipSheet.swift - Added dismiss() call after clearAll() in Clear All button action
-- **Learnings for future iterations:**
-  - BetSlipSheet uses @Environment(\.dismiss) for sheet dismissal
-  - The Clear All button is in the toolbar (ToolbarItem with .destructiveAction placement)
-  - Individual item removal uses a different code path (onRemove in PremiumBetSlipItemCard)
----
-
-## 2026-01-29 - US-003
-- What was implemented: Prevent conflicting selections in parlays
-- Files changed:
-  - Booki/Services/BetSlipManager.swift - Added hasConflictingSelections computed property and conflictDescription
-  - Booki/Views/BetSlipSheet.swift - Disabled parlay toggle and show warning message when conflicts exist
-- **Learnings for future iterations:**
-  - Conflict detection groups by marketId OR by eventId+marketType combination
-  - Same market with multiple selections = conflict (can't bet both sides)
-  - Same event + same market type (e.g., two ML picks on same game) = conflict
-  - BetSlipManager.add() auto-switches to singles mode if adding creates a conflict while in parlay mode
----
-
-## 2026-01-29 - US-004
-- What was implemented: Show team name with spread on game detail screen
-- Files changed:
-  - Booki/Views/GameDetailView.swift - Updated Main Lines section and Market List section to display full team name + spread (e.g., "OKC -6.5") instead of just the spread value ("-6.5")
-- **Learnings for future iterations:**
-  - market.sideA and market.sideB already contain full team name + spread format (e.g., "Celtics +3.5")
-  - formatSpreadValue() extracts just the spread number - use raw sideA/sideB when team name is needed
-  - GameCardView and CompactGameRow use formatSpreadValue because their buttons are compact (52-60px wide)
-  - GameDetailView has wider buttons that can accommodate full team name + spread
----
-
-## 2026-01-29 - US-005
-- What was implemented: Improved market table typography hierarchy with line values prominent and payout odds de-emphasized
-- Files changed:
-  - Booki/Views/CompactOddsButton.swift - Added showOddsAsSecondary parameter for different typography styles
-  - Booki/Views/CompactGameRow.swift - Updated inline compactOddsButton with two-line layout for spread/total
-  - Booki/Views/GameDetailView.swift - Applied showOddsAsSecondary to mainMarketRow and marketRow functions
-- **Learnings for future iterations:**
-  - CompactOddsButton has two display modes controlled by showOddsAsSecondary parameter
-  - showOddsAsSecondary=true: line value prominent (13pt, bold, textPrimary), odds small (10pt, textMuted)
-  - showOddsAsSecondary=false: odds prominent (used for moneyline where odds ARE the key value)
-  - CompactGameRow has its own inline compactOddsButton that mirrors this pattern
----
-
-## 2026-01-29 - US-006
-- What was implemented: Updated all buttons with Theme.accent background to use dark text (Theme.background) instead of white
-- Files changed:
-  - Booki/Views/PlayerClaimView.swift - Changed 3 buttons (Validate Code, Create Account, Go to Login) from .white to Theme.background
-  - Booki/Views/GradeEventSheet.swift - Changed sport badge, Done button, gradeIndicator, and gradeButton from .white to Theme.background
-  - Booki/Views/ImportEventsView.swift - Changed Import Events list row from .white to Theme.background
-- **Learnings for future iterations:**
-  - Theme.accent (0x00F5D4) is a bright cyan color that needs dark text for readability
-  - Theme.background (0x0A0A12) is the standard dark text color for accent-colored buttons
-  - Reference pattern: GamesView SportTabButton uses `.foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)` on accent background
-  - Some files (BetSlipSheet, WeeklySettlementView) already had correct styling; always audit existing patterns first
-  - Buttons using Color.blue (not Theme.accent) are a different pattern and use white text
----
-
-## 2026-01-29 - US-007
-- What was implemented: Removed navigation titles from Games and Track tabs in player view for cleaner UI
-- Files changed:
-  - Booki/Views/GamesView.swift - Replaced .navigationTitle("Games") and .navigationBarTitleDisplayMode(.inline) with .navigationBarHidden(true)
-  - Booki/Views/TrackView.swift - Replaced .navigationTitle("Track") and .navigationBarTitleDisplayMode(.inline) with .navigationBarHidden(true)
-- **Learnings for future iterations:**
-  - Player tabs are wrapped in PlayerTabView (ContentView.swift) which provides NavigationStack
-  - GamesView and TrackView set their own navigation modifiers that display in that NavigationStack
-  - .navigationBarHidden(true) completely hides the navigation bar, removing the title area
-  - Bookie view tabs (DashboardView, BetsListView, etc.) use their own NavigationStack internally, so they're unaffected
----
-
-## 2026-01-29 - US-008
-- What was implemented: Standardized container background colors by adding .listRowBackground(Theme.cardBackground) to all List/Form sections
-- Files changed:
-  - Booki/Views/PlayersListView.swift - Added listRowBackground to player list rows, all PlayerDetailView sections (6), BalanceAdjustmentSheet (2), AddPlayerSheet (3), PromisedDateSheet (1)
-  - Booki/Views/BetsListView.swift - Added listRowBackground to all BetDetailView sections (8)
-  - Booki/Views/EventsListView.swift - Added listRowBackground to event section groups
-  - Booki/Views/PaymentSheet.swift - Added listRowBackground to all 5 form sections
-  - Booki/Views/SubmitBetView.swift - Added listRowBackground to SubmitBetView (2), MarketSelectionView (3), StakeEntryView (5)
-- **Learnings for future iterations:**
-  - Default iOS List row background is a light gray that doesn't match the dark theme
-  - The fix requires three modifiers on List views: .scrollContentBackground(.hidden), .background(Theme.background), and .listRowBackground(Theme.cardBackground) on each Section
-  - DashboardView was already correctly styled and served as the reference implementation
-  - Views using .listStyle(.plain) may have different behavior but still benefit from listRowBackground
-  - When creating new List/Form views, always include all three modifiers for consistent dark theme
----
-
-## 2026-01-29 - US-009
-- What was implemented: Improved bet ticket display names to show meaningful selection info instead of generic labels
-- Files changed:
-  - Booki/Views/BetsListView.swift - Added betDisplayName helper function, updated BetRowView to show display name prominently, updated BetDetailView navigation title
-  - Booki/Views/TrackView.swift - Added displayName and combinedAmericanOdds properties to Ticket struct, updated TicketHeaderView to use displayName
-  - Booki/Views/TicketDetailView.swift - Updated navigation title to use ticket.displayName
-- **Learnings for future iterations:**
-  - Bet display names should format as: single = "bet.side odds" (e.g., "Lakers ML -150"), parlay = "N-leg parlay +odds" (e.g., "3-leg parlay +450")
-  - The Ticket struct in TrackView.swift holds grouped bets by ticketId and can compute combined parlay odds
-  - American to decimal odds conversion: positive odds = 1 + odds/100, negative odds = 1 + 100/abs(odds)
-  - Decimal to American odds conversion: >= 2.0 = (decimal - 1) * 100, < 2.0 = -100 / (decimal - 1)
-  - BetRowView layout was simplified: display name + status in top row, player name below, event name in muted text, stake at bottom
+  - When ForEach shows duplicate/incorrect items, check the id parameter - it must uniquely identify each item
+  - BetSlipItem's Hashable implementation includes `side` specifically to distinguish different sides of the same market
+  - Two selections on the same market (both sides of ML) are intentionally allowed by the app design
 ---

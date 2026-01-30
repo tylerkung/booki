@@ -1,7 +1,7 @@
 {
   "project": "Booki",
-  "branchName": "ralph/bug-fixes-ui-polish",
-  "description": "Bug fixes and UI polish - Parlay submission, bet slip UX, visual consistency, and display improvements",
+  "branchName": "ralph/bug-fixes-round-2",
+  "description": "Bug fixes round 2 - Bet slip display issues, submission errors, layout fixes, and bet details improvements",
   "techStack": {
     "platform": "iOS 17+",
     "language": "Swift 5.9+",
@@ -13,135 +13,79 @@
   "userStories": [
     {
       "id": "US-001",
-      "title": "Fix Parlay Submission Edge Function Error",
-      "description": "As a player, I want to submit parlays without getting a 'function not found' error so that I can place multi-leg bets.",
+      "title": "Fix Duplicate Team Display When Both Moneylines Selected",
+      "description": "As a player, I want to see the correct team names when I select both moneylines on the same game so that I can clearly identify each selection.",
       "acceptanceCriteria": [
-        "Identify which Edge Function is being called for parlay submissions",
-        "Ensure the function exists and is deployed (likely submit_bet or a missing submit_parlay)",
-        "Parlay submissions complete successfully without NOT_FOUND error",
-        "Error message does not appear twice (fix duplicate error handling)",
+        "When both moneylines are selected (e.g., Hawks ML and Rockets ML), each bet slip item shows the correct team name",
+        "No duplicate team names displayed in bet slip",
+        "Verify the issue is in the display logic (BetSlipSheet) not the selection logic (BetSlipManager)",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Fixed: The issue was that submit_bet Edge Function expects side as 'a' or 'b', but the Swift code was passing the display name (e.g., 'Lakers -3.5'). Added sideIndicator field to BetSlipSelection and BetSlipItem to track the normalized side value, and updated BetConfirmationSheet to pass sideIndicator to the server."
+      "notes": "Fixed ForEach id to use BetSlipItem (which includes side in hash) instead of just marketId"
     },
     {
       "id": "US-002",
-      "title": "Auto-close Bet Slip When Cleared",
-      "description": "As a player, I want the bet slip to automatically close when I clear all selections so that I don't have to manually dismiss an empty slip.",
+      "title": "Fix 'Requested function was not found' Error on Bet Submission",
+      "description": "As a player, I want to submit bets without getting a 'function not found' error so that my bets are placed successfully.",
       "acceptanceCriteria": [
-        "When 'Clear All' is tapped on bet slip, automatically dismiss the sheet after clearing",
-        "Only auto-dismiss when all items are cleared (not when removing individual items)",
+        "Identify which code path is still calling a non-existent Edge Function",
+        "Check all bet submission flows: single bets, parlays, BetSlipSheet, BetConfirmationSheet, SubmitBetView",
+        "Ensure all submissions call the correct submit_bet Edge Function",
+        "Verify the Edge Function is deployed and accessible",
+        "Bet submissions complete successfully without NOT_FOUND error",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Added dismiss() call after betSlipManager.clearAll() in the Clear All button action in BetSlipSheet.swift."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Prevent Conflicting Selections in Parlays",
-      "description": "As a player, I want the app to prevent me from creating a parlay with conflicting selections (opposite sides of the same event) so that I don't accidentally place an impossible bet.",
+      "title": "Fix Overlapping CTAs on Game Table View",
+      "description": "As a player, I want the betting buttons on each game row to be properly spaced so that I can tap them accurately.",
       "acceptanceCriteria": [
-        "Detect when bet slip contains opposite sides of the same market (e.g., Hawks ML and Rockets ML)",
-        "Allow conflicting selections as separate single bets (current behavior, keep as-is)",
-        "Disable/hide parlay option when conflicting selections exist in the bet slip",
-        "Show message explaining why parlay is unavailable (e.g., 'Parlay unavailable: conflicting selections on same game')",
+        "Identify where the overlapping CTAs occur (likely GameCardView, CompactGameRow, or market table)",
+        "Fix spacing/layout so buttons do not overlap",
+        "Ensure buttons are tappable without accidentally hitting adjacent buttons",
+        "Test on various screen sizes",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Added hasConflictingSelections property to BetSlipManager that detects same-market or same-event+marketType conflicts. Parlay button is disabled and warning message shown when conflicts exist. Auto-switches to singles mode if user adds conflicting selection while in parlay mode."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Show Team Name with Spread on Game Detail",
-      "description": "As a player, I want to see the team name next to the spread value so that I can clearly understand which team is favored.",
+      "title": "Fix Background Colors on Player Settings CTAs",
+      "description": "As a player, I want the settings buttons to have consistent styling so that the UI looks cohesive.",
       "acceptanceCriteria": [
-        "Game detail screen shows team name with spread (e.g., 'OKC -6.5' instead of just '-6.5')",
-        "Format: '[Team] [spread]' for both sides (e.g., 'OKC -6.5' and 'HOU +6.5')",
-        "Applies to spread market display in EventDetailView or GameDetailView",
+        "Update 'Account' button/section background to use Theme.cardBackground",
+        "Update 'Test Mode' button/section background to use Theme.cardBackground",
+        "Ensure consistent styling with rest of the app",
+        "Check PlayerMainView or PlayerSettingsView for the affected components",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Updated GameDetailView.swift to pass full sideA/sideB values (which already contain team name + spread) instead of stripping the team name with formatSpreadValue(). Applied to both Main Lines section and Market List section."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Improve Market Table Typography Hierarchy",
-      "description": "As a player, I want the betting lines to be visually prominent with payouts de-emphasized so that I can quickly scan the key numbers.",
+      "title": "Display 'To Win' Amount Alongside Stake on Bet Views",
+      "description": "As a bookie or player, I want to see the potential payout ('To Win') amount alongside the stake so that I can quickly understand the bet's value.",
       "acceptanceCriteria": [
-        "Spread value (e.g., '-3.5') uses current white font style (Theme.textPrimary)",
-        "Moneyline value (e.g., '-230') uses current white font style (Theme.textPrimary)",
-        "Total value (e.g., 'o228.5') uses current white font style (Theme.textPrimary)",
-        "Spread payout odds (e.g., '-118') displayed smaller and grayer underneath the spread line",
-        "Total payout odds (e.g., '-110') displayed smaller and grayer underneath the total line",
-        "Use Theme.textSecondary or Theme.textMuted and smaller font size for payout odds",
+        "Player bet views show 'To Win: $X' alongside the stake",
+        "Bookie bet summary views show 'To Win: $X' alongside the stake",
+        "Calculate 'To Win' based on odds and stake (American odds conversion)",
+        "Update relevant views: BetsListView, TrackView, TicketDetailView, BetDetailView",
+        "Use consistent formatting (e.g., 'Stake: $50 | To Win: $45.45')",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Added showOddsAsSecondary parameter to CompactOddsButton. Spread and Total buttons display line value (e.g., '-3.5', 'o220.5') prominently with Theme.textPrimary, and payout odds smaller in Theme.textMuted underneath. Moneyline unchanged since odds ARE the key value."
-    },
-    {
-      "id": "US-006",
-      "title": "Use Dark Text on Accent-Colored Buttons",
-      "description": "As a user, I want green/accent-colored buttons to have dark text for better readability and visual consistency.",
-      "acceptanceCriteria": [
-        "All buttons with Theme.accent background use dark text (e.g., Theme.background or black)",
-        "Match the style of the 'ALL' filter button as the reference",
-        "Apply consistently across the app (bet slip submit, confirmation buttons, etc.)",
-        "Typecheck passes"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": "Updated all buttons with Theme.accent background to use Theme.background (dark) text instead of .white. Fixed: PlayerClaimView (3 buttons), GradeEventSheet (sport badge, Done button, grade indicator, grade buttons), ImportEventsView (Import button). Other accent buttons in BetSlipSheet and WeeklySettlementView already used correct styling."
-    },
-    {
-      "id": "US-007",
-      "title": "Remove Tab Titles in Player View",
-      "description": "As a player, I want a cleaner interface without redundant titles since the tab bar already indicates the current section.",
-      "acceptanceCriteria": [
-        "Remove 'Games' title from the top of the Games tab in PlayerMainView",
-        "Remove 'Track' title from the top of the Track tab in PlayerMainView",
-        "Only affects player view (bookie view unchanged)",
-        "Typecheck passes"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Replaced .navigationTitle() and .navigationBarTitleDisplayMode(.inline) with .navigationBarHidden(true) in GamesView.swift and TrackView.swift. This hides the navigation bar entirely for player tabs, removing the redundant titles while preserving navigation functionality (via NavigationStack in PlayerTabView wrapper)."
-    },
-    {
-      "id": "US-008",
-      "title": "Standardize Container Background Colors",
-      "description": "As a user, I want consistent container/card colors throughout the app so that the UI feels cohesive.",
-      "acceptanceCriteria": [
-        "Identify the gray container color being used on the Players tab (likely default iOS or incorrect Theme color)",
-        "Identify the correct container color used on the Dashboard tab (likely Theme.cardBackground)",
-        "Update Players list container to use the same color as Dashboard",
-        "Audit other screens for inconsistent container colors and fix",
-        "Ensure all List/Form sections use .listRowBackground(Theme.cardBackground)",
-        "Typecheck passes"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Added .listRowBackground(Theme.cardBackground) to all List/Form sections that were missing it. Updated: PlayersListView (player list rows, PlayerDetailView sections, BalanceAdjustmentSheet, AddPlayerSheet, PromisedDateSheet), BetsListView (BetDetailView sections), EventsListView (event sections), PaymentSheet (all form sections), SubmitBetView (SubmitBetView, MarketSelectionView, StakeEntryView sections). Pattern: List views that use .scrollContentBackground(.hidden) and .background(Theme.background) need .listRowBackground(Theme.cardBackground) on each Section for the dark theme to display correctly."
-    },
-    {
-      "id": "US-009",
-      "title": "Improve Bet Ticket Display Names",
-      "description": "As a bookie or player, I want bet tickets to show meaningful names instead of IDs so that I can quickly understand what the bet is.",
-      "acceptanceCriteria": [
-        "Single bets display the selection name (e.g., 'Lakers ML -150' or 'OKC -6.5 (-110)')",
-        "Parlays display leg count and total odds (e.g., '3-leg parlay +450')",
-        "Update wherever 'Event [UUID]' or similar is displayed (likely BetsListView, TicketDetailView, TrackView)",
-        "Typecheck passes"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Added displayName property to Ticket struct and betDisplayName helper functions. Single bets show 'bet.side odds' (e.g., 'Lakers ML -150'). Parlays show 'N-leg parlay +odds' (e.g., '3-leg parlay +450'). Updated BetsListView (BetRowView shows display name prominently, BetDetailView navigation title), TrackView (TicketHeaderView shows display name), and TicketDetailView (navigation title). The bet display name is now the primary identifier in list views and detail screens."
+      "passes": false,
+      "notes": ""
     }
   ]
 }
