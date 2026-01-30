@@ -124,8 +124,7 @@ struct TrackView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("Track")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
     }
 
     // MARK: - Section Views

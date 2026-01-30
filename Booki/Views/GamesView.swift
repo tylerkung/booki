@@ -209,8 +209,7 @@ struct GamesView: View {
             }
         }
         .background(Theme.background)
-        .navigationTitle("Games")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
         // US-010: Navigate to GameDetailView instead of MarketSelectionView
         .navigationDestination(for: Event.self) { event in
             GameDetailView(player: player, event: event)
