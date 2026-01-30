@@ -68,3 +68,17 @@ Started: Thu Jan 29 15:59:55 PST 2026
   - showOddsAsSecondary=false: odds prominent (used for moneyline where odds ARE the key value)
   - CompactGameRow has its own inline compactOddsButton that mirrors this pattern
 ---
+
+## 2026-01-29 - US-006
+- What was implemented: Updated all buttons with Theme.accent background to use dark text (Theme.background) instead of white
+- Files changed:
+  - Booki/Views/PlayerClaimView.swift - Changed 3 buttons (Validate Code, Create Account, Go to Login) from .white to Theme.background
+  - Booki/Views/GradeEventSheet.swift - Changed sport badge, Done button, gradeIndicator, and gradeButton from .white to Theme.background
+  - Booki/Views/ImportEventsView.swift - Changed Import Events list row from .white to Theme.background
+- **Learnings for future iterations:**
+  - Theme.accent (0x00F5D4) is a bright cyan color that needs dark text for readability
+  - Theme.background (0x0A0A12) is the standard dark text color for accent-colored buttons
+  - Reference pattern: GamesView SportTabButton uses `.foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)` on accent background
+  - Some files (BetSlipSheet, WeeklySettlementView) already had correct styling; always audit existing patterns first
+  - Buttons using Color.blue (not Theme.accent) are a different pattern and use white text
+---

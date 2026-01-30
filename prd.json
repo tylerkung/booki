@@ -96,8 +96,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Updated all buttons with Theme.accent background to use Theme.background (dark) text instead of .white. Fixed: PlayerClaimView (3 buttons), GradeEventSheet (sport badge, Done button, grade indicator, grade buttons), ImportEventsView (Import button). Other accent buttons in BetSlipSheet and WeeklySettlementView already used correct styling."
     },
     {
       "id": "US-007",
