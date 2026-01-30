@@ -82,3 +82,15 @@ Started: Thu Jan 29 15:59:55 PST 2026
   - Some files (BetSlipSheet, WeeklySettlementView) already had correct styling; always audit existing patterns first
   - Buttons using Color.blue (not Theme.accent) are a different pattern and use white text
 ---
+
+## 2026-01-29 - US-007
+- What was implemented: Removed navigation titles from Games and Track tabs in player view for cleaner UI
+- Files changed:
+  - Booki/Views/GamesView.swift - Replaced .navigationTitle("Games") and .navigationBarTitleDisplayMode(.inline) with .navigationBarHidden(true)
+  - Booki/Views/TrackView.swift - Replaced .navigationTitle("Track") and .navigationBarTitleDisplayMode(.inline) with .navigationBarHidden(true)
+- **Learnings for future iterations:**
+  - Player tabs are wrapped in PlayerTabView (ContentView.swift) which provides NavigationStack
+  - GamesView and TrackView set their own navigation modifiers that display in that NavigationStack
+  - .navigationBarHidden(true) completely hides the navigation bar, removing the title area
+  - Bookie view tabs (DashboardView, BetsListView, etc.) use their own NavigationStack internally, so they're unaffected
+---

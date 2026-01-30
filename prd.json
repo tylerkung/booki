@@ -110,8 +110,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Replaced .navigationTitle() and .navigationBarTitleDisplayMode(.inline) with .navigationBarHidden(true) in GamesView.swift and TrackView.swift. This hides the navigation bar entirely for player tabs, removing the redundant titles while preserving navigation functionality (via NavigationStack in PlayerTabView wrapper)."
     },
     {
       "id": "US-008",
