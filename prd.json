@@ -65,8 +65,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Updated GameDetailView.swift to pass full sideA/sideB values (which already contain team name + spread) instead of stripping the team name with formatSpreadValue(). Applied to both Main Lines section and Market List section."
     },
     {
       "id": "US-005",

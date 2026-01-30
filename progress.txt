@@ -44,3 +44,14 @@ Started: Thu Jan 29 15:59:55 PST 2026
   - Same event + same market type (e.g., two ML picks on same game) = conflict
   - BetSlipManager.add() auto-switches to singles mode if adding creates a conflict while in parlay mode
 ---
+
+## 2026-01-29 - US-004
+- What was implemented: Show team name with spread on game detail screen
+- Files changed:
+  - Booki/Views/GameDetailView.swift - Updated Main Lines section and Market List section to display full team name + spread (e.g., "OKC -6.5") instead of just the spread value ("-6.5")
+- **Learnings for future iterations:**
+  - market.sideA and market.sideB already contain full team name + spread format (e.g., "Celtics +3.5")
+  - formatSpreadValue() extracts just the spread number - use raw sideA/sideB when team name is needed
+  - GameCardView and CompactGameRow use formatSpreadValue because their buttons are compact (52-60px wide)
+  - GameDetailView has wider buttons that can accommodate full team name + spread
+---
