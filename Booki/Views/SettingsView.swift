@@ -259,8 +259,18 @@ struct SettingsView: View {
                     Button(role: .destructive) {
                         showingLogoutConfirmation = true
                     } label: {
-                        Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        HStack {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                            Text("Log Out")
+                        }
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Theme.danger)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
+                    .buttonStyle(.plain)
                 } header: {
                     Text("Account")
                 } footer: {
