@@ -46,3 +46,15 @@ Started: Thu Jan 29 16:58:37 PST 2026
   - CompactGameRow uses `oddsButtonWidth` (52pt) and `oddsButtonHeight` (44pt) as constants - always use these constants for consistency
   - Row heights should accommodate their content; hard-coded values can become misaligned with component dimensions
 ---
+
+## 2026-01-29 - US-004
+- **What was implemented**: Fixed background colors on Player Settings CTAs
+- **Files changed**: Booki/ContentView.swift
+- **Root cause**: `PlayerSettingsContent` (the player settings view in Test Mode) was missing `.listRowBackground(Theme.cardBackground)` on its sections, causing them to show default iOS colors instead of the dark theme
+- **Fix**: Added `.listRowBackground(Theme.cardBackground)` to both the "Player Account" section and the "Test Mode" section in `PlayerSettingsContent`
+- **Learnings for future iterations:**
+  - All List sections in the app should have `.listRowBackground(Theme.cardBackground)` for consistent dark theme styling
+  - The parent List view needs both `.scrollContentBackground(.hidden)` and `.background(Theme.background)` for full dark theme
+  - PlayerSettingsContent is a separate struct from SettingsView - found in ContentView.swift, not SettingsView.swift
+  - When looking for player-specific views, check ContentView.swift as it contains `playerModeView` and `PlayerSettingsContent`
+---

@@ -68,8 +68,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added .listRowBackground(Theme.cardBackground) to Player Account and Test Mode sections in PlayerSettingsContent (ContentView.swift)"
     },
     {
       "id": "US-005",
