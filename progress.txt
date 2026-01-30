@@ -1,74 +1,21 @@
 # Ralph Progress Log
-Started: Thu Jan 29 16:58:37 PST 2026
+Started: Thu Jan 29 19:02:03 PST 2026
+---
 
 ## Codebase Patterns
-- BetSlipItem uses Hashable with eventId + marketId + side for unique identification
-- ForEach in SwiftUI requires unique id; when iterating over items that share a property (like marketId), use the item itself as id if it implements Hashable properly
-- Xcode command line tools don't support full builds - use Xcode IDE for typecheck verification
-- Edge Functions expect `side` parameter as 'a' or 'b', not team names - use `sideIndicator` from BetSlipItem
-- BetSlipItem has both `side` (display name like "Hawks") and `sideIndicator` ("a" or "b") - use appropriate one based on context
+- PlayerClaimView uses Supabase directly for invite code validation (not local SwiftData) because players don't have local data when claiming
+- When updating Supabase tables directly, use snake_case for column names (e.g., `auth_user_id`, `claimed_at`)
+- Always create a Codable struct with CodingKeys for Supabase responses that use snake_case
+
 ---
 
 ## 2026-01-29 - US-001
-- **What was implemented**: Fixed duplicate team display when both moneylines are selected on the same game
-- **Files changed**: Booki/Views/BetSlipSheet.swift
-- **Root cause**: ForEach was using `\.element.marketId` as id, but two moneyline selections (e.g., Hawks ML and Rockets ML) share the same marketId
-- **Fix**: Changed ForEach id from `\.element.marketId` to `\.element` (the BetSlipItem itself), which uses Hashable including eventId + marketId + side
+- Implemented direct Supabase query for invite code validation in PlayerClaimView
+- Added PlayerClaimRecord struct to decode Supabase response with snake_case CodingKeys
+- Updated createAccount() to update players table in Supabase with auth_user_id, claimed_at, updated_at
+- Files changed: Booki/Views/PlayerClaimView.swift
 - **Learnings for future iterations:**
-  - When ForEach shows duplicate/incorrect items, check the id parameter - it must uniquely identify each item
-  - BetSlipItem's Hashable implementation includes `side` specifically to distinguish different sides of the same market
-  - Two selections on the same market (both sides of ML) are intentionally allowed by the app design
----
-
-## 2026-01-29 - US-002
-- **What was implemented**: Fixed bet submission error by using correct side parameter format for Edge Function
-- **Files changed**: Booki/Views/BetSlipSheet.swift, Booki/Views/SubmitBetView.swift
-- **Root cause**: BetSlipSheet and StakeEntryView were passing `item.side` (team name like "Hawks") to submit_bet Edge Function, but the function expects `side` to be 'a' or 'b'
-- **Fix**:
-  - BetSlipSheet: Changed `side: item.side` to `side: item.sideIndicator`
-  - SubmitBetView: Added `sideIndicator` field to `BetSelection` struct
-  - SubmitBetView: Pass `sideIndicator` when creating BetSelection in continueButton
-  - StakeEntryView: Changed `side: selection.side` to `side: selection.sideIndicator`
-- **Learnings for future iterations:**
-  - Edge Functions validate input strictly - submit_bet requires side as 'a' or 'b', not team names
-  - BetSlipItem has `side` (display) and `sideIndicator` (server) - always use `sideIndicator` for server calls
-  - BetConfirmationSheet was already correct (used `item.sideIndicator`) - can reference as example
-  - When adding new models that pass data to servers, include both display and server-format fields
----
-
-## 2026-01-29 - US-003
-- **What was implemented**: Fixed overlapping CTAs on game table view
-- **Files changed**: Booki/Views/CompactGameRow.swift
-- **Root cause**: The `teamOddsRow` had `.frame(height: 36)` but the odds buttons inside it have `oddsButtonHeight: CGFloat = 44`, causing buttons to overflow their row and overlap with adjacent rows
-- **Fix**: Changed `.frame(height: 36)` to `.frame(height: oddsButtonHeight)` so the row height matches the button height
-- **Learnings for future iterations:**
-  - When buttons appear to overlap, check if the container frame is smaller than the button dimensions
-  - CompactGameRow uses `oddsButtonWidth` (52pt) and `oddsButtonHeight` (44pt) as constants - always use these constants for consistency
-  - Row heights should accommodate their content; hard-coded values can become misaligned with component dimensions
----
-
-## 2026-01-29 - US-004
-- **What was implemented**: Fixed background colors on Player Settings CTAs
-- **Files changed**: Booki/ContentView.swift
-- **Root cause**: `PlayerSettingsContent` (the player settings view in Test Mode) was missing `.listRowBackground(Theme.cardBackground)` on its sections, causing them to show default iOS colors instead of the dark theme
-- **Fix**: Added `.listRowBackground(Theme.cardBackground)` to both the "Player Account" section and the "Test Mode" section in `PlayerSettingsContent`
-- **Learnings for future iterations:**
-  - All List sections in the app should have `.listRowBackground(Theme.cardBackground)` for consistent dark theme styling
-  - The parent List view needs both `.scrollContentBackground(.hidden)` and `.background(Theme.background)` for full dark theme
-  - PlayerSettingsContent is a separate struct from SettingsView - found in ContentView.swift, not SettingsView.swift
-  - When looking for player-specific views, check ContentView.swift as it contains `playerModeView` and `PlayerSettingsContent`
----
-
-## 2026-01-29 - US-005
-- **What was implemented**: Added 'To Win' amount display alongside stake on bet views
-- **Files changed**: Booki/Views/BetsListView.swift, Booki/Views/PlayerMainView.swift
-- **Root cause**: BetRowView (bookie bet list) and PlayerBetCard (player bet list) only showed stake, not potential payout
-- **Fix**:
-  - BetRowView: Added `potentialPayout` and `formattedPotentialPayout` computed properties using `LiabilityService.calculatePayout()`. Updated bottom row to show "Stake: $X • To Win: $Y"
-  - PlayerBetCard: Same changes - added payout calculations and updated pick details row
-- **Learnings for future iterations:**
-  - Use `LiabilityService.calculatePayout(stake:odds:)` for calculating potential winnings from American odds
-  - TrackView, TicketDetailView, and BetDetailView already had "To Win" displays implemented
-  - Format: "Stake: $X • To Win: $Y" provides clear, scannable information at a glance
-  - BetRowView is in BetsListView.swift, PlayerBetCard is in PlayerMainView.swift
+  - Players claiming accounts don't have local SwiftData records - must query Supabase directly
+  - The invite code flow validates against Supabase, creates auth user, then updates players table with auth_user_id
+  - ISO8601DateFormatter is needed for date strings sent to Supabase
 ---

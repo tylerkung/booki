@@ -1,91 +1,85 @@
 {
   "project": "Booki",
-  "branchName": "ralph/bug-fixes-round-2",
-  "description": "Bug fixes round 2 - Bet slip display issues, submission errors, layout fixes, and bet details improvements",
-  "techStack": {
-    "platform": "iOS 17+",
-    "language": "Swift 5.9+",
-    "ui": "SwiftUI",
-    "persistence": "SwiftData (local-first) + Supabase (cloud)",
-    "architecture": "MVVM with Services layer",
-    "serverFunctions": "Supabase Edge Functions (Deno/TypeScript)"
-  },
+  "branchName": "ralph/auth-fixes-v1",
+  "description": "Fix player invite/claim authentication flow and improve player management UX",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Fix Duplicate Team Display When Both Moneylines Selected",
-      "description": "As a player, I want to see the correct team names when I select both moneylines on the same game so that I can clearly identify each selection.",
+      "title": "Fix PlayerClaimView to link auth_user_id to player record",
+      "description": "As a player claiming an invite, I want my auth credentials linked to my existing player record so the system knows I'm a player.",
       "acceptanceCriteria": [
-        "When both moneylines are selected (e.g., Hawks ML and Rockets ML), each bet slip item shows the correct team name",
-        "No duplicate team names displayed in bet slip",
-        "Verify the issue is in the display logic (BetSlipSheet) not the selection logic (BetSlipManager)",
+        "PlayerClaimView validates invite code and retrieves the existing player record",
+        "After successful Supabase auth signup, update the player's auth_user_id in Supabase",
+        "Use Supabase client to update players table: set auth_user_id = new auth user's ID where invite_code matches",
+        "Show appropriate error if invite code is invalid or expired",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Fixed ForEach id to use BetSlipItem (which includes side in hash) instead of just marketId"
+      "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Fix 'Requested function was not found' Error on Bet Submission",
-      "description": "As a player, I want to submit bets without getting a 'function not found' error so that my bets are placed successfully.",
+      "title": "Update AuthManager to detect player role and route correctly",
+      "description": "As a player logging in, I want to be routed to the player experience (PlayerMainView) instead of the bookie experience.",
       "acceptanceCriteria": [
-        "Identify which code path is still calling a non-existent Edge Function",
-        "Check all bet submission flows: single bets, parlays, BetSlipSheet, BetConfirmationSheet, SubmitBetView",
-        "Ensure all submissions call the correct submit_bet Edge Function",
-        "Verify the Edge Function is deployed and accessible",
-        "Bet submissions complete successfully without NOT_FOUND error",
+        "AuthManager checks if authenticated user has a player record (auth_user_id matches) in Supabase",
+        "If player record exists, set userRole = .player and currentPlayerId",
+        "If no player record but bookie record exists, set userRole = .bookie (current behavior)",
+        "AuthGateView routes to PlayerMainView when userRole is .player",
+        "Player can log out and log back in, still routed correctly",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Fixed by using sideIndicator ('a' or 'b') instead of side (team name) in BetSlipSheet and SubmitBetView. The Edge Function validates side must be 'a' or 'b'."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Fix Overlapping CTAs on Game Table View",
-      "description": "As a player, I want the betting buttons on each game row to be properly spaced so that I can tap them accurately.",
+      "title": "Move logout button to SettingsView main screen",
+      "description": "As a user, I want to see the logout button on the main settings screen so I can easily log out.",
       "acceptanceCriteria": [
-        "Identify where the overlapping CTAs occur (likely GameCardView, CompactGameRow, or market table)",
-        "Fix spacing/layout so buttons do not overlap",
-        "Ensure buttons are tappable without accidentally hitting adjacent buttons",
-        "Test on various screen sizes",
+        "Logout button is visible on SettingsView (not buried in AccountView or sub-view)",
+        "Button uses Theme.danger color for background",
+        "Tapping shows confirmation alert before logging out",
+        "Works for both bookie and player roles",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Fixed by changing teamOddsRow frame height from 36pt to oddsButtonHeight (44pt) in CompactGameRow.swift"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Fix Background Colors on Player Settings CTAs",
-      "description": "As a player, I want the settings buttons to have consistent styling so that the UI looks cohesive.",
+      "title": "Add delete player functionality",
+      "description": "As a bookie, I want to delete a player so I can remove test data or inactive players.",
       "acceptanceCriteria": [
-        "Update 'Account' button/section background to use Theme.cardBackground",
-        "Update 'Test Mode' button/section background to use Theme.cardBackground",
-        "Ensure consistent styling with rest of the app",
-        "Check PlayerMainView or PlayerSettingsView for the affected components",
+        "Delete button or swipe action available in PlayerDetailView",
+        "Confirmation alert appears before deletion with player name",
+        "If player has bets or ledger entries, show warning that history will be deleted",
+        "Player is deleted from local SwiftData context",
+        "Player needsSync is not relevant - use direct Supabase delete for immediate removal",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Added .listRowBackground(Theme.cardBackground) to Player Account and Test Mode sections in PlayerSettingsContent (ContentView.swift)"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Display 'To Win' Amount Alongside Stake on Bet Views",
-      "description": "As a bookie or player, I want to see the potential payout ('To Win') amount alongside the stake so that I can quickly understand the bet's value.",
+      "title": "Add player creation interstitial screen",
+      "description": "As a bookie, I want to see options when adding a player for future seat purchasing.",
       "acceptanceCriteria": [
-        "Player bet views show 'To Win: $X' alongside the stake",
-        "Bookie bet summary views show 'To Win: $X' alongside the stake",
-        "Calculate 'To Win' based on odds and stake (American odds conversion)",
-        "Update relevant views: BetsListView, TrackView, TicketDetailView, BetDetailView",
-        "Use consistent formatting (e.g., 'Stake: $50 | To Win: $45.45')",
+        "When tapping Add Player button in PlayersListView, show interstitial sheet first",
+        "Interstitial has two options: 'Add Player' and 'Purchase Seats'",
+        "Add Player option dismisses interstitial and shows AddPlayerSheet",
+        "Purchase Seats shows alert with 'Coming Soon' message",
+        "Uses Theme colors and styling consistent with app",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Added 'To Win' display to BetRowView (bookie) and PlayerBetCard (player). TrackView, TicketDetailView, BetDetailView already had 'To Win' displays."
+      "passes": false,
+      "notes": ""
     }
   ]
 }
