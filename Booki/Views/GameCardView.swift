@@ -5,12 +5,15 @@ import SwiftData
 
 /// Selection model for bet slip integration
 /// Used to track which odds buttons are selected across game cards
-struct BetSlipSelection: Equatable, Hashable {
+struct BetSlipSelection: Equatable, Hashable, Codable {
     let eventId: UUID
     let marketId: UUID
     let side: String
     let odds: Int
     let marketType: MarketType
+    /// Indicates which side of the market was selected: "a" for sideA/oddsA, "b" for sideB/oddsB
+    /// Used by Edge Functions which expect side as 'a' or 'b'
+    let sideIndicator: String
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(eventId)
@@ -88,13 +91,14 @@ struct GameCardView: View {
     }
 
     /// Create a selection for a given market and side
-    private func makeSelection(market: Market, side: String, odds: Int) -> BetSlipSelection {
+    private func makeSelection(market: Market, side: String, odds: Int, sideIndicator: String) -> BetSlipSelection {
         BetSlipSelection(
             eventId: event.id,
             marketId: market.id,
             side: side,
             odds: odds,
-            marketType: market.type
+            marketType: market.type,
+            sideIndicator: sideIndicator
         )
     }
 
@@ -400,7 +404,8 @@ struct GameCardView: View {
             if let spread = spreadMarket {
                 let side = isAwayTeam ? spread.sideA : spread.sideB
                 let odds = isAwayTeam ? spread.oddsA : spread.oddsB
-                let selection = makeSelection(market: spread, side: side, odds: odds)
+                let sideIndicator = isAwayTeam ? "a" : "b"
+                let selection = makeSelection(market: spread, side: side, odds: odds, sideIndicator: sideIndicator)
 
                 SpreadButton(
                     spreadValue: formatSpreadValue(side),
@@ -417,7 +422,8 @@ struct GameCardView: View {
             if let ml = moneylineMarket {
                 let odds = isAwayTeam ? ml.oddsA : ml.oddsB
                 let side = isAwayTeam ? ml.sideA : ml.sideB
-                let selection = makeSelection(market: ml, side: side, odds: odds)
+                let sideIndicator = isAwayTeam ? "a" : "b"
+                let selection = makeSelection(market: ml, side: side, odds: odds, sideIndicator: sideIndicator)
 
                 MLButton(
                     odds: odds,
@@ -433,7 +439,8 @@ struct GameCardView: View {
             if let total = totalMarket {
                 let side = isAwayTeam ? total.sideA : total.sideB  // sideA = Over, sideB = Under
                 let odds = isAwayTeam ? total.oddsA : total.oddsB
-                let selection = makeSelection(market: total, side: side, odds: odds)
+                let sideIndicator = isAwayTeam ? "a" : "b"
+                let selection = makeSelection(market: total, side: side, odds: odds, sideIndicator: sideIndicator)
 
                 TotalButton(
                     totalValue: formatTotalValue(side),
@@ -956,7 +963,8 @@ struct OddsButton: View {
         marketId: ml.id,
         side: ml.sideB,
         odds: ml.oddsB,
-        marketType: .moneyline
+        marketType: .moneyline,
+        sideIndicator: "b"
     )
 
     // Second event for preview (scheduled game)

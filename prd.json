@@ -1,7 +1,7 @@
 {
   "project": "Booki",
-  "branchName": "ralph/auto-refresh",
-  "description": "Automatic Server-Side Odds & Score Refresh - Twice daily server-side refresh for up to 2 games with accepted bets",
+  "branchName": "ralph/bug-fixes-ui-polish",
+  "description": "Bug fixes and UI polish - Parlay submission, bet slip UX, visual consistency, and display improvements",
   "techStack": {
     "platform": "iOS 17+",
     "language": "Swift 5.9+",
@@ -13,174 +13,134 @@
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add auto-refresh timestamp fields to events table",
-      "description": "As a developer, I need database fields to track when events were last auto-refreshed.",
+      "title": "Fix Parlay Submission Edge Function Error",
+      "description": "As a player, I want to submit parlays without getting a 'function not found' error so that I can place multi-leg bets.",
       "acceptanceCriteria": [
-        "Create Supabase migration file in supabase/migrations/",
-        "Add last_auto_odds_refresh (timestamptz, nullable) column to events table",
-        "Add last_auto_score_refresh (timestamptz, nullable) column to events table",
-        "Document migration in SUPABASE_MIGRATIONS.md",
+        "Identify which Edge Function is being called for parlay submissions",
+        "Ensure the function exists and is deployed (likely submit_bet or a missing submit_parlay)",
+        "Parlay submissions complete successfully without NOT_FOUND error",
+        "Error message does not appear twice (fix duplicate error handling)",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": ""
+      "notes": "Fixed: The issue was that submit_bet Edge Function expects side as 'a' or 'b', but the Swift code was passing the display name (e.g., 'Lakers -3.5'). Added sideIndicator field to BetSlipSelection and BetSlipItem to track the normalized side value, and updated BetConfirmationSheet to pass sideIndicator to the server."
     },
     {
       "id": "US-002",
-      "title": "Add auto-refresh audit action types to audit helper",
-      "description": "As a developer, I need audit event types for automatic refresh actions.",
+      "title": "Auto-close Bet Slip When Cleared",
+      "description": "As a player, I want the bet slip to automatically close when I clear all selections so that I don't have to manually dismiss an empty slip.",
       "acceptanceCriteria": [
-        "Update supabase/functions/_shared/audit.ts",
-        "Add 'odds_refreshed_auto' to ActionType union",
-        "Add 'score_refreshed_auto' to ActionType union",
-        "Add 'event_finalized_auto' to ActionType union",
-        "Add 'auto_refresh_failed' to ActionType union",
-        "Typecheck passes (Deno)"
+        "When 'Clear All' is tapped on bet slip, automatically dismiss the sheet after clearing",
+        "Only auto-dismiss when all items are cleared (not when removing individual items)",
+        "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Create auto_refresh_games Edge Function - game selection",
-      "description": "As a system, I need to select up to 2 qualifying games for refresh.",
+      "title": "Prevent Conflicting Selections in Parlays",
+      "description": "As a player, I want the app to prevent me from creating a parlay with conflicting selections (opposite sides of the same event) so that I don't accidentally place an impossible bet.",
       "acceptanceCriteria": [
-        "Create supabase/functions/auto_refresh_games/index.ts",
-        "Handle OPTIONS request for CORS preflight",
-        "Read ODDS_API_KEY from Deno.env.get('ODDS_API_KEY')",
-        "Return error if ODDS_API_KEY is not configured",
-        "Query games: has at least one accepted bet, not locked (locked_at IS NULL), status != 'final'",
-        "Order by start_time ASC, then by total wagered amount DESC (tie-breaker)",
-        "Limit to 2 games maximum",
-        "Return selected games in response for testing",
-        "Typecheck passes (Deno)"
+        "Detect when bet slip contains opposite sides of the same market (e.g., Hawks ML and Rockets ML)",
+        "Allow conflicting selections as separate single bets (current behavior, keep as-is)",
+        "Disable/hide parlay option when conflicting selections exist in the bet slip",
+        "Show message explaining why parlay is unavailable (e.g., 'Parlay unavailable: conflicting selections on same game')",
+        "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Add odds refresh logic to auto_refresh_games",
-      "description": "As a system, I need to fetch and update odds for selected games.",
+      "title": "Show Team Name with Spread on Game Detail",
+      "description": "As a player, I want to see the team name next to the spread value so that I can clearly understand which team is favored.",
       "acceptanceCriteria": [
-        "Update supabase/functions/auto_refresh_games/index.ts",
-        "For each selected game where start_time > now, fetch odds from Odds API",
-        "Use event's sport field to determine sport key for API call",
-        "Update event's markets with fresh odds (spread, moneyline, total)",
-        "Set last_auto_odds_refresh to current timestamp",
-        "Skip odds refresh if event start_time has passed",
-        "Emit 'odds_refreshed_auto' audit event for each successful refresh",
-        "Continue processing other games if one fails",
-        "Typecheck passes (Deno)"
+        "Game detail screen shows team name with spread (e.g., 'OKC -6.5' instead of just '-6.5')",
+        "Format: '[Team] [spread]' for both sides (e.g., 'OKC -6.5' and 'HOU +6.5')",
+        "Applies to spread market display in EventDetailView or GameDetailView",
+        "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Add score refresh logic to auto_refresh_games",
-      "description": "As a system, I need to fetch and update scores for selected games.",
+      "title": "Improve Market Table Typography Hierarchy",
+      "description": "As a player, I want the betting lines to be visually prominent with payouts de-emphasized so that I can quickly scan the key numbers.",
       "acceptanceCriteria": [
-        "Update supabase/functions/auto_refresh_games/index.ts",
-        "For each selected game, fetch scores from Odds API",
-        "Match API response to local event by external_id",
-        "Update home_score and away_score if scores available",
-        "If game is completed: set status to 'final', set final_score string",
-        "Set last_auto_score_refresh to current timestamp",
-        "Emit 'score_refreshed_auto' audit event for each successful refresh",
-        "Continue processing other games if one fails",
-        "Typecheck passes (Deno)"
+        "Spread value (e.g., '-3.5') uses current white font style (Theme.textPrimary)",
+        "Moneyline value (e.g., '-230') uses current white font style (Theme.textPrimary)",
+        "Total value (e.g., 'o228.5') uses current white font style (Theme.textPrimary)",
+        "Spread payout odds (e.g., '-118') displayed smaller and grayer underneath the spread line",
+        "Total payout odds (e.g., '-110') displayed smaller and grayer underneath the total line",
+        "Use Theme.textSecondary or Theme.textMuted and smaller font size for payout odds",
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-006",
-      "title": "Auto-transition bets to ready_to_grade when event finalizes",
-      "description": "As a system, I need to mark bets as ready to grade when their event completes.",
+      "title": "Use Dark Text on Accent-Colored Buttons",
+      "description": "As a user, I want green/accent-colored buttons to have dark text for better readability and visual consistency.",
       "acceptanceCriteria": [
-        "Update supabase/functions/auto_refresh_games/index.ts",
-        "When event status changes to 'final', query all bets for that event with status 'accepted'",
-        "Update those bets to status 'readyToGrade'",
-        "Emit 'event_finalized_auto' audit event with count of bets transitioned",
-        "Typecheck passes (Deno)"
+        "All buttons with Theme.accent background use dark text (e.g., Theme.background or black)",
+        "Match the style of the 'ALL' filter button as the reference",
+        "Apply consistently across the app (bet slip submit, confirmation buttons, etc.)",
+        "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-007",
-      "title": "Add idempotency and error handling to auto_refresh_games",
-      "description": "As a system, I need the refresh function to be idempotent and handle errors gracefully.",
+      "title": "Remove Tab Titles in Player View",
+      "description": "As a player, I want a cleaner interface without redundant titles since the tab bar already indicates the current section.",
       "acceptanceCriteria": [
-        "Update supabase/functions/auto_refresh_games/index.ts",
-        "Generate idempotency key as: auto_refresh_{YYYY-MM-DD}_{window} where window is 'morning' (before 12:00 UTC) or 'afternoon'",
-        "Check idempotency key before processing - return cached response if exists",
-        "Store idempotency key with response after successful completion",
-        "On API error for individual game, emit 'auto_refresh_failed' audit event with error details",
-        "Do NOT retry failed games within same window",
-        "Function completes successfully even if individual refreshes fail",
-        "Return summary: { games_selected, odds_refreshed, scores_refreshed, events_finalized, errors }",
-        "Typecheck passes (Deno)"
+        "Remove 'Games' title from the top of the Games tab in PlayerMainView",
+        "Remove 'Track' title from the top of the Track tab in PlayerMainView",
+        "Only affects player view (bookie view unchanged)",
+        "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-008",
-      "title": "Create cron trigger migration for auto refresh",
-      "description": "As a system, I need cron jobs to trigger auto_refresh_games twice daily.",
+      "title": "Standardize Container Background Colors",
+      "description": "As a user, I want consistent container/card colors throughout the app so that the UI feels cohesive.",
       "acceptanceCriteria": [
-        "Create Supabase migration file in supabase/migrations/",
-        "Enable pg_cron and pg_net extensions if not already enabled",
-        "Create cron job 'auto-refresh-morning' at 17:00 UTC (09:00 PT) calling auto_refresh_games",
-        "Create cron job 'auto-refresh-afternoon' at 21:00 UTC (13:00 PT) calling auto_refresh_games",
-        "Use pg_net.http_post to call Edge Function URL",
-        "Include service role key in Authorization header",
-        "Document migration in SUPABASE_MIGRATIONS.md with cron setup instructions",
+        "Identify the gray container color being used on the Players tab (likely default iOS or incorrect Theme color)",
+        "Identify the correct container color used on the Dashboard tab (likely Theme.cardBackground)",
+        "Update Players list container to use the same color as Dashboard",
+        "Audit other screens for inconsistent container colors and fix",
+        "Ensure all List/Form sections use .listRowBackground(Theme.cardBackground)",
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-009",
-      "title": "Add last auto-refresh timestamp to Event SwiftData model",
-      "description": "As a developer, I need local model fields for auto-refresh timestamps.",
+      "title": "Improve Bet Ticket Display Names",
+      "description": "As a bookie or player, I want bet tickets to show meaningful names instead of IDs so that I can quickly understand what the bet is.",
       "acceptanceCriteria": [
-        "Update Booki/Models/Event.swift",
-        "Add lastAutoOddsRefresh (Date?, optional) property",
-        "Add lastAutoScoreRefresh (Date?, optional) property",
+        "Single bets display the selection name (e.g., 'Lakers ML -150' or 'OKC -6.5 (-110)')",
+        "Parlays display leg count and total odds (e.g., '3-leg parlay +450')",
+        "Update wherever 'Event [UUID]' or similar is displayed (likely BetsListView, TicketDetailView, TrackView)",
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-010",
-      "title": "Display last auto-refresh timestamp in EventDetailView",
-      "description": "As a bookie, I want to see when an event was last automatically refreshed.",
-      "acceptanceCriteria": [
-        "Update Booki/Views/EventDetailView.swift",
-        "Add section showing last auto-refresh timestamps",
-        "Display 'Last odds refresh: [relative time]' if lastAutoOddsRefresh is set",
-        "Display 'Last score refresh: [relative time]' if lastAutoScoreRefresh is set",
-        "Show 'Never' if timestamps are nil",
-        "Use RelativeDateTimeFormatter for relative time display",
-        "Use Theme styling (Theme.textSecondary for labels)",
-        "Typecheck passes"
-      ],
-      "priority": 10,
-      "passes": true,
+      "passes": false,
       "notes": ""
     }
   ]

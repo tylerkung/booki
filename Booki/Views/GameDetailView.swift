@@ -155,13 +155,14 @@ struct GameDetailView: View {
     }
 
     /// Create a selection for a given market and side
-    private func makeSelection(market: Market, side: String, odds: Int) -> BetSlipSelection {
+    private func makeSelection(market: Market, side: String, odds: Int, sideIndicator: String) -> BetSlipSelection {
         BetSlipSelection(
             eventId: event.id,
             marketId: market.id,
             side: side,
             odds: odds,
-            marketType: market.type
+            marketType: market.type,
+            sideIndicator: sideIndicator
         )
     }
 
@@ -359,7 +360,7 @@ struct GameDetailView: View {
             // Both sides
             HStack(spacing: 8) {
                 // Side A (away team / over)
-                let selectionA = makeSelection(market: market, side: market.sideA, odds: market.oddsA)
+                let selectionA = makeSelection(market: market, side: market.sideA, odds: market.oddsA, sideIndicator: "a")
                 let descriptionA = "\(label): \(sideALabel)"
 
                 CompactOddsButton(
@@ -373,7 +374,7 @@ struct GameDetailView: View {
                 .frame(height: oddsButtonHeight)
 
                 // Side B (home team / under)
-                let selectionB = makeSelection(market: market, side: market.sideB, odds: market.oddsB)
+                let selectionB = makeSelection(market: market, side: market.sideB, odds: market.oddsB, sideIndicator: "b")
                 let descriptionB = "\(label): \(sideBLabel)"
 
                 CompactOddsButton(
@@ -518,7 +519,7 @@ struct GameDetailView: View {
             // Both sides
             HStack(spacing: 8) {
                 // Side A (away team / over)
-                let selectionA = makeSelection(market: market, side: market.sideA, odds: market.oddsA)
+                let selectionA = makeSelection(market: market, side: market.sideA, odds: market.oddsA, sideIndicator: "a")
                 let descriptionA = "\(marketTypeLabel): \(sideALabel)"
 
                 CompactOddsButton(
@@ -532,7 +533,7 @@ struct GameDetailView: View {
                 .frame(height: oddsButtonHeight)
 
                 // Side B (home team / under)
-                let selectionB = makeSelection(market: market, side: market.sideB, odds: market.oddsB)
+                let selectionB = makeSelection(market: market, side: market.sideB, odds: market.oddsB, sideIndicator: "b")
                 let descriptionB = "\(marketTypeLabel): \(sideBLabel)"
 
                 CompactOddsButton(

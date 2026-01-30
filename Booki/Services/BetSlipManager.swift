@@ -17,6 +17,9 @@ struct BetSlipItem: Equatable, Hashable, Codable {
     let side: String
     let odds: Int
     let marketType: MarketType
+    /// Indicates which side of the market was selected: "a" for sideA/oddsA, "b" for sideB/oddsB
+    /// Used by Edge Functions which expect side as 'a' or 'b'
+    let sideIndicator: String
 
     // Display info stored with selection
     let eventDescription: String  // e.g., "Lakers vs Celtics"
@@ -39,17 +42,19 @@ struct BetSlipItem: Equatable, Hashable, Codable {
         self.side = selection.side
         self.odds = selection.odds
         self.marketType = selection.marketType
+        self.sideIndicator = selection.sideIndicator
         self.eventDescription = eventDescription
         self.marketDescription = marketDescription
     }
 
     /// Direct initializer
-    init(eventId: UUID, marketId: UUID, side: String, odds: Int, marketType: MarketType, eventDescription: String, marketDescription: String) {
+    init(eventId: UUID, marketId: UUID, side: String, odds: Int, marketType: MarketType, sideIndicator: String, eventDescription: String, marketDescription: String) {
         self.eventId = eventId
         self.marketId = marketId
         self.side = side
         self.odds = odds
         self.marketType = marketType
+        self.sideIndicator = sideIndicator
         self.eventDescription = eventDescription
         self.marketDescription = marketDescription
     }
@@ -61,7 +66,8 @@ struct BetSlipItem: Equatable, Hashable, Codable {
             marketId: marketId,
             side: side,
             odds: odds,
-            marketType: marketType
+            marketType: marketType,
+            sideIndicator: sideIndicator
         )
     }
 }

@@ -369,10 +369,11 @@ struct BetConfirmationSheet: View {
                 }
 
                 // Call submit_bet Edge Function
+                // Use sideIndicator ('a' or 'b') for the server, not the display name
                 let result = await BetService.submitBetToServer(
                     eventId: item.eventId,
                     marketId: item.marketId,
-                    side: item.side,
+                    side: item.sideIndicator,
                     odds: item.odds,
                     stake: betStake,
                     playerId: player.id,
