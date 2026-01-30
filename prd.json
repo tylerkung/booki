@@ -51,8 +51,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added hasConflictingSelections property to BetSlipManager that detects same-market or same-event+marketType conflicts. Parlay button is disabled and warning message shown when conflicts exist. Auto-switches to singles mode if user adds conflicting selection while in parlay mode."
     },
     {
       "id": "US-004",

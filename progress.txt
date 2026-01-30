@@ -32,3 +32,15 @@ Started: Thu Jan 29 15:59:55 PST 2026
   - The Clear All button is in the toolbar (ToolbarItem with .destructiveAction placement)
   - Individual item removal uses a different code path (onRemove in PremiumBetSlipItemCard)
 ---
+
+## 2026-01-29 - US-003
+- What was implemented: Prevent conflicting selections in parlays
+- Files changed:
+  - Booki/Services/BetSlipManager.swift - Added hasConflictingSelections computed property and conflictDescription
+  - Booki/Views/BetSlipSheet.swift - Disabled parlay toggle and show warning message when conflicts exist
+- **Learnings for future iterations:**
+  - Conflict detection groups by marketId OR by eventId+marketType combination
+  - Same market with multiple selections = conflict (can't bet both sides)
+  - Same event + same market type (e.g., two ML picks on same game) = conflict
+  - BetSlipManager.add() auto-switches to singles mode if adding creates a conflict while in parlay mode
+---
