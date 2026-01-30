@@ -248,7 +248,7 @@ struct CompactGameRow: View {
                     .frame(width: oddsButtonWidth, height: oddsButtonHeight)
             }
         }
-        .frame(height: 36)
+        .frame(height: oddsButtonHeight)
     }
 
     // MARK: - Compact Odds Button
