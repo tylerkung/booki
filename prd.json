@@ -140,8 +140,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added displayName property to Ticket struct and betDisplayName helper functions. Single bets show 'bet.side odds' (e.g., 'Lakers ML -150'). Parlays show 'N-leg parlay +odds' (e.g., '3-leg parlay +450'). Updated BetsListView (BetRowView shows display name prominently, BetDetailView navigation title), TrackView (TicketHeaderView shows display name), and TicketDetailView (navigation title). The bet display name is now the primary identifier in list views and detail screens."
     }
   ]
 }

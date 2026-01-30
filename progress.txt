@@ -111,3 +111,17 @@ Started: Thu Jan 29 15:59:55 PST 2026
   - Views using .listStyle(.plain) may have different behavior but still benefit from listRowBackground
   - When creating new List/Form views, always include all three modifiers for consistent dark theme
 ---
+
+## 2026-01-29 - US-009
+- What was implemented: Improved bet ticket display names to show meaningful selection info instead of generic labels
+- Files changed:
+  - Booki/Views/BetsListView.swift - Added betDisplayName helper function, updated BetRowView to show display name prominently, updated BetDetailView navigation title
+  - Booki/Views/TrackView.swift - Added displayName and combinedAmericanOdds properties to Ticket struct, updated TicketHeaderView to use displayName
+  - Booki/Views/TicketDetailView.swift - Updated navigation title to use ticket.displayName
+- **Learnings for future iterations:**
+  - Bet display names should format as: single = "bet.side odds" (e.g., "Lakers ML -150"), parlay = "N-leg parlay +odds" (e.g., "3-leg parlay +450")
+  - The Ticket struct in TrackView.swift holds grouped bets by ticketId and can compute combined parlay odds
+  - American to decimal odds conversion: positive odds = 1 + odds/100, negative odds = 1 + 100/abs(odds)
+  - Decimal to American odds conversion: >= 2.0 = (decimal - 1) * 100, < 2.0 = -100 / (decimal - 1)
+  - BetRowView layout was simplified: display name + status in top row, player name below, event name in muted text, stake at bottom
+---
