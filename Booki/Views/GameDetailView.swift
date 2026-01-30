@@ -341,6 +341,7 @@ struct GameDetailView: View {
     }
 
     /// Single market row with both sides
+    /// US-005: showOddsAsSecondary=true for spread/total to de-emphasize payout odds
     @ViewBuilder
     private func mainMarketRow(
         market: Market,
@@ -348,6 +349,10 @@ struct GameDetailView: View {
         sideALabel: String,
         sideBLabel: String
     ) -> some View {
+        // US-005: Spread and Total show line value prominently, odds as secondary
+        // Moneyline shows odds prominently (the odds ARE the key value)
+        let useSecondaryOdds = market.type == .spread || market.type == .total
+
         VStack(spacing: 4) {
             // Market type label
             HStack {
@@ -368,6 +373,7 @@ struct GameDetailView: View {
                     odds: market.oddsA,
                     isSelected: isSelected(selectionA),
                     isDisabled: isEventLocked,
+                    showOddsAsSecondary: useSecondaryOdds,
                     action: { handleOddsSelection(selectionA, marketDescription: descriptionA) }
                 )
                 .frame(maxWidth: .infinity)
@@ -382,6 +388,7 @@ struct GameDetailView: View {
                     odds: market.oddsB,
                     isSelected: isSelected(selectionB),
                     isDisabled: isEventLocked,
+                    showOddsAsSecondary: useSecondaryOdds,
                     action: { handleOddsSelection(selectionB, marketDescription: descriptionB) }
                 )
                 .frame(maxWidth: .infinity)
@@ -497,6 +504,7 @@ struct GameDetailView: View {
     }
 
     /// US-013: Single market row with both sides
+    /// US-005: showOddsAsSecondary=true for spread/total to de-emphasize payout odds
     @ViewBuilder
     private func marketRow(
         market: Market,
@@ -505,6 +513,10 @@ struct GameDetailView: View {
         sideBLabel: String,
         showAlternatePrefix: Bool
     ) -> some View {
+        // US-005: Spread and Total show line value prominently, odds as secondary
+        // Moneyline shows odds prominently (the odds ARE the key value)
+        let useSecondaryOdds = market.type == .spread || market.type == .total
+
         VStack(spacing: 4) {
             // Market label (for alternate lines, show "Alt Spread -5.5" style)
             if showAlternatePrefix {
@@ -527,6 +539,7 @@ struct GameDetailView: View {
                     odds: market.oddsA,
                     isSelected: isSelected(selectionA),
                     isDisabled: isEventLocked,
+                    showOddsAsSecondary: useSecondaryOdds,
                     action: { handleOddsSelection(selectionA, marketDescription: descriptionA) }
                 )
                 .frame(maxWidth: .infinity)
@@ -541,6 +554,7 @@ struct GameDetailView: View {
                     odds: market.oddsB,
                     isSelected: isSelected(selectionB),
                     isDisabled: isEventLocked,
+                    showOddsAsSecondary: useSecondaryOdds,
                     action: { handleOddsSelection(selectionB, marketDescription: descriptionB) }
                 )
                 .frame(maxWidth: .infinity)

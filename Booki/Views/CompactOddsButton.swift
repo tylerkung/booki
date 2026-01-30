@@ -3,8 +3,14 @@ import SwiftUI
 /// US-005 / US-011: Compact Odds Button Component
 /// A streamlined odds button with minimal styling for table-style layouts
 /// Used by CompactGameRow and GameDetailView
+///
+/// Typography hierarchy (US-005):
+/// - Primary line (spread/total value, team name): Large, white (Theme.textPrimary)
+/// - Secondary line (payout odds): Smaller, gray (Theme.textMuted) - only for spread/total
 struct CompactOddsButton: View {
     /// Optional top text (spread value, total value, or team name)
+    /// For spread/total: This is the primary value displayed prominently
+    /// For moneyline: This is the team name displayed as secondary
     let topText: String?
 
     /// American odds value
@@ -15,6 +21,11 @@ struct CompactOddsButton: View {
 
     /// Whether this button is disabled (e.g., event locked)
     var isDisabled: Bool = false
+
+    /// Whether to show odds as secondary text (used for spread/total buttons)
+    /// When true: topText is primary (large, white), odds is secondary (small, gray)
+    /// When false: odds is primary, topText is secondary (for moneyline with team names)
+    var showOddsAsSecondary: Bool = false
 
     /// Action when tapped
     let action: () -> Void
@@ -30,16 +41,31 @@ struct CompactOddsButton: View {
             action()
         }) {
             VStack(spacing: 2) {
-                if let text = topText {
-                    Text(text)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(isSelected ? Theme.background : Theme.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                if showOddsAsSecondary {
+                    // US-005: Spread/Total style - line value prominent, odds de-emphasized
+                    if let text = topText {
+                        Text(text)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    Text(formattedOdds)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(isSelected ? Theme.background.opacity(0.7) : Theme.textMuted)
+                } else {
+                    // Original style - used for moneyline (team name secondary, odds primary)
+                    if let text = topText {
+                        Text(text)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(isSelected ? Theme.background : Theme.textSecondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    Text(formattedOdds)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
                 }
-                Text(formattedOdds)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(isSelected ? Theme.accent : Theme.elevatedBackground)
@@ -60,28 +86,35 @@ struct CompactOddsButton: View {
 
 #Preview {
     VStack(spacing: 16) {
+        // US-005: Spread buttons - line value prominent, odds secondary
+        Text("Spread (US-005)")
+            .font(.caption)
+            .foregroundColor(Theme.textSecondary)
         HStack(spacing: 8) {
-            // Unselected spread button
             CompactOddsButton(
                 topText: "-3.5",
                 odds: -110,
                 isSelected: false,
+                showOddsAsSecondary: true,
                 action: {}
             )
             .frame(width: 80, height: 44)
 
-            // Selected spread button
             CompactOddsButton(
                 topText: "+3.5",
-                odds: -110,
+                odds: -118,
                 isSelected: true,
+                showOddsAsSecondary: true,
                 action: {}
             )
             .frame(width: 80, height: 44)
         }
 
+        // Moneyline buttons - odds prominent (no secondary needed)
+        Text("Moneyline")
+            .font(.caption)
+            .foregroundColor(Theme.textSecondary)
         HStack(spacing: 8) {
-            // Moneyline buttons
             CompactOddsButton(
                 topText: "Lakers",
                 odds: -170,
@@ -99,12 +132,16 @@ struct CompactOddsButton: View {
             .frame(width: 80, height: 44)
         }
 
+        // US-005: Total buttons - line value prominent, odds secondary
+        Text("Total (US-005)")
+            .font(.caption)
+            .foregroundColor(Theme.textSecondary)
         HStack(spacing: 8) {
-            // Total buttons
             CompactOddsButton(
                 topText: "O 220.5",
                 odds: -110,
                 isSelected: false,
+                showOddsAsSecondary: true,
                 action: {}
             )
             .frame(width: 80, height: 44)
@@ -113,6 +150,7 @@ struct CompactOddsButton: View {
                 topText: "U 220.5",
                 odds: -110,
                 isSelected: true,
+                showOddsAsSecondary: true,
                 action: {}
             )
             .frame(width: 80, height: 44)
@@ -124,6 +162,7 @@ struct CompactOddsButton: View {
             odds: -110,
             isSelected: false,
             isDisabled: true,
+            showOddsAsSecondary: true,
             action: {}
         )
         .frame(width: 80, height: 44)

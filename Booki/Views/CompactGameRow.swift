@@ -185,7 +185,7 @@ struct CompactGameRow: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Spread button
+            // Spread button - US-005: line value prominent, odds secondary
             if let spread = spreadMarket {
                 let side = isAwayTeam ? spread.sideA : spread.sideB
                 let odds = isAwayTeam ? spread.oddsA : spread.oddsB
@@ -197,6 +197,7 @@ struct CompactGameRow: View {
                     odds: odds,
                     isSelected: isSelected(selection),
                     isDisabled: isEventLocked,
+                    showOddsAsSecondary: true,
                     action: { if !isEventLocked { onSelectOdds(selection) } }
                 )
             } else if moneylineMarket != nil || totalMarket != nil {
@@ -205,7 +206,7 @@ struct CompactGameRow: View {
                     .frame(width: oddsButtonWidth, height: oddsButtonHeight)
             }
 
-            // Moneyline button
+            // Moneyline button - odds is the key value, displayed prominently
             if let ml = moneylineMarket {
                 let odds = isAwayTeam ? ml.oddsA : ml.oddsB
                 let side = isAwayTeam ? ml.sideA : ml.sideB
@@ -217,6 +218,7 @@ struct CompactGameRow: View {
                     odds: odds,
                     isSelected: isSelected(selection),
                     isDisabled: isEventLocked,
+                    showOddsAsSecondary: false,
                     action: { if !isEventLocked { onSelectOdds(selection) } }
                 )
             } else if spreadMarket != nil || totalMarket != nil {
@@ -225,7 +227,7 @@ struct CompactGameRow: View {
                     .frame(width: oddsButtonWidth, height: oddsButtonHeight)
             }
 
-            // Total button (Over for away/top row, Under for home/bottom row)
+            // Total button (Over for away/top row, Under for home/bottom row) - US-005: line value prominent, odds secondary
             if let total = totalMarket {
                 let side = isAwayTeam ? total.sideA : total.sideB
                 let odds = isAwayTeam ? total.oddsA : total.oddsB
@@ -237,6 +239,7 @@ struct CompactGameRow: View {
                     odds: odds,
                     isSelected: isSelected(selection),
                     isDisabled: isEventLocked,
+                    showOddsAsSecondary: true,
                     action: { if !isEventLocked { onSelectOdds(selection) } }
                 )
             } else if spreadMarket != nil || moneylineMarket != nil {
@@ -250,23 +253,34 @@ struct CompactGameRow: View {
 
     // MARK: - Compact Odds Button
 
+    /// US-005: Updated to show line value prominently with payout odds de-emphasized
+    /// - showOddsAsSecondary: true for spread/total (line value primary), false for moneyline (odds primary)
     @ViewBuilder
     private func compactOddsButton(
         topText: String?,
         odds: Int,
         isSelected: Bool,
         isDisabled: Bool,
+        showOddsAsSecondary: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            // Display value and odds on single line if topText exists
-            if let text = topText {
-                Text("\(text) \(formatOdds(odds))")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+            if showOddsAsSecondary {
+                // US-005: Spread/Total - line value prominent on top, odds small and gray below
+                VStack(spacing: 1) {
+                    if let text = topText {
+                        Text(text)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    Text(formatOdds(odds))
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(isSelected ? Theme.background.opacity(0.7) : Theme.textMuted)
+                }
             } else {
+                // Moneyline - just show odds prominently
                 Text(formatOdds(odds))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
