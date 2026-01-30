@@ -104,6 +104,8 @@ struct BetSlipSheet: View {
                             withAnimation {
                                 betSlipManager.clearAll()
                             }
+                            // US-002: Auto-dismiss sheet after clearing all selections
+                            dismiss()
                         }
                         .foregroundStyle(Theme.danger)
                         .disabled(isSubmitting)
