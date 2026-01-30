@@ -1,6 +1,23 @@
 import SwiftUI
 import SwiftData
 
+/// Record type for validating invite codes from Supabase
+private struct PlayerClaimRecord: Codable {
+    let id: UUID
+    let name: String
+    let inviteCode: String?
+    let inviteCodeExpiresAt: Date?
+    let claimedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case inviteCode = "invite_code"
+        case inviteCodeExpiresAt = "invite_code_expires_at"
+        case claimedAt = "claimed_at"
+    }
+}
+
 /// View for players to claim their account using an invite code
 struct PlayerClaimView: View {
 
@@ -310,15 +327,55 @@ struct PlayerClaimView: View {
         isValidating = true
         errorMessage = nil
 
-        let inviteCodeService = InviteCodeService(modelContext: modelContext)
-        let player = inviteCodeService.validateCode(normalizedCode)
+        Task {
+            do {
+                // Query Supabase directly for the invite code
+                // This allows players without local data to validate their code
+                let supabase = SupabaseClientManager.shared.client
 
-        isValidating = false
+                let response: [PlayerClaimRecord] = try await supabase
+                    .from("players")
+                    .select("id, name, invite_code, invite_code_expires_at, claimed_at")
+                    .eq("invite_code", value: normalizedCode)
+                    .execute()
+                    .value
 
-        if let player = player {
-            validatedPlayer = player
-        } else {
-            errorMessage = "Invalid or expired invite code. Please check the code and try again."
+                await MainActor.run {
+                    isValidating = false
+
+                    guard let record = response.first else {
+                        errorMessage = "Invalid invite code. Please check the code and try again."
+                        return
+                    }
+
+                    // Check if already claimed
+                    if record.claimedAt != nil {
+                        errorMessage = "This invite code has already been used."
+                        return
+                    }
+
+                    // Check expiration
+                    if let expiresAt = record.inviteCodeExpiresAt, Date() > expiresAt {
+                        errorMessage = "This invite code has expired. Please contact your bookie for a new one."
+                        return
+                    }
+
+                    // Create a local Player object for display purposes
+                    // This is just for showing the name in the UI
+                    let player = Player(
+                        id: record.id,
+                        name: record.name,
+                        inviteCode: record.inviteCode
+                    )
+                    validatedPlayer = player
+                }
+            } catch {
+                await MainActor.run {
+                    isValidating = false
+                    errorMessage = "Failed to validate code. Please try again."
+                    print("DEBUG: Error validating invite code: \(error)")
+                }
+            }
         }
     }
 
@@ -340,10 +397,24 @@ struct PlayerClaimView: View {
                 )
                 print("DEBUG: Supabase signUp succeeded, user ID: \(response.user.id)")
 
-                // Mark the player account as claimed
+                // Update the player's auth_user_id directly in Supabase
+                // This links the auth credentials to the existing player record
+                print("DEBUG: Updating player record in Supabase with auth_user_id...")
+                try await supabase
+                    .from("players")
+                    .update([
+                        "auth_user_id": response.user.id.uuidString,
+                        "claimed_at": ISO8601DateFormatter().string(from: Date()),
+                        "updated_at": ISO8601DateFormatter().string(from: Date())
+                    ])
+                    .eq("invite_code", value: normalizedCode)
+                    .execute()
+                print("DEBUG: Supabase player record updated successfully")
+
+                // Also update the local SwiftData model
                 let inviteCodeService = InviteCodeService(modelContext: modelContext)
                 inviteCodeService.claimAccount(for: player, authUserId: response.user.id)
-                print("DEBUG: Player account claimed")
+                print("DEBUG: Local player account claimed")
 
                 // Store the auth user ID and show agreement view
                 await MainActor.run {
