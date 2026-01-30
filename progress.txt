@@ -7,6 +7,21 @@ Started: Thu Jan 29 19:02:03 PST 2026
 - When updating Supabase tables directly, use snake_case for column names (e.g., `auth_user_id`, `claimed_at`)
 - Always create a Codable struct with CodingKeys for Supabase responses that use snake_case
 
+- AuthManager.ensureBookieRecord() checks for player record FIRST via auth_user_id, then falls back to bookie record
+- currentPlayerId is the player.id from the players table, not the auth_user_id
+
+---
+
+## 2026-01-29 - US-002
+- Updated AuthManager to check for player record first when determining user role
+- Added PlayerAuthRecord struct to decode player records from Supabase
+- Modified ensureBookieRecord() to query players table by auth_user_id before checking bookies table
+- Updated setAsPlayer() method signature to accept both playerId and authUserId
+- Files changed: Booki/Services/AuthManager.swift
+- **Learnings for future iterations:**
+  - Player detection must happen BEFORE bookie record creation to prevent accidental bookie accounts for players
+  - The auth flow is: login → check player record → if not found, check/create bookie record
+  - AuthGateView already handles routing based on userRole, no changes needed there
 ---
 
 ## 2026-01-29 - US-001
