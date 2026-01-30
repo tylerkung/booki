@@ -306,13 +306,13 @@ struct GameDetailView: View {
 
             // Market rows
             VStack(spacing: 8) {
-                // Spread market
+                // Spread market - show team name with spread (e.g., "OKC -6.5")
                 if let spread = spreadMarket {
                     mainMarketRow(
                         market: spread,
                         label: "Spread",
-                        sideALabel: formatSpreadValue(spread.sideA),
-                        sideBLabel: formatSpreadValue(spread.sideB)
+                        sideALabel: spread.sideA,
+                        sideBLabel: spread.sideB
                     )
                 }
 
@@ -424,13 +424,13 @@ struct GameDetailView: View {
     @ViewBuilder
     private var marketListSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Spread markets section
+            // Spread markets section - show team name with spread (e.g., "OKC -6.5")
             if !spreadMarkets.isEmpty {
                 marketTypeSection(
                     title: "Spread",
                     markets: spreadMarkets,
-                    formatSideA: formatSpreadValue,
-                    formatSideB: formatSpreadValue
+                    formatSideA: { $0 },  // Pass through full team + spread
+                    formatSideB: { $0 }   // Pass through full team + spread
                 )
             }
 
