@@ -38,8 +38,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Fixed by using sideIndicator ('a' or 'b') instead of side (team name) in BetSlipSheet and SubmitBetView. The Edge Function validates side must be 'a' or 'b'."
     },
     {
       "id": "US-003",

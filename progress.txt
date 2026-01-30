@@ -5,6 +5,8 @@ Started: Thu Jan 29 16:58:37 PST 2026
 - BetSlipItem uses Hashable with eventId + marketId + side for unique identification
 - ForEach in SwiftUI requires unique id; when iterating over items that share a property (like marketId), use the item itself as id if it implements Hashable properly
 - Xcode command line tools don't support full builds - use Xcode IDE for typecheck verification
+- Edge Functions expect `side` parameter as 'a' or 'b', not team names - use `sideIndicator` from BetSlipItem
+- BetSlipItem has both `side` (display name like "Hawks") and `sideIndicator` ("a" or "b") - use appropriate one based on context
 ---
 
 ## 2026-01-29 - US-001
@@ -16,4 +18,20 @@ Started: Thu Jan 29 16:58:37 PST 2026
   - When ForEach shows duplicate/incorrect items, check the id parameter - it must uniquely identify each item
   - BetSlipItem's Hashable implementation includes `side` specifically to distinguish different sides of the same market
   - Two selections on the same market (both sides of ML) are intentionally allowed by the app design
+---
+
+## 2026-01-29 - US-002
+- **What was implemented**: Fixed bet submission error by using correct side parameter format for Edge Function
+- **Files changed**: Booki/Views/BetSlipSheet.swift, Booki/Views/SubmitBetView.swift
+- **Root cause**: BetSlipSheet and StakeEntryView were passing `item.side` (team name like "Hawks") to submit_bet Edge Function, but the function expects `side` to be 'a' or 'b'
+- **Fix**:
+  - BetSlipSheet: Changed `side: item.side` to `side: item.sideIndicator`
+  - SubmitBetView: Added `sideIndicator` field to `BetSelection` struct
+  - SubmitBetView: Pass `sideIndicator` when creating BetSelection in continueButton
+  - StakeEntryView: Changed `side: selection.side` to `side: selection.sideIndicator`
+- **Learnings for future iterations:**
+  - Edge Functions validate input strictly - submit_bet requires side as 'a' or 'b', not team names
+  - BetSlipItem has `side` (display) and `sideIndicator` (server) - always use `sideIndicator` for server calls
+  - BetConfirmationSheet was already correct (used `item.sideIndicator`) - can reference as example
+  - When adding new models that pass data to servers, include both display and server-format fields
 ---
