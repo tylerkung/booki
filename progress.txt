@@ -12,6 +12,17 @@ Started: Thu Jan 29 19:02:03 PST 2026
 
 ---
 
+## 2026-01-29 - US-003
+- Updated logout button in SettingsView (bookie) and PlayerMainView (player) with Theme.danger background
+- Added full-width styling with white text, padding, and rounded corners
+- Confirmation alert was already implemented and works for both roles
+- Files changed: Booki/Views/SettingsView.swift, Booki/Views/PlayerMainView.swift
+- **Learnings for future iterations:**
+  - Bookie settings are in SettingsView.swift, player main view is in PlayerMainView.swift
+  - Use `.buttonStyle(.plain)` when applying custom button backgrounds in SwiftUI List
+  - AccountView.swift already has well-styled logout button that can be used as a reference
+---
+
 ## 2026-01-29 - US-002
 - Updated AuthManager to check for player record first when determining user role
 - Added PlayerAuthRecord struct to decode player records from Supabase
