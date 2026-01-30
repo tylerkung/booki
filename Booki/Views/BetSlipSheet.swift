@@ -234,7 +234,8 @@ struct BetSlipSheet: View {
 
                     // Selections (US-053: animated item transitions, US-004: per-item stakes)
                     VStack(spacing: 12) {
-                        ForEach(Array(betSlipManager.items.enumerated()), id: \.element.marketId) { index, item in
+                        // US-001: Use combination of marketId+side for unique ID to support both sides of same market
+                        ForEach(Array(betSlipManager.items.enumerated()), id: \.element) { index, item in
                             PremiumBetSlipItemCard(
                                 item: item,
                                 onRemove: {
