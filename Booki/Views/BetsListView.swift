@@ -409,6 +409,7 @@ struct BetDetailView: View {
                     }
                 }
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - Event Section
             Section("Event") {
@@ -430,6 +431,7 @@ struct BetDetailView: View {
                     }
                 }
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - Bet Details Section
             Section("Bet Details") {
@@ -438,6 +440,7 @@ struct BetDetailView: View {
                 LabeledContent("Odds", value: formattedOdds)
                 LabeledContent("Stake", value: formattedStake)
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - Payout Section
             Section("Potential Payout") {
@@ -446,6 +449,7 @@ struct BetDetailView: View {
                 LabeledContent("Total Return", value: formattedTotalReturn)
                     .fontWeight(.semibold)
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - Player Section
             Section("Player") {
@@ -459,6 +463,7 @@ struct BetDetailView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - Meta Section
             Section("Details") {
@@ -466,6 +471,7 @@ struct BetDetailView: View {
                 LabeledContent("Bet ID", value: bet.id.uuidString.prefix(8) + "...")
                     .font(.caption)
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - History Section
             Section("History") {
@@ -484,12 +490,14 @@ struct BetDetailView: View {
                     }
                 }
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - Actions Section
             if shouldShowActions {
                 Section("Actions") {
                     actionButtons
                 }
+                .listRowBackground(Theme.cardBackground)
             }
         }
         .scrollContentBackground(.hidden)

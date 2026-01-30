@@ -84,6 +84,7 @@ struct SubmitBetView: View {
             } header: {
                 Text("Your Account")
             }
+            .listRowBackground(Theme.cardBackground)
 
             // Events grouped by sport and league
             if availableEvents.isEmpty {
@@ -129,6 +130,7 @@ struct SubmitBetView: View {
                     Text(league)
                 }
             }
+            .listRowBackground(Theme.cardBackground)
         }
     }
 
@@ -292,6 +294,7 @@ struct MarketSelectionView: View {
             } header: {
                 Text("Event")
             }
+            .listRowBackground(Theme.cardBackground)
 
             // Markets section
             if event.markets?.isEmpty ?? true {
@@ -325,6 +328,7 @@ struct MarketSelectionView: View {
                 } header: {
                     Text("Selected")
                 }
+                .listRowBackground(Theme.cardBackground)
             }
         }
         .scrollContentBackground(.hidden)
@@ -365,6 +369,7 @@ struct MarketSelectionView: View {
         } header: {
             Text(marketTypeName(type))
         }
+        .listRowBackground(Theme.cardBackground)
     }
 
     // MARK: - Continue Button
@@ -634,6 +639,7 @@ struct StakeEntryView: View {
         } header: {
             Text("Your Account")
         }
+        .listRowBackground(Theme.cardBackground)
     }
 
     @ViewBuilder
@@ -665,6 +671,7 @@ struct StakeEntryView: View {
         } header: {
             Text("Stake Amount")
         }
+        .listRowBackground(Theme.cardBackground)
     }
 
     @ViewBuilder
@@ -695,6 +702,7 @@ struct StakeEntryView: View {
         } footer: {
             Text("Returns include your original stake if bet wins.")
         }
+        .listRowBackground(Theme.cardBackground)
     }
 
     @ViewBuilder
@@ -744,6 +752,7 @@ struct StakeEntryView: View {
         } header: {
             Text("Review Summary")
         }
+        .listRowBackground(Theme.cardBackground)
     }
 
     @ViewBuilder
@@ -761,6 +770,7 @@ struct StakeEntryView: View {
         } header: {
             Text("Disclosure")
         }
+        .listRowBackground(Theme.cardBackground)
     }
 
     @ViewBuilder

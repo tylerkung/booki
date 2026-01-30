@@ -6,6 +6,7 @@ struct EventsListView: View {
     @Query(sort: \Event.startTime) private var events: [Event]
 
     @State private var showingAddEvent = false
+    @State private var showingSyncGames = false
     @State private var showingImportEvents = false
     @State private var showingFetchScores = false
     @State private var showingRefreshOdds = false
@@ -43,6 +44,7 @@ struct EventsListView: View {
                         } header: {
                             Text(group.key)
                         }
+                        .listRowBackground(Theme.cardBackground)
                     }
                 }
             }
@@ -55,28 +57,43 @@ struct EventsListView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
+                        // Primary action - unified sync
+                        Button {
+                            showingSyncGames = true
+                        } label: {
+                            Label("Sync Games", systemImage: "arrow.triangle.2.circlepath")
+                        }
+
+                        Divider()
+
+                        // Manual add
                         Button {
                             showingAddEvent = true
                         } label: {
                             Label("Add Event Manually", systemImage: "plus")
                         }
 
-                        Button {
-                            showingImportEvents = true
-                        } label: {
-                            Label("Import from Odds API", systemImage: "square.and.arrow.down")
-                        }
+                        // Advanced options
+                        Menu {
+                            Button {
+                                showingImportEvents = true
+                            } label: {
+                                Label("Import from Odds API", systemImage: "square.and.arrow.down")
+                            }
 
-                        Button {
-                            showingFetchScores = true
-                        } label: {
-                            Label("Fetch Scores", systemImage: "sportscourt")
-                        }
+                            Button {
+                                showingFetchScores = true
+                            } label: {
+                                Label("Fetch Scores", systemImage: "sportscourt")
+                            }
 
-                        Button {
-                            showingRefreshOdds = true
+                            Button {
+                                showingRefreshOdds = true
+                            } label: {
+                                Label("Refresh Odds", systemImage: "arrow.clockwise")
+                            }
                         } label: {
-                            Label("Refresh Odds", systemImage: "arrow.triangle.2.circlepath")
+                            Label("Advanced", systemImage: "ellipsis.circle")
                         }
                     } label: {
                         Image(systemName: "plus")
@@ -85,6 +102,9 @@ struct EventsListView: View {
             }
             .sheet(isPresented: $showingAddEvent) {
                 AddEventSheet()
+            }
+            .sheet(isPresented: $showingSyncGames) {
+                SyncGamesView()
             }
             .sheet(isPresented: $showingImportEvents) {
                 ImportEventsView()

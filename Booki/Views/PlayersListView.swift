@@ -85,6 +85,7 @@ struct PlayersListView: View {
                             )
                         }
                     }
+                    .listRowBackground(Theme.cardBackground)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -419,6 +420,7 @@ struct PlayerDetailView: View {
                     LabeledContent("Email", value: email)
                 }
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - Invite Code Section
             Section("Player Account") {
@@ -504,6 +506,7 @@ struct PlayerDetailView: View {
                     }
                 }
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - Balance Section
             Section("Balance") {
@@ -524,6 +527,7 @@ struct PlayerDetailView: View {
                         .foregroundStyle(openLiabilityColor)
                 }
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - Collection Status Section
             if shouldShowCollectionStatus {
@@ -557,6 +561,7 @@ struct PlayerDetailView: View {
                     // Collection action buttons
                     collectionActionButtons
                 }
+                .listRowBackground(Theme.cardBackground)
             }
 
             // MARK: - Bet History Section
@@ -574,6 +579,7 @@ struct PlayerDetailView: View {
                     }
                 }
             }
+            .listRowBackground(Theme.cardBackground)
 
             // MARK: - Actions Section
             Section("Actions") {
@@ -610,6 +616,7 @@ struct PlayerDetailView: View {
                 // Status Actions (contextual)
                 statusActionButtons
             }
+            .listRowBackground(Theme.cardBackground)
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
@@ -994,6 +1001,7 @@ struct BalanceAdjustmentSheet: View {
                         Text("A positive adjustment debits the player (increases what they owe).")
                     }
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 Section {
                     if let value = amountDecimal {
@@ -1005,7 +1013,10 @@ struct BalanceAdjustmentSheet: View {
                 } header: {
                     Text("Preview")
                 }
+                .listRowBackground(Theme.cardBackground)
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle("Adjust Balance")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1093,6 +1104,7 @@ struct AddPlayerSheet: View {
                 } footer: {
                     Text("Name is required. Email and credit limit are optional.")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 Section {
                     TextField("Username (Optional)", text: $username)
@@ -1104,6 +1116,7 @@ struct AddPlayerSheet: View {
                 } footer: {
                     Text("Username can be used for player login in the future.")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 Section {
                     LabeledContent("Name") {
@@ -1127,7 +1140,10 @@ struct AddPlayerSheet: View {
                 } header: {
                     Text("Preview")
                 }
+                .listRowBackground(Theme.cardBackground)
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle("Add Player")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1188,7 +1204,10 @@ struct PromisedDateSheet: View {
                 } footer: {
                     Text("Select the date the player has promised to make payment.")
                 }
+                .listRowBackground(Theme.cardBackground)
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle("Mark as Promised")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

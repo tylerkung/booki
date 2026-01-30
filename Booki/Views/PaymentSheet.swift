@@ -85,6 +85,7 @@ struct PaymentSheet: View {
                 } footer: {
                     Text("Enter the payment amount")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Direction Section
                 Section {
@@ -103,6 +104,7 @@ struct PaymentSheet: View {
                         Text("You are paying \(player.name). This increases their balance (what you owe them becomes what they have in credit).")
                     }
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Payment Method Section
                 Section {
@@ -115,6 +117,7 @@ struct PaymentSheet: View {
                 } header: {
                     Text("Payment Method")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Note Section
                 Section {
@@ -123,6 +126,7 @@ struct PaymentSheet: View {
                 } header: {
                     Text("Note")
                 }
+                .listRowBackground(Theme.cardBackground)
 
                 // MARK: - Preview Section
                 Section {
@@ -160,6 +164,7 @@ struct PaymentSheet: View {
                 } header: {
                     Text("Preview")
                 }
+                .listRowBackground(Theme.cardBackground)
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
