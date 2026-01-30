@@ -168,4 +168,22 @@ enum PlayerService {
         }
         player.updatedAt = Date()
     }
+
+    // MARK: - Player Deletion
+
+    /// Checks if a player has any associated bets or ledger entries
+    /// - Parameters:
+    ///   - player: The player to check
+    ///   - bets: All bets to search through
+    ///   - ledgerEntries: All ledger entries to search through
+    /// - Returns: True if the player has any history (bets or ledger entries)
+    static func playerHasHistory(
+        _ player: Player,
+        bets: [Bet],
+        ledgerEntries: [LedgerEntry]
+    ) -> Bool {
+        let hasBets = bets.contains { $0.player?.id == player.id }
+        let hasLedgerEntries = ledgerEntries.contains { $0.player?.id == player.id }
+        return hasBets || hasLedgerEntries
+    }
 }

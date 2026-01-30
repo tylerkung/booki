@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Supabase
 
 /// Filter options for collection status
 enum CollectionFilter: String, CaseIterable, Identifiable {
@@ -301,6 +302,8 @@ struct PlayerRowView: View {
 
 struct PlayerDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var syncService: SyncService
     @Query private var allBets: [Bet]
     @Query private var allLedgerEntries: [LedgerEntry]
     @Query private var events: [Event]
@@ -316,6 +319,9 @@ struct PlayerDetailView: View {
     @State private var promisedDate: Date = Date()
     @State private var showingRevokeCodeConfirmation = false
     @State private var codeCopied = false
+    @State private var showingDeleteConfirmation = false
+    @State private var isDeleting = false
+    @State private var deleteError: String?
 
     // MARK: - Computed Properties
 
@@ -396,6 +402,11 @@ struct PlayerDetailView: View {
 
     private var collectionStatusText: String {
         player.collectionStatus?.displayName ?? "None"
+    }
+
+    /// Whether the player has any bets or ledger entries (for delete warning)
+    private var playerHasHistory: Bool {
+        PlayerService.playerHasHistory(player, bets: allBets, ledgerEntries: allLedgerEntries)
     }
 
     // MARK: - Body
@@ -684,6 +695,32 @@ struct PlayerDetailView: View {
         } message: {
             Text("The player will no longer be able to use this code to claim their account.")
         }
+        .confirmationDialog(
+            "Delete \(player.name)?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Player", role: .destructive) {
+                deletePlayer()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if playerHasHistory {
+                Text("This player has bets or ledger entries. Deleting will permanently remove the player and all their history. This cannot be undone.")
+            } else {
+                Text("This will permanently delete the player. This cannot be undone.")
+            }
+        }
+        .alert("Delete Error", isPresented: .init(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            if let error = deleteError {
+                Text(error)
+            }
+        }
     }
 
     // MARK: - Status Action Buttons
@@ -720,6 +757,14 @@ struct PlayerDetailView: View {
             }
             .tint(.green)
         }
+
+        // Delete button available for all statuses
+        Button(role: .destructive) {
+            showingDeleteConfirmation = true
+        } label: {
+            Label("Delete Player", systemImage: "trash")
+        }
+        .disabled(isDeleting)
     }
 
     // MARK: - Collection Action Buttons
@@ -792,6 +837,66 @@ struct PlayerDetailView: View {
             break
         case .failure(let error):
             print("Failed to reactivate player: \(error)")
+        }
+    }
+
+    private func deletePlayer() {
+        isDeleting = true
+
+        Task {
+            do {
+                // Delete from Supabase first for immediate removal
+                let supabase = SupabaseClientManager.shared.client
+                try await supabase
+                    .from("players")
+                    .delete()
+                    .eq("id", value: player.id.uuidString)
+                    .execute()
+
+                // Delete associated bets from Supabase
+                let playerBetIds = playerBets.map { $0.id.uuidString }
+                if !playerBetIds.isEmpty {
+                    try await supabase
+                        .from("bets")
+                        .delete()
+                        .in("id", values: playerBetIds)
+                        .execute()
+                }
+
+                // Delete associated ledger entries from Supabase
+                let playerLedgerIds = playerLedgerEntries.map { $0.id.uuidString }
+                if !playerLedgerIds.isEmpty {
+                    try await supabase
+                        .from("ledger_entries")
+                        .delete()
+                        .in("id", values: playerLedgerIds)
+                        .execute()
+                }
+
+                // Delete from local SwiftData
+                await MainActor.run {
+                    // Delete associated bets locally
+                    for bet in playerBets {
+                        modelContext.delete(bet)
+                    }
+
+                    // Delete associated ledger entries locally
+                    for entry in playerLedgerEntries {
+                        modelContext.delete(entry)
+                    }
+
+                    // Delete the player
+                    modelContext.delete(player)
+
+                    isDeleting = false
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    isDeleting = false
+                    deleteError = "Failed to delete player: \(error.localizedDescription)"
+                }
+            }
         }
     }
 
@@ -1061,6 +1166,8 @@ struct BalanceAdjustmentSheet: View {
 struct AddPlayerSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var syncService: SyncService
+    @EnvironmentObject private var authManager: AuthManager
 
     @State private var name: String = ""
     @State private var email: String = ""
@@ -1175,7 +1282,18 @@ struct AddPlayerSheet: View {
             username: trimmedUsername.isEmpty ? nil : trimmedUsername
         )
 
+        // Set the bookie ID so the player is associated with the current bookie
+        // This is required for the Edge Function to validate the player belongs to the bookie
+        player.bookieId = authManager.currentBookieId
+
         modelContext.insert(player)
+
+        // Trigger sync to upload the new player to Supabase
+        // This ensures the player exists in the backend before test mode is used
+        Task {
+            await syncService.triggerUpload()
+        }
+
         dismiss()
     }
 }
