@@ -58,3 +58,17 @@ Started: Thu Jan 29 16:58:37 PST 2026
   - PlayerSettingsContent is a separate struct from SettingsView - found in ContentView.swift, not SettingsView.swift
   - When looking for player-specific views, check ContentView.swift as it contains `playerModeView` and `PlayerSettingsContent`
 ---
+
+## 2026-01-29 - US-005
+- **What was implemented**: Added 'To Win' amount display alongside stake on bet views
+- **Files changed**: Booki/Views/BetsListView.swift, Booki/Views/PlayerMainView.swift
+- **Root cause**: BetRowView (bookie bet list) and PlayerBetCard (player bet list) only showed stake, not potential payout
+- **Fix**:
+  - BetRowView: Added `potentialPayout` and `formattedPotentialPayout` computed properties using `LiabilityService.calculatePayout()`. Updated bottom row to show "Stake: $X • To Win: $Y"
+  - PlayerBetCard: Same changes - added payout calculations and updated pick details row
+- **Learnings for future iterations:**
+  - Use `LiabilityService.calculatePayout(stake:odds:)` for calculating potential winnings from American odds
+  - TrackView, TicketDetailView, and BetDetailView already had "To Win" displays implemented
+  - Format: "Stake: $X • To Win: $Y" provides clear, scannable information at a glance
+  - BetRowView is in BetsListView.swift, PlayerBetCard is in PlayerMainView.swift
+---

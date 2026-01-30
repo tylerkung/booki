@@ -84,8 +84,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added 'To Win' display to BetRowView (bookie) and PlayerBetCard (player). TrackView, TicketDetailView, BetDetailView already had 'To Win' displays."
     }
   ]
 }
