@@ -83,6 +83,7 @@ struct BetsListView: View {
                                 BetRowView(
                                     bet: bet,
                                     eventName: eventName(for: bet),
+                                    betDisplayName: betDisplayName(for: bet),
                                     policyViolationReason: bet.policyViolationReason,
                                     parlayInfo: parlayInfo(for: bet)
                                 )
@@ -109,6 +110,47 @@ struct BetsListView: View {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return "Event \(bet.eventId.prefix(8))"
+    }
+
+    /// Creates a display name for the bet ticket
+    /// - Single bets: "Lakers ML -150" or "OKC -6.5 (-110)"
+    /// - Parlays: "3-leg parlay +450"
+    private func betDisplayName(for bet: Bet) -> String {
+        if bet.isParlay {
+            // For parlays, show leg count and combined odds
+            let parlayBets = bets.filter { $0.ticketId == bet.ticketId }
+            let combinedOdds = calculateCombinedOdds(for: parlayBets)
+            let oddsString = combinedOdds > 0 ? "+\(combinedOdds)" : "\(combinedOdds)"
+            return "\(parlayBets.count)-leg parlay \(oddsString)"
+        } else {
+            // For singles, show side with odds
+            let oddsString = bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
+            return "\(bet.side) \(oddsString)"
+        }
+    }
+
+    /// Calculate combined American odds for a parlay
+    private func calculateCombinedOdds(for parlayBets: [Bet]) -> Int {
+        let combinedDecimal = parlayBets.reduce(Decimal(1)) { result, bet in
+            result * americanToDecimal(bet.odds)
+        }
+        return decimalToAmerican(combinedDecimal)
+    }
+
+    private func americanToDecimal(_ odds: Int) -> Decimal {
+        if odds > 0 {
+            return 1 + Decimal(odds) / 100
+        } else {
+            return 1 + 100 / Decimal(abs(odds))
+        }
+    }
+
+    private func decimalToAmerican(_ decimal: Decimal) -> Int {
+        if decimal >= 2 {
+            return Int(truncating: ((decimal - 1) * 100) as NSDecimalNumber)
+        } else {
+            return Int(truncating: (-100 / (decimal - 1)) as NSDecimalNumber)
+        }
     }
 
     /// Calculate parlay partial info for a bet
@@ -138,6 +180,7 @@ struct BetsListView: View {
 struct BetRowView: View {
     let bet: Bet
     let eventName: String
+    let betDisplayName: String
     var policyViolationReason: String? = nil
     var parlayInfo: ParlayPartialInfo? = nil
 
@@ -177,10 +220,11 @@ struct BetRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Top row: Player name and status badge
+            // Top row: Bet display name and status badge
             HStack {
-                Text(bet.player?.name ?? "Unknown Player")
+                Text(betDisplayName)
                     .font(.headline)
+                    .foregroundStyle(Theme.textPrimary)
 
                 Spacer()
 
@@ -206,24 +250,16 @@ struct BetRowView: View {
                 }
             }
 
-            // Second row: Event name
-            Text(eventName)
+            // Second row: Player name
+            Text(bet.player?.name ?? "Unknown Player")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .fontWeight(.medium)
+                .foregroundStyle(Theme.textSecondary)
 
-            // Third row: Market and side
-            HStack {
-                Text(bet.market)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text("•")
-                    .foregroundStyle(.secondary)
-
-                Text(bet.side)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-            }
+            // Third row: Event name
+            Text(eventName)
+                .font(.caption)
+                .foregroundStyle(Theme.textMuted)
 
             // Policy violation reason (only for pending bets with violations)
             if bet.status == .pending, let reason = policyViolationReason, !reason.isEmpty {
@@ -243,16 +279,13 @@ struct BetRowView: View {
                 .foregroundStyle(Theme.danger)
             }
 
-            // Bottom row: Odds and stake
+            // Bottom row: Stake
             HStack {
-                Text(formattedOdds)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
                 Spacer()
 
                 Text(formattedStake)
                     .font(.subheadline.bold())
+                    .foregroundStyle(Theme.textPrimary)
             }
         }
         .padding(.vertical, 4)
@@ -309,6 +342,46 @@ struct BetDetailView: View {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return "Event \(bet.eventId.prefix(8))"
+    }
+
+    /// Creates a display name for the bet ticket
+    /// - Single bets: "Lakers ML -150" or "OKC -6.5 (-110)"
+    /// - Parlays: "3-leg parlay +450"
+    private var betDisplayName: String {
+        if bet.isParlay {
+            // For parlays, show leg count and combined odds
+            let combinedOdds = calculateCombinedOdds(for: parlayBets)
+            let oddsString = combinedOdds > 0 ? "+\(combinedOdds)" : "\(combinedOdds)"
+            return "\(parlayBets.count)-leg parlay \(oddsString)"
+        } else {
+            // For singles, show side with odds
+            let oddsString = bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
+            return "\(bet.side) \(oddsString)"
+        }
+    }
+
+    /// Calculate combined American odds for a parlay
+    private func calculateCombinedOdds(for parlayBets: [Bet]) -> Int {
+        let combinedDecimal = parlayBets.reduce(Decimal(1)) { result, bet in
+            result * americanToDecimal(bet.odds)
+        }
+        return decimalToAmerican(combinedDecimal)
+    }
+
+    private func americanToDecimal(_ odds: Int) -> Decimal {
+        if odds > 0 {
+            return 1 + Decimal(odds) / 100
+        } else {
+            return 1 + 100 / Decimal(abs(odds))
+        }
+    }
+
+    private func decimalToAmerican(_ decimal: Decimal) -> Int {
+        if decimal >= 2 {
+            return Int(truncating: ((decimal - 1) * 100) as NSDecimalNumber)
+        } else {
+            return Int(truncating: (-100 / (decimal - 1)) as NSDecimalNumber)
+        }
     }
 
     private var formattedOdds: String {
@@ -502,7 +575,7 @@ struct BetDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("Bet Details")
+        .navigationTitle(betDisplayName)
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(
             "Void this bet?",

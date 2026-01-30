@@ -30,6 +30,38 @@ struct Ticket: Identifiable {
         }
     }
 
+    /// Display name for the ticket
+    /// - Single bets: "Lakers ML -150" or "OKC -6.5 (-110)"
+    /// - Parlays: "3-leg parlay +450"
+    var displayName: String {
+        if isParlay {
+            let combinedOdds = combinedAmericanOdds
+            let oddsString = combinedOdds > 0 ? "+\(combinedOdds)" : "\(combinedOdds)"
+            return "\(bets.count)-leg parlay \(oddsString)"
+        } else if let bet = bets.first {
+            let oddsString = bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
+            return "\(bet.side) \(oddsString)"
+        } else {
+            return "Single"
+        }
+    }
+
+    /// Combined American odds for parlays
+    var combinedAmericanOdds: Int {
+        let combinedDecimal = bets.reduce(Decimal(1)) { result, bet in
+            result * americanToDecimal(bet.odds)
+        }
+        return decimalToAmerican(combinedDecimal)
+    }
+
+    private func decimalToAmerican(_ decimal: Decimal) -> Int {
+        if decimal >= 2 {
+            return Int(truncating: ((decimal - 1) * 100) as NSDecimalNumber)
+        } else {
+            return Int(truncating: (-100 / (decimal - 1)) as NSDecimalNumber)
+        }
+    }
+
     /// Combined status for the ticket
     var combinedStatus: BetStatus {
         // If any bet is void, ticket is void
@@ -237,10 +269,10 @@ struct TicketHeaderView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // Row 1: Ticket type and status
+            // Row 1: Ticket display name and status
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(ticket.typeLabel)
+                    Text(ticket.displayName)
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textPrimary)

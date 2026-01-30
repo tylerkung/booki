@@ -255,7 +255,7 @@ struct TicketDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("Ticket Details")
+        .navigationTitle(ticket.displayName)
         .navigationBarTitleDisplayMode(.inline)
     }
 
