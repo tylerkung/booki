@@ -126,8 +126,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added .listRowBackground(Theme.cardBackground) to all List/Form sections that were missing it. Updated: PlayersListView (player list rows, PlayerDetailView sections, BalanceAdjustmentSheet, AddPlayerSheet, PromisedDateSheet), BetsListView (BetDetailView sections), EventsListView (event sections), PaymentSheet (all form sections), SubmitBetView (SubmitBetView, MarketSelectionView, StakeEntryView sections). Pattern: List views that use .scrollContentBackground(.hidden) and .background(Theme.background) need .listRowBackground(Theme.cardBackground) on each Section for the dark theme to display correctly."
     },
     {
       "id": "US-009",

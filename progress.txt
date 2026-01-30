@@ -6,6 +6,7 @@ Started: Thu Jan 29 15:59:55 PST 2026
 - Edge Functions expect side as 'a' or 'b', not display names - use sideIndicator field
 - BetSlipSelection and BetSlipItem must include sideIndicator for server communication
 - When isAwayTeam is true, use sideA/oddsA (sideIndicator = "a"); when false, use sideB/oddsB (sideIndicator = "b")
+- Dark theme List/Form styling: use `.scrollContentBackground(.hidden)`, `.background(Theme.background)`, and `.listRowBackground(Theme.cardBackground)` on each Section
 
 ---
 
@@ -93,4 +94,20 @@ Started: Thu Jan 29 15:59:55 PST 2026
   - GamesView and TrackView set their own navigation modifiers that display in that NavigationStack
   - .navigationBarHidden(true) completely hides the navigation bar, removing the title area
   - Bookie view tabs (DashboardView, BetsListView, etc.) use their own NavigationStack internally, so they're unaffected
+---
+
+## 2026-01-29 - US-008
+- What was implemented: Standardized container background colors by adding .listRowBackground(Theme.cardBackground) to all List/Form sections
+- Files changed:
+  - Booki/Views/PlayersListView.swift - Added listRowBackground to player list rows, all PlayerDetailView sections (6), BalanceAdjustmentSheet (2), AddPlayerSheet (3), PromisedDateSheet (1)
+  - Booki/Views/BetsListView.swift - Added listRowBackground to all BetDetailView sections (8)
+  - Booki/Views/EventsListView.swift - Added listRowBackground to event section groups
+  - Booki/Views/PaymentSheet.swift - Added listRowBackground to all 5 form sections
+  - Booki/Views/SubmitBetView.swift - Added listRowBackground to SubmitBetView (2), MarketSelectionView (3), StakeEntryView (5)
+- **Learnings for future iterations:**
+  - Default iOS List row background is a light gray that doesn't match the dark theme
+  - The fix requires three modifiers on List views: .scrollContentBackground(.hidden), .background(Theme.background), and .listRowBackground(Theme.cardBackground) on each Section
+  - DashboardView was already correctly styled and served as the reference implementation
+  - Views using .listStyle(.plain) may have different behavior but still benefit from listRowBackground
+  - When creating new List/Form views, always include all three modifiers for consistent dark theme
 ---
