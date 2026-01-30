@@ -263,6 +263,17 @@ struct PlayerBetCard: View {
         return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
     }
 
+    private var potentialPayout: Decimal {
+        LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
+    }
+
+    private var formattedPotentialPayout: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: potentialPayout as NSDecimalNumber) ?? "$\(potentialPayout)"
+    }
+
     private var statusColor: Color {
         switch bet.status {
         case .pending: return .orange
@@ -314,8 +325,13 @@ struct PlayerBetCard: View {
 
                 Spacer()
 
-                Text(formattedStake)
+                Text("Stake: \(formattedStake)")
+                    .foregroundStyle(.secondary)
+                Text("•")
+                    .foregroundStyle(.secondary)
+                Text("To Win: \(formattedPotentialPayout)")
                     .fontWeight(.semibold)
+                    .foregroundStyle(.green)
             }
             .font(.caption)
 

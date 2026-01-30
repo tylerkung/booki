@@ -199,6 +199,17 @@ struct BetRowView: View {
         return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
     }
 
+    private var potentialPayout: Decimal {
+        LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
+    }
+
+    private var formattedPotentialPayout: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: potentialPayout as NSDecimalNumber) ?? "$\(potentialPayout)"
+    }
+
     private var statusColor: Color {
         switch bet.status {
         case .pending:
@@ -279,13 +290,21 @@ struct BetRowView: View {
                 .foregroundStyle(Theme.danger)
             }
 
-            // Bottom row: Stake
+            // Bottom row: Stake and To Win
             HStack {
                 Spacer()
 
-                Text(formattedStake)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(Theme.textPrimary)
+                Text("Stake: \(formattedStake)")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+
+                Text("•")
+                    .foregroundStyle(Theme.textMuted)
+
+                Text("To Win: \(formattedPotentialPayout)")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.accent)
             }
         }
         .padding(.vertical, 4)
