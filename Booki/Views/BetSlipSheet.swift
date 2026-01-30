@@ -177,8 +177,10 @@ struct BetSlipSheet: View {
 
                         // Singles/Parlay Toggle (US-041) - Styled
                         // US-005: Added .contentShape(Rectangle()) to expand tap area to full button
+                        // US-003: Disable parlay when conflicting selections exist
                         HStack(spacing: 0) {
                             ForEach(BetMode.allCases, id: \.self) { mode in
+                                let isDisabled = mode == .parlay && betSlipManager.hasConflictingSelections
                                 Button(action: {
                                     withAnimation(.easeInOut(duration: 0.2)) {
                                         betSlipManager.betMode = mode
@@ -187,13 +189,20 @@ struct BetSlipSheet: View {
                                     Text(mode.rawValue)
                                         .font(.subheadline)
                                         .fontWeight(.semibold)
-                                        .foregroundStyle(betSlipManager.betMode == mode ? Theme.background : Theme.textSecondary)
+                                        .foregroundStyle(
+                                            isDisabled ? Theme.textMuted :
+                                            (betSlipManager.betMode == mode ? Theme.background : Theme.textSecondary)
+                                        )
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 10)
-                                        .background(betSlipManager.betMode == mode ? Theme.accent : Color.clear)
+                                        .background(
+                                            isDisabled ? Color.clear :
+                                            (betSlipManager.betMode == mode ? Theme.accent : Color.clear)
+                                        )
                                         .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
+                                .disabled(isDisabled)
                             }
                         }
                         .background(Theme.elevatedBackground)
@@ -202,6 +211,23 @@ struct BetSlipSheet: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(Theme.border, lineWidth: 1)
                         )
+
+                        // US-003: Show conflict message when parlay is unavailable
+                        if let conflictMessage = betSlipManager.conflictDescription {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.warning)
+                                Text(conflictMessage)
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.warning)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.warning.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
                     }
                     .padding(.horizontal)
                     .padding(.top, 16)

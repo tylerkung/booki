@@ -111,6 +111,44 @@ class BetSlipManager: ObservableObject {
     /// Maximum selections allowed
     let maxSelections = 10
 
+    // MARK: - Parlay Conflict Detection (US-003)
+
+    /// Check if selections contain conflicting picks (opposite sides of the same market)
+    /// This makes a parlay impossible since you can't bet both sides of one market
+    var hasConflictingSelections: Bool {
+        // Group items by marketId
+        let marketGroups = Dictionary(grouping: items) { $0.marketId }
+
+        // If any market has multiple selections with different sideIndicators, there's a conflict
+        for (_, marketItems) in marketGroups {
+            if marketItems.count > 1 {
+                // Multiple selections on the same market = conflict
+                return true
+            }
+        }
+
+        // Also check for same event, same market type, different sides
+        // (e.g., both ML selections on the same game)
+        let eventMarketTypeGroups = Dictionary(grouping: items) { item in
+            "\(item.eventId)-\(item.marketType.rawValue)"
+        }
+
+        for (_, groupItems) in eventMarketTypeGroups {
+            if groupItems.count > 1 {
+                // Multiple selections on same event's same market type = conflict
+                return true
+            }
+        }
+
+        return false
+    }
+
+    /// Get a human-readable description of why parlay is unavailable due to conflicts
+    var conflictDescription: String? {
+        guard hasConflictingSelections else { return nil }
+        return "Parlay unavailable: conflicting selections on same game"
+    }
+
     private init() {
         loadItems()
         loadBetMode()
@@ -279,6 +317,11 @@ class BetSlipManager: ObservableObject {
         guard !items.contains(where: { $0.asSelection == item.asSelection }) else { return }
         items.append(item)
         saveItems()
+
+        // US-003: If adding this item creates a conflict while in parlay mode, switch to singles
+        if betMode == .parlay && hasConflictingSelections {
+            betMode = .singles
+        }
     }
 
     /// Add from BetSlipSelection with event context
