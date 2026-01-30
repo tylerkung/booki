@@ -35,3 +35,14 @@ Started: Thu Jan 29 16:58:37 PST 2026
   - BetConfirmationSheet was already correct (used `item.sideIndicator`) - can reference as example
   - When adding new models that pass data to servers, include both display and server-format fields
 ---
+
+## 2026-01-29 - US-003
+- **What was implemented**: Fixed overlapping CTAs on game table view
+- **Files changed**: Booki/Views/CompactGameRow.swift
+- **Root cause**: The `teamOddsRow` had `.frame(height: 36)` but the odds buttons inside it have `oddsButtonHeight: CGFloat = 44`, causing buttons to overflow their row and overlap with adjacent rows
+- **Fix**: Changed `.frame(height: 36)` to `.frame(height: oddsButtonHeight)` so the row height matches the button height
+- **Learnings for future iterations:**
+  - When buttons appear to overlap, check if the container frame is smaller than the button dimensions
+  - CompactGameRow uses `oddsButtonWidth` (52pt) and `oddsButtonHeight` (44pt) as constants - always use these constants for consistency
+  - Row heights should accommodate their content; hard-coded values can become misaligned with component dimensions
+---

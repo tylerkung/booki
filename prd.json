@@ -53,8 +53,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Fixed by changing teamOddsRow frame height from 36pt to oddsButtonHeight (44pt) in CompactGameRow.swift"
     },
     {
       "id": "US-004",
