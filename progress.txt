@@ -55,3 +55,16 @@ Started: Thu Jan 29 15:59:55 PST 2026
   - GameCardView and CompactGameRow use formatSpreadValue because their buttons are compact (52-60px wide)
   - GameDetailView has wider buttons that can accommodate full team name + spread
 ---
+
+## 2026-01-29 - US-005
+- What was implemented: Improved market table typography hierarchy with line values prominent and payout odds de-emphasized
+- Files changed:
+  - Booki/Views/CompactOddsButton.swift - Added showOddsAsSecondary parameter for different typography styles
+  - Booki/Views/CompactGameRow.swift - Updated inline compactOddsButton with two-line layout for spread/total
+  - Booki/Views/GameDetailView.swift - Applied showOddsAsSecondary to mainMarketRow and marketRow functions
+- **Learnings for future iterations:**
+  - CompactOddsButton has two display modes controlled by showOddsAsSecondary parameter
+  - showOddsAsSecondary=true: line value prominent (13pt, bold, textPrimary), odds small (10pt, textMuted)
+  - showOddsAsSecondary=false: odds prominent (used for moneyline where odds ARE the key value)
+  - CompactGameRow has its own inline compactOddsButton that mirrors this pattern
+---

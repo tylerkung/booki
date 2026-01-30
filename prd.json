@@ -82,8 +82,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added showOddsAsSecondary parameter to CompactOddsButton. Spread and Total buttons display line value (e.g., '-3.5', 'o220.5') prominently with Theme.textPrimary, and payout odds smaller in Theme.textMuted underneath. Moneyline unchanged since odds ARE the key value."
     },
     {
       "id": "US-006",
