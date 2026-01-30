@@ -10,6 +10,24 @@ Started: Thu Jan 29 19:02:03 PST 2026
 - AuthManager.ensureBookieRecord() checks for player record FIRST via auth_user_id, then falls back to bookie record
 - currentPlayerId is the player.id from the players table, not the auth_user_id
 
+- PlayerDetailView is defined INSIDE PlayersListView.swift, not a separate file
+- For direct Supabase deletes, delete child records (bets, ledger_entries) BEFORE the parent (player) due to foreign key constraints
+
+---
+
+## 2026-01-29 - US-004
+- Added delete button to PlayerDetailView in the Actions section (available for all player statuses)
+- Implemented confirmation dialog that shows player name and warns if player has history (bets/ledger entries)
+- Added PlayerService.playerHasHistory() helper to check for associated records
+- Delete function deletes from Supabase first (players, bets, ledger_entries tables), then local SwiftData
+- Added error handling with alert for delete failures
+- Uses @Environment(\.dismiss) to navigate back after successful deletion
+- Files changed: Booki/Services/PlayerService.swift, Booki/Views/PlayersListView.swift
+- **Learnings for future iterations:**
+  - PlayerDetailView is in PlayersListView.swift (not its own file)
+  - For cascade deletes, delete from Supabase using .in("id", values: [...]) for batch operations
+  - Always delete from remote first, then local, to ensure consistency
+  - Use Task { } with MainActor.run for async operations that need to update UI
 ---
 
 ## 2026-01-29 - US-003
