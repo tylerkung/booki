@@ -7,6 +7,19 @@ enum UserRole: String, Codable {
     case player
 }
 
+/// Response type for player record lookup from Supabase
+private struct PlayerAuthRecord: Codable {
+    let id: UUID
+    let name: String
+    let bookieId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case bookieId = "bookie_id"
+    }
+}
+
 /// Centralized auth state manager that tracks login status and current user
 /// Provides a single source of truth for authentication state throughout the app
 @MainActor
@@ -30,8 +43,8 @@ final class AuthManager: ObservableObject {
     /// This is set after login/signup when the bookie record is fetched/created
     @Published private(set) var currentBookieId: UUID?
 
-    /// The current player's auth user ID (nil if not authenticated as player)
-    /// This links to player.authUserId in SwiftData
+    /// The current player's ID from Supabase players table (nil if not authenticated as player)
+    /// This is the player.id, not the auth_user_id
     @Published private(set) var currentPlayerId: UUID?
 
     /// Error message from bookie record operations (nil if no error)
@@ -81,12 +94,36 @@ final class AuthManager: ObservableObject {
 
     /// Determines the user's role and fetches appropriate record
     /// Call this after successful login/signup to determine if user is bookie or player
+    /// Priority: Check for player record first, then bookie record
     /// - Parameter name: Optional name to use when creating a new bookie record
     func ensureBookieRecord(name: String? = nil) async {
         isLoadingBookie = true
         bookieError = nil
 
-        // First, try to find an existing bookie record for this user
+        guard let userId = currentUserId, let authUserId = UUID(uuidString: userId) else {
+            bookieError = "No authenticated user found"
+            isLoadingBookie = false
+            return
+        }
+
+        // First, check if this user has a player record (auth_user_id matches)
+        // Players are linked via auth_user_id in the players table
+        do {
+            let playerRecord = try await fetchPlayerRecord(forAuthUserId: authUserId)
+            // User is a player - set role and player ID
+            currentPlayerId = playerRecord.id
+            currentBookieId = nil
+            userRole = .player
+            // Check agreement status for player
+            await checkAgreementRequired(for: authUserId)
+            isLoadingBookie = false
+            return
+        } catch {
+            // No player record found - continue to check for bookie record
+            print("No player record found for auth user, checking bookie: \(error)")
+        }
+
+        // Second, try to find an existing bookie record for this user
         do {
             let bookie = try await BookieService.fetchCurrentBookie()
             currentBookieId = bookie.id
@@ -97,8 +134,8 @@ final class AuthManager: ObservableObject {
             isLoadingBookie = false
             return
         } catch {
-            // No existing bookie record found - this is expected for new users or players
-            // Continue to try creating one or checking if they're a player
+            // No existing bookie record found - this is expected for new users
+            // Continue to try creating one
         }
 
         // Try to create a bookie record (for new bookie signups)
@@ -110,29 +147,40 @@ final class AuthManager: ObservableObject {
             // Check agreement status for new bookie
             await checkAgreementRequired(for: bookie.id)
         } catch {
-            // If we can't create/fetch bookie record, user might be a player
-            // Set as player role - the app will check if they have a valid player record
-            if let userId = currentUserId, let uuid = UUID(uuidString: userId) {
-                currentPlayerId = uuid
-                currentBookieId = nil
-                userRole = .player
-                // Check agreement status for player on app launch
-                await checkAgreementRequired(for: uuid)
-            } else {
-                bookieError = error.localizedDescription
-                print("Failed to determine user role: \(error)")
-            }
+            bookieError = error.localizedDescription
+            print("Failed to determine user role: \(error)")
         }
 
         isLoadingBookie = false
     }
 
+    /// Fetches a player record from Supabase by auth_user_id
+    /// - Parameter authUserId: The authenticated user's UUID
+    /// - Returns: The player record if found
+    /// - Throws: Error if no player record exists or network error
+    private func fetchPlayerRecord(forAuthUserId authUserId: UUID) async throws -> PlayerAuthRecord {
+        let response: [PlayerAuthRecord] = try await supabase
+            .from("players")
+            .select("id, name, bookie_id")
+            .eq("auth_user_id", value: authUserId.uuidString)
+            .limit(1)
+            .execute()
+            .value
+
+        guard let player = response.first else {
+            throw NSError(domain: "AuthManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "No player record found"])
+        }
+
+        return player
+    }
+
     /// Sets the current user as a player
     /// Called when a player successfully claims their account
-    /// - Parameter authUserId: The player's auth user UUID
+    /// - Parameter playerId: The player's record UUID (from players table)
+    /// - Parameter authUserId: The player's auth user UUID (for agreement check)
     /// - Parameter checkAgreement: Whether to check agreement status (default true)
-    func setAsPlayer(authUserId: UUID, checkAgreement: Bool = true) {
-        currentPlayerId = authUserId
+    func setAsPlayer(playerId: UUID, authUserId: UUID, checkAgreement: Bool = true) {
+        currentPlayerId = playerId
         currentBookieId = nil
         userRole = .player
 
