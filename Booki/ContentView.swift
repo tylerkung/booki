@@ -293,6 +293,7 @@ struct PlayerSettingsContent: View {
                 } header: {
                     Text("Player Account")
                 }
+                .listRowBackground(Theme.cardBackground)
             }
 
             // Switch to Bookie Mode
@@ -307,6 +308,7 @@ struct PlayerSettingsContent: View {
             } footer: {
                 Text("Switch back to the bookie view to manage bets and players.")
             }
+            .listRowBackground(Theme.cardBackground)
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
