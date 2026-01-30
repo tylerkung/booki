@@ -198,7 +198,7 @@ struct ImportEventsView: View {
                     }
                     .disabled(isImporting)
                     .listRowBackground(Theme.accent)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
                 }
             }
         }

@@ -266,7 +266,7 @@ struct GradeEventSheet: View {
                 Text(event.sport)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Theme.accent)
@@ -433,7 +433,7 @@ struct GradeEventSheet: View {
             } label: {
                 Text("Done")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Theme.accent)
@@ -574,7 +574,7 @@ struct BetGradeRow: View {
                 .font(.caption2)
                 .fontWeight(.medium)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Theme.background)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(gradeColor(for: grade))
@@ -605,7 +605,7 @@ struct BetGradeRow: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .background(isSelected ? color : color.opacity(0.15))
-            .foregroundStyle(isSelected ? .white : color)
+            .foregroundStyle(isSelected ? Theme.background : color)
             .cornerRadius(8)
         }
         .buttonStyle(.plain)

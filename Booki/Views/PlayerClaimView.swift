@@ -178,7 +178,7 @@ struct PlayerClaimView: View {
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(isValidCodeLength && !isValidating ? Theme.accent : Theme.accent.opacity(0.5))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.background)
                 .cornerRadius(12)
             }
             .disabled(!isValidCodeLength || isValidating)
@@ -243,7 +243,7 @@ struct PlayerClaimView: View {
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(isValidCredentials && !isCreatingAccount ? Theme.accent : Theme.accent.opacity(0.5))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.background)
                 .cornerRadius(12)
             }
             .disabled(!isValidCredentials || isCreatingAccount)
@@ -284,7 +284,7 @@ struct PlayerClaimView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Theme.accent)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
                     .cornerRadius(12)
             }
         }
