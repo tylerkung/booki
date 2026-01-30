@@ -379,7 +379,8 @@ struct MarketSelectionView: View {
         NavigationLink(value: BetSelection(
             market: selectedMarket!,
             side: selectedSide == .sideA ? selectedMarket!.sideA : selectedMarket!.sideB,
-            odds: selectedSide == .sideA ? selectedMarket!.oddsA : selectedMarket!.oddsB
+            odds: selectedSide == .sideA ? selectedMarket!.oddsA : selectedMarket!.oddsB,
+            sideIndicator: selectedSide == .sideA ? "a" : "b"
         )) {
             Text("Continue")
                 .font(.headline)
@@ -474,6 +475,9 @@ struct BetSelection: Hashable {
     let market: Market
     let side: String
     let odds: Int
+    /// Indicates which side of the market was selected: "a" for sideA/oddsA, "b" for sideB/oddsB
+    /// Used by Edge Functions which expect side as 'a' or 'b'
+    let sideIndicator: String
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(market.id)
@@ -800,11 +804,12 @@ struct StakeEntryView: View {
         }
 
         // Submit bet via Edge Function
+        // Use sideIndicator ('a' or 'b') for the server, not the display name
         Task {
             let result = await BetService.submitBetToServer(
                 eventId: event.id,
                 marketId: selection.market.id,
-                side: selection.side,
+                side: selection.sideIndicator,
                 odds: selection.odds,
                 stake: stakeValue,
                 playerId: player.id,
