@@ -13,6 +13,22 @@ Started: Thu Jan 29 19:02:03 PST 2026
 - PlayerDetailView is defined INSIDE PlayersListView.swift, not a separate file
 - For direct Supabase deletes, delete child records (bets, ledger_entries) BEFORE the parent (player) due to foreign key constraints
 
+- AddPlayerInterstitialSheet uses a binding to trigger AddPlayerSheet after dismissing via DispatchQueue.main.asyncAfter delay
+
+---
+
+## 2026-01-29 - US-005
+- Added AddPlayerInterstitialSheet component to PlayersListView.swift
+- Interstitial displays on Add Player button tap with two options: "Add Player" and "Purchase Seats"
+- Add Player dismisses interstitial then shows existing AddPlayerSheet via binding + asyncAfter delay
+- Purchase Seats shows "Coming Soon" alert
+- Uses Theme colors: accent for Add Player icon, gold for Purchase Seats icon
+- Card styling with Theme.cardBackground, Theme.cornerRadius, and Theme.border
+- Files changed: Booki/Views/PlayersListView.swift
+- **Learnings for future iterations:**
+  - When chaining sheet presentations, use DispatchQueue.main.asyncAfter to let the first sheet dismiss before showing the second
+  - For consistent card-button styling: use `.buttonStyle(.plain)`, manual padding, background, cornerRadius, and border overlay
+  - Theme.gold is available for secondary accent highlighting
 ---
 
 ## 2026-01-29 - US-004
