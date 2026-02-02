@@ -47,11 +47,17 @@ enum BetHistoryFilter: String, CaseIterable, Identifiable {
 /// Enhanced account summary view for players showing balance, credit utilization, and quick stats
 struct AccountView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var authManager: AuthManager
     @Query private var allBets: [Bet]
     @Query private var allLedgerEntries: [LedgerEntry]
     @Query private var allEvents: [Event]
 
     let player: Player
+
+    // Logout state
+    @State private var showingLogoutConfirmation = false
+    @State private var showingLogoutError = false
+    @State private var logoutErrorMessage = ""
 
     // Transaction history filter state
     @State private var selectedTransactionFilter: TransactionFilter = .all
@@ -216,12 +222,63 @@ struct AccountView: View {
 
                 // Transaction History Section
                 transactionHistorySection
+
+                // Logout Section (only show for actual players, not test mode)
+                if authManager.userRole == .player {
+                    logoutSection
+                }
             }
             .padding()
         }
         .background(Theme.background)
         .navigationTitle("Account")
         .navigationBarTitleDisplayMode(.large)
+        .alert("Log Out", isPresented: $showingLogoutConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Log Out", role: .destructive) {
+                performLogout()
+            }
+        } message: {
+            Text("Are you sure you want to log out?")
+        }
+        .alert("Logout Error", isPresented: $showingLogoutError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(logoutErrorMessage)
+        }
+    }
+
+    // MARK: - Logout Section
+
+    private var logoutSection: some View {
+        VStack(spacing: 16) {
+            Button(role: .destructive) {
+                showingLogoutConfirmation = true
+            } label: {
+                HStack {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                    Text("Log Out")
+                }
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Theme.danger)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        .padding(.top, 20)
+    }
+
+    private func performLogout() {
+        Task {
+            do {
+                try await authManager.signOut()
+            } catch {
+                logoutErrorMessage = error.localizedDescription
+                showingLogoutError = true
+            }
+        }
     }
 
     // MARK: - Hero Balance Section

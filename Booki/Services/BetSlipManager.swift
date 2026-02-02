@@ -88,7 +88,13 @@ class BetSlipManager: ObservableObject {
     @Published private(set) var items: [BetSlipItem] = []
 
     /// Per-item stakes for singles mode (US-003)
-    @Published private(set) var itemStakes: [UUID: Decimal] = [:]
+    /// Key is "\(marketId)_\(sideIndicator)" to uniquely identify each selection
+    @Published private(set) var itemStakes: [String: Decimal] = [:]
+
+    /// Generate unique key for item stakes (marketId + sideIndicator)
+    func itemStakeKey(marketId: UUID, sideIndicator: String) -> String {
+        return "\(marketId.uuidString)_\(sideIndicator)"
+    }
 
     /// Published bet mode (singles or parlay)
     /// US-041: Support Multi-Bet (Parlay) Selections
@@ -269,14 +275,16 @@ class BetSlipManager: ObservableObject {
     // MARK: - Per-Item Stakes (US-003)
 
     /// Set stake for an individual bet item
-    func setItemStake(marketId: UUID, stake: Decimal) {
-        itemStakes[marketId] = stake
+    func setItemStake(marketId: UUID, sideIndicator: String, stake: Decimal) {
+        let key = itemStakeKey(marketId: marketId, sideIndicator: sideIndicator)
+        itemStakes[key] = stake
         saveItemStakes()
     }
 
     /// Get stake for an individual bet item (returns 0 if not set)
-    func getItemStake(marketId: UUID) -> Decimal {
-        return itemStakes[marketId] ?? 0
+    func getItemStake(marketId: UUID, sideIndicator: String) -> Decimal {
+        let key = itemStakeKey(marketId: marketId, sideIndicator: sideIndicator)
+        return itemStakes[key] ?? 0
     }
 
     /// Total stake from individual item stakes (sum of all per-bet stakes)
@@ -287,7 +295,7 @@ class BetSlipManager: ObservableObject {
     /// Total payout from individual item stakes
     var individualTotalPayout: Decimal {
         return items.reduce(Decimal.zero) { total, item in
-            let itemStake = getItemStake(marketId: item.marketId)
+            let itemStake = getItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator)
             guard itemStake > 0 else { return total }
             return total + calculatePayout(odds: item.odds, stake: itemStake)
         }
@@ -338,7 +346,8 @@ class BetSlipManager: ObservableObject {
     func remove(_ selection: BetSlipSelection) {
         // Find matching items to remove their stakes
         for item in items where item.asSelection == selection {
-            itemStakes.removeValue(forKey: item.marketId)
+            let key = itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+            itemStakes.removeValue(forKey: key)
         }
         items.removeAll { $0.asSelection == selection }
         saveItems()
@@ -349,7 +358,8 @@ class BetSlipManager: ObservableObject {
     func remove(at index: Int) {
         guard index >= 0 && index < items.count else { return }
         let item = items[index]
-        itemStakes.removeValue(forKey: item.marketId)
+        let key = itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+        itemStakes.removeValue(forKey: key)
         items.remove(at: index)
         saveItems()
         saveItemStakes()
@@ -421,12 +431,10 @@ class BetSlipManager: ObservableObject {
         guard let data = UserDefaults.standard.data(forKey: itemStakesKey) else { return }
         do {
             let decoder = JSONDecoder()
-            // Decode as [String: Double] since UUID keys need string conversion
+            // Decode as [String: Double] - keys are now "marketId_sideIndicator" format
             let stringDict = try decoder.decode([String: Double].self, from: data)
-            itemStakes = stringDict.reduce(into: [UUID: Decimal]()) { result, pair in
-                if let uuid = UUID(uuidString: pair.key) {
-                    result[uuid] = Decimal(pair.value)
-                }
+            itemStakes = stringDict.reduce(into: [String: Decimal]()) { result, pair in
+                result[pair.key] = Decimal(pair.value)
             }
         } catch {
             print("Failed to decode item stakes: \(error)")
@@ -437,9 +445,9 @@ class BetSlipManager: ObservableObject {
     private func saveItemStakes() {
         do {
             let encoder = JSONEncoder()
-            // Convert to [String: Double] for encoding since UUID keys need string conversion
+            // Convert Decimal to Double for encoding
             let stringDict = itemStakes.reduce(into: [String: Double]()) { result, pair in
-                result[pair.key.uuidString] = NSDecimalNumber(decimal: pair.value).doubleValue
+                result[pair.key] = NSDecimalNumber(decimal: pair.value).doubleValue
             }
             let data = try encoder.encode(stringDict)
             UserDefaults.standard.set(data, forKey: itemStakesKey)

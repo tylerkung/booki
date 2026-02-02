@@ -9,6 +9,7 @@ import SwiftData
 /// US-051: Style Bet Slip with Premium Feel
 struct BetSlipSheet: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var authManager: AuthManager
     @ObservedObject private var betSlipManager = BetSlipManager.shared
     @Environment(\.dismiss) private var dismiss
     @Query private var bets: [Bet]
@@ -26,7 +27,8 @@ struct BetSlipSheet: View {
     @State private var stakeText: String = ""
 
     /// Per-item stake texts for singles mode (US-004)
-    @State private var itemStakeTexts: [UUID: String] = [:]
+    /// Key is "\(marketId)_\(sideIndicator)" to uniquely identify each selection
+    @State private var itemStakeTexts: [String: String] = [:]
 
     /// State for submission process (US-006: Direct submission from bet slip)
     @State private var isSubmitting: Bool = false
@@ -52,10 +54,10 @@ struct BetSlipSheet: View {
         let currentStake = BetSlipManager.shared.stake
         _stakeText = State(initialValue: currentStake > 0 ? "\(NSDecimalNumber(decimal: currentStake).intValue)" : "")
         // Initialize per-item stake texts from manager's existing itemStakes (US-004)
-        var initialItemStakeTexts: [UUID: String] = [:]
-        for (marketId, stake) in BetSlipManager.shared.itemStakes {
+        var initialItemStakeTexts: [String: String] = [:]
+        for (key, stake) in BetSlipManager.shared.itemStakes {
             if stake > 0 {
-                initialItemStakeTexts[marketId] = "\(NSDecimalNumber(decimal: stake).intValue)"
+                initialItemStakeTexts[key] = "\(NSDecimalNumber(decimal: stake).intValue)"
             }
         }
         _itemStakeTexts = State(initialValue: initialItemStakeTexts)
@@ -242,11 +244,12 @@ struct BetSlipSheet: View {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         betSlipManager.remove(at: index)
                                         // Also remove the stake text for this item
-                                        itemStakeTexts.removeValue(forKey: item.marketId)
+                                        let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                                        itemStakeTexts.removeValue(forKey: key)
                                     }
                                 },
                                 betMode: betSlipManager.betMode,
-                                stakeText: itemStakeTextBinding(for: item.marketId),
+                                stakeText: itemStakeTextBinding(for: item),
                                 betSlipManager: betSlipManager
                             )
                             .transition(.asymmetric(
@@ -770,12 +773,26 @@ struct BetSlipSheet: View {
 
         isSubmitting = true
 
-        // Get bookieId from player
-        guard let bookieId = player.bookieId else {
+        // Get bookieId - prefer authManager.currentBookieId (for test mode), fall back to player.bookieId
+        let bookieId: UUID
+        if let currentBookieId = authManager.currentBookieId {
+            // Bookie is logged in (test mode) - use their bookie ID
+            bookieId = currentBookieId
+        } else if let playerBookieId = player.bookieId {
+            // Player is logged in - use the player's associated bookie ID
+            bookieId = playerBookieId
+        } else {
             isSubmitting = false
             submissionError = "Player is not associated with a bookie"
             return
         }
+
+        // DEBUG: Log IDs being sent
+        print("DEBUG submitBets: player.id = \(player.id)")
+        print("DEBUG submitBets: bookieId = \(bookieId)")
+        print("DEBUG submitBets: player.bookieId = \(player.bookieId?.uuidString ?? "nil")")
+        print("DEBUG submitBets: authManager.currentBookieId = \(authManager.currentBookieId?.uuidString ?? "nil")")
+        print("DEBUG submitBets: player.name = \(player.name)")
 
         // Capture items to submit before async call
         let itemsToSubmit = betSlipManager.items
@@ -793,7 +810,8 @@ struct BetSlipSheet: View {
                 let betStake: Decimal
                 switch betMode {
                 case .singles:
-                    betStake = itemStakesSnapshot[item.marketId] ?? 0
+                    let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                    betStake = itemStakesSnapshot[key] ?? 0
                 case .parlay:
                     betStake = sharedStake
                 }
@@ -894,10 +912,12 @@ struct BetSlipSheet: View {
     }
 
     /// Create a binding for per-item stake text (US-004)
-    private func itemStakeTextBinding(for marketId: UUID) -> Binding<String> {
-        Binding(
-            get: { itemStakeTexts[marketId] ?? "" },
-            set: { itemStakeTexts[marketId] = $0 }
+    /// Uses unique key combining marketId and sideIndicator
+    private func itemStakeTextBinding(for item: BetSlipItem) -> Binding<String> {
+        let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+        return Binding(
+            get: { itemStakeTexts[key] ?? "" },
+            set: { itemStakeTexts[key] = $0 }
         )
     }
 }
@@ -936,7 +956,7 @@ struct PremiumBetSlipItemCard: View {
 
     /// Calculate potential payout for this bet based on its individual stake (US-004)
     private var individualPayout: Decimal {
-        let stake = betSlipManager.getItemStake(marketId: item.marketId)
+        let stake = betSlipManager.getItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator)
         guard stake > 0 else { return 0 }
         return betSlipManager.calculatePayout(odds: item.odds, stake: stake)
     }
@@ -1053,9 +1073,9 @@ struct PremiumBetSlipItemCard: View {
                                 .onChange(of: stakeText) { _, newValue in
                                     // Parse and update per-item stake
                                     if let value = Decimal(string: newValue.filter { $0.isNumber }) {
-                                        betSlipManager.setItemStake(marketId: item.marketId, stake: value)
+                                        betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: value)
                                     } else if newValue.isEmpty {
-                                        betSlipManager.setItemStake(marketId: item.marketId, stake: 0)
+                                        betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: 0)
                                     }
                                 }
                         }

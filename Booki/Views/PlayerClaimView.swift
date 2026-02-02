@@ -6,8 +6,8 @@ private struct PlayerClaimRecord: Codable {
     let id: UUID
     let name: String
     let inviteCode: String?
-    let inviteCodeExpiresAt: Date?
-    let claimedAt: Date?
+    let inviteCodeExpiresAt: String?  // Use String to avoid date parsing issues
+    let claimedAt: String?  // Use String to avoid date parsing issues
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -15,6 +15,24 @@ private struct PlayerClaimRecord: Codable {
         case inviteCode = "invite_code"
         case inviteCodeExpiresAt = "invite_code_expires_at"
         case claimedAt = "claimed_at"
+    }
+
+    /// Parse expiration date from string
+    var expiresAtDate: Date? {
+        guard let dateString = inviteCodeExpiresAt else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: dateString) {
+            return date
+        }
+        // Try without fractional seconds
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: dateString)
+    }
+
+    /// Check if already claimed
+    var isClaimed: Bool {
+        claimedAt != nil
     }
 }
 
@@ -333,6 +351,8 @@ struct PlayerClaimView: View {
                 // This allows players without local data to validate their code
                 let supabase = SupabaseClientManager.shared.client
 
+                print("DEBUG: Validating invite code, normalized: '\(normalizedCode)'")
+
                 let response: [PlayerClaimRecord] = try await supabase
                     .from("players")
                     .select("id, name, invite_code, invite_code_expires_at, claimed_at")
@@ -340,22 +360,27 @@ struct PlayerClaimView: View {
                     .execute()
                     .value
 
+                print("DEBUG: Query returned \(response.count) records")
+
                 await MainActor.run {
                     isValidating = false
 
                     guard let record = response.first else {
+                        print("DEBUG: No matching record found for code '\(normalizedCode)'")
                         errorMessage = "Invalid invite code. Please check the code and try again."
                         return
                     }
 
+                    print("DEBUG: Found player '\(record.name)' with code '\(record.inviteCode ?? "nil")'")
+
                     // Check if already claimed
-                    if record.claimedAt != nil {
+                    if record.isClaimed {
                         errorMessage = "This invite code has already been used."
                         return
                     }
 
                     // Check expiration
-                    if let expiresAt = record.inviteCodeExpiresAt, Date() > expiresAt {
+                    if let expiresAt = record.expiresAtDate, Date() > expiresAt {
                         errorMessage = "This invite code has expired. Please contact your bookie for a new one."
                         return
                     }

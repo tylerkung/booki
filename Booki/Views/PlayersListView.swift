@@ -939,11 +939,21 @@ struct PlayerDetailView: View {
     private func generateInviteCode() {
         let inviteCodeService = InviteCodeService(modelContext: modelContext)
         inviteCodeService.generateInviteForPlayer(player, expiresIn: nil)
+
+        // Trigger sync to upload invite code to Supabase
+        Task {
+            await syncService.triggerUpload()
+        }
     }
 
     private func revokeInviteCode() {
         let inviteCodeService = InviteCodeService(modelContext: modelContext)
         inviteCodeService.revokeCode(for: player)
+
+        // Trigger sync to update Supabase
+        Task {
+            await syncService.triggerUpload()
+        }
     }
 
     // MARK: - Helpers

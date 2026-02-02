@@ -6,6 +6,7 @@ import SwiftData
 struct RefreshOddsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var syncService: SyncService
     @Query private var events: [Event]
 
     @StateObject private var oddsService = OddsAPIService.shared
@@ -221,6 +222,11 @@ struct RefreshOddsView: View {
             }
 
             try modelContext.save()
+
+            // Trigger upload to sync updated events to Supabase
+            Task {
+                await syncService.triggerUpload()
+            }
 
             refreshResult = RefreshResult(
                 eventsRefreshed: totalEventsRefreshed,

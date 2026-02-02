@@ -97,11 +97,14 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Normalize UUIDs to lowercase (iOS sends uppercase, DB stores lowercase)
+    const normalizedPlayerId = body.player_id?.toLowerCase();
+
     // Validate: player exists and belongs to the specified bookie
     const { data: player, error: playerError } = await client
       .from('players')
       .select('id, bookie_id, auth_user_id')
-      .eq('id', body.player_id)
+      .eq('id', normalizedPlayerId)
       .single();
 
     if (playerError || !player) {
@@ -111,15 +114,26 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (player.bookie_id !== body.bookie_id) {
+    // Normalize UUIDs to lowercase for comparison (iOS sends uppercase, DB stores lowercase)
+    const playerBookieId = player.bookie_id?.toLowerCase();
+    const requestBookieId = body.bookie_id?.toLowerCase();
+
+    if (playerBookieId !== requestBookieId) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Player does not belong to specified bookie' }),
+        JSON.stringify({
+          success: false,
+          error: 'Player does not belong to specified bookie',
+          debug: {
+            player_bookie_id: player.bookie_id,
+            request_bookie_id: body.bookie_id
+          }
+        }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Validate: user must be the player submitting their own bet
-    if (player.auth_user_id !== userId) {
+    if (player.auth_user_id?.toLowerCase() !== userId?.toLowerCase()) {
       return new Response(
         JSON.stringify({ success: false, error: 'Cannot submit bet for another player' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -127,21 +141,26 @@ Deno.serve(async (req) => {
     }
 
     // Validate: event exists and is not locked
+    const normalizedEventId = body.event_id?.toLowerCase();
+    console.log('DEBUG: Looking up event with id:', normalizedEventId);
+
     const { data: event, error: eventError } = await client
       .from('events')
       .select('id, status, start_time, bookie_id')
-      .eq('id', body.event_id)
+      .eq('id', normalizedEventId)
       .single();
 
     if (eventError || !event) {
+      console.log('DEBUG: Event lookup failed, error:', eventError?.message, 'event:', event);
       return new Response(
-        JSON.stringify({ success: false, error: 'Event not found' }),
+        JSON.stringify({ success: false, error: 'Event not found', debug: { event_id: normalizedEventId, db_error: eventError?.message } }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    console.log('DEBUG: Found event:', event.id, 'status:', event.status);
 
     // Validate event belongs to the same bookie
-    if (event.bookie_id !== body.bookie_id) {
+    if (event.bookie_id?.toLowerCase() !== requestBookieId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Event does not belong to specified bookie' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -163,12 +182,13 @@ Deno.serve(async (req) => {
     const ticketId = crypto.randomUUID();
 
     // Insert bet record with status 'pending'
+    // Use normalized (lowercase) UUIDs for consistency
     const { data: bet, error: betError } = await client
       .from('bets')
       .insert({
-        bookie_id: body.bookie_id,
-        player_id: body.player_id,
-        event_id: body.event_id,
+        bookie_id: requestBookieId,
+        player_id: normalizedPlayerId,
+        event_id: normalizedEventId,
         ticket_id: ticketId,
         market: body.market_id,
         side: body.side,

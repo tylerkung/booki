@@ -55,13 +55,16 @@ export async function storeIdempotency(
   userId: string,
   response: string
 ): Promise<void> {
-  await client
+  const { error } = await client
     .from('idempotency_keys')
     .insert({
       key: key,
       operation: operation,
       response: response,
       user_id: userId,
-    })
-    .catch((err) => console.error('Error storing idempotency key:', err));
+    });
+
+  if (error) {
+    console.error('Error storing idempotency key:', error);
+  }
 }

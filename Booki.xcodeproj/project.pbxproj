@@ -24,6 +24,8 @@
 		50C0840B2F2BF4B0001A0FE5 /* UserAgreementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C0840A2F2BF4B0001A0FE5 /* UserAgreementView.swift */; };
 		50C0840C2F2BF4B0001A0FE5 /* BetHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084082F2BF4B0001A0FE5 /* BetHistoryView.swift */; };
 		50C0840D2F2BF4B0001A0FE5 /* TermsOfService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084092F2BF4B0001A0FE5 /* TermsOfService.swift */; };
+		50C0840F2F2C0347001A0FE5 /* SyncGamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C0840E2F2C0347001A0FE5 /* SyncGamesView.swift */; };
+		50C084112F2C4DA3001A0FE5 /* BetSlipManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084102F2C4DA3001A0FE5 /* BetSlipManager.swift */; };
 		8A1234560001 /* BookiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550001 /* BookiApp.swift */; };
 		8A1234560002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550002 /* ContentView.swift */; };
 		8A1234560003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550003 /* Assets.xcassets */; };
@@ -126,6 +128,8 @@
 		50C084082F2BF4B0001A0FE5 /* BetHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetHistoryView.swift; sourceTree = "<group>"; };
 		50C084092F2BF4B0001A0FE5 /* TermsOfService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermsOfService.swift; sourceTree = "<group>"; };
 		50C0840A2F2BF4B0001A0FE5 /* UserAgreementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAgreementView.swift; sourceTree = "<group>"; };
+		50C0840E2F2C0347001A0FE5 /* SyncGamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGamesView.swift; sourceTree = "<group>"; };
+		50C084102F2C4DA3001A0FE5 /* BetSlipManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetSlipManager.swift; sourceTree = "<group>"; };
 		8A1234550000 /* Booki.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Booki.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1234550001 /* BookiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookiApp.swift; sourceTree = "<group>"; };
 		8A1234550002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -280,6 +284,7 @@
 		8A1234530004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				50C0840E2F2C0347001A0FE5 /* SyncGamesView.swift */,
 				50C084082F2BF4B0001A0FE5 /* BetHistoryView.swift */,
 				50C084092F2BF4B0001A0FE5 /* TermsOfService.swift */,
 				50C0840A2F2BF4B0001A0FE5 /* UserAgreementView.swift */,
@@ -332,6 +337,7 @@
 		8A1234530006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				50C084102F2C4DA3001A0FE5 /* BetSlipManager.swift */,
 				50C083F22F2616C6001A0FE5 /* OddsAPIMapper.swift */,
 				50C083F32F2616C6001A0FE5 /* OddsAPIService.swift */,
 				8A1234550011 /* LiabilityService.swift */,
@@ -495,6 +501,7 @@
 				8A1234560002 /* ContentView.swift in Sources */,
 				8A1234560001 /* BookiApp.swift in Sources */,
 				8A1234560005 /* Bookie.swift in Sources */,
+				50C084112F2C4DA3001A0FE5 /* BetSlipManager.swift in Sources */,
 				8A1234560006 /* Player.swift in Sources */,
 				8A1234560007 /* Bet.swift in Sources */,
 				8A1234560008 /* LedgerEntry.swift in Sources */,
@@ -555,6 +562,7 @@
 				8A1234560057 /* SupabaseClient.swift in Sources */,
 				8A1234560059 /* AuthManager.swift in Sources */,
 				8A1234560060 /* SignUpView.swift in Sources */,
+				50C0840F2F2C0347001A0FE5 /* SyncGamesView.swift in Sources */,
 				8A1234560061 /* LoginView.swift in Sources */,
 				8A1234560062 /* AppleSignInButton.swift in Sources */,
 				8A1234560063 /* ForgotPasswordView.swift in Sources */,

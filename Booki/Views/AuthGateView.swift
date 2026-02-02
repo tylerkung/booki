@@ -68,6 +68,19 @@ struct AuthGateView: View {
                 }
             }
         }
+        .onChange(of: authManager.currentPlayerId) { _, newPlayerId in
+            // Sync player data when a player logs in
+            if let playerId = newPlayerId, authManager.userRole == .player && !hasTriggeredInitialSync {
+                hasTriggeredInitialSync = true
+                Task {
+                    do {
+                        try await syncService.syncPlayerData(authUserId: playerId)
+                    } catch {
+                        print("Failed to sync player data: \(error)")
+                    }
+                }
+            }
+        }
         .onChange(of: authManager.isAuthenticated) { _, isAuthenticated in
             // Reset sync flag and unsubscribe from realtime when user logs out
             if !isAuthenticated {

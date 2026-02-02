@@ -701,11 +701,15 @@ final class SyncService: ObservableObject {
             throw SyncServiceError.databaseError("Model context not configured")
         }
 
+        print("DEBUG uploadTableChanges: Processing table \(table.displayName)")
+
         switch table {
         case .players:
             try await uploadPlayers(bookieId: bookieId, context: context)
         case .events:
+            print("DEBUG uploadTableChanges: About to call uploadEvents")
             try await uploadEvents(bookieId: bookieId, context: context)
+            print("DEBUG uploadTableChanges: Finished uploadEvents")
         case .bets:
             try await uploadBets(bookieId: bookieId, context: context)
         case .ledgerEntries:
@@ -782,12 +786,20 @@ final class SyncService: ObservableObject {
         let descriptor = FetchDescriptor<Event>(predicate: #Predicate { $0.needsSync == true })
         let pendingEvents = try context.fetch(descriptor)
 
-        guard !pendingEvents.isEmpty else { return }
+        print("DEBUG uploadEvents: Found \(pendingEvents.count) events with needsSync=true")
+
+        guard !pendingEvents.isEmpty else {
+            print("DEBUG uploadEvents: No pending events to upload")
+            return
+        }
 
         for event in pendingEvents {
             do {
+                print("DEBUG uploadEvents: Uploading event \(event.id) - \(event.awayTeam) @ \(event.homeTeam)")
+
                 // Check for version conflict
                 if try await hasConflict(table: "events", id: event.id, localVersion: event.version) {
+                    print("DEBUG uploadEvents: Version conflict for event \(event.id), resolving...")
                     try await resolveEventConflict(event, bookieId: bookieId, context: context)
                     continue
                 }
@@ -799,13 +811,14 @@ final class SyncService: ObservableObject {
                     .upsert(upsert, onConflict: "id")
                     .execute()
 
+                print("DEBUG uploadEvents: Successfully uploaded event \(event.id)")
                 event.needsSync = false
                 event.lastSyncedAt = Date()
                 event.version += 1
                 event.bookieId = bookieId
 
             } catch {
-                print("Failed to upload event \(event.id): \(error)")
+                print("DEBUG uploadEvents: Failed to upload event \(event.id): \(error)")
             }
         }
 
@@ -1168,26 +1181,66 @@ final class SyncService: ObservableObject {
         """)
     }
 
+    // MARK: - Player Data Sync
+
+    /// Sync player data for a logged-in player (fetches their record from Supabase)
+    /// This is called when a player logs in to ensure their local data includes bookie_id
+    func syncPlayerData(authUserId: UUID) async throws {
+        guard let context = modelContext else {
+            throw SyncServiceError.databaseError("No model context available")
+        }
+
+        print("DEBUG: Syncing player data for auth_user_id: \(authUserId)")
+
+        // Fetch player record from Supabase using auth_user_id
+        let response = try await supabase
+            .from("players")
+            .select()
+            .eq("auth_user_id", value: authUserId.uuidString)
+            .single()
+            .execute()
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let record = try decoder.decode(PlayerRecord.self, from: response.data)
+
+        print("DEBUG: Fetched player from Supabase: \(record.name), bookie_id: \(record.bookieId)")
+
+        // Upsert the player record locally
+        try await MainActor.run {
+            try upsertPlayer(record, bookieId: record.bookieId, context: context)
+            try context.save()
+        }
+
+        print("DEBUG: Player data synced successfully")
+    }
+
     // MARK: - Public Upload Trigger
 
     /// Trigger upload for pending changes after a local write
     /// Call this after creating/updating/deleting local records
     func triggerUpload() async {
+        print("DEBUG triggerUpload: Starting upload...")
         guard let bookieId = authManager?.currentBookieId else {
-            print("Cannot trigger upload: no bookie ID")
+            print("DEBUG triggerUpload: Cannot trigger upload - no bookie ID (authManager: \(String(describing: authManager)))")
             return
         }
+        print("DEBUG triggerUpload: bookie ID = \(bookieId)")
 
         // Don't trigger if already syncing
-        guard syncStatus != .syncing else { return }
+        guard syncStatus != .syncing else {
+            print("DEBUG triggerUpload: Already syncing, skipping")
+            return
+        }
 
         do {
             syncStatus = .syncing
             try await uploadPendingChanges(bookieId: bookieId)
+            print("DEBUG triggerUpload: Upload completed successfully")
             syncStatus = .idle
             await updatePendingChangesCount()
         } catch {
-            print("Upload failed: \(error)")
+            print("DEBUG triggerUpload: Upload failed: \(error)")
             syncStatus = .error(error.localizedDescription)
         }
     }
