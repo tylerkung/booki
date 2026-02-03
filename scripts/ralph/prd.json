@@ -100,8 +100,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Already exists in 001_initial_schema.sql and properly mapped in Swift models"
     },
     {
       "id": "US-007",

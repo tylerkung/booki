@@ -770,11 +770,12 @@ Deno.serve(async (req) => {
                         const gradeOutcome = gradeBet(betInfo, eventScores);
 
                         // Update bet with grade result
+                        // Status goes to 'graded', grade_result stores outcome ('win'/'loss'/'push')
                         const { error: updateError } = await client
                           .from('bets')
                           .update({
-                            status: gradeOutcome.result,
-                            grade_result: gradeOutcome.gradeDetails,
+                            status: 'graded',
+                            grade_result: gradeOutcome.result,
                             updated_at: new Date().toISOString(),
                           })
                           .eq('id', bet.id);
@@ -795,8 +796,9 @@ Deno.serve(async (req) => {
                             actionType: 'bet_auto_graded',
                             previousState: { status: 'accepted' },
                             newState: {
-                              status: gradeOutcome.result,
-                              grade_result: gradeOutcome.gradeDetails,
+                              status: 'graded',
+                              grade_result: gradeOutcome.result,
+                              grade_details: gradeOutcome.gradeDetails,
                             },
                           });
                         }

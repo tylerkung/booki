@@ -6,9 +6,11 @@ Branch: ralph/auto-pilot-grading
 ## Codebase Patterns
 - Use Theme.swift for all colors (Theme.success, Theme.danger, Theme.warning, etc.)
 - Edge functions are in supabase/functions/ with shared helpers in _shared/
-- Bet statuses: 'pending', 'accepted', 'won', 'lost', 'push'
+- BetStatus enum: 'pending', 'accepted', 'declined', 'readyToGrade', 'graded', 'settled', 'void'
+- GradeResult enum: 'win', 'loss', 'push' (stored in grade_result column)
+- When grading: status → 'graded', grade_result → 'win'/'loss'/'push'
 - Balance convention: internal positive = player owes bookie
-- SwiftData models in Booki.swift, sync models in SyncModels.swift
+- SwiftData models in Booki/Models/, sync models in Services/SyncModels.swift
 - submit_bet already supports auto-accept via manual_bet_acceptance setting
 - Deno not installed locally - typecheck validation at deploy time
 ---
@@ -32,7 +34,8 @@ Branch: ralph/auto-pilot-grading
   - Market type aliases handled: 'h2h' → moneyline, 'spreads' → spread, 'totals' → total
   - Spread parsing uses regex: /-?\d+\.?\d*/ to extract numeric values
   - Total bets check for 'over' or 'under' keywords (case-insensitive)
-  - GradeOutcome includes both result ('won'/'lost'/'push') and gradeDetails (human-readable)
+  - GradeOutcome includes result ('win'/'loss'/'push') matching Swift GradeResult enum
+  - gradeDetails provides human-readable explanation (for audit logs)
   - Unknown market types return 'push' with note about manual grading required
 ---
 
@@ -42,10 +45,23 @@ Branch: ralph/auto-pilot-grading
   - supabase/functions/auto_refresh_games/index.ts
 - **Learnings for future iterations:**
   - Auto-grading happens when scoreEvent.completed is true and scores are available
-  - Bets are now graded directly to 'won'/'lost'/'push' (not to 'readyToGrade')
+  - Status set to 'graded', grade_result stores outcome ('win'/'loss'/'push')
   - Each bet gets an individual audit event with action_type 'bet_auto_graded'
   - Response includes bets_graded count alongside bets_transitioned
   - Grading errors are captured but don't fail the entire refresh operation
   - Import grading module: `import { gradeBet, type BetInfo, type EventScores } from '../_shared/grading.ts'`
+---
+
+## 2026-02-03 03:10 - US-006
+- What was implemented: Verified grade_result column already exists and is properly mapped
+- Files changed:
+  - supabase/functions/_shared/grading.ts (fixed GradeResult type: 'won'→'win', 'lost'→'loss')
+  - supabase/functions/auto_refresh_games/index.ts (fixed to use status='graded' and grade_result=outcome)
+- **Learnings for future iterations:**
+  - grade_result column exists in 001_initial_schema.sql
+  - Swift GradeResult enum has values: win, loss, push (NOT won, lost, push)
+  - BetRecord in SyncModels.swift maps grade_result to gradeResult
+  - SyncService.upsertBet correctly parses gradeResult
+  - Grading pattern: status='graded', grade_result='win'|'loss'|'push'
 ---
 

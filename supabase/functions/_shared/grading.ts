@@ -7,7 +7,8 @@
  * - Total: bet on over/under combined score
  */
 
-export type GradeResult = 'won' | 'lost' | 'push';
+// GradeResult matches Swift GradeResult enum: win, loss, push
+export type GradeResult = 'win' | 'loss' | 'push';
 
 export interface BetInfo {
   id: string;
@@ -91,12 +92,12 @@ export function gradeMoneylineBet(bet: BetInfo, scores: EventScores): GradeOutco
 
   if (bettorScore > opponentScore) {
     return {
-      result: 'won',
+      result: 'win',
       gradeDetails: `Moneyline: ${bettorTeam} won. ${finalScoreStr}`,
     };
   } else if (bettorScore < opponentScore) {
     return {
-      result: 'lost',
+      result: 'loss',
       gradeDetails: `Moneyline: ${bettorTeam} lost. ${finalScoreStr}`,
     };
   } else {
@@ -145,12 +146,12 @@ export function gradeSpreadBet(bet: BetInfo, scores: EventScores): GradeOutcome 
 
   if (adjustedScore > opponentScore) {
     return {
-      result: 'won',
+      result: 'win',
       gradeDetails: `Spread: ${bettorTeam} ${spreadStr} covered (${bettorScore}${spreadStr}=${adjustedScore} > ${opponentScore}). ${finalScoreStr}`,
     };
   } else if (adjustedScore < opponentScore) {
     return {
-      result: 'lost',
+      result: 'loss',
       gradeDetails: `Spread: ${bettorTeam} ${spreadStr} did not cover (${bettorScore}${spreadStr}=${adjustedScore} < ${opponentScore}). ${finalScoreStr}`,
     };
   } else {
@@ -200,12 +201,12 @@ export function gradeTotalBet(bet: BetInfo, scores: EventScores): GradeOutcome {
     // Over wins, under loses
     if (isOver) {
       return {
-        result: 'won',
+        result: 'win',
         gradeDetails: `Total: Over ${total} hit (${combinedScore} > ${total}). ${finalScoreStr}`,
       };
     } else {
       return {
-        result: 'lost',
+        result: 'loss',
         gradeDetails: `Total: Under ${total} missed (${combinedScore} > ${total}). ${finalScoreStr}`,
       };
     }
@@ -213,12 +214,12 @@ export function gradeTotalBet(bet: BetInfo, scores: EventScores): GradeOutcome {
     // Under wins, over loses
     if (isUnder) {
       return {
-        result: 'won',
+        result: 'win',
         gradeDetails: `Total: Under ${total} hit (${combinedScore} < ${total}). ${finalScoreStr}`,
       };
     } else {
       return {
-        result: 'lost',
+        result: 'loss',
         gradeDetails: `Total: Over ${total} missed (${combinedScore} < ${total}). ${finalScoreStr}`,
       };
     }
