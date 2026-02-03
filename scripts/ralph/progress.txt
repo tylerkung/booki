@@ -22,3 +22,17 @@ Branch: ralph/auto-pilot-grading
   - Audit event uses 'bet_auto_accepted' action type for auto-accepted bets
 ---
 
+## 2026-02-03 02:45 - US-002, US-003, US-004
+- What was implemented: Created grading helper functions for all market types
+- Files changed:
+  - supabase/functions/_shared/grading.ts (new file)
+- **Learnings for future iterations:**
+  - All grading logic consolidated in _shared/grading.ts for reuse
+  - gradeBet() is the main entry point - dispatches to gradeMoneylineBet, gradeSpreadBet, or gradeTotalBet
+  - Market type aliases handled: 'h2h' → moneyline, 'spreads' → spread, 'totals' → total
+  - Spread parsing uses regex: /-?\d+\.?\d*/ to extract numeric values
+  - Total bets check for 'over' or 'under' keywords (case-insensitive)
+  - GradeOutcome includes both result ('won'/'lost'/'push') and gradeDetails (human-readable)
+  - Unknown market types return 'push' with note about manual grading required
+---
+

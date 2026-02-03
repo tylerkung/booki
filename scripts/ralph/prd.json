@@ -31,8 +31,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in _shared/grading.ts with gradeMoneylineBet function"
     },
     {
       "id": "US-003",
@@ -48,8 +48,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in _shared/grading.ts with gradeSpreadBet function"
     },
     {
       "id": "US-004",
@@ -66,8 +66,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in _shared/grading.ts with gradeTotalBet function"
     },
     {
       "id": "US-005",
