@@ -84,8 +84,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Integrated grading into auto_refresh_games - grades bets when events finalize"
     },
     {
       "id": "US-006",

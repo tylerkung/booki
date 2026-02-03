@@ -36,3 +36,16 @@ Branch: ralph/auto-pilot-grading
   - Unknown market types return 'push' with note about manual grading required
 ---
 
+## 2026-02-03 02:55 - US-005
+- What was implemented: Integrated auto-grading into auto_refresh_games
+- Files changed:
+  - supabase/functions/auto_refresh_games/index.ts
+- **Learnings for future iterations:**
+  - Auto-grading happens when scoreEvent.completed is true and scores are available
+  - Bets are now graded directly to 'won'/'lost'/'push' (not to 'readyToGrade')
+  - Each bet gets an individual audit event with action_type 'bet_auto_graded'
+  - Response includes bets_graded count alongside bets_transitioned
+  - Grading errors are captured but don't fail the entire refresh operation
+  - Import grading module: `import { gradeBet, type BetInfo, type EventScores } from '../_shared/grading.ts'`
+---
+

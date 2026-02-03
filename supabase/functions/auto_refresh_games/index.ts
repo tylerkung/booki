@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
+import { gradeBet, type BetInfo, type EventScores } from '../_shared/grading.ts';
 
 /**
  * Generates an idempotency key for auto-refresh operations.
@@ -350,6 +351,7 @@ Deno.serve(async (req) => {
           scores_refreshed: 0,
           events_finalized: 0,
           bets_transitioned: 0,
+          bets_graded: 0,
           errors: [],
         };
         const responseString = JSON.stringify(responseBody);
@@ -407,6 +409,7 @@ Deno.serve(async (req) => {
           scores_refreshed: 0,
           events_finalized: 0,
           bets_transitioned: 0,
+          bets_graded: 0,
           errors: [],
         };
         const responseString = JSON.stringify(responseBody);
@@ -608,10 +611,11 @@ Deno.serve(async (req) => {
       const scoreErrors: { eventId: string; error: string }[] = [];
 
       // ========================================
-      // US-006: Track finalized events for bet transition
+      // US-006: Track finalized events and graded bets
       // ========================================
       let eventsFinalized = 0;
       let betsTransitioned = 0;
+      let betsGraded = 0;
 
       // Group games by sport key for score fetching
       const gamesForScoresBySportKey = new Map<string, SelectedGame[]>();
@@ -727,55 +731,111 @@ Deno.serve(async (req) => {
               console.log(`Successfully refreshed scores for event ${game.id}: ${awayScore}-${homeScore} (completed: ${scoreEvent.completed})`);
 
               // ========================================
-              // US-006: Auto-transition bets when event finalizes
+              // US-005: Auto-grade bets when event finalizes
               // ========================================
               if (scoreEvent.completed && homeScore !== null && awayScore !== null) {
-                // Event just became final - transition accepted bets to readyToGrade
+                // Event just became final - auto-grade accepted bets
                 try {
-                  // Query all bets for this event with status 'accepted'
+                  // Query all bets for this event with status 'accepted', including market/side info
                   const { data: acceptedBets, error: betsQueryError } = await client
                     .from('bets')
-                    .select('id')
+                    .select('id, market, side, bookie_id')
                     .eq('event_id', game.id)
                     .eq('status', 'accepted');
 
                   if (betsQueryError) {
                     console.error(`Error querying accepted bets for event ${game.id}:`, betsQueryError);
                   } else if (acceptedBets && acceptedBets.length > 0) {
-                    // Update bets to readyToGrade
-                    const betIds = acceptedBets.map((b) => b.id);
-                    const { error: betsUpdateError } = await client
-                      .from('bets')
-                      .update({ status: 'readyToGrade' })
-                      .in('id', betIds);
+                    // Prepare event scores for grading
+                    const eventScores: EventScores = {
+                      homeScore: homeScore,
+                      awayScore: awayScore,
+                      homeTeam: game.home_team,
+                      awayTeam: game.away_team,
+                    };
 
-                    if (betsUpdateError) {
-                      console.error(`Error updating bets to readyToGrade for event ${game.id}:`, betsUpdateError);
-                    } else {
-                      betsTransitioned += acceptedBets.length;
-                      eventsFinalized++;
-                      console.log(`Transitioned ${acceptedBets.length} bets to readyToGrade for event ${game.id}`);
+                    let gradedCount = 0;
+                    const gradingErrors: string[] = [];
 
-                      // Emit audit event for event finalization with bet count
-                      if (game.bookie_auth_user_id) {
-                        await emitAuditEvent(client, {
-                          bookieId: game.bookie_id,
-                          actorUserId: game.bookie_auth_user_id,
-                          entityType: 'event',
-                          entityId: game.id,
-                          actionType: 'event_finalized_auto',
-                          previousState: null,
-                          newState: {
-                            final_score: `${awayScore}-${homeScore}`,
-                            bets_transitioned: acceptedBets.length,
-                          },
-                        });
+                    // Grade each bet individually
+                    for (const bet of acceptedBets) {
+                      try {
+                        const betInfo: BetInfo = {
+                          id: bet.id,
+                          market: bet.market,
+                          side: bet.side,
+                        };
+
+                        // Get grade result from grading logic
+                        const gradeOutcome = gradeBet(betInfo, eventScores);
+
+                        // Update bet with grade result
+                        const { error: updateError } = await client
+                          .from('bets')
+                          .update({
+                            status: gradeOutcome.result,
+                            grade_result: gradeOutcome.gradeDetails,
+                            updated_at: new Date().toISOString(),
+                          })
+                          .eq('id', bet.id);
+
+                        if (updateError) {
+                          console.error(`Error grading bet ${bet.id}:`, updateError);
+                          gradingErrors.push(`Bet ${bet.id}: ${updateError.message}`);
+                          continue;
+                        }
+
+                        // Emit audit event for auto-graded bet
+                        if (game.bookie_auth_user_id) {
+                          await emitAuditEvent(client, {
+                            bookieId: bet.bookie_id,
+                            actorUserId: game.bookie_auth_user_id,
+                            entityType: 'bet',
+                            entityId: bet.id,
+                            actionType: 'bet_auto_graded',
+                            previousState: { status: 'accepted' },
+                            newState: {
+                              status: gradeOutcome.result,
+                              grade_result: gradeOutcome.gradeDetails,
+                            },
+                          });
+                        }
+
+                        gradedCount++;
+                        console.log(`Graded bet ${bet.id}: ${gradeOutcome.result} - ${gradeOutcome.gradeDetails}`);
+                      } catch (betGradeError) {
+                        console.error(`Error grading bet ${bet.id}:`, betGradeError);
+                        gradingErrors.push(`Bet ${bet.id}: ${betGradeError instanceof Error ? betGradeError.message : 'Unknown error'}`);
+                        // Continue grading other bets
                       }
+                    }
+
+                    betsGraded += gradedCount;
+                    betsTransitioned += acceptedBets.length;
+                    eventsFinalized++;
+                    console.log(`Graded ${gradedCount}/${acceptedBets.length} bets for event ${game.id}`);
+
+                    // Emit audit event for event finalization with grading summary
+                    if (game.bookie_auth_user_id) {
+                      await emitAuditEvent(client, {
+                        bookieId: game.bookie_id,
+                        actorUserId: game.bookie_auth_user_id,
+                        entityType: 'event',
+                        entityId: game.id,
+                        actionType: 'event_finalized_auto',
+                        previousState: null,
+                        newState: {
+                          final_score: `${awayScore}-${homeScore}`,
+                          bets_graded: gradedCount,
+                          bets_total: acceptedBets.length,
+                          grading_errors: gradingErrors.length > 0 ? gradingErrors : null,
+                        },
+                      });
                     }
                   } else {
                     // Event finalized but no accepted bets
                     eventsFinalized++;
-                    console.log(`Event ${game.id} finalized but no accepted bets to transition`);
+                    console.log(`Event ${game.id} finalized but no accepted bets to grade`);
 
                     // Still emit audit event for tracking
                     if (game.bookie_auth_user_id) {
@@ -788,14 +848,14 @@ Deno.serve(async (req) => {
                         previousState: null,
                         newState: {
                           final_score: `${awayScore}-${homeScore}`,
-                          bets_transitioned: 0,
+                          bets_graded: 0,
                         },
                       });
                     }
                   }
-                } catch (betTransitionError) {
-                  console.error(`Error transitioning bets for event ${game.id}:`, betTransitionError);
-                  // Don't fail the whole score refresh for bet transition errors
+                } catch (gradingError) {
+                  console.error(`Error grading bets for event ${game.id}:`, gradingError);
+                  // Don't fail the whole score refresh for grading errors
                 }
               }
             } catch (gameError) {
@@ -861,6 +921,7 @@ Deno.serve(async (req) => {
         scores_refreshed: scoresRefreshed,
         events_finalized: eventsFinalized,
         bets_transitioned: betsTransitioned,
+        bets_graded: betsGraded,
         errors: allErrors,
       };
 
