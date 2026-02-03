@@ -1,6 +1,14 @@
 import SwiftUI
 import SwiftData
 
+/// US-002: View mode for GamesView (Upcoming vs Past)
+enum GameViewMode: String, CaseIterable, Identifiable {
+    case upcoming = "Upcoming"
+    case past = "Past"
+
+    var id: String { rawValue }
+}
+
 /// Time filter options for games (US-038)
 enum TimeFilter: String, CaseIterable, Identifiable {
     case all = "All"
@@ -53,6 +61,9 @@ struct GamesView: View {
     /// Show filter options sheet (US-038)
     @State private var showingFilterSheet: Bool = false
 
+    /// US-002: View mode selection (Upcoming vs Past)
+    @State private var viewMode: GameViewMode = .upcoming
+
     /// Favorites manager (US-039)
     @ObservedObject private var favoritesManager = FavoritesManager.shared
 
@@ -63,9 +74,9 @@ struct GamesView: View {
         Calendar.current.date(byAdding: .hour, value: -48, to: Date()) ?? Date()
     }
 
-    /// US-001: Available events - shows non-final events PLUS final events finished within last 48 hours
+    /// US-001: Upcoming events - shows non-final events PLUS final events finished within last 48 hours
     /// Events are sorted by startTime ascending (soonest first)
-    private var availableEvents: [Event] {
+    private var upcomingEvents: [Event] {
         events.filter { event in
             // Show non-final events
             if event.status != .final {
@@ -76,6 +87,27 @@ struct GamesView: View {
         }
     }
 
+    /// US-002: Past events - final events older than 48 hours
+    /// Events are sorted by startTime descending (most recent first)
+    private var pastEvents: [Event] {
+        events
+            .filter { event in
+                event.status == .final && event.startTime < recentFinishedCutoff
+            }
+            .sorted { $0.startTime > $1.startTime }
+    }
+
+    /// US-002: Available events based on view mode
+    /// Returns upcomingEvents for .upcoming mode, pastEvents for .past mode
+    private var availableEvents: [Event] {
+        switch viewMode {
+        case .upcoming:
+            return upcomingEvents
+        case .past:
+            return pastEvents
+        }
+    }
+
     /// Unique sports that have available events, sorted alphabetically
     private var availableSports: [String] {
         let sports = Set(availableEvents.map { $0.sport })
@@ -83,7 +115,13 @@ struct GamesView: View {
     }
 
     /// Events filtered by time (US-038) and favorites (US-039)
+    /// US-002: Time filters are bypassed in past mode (only search/sport filtering applies)
     private var timeFilteredEvents: [Event] {
+        // US-002: Past mode bypasses time filters (they don't apply to historical data)
+        if viewMode == .past {
+            return availableEvents
+        }
+
         let calendar = Calendar.current
         let now = Date()
 
@@ -134,9 +172,13 @@ struct GamesView: View {
         return searchFilteredEvents
     }
 
-    /// Whether any filters are active (US-038, US-039)
+    /// Whether any filters are active (US-038, US-039, US-002)
     private var hasActiveFilters: Bool {
-        timeFilter != .all || !searchText.isEmpty
+        // US-002: In past mode, time filters don't apply
+        if viewMode == .past {
+            return !searchText.isEmpty
+        }
+        return timeFilter != .all || !searchText.isEmpty
     }
 
     /// Whether showing favorites filter (US-039)
@@ -144,8 +186,19 @@ struct GamesView: View {
         timeFilter == .favorites
     }
 
-    /// Description of empty state based on filters (US-038, US-039)
+    /// Description of empty state based on filters (US-038, US-039, US-002)
     private var emptyStateDescription: String {
+        // US-002: Handle past mode empty states
+        if viewMode == .past {
+            if !searchText.isEmpty {
+                return "No past games match '\(searchText)'."
+            } else if let sport = selectedSport {
+                return "There are no past \(sport) games."
+            }
+            return "There are no past games to view."
+        }
+
+        // Upcoming mode empty states
         if timeFilter == .favorites && favoritesManager.favoriteTeams.isEmpty {
             return "Star your favorite teams to see them here."
         } else if timeFilter == .favorites {
@@ -238,6 +291,12 @@ struct GamesView: View {
             BetSlipSheet(availableCredit: balanceSummary.availableCredit, player: player)
                 .presentationDetents([.large])
         }
+        // US-002: Reset time filter when switching to past mode (time filters don't apply)
+        .onChange(of: viewMode) { _, newMode in
+            if newMode == .past {
+                timeFilter = .all
+            }
+        }
     }
 
     // MARK: - Bet Slip Indicator (US-040)
@@ -268,53 +327,67 @@ struct GamesView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Search and Filter Header (US-038)
+    // MARK: - Search and Filter Header (US-038, US-002)
 
     @ViewBuilder
     private var searchAndFilterHeader: some View {
-        HStack(spacing: 12) {
-            // Search bar
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
+        VStack(spacing: 12) {
+            // US-002: View mode picker (Upcoming/Past)
+            Picker("View Mode", selection: $viewMode) {
+                ForEach(GameViewMode.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
 
-                TextField("Search teams...", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
+            // Search bar and filter row
+            HStack(spacing: 12) {
+                // Search bar
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
 
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                    TextField("Search teams...", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .autocorrectionDisabled()
+
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Theme.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                // Filter button - only show for upcoming mode (past mode doesn't need time filters)
+                if viewMode == .upcoming {
+                    Button(action: { showingFilterSheet = true }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                                .font(.system(size: 16))
+                            if timeFilter != .all {
+                                Text(timeFilter.rawValue)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                        }
+                        .foregroundStyle(timeFilter != .all ? Theme.background : Theme.textPrimary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(timeFilter != .all ? Theme.accent : Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Theme.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-
-            // Filter button
-            Button(action: { showingFilterSheet = true }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                        .font(.system(size: 16))
-                    if timeFilter != .all {
-                        Text(timeFilter.rawValue)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                    }
-                }
-                .foregroundStyle(timeFilter != .all ? Theme.background : Theme.textPrimary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(timeFilter != .all ? Theme.accent : Theme.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-            }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
         }
-        .padding(.horizontal, 16)
         .padding(.vertical, 10)
     }
 
