@@ -178,10 +178,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check bookie's manual_bet_acceptance setting for auto-pilot mode
+    // Default is false (auto-accept enabled), meaning bets are accepted immediately
+    const { data: bookie } = await client
+      .from('bookies')
+      .select('manual_bet_acceptance')
+      .eq('id', requestBookieId)
+      .single();
+
+    // Auto-pilot mode: if manual_bet_acceptance is false or not set, auto-accept bets
+    const isAutoAccept = !bookie?.manual_bet_acceptance;
+    const betStatus = isAutoAccept ? 'accepted' : 'pending';
+    const acceptedAt = isAutoAccept ? new Date().toISOString() : null;
+
     // Generate ticket_id for this bet submission
     const ticketId = crypto.randomUUID();
 
-    // Insert bet record with status 'pending'
+    // Insert bet record with appropriate status based on auto-pilot setting
     // Use normalized (lowercase) UUIDs for consistency
     const { data: bet, error: betError } = await client
       .from('bets')
@@ -194,7 +207,8 @@ Deno.serve(async (req) => {
         side: body.side,
         odds: body.odds,
         stake: stakeNum,
-        status: 'pending',
+        status: betStatus,
+        accepted_at: acceptedAt,
         is_parlay: false,
         parlay_legs: 1,
       })
@@ -210,12 +224,13 @@ Deno.serve(async (req) => {
     }
 
     // Emit audit event for bet creation
+    // Include auto_accepted flag to distinguish from manual acceptance
     await emitAuditEvent(client, {
       bookieId: body.bookie_id,
       actorUserId: userId,
       entityType: 'bet',
       entityId: bet.id,
-      actionType: 'create',
+      actionType: isAutoAccept ? 'bet_auto_accepted' : 'bet_submitted',
       previousState: null,
       newState: bet as unknown as Record<string, unknown>,
     });
