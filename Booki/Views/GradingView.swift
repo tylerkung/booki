@@ -267,7 +267,7 @@ struct GradingView: View {
     // MARK: - Helper Methods
 
     private func event(for bet: Bet) -> Event? {
-        events.first { $0.id.uuidString == bet.eventId }
+        events.first { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }
     }
 
     private func toggleSelection(_ bet: Bet) {
@@ -782,7 +782,7 @@ struct ParlayGradingGroupView: View {
 
     /// Get event for a bet
     private func event(for bet: Bet) -> Event? {
-        events.first { $0.id.uuidString == bet.eventId }
+        events.first { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }
     }
 
     var body: some View {

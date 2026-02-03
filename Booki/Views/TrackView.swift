@@ -205,7 +205,7 @@ struct TrackView: View {
     // MARK: - Helpers
 
     private func eventName(for bet: Bet) -> String {
-        if let event = events.first(where: { $0.id.uuidString == bet.eventId }) {
+        if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return "Event \(bet.eventId.prefix(8))"

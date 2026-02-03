@@ -835,7 +835,7 @@ struct AccountView: View {
 
     /// Get event name for a bet
     private func eventName(for bet: Bet) -> String {
-        if let event = allEvents.first(where: { $0.id.uuidString == bet.eventId }) {
+        if let event = allEvents.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return "Event \(bet.eventId.prefix(8))"
@@ -1218,7 +1218,7 @@ struct AccountBetDetailView: View {
 
     /// Event for this bet
     private var event: Event? {
-        events.first { $0.id.uuidString == bet.eventId }
+        events.first { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }
     }
 
     /// Event name

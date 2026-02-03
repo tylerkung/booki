@@ -272,7 +272,7 @@ struct DashboardView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(viewModel.topRiskEvents) { item in
-                            if let event = events.first(where: { $0.id.uuidString == item.eventId }) {
+                            if let event = events.first(where: { $0.id.uuidString.lowercased() == item.eventId.lowercased() }) {
                                 NavigationLink(value: event) {
                                     RiskEventRow(item: item)
                                 }
@@ -354,7 +354,7 @@ struct DashboardView: View {
     // MARK: - Helper Methods
 
     private func eventName(for bet: Bet) -> String {
-        if let event = events.first(where: { $0.id.uuidString == bet.eventId }) {
+        if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return "Event \(bet.eventId.prefix(8))"

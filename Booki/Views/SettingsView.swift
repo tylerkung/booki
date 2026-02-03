@@ -579,7 +579,7 @@ struct ExportDataView: View {
     @State private var ledgerExportURL: URL?
 
     private func eventName(for eventId: String) -> String {
-        if let event = events.first(where: { $0.id.uuidString == eventId }) {
+        if let event = events.first(where: { $0.id.uuidString.lowercased() == eventId.lowercased() }) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return eventId

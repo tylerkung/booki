@@ -32,7 +32,7 @@ struct EventDetailView: View {
 
     /// All bets for this event
     private var eventBets: [Bet] {
-        allBets.filter { $0.eventId == event.id.uuidString }
+        allBets.filter { $0.eventId.lowercased() == event.id.uuidString.lowercased() }
             .sorted { $0.createdAt > $1.createdAt }
     }
 

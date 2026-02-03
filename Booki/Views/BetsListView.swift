@@ -106,7 +106,7 @@ struct BetsListView: View {
     // MARK: - Helper Methods
 
     private func eventName(for bet: Bet) -> String {
-        if let event = events.first(where: { $0.id.uuidString == bet.eventId }) {
+        if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return "Event \(bet.eventId.prefix(8))"
@@ -353,7 +353,7 @@ struct BetDetailView: View {
     // MARK: - Computed Properties
 
     private var event: Event? {
-        events.first { $0.id.uuidString == bet.eventId }
+        events.first { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }
     }
 
     private var eventName: String {
