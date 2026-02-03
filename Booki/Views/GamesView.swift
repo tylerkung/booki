@@ -58,9 +58,22 @@ struct GamesView: View {
 
     // MARK: - Computed Properties
 
-    /// Available events (scheduled or live, not final)
+    /// US-001: Cutoff date for showing recently finished events (48 hours ago)
+    private var recentFinishedCutoff: Date {
+        Calendar.current.date(byAdding: .hour, value: -48, to: Date()) ?? Date()
+    }
+
+    /// US-001: Available events - shows non-final events PLUS final events finished within last 48 hours
+    /// Events are sorted by startTime ascending (soonest first)
     private var availableEvents: [Event] {
-        events.filter { $0.status != .final }
+        events.filter { event in
+            // Show non-final events
+            if event.status != .final {
+                return true
+            }
+            // Show final events only if they started within last 48 hours
+            return event.startTime >= recentFinishedCutoff
+        }
     }
 
     /// Unique sports that have available events, sorted alphabetically
