@@ -132,8 +132,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Migration documented, submit_bet already implements the check"
     },
     {
       "id": "US-009",
@@ -147,8 +147,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Migration documented, auto_refresh_games now checks setting before grading"
     },
     {
       "id": "US-010",

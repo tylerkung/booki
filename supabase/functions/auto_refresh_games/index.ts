@@ -732,10 +732,41 @@ Deno.serve(async (req) => {
 
               // ========================================
               // US-005: Auto-grade bets when event finalizes
+              // US-009: Check bookie's manual_bet_grading setting
               // ========================================
               if (scoreEvent.completed && homeScore !== null && awayScore !== null) {
-                // Event just became final - auto-grade accepted bets
+                // Event just became final - check if auto-grading is enabled for this bookie
                 try {
+                  // Check bookie's manual_bet_grading setting
+                  const { data: bookie } = await client
+                    .from('bookies')
+                    .select('manual_bet_grading')
+                    .eq('id', game.bookie_id)
+                    .single();
+
+                  // If manual grading is enabled, skip auto-grading
+                  if (bookie?.manual_bet_grading) {
+                    console.log(`Skipping auto-grading for event ${game.id} - bookie has manual grading enabled`);
+                    eventsFinalized++;
+                    // Still emit audit event for event finalization
+                    if (game.bookie_auth_user_id) {
+                      await emitAuditEvent(client, {
+                        bookieId: game.bookie_id,
+                        actorUserId: game.bookie_auth_user_id,
+                        entityType: 'event',
+                        entityId: game.id,
+                        actionType: 'event_finalized_auto',
+                        previousState: null,
+                        newState: {
+                          final_score: `${awayScore}-${homeScore}`,
+                          bets_graded: 0,
+                          manual_grading_enabled: true,
+                        },
+                      });
+                    }
+                    continue;
+                  }
+
                   // Query all bets for this event with status 'accepted', including market/side info
                   const { data: acceptedBets, error: betsQueryError } = await client
                     .from('bets')

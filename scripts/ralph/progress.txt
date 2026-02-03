@@ -77,3 +77,23 @@ Branch: ralph/auto-pilot-grading
   - Note: CLAUDE.md mentions Theme.success but it doesn't exist - use Theme.accent instead
 ---
 
+## 2026-02-03 03:20 - US-008
+- What was implemented: Verified manual_bet_acceptance already works
+- Files changed: None (already implemented)
+- **Learnings for future iterations:**
+  - Migration SQL documented in SUPABASE_MIGRATIONS.md "Pending Migrations" section
+  - submit_bet already checks bookie.manual_bet_acceptance (lines 181-192)
+  - When true, bets created as 'pending'; when false/null, created as 'accepted'
+---
+
+## 2026-02-03 03:25 - US-009
+- What was implemented: Added manual_bet_grading check to auto_refresh_games
+- Files changed:
+  - supabase/functions/auto_refresh_games/index.ts
+- **Learnings for future iterations:**
+  - Before grading, check bookie.manual_bet_grading setting
+  - If true, skip auto-grading and emit audit event with manual_grading_enabled flag
+  - eventsFinalized still incremented when skipping due to manual mode
+  - Migration for manual_bet_grading column is in same SQL block as manual_bet_acceptance
+---
+
