@@ -74,17 +74,31 @@ struct GamesView: View {
         Calendar.current.date(byAdding: .hour, value: -48, to: Date()) ?? Date()
     }
 
-    /// US-001: Upcoming events - shows non-final events PLUS final events finished within last 48 hours
+    /// US-004: Bettable events - only shows events the player can actually bet on
+    /// Filters to: status is scheduled, not locked, and start time is in the future
+    private var bettableEvents: [Event] {
+        let now = Date()
+        return events.filter { event in
+            // Only show scheduled events (not live, final, postponed, or canceled)
+            guard event.status == .scheduled else { return false }
+            // Only show events that haven't started yet
+            guard event.startTime > now else { return false }
+            // Only show events that aren't locked for betting
+            guard !event.isLocked(offsetMinutes: lockOffsetMinutes) else { return false }
+            return true
+        }
+    }
+
+    /// US-001: Upcoming events - shows bettable events PLUS recently finished events for reference
     /// Events are sorted by startTime ascending (soonest first)
     private var upcomingEvents: [Event] {
-        events.filter { event in
-            // Show non-final events
-            if event.status != .final {
-                return true
-            }
-            // Show final events only if they started within last 48 hours
-            return event.startTime >= recentFinishedCutoff
+        let bettable = bettableEvents
+        let recentlyFinished = events.filter { event in
+            // Include final events from the last 48 hours for bet result reference
+            event.status == .final && event.startTime >= recentFinishedCutoff
         }
+        // Combine and sort by start time ascending
+        return (bettable + recentlyFinished).sorted { $0.startTime < $1.startTime }
     }
 
     /// US-002: Past events - final events older than 48 hours
