@@ -97,3 +97,18 @@ Branch: ralph/auto-pilot-grading
   - Migration for manual_bet_grading column is in same SQL block as manual_bet_acceptance
 ---
 
+## 2026-02-03 03:35 - US-010
+- What was implemented: Added Settings UI toggles for auto-pilot mode
+- Files changed:
+  - Booki/Models/Bookie.swift (added manualBetAcceptance, manualBetGrading properties)
+  - Booki/Services/BookieService.swift (added BookieSettingsUpdate struct and updateSettings method)
+  - Booki/Views/SettingsView.swift (added toggles in Bet Management section)
+- **Learnings for future iterations:**
+  - Bookie model stores local settings; BookieService syncs to Supabase
+  - BookieRecord in BookieService.swift maps to Supabase bookies table
+  - Use onChange modifier on Toggle to auto-save when user toggles
+  - Footer text updates dynamically based on toggle state
+  - Settings loaded on onAppear from local Bookie model
+  - BookieService.updateSettings() only updates fields that are non-nil
+---
+

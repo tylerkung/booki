@@ -36,6 +36,13 @@ struct SettingsView: View {
     @State private var apiTestSuccess = false
     @State private var apiTestMessage = ""
 
+    // Auto-pilot settings (US-010)
+    @State private var manualBetAcceptance = false
+    @State private var manualBetGrading = false
+    @State private var isSavingSettings = false
+    @State private var showingSettingsError = false
+    @State private var settingsErrorMessage = ""
+
     private var currentBookie: Bookie? {
         bookies.first
     }
@@ -104,8 +111,27 @@ struct SettingsView: View {
                 }
                 .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Acceptance Rules Section
+                // MARK: - Bet Management Section (US-010)
                 Section {
+                    // Auto-pilot mode toggles
+                    Toggle(isOn: $manualBetAcceptance) {
+                        Label("Require Manual Bet Approval", systemImage: "hand.raised")
+                    }
+                    .onChange(of: manualBetAcceptance) { _, newValue in
+                        Task {
+                            await saveAutoPilotSettings(manualBetAcceptance: newValue, manualBetGrading: nil)
+                        }
+                    }
+
+                    Toggle(isOn: $manualBetGrading) {
+                        Label("Grade Bets Manually", systemImage: "checkmark.circle")
+                    }
+                    .onChange(of: manualBetGrading) { _, newValue in
+                        Task {
+                            await saveAutoPilotSettings(manualBetAcceptance: nil, manualBetGrading: newValue)
+                        }
+                    }
+
                     NavigationLink {
                         AcceptancePolicySettingsView()
                     } label: {
@@ -114,7 +140,11 @@ struct SettingsView: View {
                 } header: {
                     Text("Bet Management")
                 } footer: {
-                    Text("Configure rules for auto-accepting or reviewing bets.")
+                    if manualBetAcceptance || manualBetGrading {
+                        Text("Manual mode enabled. You'll need to review bets and/or grade them yourself.")
+                    } else {
+                        Text("Auto-pilot mode: Bets are auto-accepted and auto-graded when games complete.")
+                    }
                 }
                 .listRowBackground(Theme.cardBackground)
 
@@ -329,6 +359,52 @@ struct SettingsView: View {
             } message: {
                 Text(apiTestMessage)
             }
+            .alert("Settings Error", isPresented: $showingSettingsError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(settingsErrorMessage)
+            }
+            .onAppear {
+                loadAutoPilotSettings()
+            }
+        }
+    }
+
+    // MARK: - US-010: Auto-Pilot Settings
+
+    private func loadAutoPilotSettings() {
+        // Load from local Bookie model
+        if let bookie = currentBookie {
+            manualBetAcceptance = bookie.manualBetAcceptance
+            manualBetGrading = bookie.manualBetGrading
+        }
+    }
+
+    private func saveAutoPilotSettings(manualBetAcceptance: Bool?, manualBetGrading: Bool?) async {
+        guard let bookie = currentBookie else { return }
+
+        isSavingSettings = true
+        defer { isSavingSettings = false }
+
+        // Update local model
+        if let acceptance = manualBetAcceptance {
+            bookie.manualBetAcceptance = acceptance
+        }
+        if let grading = manualBetGrading {
+            bookie.manualBetGrading = grading
+        }
+        bookie.updatedAt = Date()
+
+        // Sync to Supabase
+        do {
+            try await BookieService.updateSettings(
+                bookieId: bookie.id,
+                manualBetAcceptance: manualBetAcceptance,
+                manualBetGrading: manualBetGrading
+            )
+        } catch {
+            settingsErrorMessage = error.localizedDescription
+            showingSettingsError = true
         }
     }
 

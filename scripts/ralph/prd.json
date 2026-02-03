@@ -164,8 +164,8 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added toggles to SettingsView with Supabase sync via BookieService"
     }
   ]
 }

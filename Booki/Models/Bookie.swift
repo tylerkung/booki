@@ -18,13 +18,20 @@ final class Bookie {
     var createdAt: Date
     var updatedAt: Date
 
+    // Auto-pilot settings (US-008, US-009)
+    // When false (default), bets are auto-accepted and auto-graded
+    var manualBetAcceptance: Bool
+    var manualBetGrading: Bool
+
     init(
         id: UUID = UUID(),
         email: String,
         name: String,
         subscriptionStatus: SubscriptionStatus = .trial,
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        manualBetAcceptance: Bool = false,
+        manualBetGrading: Bool = false
     ) {
         self.id = id
         self.email = email
@@ -32,5 +39,7 @@ final class Bookie {
         self.subscriptionStatus = subscriptionStatus
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.manualBetAcceptance = manualBetAcceptance
+        self.manualBetGrading = manualBetGrading
     }
 }

@@ -34,6 +34,9 @@ struct BookieRecord: Codable {
     let subscriptionStatus: String
     let createdAt: Date
     let updatedAt: Date
+    // Auto-pilot settings (US-008, US-009, US-010)
+    let manualBetAcceptance: Bool?
+    let manualBetGrading: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -42,6 +45,21 @@ struct BookieRecord: Codable {
         case email
         case subscriptionStatus = "subscription_status"
         case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case manualBetAcceptance = "manual_bet_acceptance"
+        case manualBetGrading = "manual_bet_grading"
+    }
+}
+
+/// Update type for modifying auto-pilot settings
+struct BookieSettingsUpdate: Codable {
+    let manualBetAcceptance: Bool?
+    let manualBetGrading: Bool?
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case manualBetAcceptance = "manual_bet_acceptance"
+        case manualBetGrading = "manual_bet_grading"
         case updatedAt = "updated_at"
     }
 }
@@ -178,6 +196,36 @@ enum BookieService {
         } catch BookieServiceError.bookieNotFound {
             // Bookie record doesn't exist, create one
             return try await createBookie(forAuthUserId: user.id, email: user.email, name: name)
+        }
+    }
+
+    // MARK: - Update Bookie Settings
+
+    /// Updates auto-pilot settings for the current bookie
+    /// - Parameters:
+    ///   - bookieId: The bookie ID to update
+    ///   - manualBetAcceptance: Whether to require manual bet acceptance (nil = don't change)
+    ///   - manualBetGrading: Whether to require manual bet grading (nil = don't change)
+    /// - Throws: BookieServiceError if update fails
+    static func updateSettings(
+        bookieId: UUID,
+        manualBetAcceptance: Bool? = nil,
+        manualBetGrading: Bool? = nil
+    ) async throws {
+        let update = BookieSettingsUpdate(
+            manualBetAcceptance: manualBetAcceptance,
+            manualBetGrading: manualBetGrading,
+            updatedAt: Date()
+        )
+
+        do {
+            try await supabase
+                .from("bookies")
+                .update(update)
+                .eq("id", value: bookieId.uuidString)
+                .execute()
+        } catch {
+            throw BookieServiceError.networkError(error)
         }
     }
 
