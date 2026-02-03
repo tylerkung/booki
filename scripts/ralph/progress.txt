@@ -1,0 +1,24 @@
+# Ralph Progress Log
+Started: Mon Feb 3 02:30:00 PST 2026
+Branch: ralph/auto-pilot-grading
+---
+
+## Codebase Patterns
+- Use Theme.swift for all colors (Theme.success, Theme.danger, Theme.warning, etc.)
+- Edge functions are in supabase/functions/ with shared helpers in _shared/
+- Bet statuses: 'pending', 'accepted', 'won', 'lost', 'push'
+- Balance convention: internal positive = player owes bookie
+- SwiftData models in Booki.swift, sync models in SyncModels.swift
+- submit_bet already supports auto-accept via manual_bet_acceptance setting
+- Deno not installed locally - typecheck validation at deploy time
+---
+
+## 2026-02-03 02:35 - US-001
+- What was implemented: Verified US-001 already complete - submit_bet auto-accepts bets by default
+- Files changed: None (already implemented)
+- **Learnings for future iterations:**
+  - submit_bet checks bookie's manual_bet_acceptance setting (lines 181-192)
+  - Auto-pilot mode: when manual_bet_acceptance is false/unset, bets created as 'accepted'
+  - Audit event uses 'bet_auto_accepted' action type for auto-accepted bets
+---
+
