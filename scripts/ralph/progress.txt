@@ -1,114 +1,27 @@
 # Ralph Progress Log
-Started: Mon Feb 3 02:30:00 PST 2026
-Branch: ralph/auto-pilot-grading
+Started: Mon Feb 3 13:45:00 PST 2026
+Branch: ralph/games-filtering
 ---
 
 ## Codebase Patterns
-- Use Theme.swift for all colors (Theme.success, Theme.danger, Theme.warning, etc.)
-- Edge functions are in supabase/functions/ with shared helpers in _shared/
-- BetStatus enum: 'pending', 'accepted', 'declined', 'readyToGrade', 'graded', 'settled', 'void'
-- GradeResult enum: 'win', 'loss', 'push' (stored in grade_result column)
-- When grading: status → 'graded', grade_result → 'win'/'loss'/'push'
-- Balance convention: internal positive = player owes bookie
+- Use Theme.swift for all colors (Theme.accent, Theme.danger, Theme.warning, etc.)
 - SwiftData models in Booki/Models/, sync models in Services/SyncModels.swift
-- submit_bet already supports auto-accept via manual_bet_acceptance setting
-- Deno not installed locally - typecheck validation at deploy time
+- EventStatus enum: 'scheduled', 'live', 'final', 'postponed', 'canceled'
+- Event.isLocked(offsetMinutes:) determines if betting is locked
+- GamesView is the PLAYER's view for browsing games (takes Player parameter)
+- EventsListView is the BOOKIE's view for managing events
+- All filtering happens in computed properties (not SwiftData predicates)
 ---
 
-## 2026-02-03 02:35 - US-001
-- What was implemented: Verified US-001 already complete - submit_bet auto-accepts bets by default
-- Files changed: None (already implemented)
-- **Learnings for future iterations:**
-  - submit_bet checks bookie's manual_bet_acceptance setting (lines 181-192)
-  - Auto-pilot mode: when manual_bet_acceptance is false/unset, bets created as 'accepted'
-  - Audit event uses 'bet_auto_accepted' action type for auto-accepted bets
----
-
-## 2026-02-03 02:45 - US-002, US-003, US-004
-- What was implemented: Created grading helper functions for all market types
+## 2026-02-03 13:50 - US-004
+- What was implemented: Filter player game browsing to show only bettable events
 - Files changed:
-  - supabase/functions/_shared/grading.ts (new file)
+  - Booki/Views/GamesView.swift
 - **Learnings for future iterations:**
-  - All grading logic consolidated in _shared/grading.ts for reuse
-  - gradeBet() is the main entry point - dispatches to gradeMoneylineBet, gradeSpreadBet, or gradeTotalBet
-  - Market type aliases handled: 'h2h' → moneyline, 'spreads' → spread, 'totals' → total
-  - Spread parsing uses regex: /-?\d+\.?\d*/ to extract numeric values
-  - Total bets check for 'over' or 'under' keywords (case-insensitive)
-  - GradeOutcome includes result ('win'/'loss'/'push') matching Swift GradeResult enum
-  - gradeDetails provides human-readable explanation (for audit logs)
-  - Unknown market types return 'push' with note about manual grading required
----
-
-## 2026-02-03 02:55 - US-005
-- What was implemented: Integrated auto-grading into auto_refresh_games
-- Files changed:
-  - supabase/functions/auto_refresh_games/index.ts
-- **Learnings for future iterations:**
-  - Auto-grading happens when scoreEvent.completed is true and scores are available
-  - Status set to 'graded', grade_result stores outcome ('win'/'loss'/'push')
-  - Each bet gets an individual audit event with action_type 'bet_auto_graded'
-  - Response includes bets_graded count alongside bets_transitioned
-  - Grading errors are captured but don't fail the entire refresh operation
-  - Import grading module: `import { gradeBet, type BetInfo, type EventScores } from '../_shared/grading.ts'`
----
-
-## 2026-02-03 03:10 - US-006
-- What was implemented: Verified grade_result column already exists and is properly mapped
-- Files changed:
-  - supabase/functions/_shared/grading.ts (fixed GradeResult type: 'won'→'win', 'lost'→'loss')
-  - supabase/functions/auto_refresh_games/index.ts (fixed to use status='graded' and grade_result=outcome)
-- **Learnings for future iterations:**
-  - grade_result column exists in 001_initial_schema.sql
-  - Swift GradeResult enum has values: win, loss, push (NOT won, lost, push)
-  - BetRecord in SyncModels.swift maps grade_result to gradeResult
-  - SyncService.upsertBet correctly parses gradeResult
-  - Grading pattern: status='graded', grade_result='win'|'loss'|'push'
----
-
-## 2026-02-03 03:15 - US-007
-- What was implemented: Verified TrackView already displays grade results with proper colors
-- Files changed: None (already implemented)
-- **Learnings for future iterations:**
-  - TrackView shows grade result badge when bet.gradeResult != nil
-  - gradeResultColor() maps: .win → Theme.accent, .loss → Theme.danger, .push → Theme.warning
-  - Theme.accent is cyan (0x00F5D4) - used as "success/win" color throughout app
-  - Theme.danger is red (0xFF6B6B) for losses
-  - Theme.warning is orange (0xFFA94D) for pushes
-  - Note: CLAUDE.md mentions Theme.success but it doesn't exist - use Theme.accent instead
----
-
-## 2026-02-03 03:20 - US-008
-- What was implemented: Verified manual_bet_acceptance already works
-- Files changed: None (already implemented)
-- **Learnings for future iterations:**
-  - Migration SQL documented in SUPABASE_MIGRATIONS.md "Pending Migrations" section
-  - submit_bet already checks bookie.manual_bet_acceptance (lines 181-192)
-  - When true, bets created as 'pending'; when false/null, created as 'accepted'
----
-
-## 2026-02-03 03:25 - US-009
-- What was implemented: Added manual_bet_grading check to auto_refresh_games
-- Files changed:
-  - supabase/functions/auto_refresh_games/index.ts
-- **Learnings for future iterations:**
-  - Before grading, check bookie.manual_bet_grading setting
-  - If true, skip auto-grading and emit audit event with manual_grading_enabled flag
-  - eventsFinalized still incremented when skipping due to manual mode
-  - Migration for manual_bet_grading column is in same SQL block as manual_bet_acceptance
----
-
-## 2026-02-03 03:35 - US-010
-- What was implemented: Added Settings UI toggles for auto-pilot mode
-- Files changed:
-  - Booki/Models/Bookie.swift (added manualBetAcceptance, manualBetGrading properties)
-  - Booki/Services/BookieService.swift (added BookieSettingsUpdate struct and updateSettings method)
-  - Booki/Views/SettingsView.swift (added toggles in Bet Management section)
-- **Learnings for future iterations:**
-  - Bookie model stores local settings; BookieService syncs to Supabase
-  - BookieRecord in BookieService.swift maps to Supabase bookies table
-  - Use onChange modifier on Toggle to auto-save when user toggles
-  - Footer text updates dynamically based on toggle state
-  - Settings loaded on onAppear from local Bookie model
-  - BookieService.updateSettings() only updates fields that are non-nil
+  - Added bettableEvents computed property: scheduled + not locked + future start time
+  - upcomingEvents now combines bettableEvents + recently finished (48hr) for reference
+  - Locked events are hidden, not just disabled (per US-004 requirements)
+  - Event.isLocked() already existed and handles lock offset from AcceptancePolicy
+  - GamesView already queries acceptancePolicies to get lockOffsetMinutes
 ---
 
