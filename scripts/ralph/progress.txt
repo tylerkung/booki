@@ -65,3 +65,15 @@ Branch: ralph/auto-pilot-grading
   - Grading pattern: status='graded', grade_result='win'|'loss'|'push'
 ---
 
+## 2026-02-03 03:15 - US-007
+- What was implemented: Verified TrackView already displays grade results with proper colors
+- Files changed: None (already implemented)
+- **Learnings for future iterations:**
+  - TrackView shows grade result badge when bet.gradeResult != nil
+  - gradeResultColor() maps: .win → Theme.accent, .loss → Theme.danger, .push → Theme.warning
+  - Theme.accent is cyan (0x00F5D4) - used as "success/win" color throughout app
+  - Theme.danger is red (0xFF6B6B) for losses
+  - Theme.warning is orange (0xFFA94D) for pushes
+  - Note: CLAUDE.md mentions Theme.success but it doesn't exist - use Theme.accent instead
+---
+

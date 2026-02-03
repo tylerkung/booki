@@ -117,8 +117,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Already implemented in TrackView with gradeResultColor() function - Theme.accent/danger/warning"
     },
     {
       "id": "US-008",
