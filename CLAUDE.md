@@ -1,5 +1,21 @@
 # Booki - Development Guidelines
 
+## Documentation Updates (Required)
+
+**After completing any feature or significant change, update these files:**
+
+1. **CLAUDE.md** (this file)
+   - Update "Current State" section with date and branch
+   - Add new sections for major features (e.g., new Edge Functions, architectural patterns)
+   - Update "Key Files" if new important files were added
+
+2. **README.md**
+   - Add new phase section under "What's Been Implemented"
+   - Update relevant sections (Edge Functions table, Database Schema, etc.)
+   - Update "Last updated" line at the bottom
+
+This keeps documentation in sync with the codebase for future development.
+
 ## PRD Guidelines
 
 When creating PRDs for this project:
@@ -66,8 +82,8 @@ List {
 All critical betting operations are server-authoritative via Supabase Edge Functions:
 
 - **Location**: `supabase/functions/`
-- **Shared helpers**: `_shared/cors.ts`, `_shared/supabase.ts`, `_shared/idempotency.ts`, `_shared/audit.ts`
-- **Functions**: `submit_bet`, `accept_bet`, `grade_bet`, `settle_bet`, `adjust_balance`, `reverse_settlement`, `override_grade`
+- **Shared helpers**: `_shared/cors.ts`, `_shared/supabase.ts`, `_shared/idempotency.ts`, `_shared/audit.ts`, `_shared/grading.ts`
+- **Functions**: `submit_bet`, `accept_bet`, `grade_bet`, `settle_bet`, `adjust_balance`, `reverse_settlement`, `override_grade`, `auto_refresh_games`
 - **Deploy**: `supabase functions deploy <function-name>`
 
 All functions:
@@ -77,6 +93,32 @@ All functions:
 4. Emit audit events
 5. Return cached response on duplicate requests
 
+## Auto-Pilot Mode (Default)
+
+Bets are auto-accepted and auto-graded by default:
+
+- **Auto-accept**: `submit_bet` creates bets with status `'accepted'` immediately
+- **Auto-grade**: `auto_refresh_games` grades bets when events reach `'final'` status
+- **Grading logic**: Moneyline (winner), Spread (point differential), Totals (over/under)
+- **Opt-in manual modes**: Bookies can enable `manual_bet_acceptance` or `manual_bet_grading` in Settings
+
+## Shared Events Architecture
+
+Events/games are shared across all bookies (`bookie_id = NULL`):
+
+- **Events**: Shared - available to all bookies (imported from Odds API)
+- **Players**: Bookie-specific - each bookie has their own players
+- **Bets**: Bookie-specific - tied to player and bookie
+- **SyncService**: Downloads events where `bookie_id IS NULL OR bookie_id = <bookie_id>`
+
+## UUID Case Sensitivity
+
+iOS and PostgreSQL handle UUID casing differently:
+
+- **iOS**: `UUID.uuidString` returns UPPERCASE (e.g., `F3AD0FA1-...`)
+- **PostgreSQL**: Stores lowercase (e.g., `f3ad0fa1-...`)
+- **Always normalize**: Use `.lowercased()` in Swift, `.toLowerCase()` in TypeScript before comparisons
+
 ## Documentation
 
 See `README.md` for comprehensive app documentation including:
@@ -84,12 +126,25 @@ See `README.md` for comprehensive app documentation including:
 - How it's organized
 - All models, views, and services explained
 - Key concepts (balances, bets, auth, sync)
-- What's been implemented (Phases 1-7)
+- What's been implemented (all phases)
 
-## Current State (January 29, 2026)
+## Games Filtering
 
-- **Branch**: `ralph/server-authority-legal`
-- **Phases complete**: 1-7 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority)
+Events are filtered in the UI while all data is preserved in the database:
+
+- **GamesView (Bookie)**: Toggle between "Upcoming" and "Past" events
+  - Upcoming: Non-final events + final events from last 48 hours
+  - Past: Final events older than 48 hours (sorted newest first)
+- **Player View**: Only shows bettable events (future start time, not locked/final/canceled)
+- **Historical Data**: All events kept forever for bet history references
+- **Event Lookups**: Use case-insensitive UUID comparison (`.lowercased()`) due to iOS/PostgreSQL casing differences
+
+## Current State (February 3, 2026)
+
+- **Branch**: `ralph/games-filtering`
+- **Phases complete**: 1-9 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
-- **Edge Functions**: 7 functions for server-authoritative operations
+- **Edge Functions**: 8 functions for server-authoritative operations
 - **Odds API key**: Configured in Settings (free tier, 500 calls/month)
+- **Auto-pilot mode**: Bets auto-accepted and auto-graded by default
+- **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)

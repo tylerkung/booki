@@ -75,22 +75,24 @@ export async function emitAuditEvent(
     reason,
   } = params;
 
-  await client
-    .from('audit_events')
-    .insert({
-      bookie_id: bookieId,
-      actor_user_id: actorUserId,
-      entity_type: entityType,
-      entity_id: entityId,
-      action_type: actionType,
-      previous_state: previousState ?? null,
-      new_state: newState,
-      reason: reason ?? null,
-    })
-    .then(({ error }) => {
-      if (error) {
-        console.error('Error emitting audit event:', error);
-      }
-    })
-    .catch((err) => console.error('Error emitting audit event:', err));
+  try {
+    const { error } = await client
+      .from('audit_events')
+      .insert({
+        bookie_id: bookieId,
+        actor_user_id: actorUserId,
+        entity_type: entityType,
+        entity_id: entityId,
+        action_type: actionType,
+        previous_state: previousState ?? null,
+        new_state: newState,
+        reason: reason ?? null,
+      });
+
+    if (error) {
+      console.error('Error emitting audit event:', error);
+    }
+  } catch (err) {
+    console.error('Error emitting audit event:', err);
+  }
 }

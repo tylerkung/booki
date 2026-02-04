@@ -121,12 +121,17 @@ The player's balance is calculated by adding up all their ledger entries. This c
 
 ### How Bets Flow
 
+**Auto-Pilot Mode (Default):**
+1. **Accepted** - Bet is submitted and auto-accepted immediately
+2. **Graded** - When game finalizes, bet is auto-graded as win/loss/push
+3. **Settled** - Bookie settles the bet (payout/loss recorded in ledger)
+
+**Manual Mode (Opt-in):**
 1. **Pending** - Bet is submitted, waiting for bookie to review
-2. **Accepted** - Bookie approved the bet
-3. **Declined** - Bookie rejected the bet
-4. **Ready to Grade** - Event is over, bet needs grading
-5. **Graded** - Bet marked as win/loss/push
-6. **Settled** - Payout/loss recorded in ledger
+2. **Accepted/Declined** - Bookie approves or rejects the bet
+3. **Ready to Grade** - Event is over, bet needs manual grading
+4. **Graded** - Bookie marks bet as win/loss/push
+5. **Settled** - Payout/loss recorded in ledger
 
 ### How Authentication Works
 
@@ -229,6 +234,50 @@ The app is **local-first** with cloud sync:
   - Bookies can reverse settlements with required reason
   - All corrections create audit records for accountability
 
+### Phase 8: Auto-Pilot Mode & Shared Events
+- **Auto-Accept Bets**
+  - Bets are accepted immediately by default (no manual approval needed)
+  - Bookies can opt-in to manual approval via Settings toggle
+  - Audit events logged for auto-accepted bets
+
+- **Auto-Grade Bets**
+  - When games finalize, bets are automatically graded
+  - Supports moneyline (winner), spread (point differential), and totals (over/under)
+  - Bookies can opt-in to manual grading via Settings toggle
+  - Grade results stored and displayed (e.g., "Final: 110-105")
+
+- **Shared Events Architecture**
+  - Events/games are shared across all bookies (no bookie_id)
+  - All bookies see the same games and scores from Odds API
+  - Players and bets remain bookie-specific
+  - Simplifies multi-bookie deployments
+
+- **Settings UI for Manual Modes**
+  - "Require manual bet approval" toggle
+  - "Grade bets manually" toggle
+  - Both default to OFF (auto-pilot mode)
+
+### Phase 9: Games Filtering & Data Management
+- **Smart Games View Filtering**
+  - Bookie sees "Upcoming" (default) or "Past" events via toggle
+  - Upcoming: Active events + recently finished (last 48 hours)
+  - Past: Completed events older than 48 hours
+  - Events sorted appropriately (upcoming by soonest, past by most recent)
+
+- **Player Game Filtering**
+  - Players only see events they can actually bet on
+  - Hides past events, locked events, and canceled events
+  - Clean betting experience focused on available games
+
+- **Historical Data Preservation**
+  - All events kept in database permanently
+  - Bet history maintains full event context (teams, scores)
+  - No data loss - filtering is UI-only
+
+- **UUID Case Sensitivity Fix**
+  - Fixed event lookups across 9 view files
+  - Case-insensitive comparison for iOS/PostgreSQL compatibility
+
 ---
 
 ## Technical Details
@@ -269,7 +318,7 @@ The Supabase database has these tables:
 - `idempotency_keys` - Deduplication for Edge Functions
 - `audit_events` - Audit trail for all bet actions
 
-All tables have `bookie_id` for multi-tenant isolation.
+Most tables have `bookie_id` for multi-tenant isolation. Exception: `events` table has nullable `bookie_id` - shared events (NULL) are visible to all bookies.
 
 ### Edge Functions
 
@@ -277,13 +326,14 @@ Server-authoritative functions running on Supabase (Deno/TypeScript):
 
 | Function | Purpose |
 |----------|---------|
-| `submit_bet` | Player submits a bet (validates event not locked) |
-| `accept_bet` | Bookie accepts a pending bet |
-| `grade_bet` | Bookie grades bet as win/loss/push/void |
+| `submit_bet` | Player submits a bet (auto-accepts by default, validates event not locked) |
+| `accept_bet` | Bookie accepts a pending bet (when manual mode enabled) |
+| `grade_bet` | Bookie grades bet as win/loss/push/void (manual grading) |
 | `settle_bet` | Bookie settles bet (creates ledger entry atomically) |
 | `adjust_balance` | Bookie adjusts player balance with reason |
 | `reverse_settlement` | Bookie undoes a settlement (creates reversal entry) |
 | `override_grade` | Bookie changes a grade (auto-reverses if settled) |
+| `auto_refresh_games` | Fetches scores and auto-grades bets when games finalize |
 
 All functions validate JWT auth, check idempotency, and emit audit events.
 
@@ -291,14 +341,11 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ## Saved for Future
 
-### Automatic Background Refresh
-- Scheduled odds refresh (currently manual to conserve API quota)
+### Enhanced Features
 - Push notifications for line movements
-- Background score fetching
-
-### Enhanced Grading
-- Auto-trigger grading when scores are fetched
-- Batch grading for multiple events
+- Batch settlement for multiple players
+- Player notifications when bets grade
+- Settlement reminders and scheduling
 
 ---
 
@@ -316,4 +363,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: January 29, 2026 - Phase 7 (Server Authority & Legal Acknowledgment) completed*
+*Last updated: February 3, 2026 - Phase 9 (Games Filtering & Data Management) completed*
