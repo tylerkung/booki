@@ -104,6 +104,9 @@ class BetSlipManager: ObservableObject {
         }
     }
 
+    /// US-005: Message shown when mode auto-switches (e.g., from parlay to singles due to conflicts)
+    @Published var modeSwitchMessage: String?
+
     /// Published stake amount (US-042)
     @Published var stake: Decimal = 0 {
         didSet {
@@ -326,10 +329,39 @@ class BetSlipManager: ObservableObject {
         items.append(item)
         saveItems()
 
-        // US-003: If adding this item creates a conflict while in parlay mode, switch to singles
+        // US-003/US-005: If adding this item creates a conflict while in parlay mode, switch to singles
         if betMode == .parlay && hasConflictingSelections {
+            // US-005: Initialize per-item stakes from parlay stake before switching
+            initializeItemStakesFromParlay()
             betMode = .singles
+            modeSwitchMessage = "Switched to Singles: conflicting selections on the same game"
         }
+    }
+
+    /// US-005: Initialize per-item stakes when switching from parlay to singles
+    /// Distributes the current parlay stake evenly across all items, or sets to zero if no stake
+    private func initializeItemStakesFromParlay() {
+        guard !items.isEmpty else { return }
+
+        if stake > 0 {
+            // Distribute parlay stake evenly across items
+            let perItemStake = Decimal(NSDecimalNumber(decimal: stake / Decimal(items.count)).intValue)
+            for item in items {
+                let key = itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                if itemStakes[key] == nil || itemStakes[key] == 0 {
+                    itemStakes[key] = perItemStake
+                }
+            }
+        } else {
+            // No parlay stake set — initialize all to zero
+            for item in items {
+                let key = itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                if itemStakes[key] == nil {
+                    itemStakes[key] = 0
+                }
+            }
+        }
+        saveItemStakes()
     }
 
     /// Add from BetSlipSelection with event context

@@ -130,6 +130,18 @@ struct BetSlipSheet: View {
             } message: {
                 Text("The following events are locked for betting:\n\n\(lockedEventNames.joined(separator: "\n"))\n\nPlease remove them from your bet slip to continue.")
             }
+            // US-005: Sync itemStakeTexts when mode switches to singles with pre-populated stakes
+            .onChange(of: betSlipManager.betMode) { _, newMode in
+                if newMode == .singles {
+                    for item in betSlipManager.items {
+                        let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                        let stake = betSlipManager.getItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                        if stake > 0 && (itemStakeTexts[key] == nil || itemStakeTexts[key]?.isEmpty == true) {
+                            itemStakeTexts[key] = "\(NSDecimalNumber(decimal: stake).intValue)"
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -229,6 +241,35 @@ struct BetSlipSheet: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Theme.warning.opacity(0.1))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+
+                        // US-005: Show mode switch message when auto-switched from parlay to singles
+                        if let switchMessage = betSlipManager.modeSwitchMessage {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.triangle.swap")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.accent)
+                                Text(switchMessage)
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.accent)
+                                Spacer()
+                                Button {
+                                    withAnimation {
+                                        betSlipManager.modeSwitchMessage = nil
+                                    }
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.caption2)
+                                        .foregroundStyle(Theme.textMuted)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.accent.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .transition(.move(edge: .top).combined(with: .opacity))
                         }
                     }
                     .padding(.horizontal)
