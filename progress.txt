@@ -132,3 +132,26 @@ Started: Fri Feb  6 22:53:36 PST 2026
   - BetUpsert CodingKeys use snake_case to match PostgreSQL column naming convention
   - The parlay create function gets sideIndicator from `matchingItem?.sideIndicator` (already matched by eventId + sideIndicator), while singles get it directly from `item.sideIndicator`
 ---
+
+## 2026-02-06 - US-011
+- What was implemented: Added `marketId: UUID?` field to Bet model for referencing the Market record
+- Files changed:
+  - `Booki/Models/Bet.swift` - Added `marketId: UUID?` property with nil default; added to init parameter list and body
+  - `Booki/Services/BetService.swift` - Added `marketId` parameter to `createLocalBetFromResponse()`, passes through to Bet init; updated `createLocalBetsFromParlayResponse()` to populate from `matchingItem?.marketId`
+  - `Booki/Services/SyncModels.swift` - Added `marketId: UUID?` to `BetUpsert` struct, CodingKey `"market_id"`, and population from `bet.marketId` in init
+  - `Booki/Views/BetSlipSheet.swift` - Updated singles mode call to `createLocalBetFromResponse` to pass `item.marketId`
+- **Learnings for future iterations:**
+  - This follows the exact same 4-file pattern as US-010 (sideIndicator): Bet.swift model → BetService.swift create helpers → SyncModels.swift BetUpsert → BetSlipSheet.swift call sites
+  - For parlay mode, `marketId` comes from `matchingItem?.marketId` (BetSlipItem already has marketId); for singles it comes directly from `item.marketId`
+  - No new patterns discovered beyond what US-010 already documented
+---
+
+## 2026-02-06 - US-012
+- What was implemented: Verified locked event handling already exists in submit_parlay Edge Function (lines 175-190)
+- Files changed: None — functionality was already implemented
+- **Learnings for future iterations:**
+  - The submit_parlay function already checks `event.status === 'locked' || startTime <= now` for each event before inserting
+  - Locked events cause the entire parlay to be rejected (all-or-nothing)
+  - Error format is `'Events locked: [id1, id2]'` — the client side (US-013) should parse this format
+  - Always read the existing code before implementing — features may already exist from prior work
+---
