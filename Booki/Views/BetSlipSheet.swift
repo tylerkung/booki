@@ -880,7 +880,8 @@ struct BetSlipSheet: View {
                     let localBets = BetService.createLocalBetsFromParlayResponse(
                         response,
                         player: player,
-                        items: itemsToSubmit
+                        items: itemsToSubmit,
+                        events: events
                     )
                     if !localBets.isEmpty {
                         await MainActor.run {
@@ -941,11 +942,14 @@ struct BetSlipSheet: View {
                     switch result {
                     case .success(let response):
                         // Create local Bet from server response
+                        let matchedEvent = events.first(where: { $0.id.uuidString.lowercased() == item.eventId.uuidString.lowercased() })
                         if let bet = BetService.createLocalBetFromResponse(
                             response,
                             player: player,
                             localSide: item.side,
-                            localMarket: item.marketType.rawValue
+                            localMarket: item.marketType.rawValue,
+                            eventDescription: item.eventDescription,
+                            sportLeague: matchedEvent?.league
                         ) {
                             await MainActor.run {
                                 modelContext.insert(bet)

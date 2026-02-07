@@ -82,3 +82,26 @@ Started: Fri Feb  6 22:53:36 PST 2026
   - BetSlipSheet uses UPPERCASE market labels, BetConfirmationSheet uses title case — `.uppercased()` on displayName keeps them distinct
   - BetDetailView is defined inside BetsListView.swift, not a separate file
 ---
+
+## 2026-02-06 - US-007
+- What was implemented: Added sport league abbreviation (e.g., "NBA") before event names in BetsListView bet rows
+- Files changed:
+  - `Booki/Views/BetsListView.swift` - Added `sportLeague` optional parameter to BetRowView, added `sportLeague(for:)` helper to BetsListView that looks up `event.league`, updated bet row to display "NBA | Lakers @ Celtics" format with accent-colored league abbreviation
+- **Learnings for future iterations:**
+  - `event.league` is the short abbreviation (e.g., "NBA", "NFL", "MLB") — use this for compact display, not `event.sport` which is the full word (e.g., "Basketball")
+  - BetRowView uses optional parameters with defaults for new properties to avoid breaking other call sites
+  - The event lookup pattern (`events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() })`) is reused from eventName — consider extracting to a shared helper if more lookups are needed
+---
+
+## 2026-02-06 - US-008
+- What was implemented: Added `eventDescription: String?` and `sportLeague: String?` optional fields to the Bet model for offline event context display
+- Files changed:
+  - `Booki/Models/Bet.swift` - Added two new nullable String properties with default nil values; SwiftData auto-migrates nullable fields
+  - `Booki/Services/BetService.swift` - Updated `createLocalBetFromResponse` to accept optional `eventDescription` and `sportLeague` parameters; updated `createLocalBetsFromParlayResponse` to accept `events: [Event]` parameter, populates `eventDescription` from matching BetSlipItem and `sportLeague` from Event lookup
+  - `Booki/Views/BetSlipSheet.swift` - Updated both call sites (singles and parlay) to pass `eventDescription` from BetSlipItem and `sportLeague` from Event lookup
+- **Learnings for future iterations:**
+  - BetSlipItem already stores `eventDescription` (e.g., "Lakers vs Celtics") — reuse it when creating local Bet objects
+  - `event.league` provides the sport abbreviation (e.g., "NBA") — look up the event by UUID (lowercased) to get the league
+  - New nullable fields with defaults don't require any changes to existing Bet() call sites — Swift default parameters handle backwards compatibility
+  - The parlay create function now takes an `events: [Event]` parameter (defaulting to empty array) so it can look up league info per leg
+---

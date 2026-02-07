@@ -276,7 +276,9 @@ enum BetService {
         _ response: SubmitBetResponse,
         player: Player,
         localSide: String,
-        localMarket: String
+        localMarket: String,
+        eventDescription: String? = nil,
+        sportLeague: String? = nil
     ) -> Bet? {
         guard let betResponse = response.bet,
               let betId = UUID(uuidString: betResponse.id),
@@ -302,6 +304,8 @@ enum BetService {
             policyViolationReason: nil,
             isParlay: false,
             parlayLegs: 1,
+            eventDescription: eventDescription,
+            sportLeague: sportLeague,
             bookieId: bookieId,
             needsSync: false,
             lastSyncedAt: Date(),
@@ -320,7 +324,8 @@ enum BetService {
     static func createLocalBetsFromParlayResponse(
         _ response: SubmitParlayResponse,
         player: Player,
-        items: [BetSlipItem]
+        items: [BetSlipItem],
+        events: [Event] = []
     ) -> [Bet] {
         guard let bets = response.bets,
               let ticketIdString = response.ticketId,
@@ -346,6 +351,12 @@ enum BetService {
             let localMarket = matchingItem?.marketType.rawValue ?? betResponse.market
             let status = BetStatus(rawValue: betResponse.status) ?? .pending
 
+            // Look up event description and sport league
+            let eventDesc = matchingItem?.eventDescription
+            let league = events.first(where: {
+                $0.id.uuidString.lowercased() == betResponse.eventId.lowercased()
+            })?.league
+
             return Bet(
                 id: betId,
                 eventId: betResponse.eventId,
@@ -361,6 +372,8 @@ enum BetService {
                 policyViolationReason: nil,
                 isParlay: true,
                 parlayLegs: totalLegs,
+                eventDescription: eventDesc,
+                sportLeague: league,
                 bookieId: bookieId,
                 needsSync: false,
                 lastSyncedAt: Date(),

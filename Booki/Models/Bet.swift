@@ -44,6 +44,12 @@ final class Bet: Syncable {
     /// Number of legs in the parlay (1 for singles, N for parlays)
     var parlayLegs: Int
 
+    /// Human-readable event description for offline display (e.g., "Lakers @ Celtics")
+    var eventDescription: String?
+
+    /// Sport league abbreviation for display (e.g., "NBA", "NFL")
+    var sportLeague: String?
+
     /// Relationship: many bets belong to one player
     var player: Player?
 
@@ -76,6 +82,8 @@ final class Bet: Syncable {
         policyViolationReason: String? = nil,
         isParlay: Bool = false,
         parlayLegs: Int = 1,
+        eventDescription: String? = nil,
+        sportLeague: String? = nil,
         bookieId: UUID? = nil,
         needsSync: Bool = true,
         lastSyncedAt: Date? = nil,
@@ -95,6 +103,8 @@ final class Bet: Syncable {
         self.policyViolationReason = policyViolationReason
         self.isParlay = isParlay
         self.parlayLegs = parlayLegs
+        self.eventDescription = eventDescription
+        self.sportLeague = sportLeague
         self.bookieId = bookieId
         self.needsSync = needsSync
         self.lastSyncedAt = lastSyncedAt
