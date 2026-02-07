@@ -97,6 +97,69 @@ struct SubmitBetResponse: Decodable {
     let error: String?
 }
 
+// MARK: - Parlay Edge Function Types
+
+/// A single leg in a parlay submission
+struct ParlayLeg: Encodable {
+    let eventId: String
+    let marketId: String
+    let side: String
+    let sideIndicator: String
+    let odds: Int
+
+    enum CodingKeys: String, CodingKey {
+        case eventId = "event_id"
+        case marketId = "market_id"
+        case side
+        case sideIndicator = "side_indicator"
+        case odds
+    }
+}
+
+/// Request body for submit_parlay Edge Function
+struct SubmitParlayRequest: Encodable {
+    let legs: [ParlayLeg]
+    let stake: String
+    let playerId: String
+    let bookieId: String
+    let combinedOdds: Int
+    let idempotencyKey: String
+
+    enum CodingKeys: String, CodingKey {
+        case legs
+        case stake
+        case playerId = "player_id"
+        case bookieId = "bookie_id"
+        case combinedOdds = "combined_odds"
+        case idempotencyKey = "idempotency_key"
+    }
+}
+
+/// Response from submit_parlay Edge Function
+struct SubmitParlayResponse: Decodable {
+    let success: Bool
+    let bets: [SubmitBetResponseBet]?
+    let ticketId: String?
+    let error: String?
+    let debug: SubmitParlayDebug?
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case bets
+        case ticketId = "ticket_id"
+        case error
+        case debug
+    }
+}
+
+/// Debug info from submit_parlay errors
+struct SubmitParlayDebug: Decodable {
+    let message: String?
+    let details: String?
+    let hint: String?
+    let code: String?
+}
+
 /// Service for bet operations including submission and status transitions
 enum BetService {
 
