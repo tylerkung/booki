@@ -155,3 +155,15 @@ Started: Fri Feb  6 22:53:36 PST 2026
   - Error format is `'Events locked: [id1, id2]'` — the client side (US-013) should parse this format
   - Always read the existing code before implementing — features may already exist from prior work
 ---
+
+## 2026-02-06 - US-013
+- What was implemented: Display locked event errors in BetSlipSheet with highlighting and removal button
+- Files changed:
+  - `Booki/Views/BetSlipSheet.swift` - Added `serverLockedEventIds` state, `parseLockedEventIds()` static parser, `removeLockedEvents()` helper, updated locked events alert with "Remove Locked Events" button, pass `isLocked` to PremiumBetSlipItemCard, added lock banner and danger border to locked cards
+- **Learnings for future iterations:**
+  - Server error format is `'Events locked: [id1, id2]'` — parse by finding `Events locked: [` prefix and extracting IDs before `]`
+  - The locked events alert already existed (US-009 client-side check) — enhanced it with a destructive "Remove Locked Events" button
+  - PremiumBetSlipItemCard uses default parameter values (`isLocked: Bool = false`) for backwards compatibility
+  - When removing items by index in reverse order, indices stay valid — use `reversed()` to avoid index shifting
+  - BetSlipSheet has both client-side lock check (pre-submission) and server-side lock parsing (post-submission failure) — the server check catches races where an event locks between client check and server processing
+---

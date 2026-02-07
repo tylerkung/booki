@@ -42,9 +42,12 @@ struct BetSlipSheet: View {
     @State private var outerRingScale: CGFloat = 0.8
     @State private var outerRingOpacity: Double = 0
 
-    /// US-009: State for locked events error alert
+    /// US-009: State for locked events error alert (client-side pre-check)
     @State private var showLockedEventsAlert: Bool = false
     @State private var lockedEventNames: [String] = []
+
+    /// US-013: State for server-reported locked event IDs
+    @State private var serverLockedEventIds: Set<String> = []
 
     /// Initialize with available credit for validation and optional player
     init(availableCredit: Decimal = Decimal.greatestFiniteMagnitude, player: Player? = nil) {
@@ -124,11 +127,15 @@ struct BetSlipSheet: View {
                     Text(error)
                 }
             }
-            // US-009: Alert for locked events
+            // US-009/US-013: Alert for locked events (client-side or server-reported)
             .alert("Events Locked", isPresented: $showLockedEventsAlert) {
+                // US-013: Offer to remove locked events
+                Button("Remove Locked Events", role: .destructive) {
+                    removeLockedEvents()
+                }
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("The following events are locked for betting:\n\n\(lockedEventNames.joined(separator: "\n"))\n\nPlease remove them from your bet slip to continue.")
+                Text("The following events are locked for betting:\n\n\(lockedEventNames.joined(separator: "\n"))\n\nRemove them from your bet slip to continue.")
             }
             // US-005: Sync itemStakeTexts when mode switches to singles with pre-populated stakes
             .onChange(of: betSlipManager.betMode) { _, newMode in
@@ -287,11 +294,14 @@ struct BetSlipSheet: View {
                                         // Also remove the stake text for this item
                                         let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
                                         itemStakeTexts.removeValue(forKey: key)
+                                        // US-013: Clear locked state for removed item
+                                        serverLockedEventIds.remove(item.eventId.uuidString.lowercased())
                                     }
                                 },
                                 betMode: betSlipManager.betMode,
                                 stakeText: itemStakeTextBinding(for: item),
-                                betSlipManager: betSlipManager
+                                betSlipManager: betSlipManager,
+                                isLocked: serverLockedEventIds.contains(item.eventId.uuidString.lowercased())
                             )
                             .transition(.asymmetric(
                                 insertion: .scale(scale: 0.9).combined(with: .opacity),
@@ -799,6 +809,32 @@ struct BetSlipSheet: View {
         return lockedNames
     }
 
+    /// US-013: Parse locked event IDs from server error message format "Events locked: [id1, id2]"
+    static func parseLockedEventIds(from message: String) -> [String] {
+        guard let range = message.range(of: "Events locked: [") else { return [] }
+        let afterPrefix = message[range.upperBound...]
+        guard let closingBracket = afterPrefix.firstIndex(of: "]") else { return [] }
+        let idsString = afterPrefix[..<closingBracket]
+        return idsString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
+    /// US-013: Remove all locked events from the bet slip
+    private func removeLockedEvents() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            let indicesToRemove = betSlipManager.items.enumerated().compactMap { index, item -> Int? in
+                serverLockedEventIds.contains(item.eventId.uuidString.lowercased()) ? index : nil
+            }
+            // Remove from highest index to lowest to maintain valid indices
+            for index in indicesToRemove.reversed() {
+                let item = betSlipManager.items[index]
+                let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                itemStakeTexts.removeValue(forKey: key)
+                betSlipManager.remove(at: index)
+            }
+            serverLockedEventIds.removeAll()
+        }
+    }
+
     // MARK: - Submission Logic (US-006: Direct submission from bet slip, US-016: Edge Function)
 
     private func submitBets() {
@@ -895,24 +931,44 @@ struct BetSlipSheet: View {
                     }
 
                 case .failure(let error):
+                    var errorMessage = "Failed to submit parlay"
                     if let edgeFunctionError = error as? EdgeFunctionError {
                         switch edgeFunctionError {
                         case .notAuthenticated:
-                            errors.append("Not authenticated - please sign in again")
+                            errorMessage = "Not authenticated - please sign in again"
                         case .serverError(_, let message):
-                            errors.append(message ?? "Server error submitting parlay")
+                            errorMessage = message ?? "Server error submitting parlay"
                         default:
-                            errors.append(edgeFunctionError.localizedDescription)
+                            errorMessage = edgeFunctionError.localizedDescription
                         }
                     } else if let betError = error as? BetServiceError {
                         switch betError {
                         case .edgeFunctionError(let message):
-                            errors.append(message)
+                            errorMessage = message
                         default:
-                            errors.append("Failed to submit parlay")
+                            break
                         }
                     } else {
-                        errors.append("Failed to submit parlay: \(error.localizedDescription)")
+                        errorMessage = "Failed to submit parlay: \(error.localizedDescription)"
+                    }
+
+                    // US-013: Parse locked event IDs from server error
+                    let parsedLockedIds = Self.parseLockedEventIds(from: errorMessage)
+                    if !parsedLockedIds.isEmpty {
+                        await MainActor.run {
+                            serverLockedEventIds = Set(parsedLockedIds.map { $0.lowercased() })
+                            // Build names for the alert
+                            lockedEventNames = parsedLockedIds.compactMap { lockedId in
+                                let normalizedId = lockedId.lowercased()
+                                if let item = itemsToSubmit.first(where: { $0.eventId.uuidString.lowercased() == normalizedId }) {
+                                    return item.eventDescription
+                                }
+                                return "Event \(lockedId.prefix(8))"
+                            }
+                            showLockedEventsAlert = true
+                        }
+                    } else {
+                        errors.append(errorMessage)
                     }
                 }
             } else {
@@ -1050,6 +1106,9 @@ struct PremiumBetSlipItemCard: View {
     /// BetSlipManager for stake calculations (US-004)
     @ObservedObject var betSlipManager: BetSlipManager
 
+    /// US-013: Whether this item's event is locked (server-reported)
+    var isLocked: Bool = false
+
     /// Track if stake field is focused (US-004)
     @FocusState private var isStakeFocused: Bool
 
@@ -1092,6 +1151,21 @@ struct PremiumBetSlipItemCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // US-013: Locked event warning banner
+            if isLocked {
+                HStack(spacing: 6) {
+                    Image(systemName: "lock.fill")
+                        .font(.caption)
+                    Text("Event Locked")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(Theme.danger)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(Theme.danger.opacity(0.15))
+            }
+
             HStack(spacing: 12) {
                 // Team logo placeholder (colored circle)
                 Circle()
@@ -1234,7 +1308,7 @@ struct PremiumBetSlipItemCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Theme.border, lineWidth: 0.5)
+                .stroke(isLocked ? Theme.danger.opacity(0.6) : Theme.border, lineWidth: isLocked ? 1.5 : 0.5)
         )
     }
 }
