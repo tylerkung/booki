@@ -84,6 +84,7 @@ struct BetsListView: View {
                                     bet: bet,
                                     eventName: eventName(for: bet),
                                     betDisplayName: betDisplayName(for: bet),
+                                    sportLeague: sportLeague(for: bet),
                                     policyViolationReason: bet.policyViolationReason,
                                     parlayInfo: parlayInfo(for: bet)
                                 )
@@ -110,6 +111,13 @@ struct BetsListView: View {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return "Event \(bet.eventId.prefix(8))"
+    }
+
+    private func sportLeague(for bet: Bet) -> String? {
+        if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
+            return event.league
+        }
+        return nil
     }
 
     /// Creates a display name for the bet ticket
@@ -181,6 +189,7 @@ struct BetRowView: View {
     let bet: Bet
     let eventName: String
     let betDisplayName: String
+    var sportLeague: String? = nil
     var policyViolationReason: String? = nil
     var parlayInfo: ParlayPartialInfo? = nil
 
@@ -267,10 +276,21 @@ struct BetRowView: View {
                 .fontWeight(.medium)
                 .foregroundStyle(Theme.textSecondary)
 
-            // Third row: Event name
-            Text(eventName)
-                .font(.caption)
-                .foregroundStyle(Theme.textMuted)
+            // Third row: Sport league + Event name
+            HStack(spacing: 4) {
+                if let league = sportLeague, !league.isEmpty {
+                    Text(league)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.accent)
+                    Text("|")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
+                Text(eventName)
+                    .font(.caption)
+                    .foregroundStyle(Theme.textMuted)
+            }
 
             // Policy violation reason (only for pending bets with violations)
             if bet.status == .pending, let reason = policyViolationReason, !reason.isEmpty {
