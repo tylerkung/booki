@@ -311,6 +311,64 @@ enum BetService {
         return bet
     }
 
+    /// Creates local Bet models from a SubmitParlayResponse
+    /// - Parameters:
+    ///   - response: The successful response from submit_parlay Edge Function
+    ///   - player: The Player to associate with the bets
+    ///   - items: The BetSlipItems used to submit (for local side/market values)
+    /// - Returns: Array of Bet models populated with server and local data
+    static func createLocalBetsFromParlayResponse(
+        _ response: SubmitParlayResponse,
+        player: Player,
+        items: [BetSlipItem]
+    ) -> [Bet] {
+        guard let bets = response.bets,
+              let ticketIdString = response.ticketId,
+              let ticketId = UUID(uuidString: ticketIdString) else {
+            return []
+        }
+
+        let totalLegs = bets.count
+
+        return bets.compactMap { betResponse in
+            guard let betId = UUID(uuidString: betResponse.id),
+                  let bookieId = UUID(uuidString: betResponse.bookieId) else {
+                return nil
+            }
+
+            // Match server bet to local item by eventId + side indicator
+            let matchingItem = items.first { item in
+                item.eventId.uuidString.lowercased() == betResponse.eventId.lowercased()
+                    && item.sideIndicator == betResponse.side
+            }
+
+            let localSide = matchingItem?.side ?? betResponse.side
+            let localMarket = matchingItem?.marketType.rawValue ?? betResponse.market
+            let status = BetStatus(rawValue: betResponse.status) ?? .pending
+
+            return Bet(
+                id: betId,
+                eventId: betResponse.eventId,
+                market: localMarket,
+                side: localSide,
+                odds: betResponse.odds,
+                stake: Decimal(betResponse.stake),
+                status: status,
+                gradeResult: nil,
+                player: player,
+                createdAt: Date(),
+                ticketId: ticketId,
+                policyViolationReason: nil,
+                isParlay: true,
+                parlayLegs: totalLegs,
+                bookieId: bookieId,
+                needsSync: false,
+                lastSyncedAt: Date(),
+                version: 1
+            )
+        }
+    }
+
     // MARK: - Local Bet Submission
 
     /// Submits a new bet request, creating a pending or accepted bet with snapshotted odds

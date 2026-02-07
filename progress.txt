@@ -8,6 +8,9 @@ Started: Fri Feb  6 22:53:36 PST 2026
 - Audit ActionType must include all action types used across Edge Functions: `bet_submitted`, `bet_auto_accepted`, `bet_auto_graded`
 - Events can be shared (bookie_id = NULL) or bookie-specific; validate with `event.bookie_id !== null && event.bookie_id !== requestBookieId`
 - All Edge Functions follow the pattern: CORS -> JWT auth -> validate input -> idempotency check -> business logic -> audit event -> store idempotency -> return response
+- Swift typecheck: `swiftc -typecheck <file>` shows cross-file errors (types from other files not found) — only errors referencing YOUR new types matter
+- No full Xcode available — `xcodebuild` fails, rely on `swiftc -typecheck` for syntax validation
+- Swift Edge Function types use snake_case CodingKeys to match server JSON; response types reuse existing structs where the shape matches (e.g., SubmitBetResponseBet)
 
 ---
 
@@ -20,4 +23,38 @@ Started: Fri Feb  6 22:53:36 PST 2026
   - The submit_parlay function was already created but had typecheck issues specific to it (Set spread, implicit any, missing ActionTypes)
   - The audit.ts ActionType union was missing several action types actually used by Edge Functions
   - Edge Functions share a baseline of Deno-related tsc errors that are NOT actual bugs (they pass with `deno check`)
+---
+
+## 2026-02-06 - US-002
+- What was implemented: Added ParlayLeg, SubmitParlayRequest, SubmitParlayResponse, and SubmitParlayDebug Swift types to BetService.swift
+- Files changed:
+  - `Booki/Services/BetService.swift` - Added 4 new structs with snake_case CodingKeys matching the submit_parlay Edge Function interface
+- **Learnings for future iterations:**
+  - `swiftc -typecheck` on a single file shows cross-file dependency errors (BetStatus, Player, Bet not found) — these are expected and not real issues
+  - `xcodebuild` is not available in this environment (no full Xcode, only CLI tools) — typecheck must rely on `swiftc` single-file checks
+  - The Edge Function's `combined_odds` is a number (integer), so Swift type uses `Int` to match
+  - SubmitParlayResponse reuses `SubmitBetResponseBet` for the bets array since the server returns the same bet record shape
+  - The Edge Function returns a `debug` object on errors with message/details/hint/code fields — added SubmitParlayDebug to capture this
+---
+
+## 2026-02-06 - US-003
+- What was implemented: Added `submitParlayToServer()` async function to BetService
+- Files changed:
+  - `Booki/Services/BetService.swift` - Added static function that generates idempotency key, builds SubmitParlayRequest, calls submit_parlay Edge Function via EdgeFunctionService, and returns Result<SubmitParlayResponse, Error>
+- **Learnings for future iterations:**
+  - Follow the same pattern as `submitBetToServer()`: generate idempotency key, build request, call EdgeFunctionService.shared.callFunction, handle success/failure
+  - For parlay errors, append debug info (message/details/hint/code) to the error message for better debugging — the `submitBetToServer` doesn't do this but parlay responses include a debug object
+  - Stake is converted to String with `"\(stake)"` to match the server's expected format (same as singles)
+---
+
+## 2026-02-06 - US-004
+- What was implemented: Updated BetSlipSheet.submitBets() to use parlay endpoint for parlay mode, added createLocalBetsFromParlayResponse helper to BetService
+- Files changed:
+  - `Booki/Views/BetSlipSheet.swift` - Refactored submitBets() to branch on betMode: parlay mode calls submitParlayToServer() with all items as legs (single network call), singles mode keeps existing per-bet loop
+  - `Booki/Services/BetService.swift` - Added createLocalBetsFromParlayResponse() that creates Bet models from SubmitParlayResponse with isParlay=true, parlayLegs=N, and shared ticketId
+- **Learnings for future iterations:**
+  - BetSlipManager.combinedParlayOdds computes the combined American odds from all items — capture it before async submission
+  - When matching server bet responses to local BetSlipItems, match on eventId (lowercased) + sideIndicator since those are unique within a parlay
+  - The parlay response returns a single ticketId shared by all legs — all local Bet objects use the same UUID parsed from the response
+  - Singles mode uses itemStakes dictionary (per-item stakes), parlay mode uses a single sharedStake — captured before the Task block
 ---

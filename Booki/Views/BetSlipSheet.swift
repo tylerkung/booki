@@ -799,66 +799,66 @@ struct BetSlipSheet: View {
         let betMode = betSlipManager.betMode
         let sharedStake = betSlipManager.stake
         let itemStakesSnapshot = betSlipManager.itemStakes
+        let combinedOdds = betSlipManager.combinedParlayOdds ?? 0
 
-        // Submit bets via Edge Function (US-016)
+        // Submit bets via Edge Function (US-016, US-004: parlay endpoint)
         Task {
             var successCount = 0
             var errors: [String] = []
 
-            for item in itemsToSubmit {
-                // Calculate stake for this bet based on mode
-                let betStake: Decimal
-                switch betMode {
-                case .singles:
-                    let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
-                    betStake = itemStakesSnapshot[key] ?? 0
-                case .parlay:
-                    betStake = sharedStake
+            if betMode == .parlay {
+                // US-004: Single network call for parlay via submit_parlay endpoint
+                guard sharedStake > 0 else {
+                    await MainActor.run {
+                        isSubmitting = false
+                        submissionError = "No stake set for parlay"
+                    }
+                    return
                 }
 
-                // Skip items with zero stake
-                guard betStake > 0 else {
-                    errors.append("No stake set for \(item.side)")
-                    continue
+                let legs = itemsToSubmit.map { item in
+                    ParlayLeg(
+                        eventId: item.eventId.uuidString,
+                        marketId: item.marketId.uuidString,
+                        side: item.side,
+                        sideIndicator: item.sideIndicator,
+                        odds: item.odds
+                    )
                 }
 
-                // Call submit_bet Edge Function
-                // Use sideIndicator ('a' or 'b') for the server, not the display name
-                let result = await BetService.submitBetToServer(
-                    eventId: item.eventId,
-                    marketId: item.marketId,
-                    side: item.sideIndicator,
-                    odds: item.odds,
-                    stake: betStake,
+                let result = await BetService.submitParlayToServer(
+                    legs: legs,
+                    stake: sharedStake,
                     playerId: player.id,
-                    bookieId: bookieId
+                    bookieId: bookieId,
+                    combinedOdds: combinedOdds
                 )
 
                 switch result {
                 case .success(let response):
-                    // Create local Bet from server response
-                    if let bet = BetService.createLocalBetFromResponse(
+                    let localBets = BetService.createLocalBetsFromParlayResponse(
                         response,
                         player: player,
-                        localSide: item.side,
-                        localMarket: item.marketType.rawValue
-                    ) {
+                        items: itemsToSubmit
+                    )
+                    if !localBets.isEmpty {
                         await MainActor.run {
-                            modelContext.insert(bet)
+                            for bet in localBets {
+                                modelContext.insert(bet)
+                            }
                         }
-                        successCount += 1
+                        successCount = localBets.count
                     } else {
-                        errors.append("Failed to process server response for \(item.side)")
+                        errors.append("Failed to process parlay server response")
                     }
 
                 case .failure(let error):
-                    // Handle different error types
                     if let edgeFunctionError = error as? EdgeFunctionError {
                         switch edgeFunctionError {
                         case .notAuthenticated:
                             errors.append("Not authenticated - please sign in again")
                         case .serverError(_, let message):
-                            errors.append(message ?? "Server error for \(item.side)")
+                            errors.append(message ?? "Server error submitting parlay")
                         default:
                             errors.append(edgeFunctionError.localizedDescription)
                         }
@@ -867,10 +867,74 @@ struct BetSlipSheet: View {
                         case .edgeFunctionError(let message):
                             errors.append(message)
                         default:
-                            errors.append("Failed to submit \(item.side)")
+                            errors.append("Failed to submit parlay")
                         }
                     } else {
-                        errors.append("Failed to submit \(item.side): \(error.localizedDescription)")
+                        errors.append("Failed to submit parlay: \(error.localizedDescription)")
+                    }
+                }
+            } else {
+                // Singles mode: existing per-bet loop calling submitBetToServer()
+                for item in itemsToSubmit {
+                    let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                    let betStake = itemStakesSnapshot[key] ?? 0
+
+                    // Skip items with zero stake
+                    guard betStake > 0 else {
+                        errors.append("No stake set for \(item.side)")
+                        continue
+                    }
+
+                    // Call submit_bet Edge Function
+                    // Use sideIndicator ('a' or 'b') for the server, not the display name
+                    let result = await BetService.submitBetToServer(
+                        eventId: item.eventId,
+                        marketId: item.marketId,
+                        side: item.sideIndicator,
+                        odds: item.odds,
+                        stake: betStake,
+                        playerId: player.id,
+                        bookieId: bookieId
+                    )
+
+                    switch result {
+                    case .success(let response):
+                        // Create local Bet from server response
+                        if let bet = BetService.createLocalBetFromResponse(
+                            response,
+                            player: player,
+                            localSide: item.side,
+                            localMarket: item.marketType.rawValue
+                        ) {
+                            await MainActor.run {
+                                modelContext.insert(bet)
+                            }
+                            successCount += 1
+                        } else {
+                            errors.append("Failed to process server response for \(item.side)")
+                        }
+
+                    case .failure(let error):
+                        // Handle different error types
+                        if let edgeFunctionError = error as? EdgeFunctionError {
+                            switch edgeFunctionError {
+                            case .notAuthenticated:
+                                errors.append("Not authenticated - please sign in again")
+                            case .serverError(_, let message):
+                                errors.append(message ?? "Server error for \(item.side)")
+                            default:
+                                errors.append(edgeFunctionError.localizedDescription)
+                            }
+                        } else if let betError = error as? BetServiceError {
+                            switch betError {
+                            case .edgeFunctionError(let message):
+                                errors.append(message)
+                            default:
+                                errors.append("Failed to submit \(item.side)")
+                            }
+                        } else {
+                            errors.append("Failed to submit \(item.side): \(error.localizedDescription)")
+                        }
                     }
                 }
             }
