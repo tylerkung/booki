@@ -1,17 +1,21 @@
 {
   "project": "Booki",
-  "branchName": "ralph/games-filtering",
-  "description": "Filter Games view to show relevant events while preserving historical data",
+  "branchName": "ralph/betting-experience-overhaul",
+  "description": "Betting Experience Overhaul - Fix parlay submission bug, improve bet display, handle edge cases",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Filter GamesView to show upcoming and recent events",
-      "description": "As a bookie, I want to see only upcoming games and recently finished games so I can focus on active betting.",
+      "title": "Create submit_parlay Edge Function",
+      "description": "As a player, I want my parlay bets to be created correctly on the server with shared ticket_id.",
       "acceptanceCriteria": [
-        "GamesView shows events where status is NOT 'final' OR status IS 'final' AND finished within last 48 hours",
-        "Events sorted by start_time ascending (soonest first)",
-        "Old finished events are hidden but NOT deleted from database",
-        "Use SwiftData predicate for filtering",
+        "Create supabase/functions/submit_parlay/index.ts Edge Function",
+        "Accept request with: legs array (each with event_id, market_id, side, odds), stake, player_id, bookie_id, combined_odds, idempotency_key",
+        "Generate single ticket_id shared by all legs",
+        "Insert one bet record per leg with is_parlay: true, parlay_legs: N (total legs count)",
+        "All inserts in single transaction (all succeed or all fail)",
+        "Return array of created bet records with shared ticket_id",
+        "Validate all events are not locked before inserting",
+        "Check idempotency to prevent duplicate submissions",
         "Typecheck passes"
       ],
       "priority": 1,
@@ -20,45 +24,215 @@
     },
     {
       "id": "US-002",
-      "title": "Add Past Events toggle to GamesView",
-      "description": "As a bookie, I want to optionally view past events so I can review historical games.",
+      "title": "Add SubmitParlayRequest and Response types to BetService",
+      "description": "As a developer, I need Swift types for parlay submission requests and responses.",
       "acceptanceCriteria": [
-        "Add segmented control or Picker: 'Upcoming' | 'Past'",
-        "'Upcoming' (default): Shows events per US-001 filter",
-        "'Past': Shows events that are 'final' and older than 48 hours",
-        "Past events sorted by start_time descending (most recent first)",
-        "Uses Theme styling consistently",
+        "Add ParlayLeg struct with: eventId, marketId, side, sideIndicator, odds",
+        "Add SubmitParlayRequest struct with: legs array, stake, playerId, bookieId, combinedOdds, idempotencyKey",
+        "Add SubmitParlayResponse struct with: success, bets array, ticketId, error, debug",
+        "Use snake_case CodingKeys for server compatibility",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Ensure event details visible in bet history",
-      "description": "As a user, I want to see event details when viewing a historical bet.",
+      "title": "Add submitParlayToServer function to BetService",
+      "description": "As a developer, I need a function to call the submit_parlay Edge Function.",
       "acceptanceCriteria": [
-        "Bet rows/detail views show event info (teams, final score) for all bets",
-        "Handle case where bet references old event gracefully",
-        "No broken UI or crashes if event exists",
+        "Add submitParlayToServer() async function accepting: legs array, stake, playerId, bookieId, combinedOdds",
+        "Generate idempotency key",
+        "Call submit_parlay Edge Function via EdgeFunctionService",
+        "Return Result<SubmitParlayResponse, Error>",
+        "Include debug info in error messages on failure",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Filter player game browsing to bettable events only",
-      "description": "As a player, I want to see only upcoming games I can actually bet on.",
+      "title": "Update BetSlipSheet to use parlay endpoint",
+      "description": "As a player, I want the bet slip to submit parlays correctly using the new endpoint.",
       "acceptanceCriteria": [
-        "Player's BetSlipSheet or game selection shows only events where status allows betting",
-        "Events with start_time in the past are hidden",
-        "Events with status 'final', 'locked', or 'canceled' are hidden",
+        "In submitBets(), check if betMode == .parlay",
+        "If parlay mode: call BetService.submitParlayToServer() with all items as legs",
+        "If singles mode: keep existing per-bet loop calling submitBetToServer()",
+        "For parlay: single network call instead of N calls",
+        "Create local Bet objects from parlay response with correct isParlay and parlayLegs values",
+        "All local bets share the ticketId from server response",
         "Typecheck passes"
       ],
       "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Fix per-item stakes initialization on mode switch",
+      "description": "As a player, I want stakes initialized when bet slip switches from parlay to singles mode.",
+      "acceptanceCriteria": [
+        "In BetSlipManager, when hasConflictingSelections triggers mode switch to singles",
+        "Initialize itemStakes for each existing item with stake/itemCount or zero",
+        "Add published property to track mode switch message",
+        "Show toast or inline message explaining why mode switched",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Add displayName computed property to MarketType",
+      "description": "As a user, I want market types displayed consistently in title case.",
+      "acceptanceCriteria": [
+        "Add displayName computed property to MarketType enum",
+        "Return 'Spread', 'Total', 'Moneyline' (title case)",
+        "Update BetSlipSheet marketTypeLabel to use displayName",
+        "Update BetDetailView to use MarketType(rawValue:)?.displayName ?? bet.market",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Add sport abbreviation to BetsListView",
+      "description": "As a bookie, I want to see the sport for each bet in the list view.",
+      "acceptanceCriteria": [
+        "In BetsListView bet row, add sport abbreviation before event name",
+        "Format: 'NBA | Lakers @ Celtics' or icon + matchup",
+        "Get sport from event lookup (existing eventName function pattern)",
+        "Use compact styling that doesn't overwhelm the row",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Add eventDescription and sportLeague fields to Bet model",
+      "description": "As a developer, I need to store event context on Bet for offline display.",
+      "acceptanceCriteria": [
+        "Add eventDescription: String? field to Bet model (e.g., 'Lakers @ Celtics')",
+        "Add sportLeague: String? field to Bet model (e.g., 'NBA')",
+        "Update BetService.createLocalBetFromResponse to populate these fields from Event lookup",
+        "SwiftData will auto-migrate nullable fields",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Use stored eventDescription as fallback in display",
+      "description": "As a user, I want to see meaningful bet info even if event is not cached.",
+      "acceptanceCriteria": [
+        "In BetsListView eventName(for:), use bet.eventDescription as fallback before UUID",
+        "In BetDetailView, use bet.eventDescription when event not found",
+        "In TrackView/TicketBetRowView, use bet.eventDescription as fallback",
+        "Fallback chain: Event lookup -> bet.eventDescription -> truncated UUID",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Add sideIndicator field to Bet model",
+      "description": "As a developer, I need to store the server-side indicator for audit purposes.",
+      "acceptanceCriteria": [
+        "Add sideIndicator: String? field to Bet model ('a' or 'b')",
+        "Populate from BetSlipItem.sideIndicator in createLocalBetFromResponse",
+        "Include in BetUpsert for sync upload",
+        "SwiftData will auto-migrate nullable field",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Add marketId field to Bet model",
+      "description": "As a developer, I need to reference the Market record from Bet.",
+      "acceptanceCriteria": [
+        "Add marketId: UUID? field to Bet model",
+        "Populate from BetSlipItem.marketId in createLocalBetFromResponse",
+        "Include in BetUpsert for sync upload",
+        "SwiftData will auto-migrate nullable field",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Add locked event handling in submit_parlay",
+      "description": "As a player, I want clear feedback if an event locks during parlay submission.",
+      "acceptanceCriteria": [
+        "In submit_parlay Edge Function, check each event's lock status before inserting",
+        "If any event is locked (status='locked' or start_time <= now), reject entire parlay",
+        "Return error with list of locked event IDs",
+        "Error message format: 'Events locked: [id1, id2]'",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Display locked event errors in BetSlipSheet",
+      "description": "As a player, I want to see which events were locked when my parlay fails.",
+      "acceptanceCriteria": [
+        "Parse locked event IDs from parlay submission error",
+        "Show error message identifying locked events by name",
+        "Highlight locked items in bet slip with warning styling",
+        "Offer button to remove locked events from slip",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Add parlay-specific loading state to BetSlipSheet",
+      "description": "As a player, I want clear feedback during parlay submission.",
+      "acceptanceCriteria": [
+        "Show 'Submitting parlay...' text when betMode == .parlay and isSubmitting",
+        "Show 'Submitting 1 of N...' for singles mode with multiple bets",
+        "Disable all inputs (stake field, quick picks, bet items) during submission",
+        "Show progress indicator on submit button",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Add same-game parlay warning",
+      "description": "As a player, I want a warning when adding multiple markets from the same event.",
+      "acceptanceCriteria": [
+        "In BetSlipManager, detect when multiple items have same eventId",
+        "Add sameGameParlayWarning: String? computed property",
+        "Show warning banner in BetSlipSheet when warning is non-nil",
+        "Warning text: 'Same-game parlay: multiple picks from [Event Name]'",
+        "Allow submission (don't block, just warn)",
+        "Typecheck passes"
+      ],
+      "priority": 15,
       "passes": false,
       "notes": ""
     }

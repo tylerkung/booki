@@ -1,54 +1,23 @@
 # Ralph Progress Log
-Started: Tue Feb  3 13:34:20 PST 2026
----
+Started: Fri Feb  6 22:53:36 PST 2026
 
 ## Codebase Patterns
-- SwiftData @Query with sort creates ascending order by default - no need for explicit order parameter
-- Event filtering uses computed properties (like `availableEvents`) since SwiftData predicates have limitations with complex OR conditions
-- Use `Calendar.current.date(byAdding:value:to:)` for date math in Swift
-- Xcode IDE required for full typecheck - swiftc can't resolve SwiftData macros
-- UUID case sensitivity: iOS UUID.uuidString returns UPPERCASE, PostgreSQL stores lowercase - always use `.lowercased()` when comparing UUIDs across systems
+- Edge Functions use Deno runtime - `tsc` reports false errors for Deno imports/globals; the baseline errors (`.ts` extension imports, `Deno` not found, `req` implicit any) are expected and shared by all Edge Functions
+- Always normalize UUIDs to lowercase with `.toLowerCase()` before DB operations (iOS sends uppercase, PostgreSQL stores lowercase)
+- Use `Array.from(new Set(...))` instead of spread `[...new Set(...)]` for Set iteration in Edge Functions to avoid downlevelIteration errors
+- Audit ActionType must include all action types used across Edge Functions: `bet_submitted`, `bet_auto_accepted`, `bet_auto_graded`
+- Events can be shared (bookie_id = NULL) or bookie-specific; validate with `event.bookie_id !== null && event.bookie_id !== requestBookieId`
+- All Edge Functions follow the pattern: CORS -> JWT auth -> validate input -> idempotency check -> business logic -> audit event -> store idempotency -> return response
 
 ---
 
-## 2026-02-03 - US-001
-- **What was implemented**: Filter GamesView to show only upcoming events and recently finished events (within 48 hours)
-- **Files changed**:
-  - `Booki/Views/GamesView.swift` - Added `recentFinishedCutoff` computed property and updated `availableEvents` filter logic
+## 2026-02-06 - US-001
+- What was implemented: submit_parlay Edge Function (already existed, fixed typecheck issues)
+- Files changed:
+  - `supabase/functions/submit_parlay/index.ts` - Fixed Set iteration (Array.from instead of spread), added type annotation for event map callback
+  - `supabase/functions/_shared/audit.ts` - Added missing ActionType values: `bet_submitted`, `bet_auto_accepted`, `bet_auto_graded`
 - **Learnings for future iterations:**
-  - The existing @Query already sorts by startTime ascending (line 22)
-  - The `availableEvents` computed property is the central filter used by all downstream filtering (sports, time, search, favorites)
-  - Event.startTime is used as proxy for "finished time" since there's no explicit finishedAt field
-  - SwiftData predicates don't easily support complex OR conditions with date comparisons - use Swift filter instead
----
-
-## 2026-02-03 - US-002
-- **What was implemented**: Add Past Events toggle to GamesView with segmented Picker control
-- **Files changed**:
-  - `Booki/Views/GamesView.swift` - Added GameViewMode enum, viewMode state, segmented picker UI, pastEvents computed property
-- **Learnings for future iterations:**
-  - Use `.pickerStyle(.segmented)` for iOS-native segmented control appearance
-  - Chain filtering: `upcomingEvents` → `availableEvents` (based on viewMode) → `timeFilteredEvents` → `searchFilteredEvents` → `filteredEvents`
-  - When adding a view mode toggle, consider which existing filters make sense in each mode (time filters hidden in Past mode)
-  - Use `.onChange(of:)` to reset dependent state when parent state changes
-  - Sort descending in Swift: `.sorted { $0.startTime > $1.startTime }`
----
-
-## 2026-02-03 - US-003
-- **What was implemented**: Fix UUID case sensitivity in event lookups for bet history views
-- **Files changed**:
-  - `Booki/Views/BetsListView.swift` - Fixed eventName(for:) and event computed property
-  - `Booki/Views/TrackView.swift` - Fixed eventName(for:)
-  - `Booki/Views/TicketDetailView.swift` - Fixed eventName(for:) and event lookup in betsSection
-  - `Booki/Views/AccountView.swift` - Fixed eventName(for:) and event computed property
-  - `Booki/Views/SettingsView.swift` - Fixed eventName(for:)
-  - `Booki/Views/DashboardView.swift` - Fixed risk events lookup and eventName(for:)
-  - `Booki/Views/GradingView.swift` - Fixed both event(for:) functions
-  - `Booki/Views/PlayersListView.swift` - Fixed eventName(for:)
-  - `Booki/Views/EventDetailView.swift` - Fixed eventBets filter
-- **Learnings for future iterations:**
-  - iOS UUID.uuidString returns UPPERCASE, PostgreSQL stores lowercase - always use `.lowercased()` for comparison
-  - Event lookup pattern: `events.first { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }`
-  - The existing fallback `"Event \(bet.eventId.prefix(8))"` already handles missing events gracefully
-  - Bet history views already show event info (teams, final score) when event exists - the issue was case-sensitive comparison failing
+  - The submit_parlay function was already created but had typecheck issues specific to it (Set spread, implicit any, missing ActionTypes)
+  - The audit.ts ActionType union was missing several action types actually used by Edge Functions
+  - Edge Functions share a baseline of Deno-related tsc errors that are NOT actual bugs (they pass with `deno check`)
 ---
