@@ -255,6 +255,23 @@ struct BetSlipSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
 
+                        // US-015: Show same-game parlay warning
+                        if let sgpWarning = betSlipManager.sameGameParlayWarning {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.warning)
+                                Text(sgpWarning)
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.warning)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.warning.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+
                         // US-005: Show mode switch message when auto-switched from parlay to singles
                         if let switchMessage = betSlipManager.modeSwitchMessage {
                             HStack(spacing: 6) {

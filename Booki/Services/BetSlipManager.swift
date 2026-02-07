@@ -158,6 +158,26 @@ class BetSlipManager: ObservableObject {
         return "Parlay unavailable: conflicting selections on same game"
     }
 
+    // MARK: - Same-Game Parlay Warning (US-015)
+
+    /// Detect when multiple items have the same eventId and warn the user
+    /// Returns nil if no same-game parlay detected, or a warning string with the event name
+    var sameGameParlayWarning: String? {
+        guard betMode == .parlay else { return nil }
+
+        // Group items by eventId
+        let eventGroups = Dictionary(grouping: items) { $0.eventId }
+
+        // Find events with multiple selections
+        for (_, eventItems) in eventGroups {
+            if eventItems.count > 1 {
+                return "Same-game parlay: multiple picks from \(eventItems[0].eventDescription)"
+            }
+        }
+
+        return nil
+    }
+
     private init() {
         loadItems()
         loadBetMode()
