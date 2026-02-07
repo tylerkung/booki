@@ -239,6 +239,7 @@ struct BetUpsert: Codable {
     let market: String?
     let side: String
     let sideIndicator: String?
+    let marketId: UUID?
     let odds: Int
     let stake: Decimal
     let status: String
@@ -259,6 +260,7 @@ struct BetUpsert: Codable {
         case market
         case side
         case sideIndicator = "side_indicator"
+        case marketId = "market_id"
         case odds
         case stake
         case status
@@ -285,6 +287,7 @@ struct BetUpsert: Codable {
         self.market = bet.market.isEmpty ? nil : bet.market
         self.side = bet.side
         self.sideIndicator = bet.sideIndicator
+        self.marketId = bet.marketId
         self.odds = bet.odds
         self.stake = bet.stake
         self.status = bet.status.rawValue

@@ -279,7 +279,8 @@ enum BetService {
         localMarket: String,
         eventDescription: String? = nil,
         sportLeague: String? = nil,
-        sideIndicator: String? = nil
+        sideIndicator: String? = nil,
+        marketId: UUID? = nil
     ) -> Bet? {
         guard let betResponse = response.bet,
               let betId = UUID(uuidString: betResponse.id),
@@ -308,6 +309,7 @@ enum BetService {
             eventDescription: eventDescription,
             sportLeague: sportLeague,
             sideIndicator: sideIndicator,
+            marketId: marketId,
             bookieId: bookieId,
             needsSync: false,
             lastSyncedAt: Date(),
@@ -377,6 +379,7 @@ enum BetService {
                 eventDescription: eventDesc,
                 sportLeague: league,
                 sideIndicator: matchingItem?.sideIndicator,
+                marketId: matchingItem?.marketId,
                 bookieId: bookieId,
                 needsSync: false,
                 lastSyncedAt: Date(),
