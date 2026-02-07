@@ -208,6 +208,9 @@ struct TrackView: View {
         if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
+        if let desc = bet.eventDescription, !desc.isEmpty {
+            return desc
+        }
         return "Event \(bet.eventId.prefix(8))"
     }
 }
