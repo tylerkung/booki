@@ -214,6 +214,57 @@ enum BetService {
         }
     }
 
+    // MARK: - Server-Side Parlay Submission (Edge Function)
+
+    /// Submits a parlay bet via the submit_parlay Edge Function for server-authoritative validation
+    /// - Parameters:
+    ///   - legs: Array of ParlayLeg structs representing each leg of the parlay
+    ///   - stake: The total amount being wagered on the parlay
+    ///   - playerId: The player's UUID
+    ///   - bookieId: The bookie's UUID
+    ///   - combinedOdds: The combined American odds for the parlay
+    /// - Returns: Result with SubmitParlayResponse on success, or Error on failure
+    static func submitParlayToServer(
+        legs: [ParlayLeg],
+        stake: Decimal,
+        playerId: UUID,
+        bookieId: UUID,
+        combinedOdds: Int
+    ) async -> Result<SubmitParlayResponse, Error> {
+        let idempotencyKey = UUID().uuidString
+
+        let request = SubmitParlayRequest(
+            legs: legs,
+            stake: "\(stake)",
+            playerId: playerId.uuidString,
+            bookieId: bookieId.uuidString,
+            combinedOdds: combinedOdds,
+            idempotencyKey: idempotencyKey
+        )
+
+        do {
+            let response: SubmitParlayResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "submit_parlay",
+                body: request
+            )
+
+            if response.success {
+                return .success(response)
+            } else {
+                var errorMessage = response.error ?? "Unknown error"
+                if let debug = response.debug {
+                    let debugParts = [debug.message, debug.details, debug.hint, debug.code].compactMap { $0 }
+                    if !debugParts.isEmpty {
+                        errorMessage += " | Debug: \(debugParts.joined(separator: ", "))"
+                    }
+                }
+                return .failure(BetServiceError.edgeFunctionError(errorMessage))
+            }
+        } catch {
+            return .failure(error)
+        }
+    }
+
     /// Creates a local Bet model from a SubmitBetResponse
     /// - Parameters:
     ///   - response: The successful response from submit_bet Edge Function
