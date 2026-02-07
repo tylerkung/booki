@@ -36,6 +36,10 @@ struct BetSlipSheet: View {
     @State private var submissionError: String?
     @State private var submittedCount: Int = 0
 
+    /// US-014: Track singles submission progress (1 of N)
+    @State private var singlesSubmissionIndex: Int = 0
+    @State private var singlesSubmissionTotal: Int = 0
+
     /// Animation state for success (US-006)
     @State private var showCheckmark: Bool = false
     @State private var checkmarkScale: CGFloat = 0
@@ -99,7 +103,8 @@ struct BetSlipSheet: View {
                         Button("Close") {
                             dismiss()
                         }
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(isSubmitting ? Theme.textMuted : Theme.textSecondary)
+                        .disabled(isSubmitting)
                     }
                 }
 
@@ -201,7 +206,7 @@ struct BetSlipSheet: View {
                         // US-003: Disable parlay when conflicting selections exist
                         HStack(spacing: 0) {
                             ForEach(BetMode.allCases, id: \.self) { mode in
-                                let isDisabled = mode == .parlay && betSlipManager.hasConflictingSelections
+                                let isDisabled = isSubmitting || (mode == .parlay && betSlipManager.hasConflictingSelections)
                                 Button(action: {
                                     withAnimation(.easeInOut(duration: 0.2)) {
                                         betSlipManager.betMode = mode
@@ -301,7 +306,8 @@ struct BetSlipSheet: View {
                                 betMode: betSlipManager.betMode,
                                 stakeText: itemStakeTextBinding(for: item),
                                 betSlipManager: betSlipManager,
-                                isLocked: serverLockedEventIds.contains(item.eventId.uuidString.lowercased())
+                                isLocked: serverLockedEventIds.contains(item.eventId.uuidString.lowercased()),
+                                isSubmitting: isSubmitting
                             )
                             .transition(.asymmetric(
                                 insertion: .scale(scale: 0.9).combined(with: .opacity),
@@ -518,6 +524,22 @@ struct BetSlipSheet: View {
         }
     }
 
+    // MARK: - Submit Button Label (US-014)
+
+    /// US-014: Mode-specific submit button label
+    private var submitButtonLabel: String {
+        guard isSubmitting else { return "Place Bet" }
+        switch betSlipManager.betMode {
+        case .parlay:
+            return "Submitting parlay..."
+        case .singles:
+            if singlesSubmissionTotal > 1 {
+                return "Submitting \(singlesSubmissionIndex) of \(singlesSubmissionTotal)..."
+            }
+            return "Submitting..."
+        }
+    }
+
     // MARK: - Submit Section (US-006: Direct submission without review screen)
 
     @ViewBuilder
@@ -531,7 +553,7 @@ struct BetSlipSheet: View {
                 }
                 Image(systemName: isSubmitting ? "hourglass" : "checkmark.circle.fill")
                     .font(.title3)
-                Text(isSubmitting ? "Submitting..." : "Place Bet")
+                Text(submitButtonLabel)
                     .font(.headline)
                     .fontWeight(.bold)
             }
@@ -542,19 +564,23 @@ struct BetSlipSheet: View {
                 ZStack {
                     // Gradient background
                     LinearGradient(
-                        colors: [Theme.accent, Theme.accent.opacity(0.8)],
+                        colors: isSubmitting
+                            ? [Theme.accent.opacity(0.6), Theme.accent.opacity(0.4)]
+                            : [Theme.accent, Theme.accent.opacity(0.8)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
-                    // Glow effect
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Theme.accent.opacity(0.3))
-                        .blur(radius: 8)
-                        .offset(y: 4)
+                    // Glow effect (hidden during submission)
+                    if !isSubmitting {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Theme.accent.opacity(0.3))
+                            .blur(radius: 8)
+                            .offset(y: 4)
+                    }
                 }
             )
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: Theme.accent.opacity(0.4), radius: 12, x: 0, y: 4)
+            .shadow(color: Theme.accent.opacity(isSubmitting ? 0.2 : 0.4), radius: 12, x: 0, y: 4)
         }
         .buttonStyle(PremiumButtonStyle())
         .disabled(isSubmitting)
@@ -581,8 +607,9 @@ struct BetSlipSheet: View {
 
                     TextField("0", text: $stakeText)
                         .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.textPrimary)
+                        .foregroundStyle(isSubmitting ? Theme.textMuted : Theme.textPrimary)
                         .keyboardType(.numberPad)
+                        .disabled(isSubmitting)
                         .onChange(of: stakeText) { _, newValue in
                             // Parse and update stake
                             if let value = Decimal(string: newValue.filter { $0.isNumber }) {
@@ -604,6 +631,7 @@ struct BetSlipSheet: View {
                                 .foregroundStyle(Theme.textMuted)
                         }
                         .buttonStyle(.plain)
+                        .disabled(isSubmitting)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -973,6 +1001,16 @@ struct BetSlipSheet: View {
                 }
             } else {
                 // Singles mode: existing per-bet loop calling submitBetToServer()
+                // US-014: Track submission progress
+                let validItems = itemsToSubmit.filter { item in
+                    let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                    return (itemStakesSnapshot[key] ?? 0) > 0
+                }
+                await MainActor.run {
+                    singlesSubmissionTotal = validItems.count
+                    singlesSubmissionIndex = 1
+                }
+
                 for item in itemsToSubmit {
                     let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
                     let betStake = itemStakesSnapshot[key] ?? 0
@@ -1038,6 +1076,11 @@ struct BetSlipSheet: View {
                         } else {
                             errors.append("Failed to submit \(item.side): \(error.localizedDescription)")
                         }
+                    }
+
+                    // US-014: Increment singles progress counter
+                    await MainActor.run {
+                        singlesSubmissionIndex += 1
                     }
                 }
             }
@@ -1108,6 +1151,9 @@ struct PremiumBetSlipItemCard: View {
 
     /// US-013: Whether this item's event is locked (server-reported)
     var isLocked: Bool = false
+
+    /// US-014: Whether submission is in progress (disables inputs)
+    var isSubmitting: Bool = false
 
     /// Track if stake field is focused (US-004)
     @FocusState private var isStakeFocused: Bool
@@ -1224,9 +1270,10 @@ struct PremiumBetSlipItemCard: View {
                 Button(action: onRemove) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(Theme.textMuted)
+                        .foregroundStyle(isSubmitting ? Theme.textMuted.opacity(0.3) : Theme.textMuted)
                 }
                 .buttonStyle(.plain)
+                .disabled(isSubmitting)
             }
             .padding(16)
 
@@ -1247,10 +1294,11 @@ struct PremiumBetSlipItemCard: View {
 
                             TextField("0", text: $stakeText)
                                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundStyle(Theme.textPrimary)
+                                .foregroundStyle(isSubmitting ? Theme.textMuted : Theme.textPrimary)
                                 .keyboardType(.numberPad)
                                 .focused($isStakeFocused)
                                 .frame(width: 60)
+                                .disabled(isSubmitting)
                                 .onChange(of: stakeText) { _, newValue in
                                     // Parse and update per-item stake
                                     if let value = Decimal(string: newValue.filter { $0.isNumber }) {
