@@ -58,3 +58,27 @@ Started: Fri Feb  6 22:53:36 PST 2026
   - The parlay response returns a single ticketId shared by all legs — all local Bet objects use the same UUID parsed from the response
   - Singles mode uses itemStakes dictionary (per-item stakes), parlay mode uses a single sharedStake — captured before the Task block
 ---
+
+## 2026-02-06 - US-005
+- What was implemented: Fixed per-item stakes initialization when bet slip auto-switches from parlay to singles mode due to conflicting selections
+- Files changed:
+  - `Booki/Services/BetSlipManager.swift` - Added `modeSwitchMessage` published property, added `initializeItemStakesFromParlay()` to distribute parlay stake evenly to per-item stakes, updated `add()` to call initialization and set message on auto-switch
+  - `Booki/Views/BetSlipSheet.swift` - Added inline dismissible banner showing mode switch reason (with accent styling), added `.onChange(of: betMode)` to sync `itemStakeTexts` from manager's pre-populated itemStakes
+- **Learnings for future iterations:**
+  - BetSlipSheet uses `@State itemStakeTexts` (display strings) separate from BetSlipManager's `itemStakes` (Decimal values) — when programmatically populating stakes, both must be updated
+  - The `.onChange(of: betSlipManager.betMode)` modifier syncs text fields from manager stakes — only fills empty text fields to avoid overwriting user input
+  - `initializeItemStakesFromParlay()` uses integer division (`NSDecimalNumber(...).intValue`) to get clean per-item amounts — remainder is dropped
+  - The mode switch message is dismissible via an X button and uses `Theme.accent` styling to differentiate from the yellow conflict warning
+---
+
+## 2026-02-06 - US-006
+- What was implemented: Added `displayName` computed property to MarketType enum and updated BetSlipSheet and BetDetailView to use it
+- Files changed:
+  - `Booki/Models/Market.swift` - Added `displayName` computed property returning title case ("Spread", "Total", "Moneyline")
+  - `Booki/Views/BetSlipSheet.swift` - Simplified `marketTypeLabel` to use `item.marketType.displayName.uppercased()`
+  - `Booki/Views/BetsListView.swift` - Updated BetDetailView market display to use `MarketType(rawValue: bet.market)?.displayName ?? bet.market`
+- **Learnings for future iterations:**
+  - `bet.market` stores the raw string value (e.g., "spread") — use `MarketType(rawValue:)?.displayName` to get title case with fallback
+  - BetSlipSheet uses UPPERCASE market labels, BetConfirmationSheet uses title case — `.uppercased()` on displayName keeps them distinct
+  - BetDetailView is defined inside BetsListView.swift, not a separate file
+---

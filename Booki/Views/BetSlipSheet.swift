@@ -1052,11 +1052,7 @@ struct PremiumBetSlipItemCard: View {
     }
 
     private var marketTypeLabel: String {
-        switch item.marketType {
-        case .spread: return "SPREAD"
-        case .total: return "TOTAL"
-        case .moneyline: return "MONEYLINE"
-        }
+        item.marketType.displayName.uppercased()
     }
 
     /// Calculate potential payout for this bet based on its individual stake (US-004)

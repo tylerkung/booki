@@ -527,7 +527,7 @@ struct BetDetailView: View {
 
             // MARK: - Bet Details Section
             Section("Bet Details") {
-                LabeledContent("Market", value: bet.market)
+                LabeledContent("Market", value: MarketType(rawValue: bet.market)?.displayName ?? bet.market)
                 LabeledContent("Side", value: bet.side)
                 LabeledContent("Odds", value: formattedOdds)
                 LabeledContent("Stake", value: formattedStake)
