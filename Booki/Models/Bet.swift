@@ -50,6 +50,9 @@ final class Bet: Syncable {
     /// Sport league abbreviation for display (e.g., "NBA", "NFL")
     var sportLeague: String?
 
+    /// Server-side indicator for which side of the market was selected ('a' or 'b')
+    var sideIndicator: String?
+
     /// Relationship: many bets belong to one player
     var player: Player?
 
@@ -84,6 +87,7 @@ final class Bet: Syncable {
         parlayLegs: Int = 1,
         eventDescription: String? = nil,
         sportLeague: String? = nil,
+        sideIndicator: String? = nil,
         bookieId: UUID? = nil,
         needsSync: Bool = true,
         lastSyncedAt: Date? = nil,
@@ -105,6 +109,7 @@ final class Bet: Syncable {
         self.parlayLegs = parlayLegs
         self.eventDescription = eventDescription
         self.sportLeague = sportLeague
+        self.sideIndicator = sideIndicator
         self.bookieId = bookieId
         self.needsSync = needsSync
         self.lastSyncedAt = lastSyncedAt

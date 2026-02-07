@@ -105,3 +105,30 @@ Started: Fri Feb  6 22:53:36 PST 2026
   - New nullable fields with defaults don't require any changes to existing Bet() call sites — Swift default parameters handle backwards compatibility
   - The parlay create function now takes an `events: [Event]` parameter (defaulting to empty array) so it can look up league info per leg
 ---
+
+## 2026-02-06 - US-009
+- What was implemented: Added eventDescription fallback to all eventName display functions, and sportLeague fallback in BetsListView
+- Files changed:
+  - `Booki/Views/BetsListView.swift` - Updated `eventName(for:)` and `sportLeague(for:)` in BetsListView, and `eventName` computed property in BetDetailView to use bet.eventDescription/sportLeague as fallback before showing truncated UUID
+  - `Booki/Views/TrackView.swift` - Updated `eventName(for:)` to use bet.eventDescription fallback
+  - `Booki/Views/TicketDetailView.swift` - Updated `eventName(for:)` to use bet.eventDescription fallback
+- **Learnings for future iterations:**
+  - The `eventName(for:)` helper function is duplicated across BetsListView, TrackView, and TicketDetailView — each needs to be updated independently
+  - BetDetailView is inside BetsListView.swift and uses a computed property `eventName` instead of a function — different pattern but same fallback logic
+  - The fallback chain is: Event lookup (from @Query events) -> bet.eventDescription -> "Event \(uuid.prefix(8))"
+  - Also added sportLeague fallback in BetsListView's `sportLeague(for:)` using bet.sportLeague
+---
+
+## 2026-02-06 - US-010
+- What was implemented: Added `sideIndicator: String?` field to Bet model for storing the server-side indicator ('a' or 'b') used for audit purposes
+- Files changed:
+  - `Booki/Models/Bet.swift` - Added `sideIndicator: String?` property with nil default; added to init parameter list and body
+  - `Booki/Services/BetService.swift` - Added `sideIndicator` parameter to `createLocalBetFromResponse()`, passes through to Bet init; updated `createLocalBetsFromParlayResponse()` to populate from `matchingItem?.sideIndicator`
+  - `Booki/Services/SyncModels.swift` - Added `sideIndicator: String?` to `BetUpsert` struct, CodingKey `"side_indicator"`, and population from `bet.sideIndicator` in init
+  - `Booki/Views/BetSlipSheet.swift` - Updated singles mode call to `createLocalBetFromResponse` to pass `item.sideIndicator`
+- **Learnings for future iterations:**
+  - Adding a new nullable field to Bet follows a 4-file pattern: Model (Bet.swift), Service (BetService.swift create helpers), Sync (SyncModels.swift BetUpsert), and View (BetSlipSheet.swift call sites)
+  - SwiftData auto-migrates nullable fields with nil defaults — no migration needed
+  - BetUpsert CodingKeys use snake_case to match PostgreSQL column naming convention
+  - The parlay create function gets sideIndicator from `matchingItem?.sideIndicator` (already matched by eventId + sideIndicator), while singles get it directly from `item.sideIndicator`
+---

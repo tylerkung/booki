@@ -949,7 +949,8 @@ struct BetSlipSheet: View {
                             localSide: item.side,
                             localMarket: item.marketType.rawValue,
                             eventDescription: item.eventDescription,
-                            sportLeague: matchedEvent?.league
+                            sportLeague: matchedEvent?.league,
+                            sideIndicator: item.sideIndicator
                         ) {
                             await MainActor.run {
                                 modelContext.insert(bet)
