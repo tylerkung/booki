@@ -22,6 +22,9 @@ struct AuthGateView: View {
     /// Tracks if initial sync has been triggered for this session
     @State private var hasTriggeredInitialSync: Bool = false
 
+    /// Scene phase for detecting app foreground/background
+    @Environment(\.scenePhase) private var scenePhase
+
     // MARK: - Body
 
     var body: some View {
@@ -69,15 +72,14 @@ struct AuthGateView: View {
             }
         }
         .onChange(of: authManager.currentPlayerId) { _, newPlayerId in
-            // Sync player data when a player logs in
-            if let playerId = newPlayerId, authManager.userRole == .player && !hasTriggeredInitialSync {
+            // Sync data when a player logs in (uses their bookie's ID for sync)
+            if newPlayerId != nil, authManager.userRole == .player && !hasTriggeredInitialSync {
                 hasTriggeredInitialSync = true
                 Task {
-                    do {
-                        try await syncService.syncPlayerData(authUserId: playerId)
-                    } catch {
-                        print("Failed to sync player data: \(error)")
-                    }
+                    // Players use the regular sync flow - their bookie_id is set in currentBookieId
+                    await syncService.sync()
+                    // Then subscribe to realtime updates
+                    await realtimeService.subscribe()
                 }
             }
         }
@@ -110,6 +112,19 @@ struct AuthGateView: View {
                 syncService.setOffline()
             }
         }
+        // MARK: - Foreground Sync Handler
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            // Sync when app comes to foreground (active)
+            if newPhase == .active && oldPhase != .active {
+                // Only sync if authenticated and has bookie ID
+                if authManager.currentBookieId != nil {
+                    Task {
+                        print("DEBUG: App became active - triggering sync")
+                        await syncService.sync()
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Agreement View
@@ -119,22 +134,22 @@ struct AuthGateView: View {
         UserAgreementView(
             onAccept: {
                 Task {
-                    // Determine user ID and role based on current authentication state
-                    let userId: UUID?
-                    let role: String
+                    // Use auth user ID for agreements (not record IDs)
+                    guard let userIdString = authManager.currentUserId,
+                          let userId = UUID(uuidString: userIdString) else {
+                        print("Failed to submit agreement: No auth user ID")
+                        return
+                    }
 
+                    let role: String
                     switch authManager.userRole {
                     case .bookie:
-                        userId = authManager.currentBookieId
                         role = "bookie"
                     case .player:
-                        userId = authManager.currentPlayerId
                         role = "player"
                     case nil:
                         return
                     }
-
-                    guard let userId = userId else { return }
 
                     do {
                         try await authManager.submitAgreement(for: userId, role: role)

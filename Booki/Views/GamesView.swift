@@ -27,6 +27,7 @@ enum TimeFilter: String, CaseIterable, Identifiable {
 /// US-039: Favorites system with filter and section
 struct GamesView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var syncService: SyncService
     @Query(sort: \Event.startTime) private var events: [Event]
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
@@ -69,11 +70,6 @@ struct GamesView: View {
 
     // MARK: - Computed Properties
 
-    /// US-001: Cutoff date for showing recently finished events (48 hours ago)
-    private var recentFinishedCutoff: Date {
-        Calendar.current.date(byAdding: .hour, value: -48, to: Date()) ?? Date()
-    }
-
     /// US-004: Bettable events - only shows events the player can actually bet on
     /// Filters to: status is scheduled, not locked, and start time is in the future
     private var bettableEvents: [Event] {
@@ -89,25 +85,17 @@ struct GamesView: View {
         }
     }
 
-    /// US-001: Upcoming events - shows bettable events PLUS recently finished events for reference
+    /// Upcoming events - ONLY bettable events (no finished events)
     /// Events are sorted by startTime ascending (soonest first)
     private var upcomingEvents: [Event] {
-        let bettable = bettableEvents
-        let recentlyFinished = events.filter { event in
-            // Include final events from the last 48 hours for bet result reference
-            event.status == .final && event.startTime >= recentFinishedCutoff
-        }
-        // Combine and sort by start time ascending
-        return (bettable + recentlyFinished).sorted { $0.startTime < $1.startTime }
+        bettableEvents.sorted { $0.startTime < $1.startTime }
     }
 
-    /// US-002: Past events - final events older than 48 hours
+    /// Past events - all final events
     /// Events are sorted by startTime descending (most recent first)
     private var pastEvents: [Event] {
         events
-            .filter { event in
-                event.status == .final && event.startTime < recentFinishedCutoff
-            }
+            .filter { $0.status == .final }
             .sorted { $0.startTime > $1.startTime }
     }
 
@@ -460,6 +448,9 @@ struct GamesView: View {
                 }
             }
         }
+        .refreshable {
+            await syncService.sync()
+        }
         .background(Theme.background)
     }
 
@@ -616,24 +607,36 @@ struct GamesView: View {
 
     @ViewBuilder
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            ContentUnavailableView(
-                hasActiveFilters ? "No Results" : "No Games Available",
-                systemImage: hasActiveFilters ? "magnifyingglass" : "sportscourt",
-                description: Text(emptyStateDescription)
-            )
+        ScrollView {
+            VStack(spacing: 16) {
+                ContentUnavailableView(
+                    hasActiveFilters ? "No Results" : "No Games Available",
+                    systemImage: hasActiveFilters ? "magnifyingglass" : "sportscourt",
+                    description: Text(emptyStateDescription)
+                )
 
-            // Clear filters button if filters are active (US-038)
-            if hasActiveFilters {
-                Button(action: clearFilters) {
-                    Text("Clear Filters")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                // Clear filters button if filters are active (US-038)
+                if hasActiveFilters {
+                    Button(action: clearFilters) {
+                        Text("Clear Filters")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
+
+                // Refresh hint
+                if !hasActiveFilters {
+                    Text("Pull down to refresh")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
             }
+            .frame(maxWidth: .infinity, minHeight: 400)
         }
-        .frame(maxHeight: .infinity)
+        .refreshable {
+            await syncService.sync()
+        }
     }
 
     /// Clear all search and time filters (US-038)

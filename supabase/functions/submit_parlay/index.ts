@@ -208,7 +208,6 @@ Deno.serve(async (req) => {
 
     const isAutoAccept = !bookie?.manual_bet_acceptance;
     const betStatus = isAutoAccept ? 'accepted' : 'pending';
-    const acceptedAt = isAutoAccept ? new Date().toISOString() : null;
 
     // Generate single ticket_id shared by all legs
     const ticketId = crypto.randomUUID();
@@ -225,7 +224,6 @@ Deno.serve(async (req) => {
       odds: leg.odds,
       stake: stakeNum,
       status: betStatus,
-      accepted_at: acceptedAt,
       is_parlay: true,
       parlay_legs: parlayLegsCount,
     }));
