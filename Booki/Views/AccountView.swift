@@ -145,8 +145,17 @@ struct AccountView: View {
     }
 
     /// Total stake across all settled bets (for ROI calculation)
+    /// Groups by ticketId and uses first bet's stake for parlays to avoid overcounting
     private var totalStaked: Decimal {
-        settledBets.reduce(Decimal.zero) { $0 + $1.stake }
+        // Group settled bets by ticketId
+        let grouped = Dictionary(grouping: settledBets) { $0.ticketId }
+
+        // For each ticket, use first bet's stake (parlays share stake across legs)
+        return grouped.values.reduce(Decimal.zero) { total, ticketBets in
+            // All bets in a ticket share the same stake for parlays
+            // For singles, there's only one bet anyway
+            total + (ticketBets.first?.stake ?? 0)
+        }
     }
 
     /// Total profit/loss from settled bets

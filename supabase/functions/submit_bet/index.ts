@@ -142,7 +142,6 @@ Deno.serve(async (req) => {
 
     // Validate: event exists and is not locked
     const normalizedEventId = body.event_id?.toLowerCase();
-    console.log('DEBUG: Looking up event with id:', normalizedEventId);
 
     const { data: event, error: eventError } = await client
       .from('events')
@@ -151,13 +150,11 @@ Deno.serve(async (req) => {
       .single();
 
     if (eventError || !event) {
-      console.log('DEBUG: Event lookup failed, error:', eventError?.message, 'event:', event);
       return new Response(
-        JSON.stringify({ success: false, error: 'Event not found', debug: { event_id: normalizedEventId, db_error: eventError?.message } }),
+        JSON.stringify({ success: false, error: 'Event not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    console.log('DEBUG: Found event:', event.id, 'status:', event.status);
 
     // Validate event belongs to the same bookie
     if (event.bookie_id?.toLowerCase() !== requestBookieId) {
@@ -178,6 +175,22 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Fetch acceptance policy for this bookie
+    const { data: policy } = await client
+      .from('acceptance_policies')
+      .select('*')
+      .eq('bookie_id', requestBookieId)
+      .single();
+
+    // Default policy values if none exists
+    const effectivePolicy = {
+      max_stake: policy?.max_stake ?? 100,
+      require_approval_above: policy?.require_approval_above ?? null,
+      auto_accept_enabled: policy?.auto_accept_enabled ?? true,
+      auto_accept_new_players: policy?.auto_accept_new_players ?? false,
+      new_player_bet_threshold: policy?.new_player_bet_threshold ?? 5,
+    };
+
     // Check bookie's manual_bet_acceptance setting for auto-pilot mode
     // Default is false (auto-accept enabled), meaning bets are accepted immediately
     const { data: bookie } = await client
@@ -186,10 +199,38 @@ Deno.serve(async (req) => {
       .eq('id', requestBookieId)
       .single();
 
-    // Auto-pilot mode: if manual_bet_acceptance is false or not set, auto-accept bets
-    const isAutoAccept = !bookie?.manual_bet_acceptance;
+    // Collect policy violation reasons
+    const policyViolations: string[] = [];
+
+    // Check stake thresholds
+    if (effectivePolicy.require_approval_above !== null && stakeNum > effectivePolicy.require_approval_above) {
+      policyViolations.push(`Stake exceeds review threshold ($${effectivePolicy.require_approval_above})`);
+    } else if (stakeNum > effectivePolicy.max_stake) {
+      policyViolations.push(`Stake exceeds auto-accept limit ($${effectivePolicy.max_stake})`);
+    }
+
+    // Check new player bet count
+    if (!effectivePolicy.auto_accept_new_players) {
+      const { count: betCount } = await client
+        .from('bets')
+        .select('*', { count: 'exact', head: true })
+        .eq('player_id', normalizedPlayerId);
+
+      if ((betCount ?? 0) < effectivePolicy.new_player_bet_threshold) {
+        policyViolations.push('New player requires review');
+      }
+    }
+
+    // Determine bet status based on policy violations and auto-pilot setting
+    // If manual_bet_acceptance is true, ALL bets go to pending regardless of policy
+    // If there are policy violations, bet goes to pending
+    // Otherwise, auto-accept
+    const manualMode = bookie?.manual_bet_acceptance === true;
+    const hasPolicyViolations = policyViolations.length > 0;
+    const isAutoAccept = !manualMode && !hasPolicyViolations && effectivePolicy.auto_accept_enabled;
     const betStatus = isAutoAccept ? 'accepted' : 'pending';
     const acceptedAt = isAutoAccept ? new Date().toISOString() : null;
+    const policyViolationReason = hasPolicyViolations ? policyViolations.join(', ') : null;
 
     // Generate ticket_id for this bet submission
     const ticketId = crypto.randomUUID();
@@ -211,6 +252,7 @@ Deno.serve(async (req) => {
         accepted_at: acceptedAt,
         is_parlay: false,
         parlay_legs: 1,
+        policy_violation_reason: policyViolationReason,
       })
       .select()
       .single();

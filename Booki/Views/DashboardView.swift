@@ -137,7 +137,45 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             List {
-                // MARK: - Alert Banner Section
+                // MARK: - Attention Feed Section
+                Section {
+                    AttentionFeedView()
+                } header: {
+                    Text("Attention")
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .listRowBackground(Theme.cardBackground)
+
+                // MARK: - Settlement Snapshot Section
+                Section {
+                    SettlementSnapshotCard()
+                } header: {
+                    Text("Settlement")
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .listRowBackground(Theme.cardBackground)
+
+                // MARK: - Player Risk Watchlist Section
+                Section {
+                    PlayerRiskWatchlistCard()
+                } header: {
+                    Text("Player Risk")
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .listRowBackground(Theme.cardBackground)
+
+                // MARK: - Tonight's Exposure Section
+                Section {
+                    TonightsExposureCard()
+                } header: {
+                    Text("Tonight's Exposure")
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .listRowBackground(Theme.cardBackground)
+
+                // MARK: - Activity Section (existing metrics)
+
+                // Alert Banner
                 if !flaggedPlayers.isEmpty {
                     Section {
                         Button {
@@ -212,25 +250,33 @@ struct DashboardView: View {
                         .buttonStyle(.plain)
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         .listRowBackground(Color.clear)
+                    } header: {
+                        Text("Activity")
+                            .foregroundStyle(Theme.textMuted)
                     }
                 }
 
-                // MARK: - Balances Section
+                // Balances
                 balancesSection
 
-                // MARK: - Exposure Overview Section
+                // Exposure Overview
                 Section {
                     ExposureCard(totalExposure: viewModel.totalExposure)
+                } header: {
+                    if flaggedPlayers.isEmpty && playersOweYou.isEmpty && youOwePlayers.isEmpty {
+                        Text("Activity")
+                            .foregroundStyle(Theme.textMuted)
+                    }
                 }
                 .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Pending Bets Count Section
+                // Pending Bets Count
                 Section {
                     PendingBetsCard(count: viewModel.pendingBetsCount)
                 }
                 .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Pending Bets Queue Section
+                // Pending Bets Queue
                 Section {
                     if viewModel.pendingBets.isEmpty {
                         Text("No pending bets")
@@ -265,7 +311,7 @@ struct DashboardView: View {
                 }
                 .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Top Risk Events Section
+                // Top Risk Events
                 Section {
                     if viewModel.topRiskEvents.isEmpty {
                         Text("No active exposure")
@@ -283,39 +329,6 @@ struct DashboardView: View {
                     }
                 } header: {
                     Text("Top Risk Events")
-                }
-                .listRowBackground(Theme.cardBackground)
-
-                // MARK: - Settlements Section
-                Section {
-                    NavigationLink {
-                        WeeklySettlementView()
-                    } label: {
-                        HStack {
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.title2)
-                                .foregroundStyle(Theme.accent)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Weekly Settlement")
-                                    .font(.subheadline)
-                                    .foregroundStyle(Theme.textPrimary)
-
-                                Text("View summary and export")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.textSecondary)
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(Theme.textMuted)
-                        }
-                        .padding(.vertical, 4)
-                    }
-                } header: {
-                    Text("Settlements")
                 }
                 .listRowBackground(Theme.cardBackground)
             }
@@ -382,6 +395,12 @@ struct DashboardView: View {
 
     // MARK: - Balances Section
 
+    /// Whether the Activity section header should appear on the balances section
+    /// (i.e., flagged players banner is not showing, so balances is the first activity item)
+    private var balancesShouldShowActivityHeader: Bool {
+        flaggedPlayers.isEmpty
+    }
+
     @ViewBuilder
     private var balancesSection: some View {
         // Show section only if there are any players with non-zero balances
@@ -400,12 +419,26 @@ struct DashboardView: View {
                         }
                     }
                 } header: {
-                    HStack {
-                        Text("Players Owe You")
-                        Spacer()
-                        Text(formatCurrency(totalPlayersOwe))
-                            .font(.caption.bold())
-                            .foregroundStyle(Theme.accent)
+                    if balancesShouldShowActivityHeader {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Activity")
+                                .foregroundStyle(Theme.textMuted)
+                            HStack {
+                                Text("Players Owe You")
+                                Spacer()
+                                Text(formatCurrency(totalPlayersOwe))
+                                    .font(.caption.bold())
+                                    .foregroundStyle(Theme.accent)
+                            }
+                        }
+                    } else {
+                        HStack {
+                            Text("Players Owe You")
+                            Spacer()
+                            Text(formatCurrency(totalPlayersOwe))
+                                .font(.caption.bold())
+                                .foregroundStyle(Theme.accent)
+                        }
                     }
                 }
                 .listRowBackground(Theme.cardBackground)
@@ -425,12 +458,26 @@ struct DashboardView: View {
                         }
                     }
                 } header: {
-                    HStack {
-                        Text("You Owe Players")
-                        Spacer()
-                        Text(formatCurrency(totalYouOwe))
-                            .font(.caption.bold())
-                            .foregroundStyle(Theme.danger)
+                    if playersOweYou.isEmpty && balancesShouldShowActivityHeader {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Activity")
+                                .foregroundStyle(Theme.textMuted)
+                            HStack {
+                                Text("You Owe Players")
+                                Spacer()
+                                Text(formatCurrency(totalYouOwe))
+                                    .font(.caption.bold())
+                                    .foregroundStyle(Theme.danger)
+                            }
+                        }
+                    } else {
+                        HStack {
+                            Text("You Owe Players")
+                            Spacer()
+                            Text(formatCurrency(totalYouOwe))
+                                .font(.caption.bold())
+                                .foregroundStyle(Theme.danger)
+                        }
                     }
                 }
                 .listRowBackground(Theme.cardBackground)

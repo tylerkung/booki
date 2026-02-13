@@ -98,6 +98,11 @@
 		8A1234560071 /* InviteCodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550071 /* InviteCodeService.swift */; };
 		8A1234560072 /* PlayerClaimView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550072 /* PlayerClaimView.swift */; };
 		8A1234560073 /* PlayerMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550073 /* PlayerMainView.swift */; };
+		8A1234560074 /* PlayerRiskService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550074 /* PlayerRiskService.swift */; };
+		8A1234560075 /* AttentionFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550075 /* AttentionFeedView.swift */; };
+		8A1234560076 /* SettlementSnapshotCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550076 /* SettlementSnapshotCard.swift */; };
+		8A1234560077 /* PlayerRiskWatchlistCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550077 /* PlayerRiskWatchlistCard.swift */; };
+		8A1234560078 /* TonightsExposureCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550078 /* TonightsExposureCard.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -204,6 +209,11 @@
 		8A1234550071 /* InviteCodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteCodeService.swift; sourceTree = "<group>"; };
 		8A1234550072 /* PlayerClaimView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerClaimView.swift; sourceTree = "<group>"; };
 		8A1234550073 /* PlayerMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMainView.swift; sourceTree = "<group>"; };
+		8A1234550074 /* PlayerRiskService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerRiskService.swift; sourceTree = "<group>"; };
+		8A1234550075 /* AttentionFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttentionFeedView.swift; sourceTree = "<group>"; };
+		8A1234550076 /* SettlementSnapshotCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementSnapshotCard.swift; sourceTree = "<group>"; };
+		8A1234550077 /* PlayerRiskWatchlistCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerRiskWatchlistCard.swift; sourceTree = "<group>"; };
+		8A1234550078 /* TonightsExposureCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonightsExposureCard.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -322,6 +332,10 @@
 				8A1234550051 /* AcceptancePolicySettingsView.swift */,
 				8A1234550072 /* PlayerClaimView.swift */,
 				8A1234550073 /* PlayerMainView.swift */,
+				8A1234550075 /* AttentionFeedView.swift */,
+				8A1234550076 /* SettlementSnapshotCard.swift */,
+				8A1234550077 /* PlayerRiskWatchlistCard.swift */,
+				8A1234550078 /* TonightsExposureCard.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -363,6 +377,7 @@
 				8A1234550068 /* NetworkMonitor.swift */,
 				8A1234550070 /* SyncModels.swift */,
 				8A1234550071 /* InviteCodeService.swift */,
+				8A1234550074 /* PlayerRiskService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -583,6 +598,11 @@
 				8A1234560071 /* InviteCodeService.swift in Sources */,
 				8A1234560072 /* PlayerClaimView.swift in Sources */,
 				8A1234560073 /* PlayerMainView.swift in Sources */,
+				8A1234560074 /* PlayerRiskService.swift in Sources */,
+				8A1234560075 /* AttentionFeedView.swift in Sources */,
+				8A1234560076 /* SettlementSnapshotCard.swift in Sources */,
+				8A1234560077 /* PlayerRiskWatchlistCard.swift in Sources */,
+				8A1234560078 /* TonightsExposureCard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

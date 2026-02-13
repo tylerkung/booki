@@ -199,6 +199,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch acceptance policy for this bookie
+    const { data: policy } = await client
+      .from('acceptance_policies')
+      .select('*')
+      .eq('bookie_id', requestBookieId)
+      .single();
+
+    // Default policy values if none exists
+    const effectivePolicy = {
+      max_stake: policy?.max_stake ?? 100,
+      require_approval_above: policy?.require_approval_above ?? null,
+      auto_accept_enabled: policy?.auto_accept_enabled ?? true,
+      auto_accept_new_players: policy?.auto_accept_new_players ?? false,
+      new_player_bet_threshold: policy?.new_player_bet_threshold ?? 5,
+      auto_accept_parlays: policy?.auto_accept_parlays ?? false,
+      parlay_max_legs: policy?.parlay_max_legs ?? 4,
+    };
+
     // Check bookie's manual_bet_acceptance setting
     const { data: bookie } = await client
       .from('bookies')
@@ -206,8 +224,43 @@ Deno.serve(async (req) => {
       .eq('id', requestBookieId)
       .single();
 
-    const isAutoAccept = !bookie?.manual_bet_acceptance;
+    // Collect policy violation reasons
+    const policyViolations: string[] = [];
+
+    // Check stake thresholds (same as single bets)
+    if (effectivePolicy.require_approval_above !== null && stakeNum > effectivePolicy.require_approval_above) {
+      policyViolations.push(`Stake exceeds review threshold ($${effectivePolicy.require_approval_above})`);
+    } else if (stakeNum > effectivePolicy.max_stake) {
+      policyViolations.push(`Stake exceeds auto-accept limit ($${effectivePolicy.max_stake})`);
+    }
+
+    // Check parlay-specific rules
+    if (!effectivePolicy.auto_accept_parlays) {
+      policyViolations.push('Parlays require review');
+    }
+
+    if (body.legs.length > effectivePolicy.parlay_max_legs) {
+      policyViolations.push(`Exceeds max parlay legs (${effectivePolicy.parlay_max_legs})`);
+    }
+
+    // Check new player bet count
+    if (!effectivePolicy.auto_accept_new_players) {
+      const { count: betCount } = await client
+        .from('bets')
+        .select('*', { count: 'exact', head: true })
+        .eq('player_id', normalizedPlayerId);
+
+      if ((betCount ?? 0) < effectivePolicy.new_player_bet_threshold) {
+        policyViolations.push('New player requires review');
+      }
+    }
+
+    // Determine bet status based on policy violations and auto-pilot setting
+    const manualMode = bookie?.manual_bet_acceptance === true;
+    const hasPolicyViolations = policyViolations.length > 0;
+    const isAutoAccept = !manualMode && !hasPolicyViolations && effectivePolicy.auto_accept_enabled;
     const betStatus = isAutoAccept ? 'accepted' : 'pending';
+    const policyViolationReason = hasPolicyViolations ? policyViolations.join(', ') : null;
 
     // Generate single ticket_id shared by all legs
     const ticketId = crypto.randomUUID();
@@ -226,6 +279,7 @@ Deno.serve(async (req) => {
       status: betStatus,
       is_parlay: true,
       parlay_legs: parlayLegsCount,
+      policy_violation_reason: policyViolationReason,
     }));
 
     // Insert all legs in a single transaction (batch insert)

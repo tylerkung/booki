@@ -11,9 +11,15 @@ struct Ticket: Identifiable {
         bets.map(\.createdAt).min() ?? Date()
     }
 
-    /// Total stake across all bets in the ticket
+    /// Total stake for the ticket
+    /// For parlays: all legs share the same stake, so use first leg's stake
+    /// For singles: sum individual stakes (though typically only one bet)
     var totalStake: Decimal {
-        bets.reduce(0) { $0 + $1.stake }
+        // Check if this is a parlay (either by bet count or explicit isParlay flag)
+        if isParlay || (bets.first?.isParlay == true) {
+            return bets.first?.stake ?? 0
+        }
+        return bets.reduce(0) { $0 + $1.stake }
     }
 
     /// Whether this is a parlay (multiple bets) or singles
