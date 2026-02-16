@@ -167,3 +167,26 @@ Started: Fri Feb  6 22:53:36 PST 2026
   - When removing items by index in reverse order, indices stay valid — use `reversed()` to avoid index shifting
   - BetSlipSheet has both client-side lock check (pre-submission) and server-side lock parsing (post-submission failure) — the server check catches races where an event locks between client check and server processing
 ---
+
+## 2026-02-06 - US-014
+- What was implemented: Added parlay-specific loading state to BetSlipSheet with mode-aware submit button text, submission progress tracking for singles, and disabled inputs during submission
+- Files changed:
+  - `Booki/Views/BetSlipSheet.swift` - Added `singlesSubmissionIndex`/`singlesSubmissionTotal` state, `submitButtonLabel` computed property ("Submitting parlay..." vs "Submitting 1 of N..."), disabled mode toggle/stake fields/remove buttons/close button during submission, dimmed button gradient during submission, passed `isSubmitting` to PremiumBetSlipItemCard
+- **Learnings for future iterations:**
+  - The submit button already had a ProgressView spinner and "Submitting..." text — this story enhanced it to be mode-specific
+  - PremiumBetSlipItemCard accepts `isSubmitting` with default `false` for backwards compatibility
+  - Singles submission progress requires pre-counting valid items (those with stake > 0) since zero-stake items are skipped
+  - Disabling inputs during submission requires touching: Close button, Clear All button (already disabled), mode toggle, parlay stake field + clear button, per-item stake fields (via PremiumBetSlipItemCard), and remove buttons (via PremiumBetSlipItemCard)
+---
+
+## 2026-02-06 - US-015
+- What was implemented: Added same-game parlay warning that detects when multiple selections come from the same event
+- Files changed:
+  - `Booki/Services/BetSlipManager.swift` - Added `sameGameParlayWarning: String?` computed property that groups items by eventId and returns warning text with event name when duplicates detected; only active in parlay mode
+  - `Booki/Views/BetSlipSheet.swift` - Added warning banner in the header section (after conflict warning, before mode switch message) using Theme.warning styling with exclamation triangle icon; non-blocking (allows submission)
+- **Learnings for future iterations:**
+  - The warning only appears in parlay mode (`guard betMode == .parlay`) since same-game selections in singles mode are fine
+  - This is distinct from `hasConflictingSelections` which blocks parlay mode entirely (same market, different sides) — same-game parlay warning is advisory only
+  - The banner styling matches the existing conflict warning pattern (icon + text, warning color, 0.1 opacity background, rounded rectangle)
+  - `eventDescription` from `BetSlipItem` provides the human-readable event name (e.g., "Lakers vs Celtics") for the warning text
+---

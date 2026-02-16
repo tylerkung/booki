@@ -139,12 +139,12 @@ Events are filtered in the UI while all data is preserved in the database:
 - **Historical Data**: All events kept forever for bet history references
 - **Event Lookups**: Use case-insensitive UUID comparison (`.lowercased()`) due to iOS/PostgreSQL casing differences
 
-## Current State (February 3, 2026)
+## Current State (February 16, 2026)
 
-- **Branch**: `ralph/games-filtering`
-- **Phases complete**: 1-9 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering)
+- **Branch**: `ralph/betting-experience-overhaul`
+- **Phases complete**: 1-12 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
-- **Edge Functions**: 8 functions for server-authoritative operations
+- **Edge Functions**: 10 functions for server-authoritative operations (including `submit_parlay`, `sync_games`)
 - **Odds API key**: Configured in Settings (free tier, 500 calls/month)
 - **Auto-pilot mode**: Bets auto-accepted and auto-graded by default
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)

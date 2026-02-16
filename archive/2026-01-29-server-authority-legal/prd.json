@@ -1,0 +1,247 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/server-authority-legal",
+  "description": "Server Authority & Legal Acknowledgment - Phase 3 (Idempotency Cleanup) and Phase 4 (Audit Trail & Dispute Resolution).",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first) + Supabase (cloud)",
+    "architecture": "MVVM with Services layer",
+    "serverFunctions": "Supabase Edge Functions (Deno/TypeScript)"
+  },
+  "userStories": [
+    {
+      "id": "US-017",
+      "title": "Create Shared Idempotency Helper for Edge Functions",
+      "description": "As a developer, I need to extract duplicated idempotency logic into a shared helper.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/_shared/idempotency.ts",
+        "Method: checkIdempotency(client, key: string, operation: string) - returns cached response if exists, null otherwise",
+        "Method: storeIdempotency(client, key: string, operation: string, userId: string, response: string) - stores key with response",
+        "Update submit_bet to use shared idempotency helper",
+        "Update accept_bet to use shared idempotency helper",
+        "Update grade_bet to use shared idempotency helper",
+        "Update settle_bet to use shared idempotency helper",
+        "Update adjust_balance to use shared idempotency helper",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Add iOS Retry Logic with Exponential Backoff",
+      "description": "As a developer, the iOS app must safely retry failed Edge Function requests.",
+      "acceptanceCriteria": [
+        "Update EdgeFunctionService.swift with retry logic",
+        "On network failure (not server error), retry with same idempotency key",
+        "Maximum 3 retries with exponential backoff (1s, 2s, 4s delays)",
+        "Add private method: retryWithBackoff<T>(attempt: Int, maxAttempts: Int, operation: () async throws -> T) async throws -> T",
+        "Only retry on URLError (network issues), not on server 4xx/5xx responses",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Create Audit Events Database Schema",
+      "description": "As a developer, I need a comprehensive audit log for all state changes.",
+      "acceptanceCriteria": [
+        "Create Supabase migration file in supabase/migrations/ for audit_events table",
+        "Table columns: id (UUID primary key), bookie_id (UUID references bookies), actor_user_id (UUID references auth.users), entity_type (text), entity_id (UUID), action_type (text), previous_state (JSONB nullable), new_state (JSONB), reason (text nullable), created_at (timestamptz default now())",
+        "Add RLS policy: bookies can only SELECT audit events where bookie_id matches their bookie record",
+        "Add index on (bookie_id, entity_type, entity_id) for fast lookups",
+        "Add index on (bookie_id, created_at) for timeline queries",
+        "Document migration in SUPABASE_MIGRATIONS.md",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Create Shared Audit Helper for Edge Functions",
+      "description": "As a developer, I need a shared helper to emit audit events from Edge Functions.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/_shared/audit.ts",
+        "Method: emitAuditEvent(client, params: { bookieId, actorUserId, entityType, entityId, actionType, previousState?, newState, reason? }) - inserts audit_events record",
+        "entityType values: 'bet', 'ledger_entry', 'player', 'event'",
+        "actionType values: 'create', 'accept', 'grade', 'settle', 'adjust', 'reverse', 'override'",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Emit Audit Events from Existing Edge Functions",
+      "description": "As a developer, all Edge Functions must emit audit events for traceability.",
+      "acceptanceCriteria": [
+        "Update submit_bet: emit 'create' audit event for bet entity after successful insert",
+        "Update accept_bet: emit 'accept' audit event with previous_state (pending) and new_state (accepted)",
+        "Update grade_bet: emit 'grade' audit event with outcome in new_state",
+        "Update settle_bet: emit 'settle' audit event for bet, and 'create' audit event for ledger_entry",
+        "Update adjust_balance: emit 'adjust' audit event for ledger_entry with reason",
+        "All audit events include bookie_id and actor_user_id",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Create reverse_settlement Edge Function",
+      "description": "As a bookie, I need to reverse a settlement when mistakes happen.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/reverse_settlement/index.ts",
+        "Handle OPTIONS request for CORS preflight",
+        "Extract and validate JWT from Authorization header to get user_id",
+        "Accept JSON body: bet_id, reason (required string, not empty), idempotency_key",
+        "Validate: bet exists, belongs to bookie, status is 'settled'",
+        "Check idempotency - return cached response if key exists",
+        "Find the original settlement ledger_entry for this bet",
+        "In transaction: update bet status back to 'graded', create reversing ledger_entry with opposite amount and type 'reversal'",
+        "Emit audit event with action_type 'reverse', previous_state, new_state, and reason",
+        "Store idempotency key with response",
+        "Return { success: true, bet: <updated bet>, reversal_entry: <created ledger entry> }",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Create override_grade Edge Function",
+      "description": "As a bookie, I need to change a bet's grade when disputes arise.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/override_grade/index.ts",
+        "Handle OPTIONS request for CORS preflight",
+        "Extract and validate JWT from Authorization header to get user_id",
+        "Accept JSON body: bet_id, new_outcome (win, loss, push, void), reason (required string, not empty), idempotency_key",
+        "Validate: bet exists, belongs to bookie, has been graded (grade_result is not null)",
+        "Check idempotency - return cached response if key exists",
+        "If bet status is 'settled', first call reverse_settlement logic internally to undo settlement",
+        "Update bet grade_result to new_outcome, keep status as 'graded'",
+        "Emit audit event with action_type 'override', previous grade in previous_state, new grade in new_state, and reason",
+        "Store idempotency key with response",
+        "Return { success: true, bet: <updated bet>, settlement_reversed: boolean }",
+        "Typecheck passes (Deno)"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Create AuditEvent SwiftData Model",
+      "description": "As a developer, I need a local model to display audit history.",
+      "acceptanceCriteria": [
+        "Create AuditEvent.swift in Booki/Models/",
+        "Properties: id (UUID), bookieId (UUID), actorUserId (UUID), entityType (String), entityId (UUID), actionType (String), previousState (String? - JSON string), newState (String - JSON string), reason (String?), createdAt (Date)",
+        "Conform to SwiftData @Model",
+        "Add to model container in BookiApp.swift alongside existing models",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Create AuditService for iOS",
+      "description": "As a developer, I need a service to fetch audit history from Supabase.",
+      "acceptanceCriteria": [
+        "Create AuditService.swift in Booki/Services/",
+        "Method: fetchAuditHistory(entityType: String, entityId: UUID) async throws -> [AuditEvent] - queries audit_events table filtered by entity",
+        "Method: fetchRecentAuditEvents(bookieId: UUID, limit: Int = 50) async throws -> [AuditEvent] - queries recent events for bookie",
+        "Results ordered by created_at descending (most recent first)",
+        "Use SupabaseClientManager.shared.client for database access",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Create BetHistoryView for Bookies",
+      "description": "As a bookie, I want to see the full history of changes for a bet.",
+      "acceptanceCriteria": [
+        "Create BetHistoryView.swift in Booki/Views/",
+        "Takes betId: UUID as parameter",
+        "Fetches audit events via AuditService.fetchAuditHistory(entityType: 'bet', entityId: betId)",
+        "Displays timeline of events in reverse chronological order (newest first)",
+        "Each event row shows: timestamp (formatted), action type (human readable), reason (if present)",
+        "Use Theme.background, Theme.cardBackground, Theme.textPrimary, Theme.textSecondary for styling",
+        "Show loading state while fetching",
+        "Show empty state if no history exists",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "Add View History Button to Bet Detail",
+      "description": "As a bookie, I need to access bet history from the bet detail view.",
+      "acceptanceCriteria": [
+        "In TicketDetailView or BetDetailView (bookie mode), add 'View History' button",
+        "Button navigates to BetHistoryView with the current bet's ID",
+        "Only show button for bookies, not players",
+        "Use NavigationLink or sheet presentation",
+        "Style button consistently with existing UI using Theme colors",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "Add Override Grade Action to Bookie UI",
+      "description": "As a bookie, I need UI to change a bet's grade when disputes arise.",
+      "acceptanceCriteria": [
+        "In TicketDetailView (bookie mode), for bets with status 'graded' or 'settled', add 'Override Grade' button or menu option",
+        "Tapping shows a sheet with: current grade display, picker for new grade (win/loss/push/void), required 'Reason' TextField, Cancel and Confirm buttons",
+        "Confirm button disabled until reason is not empty and new grade differs from current",
+        "On confirm, call EdgeFunctionService.callFunction('override_grade', ...) with bet_id, new_outcome, reason, idempotency_key",
+        "Show loading indicator during request",
+        "On success, dismiss sheet and refresh bet data",
+        "On error, show alert with error message",
+        "Use Theme styling throughout",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Add Reverse Settlement Action to Bookie UI",
+      "description": "As a bookie, I need UI to reverse a settlement when mistakes happen.",
+      "acceptanceCriteria": [
+        "In TicketDetailView (bookie mode), for bets with status 'settled', add 'Reverse Settlement' button or menu option",
+        "Tapping shows a confirmation sheet with: warning text explaining the reversal will undo the ledger entry, required 'Reason' TextField, Cancel and Confirm buttons",
+        "Confirm button disabled until reason is not empty",
+        "On confirm, call EdgeFunctionService.callFunction('reverse_settlement', ...) with bet_id, reason, idempotency_key",
+        "Show loading indicator during request",
+        "On success, dismiss sheet, show success message, and refresh bet data",
+        "On error, show alert with error message",
+        "Use Theme styling throughout",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}

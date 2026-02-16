@@ -26,9 +26,22 @@ struct BetSlipSheet: View {
     /// Custom stake text for input field (US-042)
     @State private var stakeText: String = ""
 
+    /// US-002: To Win text for parlay mode (bidirectional entry)
+    @State private var toWinText: String = ""
+
+    /// US-002: Track which field is actively being edited in parlay mode
+    /// Prevents feedback loops when updating one field from the other
+    enum ActiveField {
+        case wager, toWin
+    }
+    @State private var parlayActiveField: ActiveField? = nil
+
     /// Per-item stake texts for singles mode (US-004)
     /// Key is "\(marketId)_\(sideIndicator)" to uniquely identify each selection
     @State private var itemStakeTexts: [String: String] = [:]
+
+    /// US-002: Per-item to-win texts for singles mode (bidirectional entry)
+    @State private var itemToWinTexts: [String: String] = [:]
 
     /// State for submission process (US-006: Direct submission from bet slip)
     @State private var isSubmitting: Bool = false
@@ -46,6 +59,12 @@ struct BetSlipSheet: View {
     @State private var outerRingScale: CGFloat = 0.8
     @State private var outerRingOpacity: Double = 0
 
+    /// US-001: Focus state for parlay wager field
+    @FocusState private var isParlayWagerFocused: Bool
+
+    /// US-002: Focus state for parlay to-win field
+    @FocusState private var isParlayToWinFocused: Bool
+
     /// US-009: State for locked events error alert (client-side pre-check)
     @State private var showLockedEventsAlert: Bool = false
     @State private var lockedEventNames: [String] = []
@@ -57,17 +76,32 @@ struct BetSlipSheet: View {
     init(availableCredit: Decimal = Decimal.greatestFiniteMagnitude, player: Player? = nil) {
         self.availableCredit = availableCredit
         self.player = player
+        let manager = BetSlipManager.shared
         // Initialize stake text from manager's current stake
-        let currentStake = BetSlipManager.shared.stake
+        let currentStake = manager.stake
         _stakeText = State(initialValue: currentStake > 0 ? "\(NSDecimalNumber(decimal: currentStake).intValue)" : "")
+        // US-002: Initialize parlay to-win text from current stake
+        if currentStake > 0, let odds = manager.combinedParlayOdds {
+            let toWin = manager.calculateToWin(odds: odds, stake: currentStake)
+            _toWinText = State(initialValue: toWin > 0 ? Self.formatToWinStatic(toWin) : "")
+        }
         // Initialize per-item stake texts from manager's existing itemStakes (US-004)
         var initialItemStakeTexts: [String: String] = [:]
-        for (key, stake) in BetSlipManager.shared.itemStakes {
+        var initialItemToWinTexts: [String: String] = [:]
+        for item in manager.items {
+            let key = manager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+            let stake = manager.itemStakes[key] ?? 0
             if stake > 0 {
                 initialItemStakeTexts[key] = "\(NSDecimalNumber(decimal: stake).intValue)"
+                // US-002: Initialize per-item to-win texts
+                let toWin = manager.calculateToWin(odds: item.odds, stake: stake)
+                if toWin > 0 {
+                    initialItemToWinTexts[key] = Self.formatToWinStatic(toWin)
+                }
             }
         }
         _itemStakeTexts = State(initialValue: initialItemStakeTexts)
+        _itemToWinTexts = State(initialValue: initialItemToWinTexts)
     }
 
     var body: some View {
@@ -142,7 +176,7 @@ struct BetSlipSheet: View {
             } message: {
                 Text("The following events are locked for betting:\n\n\(lockedEventNames.joined(separator: "\n"))\n\nRemove them from your bet slip to continue.")
             }
-            // US-005: Sync itemStakeTexts when mode switches to singles with pre-populated stakes
+            // US-005: Sync itemStakeTexts and toWinTexts when mode switches
             .onChange(of: betSlipManager.betMode) { _, newMode in
                 if newMode == .singles {
                     for item in betSlipManager.items {
@@ -150,6 +184,11 @@ struct BetSlipSheet: View {
                         let stake = betSlipManager.getItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator)
                         if stake > 0 && (itemStakeTexts[key] == nil || itemStakeTexts[key]?.isEmpty == true) {
                             itemStakeTexts[key] = "\(NSDecimalNumber(decimal: stake).intValue)"
+                        }
+                        // US-002: Also sync to-win texts
+                        if stake > 0 && (itemToWinTexts[key] == nil || itemToWinTexts[key]?.isEmpty == true) {
+                            let toWin = betSlipManager.calculateToWin(odds: item.odds, stake: stake)
+                            itemToWinTexts[key] = toWin > 0 ? formatToWin(toWin) : ""
                         }
                     }
                 }
@@ -304,6 +343,19 @@ struct BetSlipSheet: View {
                     .padding(.horizontal)
                     .padding(.top, 16)
 
+                    // US-007: Section header based on bet mode
+                    HStack {
+                        Text(betSlipManager.betMode == .parlay
+                             ? "\(betSlipManager.count)-LEG PARLAY"
+                             : "STRAIGHT BETS")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Theme.textMuted)
+                            .tracking(1.5)
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+
                     // Selections (US-053: animated item transitions, US-004: per-item stakes)
                     VStack(spacing: 12) {
                         // US-001: Use combination of marketId+side for unique ID to support both sides of same market
@@ -313,18 +365,21 @@ struct BetSlipSheet: View {
                                 onRemove: {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         betSlipManager.remove(at: index)
-                                        // Also remove the stake text for this item
+                                        // Also remove the stake text and to-win text for this item
                                         let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
                                         itemStakeTexts.removeValue(forKey: key)
+                                        itemToWinTexts.removeValue(forKey: key)
                                         // US-013: Clear locked state for removed item
                                         serverLockedEventIds.remove(item.eventId.uuidString.lowercased())
                                     }
                                 },
                                 betMode: betSlipManager.betMode,
                                 stakeText: itemStakeTextBinding(for: item),
+                                toWinText: itemToWinTextBinding(for: item),
                                 betSlipManager: betSlipManager,
                                 isLocked: serverLockedEventIds.contains(item.eventId.uuidString.lowercased()),
-                                isSubmitting: isSubmitting
+                                isSubmitting: isSubmitting,
+                                startTime: events.first(where: { $0.id.uuidString.lowercased() == item.eventId.uuidString.lowercased() })?.startTime
                             )
                             .transition(.asymmetric(
                                 insertion: .scale(scale: 0.9).combined(with: .opacity),
@@ -335,9 +390,13 @@ struct BetSlipSheet: View {
                     .padding(.horizontal)
                     .animation(.spring(response: 0.35, dampingFraction: 0.8), value: betSlipManager.count)
 
-                    // Combined Parlay Odds (US-041)
+                    // Combined Parlay Odds + Wager/To Win (US-041, US-008)
                     if betSlipManager.betMode == .parlay && betSlipManager.count > 1 {
                         parlayOddsCard
+                            .padding(.horizontal)
+
+                        // US-008: Parlay stake entry directly below odds card
+                        parlayStakeEntrySection
                             .padding(.horizontal)
                     }
                 }
@@ -365,11 +424,25 @@ struct BetSlipSheet: View {
                 // US-006: Different content based on bet mode
                 switch betSlipManager.betMode {
                 case .parlay:
-                    // Parlay mode: stake input, potential payout, Place Bet button
-                    stakeEntrySection
-
+                    // US-008: Stake entry moved above (below parlay odds card)
+                    // Sticky bottom only shows summary + Place Bet
                     if betSlipManager.stake > 0 {
                         payoutSummarySection
+                    }
+
+                    // Stake validation warning for parlay mode (US-042)
+                    if betSlipManager.stake > 0 && !betSlipManager.isStakeValid(availableCredit: availableCredit) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(Theme.warning)
+                            Text("Stake exceeds available credit (\(formatCurrency(availableCredit)))")
+                                .font(.caption)
+                                .foregroundStyle(Theme.warning)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Theme.warning.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
 
                 case .singles:
@@ -409,6 +482,24 @@ struct BetSlipSheet: View {
                 .tracking(1)
 
             VStack(spacing: 0) {
+                // Number of bets row
+                HStack {
+                    Text("Number of Bets")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Text("\(singlesItemsWithStake)")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.textPrimary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+
+                Rectangle()
+                    .fill(Theme.divider)
+                    .frame(height: 1)
+
                 // Total stake row (sum of individual bet stakes)
                 HStack {
                     Text("Total Stake")
@@ -421,24 +512,13 @@ struct BetSlipSheet: View {
                         .foregroundStyle(Theme.textPrimary)
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.vertical, 10)
 
-                // Bet count
-                HStack {
-                    Text("\(betSlipManager.count) Bet\(betSlipManager.count == 1 ? "" : "s")")
-                        .font(.caption)
-                        .foregroundStyle(Theme.textMuted)
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-
-                // Divider
                 Rectangle()
                     .fill(Theme.divider)
                     .frame(height: 1)
 
-                // Potential payout row - Premium styled with green accent
+                // Potential payout row - Premium styled with accent highlight
                 HStack {
                     Text("Potential Payout")
                         .font(.headline)
@@ -466,6 +546,13 @@ struct BetSlipSheet: View {
                     .stroke(Theme.border, lineWidth: 0.5)
             )
         }
+    }
+
+    /// US-009: Count of items that have a stake entered (for summary display)
+    private var singlesItemsWithStake: Int {
+        betSlipManager.items.filter { item in
+            betSlipManager.getItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator) > 0
+        }.count
     }
 
     // MARK: - Stake Validation Warning (US-006)
@@ -520,6 +607,143 @@ struct BetSlipSheet: View {
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Theme.accent.opacity(0.3), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Parlay Stake Entry Section (US-008)
+
+    /// US-008: Side-by-side Wager/To Win fields with quick stake buttons
+    /// Placed directly below the parlay odds card in the scrollable area
+    @ViewBuilder
+    private var parlayStakeEntrySection: some View {
+        VStack(spacing: 12) {
+            // Side-by-side WAGER and TO WIN fields
+            HStack(spacing: 12) {
+                // WAGER field
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("WAGER")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(isParlayWagerFocused ? Theme.gold : Theme.textMuted)
+                        .tracking(1)
+                        .animation(.easeInOut(duration: 0.15), value: isParlayWagerFocused)
+
+                    HStack(spacing: 4) {
+                        Text("$")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Theme.gold)
+
+                        TextField("0", text: $stakeText)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundStyle(isSubmitting ? Theme.textMuted : Theme.textPrimary)
+                            .keyboardType(.numberPad)
+                            .disabled(isSubmitting)
+                            .focused($isParlayWagerFocused)
+                            .onChange(of: stakeText) { _, newValue in
+                                guard parlayActiveField == .wager else { return }
+                                if let value = Decimal(string: newValue.filter { $0.isNumber }) {
+                                    betSlipManager.stake = value
+                                    if let odds = betSlipManager.combinedParlayOdds {
+                                        let calculatedToWin = betSlipManager.calculateToWin(odds: odds, stake: value)
+                                        toWinText = calculatedToWin > 0 ? formatToWin(calculatedToWin) : ""
+                                    }
+                                } else if newValue.isEmpty {
+                                    betSlipManager.stake = 0
+                                    toWinText = ""
+                                }
+                            }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Theme.elevatedBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(
+                                isParlayWagerFocused ? Theme.gold.opacity(0.6) : Theme.border,
+                                lineWidth: isParlayWagerFocused ? 2 : 1
+                            )
+                    )
+                    .animation(.easeInOut(duration: 0.15), value: isParlayWagerFocused)
+                }
+
+                // TO WIN field
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("TO WIN")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(isParlayToWinFocused ? Theme.accent : Theme.textMuted)
+                        .tracking(1)
+                        .animation(.easeInOut(duration: 0.15), value: isParlayToWinFocused)
+
+                    HStack(spacing: 4) {
+                        Text("$")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(isParlayToWinFocused ? Theme.accent : (parlayToWin > 0 ? Theme.accent : Theme.textMuted))
+                            .animation(.easeInOut(duration: 0.15), value: isParlayToWinFocused)
+
+                        TextField("0", text: $toWinText)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundStyle(isSubmitting ? Theme.textMuted : (isParlayToWinFocused ? Theme.accent : (parlayToWin > 0 ? Theme.accent : Theme.textMuted)))
+                            .keyboardType(.numberPad)
+                            .disabled(isSubmitting)
+                            .focused($isParlayToWinFocused)
+                            .onChange(of: toWinText) { _, newValue in
+                                guard parlayActiveField == .toWin else { return }
+                                if let toWinValue = Decimal(string: newValue.filter { $0.isNumber }), toWinValue > 0 {
+                                    if let odds = betSlipManager.combinedParlayOdds {
+                                        let calculatedWager = betSlipManager.calculateWagerFromToWin(odds: odds, toWin: toWinValue)
+                                        betSlipManager.stake = calculatedWager
+                                        let wagerInt = NSDecimalNumber(decimal: calculatedWager).intValue
+                                        stakeText = wagerInt > 0 ? "\(wagerInt)" : ""
+                                    }
+                                } else if newValue.isEmpty {
+                                    betSlipManager.stake = 0
+                                    stakeText = ""
+                                }
+                            }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Theme.elevatedBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(
+                                isParlayToWinFocused ? Theme.accent.opacity(0.6) : Theme.border,
+                                lineWidth: isParlayToWinFocused ? 2 : 1
+                            )
+                    )
+                    .animation(.easeInOut(duration: 0.15), value: isParlayToWinFocused)
+                }
+            }
+            // Track active field based on focus changes
+            .onChange(of: isParlayWagerFocused) { _, focused in
+                if focused { parlayActiveField = .wager }
+            }
+            .onChange(of: isParlayToWinFocused) { _, focused in
+                if focused { parlayActiveField = .toWin }
+            }
+
+            // Quick stake buttons below Wager/To Win
+            QuickStakeRow { amount in
+                let currentStake = betSlipManager.stake
+                let newStake = currentStake + amount
+                betSlipManager.stake = newStake
+                stakeText = "\(NSDecimalNumber(decimal: newStake).intValue)"
+                if let odds = betSlipManager.combinedParlayOdds {
+                    let calculatedToWin = betSlipManager.calculateToWin(odds: odds, stake: newStake)
+                    toWinText = calculatedToWin > 0 ? formatToWin(calculatedToWin) : ""
+                }
+            }
+            .disabled(isSubmitting)
+        }
+        .padding()
+        .background(Theme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Theme.border, lineWidth: 0.5)
         )
     }
 
@@ -603,96 +827,13 @@ struct BetSlipSheet: View {
         .disabled(isSubmitting)
     }
 
-    // MARK: - Stake Entry Section (US-042)
-
-    @ViewBuilder
-    private var stakeEntrySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("STAKE")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(Theme.textMuted)
-                .tracking(1)
-
-            VStack(spacing: 16) {
-                // Custom amount input - Styled
-                HStack(spacing: 12) {
-                    Text("$")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Theme.gold)
-
-                    TextField("0", text: $stakeText)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(isSubmitting ? Theme.textMuted : Theme.textPrimary)
-                        .keyboardType(.numberPad)
-                        .disabled(isSubmitting)
-                        .onChange(of: stakeText) { _, newValue in
-                            // Parse and update stake
-                            if let value = Decimal(string: newValue.filter { $0.isNumber }) {
-                                betSlipManager.stake = value
-                            } else if newValue.isEmpty {
-                                betSlipManager.stake = 0
-                            }
-                        }
-
-                    Spacer()
-
-                    if !stakeText.isEmpty {
-                        Button(action: {
-                            stakeText = ""
-                            betSlipManager.stake = 0
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(Theme.textMuted)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isSubmitting)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(Theme.elevatedBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(
-                            stakeText.isEmpty ? Theme.border : Theme.gold.opacity(0.5),
-                            lineWidth: stakeText.isEmpty ? 1 : 2
-                        )
-                )
-
-                // Stake validation warning (US-042)
-                if betSlipManager.stake > 0 && !betSlipManager.isStakeValid(availableCredit: availableCredit) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(Theme.warning)
-                        Text("Stake exceeds available credit (\(formatCurrency(availableCredit)))")
-                            .font(.caption)
-                            .foregroundStyle(Theme.warning)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Theme.warning.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-
-                // Footer note for singles
-                if betSlipManager.betMode == .singles && betSlipManager.count > 1 {
-                    Text("Stake applies to each of your \(betSlipManager.count) singles bets. Total stake: \(formatCurrency(betSlipManager.totalSinglesStake))")
-                        .font(.caption)
-                        .foregroundStyle(Theme.textMuted)
-                }
-            }
-            .padding()
-            .background(Theme.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Theme.border, lineWidth: 0.5)
-            )
+    /// US-001: Calculate "to win" for parlay mode display
+    private var parlayToWin: Decimal {
+        guard betSlipManager.stake > 0 else { return 0 }
+        if let odds = betSlipManager.combinedParlayOdds {
+            return betSlipManager.calculateToWin(odds: odds, stake: betSlipManager.stake)
         }
+        return 0
     }
 
     // MARK: - Payout Summary Section (US-042)
@@ -874,6 +1015,7 @@ struct BetSlipSheet: View {
                 let item = betSlipManager.items[index]
                 let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
                 itemStakeTexts.removeValue(forKey: key)
+                itemToWinTexts.removeValue(forKey: key)
                 betSlipManager.remove(at: index)
             }
             serverLockedEventIds.removeAll()
@@ -895,10 +1037,10 @@ struct BetSlipSheet: View {
 
         isSubmitting = true
 
-        // Get bookieId - prefer authManager.currentBookieId (for test mode), fall back to player.bookieId
+        // Get bookieId - prefer authManager.currentBookieId, fall back to player.bookieId
         let bookieId: UUID
         if let currentBookieId = authManager.currentBookieId {
-            // Bookie is logged in (test mode) - use their bookie ID
+            // Bookie is logged in - use their bookie ID
             bookieId = currentBookieId
         } else if let playerBookieId = player.bookieId {
             // Player is logged in - use the player's associated bookie ID
@@ -1108,10 +1250,13 @@ struct BetSlipSheet: View {
 
                 if successCount > 0 {
                     submittedCount = successCount
-                    // Clear bet slip, stake, and local stake texts
+                    // Clear bet slip, stake, and local stake/to-win texts
                     betSlipManager.clearAll()
                     betSlipManager.stake = 0
                     itemStakeTexts.removeAll()
+                    itemToWinTexts.removeAll()
+                    toWinText = ""
+                    stakeText = ""
 
                     // Show success animation
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -1138,6 +1283,20 @@ struct BetSlipSheet: View {
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 
+    /// US-001: Format "to win" amount without currency symbol (shown separately)
+    private func formatToWin(_ value: Decimal) -> String {
+        Self.formatToWinStatic(value)
+    }
+
+    /// US-002: Static version for use in init
+    private static func formatToWinStatic(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: value as NSDecimalNumber) ?? "\(value)"
+    }
+
     /// Create a binding for per-item stake text (US-004)
     /// Uses unique key combining marketId and sideIndicator
     private func itemStakeTextBinding(for item: BetSlipItem) -> Binding<String> {
@@ -1145,6 +1304,15 @@ struct BetSlipSheet: View {
         return Binding(
             get: { itemStakeTexts[key] ?? "" },
             set: { itemStakeTexts[key] = $0 }
+        )
+    }
+
+    /// US-002: Create a binding for per-item to-win text (bidirectional entry)
+    private func itemToWinTextBinding(for item: BetSlipItem) -> Binding<String> {
+        let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+        return Binding(
+            get: { itemToWinTexts[key] ?? "" },
+            set: { itemToWinTexts[key] = $0 }
         )
     }
 }
@@ -1163,6 +1331,9 @@ struct PremiumBetSlipItemCard: View {
     /// Binding to per-item stake text (US-004)
     @Binding var stakeText: String
 
+    /// US-002: Binding to per-item to-win text (bidirectional entry)
+    @Binding var toWinText: String
+
     /// BetSlipManager for stake calculations (US-004)
     @ObservedObject var betSlipManager: BetSlipManager
 
@@ -1172,8 +1343,17 @@ struct PremiumBetSlipItemCard: View {
     /// US-014: Whether submission is in progress (disables inputs)
     var isSubmitting: Bool = false
 
+    /// US-004 (betslip-redesign): Game start time for display on bet card
+    var startTime: Date? = nil
+
     /// Track if stake field is focused (US-004)
     @FocusState private var isStakeFocused: Bool
+
+    /// US-002: Track if to-win field is focused
+    @FocusState private var isToWinFocused: Bool
+
+    /// US-002: Track which field is actively being edited
+    @State private var activeField: BetSlipSheet.ActiveField? = nil
 
     private var formattedOdds: String {
         item.odds >= 0 ? "+\(item.odds)" : "\(item.odds)"
@@ -1190,6 +1370,13 @@ struct PremiumBetSlipItemCard: View {
         return betSlipManager.calculatePayout(odds: item.odds, stake: stake)
     }
 
+    /// US-001: Calculate "to win" (profit only) for this bet
+    private var individualToWin: Decimal {
+        let stake = betSlipManager.getItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator)
+        guard stake > 0 else { return 0 }
+        return betSlipManager.calculateToWin(odds: item.odds, stake: stake)
+    }
+
     /// Format currency for display
     private func formatCurrency(_ value: Decimal) -> String {
         let formatter = NumberFormatter()
@@ -1198,18 +1385,20 @@ struct PremiumBetSlipItemCard: View {
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 
-    /// Generate a consistent color for a team based on its name
-    private func teamColor(for teamName: String) -> Color {
-        let colors: [Color] = [
-            Color(hex: 0x4A90D9), // Blue
-            Color(hex: 0xE74C3C), // Red
-            Color(hex: 0x27AE60), // Green
-            Color(hex: 0xF39C12), // Orange
-            Color(hex: 0x9B59B6), // Purple
-            Color(hex: 0x1ABC9C), // Teal
-        ]
-        let hash = teamName.unicodeScalars.reduce(0) { $0 + Int($1.value) }
-        return colors[hash % colors.count]
+    /// US-001: Format "to win" amount without currency symbol
+    private func formatToWin(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: value as NSDecimalNumber) ?? "\(value)"
+    }
+
+    /// US-004: Format game start time as "Thu 7:10 PM"
+    private static func formatGameTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE h:mm a"
+        return formatter.string(from: date)
     }
 
     var body: some View {
@@ -1229,72 +1418,66 @@ struct PremiumBetSlipItemCard: View {
                 .background(Theme.danger.opacity(0.15))
             }
 
-            HStack(spacing: 12) {
-                // Team logo placeholder (colored circle)
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [teamColor(for: item.side), teamColor(for: item.side).opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Text(String(item.side.prefix(2)).uppercased())
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
-                    )
-                    .shadow(color: teamColor(for: item.side).opacity(0.4), radius: 4, x: 0, y: 2)
-
+            // US-005: Redesigned bet card layout - no team circles
+            HStack(alignment: .top, spacing: 12) {
+                // Left: Selection info stacked vertically
                 VStack(alignment: .leading, spacing: 4) {
-                    // Selection/Side
-                    Text(item.side)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Theme.textPrimary)
+                    // Line 1: Selection name (bold) with odds badge on right
+                    HStack(alignment: .center) {
+                        Text(item.side)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundStyle(Theme.textPrimary)
 
-                    // Event description
+                        Spacer()
+
+                        // Odds badge
+                        Text(formattedOdds)
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(item.odds >= 0 ? Theme.accent : Theme.textPrimary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                item.odds >= 0
+                                    ? Theme.accent.opacity(0.15)
+                                    : Theme.elevatedBackground
+                            )
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(
+                                        item.odds >= 0 ? Theme.accent.opacity(0.3) : Theme.border,
+                                        lineWidth: 1
+                                    )
+                            )
+                    }
+
+                    // Line 2: Event matchup
                     Text(item.eventDescription)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
+
+                    // Line 3: Game start time (US-004)
+                    if let startTime = startTime {
+                        Text(Self.formatGameTime(startTime))
+                            .font(.caption)
+                            .foregroundStyle(Theme.textMuted)
+                    }
                 }
 
-                Spacer()
-
-                // Odds badge - Prominent with color
-                Text(formattedOdds)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(item.odds >= 0 ? Theme.accent : Theme.textPrimary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        item.odds >= 0
-                            ? Theme.accent.opacity(0.15)
-                            : Theme.elevatedBackground
-                    )
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(
-                                item.odds >= 0 ? Theme.accent.opacity(0.3) : Theme.border,
-                                lineWidth: 1
-                            )
-                    )
-
-                // X button to remove
+                // Right: Remove button (X) - more prominent
                 Button(action: onRemove) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(isSubmitting ? Theme.textMuted.opacity(0.3) : Theme.textMuted)
+                        .foregroundStyle(isSubmitting ? Theme.textMuted.opacity(0.3) : Theme.textSecondary)
                 }
                 .buttonStyle(.plain)
                 .disabled(isSubmitting)
             }
             .padding(16)
 
-            // US-004: Per-bet stake input in singles mode
+            // US-004/US-001: Per-bet stake input in singles mode with WAGER/TO WIN
             if betMode == .singles {
                 VStack(spacing: 8) {
                     // Divider
@@ -1303,54 +1486,123 @@ struct PremiumBetSlipItemCard: View {
                         .frame(height: 1)
 
                     HStack(spacing: 12) {
-                        // Stake input
-                        HStack(spacing: 6) {
-                            Text("$")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Theme.gold)
+                        // WAGER field
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("WAGER")
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(isStakeFocused ? Theme.gold : Theme.textMuted)
+                                .tracking(0.5)
+                                .animation(.easeInOut(duration: 0.15), value: isStakeFocused)
 
-                            TextField("0", text: $stakeText)
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundStyle(isSubmitting ? Theme.textMuted : Theme.textPrimary)
-                                .keyboardType(.numberPad)
-                                .focused($isStakeFocused)
-                                .frame(width: 60)
-                                .disabled(isSubmitting)
-                                .onChange(of: stakeText) { _, newValue in
-                                    // Parse and update per-item stake
-                                    if let value = Decimal(string: newValue.filter { $0.isNumber }) {
-                                        betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: value)
-                                    } else if newValue.isEmpty {
-                                        betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: 0)
-                                    }
-                                }
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Theme.elevatedBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(
-                                    isStakeFocused ? Theme.gold.opacity(0.5) : Theme.border,
-                                    lineWidth: isStakeFocused ? 2 : 1
-                                )
-                        )
+                            HStack(spacing: 4) {
+                                Text("$")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(Theme.gold)
 
-                        Spacer()
-
-                        // Potential payout for this bet
-                        if individualPayout > 0 {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("To Win")
-                                    .font(.caption2)
-                                    .foregroundStyle(Theme.textMuted)
-                                Text(formatCurrency(individualPayout))
+                                TextField("0", text: $stakeText)
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                                    .foregroundStyle(Theme.accent)
+                                    .foregroundStyle(isSubmitting ? Theme.textMuted : Theme.textPrimary)
+                                    .keyboardType(.numberPad)
+                                    .focused($isStakeFocused)
+                                    .frame(minWidth: 40)
+                                    .disabled(isSubmitting)
+                                    .onChange(of: stakeText) { _, newValue in
+                                        guard activeField == .wager else { return }
+                                        if let value = Decimal(string: newValue.filter { $0.isNumber }) {
+                                            betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: value)
+                                            // US-002: Update to-win text from wager
+                                            let calculatedToWin = betSlipManager.calculateToWin(odds: item.odds, stake: value)
+                                            toWinText = calculatedToWin > 0 ? formatToWin(calculatedToWin) : ""
+                                        } else if newValue.isEmpty {
+                                            betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: 0)
+                                            toWinText = ""
+                                        }
+                                    }
                             }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(Theme.elevatedBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(
+                                        isStakeFocused ? Theme.gold.opacity(0.6) : Theme.border,
+                                        lineWidth: isStakeFocused ? 2 : 1
+                                    )
+                            )
+                            .animation(.easeInOut(duration: 0.15), value: isStakeFocused)
+                        }
+
+                        // US-002: TO WIN field (editable, bidirectional with wager)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("TO WIN")
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(isToWinFocused ? Theme.accent : Theme.textMuted)
+                                .tracking(0.5)
+                                .animation(.easeInOut(duration: 0.15), value: isToWinFocused)
+
+                            HStack(spacing: 4) {
+                                Text("$")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(isToWinFocused ? Theme.accent : (individualToWin > 0 ? Theme.accent : Theme.textMuted))
+                                    .animation(.easeInOut(duration: 0.15), value: isToWinFocused)
+
+                                TextField("0", text: $toWinText)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(isSubmitting ? Theme.textMuted : (isToWinFocused ? Theme.accent : (individualToWin > 0 ? Theme.accent : Theme.textMuted)))
+                                    .keyboardType(.numberPad)
+                                    .focused($isToWinFocused)
+                                    .frame(minWidth: 40)
+                                    .disabled(isSubmitting)
+                                    .onChange(of: toWinText) { _, newValue in
+                                        guard activeField == .toWin else { return }
+                                        if let toWinValue = Decimal(string: newValue.filter { $0.isNumber }), toWinValue > 0 {
+                                            let calculatedWager = betSlipManager.calculateWagerFromToWin(odds: item.odds, toWin: toWinValue)
+                                            betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: calculatedWager)
+                                            let wagerInt = NSDecimalNumber(decimal: calculatedWager).intValue
+                                            stakeText = wagerInt > 0 ? "\(wagerInt)" : ""
+                                        } else if newValue.isEmpty {
+                                            betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: 0)
+                                            stakeText = ""
+                                        }
+                                    }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(Theme.elevatedBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(
+                                        isToWinFocused ? Theme.accent.opacity(0.6) : Theme.border,
+                                        lineWidth: isToWinFocused ? 2 : 1
+                                    )
+                            )
+                            .animation(.easeInOut(duration: 0.15), value: isToWinFocused)
                         }
                     }
+                    // US-002: Track active field based on focus changes
+                    .onChange(of: isStakeFocused) { _, focused in
+                        if focused { activeField = .wager }
+                    }
+                    .onChange(of: isToWinFocused) { _, focused in
+                        if focused { activeField = .toWin }
+                    }
+
+                    // US-003: Quick stake buttons for singles mode
+                    QuickStakeRow { amount in
+                        let currentStake = betSlipManager.getItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                        let newStake = currentStake + amount
+                        betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: newStake)
+                        stakeText = "\(NSDecimalNumber(decimal: newStake).intValue)"
+                        // Update to-win from new wager
+                        let calculatedToWin = betSlipManager.calculateToWin(odds: item.odds, stake: newStake)
+                        toWinText = calculatedToWin > 0 ? formatToWin(calculatedToWin) : ""
+                    }
+                    .disabled(isSubmitting)
+
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                 }
@@ -1375,6 +1627,51 @@ struct PremiumBetSlipItemCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(isLocked ? Theme.danger.opacity(0.6) : Theme.border, lineWidth: isLocked ? 1.5 : 0.5)
         )
+    }
+}
+
+// MARK: - Quick Stake Button Style (US-003)
+
+/// Button style with scale-down tap animation for quick stake pills
+struct QuickStakeButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+/// Row of quick stake buttons: +$5, +$10, +$25, +$50
+/// US-003: Tapping adds to current wager (not replaces)
+struct QuickStakeRow: View {
+    /// Callback when a quick stake amount is tapped; receives the amount to add
+    let onAdd: (Decimal) -> Void
+
+    private let amounts: [Decimal] = [5, 10, 25, 50]
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(amounts.map { NSDecimalNumber(decimal: $0).intValue }, id: \.self) { amount in
+                Button {
+                    onAdd(Decimal(amount))
+                } label: {
+                    Text("+$\(amount)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.textSecondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Theme.cardBackground)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Theme.border, lineWidth: 1)
+                        )
+                }
+                .buttonStyle(QuickStakeButtonStyle())
+            }
+            Spacer()
+        }
     }
 }
 

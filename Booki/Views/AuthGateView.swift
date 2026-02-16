@@ -22,6 +22,12 @@ struct AuthGateView: View {
     /// Tracks if initial sync has been triggered for this session
     @State private var hasTriggeredInitialSync: Bool = false
 
+    /// Whether to show the onboarding flow
+    @State private var showOnboarding: Bool = false
+
+    /// Onboarding manager for tracking setup progress
+    @State private var onboardingManager = OnboardingManager()
+
     /// Scene phase for detecting app foreground/background
     @Environment(\.scenePhase) private var scenePhase
 
@@ -42,10 +48,30 @@ struct AuthGateView: View {
                         PlayerMainView()
                     case .bookie, nil:
                         ContentView()
+                            .environment(onboardingManager)
                     }
                 }
             } else {
                 authFlowView
+            }
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingContainerView(
+                onboardingManager: onboardingManager,
+                onComplete: { showOnboarding = false },
+                onSkip: { showOnboarding = false }
+            )
+        }
+        .onChange(of: authManager.userRole) { _, newRole in
+            // Show onboarding for new bookies who haven't completed it
+            if newRole == .bookie && !onboardingManager.isOnboardingComplete {
+                showOnboarding = true
+            }
+        }
+        .onAppear {
+            // Check if we should show onboarding on initial load
+            if authManager.userRole == .bookie && !onboardingManager.isOnboardingComplete {
+                showOnboarding = true
             }
         }
         .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)

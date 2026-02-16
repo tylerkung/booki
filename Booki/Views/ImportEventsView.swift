@@ -43,6 +43,8 @@ struct ImportEventsView: View {
                     errorView(error)
                 } else if let result = importResult {
                     successView(result)
+                } else if sports.isEmpty {
+                    noSportsView
                 } else {
                     sportPickerView
                 }
@@ -71,6 +73,33 @@ struct ImportEventsView: View {
             systemImage: "key.slash",
             description: Text("Add your Odds API key in Settings to import events.")
         )
+    }
+
+    private var noSportsView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "sportscourt")
+                .font(.system(size: 48))
+                .foregroundStyle(Theme.textMuted)
+
+            Text("No Active Sports")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("There are no sports with upcoming games right now. Check back later.")
+                .font(.body)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+
+            Button("Retry") {
+                Task {
+                    await loadSports()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.accent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var loadingView: some View {

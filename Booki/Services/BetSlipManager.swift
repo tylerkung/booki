@@ -234,6 +234,28 @@ class BetSlipManager: ObservableObject {
         return stake * Decimal(decimalOdds)
     }
 
+    /// US-001: Calculate "to win" (profit only) from American odds and stake
+    /// For +odds: toWin = wager × (odds/100). For -odds: toWin = wager × (100/|odds|)
+    func calculateToWin(odds: Int, stake: Decimal) -> Decimal {
+        guard stake > 0 else { return 0 }
+        if odds >= 0 {
+            return stake * Decimal(odds) / Decimal(100)
+        } else {
+            return stake * Decimal(100) / Decimal(abs(odds))
+        }
+    }
+
+    /// US-001: Calculate required wager from desired "to win" amount and odds
+    /// For +odds: wager = toWin / (odds/100). For -odds: wager = toWin / (100/|odds|)
+    func calculateWagerFromToWin(odds: Int, toWin: Decimal) -> Decimal {
+        guard toWin > 0, odds != 0 else { return 0 }
+        if odds >= 0 {
+            return toWin * Decimal(100) / Decimal(odds)
+        } else {
+            return toWin * Decimal(abs(odds)) / Decimal(100)
+        }
+    }
+
     /// Calculate payout for a single bet (using current stake)
     func singleBetPayout(for item: BetSlipItem) -> Decimal {
         return calculatePayout(odds: item.odds, stake: stake)

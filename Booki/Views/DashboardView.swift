@@ -19,6 +19,7 @@ struct FlaggedPlayer: Identifiable {
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(OnboardingManager.self) private var onboardingManager: OnboardingManager?
     @EnvironmentObject private var syncService: SyncService
     @Query private var bets: [Bet]
     @Query private var events: [Event]
@@ -27,6 +28,7 @@ struct DashboardView: View {
 
     @State private var viewModel = DashboardViewModel()
     @State private var showingFlaggedPlayers = false
+    @State private var showOnboardingFromCard = false
 
     // Alert Threshold settings
     @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
@@ -137,6 +139,18 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             List {
+                // MARK: - Finish Setup Card (only if onboarding incomplete)
+                if let manager = onboardingManager, !manager.isOnboardingComplete {
+                    Section {
+                        FinishSetupCard(
+                            onboardingManager: manager,
+                            onResume: { showOnboardingFromCard = true }
+                        )
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                }
+
                 // MARK: - Attention Feed Section
                 Section {
                     AttentionFeedView()
@@ -359,6 +373,16 @@ struct DashboardView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     SyncStatusIndicator(syncService: syncService)
+                }
+            }
+            .fullScreenCover(isPresented: $showOnboardingFromCard) {
+                if let manager = onboardingManager {
+                    OnboardingContainerView(
+                        onboardingManager: manager,
+                        startAt: manager.nextIncompleteStep,
+                        onComplete: { showOnboardingFromCard = false },
+                        onSkip: { showOnboardingFromCard = false }
+                    )
                 }
             }
         }

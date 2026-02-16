@@ -1,0 +1,141 @@
+# Ralph Progress Log
+Started: Thu Jan 29 13:13:57 PST 2026
+---
+
+## Codebase Patterns
+- SQL migrations use numbered prefix format: `NNN_description.sql` (e.g., `007_auto_refresh_timestamps.sql`)
+- Migration files include header comments with description and formatted sections
+- All timestamptz columns are nullable by default, added with `ADD COLUMN IF NOT EXISTS`
+- Document all migrations in SUPABASE_MIGRATIONS.md in the "Completed Migrations" section
+- Edge Functions are in `supabase/functions/` with shared helpers in `_shared/`
+- Sport/League -> API key mapping: `OddsAPIMapper.sportKeyMapping` (Swift) and `sportLeagueToApiKey` (TypeScript) must stay in sync
+- For audit events on system actions, get `auth_user_id` from bookie via join: `bookies!inner(auth_user_id)`
+- For system/cron operations, use 'system' as user_id for idempotency storage (not tied to specific user)
+
+---
+
+## 2026-01-29 - US-001
+- Implemented: Added auto-refresh timestamp fields to events table via Supabase migration
+- Files changed:
+  - Created: `supabase/migrations/007_auto_refresh_timestamps.sql`
+  - Updated: `SUPABASE_MIGRATIONS.md` (documented the new migration)
+- **Learnings for future iterations:**
+  - Migration naming convention follows sequential numbers: 001, 002, etc.
+  - Use `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for safe idempotent migrations
+  - COMMENT ON COLUMN statements help document schema in Supabase
+  - iOS typecheck cannot be run from command line - verify SQL syntax correctness instead
+---
+
+## 2026-01-29 - US-002
+- Implemented: Added auto-refresh audit action types to the shared audit helper
+- Files changed:
+  - Updated: `supabase/functions/_shared/audit.ts`
+- **Learnings for future iterations:**
+  - ActionType union uses multi-line format for readability when many types exist
+  - Deno typecheck not available locally - verify TypeScript syntax correctness manually
+  - New action types: `odds_refreshed_auto`, `score_refreshed_auto`, `event_finalized_auto`, `auto_refresh_failed`
+---
+
+## 2026-01-29 - US-003
+- Implemented: Created auto_refresh_games Edge Function with game selection logic
+- Files changed:
+  - Created: `supabase/functions/auto_refresh_games/index.ts`
+- **Learnings for future iterations:**
+  - Edge Functions follow pattern: CORS handling -> auth/env validation -> business logic -> response
+  - Database doesn't have a `locked_at` column - locking is computed from status (live/final/canceled) or start_time comparison
+  - Use fallback query approach when RPC function doesn't exist (code: PGRST202)
+  - Game selection: aggregate accepted bets by event_id, filter eligible events, sort by start_time then wagered amount, limit to 2
+  - The `not('status', 'in', '("final","live","canceled")')` syntax filters multiple excluded values
+---
+
+## 2026-01-29 - US-004
+- Implemented: Added odds refresh logic to auto_refresh_games Edge Function
+- Files changed:
+  - Updated: `supabase/functions/auto_refresh_games/index.ts`
+- **Learnings for future iterations:**
+  - Sport/league names must be reverse-mapped to Odds API sport keys (e.g., "Basketball" + "NBA" -> "basketball_nba")
+  - The `sportLeagueToApiKey` mapping mirrors `OddsAPIMapper.sportKeyMapping` in Swift
+  - Markets are refreshed by deleting existing ones and inserting new ones (no upsert)
+  - Use `bookies!inner(auth_user_id)` join to get the bookie's auth user for audit events
+  - For system actions, use the bookie's `auth_user_id` as the actor (not bookie_id which is a different table)
+  - Group games by sport key to minimize API calls when multiple games have the same sport
+  - Always use try-catch with continue to ensure one game's failure doesn't stop processing others
+---
+
+## 2026-01-29 - US-005
+- Implemented: Added score refresh logic to auto_refresh_games Edge Function
+- Files changed:
+  - Updated: `supabase/functions/auto_refresh_games/index.ts`
+- **Learnings for future iterations:**
+  - Scores API endpoint: `/v4/sports/{sportKey}/scores/?daysFrom=N` returns recent game scores
+  - ScoreEvent interface has `completed: boolean` to check if game is finished
+  - Scores array contains team name and score as string (needs parseInt)
+  - Update both scores and status atomically when game completes
+  - final_score format is "away-home" to match Swift convention in FetchScoresView
+  - Always check external_id exists before attempting score refresh (manually created events won't have one)
+  - Score refresh runs for all selected games regardless of whether they've started (unlike odds which skips started games)
+---
+
+## 2026-01-29 - US-006
+- Implemented: Auto-transition bets to ready_to_grade when event finalizes
+- Files changed:
+  - Updated: `supabase/functions/auto_refresh_games/index.ts`
+- **Learnings for future iterations:**
+  - Bet transition happens inside score refresh loop (right after event is marked as 'final')
+  - Query bets by event_id + status='accepted', then update to 'readyToGrade' using .in('id', betIds)
+  - Track both eventsFinalized and betsTransitioned counters for the response
+  - Emit 'event_finalized_auto' audit event even when no bets need transitioning (for tracking)
+  - Wrap bet transition in try-catch to avoid failing the overall score refresh if bet update fails
+  - Response now includes events_finalized and bets_transitioned counts
+---
+
+## 2026-01-29 - US-007
+- Implemented: Added idempotency and error handling to auto_refresh_games Edge Function
+- Files changed:
+  - Updated: `supabase/functions/auto_refresh_games/index.ts`
+- **Learnings for future iterations:**
+  - Idempotency key format: `auto_refresh_{YYYY-MM-DD}_{window}` where window is 'morning' (< 12:00 UTC) or 'afternoon'
+  - Use shared `checkIdempotency` and `storeIdempotency` helpers from `_shared/idempotency.ts`
+  - For system operations (not tied to specific user), use 'system' as the user_id for idempotency storage
+  - Store idempotency keys even for empty results (no games found) to prevent duplicate processing
+  - Consolidate all errors (odds + scores) into a single `errors` array with `type` field for categorization
+  - Emit `auto_refresh_failed` audit events for each error with error_type, error_message, and idempotency_key
+  - Response format: `{ success, games_selected, odds_refreshed, scores_refreshed, events_finalized, bets_transitioned, errors }`
+---
+
+## 2026-01-29 - US-008
+- Implemented: Created cron trigger migration for auto refresh
+- Files changed:
+  - Created: `supabase/migrations/008_cron_auto_refresh.sql`
+  - Updated: `SUPABASE_MIGRATIONS.md` (documented migration with detailed setup instructions)
+- **Learnings for future iterations:**
+  - pg_cron and pg_net extensions are required for scheduled HTTP calls
+  - Use a wrapper PL/pgSQL function to handle the HTTP call (cleaner than inline SQL in cron.schedule)
+  - Store service role key in Supabase vault: `vault.create_secret('key', 'service_role_key')`
+  - Set Edge Function URL via database config: `ALTER DATABASE postgres SET app.edge_function_base_url = 'url'`
+  - Use `cron.unschedule()` before creating jobs for idempotent migrations
+  - Monitor cron history via `cron.job_run_details` table
+  - Schedule format: `'0 17 * * *'` = 17:00 UTC daily (minute hour day month day-of-week)
+---
+
+## 2026-01-29 - US-009
+- Implemented: Added last auto-refresh timestamp fields to Event SwiftData model
+- Files changed:
+  - Updated: `Booki/Models/Event.swift`
+- **Learnings for future iterations:**
+  - SwiftData model properties are added as simple `var` declarations (no @Attribute wrapper needed for basic types)
+  - All optional Date properties default to nil in the initializer
+  - Group related properties under MARK comments for organization
+  - SourceKit errors for SwiftData macros are expected when running outside Xcode - the code compiles correctly in Xcode
+---
+
+## 2026-01-29 - US-010
+- Implemented: Display last auto-refresh timestamps in EventDetailView
+- Files changed:
+  - Updated: `Booki/Views/EventDetailView.swift`
+- **Learnings for future iterations:**
+  - RelativeDateTimeFormatter provides user-friendly relative time strings ("2 hours ago")
+  - Use computed property returning a new formatter instance for clean code (no @State needed)
+  - Theme.textMuted is available for less emphasized "Never" states, vs Theme.textSecondary for labels
+  - New sections in EventDetailView just use the `Section("Title")` pattern with HStack rows
+---

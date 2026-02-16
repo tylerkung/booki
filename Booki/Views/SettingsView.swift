@@ -7,21 +7,15 @@ struct SettingsView: View {
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var syncService: SyncService
     @Query private var bookies: [Bookie]
-    @Query(sort: \Player.name) private var players: [Player]
 
     @State private var showingEditProfile = false
     @State private var isSyncing = false
     @State private var showingSeedDataConfirmation = false
     @State private var showingSeedDataSuccess = false
     @State private var seededEventCount = 0
-    @State private var showingPlayerLogin = false
     @State private var showingLogoutConfirmation = false
     @State private var showingLogoutError = false
     @State private var logoutErrorMessage = ""
-
-    // Test Mode settings (persisted via AppStorage)
-    @AppStorage("isPlayerMode") private var isPlayerMode: Bool = false
-    @AppStorage("selectedPlayerID") private var selectedPlayerID: String = ""
 
     // Alert Threshold settings
     @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
@@ -45,11 +39,6 @@ struct SettingsView: View {
 
     private var currentBookie: Bookie? {
         bookies.first
-    }
-
-    /// Active players for test mode selection
-    private var activePlayers: [Player] {
-        players.filter { $0.status == .active }
     }
 
     private var appVersion: String {
@@ -219,42 +208,6 @@ struct SettingsView: View {
                 }
                 .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Test Mode Section
-                Section {
-                    if activePlayers.isEmpty {
-                        Text("Add players first to test player mode")
-                            .foregroundStyle(.secondary)
-                            .italic()
-                    } else {
-                        Picker("Select Player", selection: $selectedPlayerID) {
-                            Text("Choose a player").tag("")
-                            ForEach(activePlayers) { player in
-                                Text(player.name).tag(player.id.uuidString)
-                            }
-                        }
-
-                        Button {
-                            if !selectedPlayerID.isEmpty {
-                                isPlayerMode = true
-                            }
-                        } label: {
-                            Label("Switch to Player View", systemImage: "person.fill")
-                        }
-                        .disabled(selectedPlayerID.isEmpty)
-
-                        Button {
-                            showingPlayerLogin = true
-                        } label: {
-                            Label("Test Player Login UI", systemImage: "rectangle.and.pencil.and.ellipsis")
-                        }
-                    }
-                } header: {
-                    Text("Test Mode")
-                } footer: {
-                    Text("View the app as a specific player to test the player experience. In production, bookie and player will have separate accounts.")
-                }
-                .listRowBackground(Theme.cardBackground)
-
                 // MARK: - Sync Section
                 Section {
                     Button {
@@ -324,9 +277,6 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileSheet(existingBookie: currentBookie)
-            }
-            .sheet(isPresented: $showingPlayerLogin) {
-                PlayerLoginView()
             }
             .alert("Load Sample Data", isPresented: $showingSeedDataConfirmation) {
                 Button("Cancel", role: .cancel) { }

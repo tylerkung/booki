@@ -309,6 +309,28 @@ The app is **local-first** with cloud sync:
   - Fixes issue where server-side finalization (via auto_refresh_games) didn't surface bets for grading
   - Bets transition to grading list automatically when events sync as final
 
+### Phase 12: Betting Experience Overhaul
+- **Parlay Submission Endpoint**
+  - New `submit_parlay` Edge Function for atomic parlay submission
+  - Single network call creates all legs with shared ticket_id
+  - Locked event validation rejects entire parlay if any leg is locked
+  - Swift types (ParlayLeg, SubmitParlayRequest/Response) in BetService
+
+- **Enhanced Bet Slip**
+  - Parlay mode uses dedicated endpoint instead of per-leg singles calls
+  - Per-item stakes auto-initialized when mode switches from parlay to singles
+  - Mode switch explanation banner shown to player
+  - Same-game parlay advisory warning (non-blocking)
+  - Parlay-specific loading state ("Submitting parlay..." vs "Submitting 1 of N...")
+  - Locked event error display with highlighting and removal button
+  - All inputs disabled during submission
+
+- **Bet Model Enrichment**
+  - Added `eventDescription`, `sportLeague`, `sideIndicator`, `marketId` fields to Bet
+  - Offline fallback: bet rows show stored event context when event not cached
+  - Sport league abbreviation (e.g., "NBA") shown in bet list rows
+  - Consistent `MarketType.displayName` for title-case market labels
+
 ---
 
 ## Technical Details
@@ -396,4 +418,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 12, 2026 - Phase 11 (Grading Improvements) completed*
+*Last updated: February 16, 2026 - Phase 12 (Betting Experience Overhaul) completed*

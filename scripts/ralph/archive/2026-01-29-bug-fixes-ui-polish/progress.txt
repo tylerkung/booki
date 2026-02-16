@@ -1,0 +1,14 @@
+# Ralph Progress Log
+Started: Wed Jan 29 2026
+---
+
+## Codebase Patterns
+- Edge Functions expect side as 'a' or 'b', not display names - use sideIndicator field
+- BetSlipSelection and BetSlipItem must include sideIndicator for server communication
+- When isAwayTeam is true, use sideA/oddsA (sideIndicator = "a"); when false, use sideB/oddsB (sideIndicator = "b")
+- Dark theme List/Form styling: use `.scrollContentBackground(.hidden)`, `.background(Theme.background)`, and `.listRowBackground(Theme.cardBackground)` on each Section
+- Theme.accent (0x00F5D4) is a bright cyan color that needs dark text (Theme.background) for readability
+- American to decimal odds conversion: positive odds = 1 + odds/100, negative odds = 1 + 100/abs(odds)
+- Decimal to American odds conversion: >= 2.0 = (decimal - 1) * 100, < 2.0 = -100 / (decimal - 1)
+
+---

@@ -1,0 +1,21 @@
+# Ralph Progress Log
+Started: Wed Jan 29 2026
+
+## Codebase Patterns
+- SQL migrations go in supabase/migrations/ with format NNN_description.sql
+- Use `IF NOT EXISTS` for all CREATE TABLE and CREATE INDEX statements
+- RLS policies follow naming pattern: `tablename_action_description`
+- Document all migrations in SUPABASE_MIGRATIONS.md under "Completed Migrations"
+- auth.uid() is used for RLS policies to reference current authenticated user
+- Edge Functions go in supabase/functions/<function-name>/index.ts
+- Shared Edge Function utilities in supabase/functions/_shared/
+- Use `https://esm.sh/@supabase/supabase-js@2` for Deno imports
+- Edge Functions access env vars via Deno.env.get('VARIABLE_NAME')
+- Use shared idempotency helper (checkIdempotency, storeIdempotency) from _shared/idempotency.ts for all mutation Edge Functions
+- Use shared audit helper (emitAuditEvent) from _shared/audit.ts to emit audit events after state changes
+- SwiftData models use @Attribute(.unique) for UUID primary keys
+- iOS services use SupabaseClientManager.shared.client singleton
+- Theme colors: Theme.accent, Theme.textPrimary, Theme.textSecondary, Theme.cardBackground, etc.
+
+---
+
