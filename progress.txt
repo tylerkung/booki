@@ -154,3 +154,16 @@ Started: Sun Feb 16 16:34:00 PST 2026
   - Balance color uses `Theme.accent` (green) for positive, `Theme.danger` (red) for negative, `Theme.textSecondary` for zero — matching `AppHeaderView` pattern
   - The `selectionsList` view in BetSlipSheet contains: header (count + mode toggle) → balance row → bet cards → sticky bottom (stakes/payout)
 ---
+
+## 2026-02-16 - US-009 (Player UX Polish)
+- **What was implemented**: Created NumericKeypadView.swift — a custom numeric keypad component for stake entry
+- **Files changed**:
+  - `Booki/Views/NumericKeypadView.swift` - New file: 4x4 grid keypad with digit keys, decimal, delete, and quick stake buttons (+$5, +$10, +$25, +$50)
+  - `Booki.xcodeproj/project.pbxproj` - Added file reference and build phase entry
+- **Learnings for future iterations:**
+  - NumericKeypadView accepts `Binding<String>` and optional `onValueChanged` callback — integrate by binding to stake text state
+  - Quick stake buttons use `Decimal(string:)` for precise arithmetic, then format back to string with NumberFormatter
+  - KeypadButtonStyle is a private ButtonStyle that scales to 0.95 on press with spring animation
+  - Decimal key prevents double decimals; leading zeros are handled (e.g., "0" + "5" → "5")
+  - Keys use `frame(maxWidth: .infinity)` for equal-width distribution in HStack
+---
