@@ -9,6 +9,7 @@ Started: Sun Feb 16 16:34:00 PST 2026
 - Xcode IDE required for full typecheck - swiftc can't resolve SwiftData macros
 - UUID case sensitivity: iOS UUID.uuidString returns UPPERCASE, PostgreSQL stores lowercase - always use `.lowercased()` when comparing UUIDs across systems
 - Font registration: Space Grotesk fonts are in `Booki/Fonts/`, registered in Info.plist UIAppFonts. Use `Font.custom("SpaceGrotesk-Regular", size:)` etc.
+- Theme typography: Use `Theme.font(size:weight:)`, convenience properties (`Theme.headline`, `Theme.body`, etc.), and `Theme.monoDigits(size:weight:)` for odds/numbers
 
 ---
 
@@ -68,4 +69,15 @@ Started: Sun Feb 16 16:34:00 PST 2026
   - pbxproj needs 3 things for fonts: PBXFileReference, PBXBuildFile (in Resources), and PBXGroup entry
   - Use `plutil -lint` to validate plist and pbxproj files after editing
   - prd.json can be overwritten by hooks/processes — always re-read before editing
+---
+
+## 2026-02-16 - US-002 (Player UX Polish)
+- **What was implemented**: Added centralized font helpers to Theme.swift for Space Grotesk
+- **Files changed**:
+  - `Booki/Theme.swift` - Added Typography section with `font(size:weight:)`, `monoDigits(size:weight:)`, and convenience type scale properties
+- **Learnings for future iterations:**
+  - `Theme.font(size:weight:)` maps Font.Weight to font file names: .bold/.semibold/.heavy/.black → Bold, .medium → Medium, default → Regular
+  - Convenience properties: `Theme.title1` (28 bold), `Theme.headline` (17 bold), `Theme.body` (17), `Theme.subheadline` (15), `Theme.footnote` (13), `Theme.caption` (12), `Theme.caption2` (11 medium)
+  - `Theme.monoDigits(size:weight:)` adds `.monospacedDigit()` for tabular number alignment in odds displays
+  - Static let properties on Swift enums are lazily evaluated, so calling static methods from static lets works fine
 ---
