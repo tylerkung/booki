@@ -18,10 +18,11 @@ struct OnboardingWelcomeView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            // App Icon
-            Image(systemName: "book.closed.fill")
-                .font(.system(size: 80))
-                .foregroundStyle(Theme.accent)
+            // App Logo
+            Image("BookiLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 160)
                 .padding(.bottom, 32)
 
             // Headline
