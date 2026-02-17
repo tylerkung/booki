@@ -113,7 +113,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Markets are already loaded via @Query in GamesView. Count markets per event using markets.filter { $0.event?.id == event.id }.count"
     },
     {

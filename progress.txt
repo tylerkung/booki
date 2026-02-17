@@ -131,3 +131,14 @@ Started: Sun Feb 16 16:34:00 PST 2026
   - SF Symbol icon size set with `.font(.system(size: 14))` to keep it independent of the custom Space Grotesk font
   - The `sportIconName(for:)` function is a free function at file scope for reuse; uses `.lowercased()` for case-insensitive matching
 ---
+
+## 2026-02-16 - US-007 (Player UX Polish)
+- **What was implemented**: Added available markets count badge (+N) to the trailing edge of CompactGameRow's time header
+- **Files changed**:
+  - `Booki/Views/CompactGameRow.swift` - Added `additionalMarketsCount` computed property and badge pill with chevron in `timeHeader`
+- **Learnings for future iterations:**
+  - `event.markets` is an optional `[Market]?` relationship on Event — use `event.markets?.count ?? 0` to safely count
+  - The 3 shown markets are spread, moneyline, and total — additional markets count is `max(0, totalMarkets - 3)`
+  - `timeHeader` in CompactGameRow is the natural place for trailing metadata (badges, indicators) since it spans the full width with a Spacer
+  - Capsule pill pattern: `.padding(.horizontal, 8).padding(.vertical, 3).background(Theme.elevatedBackground).clipShape(Capsule())`
+---

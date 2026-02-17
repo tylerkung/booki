@@ -116,6 +116,12 @@ struct CompactGameRow: View {
 
     // MARK: - Time Header
 
+    /// US-007: Count of additional markets beyond the 3 shown (spread/money/total)
+    private var additionalMarketsCount: Int {
+        let totalMarkets = event.markets?.count ?? 0
+        return max(0, totalMarkets - 3)
+    }
+
     @ViewBuilder
     private var timeHeader: some View {
         HStack(spacing: 4) {
@@ -159,6 +165,23 @@ struct CompactGameRow: View {
             }
 
             Spacer()
+
+            // US-007: Additional markets count badge
+            if additionalMarketsCount > 0 {
+                HStack(spacing: 2) {
+                    Text("+\(additionalMarketsCount)")
+                        .font(Theme.caption2)
+                        .foregroundColor(Theme.textMuted)
+
+                    Image(systemName: "chevron.right")
+                        .font(Theme.font(size: 9, weight: .medium))
+                        .foregroundColor(Theme.textMuted)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Theme.elevatedBackground)
+                .clipShape(Capsule())
+            }
         }
     }
 
