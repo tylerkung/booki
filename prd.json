@@ -130,7 +130,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "BetSlipSheet is presented from PlayerMainView which has access to player and balance. Internal balance has opposite sign — negate for player display (positive = credit, negative = debt)."
     },
     {

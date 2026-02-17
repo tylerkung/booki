@@ -142,3 +142,15 @@ Started: Sun Feb 16 16:34:00 PST 2026
   - `timeHeader` in CompactGameRow is the natural place for trailing metadata (badges, indicators) since it spans the full width with a Spacer
   - Capsule pill pattern: `.padding(.horizontal, 8).padding(.vertical, 3).background(Theme.elevatedBackground).clipShape(Capsule())`
 ---
+
+## 2026-02-16 - US-008 (Player UX Polish)
+- **What was implemented**: Added player balance and credit limit display row in the bet slip header, between the mode toggle and bet cards
+- **Files changed**:
+  - `Booki/Views/BetSlipSheet.swift` - Added `balanceSummary`, `displayBalance`, `balanceColor` computed properties and `balanceDisplayRow` view builder; inserted balance row in `selectionsList`
+- **Learnings for future iterations:**
+  - BetSlipSheet already has `@Query private var bets: [Bet]` and `@Query private var ledgerEntries: [LedgerEntry]` — no need to pass balance data as parameters, compute it in-place using `BalanceService.playerSummary()`
+  - BetSlipSheet already has a `formatCurrency` helper at the bottom (MARK: Helpers section) — don't add a duplicate
+  - Balance display convention: negate `balanceSummary.balanceOwed` for player-facing display (positive = credit/green, negative = debt/red)
+  - Balance color uses `Theme.accent` (green) for positive, `Theme.danger` (red) for negative, `Theme.textSecondary` for zero — matching `AppHeaderView` pattern
+  - The `selectionsList` view in BetSlipSheet contains: header (count + mode toggle) → balance row → bet cards → sticky bottom (stakes/payout)
+---
