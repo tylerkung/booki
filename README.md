@@ -331,6 +331,14 @@ The app is **local-first** with cloud sync:
   - Sport league abbreviation (e.g., "NBA") shown in bet list rows
   - Consistent `MarketType.displayName` for title-case market labels
 
+### Branding & Design System
+- **App Icon**: Custom Booki wordmark on electric cyan background (1024x1024)
+- **Launch Screen**: Electric cyan background → SwiftUI loading view with logo and spinner
+- **In-App Logo**: `Image("BookiLogo")` available via asset catalog
+- **Design System**: `Booki/DESIGN_SYSTEM.md` — colors, typography, spacing, components
+- **Primary Accent**: Electric cyan `#00F5D4`
+- **Font**: System (SF Pro), monospaced digits for odds
+
 ---
 
 ## Technical Details
@@ -418,4 +426,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 16, 2026 - Phase 12 (Betting Experience Overhaul) completed*
+*Last updated: February 16, 2026 - Phase 12 (Betting Experience Overhaul) + Branding completed*

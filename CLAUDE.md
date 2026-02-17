@@ -148,3 +148,4 @@ Events are filtered in the UI while all data is preserved in the database:
 - **Odds API key**: Configured in Settings (free tier, 500 calls/month)
 - **Auto-pilot mode**: Bets auto-accepted and auto-graded by default
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
+- **Branding**: App icon and in-app logo (`BookiLogo` image set), branded launch screen (electric cyan), `DESIGN_SYSTEM.md` restored
