@@ -96,7 +96,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "GamesView.swift has the sport filter pills. Check how sports are currently stored/displayed."
     },
     {

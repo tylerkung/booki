@@ -120,3 +120,14 @@ Started: Sun Feb 16 16:34:00 PST 2026
   - CompactGameRow has its own inline `compactOddsButton` method separate from the standalone `CompactOddsButton.swift` component - the inline version uses `oddsButtonWidth` directly
   - The standalone CompactOddsButton.swift uses `frame(maxWidth: .infinity)` so it adapts to whatever parent frame is given - no width constant to change there
 ---
+
+## 2026-02-16 - US-006 (Player UX Polish)
+- **What was implemented**: Added sport icons (SF Symbols) to sport filter tabs in GamesView
+- **Files changed**:
+  - `Booki/Views/GamesView.swift` - Added `sportIconName(for:)` mapping function, updated `SportTabButton` to accept optional `iconName` parameter, added icon to tab layout with HStack, passed icons from `sportTabsHeader`
+- **Learnings for future iterations:**
+  - Sport values in the app come from OddsAPIMapper: "Football", "Basketball", "Baseball", "Hockey", "Soccer", "MMA", "Boxing", "Golf", "Tennis"
+  - SportTabButton `init` uses default `iconName: nil` for backward compatibility (MarketCategoryTabButton in GameDetailView is a separate struct, not affected)
+  - SF Symbol icon size set with `.font(.system(size: 14))` to keep it independent of the custom Space Grotesk font
+  - The `sportIconName(for:)` function is a free function at file scope for reuse; uses `.lowercased()` for case-insensitive matching
+---
