@@ -157,6 +157,70 @@ struct BetSlipSheet: View {
         .background(Theme.background)
     }
 
+    // MARK: - Balance Display (US-008)
+
+    /// Player balance summary computed from ledger entries
+    private var balanceSummary: PlayerBalanceSummary {
+        guard let player = player else {
+            return PlayerBalanceSummary(creditLimit: 0, openLiability: 0, balanceOwed: 0, availableCredit: 0)
+        }
+        let playerBets = bets.filter { $0.player?.id == player.id }
+        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+        return BalanceService.playerSummary(
+            for: player,
+            bets: playerBets,
+            ledgerEntries: playerLedgerEntries
+        )
+    }
+
+    /// Display balance (negated: positive = credit, negative = debt)
+    private var displayBalance: Decimal {
+        -balanceSummary.balanceOwed
+    }
+
+    /// Balance color: green for credit, red for debt, muted for zero
+    private var balanceColor: Color {
+        if displayBalance > 0 {
+            return Theme.accent
+        } else if displayBalance < 0 {
+            return Theme.danger
+        } else {
+            return Theme.textSecondary
+        }
+    }
+
+    @ViewBuilder
+    private var balanceDisplayRow: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Balance:")
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+
+                Text(formatCurrency(displayBalance))
+                    .font(Theme.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(balanceColor)
+
+                Text("/")
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textMuted)
+
+                Text("\(formatCurrency(balanceSummary.creditLimit)) limit")
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textMuted)
+
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+
+            Rectangle()
+                .fill(Theme.divider)
+                .frame(height: 1)
+        }
+    }
+
     // MARK: - Selections List (US-005: Restructured with sticky bottom)
 
     @ViewBuilder
@@ -233,6 +297,11 @@ struct BetSlipSheet: View {
                     }
                     .padding(.horizontal)
                     .padding(.top, 16)
+
+                    // US-008: Player balance display
+                    if let player = player {
+                        balanceDisplayRow
+                    }
 
                     // Selections (US-053: animated item transitions, US-004: per-item stakes)
                     VStack(spacing: 12) {
