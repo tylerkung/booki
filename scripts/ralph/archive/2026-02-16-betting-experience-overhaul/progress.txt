@@ -1,0 +1,8 @@
+# Ralph Progress Log
+Started: New run pending
+
+## Codebase Patterns
+- (Will be populated during execution)
+
+---
+
