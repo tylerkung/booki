@@ -110,3 +110,13 @@ Started: Sun Feb 16 16:34:00 PST 2026
   - Badge uses `clipShape(Circle())` for round shape, `Theme.font(size: 9, weight: .bold)` for compact text in 24x24 circle
   - `teamOddsRow` is the function that renders each team line (away on top, home on bottom) with odds buttons
 ---
+
+## 2026-02-16 - US-005 (Player UX Polish)
+- **What was implemented**: Widened odds buttons from 52pt to 65pt in CompactGameRow
+- **Files changed**:
+  - `Booki/Views/CompactGameRow.swift` - Changed `oddsButtonWidth` constant from 52 to 65
+- **Learnings for future iterations:**
+  - `oddsButtonWidth` on line 168 of CompactGameRow.swift is the single constant controlling all odds button widths (including placeholders for alignment)
+  - CompactGameRow has its own inline `compactOddsButton` method separate from the standalone `CompactOddsButton.swift` component - the inline version uses `oddsButtonWidth` directly
+  - The standalone CompactOddsButton.swift uses `frame(maxWidth: .infinity)` so it adapts to whatever parent frame is given - no width constant to change there
+---
