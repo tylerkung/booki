@@ -414,14 +414,16 @@ struct GamesView: View {
                 // "All" tab
                 SportTabButton(
                     title: "All",
+                    iconName: "sportscourt",
                     isSelected: selectedSport == nil,
                     action: { selectedSport = nil }
                 )
 
-                // Sport-specific tabs (only sports with events)
+                // Sport-specific tabs (only sports with events) - US-006: with sport icons
                 ForEach(availableSports, id: \.self) { sport in
                     SportTabButton(
                         title: sport,
+                        iconName: sportIconName(for: sport),
                         isSelected: selectedSport == sport,
                         action: { selectedSport = sport }
                     )
@@ -652,17 +654,54 @@ struct GamesView: View {
     }
 }
 
+// MARK: - Sport Icon Mapping (US-006)
+
+/// Maps sport names to SF Symbol icon names
+func sportIconName(for sport: String) -> String? {
+    switch sport.lowercased() {
+    case "basketball":
+        return "basketball.fill"
+    case "football":
+        return "football.fill"
+    case "soccer":
+        return "soccerball"
+    case "baseball":
+        return "baseball.diamond.bases"
+    case "hockey":
+        return "hockey.puck.fill"
+    case "mma":
+        return "figure.martial.arts"
+    case "boxing":
+        return "figure.boxing"
+    case "tennis":
+        return "tennisball.fill"
+    case "golf":
+        return "figure.golf"
+    default:
+        return "sportscourt"
+    }
+}
+
 // MARK: - Sport Tab Button
 
 /// Button for sport filter tabs with selected state styling
 /// US-053: Enhanced with smooth selection animation
+/// US-006: Optional sport icon support
 struct SportTabButton: View {
     let title: String
+    let iconName: String?
     let isSelected: Bool
     let action: () -> Void
 
     /// US-053: Press state for scale animation
     @State private var isPressed: Bool = false
+
+    init(title: String, iconName: String? = nil, isSelected: Bool, action: @escaping () -> Void) {
+        self.title = title
+        self.iconName = iconName
+        self.isSelected = isSelected
+        self.action = action
+    }
 
     var body: some View {
         Button(action: {
@@ -671,16 +710,23 @@ struct SportTabButton: View {
                 action()
             }
         }) {
-            Text(title)
-                .font(Theme.subheadline)
-                .fontWeight(isSelected ? .semibold : .medium)
-                .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(isSelected ? Theme.accent : Theme.cardBackground)
-                .clipShape(Capsule())
-                // US-053: Scale animation on press
-                .scaleEffect(isPressed ? 0.95 : 1.0)
+            HStack(spacing: 6) {
+                // US-006: Sport icon
+                if let iconName = iconName {
+                    Image(systemName: iconName)
+                        .font(.system(size: 14))
+                }
+                Text(title)
+                    .font(Theme.subheadline)
+                    .fontWeight(isSelected ? .semibold : .medium)
+            }
+            .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(isSelected ? Theme.accent : Theme.cardBackground)
+            .clipShape(Capsule())
+            // US-053: Scale animation on press
+            .scaleEffect(isPressed ? 0.95 : 1.0)
         }
         .buttonStyle(.plain)
         // US-053: Smooth background/selection animation
