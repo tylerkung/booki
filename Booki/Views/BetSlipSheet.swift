@@ -46,6 +46,9 @@ struct BetSlipSheet: View {
     @State private var showLockedEventsAlert: Bool = false
     @State private var lockedEventNames: [String] = []
 
+    /// US-010: Track which stake field is active for the custom keypad
+    @State private var activeFieldId: String?
+
     /// Initialize with available credit for validation and optional player
     init(availableCredit: Decimal = Decimal.greatestFiniteMagnitude, player: Player? = nil) {
         self.availableCredit = availableCredit
@@ -129,6 +132,10 @@ struct BetSlipSheet: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text("The following events are locked for betting:\n\n\(lockedEventNames.joined(separator: "\n"))\n\nPlease remove them from your bet slip to continue.")
+            }
+            // US-010: Dismiss keypad when switching bet modes
+            .onChange(of: betSlipManager.betMode) { _, _ in
+                activeFieldId = nil
             }
         }
     }
@@ -307,19 +314,24 @@ struct BetSlipSheet: View {
                     VStack(spacing: 12) {
                         // US-001: Use combination of marketId+side for unique ID to support both sides of same market
                         ForEach(Array(betSlipManager.items.enumerated()), id: \.element) { index, item in
+                            let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
                             PremiumBetSlipItemCard(
                                 item: item,
                                 onRemove: {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        // Clear active field if removing the active item
+                                        if activeFieldId == key {
+                                            activeFieldId = nil
+                                        }
                                         betSlipManager.remove(at: index)
-                                        // Also remove the stake text for this item
-                                        let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
                                         itemStakeTexts.removeValue(forKey: key)
                                     }
                                 },
                                 betMode: betSlipManager.betMode,
                                 stakeText: itemStakeTextBinding(for: item),
-                                betSlipManager: betSlipManager
+                                betSlipManager: betSlipManager,
+                                activeFieldId: $activeFieldId,
+                                fieldId: key
                             )
                             .transition(.asymmetric(
                                 insertion: .scale(scale: 0.9).combined(with: .opacity),
@@ -378,6 +390,29 @@ struct BetSlipSheet: View {
                     if betSlipManager.individualTotalStake > 0 && !betSlipManager.isIndividualStakeValid(availableCredit: availableCredit) {
                         stakeValidationWarning
                     }
+                }
+
+                // US-010: Custom numeric keypad (visible when a field is active)
+                if activeFieldId != nil {
+                    VStack(spacing: 0) {
+                        // Dismiss bar
+                        HStack {
+                            Spacer()
+                            Button("Done") {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    activeFieldId = nil
+                                }
+                            }
+                            .font(Theme.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Theme.accent)
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
+                        NumericKeypadView(text: activeKeypadBinding)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
 
                 // Submit Button (US-006: Direct submission without review screen)
@@ -590,25 +625,17 @@ struct BetSlipSheet: View {
                 .tracking(1)
 
             VStack(spacing: 16) {
-                // Custom amount input - Styled
+                // US-010: Tappable stake display (replaces TextField, routes to custom keypad)
+                let isParlayActive = activeFieldId == "parlay_stake"
                 HStack(spacing: 12) {
                     Text("$")
                         .font(Theme.title1)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.gold)
 
-                    TextField("0", text: $stakeText)
+                    Text(stakeText.isEmpty ? "0" : stakeText)
                         .font(Theme.font(size: 32, weight: .bold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .keyboardType(.numberPad)
-                        .onChange(of: stakeText) { _, newValue in
-                            // Parse and update stake
-                            if let value = Decimal(string: newValue.filter { $0.isNumber }) {
-                                betSlipManager.stake = value
-                            } else if newValue.isEmpty {
-                                betSlipManager.stake = 0
-                            }
-                        }
+                        .foregroundStyle(stakeText.isEmpty ? Theme.textMuted : Theme.textPrimary)
 
                     Spacer()
 
@@ -628,13 +655,13 @@ struct BetSlipSheet: View {
                 .padding(.vertical, 14)
                 .background(Theme.elevatedBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(
-                            stakeText.isEmpty ? Theme.border : Theme.gold.opacity(0.5),
-                            lineWidth: stakeText.isEmpty ? 1 : 2
-                        )
-                )
+                .glowingBorder(color: Theme.accent, isActive: isParlayActive)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        activeFieldId = isParlayActive ? nil : "parlay_stake"
+                    }
+                }
 
                 // Stake validation warning (US-042)
                 if betSlipManager.stake > 0 && !betSlipManager.isStakeValid(availableCredit: availableCredit) {
@@ -950,10 +977,11 @@ struct BetSlipSheet: View {
 
                 if successCount > 0 {
                     submittedCount = successCount
-                    // Clear bet slip, stake, and local stake texts
+                    // Clear bet slip, stake, local stake texts, and active keypad field
                     betSlipManager.clearAll()
                     betSlipManager.stake = 0
                     itemStakeTexts.removeAll()
+                    activeFieldId = nil
 
                     // Show success animation
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -967,6 +995,54 @@ struct BetSlipSheet: View {
                     // Partial success - some bets failed
                     submissionError = "\(successCount) bets submitted. Some failed:\n" + errors.joined(separator: "\n")
                 }
+            }
+        }
+    }
+
+    // MARK: - Keypad Binding (US-010)
+
+    /// Returns a binding to the text for whichever field is active
+    private var activeKeypadBinding: Binding<String> {
+        Binding(
+            get: {
+                guard let fieldId = activeFieldId else { return "" }
+                if fieldId == "parlay_stake" {
+                    return stakeText
+                } else {
+                    return itemStakeTexts[fieldId] ?? ""
+                }
+            },
+            set: { newValue in
+                guard let fieldId = activeFieldId else { return }
+                if fieldId == "parlay_stake" {
+                    stakeText = newValue
+                    // Sync to betSlipManager
+                    if let value = Decimal(string: newValue) {
+                        betSlipManager.stake = value
+                    } else if newValue.isEmpty {
+                        betSlipManager.stake = 0
+                    }
+                } else {
+                    itemStakeTexts[fieldId] = newValue
+                    // Sync to betSlipManager - parse fieldId to get marketId and sideIndicator
+                    if let value = Decimal(string: newValue) {
+                        syncItemStake(fieldId: fieldId, stake: value)
+                    } else if newValue.isEmpty {
+                        syncItemStake(fieldId: fieldId, stake: 0)
+                    }
+                }
+            }
+        )
+    }
+
+    /// Sync item stake from fieldId (format: "marketId_sideIndicator") to BetSlipManager
+    private func syncItemStake(fieldId: String, stake: Decimal) {
+        // Find the matching item by checking all items' keys
+        for item in betSlipManager.items {
+            let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+            if key == fieldId {
+                betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: stake)
+                return
             }
         }
     }
@@ -1008,8 +1084,11 @@ struct PremiumBetSlipItemCard: View {
     /// BetSlipManager for stake calculations (US-004)
     @ObservedObject var betSlipManager: BetSlipManager
 
-    /// Track if stake field is focused (US-004)
-    @FocusState private var isStakeFocused: Bool
+    /// US-010: Active field ID for custom keypad integration
+    @Binding var activeFieldId: String?
+
+    /// Unique field ID for this card's stake input
+    var fieldId: String
 
     private var formattedOdds: String {
         item.odds >= 0 ? "+\(item.odds)" : "\(item.odds)"
@@ -1118,8 +1197,9 @@ struct PremiumBetSlipItemCard: View {
             }
             .padding(16)
 
-            // US-004: Per-bet stake input in singles mode
+            // US-004/US-010: Per-bet stake input in singles mode (tappable, routes to custom keypad)
             if betMode == .singles {
+                let isActive = activeFieldId == fieldId
                 VStack(spacing: 8) {
                     // Divider
                     Rectangle()
@@ -1127,38 +1207,28 @@ struct PremiumBetSlipItemCard: View {
                         .frame(height: 1)
 
                     HStack(spacing: 12) {
-                        // Stake input
+                        // Tappable stake display (US-010: replaces TextField)
                         HStack(spacing: 6) {
                             Text("$")
                                 .font(Theme.font(size: 16, weight: .semibold))
                                 .foregroundStyle(Theme.gold)
 
-                            TextField("0", text: $stakeText)
+                            Text(stakeText.isEmpty ? "0" : stakeText)
                                 .font(Theme.font(size: 18, weight: .bold))
-                                .foregroundStyle(Theme.textPrimary)
-                                .keyboardType(.numberPad)
-                                .focused($isStakeFocused)
-                                .frame(width: 60)
-                                .onChange(of: stakeText) { _, newValue in
-                                    // Parse and update per-item stake
-                                    if let value = Decimal(string: newValue.filter { $0.isNumber }) {
-                                        betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: value)
-                                    } else if newValue.isEmpty {
-                                        betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: 0)
-                                    }
-                                }
+                                .foregroundStyle(stakeText.isEmpty ? Theme.textMuted : Theme.textPrimary)
+                                .frame(width: 60, alignment: .leading)
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(Theme.elevatedBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(
-                                    isStakeFocused ? Theme.gold.opacity(0.5) : Theme.border,
-                                    lineWidth: isStakeFocused ? 2 : 1
-                                )
-                        )
+                        .glowingBorder(color: Theme.accent, isActive: isActive)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                activeFieldId = isActive ? nil : fieldId
+                            }
+                        }
 
                         Spacer()
 

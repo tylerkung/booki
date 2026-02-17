@@ -11,6 +11,7 @@ Started: Sun Feb 16 16:34:00 PST 2026
 - Font registration: Space Grotesk fonts are in `Booki/Fonts/`, registered in Info.plist UIAppFonts. Use `Font.custom("SpaceGrotesk-Regular", size:)` etc.
 - Theme typography: Use `Theme.font(size:weight:)`, convenience properties (`Theme.largeTitle`, `Theme.title1`, `Theme.title2`, `Theme.title3`, `Theme.headline`, `Theme.body`, `Theme.callout`, `Theme.subheadline`, `Theme.footnote`, `Theme.caption`, `Theme.caption2`), and `Theme.monoDigits(size:weight:)` for odds/numbers
 - Only 2 system fonts remain: `.system(.title, design: .monospaced)` in PlayerClaimView and `.system(.title2, design: .monospaced)` in PlayersListView - these need actual monospace, not Space Grotesk
+- Custom keypad integration: Use `activeFieldId: String?` state + computed `Binding<String>` to route a single NumericKeypadView to multiple stake fields
 
 ---
 
@@ -166,4 +167,18 @@ Started: Sun Feb 16 16:34:00 PST 2026
   - KeypadButtonStyle is a private ButtonStyle that scales to 0.95 on press with spring animation
   - Decimal key prevents double decimals; leading zeros are handled (e.g., "0" + "5" → "5")
   - Keys use `frame(maxWidth: .infinity)` for equal-width distribution in HStack
+---
+
+## 2026-02-16 - US-010 (Player UX Polish)
+- **What was implemented**: Integrated NumericKeypadView into BetSlipSheet, replacing all TextFields with tappable Text views routed through the custom keypad
+- **Files changed**:
+  - `Booki/Views/BetSlipSheet.swift` - Replaced TextField inputs with tappable Text displays; added `activeFieldId` state tracking; added `activeKeypadBinding` computed binding that routes keypad input to parlay or per-item stake fields; added NumericKeypadView in sticky bottom section with Done dismiss button; PremiumBetSlipItemCard now accepts `activeFieldId` binding and `fieldId` for keypad routing; removed @FocusState
+- **Learnings for future iterations:**
+  - Track active field with `@State private var activeFieldId: String?` — "parlay_stake" for parlay mode, or the item's stake key for singles mode
+  - Use a computed `Binding<String>` (`activeKeypadBinding`) to route keypad input to the correct state variable based on `activeFieldId`
+  - `glowingBorder(color:isActive:)` modifier in Theme.swift provides accent glow effect for active fields
+  - Don't use `.onTapGesture` on ScrollView to dismiss — it interferes with scrolling. Use a "Done" button on the keypad instead
+  - When removing a bet slip item, check if it's the active keypad field and clear `activeFieldId` to avoid orphaned state
+  - Dismiss keypad on betMode change via `.onChange(of: betSlipManager.betMode)`
+  - `syncItemStake` helper finds the matching BetSlipItem by iterating all items and comparing keys, then calls `setItemStake` on the manager
 ---

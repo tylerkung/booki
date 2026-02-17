@@ -172,7 +172,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "BetSlipSheet currently uses TextField for stake inputs. Replace with tappable Text views and route input through NumericKeypadView. Track activeFieldId as String? state."
     }
   ]
