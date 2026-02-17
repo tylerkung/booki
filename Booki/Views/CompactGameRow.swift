@@ -165,7 +165,7 @@ struct CompactGameRow: View {
     // MARK: - Team Row with Odds
 
     /// Fixed button size for consistent layout
-    private let oddsButtonWidth: CGFloat = 52
+    private let oddsButtonWidth: CGFloat = 65
     private let oddsButtonHeight: CGFloat = 44
 
     /// Single row with team name and aligned odds buttons
