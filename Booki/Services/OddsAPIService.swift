@@ -53,6 +53,12 @@ final class OddsAPIService: ObservableObject {
     @AppStorage("oddsAPIQuotaRemaining") private var storedQuotaRemaining: Int = -1
     @AppStorage("oddsAPIQuotaUsed") private var storedQuotaUsed: Int = -1
 
+    // MARK: - Sport Availability Cache (US-002)
+
+    private var cachedActiveSportKeys: Set<String>?
+    private var sportCacheTimestamp: Date?
+    private static let sportCacheDuration: TimeInterval = 3600 // 1 hour
+
     // MARK: - Singleton
 
     static let shared = OddsAPIService()
@@ -108,6 +114,27 @@ final class OddsAPIService: ObservableObject {
         } catch {
             throw OddsAPIError.decodingError(error)
         }
+    }
+
+    // MARK: - US-002: Fetch Active Sport Keys (Cached)
+
+    /// Returns the set of sport keys that currently have upcoming/live events.
+    /// Uses the free /v4/sports endpoint and caches results for 1 hour.
+    func fetchActiveSportKeys() async throws -> Set<String> {
+        // Return cached value if still valid
+        if let cached = cachedActiveSportKeys,
+           let timestamp = sportCacheTimestamp,
+           Date().timeIntervalSince(timestamp) < Self.sportCacheDuration {
+            return cached
+        }
+
+        let activeSports = try await fetchSports()
+        let keys = Set(activeSports.map { $0.key })
+
+        cachedActiveSportKeys = keys
+        sportCacheTimestamp = Date()
+
+        return keys
     }
 
     // MARK: - US-004: Fetch Events with Odds

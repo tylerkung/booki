@@ -261,10 +261,3 @@ extension View {
         }
     }
 }
-
-// MARK: - Preview
-
-#Preview {
-    PlayerLoginView()
-        .modelContainer(for: [Player.self], inMemory: true)
-}

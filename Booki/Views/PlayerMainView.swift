@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 /// Main view for players after they log in
-/// Shows the full betting experience with Games, Track, and Settings tabs
+/// Shows the full betting experience with Games, Track, and Account tabs
 struct PlayerMainView: View {
 
     // MARK: - Environment
@@ -56,10 +56,10 @@ struct PlayerMainView: View {
                     }
 
                     PlayerTabView(player: player, balance: playerBalance) {
-                        PlayerSettingsContent()
+                        AccountView(player: player)
                     }
                     .tabItem {
-                        Label("Settings", systemImage: "gearshape.fill")
+                        Label("Account", systemImage: "person.circle")
                     }
                 }
                 .tint(Theme.accent)

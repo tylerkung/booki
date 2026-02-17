@@ -44,6 +44,15 @@ enum BetHistoryFilter: String, CaseIterable, Identifiable {
     }
 }
 
+/// Odds format preference for displaying betting odds
+enum OddsFormat: String, CaseIterable, Identifiable {
+    case american = "American"
+    case decimal = "Decimal"
+    case fractional = "Fractional"
+
+    var id: String { rawValue }
+}
+
 /// Enhanced account summary view for players showing balance, credit utilization, and quick stats
 struct AccountView: View {
     @Environment(\.modelContext) private var modelContext
@@ -64,6 +73,10 @@ struct AccountView: View {
 
     // Bet history filter state
     @State private var selectedBetFilter: BetHistoryFilter = .active
+
+    // Player preferences
+    @AppStorage("playerOddsFormat") private var oddsFormat: String = OddsFormat.american.rawValue
+    @AppStorage("playerNotificationsEnabled") private var notificationsEnabled: Bool = true
 
     // MARK: - Computed Properties
 
@@ -145,8 +158,17 @@ struct AccountView: View {
     }
 
     /// Total stake across all settled bets (for ROI calculation)
+    /// Groups by ticketId and uses first bet's stake for parlays to avoid overcounting
     private var totalStaked: Decimal {
-        settledBets.reduce(Decimal.zero) { $0 + $1.stake }
+        // Group settled bets by ticketId
+        let grouped = Dictionary(grouping: settledBets) { $0.ticketId }
+
+        // For each ticket, use first bet's stake (parlays share stake across legs)
+        return grouped.values.reduce(Decimal.zero) { total, ticketBets in
+            // All bets in a ticket share the same stake for parlays
+            // For singles, there's only one bet anyway
+            total + (ticketBets.first?.stake ?? 0)
+        }
     }
 
     /// Total profit/loss from settled bets
@@ -208,6 +230,12 @@ struct AccountView: View {
                 // Hero Balance Section
                 heroBalanceSection
 
+                // Profile Section
+                profileSection
+
+                // Preferences Section
+                preferencesSection
+
                 // Credit Utilization Section
                 creditUtilizationSection
 
@@ -223,7 +251,7 @@ struct AccountView: View {
                 // Transaction History Section
                 transactionHistorySection
 
-                // Logout Section (only show for actual players, not test mode)
+                // Logout Section (only show for authenticated players)
                 if authManager.userRole == .player {
                     logoutSection
                 }
@@ -252,7 +280,7 @@ struct AccountView: View {
 
     private var logoutSection: some View {
         VStack(spacing: 16) {
-            Button(role: .destructive) {
+            Button {
                 showingLogoutConfirmation = true
             } label: {
                 HStack {
@@ -263,9 +291,8 @@ struct AccountView: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Theme.danger)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
+            .buttonStyle(DestructiveButtonStyle())
         }
         .padding(.top, 20)
     }
@@ -340,6 +367,158 @@ struct AccountView: View {
             }
         )
         .shadow(color: Color.black.opacity(0.4), radius: 12, x: 0, y: 6)
+    }
+
+    // MARK: - Profile Section
+
+    /// Formatted "member since" date
+    private var memberSinceDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: player.createdAt)
+    }
+
+    private var profileSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: "person.fill")
+                    .foregroundStyle(Theme.accentSecondary)
+                Text("PROFILE")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+
+            VStack(spacing: 0) {
+                // Name
+                profileRow(icon: "person.text.rectangle", label: "Name", value: player.name)
+
+                Divider().background(Theme.divider)
+
+                // Email
+                profileRow(icon: "envelope.fill", label: "Email", value: player.email ?? "—")
+
+                Divider().background(Theme.divider)
+
+                // Connected Bookie
+                profileRow(icon: "link.circle.fill", label: "Bookie", value: player.bookie?.name ?? "—")
+
+                Divider().background(Theme.divider)
+
+                // Member Since
+                profileRow(icon: "calendar", label: "Member Since", value: memberSinceDate)
+            }
+        }
+        .padding(20)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.cardBackground)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            }
+        )
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+
+    /// Helper for profile info rows
+    private func profileRow(icon: String, label: String, value: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(Theme.textMuted)
+                .frame(width: 24)
+
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+
+            Spacer()
+
+            Text(value)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .padding(.vertical, 12)
+    }
+
+    // MARK: - Preferences Section
+
+    /// Binding wrapper for OddsFormat stored as String in @AppStorage
+    private var oddsFormatBinding: Binding<OddsFormat> {
+        Binding(
+            get: { OddsFormat(rawValue: oddsFormat) ?? .american },
+            set: { oddsFormat = $0.rawValue }
+        )
+    }
+
+    private var preferencesSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: "gearshape.fill")
+                    .foregroundStyle(Theme.accentSecondary)
+                Text("PREFERENCES")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+
+            VStack(spacing: 0) {
+                // Odds Format
+                HStack(spacing: 12) {
+                    Image(systemName: "number.circle")
+                        .font(.body)
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 24)
+
+                    Text("Odds Format")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    Spacer()
+
+                    Picker("Odds Format", selection: oddsFormatBinding) {
+                        ForEach(OddsFormat.allCases) { format in
+                            Text(format.rawValue).tag(format)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Theme.accent)
+                }
+                .padding(.vertical, 12)
+
+                Divider().background(Theme.divider)
+
+                // Notifications
+                HStack(spacing: 12) {
+                    Image(systemName: "bell.fill")
+                        .font(.body)
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 24)
+
+                    Toggle(isOn: $notificationsEnabled) {
+                        Text("Bet Notifications")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .tint(Theme.accent)
+                }
+                .padding(.vertical, 12)
+            }
+        }
+        .padding(20)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.cardBackground)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            }
+        )
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
     // MARK: - Credit Utilization Section

@@ -304,6 +304,22 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
+// MARK: - Destructive Button Style
+
+struct DestructiveButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(isEnabled ? .white : Theme.textMuted)
+            .background(isEnabled ? Theme.danger : Theme.elevatedBackground)
+            .cornerRadius(Theme.cornerRadiusSmall)
+            .opacity(configuration.isPressed ? 0.8 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
 // MARK: - Preview
 
 #Preview {

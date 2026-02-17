@@ -1,0 +1,46 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/games-filtering",
+  "description": "Filter GamesView to show upcoming vs past events with toggle",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Filter GamesView to upcoming events",
+      "description": "As a user, I want to see only upcoming events by default.",
+      "acceptanceCriteria": [
+        "GamesView shows only non-final events plus recently finished (48hr)",
+        "Final events older than 48 hours are hidden from default view",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Verified: upcomingEvents computed property exists in GamesView"
+    },
+    {
+      "id": "US-002",
+      "title": "Add Past Events toggle",
+      "description": "As a user, I want to toggle between upcoming and past events.",
+      "acceptanceCriteria": [
+        "Add segmented picker with Upcoming/Past options",
+        "Past mode shows final events sorted newest first",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Verified: GameViewMode enum and viewMode state exist"
+    },
+    {
+      "id": "US-003",
+      "title": "Fix UUID case sensitivity in event lookups",
+      "description": "As a developer, I need event lookups to work regardless of UUID case.",
+      "acceptanceCriteria": [
+        "Event lookups use lowercased() comparison",
+        "Works in bet history views",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Verified: UUID normalization applied across views"
+    }
+  ]
+}

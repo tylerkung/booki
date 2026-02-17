@@ -1,14 +1,6 @@
 import SwiftUI
 import SwiftData
 
-/// US-002: View mode for GamesView (Upcoming vs Past)
-enum GameViewMode: String, CaseIterable, Identifiable {
-    case upcoming = "Upcoming"
-    case past = "Past"
-
-    var id: String { rawValue }
-}
-
 /// Time filter options for games (US-038)
 enum TimeFilter: String, CaseIterable, Identifiable {
     case all = "All"
@@ -27,6 +19,7 @@ enum TimeFilter: String, CaseIterable, Identifiable {
 /// US-039: Favorites system with filter and section
 struct GamesView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var syncService: SyncService
     @Query(sort: \Event.startTime) private var events: [Event]
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
@@ -61,18 +54,10 @@ struct GamesView: View {
     /// Show filter options sheet (US-038)
     @State private var showingFilterSheet: Bool = false
 
-    /// US-002: View mode selection (Upcoming vs Past)
-    @State private var viewMode: GameViewMode = .upcoming
-
     /// Favorites manager (US-039)
     @ObservedObject private var favoritesManager = FavoritesManager.shared
 
     // MARK: - Computed Properties
-
-    /// US-001: Cutoff date for showing recently finished events (48 hours ago)
-    private var recentFinishedCutoff: Date {
-        Calendar.current.date(byAdding: .hour, value: -48, to: Date()) ?? Date()
-    }
 
     /// US-004: Bettable events - only shows events the player can actually bet on
     /// Filters to: status is scheduled, not locked, and start time is in the future
@@ -89,37 +74,9 @@ struct GamesView: View {
         }
     }
 
-    /// US-001: Upcoming events - shows bettable events PLUS recently finished events for reference
-    /// Events are sorted by startTime ascending (soonest first)
-    private var upcomingEvents: [Event] {
-        let bettable = bettableEvents
-        let recentlyFinished = events.filter { event in
-            // Include final events from the last 48 hours for bet result reference
-            event.status == .final && event.startTime >= recentFinishedCutoff
-        }
-        // Combine and sort by start time ascending
-        return (bettable + recentlyFinished).sorted { $0.startTime < $1.startTime }
-    }
-
-    /// US-002: Past events - final events older than 48 hours
-    /// Events are sorted by startTime descending (most recent first)
-    private var pastEvents: [Event] {
-        events
-            .filter { event in
-                event.status == .final && event.startTime < recentFinishedCutoff
-            }
-            .sorted { $0.startTime > $1.startTime }
-    }
-
-    /// US-002: Available events based on view mode
-    /// Returns upcomingEvents for .upcoming mode, pastEvents for .past mode
+    /// Available events - only bettable upcoming events, sorted soonest first
     private var availableEvents: [Event] {
-        switch viewMode {
-        case .upcoming:
-            return upcomingEvents
-        case .past:
-            return pastEvents
-        }
+        bettableEvents.sorted { $0.startTime < $1.startTime }
     }
 
     /// Unique sports that have available events, sorted alphabetically
@@ -129,13 +86,7 @@ struct GamesView: View {
     }
 
     /// Events filtered by time (US-038) and favorites (US-039)
-    /// US-002: Time filters are bypassed in past mode (only search/sport filtering applies)
     private var timeFilteredEvents: [Event] {
-        // US-002: Past mode bypasses time filters (they don't apply to historical data)
-        if viewMode == .past {
-            return availableEvents
-        }
-
         let calendar = Calendar.current
         let now = Date()
 
@@ -186,13 +137,9 @@ struct GamesView: View {
         return searchFilteredEvents
     }
 
-    /// Whether any filters are active (US-038, US-039, US-002)
+    /// Whether any filters are active (US-038, US-039)
     private var hasActiveFilters: Bool {
-        // US-002: In past mode, time filters don't apply
-        if viewMode == .past {
-            return !searchText.isEmpty
-        }
-        return timeFilter != .all || !searchText.isEmpty
+        timeFilter != .all || !searchText.isEmpty
     }
 
     /// Whether showing favorites filter (US-039)
@@ -200,19 +147,8 @@ struct GamesView: View {
         timeFilter == .favorites
     }
 
-    /// Description of empty state based on filters (US-038, US-039, US-002)
+    /// Description of empty state based on filters (US-038, US-039)
     private var emptyStateDescription: String {
-        // US-002: Handle past mode empty states
-        if viewMode == .past {
-            if !searchText.isEmpty {
-                return "No past games match '\(searchText)'."
-            } else if let sport = selectedSport {
-                return "There are no past \(sport) games."
-            }
-            return "There are no past games to view."
-        }
-
-        // Upcoming mode empty states
         if timeFilter == .favorites && favoritesManager.favoriteTeams.isEmpty {
             return "Star your favorite teams to see them here."
         } else if timeFilter == .favorites {
@@ -305,12 +241,6 @@ struct GamesView: View {
             BetSlipSheet(availableCredit: balanceSummary.availableCredit, player: player)
                 .presentationDetents([.large])
         }
-        // US-002: Reset time filter when switching to past mode (time filters don't apply)
-        .onChange(of: viewMode) { _, newMode in
-            if newMode == .past {
-                timeFilter = .all
-            }
-        }
     }
 
     // MARK: - Bet Slip Indicator (US-040)
@@ -341,67 +271,53 @@ struct GamesView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Search and Filter Header (US-038, US-002)
+    // MARK: - Search and Filter Header (US-038)
 
     @ViewBuilder
     private var searchAndFilterHeader: some View {
-        VStack(spacing: 12) {
-            // US-002: View mode picker (Upcoming/Past)
-            Picker("View Mode", selection: $viewMode) {
-                ForEach(GameViewMode.allCases) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
+        HStack(spacing: 12) {
+            // Search bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
 
-            // Search bar and filter row
-            HStack(spacing: 12) {
-                // Search bar
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
+                TextField("Search teams...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
 
-                    TextField("Search teams...", text: $searchText)
-                        .textFieldStyle(.plain)
-                        .autocorrectionDisabled()
-
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Theme.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                // Filter button - only show for upcoming mode (past mode doesn't need time filters)
-                if viewMode == .upcoming {
-                    Button(action: { showingFilterSheet = true }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "line.3.horizontal.decrease.circle")
-                                .font(Theme.font(size: 16))
-                            if timeFilter != .all {
-                                Text(timeFilter.rawValue)
-                                    .font(Theme.caption)
-                                    .fontWeight(.medium)
-                            }
-                        }
-                        .foregroundStyle(timeFilter != .all ? Theme.background : Theme.textPrimary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(timeFilter != .all ? Theme.accent : Theme.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            // Filter button
+            Button(action: { showingFilterSheet = true }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .font(Theme.font(size: 16))
+                    if timeFilter != .all {
+                        Text(timeFilter.rawValue)
+                            .font(Theme.caption)
+                            .fontWeight(.medium)
+                    }
+                }
+                .foregroundStyle(timeFilter != .all ? Theme.background : Theme.textPrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(timeFilter != .all ? Theme.accent : Theme.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, 16)
         .padding(.vertical, 10)
     }
 
@@ -461,6 +377,9 @@ struct GamesView: View {
                     }
                 }
             }
+        }
+        .refreshable {
+            await syncService.sync()
         }
         .background(Theme.background)
     }
@@ -618,24 +537,36 @@ struct GamesView: View {
 
     @ViewBuilder
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            ContentUnavailableView(
-                hasActiveFilters ? "No Results" : "No Games Available",
-                systemImage: hasActiveFilters ? "magnifyingglass" : "sportscourt",
-                description: Text(emptyStateDescription)
-            )
+        ScrollView {
+            VStack(spacing: 16) {
+                ContentUnavailableView(
+                    hasActiveFilters ? "No Results" : "No Games Available",
+                    systemImage: hasActiveFilters ? "magnifyingglass" : "sportscourt",
+                    description: Text(emptyStateDescription)
+                )
 
-            // Clear filters button if filters are active (US-038)
-            if hasActiveFilters {
-                Button(action: clearFilters) {
-                    Text("Clear Filters")
-                        .font(Theme.subheadline)
-                        .fontWeight(.medium)
+                // Clear filters button if filters are active (US-038)
+                if hasActiveFilters {
+                    Button(action: clearFilters) {
+                        Text("Clear Filters")
+                            .font(Theme.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
+
+                // Refresh hint
+                if !hasActiveFilters {
+                    Text("Pull down to refresh")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
             }
+            .frame(maxWidth: .infinity, minHeight: 400)
         }
-        .frame(maxHeight: .infinity)
+        .refreshable {
+            await syncService.sync()
+        }
     }
 
     /// Clear all search and time filters (US-038)

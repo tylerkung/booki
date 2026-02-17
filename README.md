@@ -90,7 +90,8 @@ These handle the business rules and calculations:
 | **LiabilityService** | Calculates potential payouts on bets |
 | **ExposureService** | Calculates bookie's risk exposure |
 | **BetService** | Creates and manages bets |
-| **GradingService** | Grades bets as win/loss/push |
+| **GradingService** | Grades and settles single bets |
+| **ParlayGradingService** | Calculates parlay outcomes with push/void policy support |
 | **PlayerService** | Manages player accounts |
 | **AuthManager** | Handles login/logout and user sessions |
 | **SyncService** | Syncs data between device and cloud |
@@ -101,6 +102,7 @@ These handle the business rules and calculations:
 | **AgreementService** | Checks and submits Terms of Service acceptance |
 | **EdgeFunctionService** | Calls Supabase Edge Functions with auth and retry logic |
 | **AuditService** | Fetches audit history for bets and entities |
+| **BetSlipManager** | Manages bet slip state (selections, stake, parlay mode) |
 
 ---
 
@@ -278,6 +280,65 @@ The app is **local-first** with cloud sync:
   - Fixed event lookups across 9 view files
   - Case-insensitive comparison for iOS/PostgreSQL compatibility
 
+### Phase 10: Acceptance Policy Enforcement
+- **Server-Side Policy Evaluation**
+  - `submit_bet` and `submit_parlay` Edge Functions enforce acceptance policies
+  - Stake threshold validation (auto-accept limit, require-approval threshold)
+  - New player review (bets from players below bet count threshold require approval)
+  - Policy violations stored in `policy_violation_reason` column
+
+- **Parlay-Specific Rules**
+  - `auto_accept_parlays` setting to require manual approval for parlays
+  - `parlay_max_legs` limit enforcement
+  - Parlay legs inherit stake and new-player checks from single bets
+
+- **Policy Violation Display**
+  - Bookie sees why a bet requires review (e.g., "Stake exceeds limit", "New player")
+  - Violations shown in BetsListView for pending bets
+  - Multiple violations combined with comma separator
+
+- **Parlay Grading & Settlement**
+  - `ParlayGradingService` calculates combined parlay outcomes
+  - Push/void policy support: "Treat as Push" or "Reduce Legs & Reprice"
+  - Single ledger entry for entire parlay (not per-leg)
+  - Projected payout display during grading
+
+### Phase 11: Grading Improvements
+- **Server-Finalized Event Support**
+  - GradingView now shows `accepted` bets whose events are `final`
+  - Fixes issue where server-side finalization (via auto_refresh_games) didn't surface bets for grading
+  - Bets transition to grading list automatically when events sync as final
+
+### Phase 12: Betting Experience Overhaul
+- **Parlay Submission Endpoint**
+  - New `submit_parlay` Edge Function for atomic parlay submission
+  - Single network call creates all legs with shared ticket_id
+  - Locked event validation rejects entire parlay if any leg is locked
+  - Swift types (ParlayLeg, SubmitParlayRequest/Response) in BetService
+
+- **Enhanced Bet Slip**
+  - Parlay mode uses dedicated endpoint instead of per-leg singles calls
+  - Per-item stakes auto-initialized when mode switches from parlay to singles
+  - Mode switch explanation banner shown to player
+  - Same-game parlay advisory warning (non-blocking)
+  - Parlay-specific loading state ("Submitting parlay..." vs "Submitting 1 of N...")
+  - Locked event error display with highlighting and removal button
+  - All inputs disabled during submission
+
+- **Bet Model Enrichment**
+  - Added `eventDescription`, `sportLeague`, `sideIndicator`, `marketId` fields to Bet
+  - Offline fallback: bet rows show stored event context when event not cached
+  - Sport league abbreviation (e.g., "NBA") shown in bet list rows
+  - Consistent `MarketType.displayName` for title-case market labels
+
+### Branding & Design System
+- **App Icon**: Custom Booki wordmark on electric cyan background (1024x1024)
+- **Launch Screen**: Electric cyan background → SwiftUI loading view with logo and spinner
+- **In-App Logo**: `Image("BookiLogo")` available via asset catalog
+- **Design System**: `Booki/DESIGN_SYSTEM.md` — colors, typography, spacing, components
+- **Primary Accent**: Electric cyan `#00F5D4`
+- **Font**: System (SF Pro), monospaced digits for odds
+
 ---
 
 ## Technical Details
@@ -307,13 +368,13 @@ Theme.warning         // Orange (alerts)
 ### Database Schema
 
 The Supabase database has these tables:
-- `bookies` - Bookie accounts (linked to auth.users)
+- `bookies` - Bookie accounts (linked to auth.users), includes `manual_bet_acceptance` and `manual_bet_grading` toggles
 - `players` - Player records (belong to a bookie)
-- `events` - Sporting events
+- `events` - Sporting events (shared across bookies when `bookie_id` is NULL)
 - `markets` - Betting lines on events
-- `bets` - All bets placed
+- `bets` - All bets placed, includes `policy_violation_reason` for review queue
 - `ledger_entries` - Financial transactions
-- `acceptance_policies` - Bet acceptance rules
+- `acceptance_policies` - Bet acceptance rules (stake limits, parlay rules, new player thresholds)
 - `user_agreements` - Terms of Service acceptances (immutable)
 - `idempotency_keys` - Deduplication for Edge Functions
 - `audit_events` - Audit trail for all bet actions
@@ -326,14 +387,16 @@ Server-authoritative functions running on Supabase (Deno/TypeScript):
 
 | Function | Purpose |
 |----------|---------|
-| `submit_bet` | Player submits a bet (auto-accepts by default, validates event not locked) |
+| `submit_bet` | Player submits a single bet (validates event, applies acceptance policy) |
+| `submit_parlay` | Player submits a parlay bet (validates all legs, applies parlay policy) |
 | `accept_bet` | Bookie accepts a pending bet (when manual mode enabled) |
 | `grade_bet` | Bookie grades bet as win/loss/push/void (manual grading) |
 | `settle_bet` | Bookie settles bet (creates ledger entry atomically) |
 | `adjust_balance` | Bookie adjusts player balance with reason |
 | `reverse_settlement` | Bookie undoes a settlement (creates reversal entry) |
 | `override_grade` | Bookie changes a grade (auto-reverses if settled) |
-| `auto_refresh_games` | Fetches scores and auto-grades bets when games finalize |
+| `auto_refresh_games` | Cron job: fetches scores and auto-grades bets when games finalize |
+| `sync_games` | Fetches odds/events from The Odds API, updates markets |
 
 All functions validate JWT auth, check idempotency, and emit audit events.
 
@@ -363,4 +426,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 3, 2026 - Phase 9 (Games Filtering & Data Management) completed*
+*Last updated: February 16, 2026 - Phase 12 (Betting Experience Overhaul) + Branding completed*

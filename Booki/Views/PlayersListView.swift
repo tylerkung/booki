@@ -1303,7 +1303,7 @@ struct AddPlayerSheet: View {
         modelContext.insert(player)
 
         // Trigger sync to upload the new player to Supabase
-        // This ensures the player exists in the backend before test mode is used
+        // This ensures the player exists in the backend
         Task {
             await syncService.triggerUpload()
         }

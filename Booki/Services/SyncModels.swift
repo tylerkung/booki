@@ -110,7 +110,7 @@ struct PlayerUpsert: Codable {
 /// Response type for event records from Supabase
 struct EventRecord: Codable, Identifiable {
     let id: UUID
-    let bookieId: UUID
+    let bookieId: UUID?  // NULL for shared events from Odds API
     let name: String
     let sport: String
     let league: String?
@@ -118,7 +118,11 @@ struct EventRecord: Codable, Identifiable {
     let status: String
     let homeTeam: String
     let awayTeam: String
+    let homeScore: Int?
+    let awayScore: Int?
     let finalScore: String?
+    let externalId: String?
+    let externalSource: String?
     let createdAt: Date
     let updatedAt: Date
 
@@ -132,7 +136,11 @@ struct EventRecord: Codable, Identifiable {
         case status
         case homeTeam = "home_team"
         case awayTeam = "away_team"
+        case homeScore = "home_score"
+        case awayScore = "away_score"
         case finalScore = "final_score"
+        case externalId = "external_id"
+        case externalSource = "external_source"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -188,6 +196,35 @@ struct EventUpsert: Codable {
     }
 }
 
+// MARK: - Market Sync Models
+
+/// Response type for market records from Supabase
+struct MarketRecord: Codable, Identifiable {
+    let id: UUID
+    let eventId: UUID
+    let bookieId: UUID?  // NULL for shared markets
+    let type: String
+    let sideA: String
+    let sideB: String
+    let oddsA: Int
+    let oddsB: Int
+    let createdAt: Date
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case eventId = "event_id"
+        case bookieId = "bookie_id"
+        case type
+        case sideA = "side_a"
+        case sideB = "side_b"
+        case oddsA = "odds_a"
+        case oddsB = "odds_b"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
 // MARK: - Bet Sync Models
 
 /// Response type for bet records from Supabase
@@ -238,6 +275,8 @@ struct BetUpsert: Codable {
     let ticketId: UUID
     let market: String?
     let side: String
+    let sideIndicator: String?
+    let marketId: UUID?
     let odds: Int
     let stake: Decimal
     let status: String
@@ -257,6 +296,8 @@ struct BetUpsert: Codable {
         case ticketId = "ticket_id"
         case market
         case side
+        case sideIndicator = "side_indicator"
+        case marketId = "market_id"
         case odds
         case stake
         case status
@@ -282,6 +323,8 @@ struct BetUpsert: Codable {
         self.ticketId = bet.ticketId
         self.market = bet.market.isEmpty ? nil : bet.market
         self.side = bet.side
+        self.sideIndicator = bet.sideIndicator
+        self.marketId = bet.marketId
         self.odds = bet.odds
         self.stake = bet.stake
         self.status = bet.status.rawValue

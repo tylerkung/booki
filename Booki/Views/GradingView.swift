@@ -28,9 +28,24 @@ struct GradingView: View {
     }
 
     /// Bets ready to grade, sorted by creation date (oldest first for grading priority)
+    /// Includes both:
+    /// - Bets explicitly marked as readyToGrade
+    /// - Accepted bets whose events are finalized (handles server-side finalization via sync)
     private var readyToGradeBets: [Bet] {
-        bets.filter { $0.status == .readyToGrade }
-            .sorted { $0.createdAt < $1.createdAt }
+        bets.filter { bet in
+            if bet.status == .readyToGrade {
+                return true
+            }
+            // Also include accepted bets whose event is final (server-side finalization)
+            if bet.status == .accepted {
+                let eventIsFinal = events.first { event in
+                    event.id.uuidString.lowercased() == bet.eventId.lowercased()
+                }?.status == .final
+                return eventIsFinal
+            }
+            return false
+        }
+        .sorted { $0.createdAt < $1.createdAt }
     }
 
     /// Groups bets by ticketId for parlays, singles stay individual
@@ -693,8 +708,21 @@ struct ParlayGradingGroupView: View {
     var onVoid: ((Bet) -> Void)? = nil
 
     /// Legs that still need grading
+    /// Includes both readyToGrade bets and accepted bets with finalized events
     private var legsToGrade: [Bet] {
-        group.bets.filter { $0.status == .readyToGrade }
+        group.bets.filter { bet in
+            if bet.status == .readyToGrade {
+                return true
+            }
+            // Also include accepted bets whose event is final
+            if bet.status == .accepted {
+                let eventIsFinal = events.first { event in
+                    event.id.uuidString.lowercased() == bet.eventId.lowercased()
+                }?.status == .final
+                return eventIsFinal
+            }
+            return false
+        }
     }
 
     /// Number of legs that have been graded
