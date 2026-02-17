@@ -117,7 +117,7 @@ struct BetConfirmationSheet: View {
                     if betSlipManager.betMode == .parlay, let parlayOdds = betSlipManager.formattedParlayOdds {
                         Text("Combined Odds: \(parlayOdds)")
                             .font(Theme.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textSecondary)
                     }
                 }
 
@@ -158,7 +158,7 @@ struct BetConfirmationSheet: View {
             if betSlipManager.betMode == .singles && betSlipManager.count > 1 {
                 HStack {
                     Text("Stake per Bet")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     Text(formatCurrency(betSlipManager.stake))
                 }
@@ -167,7 +167,7 @@ struct BetConfirmationSheet: View {
             // Total stake
             HStack {
                 Text("Total Stake")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 Text(formatCurrency(betSlipManager.currentTotalStake))
                     .fontWeight(.medium)
@@ -182,13 +182,13 @@ struct BetConfirmationSheet: View {
                         .font(Theme.headline)
                     Text("If all bets win")
                         .font(Theme.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 Spacer()
                 Text(formatCurrency(betSlipManager.currentTotalPayout))
                     .font(Theme.title2)
                     .fontWeight(.bold)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Theme.accent)
             }
         } header: {
             Text("Summary")
@@ -203,10 +203,10 @@ struct BetConfirmationSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "info.circle.fill")
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(Theme.accent)
                     Text("This submission records bet requests with your book. No money is wagered or transferred in this app. All bets are subject to bookie approval.")
                         .font(Theme.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
         } header: {
@@ -241,10 +241,10 @@ struct BetConfirmationSheet: View {
             if !betSlipManager.isStakeValid(availableCredit: balanceSummary.availableCredit) && betSlipManager.stake > 0 {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.warning)
                     Text("Total stake exceeds available credit (\(formatCurrency(balanceSummary.availableCredit)))")
                         .font(Theme.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.warning)
                 }
             }
         }
@@ -282,7 +282,7 @@ struct BetConfirmationSheet: View {
 
                 Image(systemName: "checkmark.circle.fill")
                     .font(Theme.font(size: 70))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Theme.accent)
                     .scaleEffect(checkmarkScale)
             }
             .onAppear {
@@ -310,7 +310,7 @@ struct BetConfirmationSheet: View {
 
                 Text("\(submittedCount) bet\(submittedCount == 1 ? "" : "s") recorded and pending review")
                     .font(Theme.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
             }
 
@@ -480,7 +480,7 @@ struct ConfirmationItemRow: View {
             // Event description
             Text(item.eventDescription)
                 .font(Theme.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
 
             // Selection with odds
             HStack {
@@ -491,7 +491,7 @@ struct ConfirmationItemRow: View {
 
                     Text(marketTypeLabel)
                         .font(Theme.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
 
                 Spacer()

@@ -252,21 +252,21 @@ struct GamesView: View {
         }) {
             HStack {
                 Image(systemName: "ticket.fill")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
 
                 Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
                     .font(Theme.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
 
                 Spacer()
 
                 Image(systemName: "chevron.up")
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Theme.background.opacity(0.7))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color.blue)
+            .background(Theme.accent)
         }
         .buttonStyle(.plain)
     }
@@ -279,7 +279,7 @@ struct GamesView: View {
             // Search bar
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 TextField("Search teams...", text: $searchText)
                     .textFieldStyle(.plain)
@@ -288,7 +288,7 @@ struct GamesView: View {
                 if !searchText.isEmpty {
                     Button(action: { searchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textSecondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -693,11 +693,11 @@ struct GameRowView: View {
 
     private var statusColor: Color {
         switch event.status {
-        case .scheduled: return .blue
-        case .live: return .green
-        case .final: return .gray
-        case .postponed: return .orange
-        case .canceled: return .red
+        case .scheduled: return Theme.accent
+        case .live: return Theme.accent
+        case .final: return Theme.textMuted
+        case .postponed: return Theme.warning
+        case .canceled: return Theme.danger
         }
     }
 
@@ -724,7 +724,7 @@ struct GameRowView: View {
                     Text(statusText)
                         .font(Theme.caption2)
                         .fontWeight(.medium)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.background)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
                         .background(statusColor)
@@ -735,12 +735,12 @@ struct GameRowView: View {
             // Start time
             HStack {
                 Image(systemName: "clock")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .font(Theme.caption)
 
                 Text(formattedStartTime)
                     .font(Theme.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
         }
         .padding(.vertical, 4)
@@ -764,7 +764,7 @@ struct TimeFilterSheet: View {
                     }) {
                         HStack {
                             Text(filter.rawValue)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(Theme.textPrimary)
                             Spacer()
                             if selectedFilter == filter {
                                 Image(systemName: "checkmark")

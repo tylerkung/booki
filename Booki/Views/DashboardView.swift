@@ -294,7 +294,7 @@ struct DashboardView: View {
                 Section {
                     if viewModel.pendingBets.isEmpty {
                         Text("No pending bets")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textSecondary)
                     } else {
                         ForEach(viewModel.pendingBets) { bet in
                             PendingBetRow(
@@ -316,7 +316,7 @@ struct DashboardView: View {
                                 } label: {
                                     Label("Accept", systemImage: "checkmark.circle")
                                 }
-                                .tint(.green)
+                                .tint(Theme.accent)
                             }
                         }
                     }
@@ -329,7 +329,7 @@ struct DashboardView: View {
                 Section {
                     if viewModel.topRiskEvents.isEmpty {
                         Text("No active exposure")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textSecondary)
                     } else {
                         ForEach(viewModel.topRiskEvents) { item in
                             if let event = events.first(where: { $0.id.uuidString.lowercased() == item.eventId.lowercased() }) {
@@ -701,18 +701,18 @@ struct PendingBetRow: View {
 
                 Text(eventName)
                     .font(Theme.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
 
             // Middle row: Side, odds, stake
             HStack {
                 Text(bet.side)
                     .font(Theme.subheadline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Theme.textPrimary)
 
                 Text(formattedOdds)
                     .font(Theme.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Spacer()
 
@@ -747,7 +747,7 @@ struct PendingBetRow: View {
                 } label: {
                     Label("Decline", systemImage: "xmark.circle.fill")
                         .font(Theme.font(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(
@@ -931,7 +931,7 @@ struct FlaggedPlayerRow: View {
         case .highBalance:
             return Theme.gold
         case .aging:
-            return .orange
+            return Theme.warning
         case .both:
             return Theme.danger
         }
@@ -948,7 +948,7 @@ struct FlaggedPlayerRow: View {
                     Text(flaggedPlayer.reason.rawValue)
                         .font(Theme.caption2)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.background)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(reasonColor)

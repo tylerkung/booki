@@ -577,7 +577,7 @@ struct GradingBetRow: View {
                         onSelect()
                     } label: {
                         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(isSelected ? .blue : .secondary)
+                            .foregroundStyle(isSelected ? Theme.accent : Theme.textSecondary)
                             .font(Theme.title2)
                     }
                     .buttonStyle(.plain)
@@ -589,7 +589,7 @@ struct GradingBetRow: View {
 
                     Text(eventName)
                         .font(Theme.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
 
                 Spacer()
@@ -599,7 +599,7 @@ struct GradingBetRow: View {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("Final")
                             .font(Theme.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textSecondary)
                         Text(finalScore)
                             .font(Theme.subheadline)
                             .fontWeight(.semibold)
@@ -611,10 +611,10 @@ struct GradingBetRow: View {
             HStack {
                 Text(bet.market)
                     .font(Theme.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Text("•")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Text(bet.side)
                     .font(Theme.subheadline)
@@ -622,7 +622,7 @@ struct GradingBetRow: View {
 
                 Text(formattedOdds)
                     .font(Theme.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Spacer()
 
@@ -639,7 +639,7 @@ struct GradingBetRow: View {
 
                     Text("Suggested: \(suggested.rawValue.capitalized)")
                         .font(Theme.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
 
@@ -654,7 +654,7 @@ struct GradingBetRow: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(.green)
+                        .tint(Theme.accent)
 
                         Button {
                             onGrade(.loss)
@@ -663,7 +663,7 @@ struct GradingBetRow: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(.red)
+                        .tint(Theme.danger)
 
                         Button {
                             onGrade(.push)
@@ -672,7 +672,7 @@ struct GradingBetRow: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(.orange)
+                        .tint(Theme.warning)
                     }
                     .labelStyle(.titleOnly)
 
@@ -1024,7 +1024,7 @@ struct ParlayLegRow: View {
                     onSelect()
                 } label: {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(isSelected ? .blue : .secondary)
+                        .foregroundStyle(isSelected ? Theme.accent : Theme.textSecondary)
                         .font(Theme.title3)
                 }
                 .buttonStyle(.plain)
@@ -1060,7 +1060,7 @@ struct ParlayLegRow: View {
             if isGraded {
                 Text(statusText)
                     .font(Theme.font(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(statusColor)
@@ -1073,7 +1073,7 @@ struct ParlayLegRow: View {
                     } label: {
                         Image(systemName: "checkmark.circle.fill")
                             .font(Theme.title2)
-                            .foregroundStyle(.green)
+                            .foregroundStyle(Theme.accent)
                     }
                     .buttonStyle(.plain)
 
@@ -1082,7 +1082,7 @@ struct ParlayLegRow: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(Theme.title2)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.danger)
                     }
                     .buttonStyle(.plain)
 
@@ -1091,7 +1091,7 @@ struct ParlayLegRow: View {
                     } label: {
                         Image(systemName: "equal.circle.fill")
                             .font(Theme.title2)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.warning)
                     }
                     .buttonStyle(.plain)
 

@@ -194,7 +194,7 @@ struct PlayerClaimView: View {
             if let error = errorMessage {
                 Text(error)
                     .font(Theme.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
             }
 
@@ -225,7 +225,7 @@ struct PlayerClaimView: View {
             // Success checkmark
             Image(systemName: "checkmark.circle.fill")
                 .font(Theme.font(size: 50))
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.accent)
 
             Text("Welcome, \(player.name)!")
                 .font(Theme.title2)
@@ -259,7 +259,7 @@ struct PlayerClaimView: View {
             if let error = accountCreationError {
                 Text(error)
                     .font(Theme.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
             }
 
@@ -299,7 +299,7 @@ struct PlayerClaimView: View {
             // Success checkmark
             Image(systemName: "checkmark.circle.fill")
                 .font(Theme.font(size: 60))
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.accent)
 
             Text("Account Created!")
                 .font(Theme.title2)

@@ -171,13 +171,13 @@ struct EventListRowView: View {
                 // Start time
                 Text(formattedStartTime)
                     .font(Theme.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 // Final score if available
                 if let finalScore = event.finalScore {
                     Text("Final: \(finalScore)")
                         .font(Theme.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
 

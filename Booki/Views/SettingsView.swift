@@ -67,7 +67,7 @@ struct SettingsView: View {
                         }
                     } else {
                         Text("No profile configured")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textSecondary)
                             .italic()
 
                         Button {
@@ -156,7 +156,7 @@ struct SettingsView: View {
                                 Text("\(remaining)")
                                 if remaining < 100 {
                                     Image(systemName: "exclamationmark.triangle.fill")
-                                        .foregroundStyle(.orange)
+                                        .foregroundStyle(Theme.warning)
                                 }
                             }
                         }
@@ -181,7 +181,7 @@ struct SettingsView: View {
                 } footer: {
                     if let remaining = oddsService.quotaRemaining, remaining < 100 {
                         Text("Low API quota. Your quota resets monthly.")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.warning)
                     } else {
                         Text("Get your API key from the-odds-api.com")
                     }
@@ -247,7 +247,7 @@ struct SettingsView: View {
                             Text("Log Out")
                         }
                         .font(Theme.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(Theme.danger)
@@ -409,9 +409,9 @@ struct SettingsView: View {
 
     private func subscriptionStatusColor(_ status: SubscriptionStatus) -> Color {
         switch status {
-        case .active: return .green
-        case .inactive: return .red
-        case .trial: return .orange
+        case .active: return Theme.accent
+        case .inactive: return Theme.danger
+        case .trial: return Theme.warning
         }
     }
 }
@@ -455,12 +455,12 @@ struct EditProfileSheet: View {
                 Section {
                     LabeledContent("Name") {
                         Text(name.isEmpty ? "—" : name)
-                            .foregroundStyle(name.isEmpty ? .secondary : .primary)
+                            .foregroundStyle(name.isEmpty ? Theme.textSecondary : Theme.textPrimary)
                     }
 
                     LabeledContent("Email") {
                         Text(email.isEmpty ? "—" : email)
-                            .foregroundStyle(email.isEmpty ? .secondary : .primary)
+                            .foregroundStyle(email.isEmpty ? Theme.textSecondary : Theme.textPrimary)
                     }
                 } header: {
                     Text("Preview")

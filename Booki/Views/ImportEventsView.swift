@@ -115,7 +115,7 @@ struct ImportEventsView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(Theme.font(size: 48))
-                .foregroundStyle(.orange)
+                .foregroundStyle(Theme.warning)
 
             Text("Error")
                 .font(Theme.title2)
@@ -143,7 +143,7 @@ struct ImportEventsView: View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
                 .font(Theme.font(size: 48))
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.accent)
 
             Text("Import Complete")
                 .font(Theme.title2)
