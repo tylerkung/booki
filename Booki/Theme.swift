@@ -110,6 +110,36 @@ enum Theme {
         endPoint: .bottomTrailing
     )
 
+    // MARK: - Typography
+
+    /// Returns a Space Grotesk font with the given size and weight
+    static func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .bold, .semibold, .heavy, .black:
+            name = "SpaceGrotesk-Bold"
+        case .medium:
+            name = "SpaceGrotesk-Medium"
+        default:
+            name = "SpaceGrotesk-Regular"
+        }
+        return Font.custom(name, size: size)
+    }
+
+    /// Space Grotesk with monospaced digits for odds/numbers
+    static func monoDigits(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        font(size: size, weight: weight).monospacedDigit()
+    }
+
+    // Convenience type scale properties
+    static let title1 = font(size: 28, weight: .bold)
+    static let headline = font(size: 17, weight: .bold)
+    static let body = font(size: 17)
+    static let subheadline = font(size: 15)
+    static let footnote = font(size: 13)
+    static let caption = font(size: 12)
+    static let caption2 = font(size: 11, weight: .medium)
+
     /// Card gradient: subtle purple depth
     static let cardGradient = LinearGradient(
         colors: [cardBackground, Color(hex: 0x0E0E18)],
