@@ -9,7 +9,8 @@ Started: Sun Feb 16 16:34:00 PST 2026
 - Xcode IDE required for full typecheck - swiftc can't resolve SwiftData macros
 - UUID case sensitivity: iOS UUID.uuidString returns UPPERCASE, PostgreSQL stores lowercase - always use `.lowercased()` when comparing UUIDs across systems
 - Font registration: Space Grotesk fonts are in `Booki/Fonts/`, registered in Info.plist UIAppFonts. Use `Font.custom("SpaceGrotesk-Regular", size:)` etc.
-- Theme typography: Use `Theme.font(size:weight:)`, convenience properties (`Theme.headline`, `Theme.body`, etc.), and `Theme.monoDigits(size:weight:)` for odds/numbers
+- Theme typography: Use `Theme.font(size:weight:)`, convenience properties (`Theme.largeTitle`, `Theme.title1`, `Theme.title2`, `Theme.title3`, `Theme.headline`, `Theme.body`, `Theme.callout`, `Theme.subheadline`, `Theme.footnote`, `Theme.caption`, `Theme.caption2`), and `Theme.monoDigits(size:weight:)` for odds/numbers
+- Only 2 system fonts remain: `.system(.title, design: .monospaced)` in PlayerClaimView and `.system(.title2, design: .monospaced)` in PlayersListView - these need actual monospace, not Space Grotesk
 
 ---
 
@@ -80,4 +81,21 @@ Started: Sun Feb 16 16:34:00 PST 2026
   - Convenience properties: `Theme.title1` (28 bold), `Theme.headline` (17 bold), `Theme.body` (17), `Theme.subheadline` (15), `Theme.footnote` (13), `Theme.caption` (12), `Theme.caption2` (11 medium)
   - `Theme.monoDigits(size:weight:)` adds `.monospacedDigit()` for tabular number alignment in odds displays
   - Static let properties on Swift enums are lazily evaluated, so calling static methods from static lets works fine
+---
+
+## 2026-02-16 - US-003 (Player UX Polish)
+- **What was implemented**: Replaced all system font calls with Theme font helpers site-wide across 40 files (687 replacements)
+- **Files changed**:
+  - `Booki/Theme.swift` - Added `largeTitle`, `title2`, `title3`, `callout` convenience properties; updated preview section
+  - All 37 View files - Replaced `.font(.headline)`, `.font(.system(size:...))`, etc. with `Theme.headline`, `Theme.font(size:weight:)`, etc.
+  - `Booki/Services/NetworkMonitor.swift` - Replaced system fonts
+  - `Booki/Services/SyncService.swift` - Replaced system fonts
+  - `Booki/Views/CompactOddsButton.swift` - Changed odds number displays to use `Theme.monoDigits()` for tabular alignment
+- **Learnings for future iterations:**
+  - Use sed with `find ... -print0 | while IFS= read -r -d '' f` pattern for bulk replacements across many Swift files
+  - Font replacement mapping: `.largeTitle` → 34pt bold, `.title` → 28pt bold, `.title2` → 22pt bold, `.title3` → 20pt bold, `.headline` → 17pt bold, `.body` → 17pt, `.callout` → 16pt, `.subheadline` → 15pt, `.footnote` → 13pt, `.caption` → 12pt, `.caption2` → 11pt medium
+  - Chained font modifiers like `.font(.subheadline.bold())` need explicit `Theme.font(size: 15, weight: .bold)` replacement
+  - `.fontWeight()` can coexist with custom Font.custom - separate SwiftUI modifier
+  - Only keep `.system()` fonts for monospaced designs (invite codes) - Space Grotesk handles everything else
+  - `.design: .rounded` system fonts can be safely replaced with Theme.font since Space Grotesk provides the distinctive styling
 ---

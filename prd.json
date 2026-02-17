@@ -47,7 +47,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "This is a large story touching many files. Focus on player-facing views first (GamesView, BetSlipSheet, TrackView, AccountView, PlayerLoginView), then bookie views (DashboardView, BetsListView, PlayersListView, SettingsView), then auth/onboarding views."
     },
     {
