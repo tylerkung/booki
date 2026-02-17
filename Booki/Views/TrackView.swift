@@ -176,8 +176,7 @@ struct TrackView: View {
                     systemImage: "list.bullet.clipboard",
                     description: Text("Your bet requests will appear here.")
                 )
-            } header: {
-                Text("Tickets")
+                .listRowBackground(Theme.cardBackground)
             }
         } else {
             ForEach(tickets) { ticket in
