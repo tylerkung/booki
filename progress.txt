@@ -1,5 +1,5 @@
 # Ralph Progress Log
-Started: Tue Feb  3 13:34:20 PST 2026
+Started: Sun Feb 16 16:34:00 PST 2026
 ---
 
 ## Codebase Patterns
@@ -8,6 +8,7 @@ Started: Tue Feb  3 13:34:20 PST 2026
 - Use `Calendar.current.date(byAdding:value:to:)` for date math in Swift
 - Xcode IDE required for full typecheck - swiftc can't resolve SwiftData macros
 - UUID case sensitivity: iOS UUID.uuidString returns UPPERCASE, PostgreSQL stores lowercase - always use `.lowercased()` when comparing UUIDs across systems
+- Font registration: Space Grotesk fonts are in `Booki/Fonts/`, registered in Info.plist UIAppFonts. Use `Font.custom("SpaceGrotesk-Regular", size:)` etc.
 
 ---
 
@@ -51,4 +52,20 @@ Started: Tue Feb  3 13:34:20 PST 2026
   - Event lookup pattern: `events.first { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }`
   - The existing fallback `"Event \(bet.eventId.prefix(8))"` already handles missing events gracefully
   - Bet history views already show event info (teams, final score) when event exists - the issue was case-sensitive comparison failing
+---
+
+## 2026-02-16 - US-001 (Player UX Polish)
+- **What was implemented**: Added Space Grotesk font to the project (Regular, Medium, Bold weights)
+- **Files changed**:
+  - `Booki/Fonts/SpaceGrotesk-Regular.ttf` - Font file (400 weight)
+  - `Booki/Fonts/SpaceGrotesk-Medium.ttf` - Font file (500 weight)
+  - `Booki/Fonts/SpaceGrotesk-Bold.ttf` - Font file (700 weight)
+  - `Booki/Info.plist` - Added UIAppFonts array with font filenames
+  - `Booki.xcodeproj/project.pbxproj` - Added Fonts group, file references, and Copy Bundle Resources entries
+- **Learnings for future iterations:**
+  - Google Fonts CSS API (`fonts.googleapis.com/css2?family=...`) returns actual gstatic.com URLs for TTF files - use User-Agent header to get TTF format
+  - Font PostScript names for Space Grotesk: SpaceGrotesk-Regular, SpaceGrotesk-Medium, SpaceGrotesk-Bold (used in Font.custom())
+  - pbxproj needs 3 things for fonts: PBXFileReference, PBXBuildFile (in Resources), and PBXGroup entry
+  - Use `plutil -lint` to validate plist and pbxproj files after editing
+  - prd.json can be overwritten by hooks/processes — always re-read before editing
 ---

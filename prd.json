@@ -1,17 +1,18 @@
 {
   "project": "Booki",
-  "branchName": "ralph/games-filtering",
-  "description": "Filter Games view to show relevant events while preserving historical data",
+  "branchName": "ralph/player-ux-polish",
+  "description": "Player UX Polish - Close the visual gap with major sportsbooks via Space Grotesk font, team badges, wider odds buttons, sport icons, market count badges, balance display, and custom keypad",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Filter GamesView to show upcoming and recent events",
-      "description": "As a bookie, I want to see only upcoming games and recently finished games so I can focus on active betting.",
+      "title": "Add Space Grotesk font to the project",
+      "description": "As a developer, I need Space Grotesk font files bundled in the Xcode project so views can reference them.",
       "acceptanceCriteria": [
-        "GamesView shows events where status is NOT 'final' OR status IS 'final' AND finished within last 48 hours",
-        "Events sorted by start_time ascending (soonest first)",
-        "Old finished events are hidden but NOT deleted from database",
-        "Use SwiftData predicate for filtering",
+        "Download Space Grotesk in Regular, Medium, and Bold weights (.ttf or .otf files)",
+        "Add font files to Booki/Fonts/ directory",
+        "Register fonts in Info.plist under UIAppFonts (Fonts provided by application)",
+        "Add font files to the Xcode project target (ensure they are included in Copy Bundle Resources)",
+        "Verify fonts load at runtime with a test view",
         "Typecheck passes"
       ],
       "priority": 1,
@@ -20,47 +21,159 @@
     },
     {
       "id": "US-002",
-      "title": "Add Past Events toggle to GamesView",
-      "description": "As a bookie, I want to optionally view past events so I can review historical games.",
+      "title": "Add font helpers to Theme.swift",
+      "description": "As a developer, I need centralized font helpers so all views use Space Grotesk consistently.",
       "acceptanceCriteria": [
-        "Add segmented control or Picker: 'Upcoming' | 'Past'",
-        "'Upcoming' (default): Shows events per US-001 filter",
-        "'Past': Shows events that are 'final' and older than 48 hours",
-        "Past events sorted by start_time descending (most recent first)",
-        "Uses Theme styling consistently",
+        "Add static font methods to Theme: Theme.font(size:weight:) returning Font.custom(\"SpaceGrotesk-...\", size:)",
+        "Map weight parameter to font file names: .regular → SpaceGrotesk-Regular, .medium → SpaceGrotesk-Medium, .bold → SpaceGrotesk-Bold",
+        "Add convenience properties matching SwiftUI type scale: Theme.title1, Theme.headline, Theme.body, Theme.subheadline, Theme.footnote, Theme.caption, Theme.caption2",
+        "Add Theme.monoDigits(size:weight:) that returns Space Grotesk with .monospacedDigit() for odds/numbers",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Ensure event details visible in bet history",
-      "description": "As a user, I want to see event details when viewing a historical bet.",
+      "title": "Apply Space Grotesk site-wide",
+      "description": "As a user, I want the app to use a consistent, sporty font throughout so it feels distinct from default iOS apps.",
       "acceptanceCriteria": [
-        "Bet rows/detail views show event info (teams, final score) for all bets",
-        "Handle case where bet references old event gracefully",
-        "No broken UI or crashes if event exists",
+        "Replace .font(.system(...)) calls across all view files with Theme.font(...) or Theme.headline, etc.",
+        "Replace .font(.largeTitle), .font(.title), .font(.headline), .font(.body), .font(.caption), etc. with Theme equivalents",
+        "Odds displays use Theme.monoDigits(...) for tabular number alignment",
+        "Loading screen, onboarding, auth views, player views, and bookie views all use Space Grotesk",
+        "No remaining .font(.system(...)) calls except where truly needed (e.g., SF Symbols)",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "This is a large story touching many files. Focus on player-facing views first (GamesView, BetSlipSheet, TrackView, AccountView, PlayerLoginView), then bookie views (DashboardView, BetsListView, PlayersListView, SettingsView), then auth/onboarding views."
     },
     {
       "id": "US-004",
-      "title": "Filter player game browsing to bettable events only",
-      "description": "As a player, I want to see only upcoming games I can actually bet on.",
+      "title": "Add team abbreviation badges to CompactGameRow",
+      "description": "As a player, I want to see team abbreviation badges next to team names so games are instantly recognizable.",
       "acceptanceCriteria": [
-        "Player's BetSlipSheet or game selection shows only events where status allows betting",
-        "Events with start_time in the past are hidden",
-        "Events with status 'final', 'locked', or 'canceled' are hidden",
+        "Add a helper function that derives a 2-3 letter abbreviation from a team name (e.g., 'Los Angeles Lakers' → 'LAL', 'Boston Celtics' → 'BOS')",
+        "Logic: Use last word of team name, take first 3 letters, uppercase. For two-word cities (e.g., 'Golden State Warriors'), use first letter of city + first 2 letters of team name",
+        "Display abbreviation inside a small circle (24x24pt) with Theme.elevatedBackground fill and Theme.textSecondary text",
+        "Position badge to the left of each team name in the two-row game layout",
+        "Badge uses Theme.caption2 equivalent font size, bold weight",
+        "Away team badge on the top row, home team badge on the bottom row",
         "Typecheck passes"
       ],
       "priority": 4,
       "passes": false,
+      "notes": "CompactGameRow is in Booki/Views/GamesView.swift or a separate file. Check existing game row layout before modifying."
+    },
+    {
+      "id": "US-005",
+      "title": "Widen odds buttons from 52pt to 65pt",
+      "description": "As a player, I want larger odds buttons so they're easier to read and tap.",
+      "acceptanceCriteria": [
+        "Change oddsButtonWidth from 52 to 65 in CompactGameRow",
+        "Verify spread buttons (line value + odds) have adequate spacing at new width",
+        "Verify moneyline buttons display cleanly at new width",
+        "Selected state styling looks correct at new width",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Check CompactGameRow or CompactOddsButton for the current width constant."
+    },
+    {
+      "id": "US-006",
+      "title": "Add sport icons to filter tabs",
+      "description": "As a player, I want sport filter tabs with icons so I can quickly identify and switch between sports.",
+      "acceptanceCriteria": [
+        "Create a helper function/dictionary mapping sport keys to SF Symbol names: basketball → basketball.fill, football → football.fill, soccer → soccerball, baseball → baseball.diamond.bases, hockey → hockey.puck.fill, mma → figure.martial.arts, tennis → tennisball.fill, golf → figure.golf",
+        "Update sport filter pills in GamesView to show icon + text (e.g., basketball icon + NBA)",
+        "Icon size 14pt, positioned to the left of the sport text",
+        "Selected state: accent background with dark text (existing pattern)",
+        "Unselected state: card background with secondary text (existing pattern)",
+        "'All' tab has no icon or uses sportscourt symbol",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "GamesView.swift has the sport filter pills. Check how sports are currently stored/displayed."
+    },
+    {
+      "id": "US-007",
+      "title": "Add available markets count badge to game rows",
+      "description": "As a player, I want to see how many additional markets are available for each game.",
+      "acceptanceCriteria": [
+        "Count the number of Market records associated with each Event",
+        "Display a small badge at the trailing edge of the game row: '+N' format (e.g., '+12') where N is total markets minus the 3 shown (spread/money/total)",
+        "Only show badge when additional markets exist (N > 0)",
+        "Badge styled as a pill: Theme.elevatedBackground background, Theme.textMuted text, Theme.caption2 font",
+        "Add a subtle chevron (chevron.right) after the badge",
+        "Tapping anywhere on the game row (outside odds buttons) navigates to game detail",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Markets are already loaded via @Query in GamesView. Count markets per event using markets.filter { $0.event?.id == event.id }.count"
+    },
+    {
+      "id": "US-008",
+      "title": "Show player balance in bet slip header",
+      "description": "As a player, I want to see my current balance and credit limit at the top of the bet slip.",
+      "acceptanceCriteria": [
+        "Add a balance display row between the bet slip title bar and the first bet card",
+        "Format: 'Balance: $250.00 / $1,000.00 limit' using player's current display balance and credit limit",
+        "Balance amount uses balanceColor logic (green if positive/credit, red if negative/debt, secondary if zero)",
+        "Credit limit shown in Theme.textMuted",
+        "Balance data sourced from the Player object passed to BetSlipSheet (or via environment)",
+        "Row has subtle bottom divider matching existing Theme.divider pattern",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "BetSlipSheet is presented from PlayerMainView which has access to player and balance. Internal balance has opposite sign — negate for player display (positive = credit, negative = debt)."
+    },
+    {
+      "id": "US-009",
+      "title": "Build custom numeric keypad component",
+      "description": "As a developer, I need a reusable custom numeric keypad view that replaces the iOS system keyboard for stake entry.",
+      "acceptanceCriteria": [
+        "Create NumericKeypadView in a new file Booki/Views/NumericKeypadView.swift",
+        "Grid layout: 4 columns x 4 rows: [1][2][3][DEL] / [4][5][6][+$5] / [7][8][9][+$10] / [.][0][+$25][+$50]",
+        "Each number key appends the digit to the bound text value",
+        "Decimal key (.) only works once per value (prevent '12.5.3')",
+        "Delete key removes the last character",
+        "Quick stake buttons (+$5, +$10, +$25, +$50) add to the current numeric value (additive)",
+        "Keys styled with Theme.elevatedBackground background, Theme.textPrimary text, 44pt minimum height",
+        "Quick stake keys styled with Theme.accent.opacity(0.15) background and Theme.accent text",
+        "Press animation: scale to 0.95 on tap with spring animation",
+        "Accepts a Binding<String> for the text value and an optional onValueChanged callback",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
       "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Integrate custom keypad into BetSlipSheet",
+      "description": "As a player, I want the bet slip to use the custom keypad instead of the iOS keyboard.",
+      "acceptanceCriteria": [
+        "Replace all TextField stake inputs with display-only Text views that show the current value",
+        "Tapping a stake field sets it as the 'active field' (track which field is being edited via state)",
+        "Active field has a highlighted border (accent glow, existing glowingBorder pattern)",
+        "NumericKeypadView appears pinned to the bottom of the bet slip (above the Place Bet button)",
+        "Keypad is always visible when a stake field is active (no iOS keyboard dismiss animation)",
+        "Tapping outside stake fields or tapping the active field again deactivates the keypad",
+        "Both WAGER and TO WIN fields are tappable; editing one auto-calculates the other (existing bidirectional logic)",
+        "In parlay mode, keypad edits the single parlay stake field",
+        "In singles mode, keypad edits the per-card stake field that is currently active",
+        "Quick stake buttons on the keypad work with whichever field is active",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "BetSlipSheet currently uses TextField for stake inputs. Replace with tappable Text views and route input through NumericKeypadView. Track activeFieldId as String? state."
     }
   ]
 }
