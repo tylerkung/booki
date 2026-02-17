@@ -184,9 +184,8 @@ struct ContentView: View {
 struct PlayerTabView<Content: View>: View {
     let player: Player
     let balance: Decimal
+    var onLogoTap: (() -> Void)? = nil
     @ViewBuilder let content: Content
-
-    @State private var navigateToAccount = false
 
     var body: some View {
         NavigationStack {
@@ -195,16 +194,11 @@ struct PlayerTabView<Content: View>: View {
                 AppHeaderView(
                     player: player,
                     balance: balance,
-                    navigateToAccount: {
-                        navigateToAccount = true
-                    }
+                    onLogoTap: onLogoTap
                 )
 
                 // Tab content
                 content
-            }
-            .navigationDestination(isPresented: $navigateToAccount) {
-                AccountView(player: player)
             }
         }
     }

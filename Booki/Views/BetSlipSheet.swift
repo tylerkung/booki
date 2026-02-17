@@ -1674,20 +1674,13 @@ struct PremiumBetSlipItemCard: View {
             HStack(alignment: .top, spacing: 12) {
                 // Team logo placeholder (colored circle)
                 Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [teamColor(for: item.side), teamColor(for: item.side).opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(Theme.elevatedBackground)
                     .frame(width: 44, height: 44)
                     .overlay(
                         Text(String(item.side.prefix(2)).uppercased())
                             .font(Theme.font(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.textSecondary)
                     )
-                    .shadow(color: teamColor(for: item.side).opacity(0.4), radius: 4, x: 0, y: 2)
 
                 // Left: Selection info stacked vertically
                 VStack(alignment: .leading, spacing: 4) {
