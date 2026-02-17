@@ -64,7 +64,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "CompactGameRow is in Booki/Views/GamesView.swift or a separate file. Check existing game row layout before modifying."
     },
     {

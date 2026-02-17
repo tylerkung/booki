@@ -178,7 +178,9 @@ struct CompactGameRow: View {
         isAwayTeam: Bool
     ) -> some View {
         HStack(spacing: 8) {
-            // Team name
+            // Team abbreviation badge + name
+            teamBadge(teamName)
+
             Text(teamName)
                 .font(Theme.font(size: 13, weight: .semibold))
                 .foregroundColor(Theme.textPrimary)
@@ -297,6 +299,44 @@ struct CompactGameRow: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isSelected)
+    }
+
+    // MARK: - Team Abbreviation
+
+    /// Derives a 2-3 letter abbreviation from a team name
+    /// e.g., "Los Angeles Lakers" → "LAL", "Boston Celtics" → "CEL", "Golden State Warriors" → "GWA"
+    private func teamAbbreviation(_ teamName: String) -> String {
+        let words = teamName.components(separatedBy: " ").filter { !$0.isEmpty }
+        guard !words.isEmpty else { return "?" }
+
+        // Single word: take first 3 letters
+        if words.count == 1 {
+            return String(words[0].prefix(3)).uppercased()
+        }
+
+        // Team name is the last word
+        let teamWord = words.last!
+
+        // Two-word cities (3+ words total): first letter of city + first 2 letters of team name
+        if words.count >= 3 {
+            let cityInitial = String(words[0].prefix(1))
+            let teamPrefix = String(teamWord.prefix(2))
+            return (cityInitial + teamPrefix).uppercased()
+        }
+
+        // Two words: take first 3 letters of last word
+        return String(teamWord.prefix(3)).uppercased()
+    }
+
+    /// Small circle badge showing team abbreviation
+    @ViewBuilder
+    private func teamBadge(_ teamName: String) -> some View {
+        Text(teamAbbreviation(teamName))
+            .font(Theme.font(size: 9, weight: .bold))
+            .foregroundColor(Theme.textSecondary)
+            .frame(width: 24, height: 24)
+            .background(Theme.elevatedBackground)
+            .clipShape(Circle())
     }
 
     // MARK: - Helpers

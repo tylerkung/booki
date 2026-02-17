@@ -99,3 +99,14 @@ Started: Sun Feb 16 16:34:00 PST 2026
   - Only keep `.system()` fonts for monospaced designs (invite codes) - Space Grotesk handles everything else
   - `.design: .rounded` system fonts can be safely replaced with Theme.font since Space Grotesk provides the distinctive styling
 ---
+
+## 2026-02-16 - US-004 (Player UX Polish)
+- **What was implemented**: Added team abbreviation badges (24x24pt circles) to the left of team names in CompactGameRow
+- **Files changed**:
+  - `Booki/Views/CompactGameRow.swift` - Added `teamAbbreviation(_:)` helper, `teamBadge(_:)` view builder, and integrated badge into `teamOddsRow`
+- **Learnings for future iterations:**
+  - CompactGameRow is in its own file `Booki/Views/CompactGameRow.swift`, not in GamesView.swift
+  - Team abbreviation logic: 1 word → first 3 letters; 2 words → first 3 of last word; 3+ words (multi-word city) → first letter of city + first 2 of team name
+  - Badge uses `clipShape(Circle())` for round shape, `Theme.font(size: 9, weight: .bold)` for compact text in 24x24 circle
+  - `teamOddsRow` is the function that renders each team line (away on top, home on bottom) with odds buttons
+---
