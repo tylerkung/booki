@@ -83,15 +83,15 @@ struct SyncGamesView: View {
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
+                .font(Theme.font(size: 48))
                 .foregroundStyle(.orange)
 
             Text("Error")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
 
             Text(message)
-                .font(.body)
+                .font(Theme.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
@@ -108,11 +108,11 @@ struct SyncGamesView: View {
     private func successView(_ result: SyncResult) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
+                .font(Theme.font(size: 48))
                 .foregroundStyle(.green)
 
             Text("Games Synced")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
 
             VStack(spacing: 8) {
@@ -133,7 +133,7 @@ struct SyncGamesView: View {
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
-            .font(.body)
+            .font(Theme.body)
 
             Button("Done") {
                 dismiss()
@@ -150,15 +150,15 @@ struct SyncGamesView: View {
             // Header
             VStack(spacing: 8) {
                 Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 48))
+                    .font(Theme.font(size: 48))
                     .foregroundStyle(Theme.accent)
 
                 Text("Sync Games")
-                    .font(.title2)
+                    .font(Theme.title2)
                     .fontWeight(.semibold)
 
                 Text("Remove old games and fetch fresh upcoming games with current odds.")
-                    .font(.body)
+                    .font(Theme.body)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -168,7 +168,7 @@ struct SyncGamesView: View {
             // Sport selection
             VStack(alignment: .leading, spacing: 12) {
                 Text("Select Sports")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -195,14 +195,14 @@ struct SyncGamesView: View {
                     Image(systemName: "info.circle")
                         .foregroundStyle(Theme.warning)
                     Text("\(staleEvents.count) old games will be removed")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
 
             if let remaining = oddsService.quotaRemaining {
                 Text("API quota: \(remaining) calls remaining")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
             }
 

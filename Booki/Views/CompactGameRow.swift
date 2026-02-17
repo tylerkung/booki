@@ -121,20 +121,20 @@ struct CompactGameRow: View {
         HStack(spacing: 4) {
             // Start time
             Text(formattedStartTime)
-                .font(.caption2)
+                .font(Theme.caption2)
                 .foregroundColor(Theme.textSecondary)
 
             // Lock indicator when event is locked
             if isEventLocked {
                 Image(systemName: "lock.fill")
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .foregroundColor(Theme.warning)
             }
 
             // Live indicator
             if event.status == .live {
                 Text("LIVE")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(Theme.font(size: 10, weight: .bold))
                     .foregroundColor(Theme.live)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -147,14 +147,14 @@ struct CompactGameRow: View {
             // Postponed indicator
             if event.status == .postponed {
                 Text("PPD")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(Theme.font(size: 10, weight: .bold))
                     .foregroundColor(Theme.warning)
             }
 
             // Canceled indicator
             if event.status == .canceled {
                 Text("CANCELED")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(Theme.font(size: 10, weight: .bold))
                     .foregroundColor(Theme.danger)
             }
 
@@ -180,7 +180,7 @@ struct CompactGameRow: View {
         HStack(spacing: 8) {
             // Team name
             Text(teamName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(Theme.font(size: 13, weight: .semibold))
                 .foregroundColor(Theme.textPrimary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -270,19 +270,19 @@ struct CompactGameRow: View {
                 VStack(spacing: 1) {
                     if let text = topText {
                         Text(text)
-                            .font(.system(size: 11, weight: .bold))
+                            .font(Theme.font(size: 11, weight: .bold))
                             .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
                     Text(formatOdds(odds))
-                        .font(.system(size: 9, weight: .medium))
+                        .font(Theme.font(size: 9, weight: .medium))
                         .foregroundColor(isSelected ? Theme.background.opacity(0.7) : Theme.textMuted)
                 }
             } else {
                 // Moneyline - just show odds prominently
                 Text(formatOdds(odds))
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(Theme.font(size: 12, weight: .semibold))
                     .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
             }
         }

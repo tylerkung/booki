@@ -160,11 +160,11 @@ struct AuthGateView: View {
             VStack(spacing: 24) {
                 // App Logo
                 Image(systemName: "book.closed.fill")
-                    .font(.system(size: 80))
+                    .font(Theme.font(size: 80))
                     .foregroundStyle(Theme.accent)
 
                 Text("Booki")
-                    .font(.largeTitle)
+                    .font(Theme.largeTitle)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.textPrimary)
 

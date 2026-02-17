@@ -65,7 +65,7 @@ struct EditMarketSheet: View {
                     }
 
                     Text("Enter American odds (e.g., -110, +150)")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(.secondary)
                 }
 

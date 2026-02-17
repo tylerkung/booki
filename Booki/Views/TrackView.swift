@@ -191,7 +191,7 @@ struct TrackView: View {
                             TicketHeaderView(ticket: ticket)
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(Theme.textMuted)
                         }
@@ -273,14 +273,14 @@ struct TicketHeaderView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(ticket.displayName)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textPrimary)
 
                     // Show leg grading progress for parlays
                     if showGradingProgress {
                         Text("\(gradedLegsCount)/\(ticket.bets.count) legs graded")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.accentSecondary)
                     }
                 }
@@ -288,7 +288,7 @@ struct TicketHeaderView: View {
                 Spacer()
 
                 Text(statusText)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.background)
                     .padding(.horizontal, 8)
@@ -311,14 +311,14 @@ struct TicketHeaderView: View {
             // Row 3: Stake and potential payout
             HStack {
                 Text("Stake: \(formatCurrency(ticket.totalStake))")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
 
                 Text("•")
                     .foregroundStyle(Theme.textMuted)
 
                 Text("To Win: \(formatCurrency(ticket.potentialPayout))")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.accent)
             }
         }
@@ -350,7 +350,7 @@ struct TicketBetRowView: View {
         VStack(alignment: .leading, spacing: 6) {
             // Row 1: Event name
             Text(eventName)
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
@@ -358,18 +358,18 @@ struct TicketBetRowView: View {
             // Row 2: Side and odds
             HStack(spacing: 8) {
                 Text(bet.side)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
 
                 Text(formattedOdds)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.scheduled)
 
                 Spacer()
 
                 Text(formattedStake)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.textPrimary)
             }
@@ -379,7 +379,7 @@ struct TicketBetRowView: View {
                 // Show grade result badge when graded (even before settled)
                 HStack {
                     Text(result.rawValue.capitalized)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.background)
                         .padding(.horizontal, 8)
@@ -391,7 +391,7 @@ struct TicketBetRowView: View {
                 // Show pending indicator for legs awaiting result
                 HStack {
                     Text("Awaiting Result")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                         .italic()
                 }

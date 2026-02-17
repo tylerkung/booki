@@ -65,19 +65,19 @@ struct SubmitBetView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Available Credit")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(.secondary)
                         Text(formatCurrency(balanceSummary.availableCredit))
-                            .font(.title2.bold())
+                            .font(Theme.title2)
                             .foregroundStyle(availableCreditColor)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 4) {
                         Text("Credit Limit")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(.secondary)
                         Text(formatCurrency(player.creditLimit))
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -181,13 +181,13 @@ struct EventRowView: View {
             // Teams matchup
             HStack {
                 Text("\(event.awayTeam) @ \(event.homeTeam)")
-                    .font(.headline)
+                    .font(Theme.headline)
 
                 Spacer()
 
                 if event.status == .live {
                     Text(statusText)
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.medium)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
@@ -201,10 +201,10 @@ struct EventRowView: View {
             HStack {
                 Image(systemName: "clock")
                     .foregroundStyle(.secondary)
-                    .font(.caption)
+                    .font(Theme.caption)
 
                 Text(formattedStartTime)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
@@ -282,13 +282,13 @@ struct MarketSelectionView: View {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(event.awayTeam) @ \(event.homeTeam)")
-                        .font(.headline)
+                        .font(Theme.headline)
                     HStack {
                         Text(event.sport)
                         Text("•")
                         Text(event.league)
                     }
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(.secondary)
                 }
             } header: {
@@ -315,14 +315,14 @@ struct MarketSelectionView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Your Selection")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(.secondary)
                             Text(selectedSideLabel ?? "")
-                                .font(.headline)
+                                .font(Theme.headline)
                         }
                         Spacer()
                         Text(formatOdds(selectedOdds ?? 0))
-                            .font(.title2.bold())
+                            .font(Theme.title2)
                             .foregroundStyle(.blue)
                     }
                 } header: {
@@ -383,7 +383,7 @@ struct MarketSelectionView: View {
             sideIndicator: selectedSide == .sideA ? "a" : "b"
         )) {
             Text("Continue")
-                .font(.headline)
+                .font(Theme.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(Color.blue)
@@ -428,12 +428,12 @@ struct MarketRowView: View {
             Button(action: onSelectSideA) {
                 VStack(spacing: 4) {
                     Text(market.sideA)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.medium)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
                     Text(formatOdds(market.oddsA))
-                        .font(.headline.bold())
+                        .font(Theme.headline)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -448,12 +448,12 @@ struct MarketRowView: View {
             Button(action: onSelectSideB) {
                 VStack(spacing: 4) {
                     Text(market.sideB)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.medium)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
                     Text(formatOdds(market.oddsB))
-                        .font(.headline.bold())
+                        .font(Theme.headline)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -624,19 +624,19 @@ struct StakeEntryView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Available Credit")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(.secondary)
                     Text(formatCurrency(balanceSummary.availableCredit))
-                        .font(.title2.bold())
+                        .font(Theme.title2)
                         .foregroundStyle(availableCreditColor)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
                     Text("Credit Limit")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(.secondary)
                     Text(formatCurrency(player.creditLimit))
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -652,10 +652,10 @@ struct StakeEntryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("$")
-                        .font(.title)
+                        .font(Theme.title1)
                         .foregroundStyle(.secondary)
                     TextField("0", text: $stakeInput)
-                        .font(.title.bold())
+                        .font(Theme.title1)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.leading)
                 }
@@ -666,7 +666,7 @@ struct StakeEntryView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.red)
                         Text(error)
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(.red)
                     }
                 }
@@ -767,7 +767,7 @@ struct StakeEntryView: View {
                     Image(systemName: "info.circle.fill")
                         .foregroundStyle(.blue)
                     Text("This submission records a bet request with your book. No money is wagered or transferred in this app.")
-                        .font(.footnote)
+                        .font(Theme.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -781,7 +781,7 @@ struct StakeEntryView: View {
     private var submitButton: some View {
         Button(action: submitRequest) {
             Text("Submit Request")
-                .font(.headline)
+                .font(Theme.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(Color.blue)

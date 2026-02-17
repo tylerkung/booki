@@ -233,23 +233,23 @@ struct GradingView: View {
         } label: {
             HStack {
                 Image(systemName: "dollarsign.circle.fill")
-                    .font(.title2)
+                    .font(Theme.title2)
                     .foregroundStyle(Theme.accent)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Settle All Graded")
-                        .font(.headline)
+                        .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
 
                     Text("\(gradedBets.count) bet\(gradedBets.count == 1 ? "" : "s") ready")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
             }
             .padding()
@@ -563,17 +563,17 @@ struct GradingBetRow: View {
                     } label: {
                         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                             .foregroundStyle(isSelected ? .blue : .secondary)
-                            .font(.title2)
+                            .font(Theme.title2)
                     }
                     .buttonStyle(.plain)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bet.player?.name ?? "Unknown Player")
-                        .font(.headline)
+                        .font(Theme.headline)
 
                     Text(eventName)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
@@ -583,10 +583,10 @@ struct GradingBetRow: View {
                 if let event = event, let finalScore = event.finalScore, event.status == .final {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("Final")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(.secondary)
                         Text(finalScore)
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.semibold)
                     }
                 }
@@ -595,24 +595,24 @@ struct GradingBetRow: View {
             // Middle row: Bet details
             HStack {
                 Text(bet.market)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(.secondary)
 
                 Text("•")
                     .foregroundStyle(.secondary)
 
                 Text(bet.side)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.medium)
 
                 Text(formattedOdds)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
                 Text(formattedStake)
-                    .font(.subheadline.bold())
+                    .font(Theme.font(size: 15, weight: .bold))
             }
 
             // Suggested outcome (if available)
@@ -620,10 +620,10 @@ struct GradingBetRow: View {
                 HStack {
                     Image(systemName: "lightbulb.fill")
                         .foregroundStyle(.yellow)
-                        .font(.caption)
+                        .font(Theme.caption)
 
                     Text("Suggested: \(suggested.rawValue.capitalized)")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -828,21 +828,21 @@ struct ParlayGradingGroupView: View {
             // Parlay icon
             Image(systemName: "link")
                 .foregroundStyle(Theme.accentSecondary)
-                .font(.title3)
+                .font(Theme.title3)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Text("Parlay")
-                        .font(.headline)
+                        .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
 
                     Text("(\(totalLegs) legs)")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
 
                 Text("\(gradedCount) of \(totalLegs) legs graded")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
             }
 
@@ -851,7 +851,7 @@ struct ParlayGradingGroupView: View {
             // Player name
             if let player = group.bets.first?.player {
                 Text(player.name)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }
         }
@@ -868,7 +868,7 @@ struct ParlayGradingGroupView: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(Theme.danger)
                     Text("Will lose - \(lostLegs) leg\(lostLegs == 1 ? "" : "s") lost")
-                        .font(.subheadline.weight(.medium))
+                        .font(Theme.font(size: 15, weight: .medium))
                         .foregroundStyle(Theme.danger)
                 }
 
@@ -877,7 +877,7 @@ struct ParlayGradingGroupView: View {
                     Image(systemName: "equal.circle.fill")
                         .foregroundStyle(Theme.warning)
                     Text("Will push - stake returned")
-                        .font(.subheadline.weight(.medium))
+                        .font(Theme.font(size: 15, weight: .medium))
                         .foregroundStyle(Theme.warning)
                 }
 
@@ -886,7 +886,7 @@ struct ParlayGradingGroupView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(Theme.accent)
                     Text("Can win - \(validLegs) leg\(validLegs == 1 ? "" : "s") won")
-                        .font(.subheadline.weight(.medium))
+                        .font(Theme.font(size: 15, weight: .medium))
                         .foregroundStyle(Theme.accent)
                 }
 
@@ -895,7 +895,7 @@ struct ParlayGradingGroupView: View {
                     Image(systemName: "clock.fill")
                         .foregroundStyle(Theme.textMuted)
                     Text("In progress - \(graded)/\(total) graded")
-                        .font(.subheadline.weight(.medium))
+                        .font(Theme.font(size: 15, weight: .medium))
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
@@ -906,10 +906,10 @@ struct ParlayGradingGroupView: View {
             if let payout = projectedPayout, payout > 0 {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("Projected payout")
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .foregroundStyle(Theme.textMuted)
                     Text(formatCurrency(payout))
-                        .font(.subheadline.weight(.semibold))
+                        .font(Theme.font(size: 15, weight: .semibold))
                         .foregroundStyle(Theme.accent)
                 }
             }
@@ -997,7 +997,7 @@ struct ParlayLegRow: View {
                 } label: {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(isSelected ? .blue : .secondary)
-                        .font(.title3)
+                        .font(Theme.title3)
                 }
                 .buttonStyle(.plain)
             }
@@ -1005,23 +1005,23 @@ struct ParlayLegRow: View {
             // Bet info
             VStack(alignment: .leading, spacing: 4) {
                 Text(eventName)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(isGraded ? Theme.textMuted : Theme.textPrimary)
 
                 HStack(spacing: 4) {
                     Text(bet.market)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
 
                     Text("•")
                         .foregroundStyle(Theme.textMuted)
 
                     Text(bet.side)
-                        .font(.caption.weight(.medium))
+                        .font(Theme.font(size: 12, weight: .medium))
                         .foregroundStyle(isGraded ? Theme.textMuted : Theme.textSecondary)
 
                     Text(formattedOdds)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                 }
             }
@@ -1031,7 +1031,7 @@ struct ParlayLegRow: View {
             // Status badge or grading buttons
             if isGraded {
                 Text(statusText)
-                    .font(.caption.weight(.semibold))
+                    .font(Theme.font(size: 12, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -1044,7 +1044,7 @@ struct ParlayLegRow: View {
                         onGrade(.win)
                     } label: {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.title2)
+                            .font(Theme.title2)
                             .foregroundStyle(.green)
                     }
                     .buttonStyle(.plain)
@@ -1053,7 +1053,7 @@ struct ParlayLegRow: View {
                         onGrade(.loss)
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
+                            .font(Theme.title2)
                             .foregroundStyle(.red)
                     }
                     .buttonStyle(.plain)
@@ -1062,7 +1062,7 @@ struct ParlayLegRow: View {
                         onGrade(.push)
                     } label: {
                         Image(systemName: "equal.circle.fill")
-                            .font(.title2)
+                            .font(Theme.title2)
                             .foregroundStyle(.orange)
                     }
                     .buttonStyle(.plain)
@@ -1073,7 +1073,7 @@ struct ParlayLegRow: View {
                             onVoid()
                         } label: {
                             Image(systemName: "nosign")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.textMuted)
                         }
                         .buttonStyle(.plain)

@@ -41,7 +41,7 @@ struct AppleSignInButton: View {
 
             if let errorMessage = errorMessage {
                 Text(errorMessage)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
             }
@@ -177,7 +177,7 @@ struct DividerWithText: View {
                 .frame(height: 1)
 
             Text(text)
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .foregroundStyle(Theme.textMuted)
 
             Rectangle()

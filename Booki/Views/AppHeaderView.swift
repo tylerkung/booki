@@ -109,13 +109,13 @@ struct AppHeaderView: View {
                     .frame(width: 36, height: 36)
                     .opacity(0.8)
                 Text(userInitials)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(Theme.font(size: 14, weight: .bold))
                     .foregroundStyle(.white)
             }
 
             // Player name
             Text(player.name)
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
@@ -123,7 +123,7 @@ struct AppHeaderView: View {
             // Chevron to indicate tappable (only if navigable)
             if navigateToAccount != nil {
                 Image(systemName: "chevron.right")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.textMuted)
             }
@@ -135,7 +135,7 @@ struct AppHeaderView: View {
     private var balanceSection: some View {
         VStack(alignment: .trailing, spacing: 2) {
             Text(formattedBalance)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(Theme.font(size: 18, weight: .bold))
                 .foregroundStyle(balanceColor)
         }
     }

@@ -166,17 +166,17 @@ struct EventListRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 // Teams
                 Text("\(event.awayTeam) @ \(event.homeTeam)")
-                    .font(.headline)
+                    .font(Theme.headline)
 
                 // Start time
                 Text(formattedStartTime)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(.secondary)
 
                 // Final score if available
                 if let finalScore = event.finalScore {
                     Text("Final: \(finalScore)")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -185,7 +185,7 @@ struct EventListRowView: View {
 
             // Status badge
             Text(statusText)
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.medium)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 8)

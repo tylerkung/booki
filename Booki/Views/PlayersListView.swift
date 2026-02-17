@@ -122,7 +122,7 @@ struct PlayersListView: View {
                         .overlay(alignment: .topTrailing) {
                             if playersWithCollectionStatus > 0 && collectionFilter == .all {
                                 Text("\(playersWithCollectionStatus)")
-                                    .font(.caption2)
+                                    .font(Theme.caption2)
                                     .fontWeight(.bold)
                                     .foregroundStyle(.white)
                                     .padding(4)
@@ -237,10 +237,10 @@ struct PlayerRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(player.name)
-                        .font(.headline)
+                        .font(Theme.headline)
 
                     Text(statusText)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -249,7 +249,7 @@ struct PlayerRowView: View {
 
                     if shouldShowCollectionStatus, let collectionStatus = player.collectionStatus {
                         Text(collectionStatus.displayName)
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -260,11 +260,11 @@ struct PlayerRowView: View {
 
                 HStack(spacing: 12) {
                     Text("Balance: \(formattedBalance)")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(balanceColor)
 
                     Text("Limit: \(formattedCreditLimit)")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -274,11 +274,11 @@ struct PlayerRowView: View {
             // Utilization percentage
             VStack(alignment: .trailing, spacing: 2) {
                 Text("\(Int(utilization))%")
-                    .font(.title3.bold())
+                    .font(Theme.title3)
                     .foregroundStyle(utilizationColor)
 
                 Text("Utilized")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(.secondary)
             }
         }
@@ -446,9 +446,9 @@ struct PlayerDetailView: View {
                             .foregroundStyle(.green)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Account Claimed")
-                                .font(.headline)
+                                .font(Theme.headline)
                             Text(claimedAt, style: .date)
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -456,7 +456,7 @@ struct PlayerDetailView: View {
                     // Code exists but not claimed
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Invite Code")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(.secondary)
 
                         HStack(spacing: 12) {
@@ -479,25 +479,25 @@ struct PlayerDetailView: View {
                                 }
                             } label: {
                                 Image(systemName: codeCopied ? "checkmark" : "doc.on.doc")
-                                    .font(.title3)
+                                    .font(Theme.title3)
                                     .foregroundStyle(codeCopied ? .green : Theme.accent)
                             }
                         }
 
                         if let generatedAt = player.inviteCodeGeneratedAt {
                             Text("Generated \(generatedAt, style: .relative) ago")
-                                .font(.caption2)
+                                .font(Theme.caption2)
                                 .foregroundStyle(.secondary)
                         }
 
                         if let expiresAt = player.inviteCodeExpiresAt {
                             if Date() > expiresAt {
                                 Text("Expired")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(.red)
                             } else {
                                 Text("Expires \(expiresAt, style: .date)")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(.orange)
                             }
                         }
@@ -1014,13 +1014,13 @@ struct PlayerBetRowView: View {
             // Top row: Event name and status
             HStack {
                 Text(eventName)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.medium)
 
                 Spacer()
 
                 Text(bet.status.rawValue.capitalized)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
@@ -1032,34 +1032,34 @@ struct PlayerBetRowView: View {
             // Middle row: Side and odds
             HStack {
                 Text(bet.side)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(.secondary)
 
                 Text("•")
                     .foregroundStyle(.secondary)
 
                 Text(formattedOdds)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
                 Text(formattedStake)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.medium)
             }
 
             // Bottom row: Date and result (if any)
             HStack {
                 Text(formattedDate)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .foregroundStyle(.tertiary)
 
                 Spacer()
 
                 if let result = bet.gradeResult {
                     Text(result.rawValue.capitalized)
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.medium)
                         .foregroundStyle(gradeResultColor(result))
                 }
@@ -1326,16 +1326,16 @@ struct AddPlayerInterstitialSheet: View {
                 // Header
                 VStack(spacing: 8) {
                     Image(systemName: "person.badge.plus")
-                        .font(.system(size: 48))
+                        .font(Theme.font(size: 48))
                         .foregroundStyle(Theme.accent)
 
                     Text("Add to Your Book")
-                        .font(.title2)
+                        .font(Theme.title2)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.textPrimary)
 
                     Text("Choose how you want to add players")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .padding(.top, 32)
@@ -1354,7 +1354,7 @@ struct AddPlayerInterstitialSheet: View {
                     } label: {
                         HStack(spacing: 16) {
                             Image(systemName: "person.fill.badge.plus")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.accent)
                                 .frame(width: 44, height: 44)
                                 .background(Theme.accent.opacity(0.15))
@@ -1362,11 +1362,11 @@ struct AddPlayerInterstitialSheet: View {
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Add Player")
-                                    .font(.headline)
+                                    .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 Text("Create a new player manually")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
 
@@ -1391,7 +1391,7 @@ struct AddPlayerInterstitialSheet: View {
                     } label: {
                         HStack(spacing: 16) {
                             Image(systemName: "person.3.fill")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.gold)
                                 .frame(width: 44, height: 44)
                                 .background(Theme.gold.opacity(0.15))
@@ -1399,11 +1399,11 @@ struct AddPlayerInterstitialSheet: View {
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Purchase Seats")
-                                    .font(.headline)
+                                    .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 Text("Buy additional player slots")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
 

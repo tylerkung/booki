@@ -158,16 +158,16 @@ struct GameCardView: View {
             // Start time
             HStack(spacing: 4) {
                 Image(systemName: "clock")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundColor(Theme.textSecondary)
                 Text(formattedStartTime)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundColor(Theme.textSecondary)
 
                 // US-008: Lock indicator when event is locked
                 if isEventLocked {
                     Image(systemName: "lock.fill")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundColor(Theme.warning)
                 }
             }
@@ -191,7 +191,7 @@ struct GameCardView: View {
 
             // Sport badge with gradient accent
             Text(event.sport)
-                .font(.system(size: 10, weight: .bold))
+                .font(Theme.font(size: 10, weight: .bold))
                 .foregroundColor(Theme.textPrimary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -244,7 +244,7 @@ struct GameCardView: View {
                     .shadow(color: Theme.live, radius: 6, x: 0, y: 0)
             }
             Text("LIVE")
-                .font(.system(size: 10, weight: .black))
+                .font(Theme.font(size: 10, weight: .black))
                 .foregroundColor(Theme.live)
         }
         .padding(.horizontal, 12)
@@ -288,7 +288,7 @@ struct GameCardView: View {
     @ViewBuilder
     private var postponedBadge: some View {
         Text("POSTPONED")
-            .font(.system(size: 10, weight: .black))
+            .font(Theme.font(size: 10, weight: .black))
             .foregroundColor(Theme.warning)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -307,7 +307,7 @@ struct GameCardView: View {
     @ViewBuilder
     private var canceledBadge: some View {
         Text("CANCELED")
-            .font(.system(size: 10, weight: .black))
+            .font(Theme.font(size: 10, weight: .black))
             .foregroundColor(Theme.danger)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -338,7 +338,7 @@ struct GameCardView: View {
 
                     if spreadMarket != nil {
                         Text("SPREAD")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(Theme.font(size: 10, weight: .bold))
                             .foregroundColor(Theme.textMuted)
                             .tracking(0.8)
                             .frame(width: oddsButtonSize)
@@ -346,7 +346,7 @@ struct GameCardView: View {
 
                     if moneylineMarket != nil {
                         Text("ML")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(Theme.font(size: 10, weight: .bold))
                             .foregroundColor(Theme.textMuted)
                             .tracking(0.8)
                             .frame(width: oddsButtonSize)
@@ -354,7 +354,7 @@ struct GameCardView: View {
 
                     if totalMarket != nil {
                         Text("TOTAL")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(Theme.font(size: 10, weight: .bold))
                             .foregroundColor(Theme.textMuted)
                             .tracking(0.8)
                             .frame(width: oddsButtonSize)
@@ -395,7 +395,7 @@ struct GameCardView: View {
         HStack(spacing: 8) {
             // Team name
             Text(teamName)
-                .font(.system(size: 14, weight: .bold))
+                .font(Theme.font(size: 14, weight: .bold))
                 .foregroundColor(Theme.textPrimary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -524,11 +524,11 @@ struct SpreadButton: View {
             VStack(spacing: 2) {
                 // Spread value as main text
                 Text(spreadValue)
-                    .font(.system(size: 14, weight: .black))
+                    .font(Theme.font(size: 14, weight: .black))
                     .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
                 // Odds as smaller secondary text
                 Text(formattedOdds)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(isSelected ? Theme.background.opacity(0.8) : Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -632,7 +632,7 @@ struct MLButton: View {
             action()
         }) {
             Text(formattedOdds)
-                .font(.system(size: 14, weight: .black))
+                .font(Theme.font(size: 14, weight: .black))
                 .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(
@@ -738,11 +738,11 @@ struct TotalButton: View {
             VStack(spacing: 2) {
                 // Total value as main text
                 Text(totalValue)
-                    .font(.system(size: 14, weight: .black))
+                    .font(Theme.font(size: 14, weight: .black))
                     .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
                 // Odds as smaller secondary text
                 Text(formattedOdds)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(isSelected ? Theme.background.opacity(0.8) : Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -845,13 +845,13 @@ struct OddsButton: View {
             VStack(spacing: 2) {
                 if let label = topLabel {
                     Text(label)
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(Theme.font(size: 10, weight: .semibold))
                         .foregroundColor(isSelected ? Theme.background : Theme.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
                 Text(formattedOdds)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(Theme.font(size: 14, weight: .bold))
                     .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
             }
             .frame(maxWidth: .infinity)

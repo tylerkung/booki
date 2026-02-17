@@ -325,7 +325,7 @@ struct GamesView: View {
                     .foregroundStyle(.white)
 
                 Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.white)
 
@@ -384,10 +384,10 @@ struct GamesView: View {
                     Button(action: { showingFilterSheet = true }) {
                         HStack(spacing: 4) {
                             Image(systemName: "line.3.horizontal.decrease.circle")
-                                .font(.system(size: 16))
+                                .font(Theme.font(size: 16))
                             if timeFilter != .all {
                                 Text(timeFilter.rawValue)
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .fontWeight(.medium)
                             }
                         }
@@ -475,17 +475,17 @@ struct GamesView: View {
 
                 // Column headers aligned with odds buttons
                 Text("SPREAD")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(Theme.textMuted)
                     .frame(width: 52)
 
                 Text("MONEY")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(Theme.textMuted)
                     .frame(width: 52)
 
                 Text("TOTAL")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(Theme.textMuted)
                     .frame(width: 52)
             }
@@ -509,11 +509,11 @@ struct GamesView: View {
             HStack {
                 Image(systemName: "star.fill")
                     .foregroundStyle(.yellow)
-                    .font(.system(size: 10))
+                    .font(Theme.font(size: 10))
                 Text("Favorites")
                     .fontWeight(.medium)
             }
-            .font(.system(size: 12, weight: .medium))
+            .font(Theme.font(size: 12, weight: .medium))
             .foregroundStyle(Theme.textSecondary)
             .padding(.top, 16)
             .padding(.bottom, 8)
@@ -554,7 +554,7 @@ struct GamesView: View {
                     Text(league)
                         .foregroundStyle(Theme.textSecondary)
                 }
-                .font(.system(size: 12, weight: .medium))
+                .font(Theme.font(size: 12, weight: .medium))
                 .foregroundStyle(Theme.textSecondary)
                 .padding(.top, 16)
                 .padding(.bottom, 8)
@@ -627,7 +627,7 @@ struct GamesView: View {
             if hasActiveFilters {
                 Button(action: clearFilters) {
                     Text("Clear Filters")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.medium)
                 }
                 .buttonStyle(.bordered)
@@ -672,7 +672,7 @@ struct SportTabButton: View {
             }
         }) {
             Text(title)
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .fontWeight(isSelected ? .semibold : .medium)
                 .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
                 .padding(.horizontal, 16)
@@ -739,13 +739,13 @@ struct GameRowView: View {
             // Teams matchup
             HStack {
                 Text("\(event.awayTeam) @ \(event.homeTeam)")
-                    .font(.headline)
+                    .font(Theme.headline)
 
                 Spacer()
 
                 if event.status == .live {
                     Text(statusText)
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.medium)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
@@ -759,10 +759,10 @@ struct GameRowView: View {
             HStack {
                 Image(systemName: "clock")
                     .foregroundStyle(.secondary)
-                    .font(.caption)
+                    .font(Theme.caption)
 
                 Text(formattedStartTime)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(.secondary)
             }
         }

@@ -104,7 +104,7 @@ struct EventDetailView: View {
                                 .fontWeight(.semibold)
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -123,7 +123,7 @@ struct EventDetailView: View {
                                 .fontWeight(.semibold)
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -154,7 +154,7 @@ struct EventDetailView: View {
                         showingAddMarket = true
                     } label: {
                         Label("Add", systemImage: "plus.circle.fill")
-                            .font(.caption)
+                            .font(Theme.caption)
                     }
                 }
             }
@@ -172,7 +172,7 @@ struct EventDetailView: View {
                             .fontWeight(.semibold)
                         Spacer()
                         Text(formatCurrency(exposure.maxExposure))
-                            .font(.headline)
+                            .font(Theme.headline)
                             .foregroundStyle(.red)
                     }
                     .padding(.top, 4)
@@ -197,7 +197,7 @@ struct EventDetailView: View {
                     Text("Bets")
                     Spacer()
                     Text("\(eventBets.count) total")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -352,10 +352,10 @@ struct ExposureSideRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(sideExposure.side)
-                    .font(.headline)
+                    .font(Theme.headline)
                 Spacer()
                 Text(formatCurrency(sideExposure.totalExposure))
-                    .font(.subheadline.bold())
+                    .font(Theme.font(size: 15, weight: .bold))
                     .foregroundStyle(.red)
             }
 
@@ -366,7 +366,7 @@ struct ExposureSideRow: View {
                         .fill(.orange)
                         .frame(width: 8, height: 8)
                     Text("Pending: \(formatCurrency(sideExposure.softExposure))")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(.secondary)
                 }
 
@@ -376,7 +376,7 @@ struct ExposureSideRow: View {
                         .fill(.blue)
                         .frame(width: 8, height: 8)
                     Text("Accepted: \(formatCurrency(sideExposure.hardExposure))")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -418,12 +418,12 @@ struct EventBetRow: View {
             // Top row: Player name and status
             HStack {
                 Text(bet.player?.name ?? "Unknown Player")
-                    .font(.subheadline.bold())
+                    .font(Theme.font(size: 15, weight: .bold))
 
                 Spacer()
 
                 Text(bet.status.rawValue.capitalized)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
@@ -435,16 +435,16 @@ struct EventBetRow: View {
             // Middle row: Side and odds
             HStack {
                 Text(bet.side)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
 
                 Text(formattedOdds)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
                 Text(formattedStake)
-                    .font(.subheadline.bold())
+                    .font(Theme.font(size: 15, weight: .bold))
             }
         }
         .padding(.vertical, 2)
@@ -480,17 +480,17 @@ struct LiabilitySideRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(side)
-                    .font(.headline)
+                    .font(Theme.headline)
 
                 Text("\(bets.count) bets (\(pendingCount) pending, \(acceptedCount) accepted)")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             Text(formatCurrency(totalLiability))
-                .font(.subheadline.bold())
+                .font(Theme.font(size: 15, weight: .bold))
                 .foregroundStyle(.red)
         }
         .padding(.vertical, 4)
@@ -522,7 +522,7 @@ struct EventMarketRowView: View {
             // Header with type badge
             HStack {
                 Text(market.type.rawValue.capitalized)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8)
@@ -533,17 +533,17 @@ struct EventMarketRowView: View {
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(.secondary)
             }
 
             // Side A
             HStack {
                 Text(market.sideA)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                 Spacer()
                 Text(formatOdds(market.oddsA))
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
             }
@@ -551,10 +551,10 @@ struct EventMarketRowView: View {
             // Side B
             HStack {
                 Text(market.sideB)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                 Spacer()
                 Text(formatOdds(market.oddsB))
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
             }
@@ -597,11 +597,11 @@ struct FinalScoreSheet: View {
                     HStack {
                         VStack {
                             Text(event.homeTeam)
-                                .font(.headline)
+                                .font(Theme.headline)
                             TextField("Score", text: $homeScore)
                                 .keyboardType(.numberPad)
                                 .multilineTextAlignment(.center)
-                                .font(.title)
+                                .font(Theme.title1)
                                 .frame(width: 80)
                                 .padding(8)
                                 .background(Color(.secondarySystemBackground))
@@ -609,16 +609,16 @@ struct FinalScoreSheet: View {
                         }
 
                         Text("-")
-                            .font(.title)
+                            .font(Theme.title1)
                             .padding(.horizontal)
 
                         VStack {
                             Text(event.awayTeam)
-                                .font(.headline)
+                                .font(Theme.headline)
                             TextField("Score", text: $awayScore)
                                 .keyboardType(.numberPad)
                                 .multilineTextAlignment(.center)
-                                .font(.title)
+                                .font(Theme.title1)
                                 .frame(width: 80)
                                 .padding(8)
                                 .background(Color(.secondarySystemBackground))
@@ -635,7 +635,7 @@ struct FinalScoreSheet: View {
                             Image(systemName: "info.circle.fill")
                                 .foregroundStyle(.blue)
                             Text("\(acceptedBetsCount) bet(s) will be marked as ready to grade")
-                                .font(.subheadline)
+                                .font(Theme.subheadline)
                         }
                     }
                 }

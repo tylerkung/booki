@@ -61,11 +61,11 @@ struct UserAgreementView: View {
     private var headerView: some View {
         VStack(spacing: 16) {
             Image(systemName: "doc.text.fill")
-                .font(.system(size: 60))
+                .font(Theme.font(size: 60))
                 .foregroundStyle(Theme.accent)
 
             Text("Terms of Service")
-                .font(.largeTitle)
+                .font(Theme.largeTitle)
                 .fontWeight(.bold)
                 .foregroundStyle(Theme.textPrimary)
         }
@@ -77,7 +77,7 @@ struct UserAgreementView: View {
                 .foregroundStyle(Theme.warning)
 
             Text(message)
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.leading)
         }
@@ -90,7 +90,7 @@ struct UserAgreementView: View {
     private var summaryView: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(TermsOfService.summary)
-                .font(.body)
+                .font(Theme.body)
                 .foregroundStyle(Theme.textSecondary)
                 .lineSpacing(4)
         }
@@ -108,7 +108,7 @@ struct UserAgreementView: View {
                 Image(systemName: "doc.plaintext")
                 Text("View Full Terms")
             }
-            .font(.subheadline)
+            .font(Theme.subheadline)
             .fontWeight(.medium)
             .foregroundStyle(Theme.accent)
         }
@@ -120,11 +120,11 @@ struct UserAgreementView: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: hasAgreed ? "checkmark.square.fill" : "square")
-                    .font(.title2)
+                    .font(Theme.title2)
                     .foregroundStyle(hasAgreed ? Theme.accent : Theme.textSecondary)
 
                 Text("I have read and agree to the Terms of Service")
-                    .font(.body)
+                    .font(Theme.body)
                     .foregroundStyle(Theme.textPrimary)
                     .multilineTextAlignment(.leading)
 
@@ -142,7 +142,7 @@ struct UserAgreementView: View {
             onAccept()
         } label: {
             Text("Continue")
-                .font(.headline)
+                .font(Theme.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(hasAgreed ? Theme.accent : Theme.accent.opacity(0.5))
@@ -164,7 +164,7 @@ private struct FullTermsSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(TermsOfService.fullTerms)
-                        .font(.body)
+                        .font(Theme.body)
                         .foregroundStyle(Theme.textSecondary)
                         .lineSpacing(4)
                 }

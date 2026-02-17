@@ -236,25 +236,25 @@ struct GradeEventSheet: View {
             HStack {
                 VStack(spacing: 4) {
                     Text(event.awayTeam)
-                        .font(.headline)
+                        .font(Theme.headline)
                     if let awayScore = awayScore {
                         Text("\(awayScore)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .font(Theme.font(size: 36, weight: .bold))
                             .foregroundStyle(Theme.textPrimary)
                     }
                 }
                 .frame(maxWidth: .infinity)
 
                 Text("@")
-                    .font(.title2)
+                    .font(Theme.title2)
                     .foregroundStyle(Theme.textMuted)
 
                 VStack(spacing: 4) {
                     Text(event.homeTeam)
-                        .font(.headline)
+                        .font(Theme.headline)
                     if let homeScore = homeScore {
                         Text("\(homeScore)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .font(Theme.font(size: 36, weight: .bold))
                             .foregroundStyle(Theme.textPrimary)
                     }
                 }
@@ -264,7 +264,7 @@ struct GradeEventSheet: View {
             // Sport and league
             HStack {
                 Text(event.sport)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.background)
                     .padding(.horizontal, 8)
@@ -273,7 +273,7 @@ struct GradeEventSheet: View {
                     .clipShape(Capsule())
 
                 Text(event.league)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
             }
 
@@ -282,7 +282,7 @@ struct GradeEventSheet: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Theme.accent)
                 Text("FINAL")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.bold)
                     .tracking(1)
             }
@@ -300,7 +300,7 @@ struct GradeEventSheet: View {
 
         return VStack(spacing: 12) {
             Text("Grading Summary")
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textMuted)
 
@@ -321,10 +321,10 @@ struct GradeEventSheet: View {
     private func statBadge(value: Int, label: String, color: Color) -> some View {
         VStack(spacing: 4) {
             Text("\(value)")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .font(Theme.font(size: 24, weight: .bold))
                 .foregroundStyle(color)
             Text(label)
-                .font(.caption)
+                .font(Theme.caption)
                 .foregroundStyle(Theme.textMuted)
         }
         .frame(maxWidth: .infinity)
@@ -337,14 +337,14 @@ struct GradeEventSheet: View {
             // Market header
             HStack {
                 Text(market)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.textPrimary)
 
                 Spacer()
 
                 Text("\(bets.count) bet\(bets.count == 1 ? "" : "s")")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
             }
 
@@ -383,12 +383,12 @@ struct GradeEventSheet: View {
                     .frame(width: 120, height: 120)
 
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 80))
+                    .font(Theme.font(size: 80))
                     .foregroundStyle(Theme.accent)
             }
 
             Text("Grading Complete!")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.bold)
 
             // Summary stats
@@ -396,28 +396,28 @@ struct GradeEventSheet: View {
                 HStack(spacing: 24) {
                     VStack {
                         Text("\(summary.wins)")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .font(Theme.font(size: 32, weight: .bold))
                             .foregroundStyle(Theme.accent)
                         Text("Wins")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                     }
 
                     VStack {
                         Text("\(summary.losses)")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .font(Theme.font(size: 32, weight: .bold))
                             .foregroundStyle(Theme.danger)
                         Text("Losses")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                     }
 
                     VStack {
                         Text("\(summary.pushes)")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .font(Theme.font(size: 32, weight: .bold))
                             .foregroundStyle(Theme.gold)
                         Text("Pushes")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                     }
                 }
@@ -432,7 +432,7 @@ struct GradeEventSheet: View {
                 dismiss()
             } label: {
                 Text("Done")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.background)
                     .frame(maxWidth: .infinity)
                     .padding()
@@ -514,23 +514,23 @@ struct BetGradeRow: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bet.player?.name ?? "Unknown Player")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.medium)
 
                     HStack(spacing: 6) {
                         Text(bet.side)
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textSecondary)
 
                         Text(formattedOdds)
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
 
                         Text("•")
                             .foregroundStyle(Theme.textMuted)
 
                         Text(formattedStake)
-                            .font(.caption)
+                            .font(Theme.caption)
                             .fontWeight(.semibold)
                     }
                 }
@@ -542,7 +542,7 @@ struct BetGradeRow: View {
                     gradeIndicator(grade: grade, isOverride: overrideGrade != nil)
                 } else {
                     Text("Manual")
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.medium)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8)
@@ -568,10 +568,10 @@ struct BetGradeRow: View {
         HStack(spacing: 4) {
             if isOverride {
                 Image(systemName: "pencil.circle.fill")
-                    .font(.caption2)
+                    .font(Theme.caption2)
             }
             Text(grade.rawValue.capitalized)
-                .font(.caption2)
+                .font(Theme.caption2)
                 .fontWeight(.medium)
         }
         .foregroundStyle(Theme.background)
@@ -596,10 +596,10 @@ struct BetGradeRow: View {
             HStack(spacing: 4) {
                 if isSuggested {
                     Image(systemName: "lightbulb.fill")
-                        .font(.caption2)
+                        .font(Theme.caption2)
                 }
                 Text(label)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.medium)
             }
             .frame(maxWidth: .infinity)

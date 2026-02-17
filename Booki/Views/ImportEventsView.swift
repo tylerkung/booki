@@ -85,15 +85,15 @@ struct ImportEventsView: View {
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
+                .font(Theme.font(size: 48))
                 .foregroundStyle(.orange)
 
             Text("Error")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
 
             Text(message)
-                .font(.body)
+                .font(Theme.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
@@ -113,20 +113,20 @@ struct ImportEventsView: View {
     private func successView(_ result: ImportResult) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
+                .font(Theme.font(size: 48))
                 .foregroundStyle(.green)
 
             Text("Import Complete")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
 
             VStack(spacing: 4) {
                 Text("Imported \(result.eventsImported) \(result.sportTitle) events")
-                    .font(.body)
+                    .font(Theme.body)
 
                 if result.eventsSkipped > 0 {
                     Text("\(result.eventsSkipped) events skipped (already exist)")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
@@ -151,11 +151,11 @@ struct ImportEventsView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(sport.title)
-                                    .font(.body)
+                                    .font(Theme.body)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 Text(sport.group)
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
 

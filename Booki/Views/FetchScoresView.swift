@@ -79,15 +79,15 @@ struct FetchScoresView: View {
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
+                .font(Theme.font(size: 48))
                 .foregroundStyle(.orange)
 
             Text("Error")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
 
             Text(message)
-                .font(.body)
+                .font(Theme.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
@@ -104,19 +104,19 @@ struct FetchScoresView: View {
     private func successView(_ result: UpdateResult) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
+                .font(Theme.font(size: 48))
                 .foregroundStyle(.green)
 
             Text("Scores Updated")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
 
             VStack(spacing: 4) {
                 Text("Updated scores for \(result.eventsUpdated) events")
-                    .font(.body)
+                    .font(Theme.body)
 
                 Text("Checked \(result.eventsChecked) total scores")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
 
@@ -135,16 +135,16 @@ struct FetchScoresView: View {
             Spacer()
 
             Image(systemName: "sportscourt")
-                .font(.system(size: 64))
+                .font(Theme.font(size: 64))
                 .foregroundStyle(Theme.textSecondary)
 
             VStack(spacing: 8) {
                 Text("Ready to Fetch Scores")
-                    .font(.title2)
+                    .font(Theme.title2)
                     .fontWeight(.semibold)
 
                 Text("This will check for completed games and update scores for \(importedEvents.count) imported events.")
-                    .font(.body)
+                    .font(Theme.body)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -152,7 +152,7 @@ struct FetchScoresView: View {
 
             if let remaining = oddsService.quotaRemaining {
                 Text("API quota: \(remaining) calls remaining")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
             }
 

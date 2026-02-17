@@ -140,14 +140,14 @@ struct BetSlipSheet: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "ticket")
-                .font(.system(size: 48))
+                .font(Theme.font(size: 48))
                 .foregroundStyle(Theme.textMuted)
             Text("No Selections")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textPrimary)
             Text("Tap odds buttons on game cards to add selections to your bet slip.")
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
@@ -169,11 +169,11 @@ struct BetSlipSheet: View {
                     VStack(spacing: 12) {
                         HStack {
                             Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
-                                .font(.headline)
+                                .font(Theme.headline)
                                 .foregroundStyle(Theme.textPrimary)
                             Spacer()
                             Text("Max \(betSlipManager.maxSelections)")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.textMuted)
                         }
 
@@ -189,7 +189,7 @@ struct BetSlipSheet: View {
                                     }
                                 }) {
                                     Text(mode.rawValue)
-                                        .font(.subheadline)
+                                        .font(Theme.subheadline)
                                         .fontWeight(.semibold)
                                         .foregroundStyle(
                                             isDisabled ? Theme.textMuted :
@@ -218,10 +218,10 @@ struct BetSlipSheet: View {
                         if let conflictMessage = betSlipManager.conflictDescription {
                             HStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.warning)
                                 Text(conflictMessage)
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.warning)
                             }
                             .padding(.horizontal, 12)
@@ -329,7 +329,7 @@ struct BetSlipSheet: View {
     private var singlesSummarySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("SUMMARY")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textMuted)
                 .tracking(1)
@@ -338,11 +338,11 @@ struct BetSlipSheet: View {
                 // Total stake row (sum of individual bet stakes)
                 HStack {
                     Text("Total Stake")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     Text(formatCurrency(betSlipManager.individualTotalStake))
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textPrimary)
                 }
@@ -352,7 +352,7 @@ struct BetSlipSheet: View {
                 // Bet count
                 HStack {
                     Text("\(betSlipManager.count) Bet\(betSlipManager.count == 1 ? "" : "s")")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                     Spacer()
                 }
@@ -367,11 +367,11 @@ struct BetSlipSheet: View {
                 // Potential payout row - Premium styled with green accent
                 HStack {
                     Text("Potential Payout")
-                        .font(.headline)
+                        .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
                     Text(formatCurrency(betSlipManager.individualTotalPayout))
-                        .font(.title)
+                        .font(Theme.title1)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.accent)
                 }
@@ -402,7 +402,7 @@ struct BetSlipSheet: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(Theme.warning)
             Text("Total stake exceeds available credit (\(formatCurrency(availableCredit)))")
-                .font(.caption)
+                .font(Theme.caption)
                 .foregroundStyle(Theme.warning)
         }
         .padding(.horizontal, 12)
@@ -418,10 +418,10 @@ struct BetSlipSheet: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(betSlipManager.count)-Leg Parlay")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
                 Text("Combined odds")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
 
@@ -429,7 +429,7 @@ struct BetSlipSheet: View {
 
             if let parlayOdds = betSlipManager.formattedParlayOdds {
                 Text(parlayOdds)
-                    .font(.title)
+                    .font(Theme.title1)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.accent)
             }
@@ -479,9 +479,9 @@ struct BetSlipSheet: View {
                         .padding(.trailing, 4)
                 }
                 Image(systemName: isSubmitting ? "hourglass" : "checkmark.circle.fill")
-                    .font(.title3)
+                    .font(Theme.title3)
                 Text(isSubmitting ? "Submitting..." : "Place Bet")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .fontWeight(.bold)
             }
             .foregroundStyle(Theme.background)
@@ -515,7 +515,7 @@ struct BetSlipSheet: View {
     private var stakeEntrySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("STAKE")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textMuted)
                 .tracking(1)
@@ -524,12 +524,12 @@ struct BetSlipSheet: View {
                 // Custom amount input - Styled
                 HStack(spacing: 12) {
                     Text("$")
-                        .font(.title)
+                        .font(Theme.title1)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.gold)
 
                     TextField("0", text: $stakeText)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .font(Theme.font(size: 32, weight: .bold))
                         .foregroundStyle(Theme.textPrimary)
                         .keyboardType(.numberPad)
                         .onChange(of: stakeText) { _, newValue in
@@ -549,7 +549,7 @@ struct BetSlipSheet: View {
                             betSlipManager.stake = 0
                         }) {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.textMuted)
                         }
                         .buttonStyle(.plain)
@@ -573,7 +573,7 @@ struct BetSlipSheet: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(Theme.warning)
                         Text("Stake exceeds available credit (\(formatCurrency(availableCredit)))")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.warning)
                     }
                     .padding(.horizontal, 12)
@@ -585,7 +585,7 @@ struct BetSlipSheet: View {
                 // Footer note for singles
                 if betSlipManager.betMode == .singles && betSlipManager.count > 1 {
                     Text("Stake applies to each of your \(betSlipManager.count) singles bets. Total stake: \(formatCurrency(betSlipManager.totalSinglesStake))")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                 }
             }
@@ -605,7 +605,7 @@ struct BetSlipSheet: View {
     private var payoutSummarySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("SUMMARY")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textMuted)
                 .tracking(1)
@@ -614,11 +614,11 @@ struct BetSlipSheet: View {
                 // Total stake row
                 HStack {
                     Text("Total Stake")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     Text(formatCurrency(betSlipManager.currentTotalStake))
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textPrimary)
                 }
@@ -633,11 +633,11 @@ struct BetSlipSheet: View {
                 // Potential payout row - Premium styled with green accent
                 HStack {
                     Text("Potential Payout")
-                        .font(.headline)
+                        .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
                     Text(formatCurrency(betSlipManager.currentTotalPayout))
-                        .font(.title)
+                        .font(Theme.title1)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.accent)
                 }
@@ -685,7 +685,7 @@ struct BetSlipSheet: View {
                     .scaleEffect(showCheckmark ? 1 : 0.5)
 
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 70))
+                    .font(Theme.font(size: 70))
                     .foregroundStyle(Theme.accent)
                     .scaleEffect(checkmarkScale)
             }
@@ -709,12 +709,12 @@ struct BetSlipSheet: View {
 
             VStack(spacing: 8) {
                 Text("Request Submitted!")
-                    .font(.title2)
+                    .font(Theme.title2)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.textPrimary)
 
                 Text("\(submittedCount) bet\(submittedCount == 1 ? "" : "s") recorded and pending review")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
             }
@@ -726,7 +726,7 @@ struct BetSlipSheet: View {
                 dismiss()
             }) {
                 Text("Done")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Theme.accent)
@@ -998,7 +998,7 @@ struct PremiumBetSlipItemCard: View {
                     .frame(width: 44, height: 44)
                     .overlay(
                         Text(String(item.side.prefix(2)).uppercased())
-                            .font(.system(size: 14, weight: .bold))
+                            .font(Theme.font(size: 14, weight: .bold))
                             .foregroundStyle(.white)
                     )
                     .shadow(color: teamColor(for: item.side).opacity(0.4), radius: 4, x: 0, y: 2)
@@ -1006,13 +1006,13 @@ struct PremiumBetSlipItemCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     // Selection/Side
                     Text(item.side)
-                        .font(.headline)
+                        .font(Theme.headline)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.textPrimary)
 
                     // Event description
                     Text(item.eventDescription)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                 }
@@ -1021,7 +1021,7 @@ struct PremiumBetSlipItemCard: View {
 
                 // Odds badge - Prominent with color
                 Text(formattedOdds)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(Theme.font(size: 18, weight: .bold))
                     .foregroundStyle(item.odds >= 0 ? Theme.accent : Theme.textPrimary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
@@ -1042,7 +1042,7 @@ struct PremiumBetSlipItemCard: View {
                 // X button to remove
                 Button(action: onRemove) {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
+                        .font(Theme.title2)
                         .foregroundStyle(Theme.textMuted)
                 }
                 .buttonStyle(.plain)
@@ -1061,11 +1061,11 @@ struct PremiumBetSlipItemCard: View {
                         // Stake input
                         HStack(spacing: 6) {
                             Text("$")
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(Theme.font(size: 16, weight: .semibold))
                                 .foregroundStyle(Theme.gold)
 
                             TextField("0", text: $stakeText)
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .font(Theme.font(size: 18, weight: .bold))
                                 .foregroundStyle(Theme.textPrimary)
                                 .keyboardType(.numberPad)
                                 .focused($isStakeFocused)
@@ -1097,10 +1097,10 @@ struct PremiumBetSlipItemCard: View {
                         if individualPayout > 0 {
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text("To Win")
-                                    .font(.caption2)
+                                    .font(Theme.caption2)
                                     .foregroundStyle(Theme.textMuted)
                                 Text(formatCurrency(individualPayout))
-                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .font(Theme.font(size: 16, weight: .bold))
                                     .foregroundStyle(Theme.accent)
                             }
                         }
@@ -1113,7 +1113,7 @@ struct PremiumBetSlipItemCard: View {
             // Market type footer
             HStack {
                 Text(marketTypeLabel)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.textMuted)
                     .tracking(0.5)

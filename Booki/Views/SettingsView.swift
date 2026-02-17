@@ -293,7 +293,7 @@ struct SettingsView: View {
                             Image(systemName: "rectangle.portrait.and.arrow.right")
                             Text("Log Out")
                         }
-                        .font(.headline)
+                        .font(Theme.headline)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)

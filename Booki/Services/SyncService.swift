@@ -1274,18 +1274,18 @@ struct SyncStatusIndicator: View {
         HStack(spacing: 4) {
             Image(systemName: syncService.syncStatus.iconName)
                 .foregroundStyle(syncService.syncStatus.iconColor)
-                .font(.system(size: 14))
+                .font(Theme.font(size: 14))
                 .symbolEffect(.pulse, isActive: syncService.syncStatus == .syncing)
 
             if syncService.syncStatus == .syncing && showProgress && !syncService.syncProgressDescription.isEmpty {
                 Text(syncService.syncProgressDescription)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
             } else if syncService.pendingChangesCount > 0 && syncService.syncStatus != .syncing {
                 Text("\(syncService.pendingChangesCount)")
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -1309,11 +1309,11 @@ struct SyncProgressView: View {
 
             if !syncService.syncProgressDescription.isEmpty {
                 Text(syncService.syncProgressDescription)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             } else {
                 Text("Syncing...")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }
         }
