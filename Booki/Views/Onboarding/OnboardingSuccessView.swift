@@ -8,6 +8,11 @@ struct OnboardingSuccessView: View {
 
     let onComplete: () -> Void
 
+    /// Actual completion state from OnboardingManager
+    var configureComplete: Bool = true
+    var playersComplete: Bool = true
+    var gamesComplete: Bool = true
+
     // MARK: - State
 
     @State private var showCheckmarks: [Bool] = [false, false, false]
@@ -18,6 +23,7 @@ struct OnboardingSuccessView: View {
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
+                .frame(maxHeight: 80)
 
             // Celebration Icon
             ZStack {
@@ -82,11 +88,12 @@ struct OnboardingSuccessView: View {
     // MARK: - Animation
 
     private func animateCheckmarks() {
-        // Staggered animation for checkmarks
+        let completionStates = [configureComplete, playersComplete, gamesComplete]
+        // Staggered animation for checkmarks (only animate completed steps)
         for index in 0..<3 {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.3 + 0.2) {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                    showCheckmarks[index] = true
+                    showCheckmarks[index] = completionStates[index]
                 }
             }
         }

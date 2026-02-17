@@ -79,10 +79,15 @@ struct OnboardingContainerView: View {
                 case .success:
                     OnboardingSuccessView(
                         onComplete: {
-                            onboardingManager.markAllComplete()
                             onComplete()
-                        }
+                        },
+                        configureComplete: onboardingManager.configureComplete,
+                        playersComplete: onboardingManager.playersComplete,
+                        gamesComplete: onboardingManager.gamesComplete
                     )
+                    .onAppear {
+                        onboardingManager.markAllComplete()
+                    }
                 }
             }
             .transition(.asymmetric(
@@ -91,6 +96,7 @@ struct OnboardingContainerView: View {
             ))
         }
         .background(Theme.backgroundGradient)
+        .navigationBarHidden(true)
         .animation(.easeInOut(duration: 0.3), value: currentStep)
     }
 
