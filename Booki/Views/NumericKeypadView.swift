@@ -1,40 +1,36 @@
 import SwiftUI
 
 /// Custom numeric keypad for stake entry, replacing the iOS system keyboard
-/// US-009: Build custom numeric keypad component
+/// 4x3 grid: [1][2][3] / [4][5][6] / [7][8][9] / [.][0][⌫]
 struct NumericKeypadView: View {
     @Binding var text: String
     var onValueChanged: ((String) -> Void)?
 
     var body: some View {
         VStack(spacing: 8) {
-            // Row 1: 1, 2, 3, DEL
+            // Row 1: 1, 2, 3
             HStack(spacing: 8) {
                 digitKey("1")
                 digitKey("2")
                 digitKey("3")
-                actionKey("DEL", systemImage: "delete.left") { deleteLast() }
             }
-            // Row 2: 4, 5, 6, +$5
+            // Row 2: 4, 5, 6
             HStack(spacing: 8) {
                 digitKey("4")
                 digitKey("5")
                 digitKey("6")
-                quickStakeKey(5)
             }
-            // Row 3: 7, 8, 9, +$10
+            // Row 3: 7, 8, 9
             HStack(spacing: 8) {
                 digitKey("7")
                 digitKey("8")
                 digitKey("9")
-                quickStakeKey(10)
             }
-            // Row 4: ., 0, +$25, +$50
+            // Row 4: ., 0, ⌫
             HStack(spacing: 8) {
                 digitKey(".")
                 digitKey("0")
-                quickStakeKey(25)
-                quickStakeKey(50)
+                actionKey("DEL", systemImage: "delete.left") { deleteLast() }
             }
         }
         .padding(.horizontal, 12)
@@ -75,22 +71,6 @@ struct NumericKeypadView: View {
         .buttonStyle(KeypadButtonStyle())
     }
 
-    @ViewBuilder
-    private func quickStakeKey(_ amount: Int) -> some View {
-        Button {
-            addQuickStake(amount)
-        } label: {
-            Text("+$\(amount)")
-                .font(Theme.font(size: 14, weight: .bold))
-                .foregroundStyle(Theme.accent)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(Theme.accent.opacity(0.15))
-                .cornerRadius(Theme.cornerRadiusSmall)
-        }
-        .buttonStyle(KeypadButtonStyle())
-    }
-
     // MARK: - Actions
 
     private func appendDigit(_ digit: String) {
@@ -105,6 +85,12 @@ struct NumericKeypadView: View {
             }
         }
 
+        // Max 2 decimal places
+        if let dotIndex = text.firstIndex(of: ".") {
+            let afterDot = text[text.index(after: dotIndex)...]
+            if afterDot.count >= 2 && digit != "." { return }
+        }
+
         // Prevent leading zeros (except "0.")
         if text == "0" && digit != "." {
             text = digit
@@ -117,19 +103,6 @@ struct NumericKeypadView: View {
     private func deleteLast() {
         guard !text.isEmpty else { return }
         text.removeLast()
-        onValueChanged?(text)
-    }
-
-    private func addQuickStake(_ amount: Int) {
-        let currentValue = Decimal(string: text) ?? 0
-        let newValue = currentValue + Decimal(amount)
-        // Format: remove trailing zeros but keep up to 2 decimal places
-        let number = NSDecimalNumber(decimal: newValue)
-        let formatter = NumberFormatter()
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        formatter.groupingSeparator = ""
-        text = formatter.string(from: number) ?? "\(amount)"
         onValueChanged?(text)
     }
 }

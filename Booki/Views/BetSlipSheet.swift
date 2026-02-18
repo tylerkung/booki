@@ -49,6 +49,10 @@ struct BetSlipSheet: View {
     @State private var submissionError: String?
     @State private var submittedCount: Int = 0
 
+    /// US-014: Track singles submission progress (1 of N)
+    @State private var singlesSubmissionIndex: Int = 0
+    @State private var singlesSubmissionTotal: Int = 0
+
     /// US-005: Store submitted items for re-use
     @State private var lastSubmittedItems: [BetSlipItem] = []
 
@@ -57,12 +61,6 @@ struct BetSlipSheet: View {
     @State private var checkmarkScale: CGFloat = 0
     @State private var outerRingScale: CGFloat = 0.8
     @State private var outerRingOpacity: Double = 0
-
-    /// US-001: Focus state for parlay wager field
-    @FocusState private var isParlayWagerFocused: Bool
-
-    /// US-002: Focus state for parlay to-win field
-    @FocusState private var isParlayToWinFocused: Bool
 
     /// US-009: State for locked events error alert (client-side pre-check)
     @State private var showLockedEventsAlert: Bool = false
@@ -288,177 +286,18 @@ struct BetSlipSheet: View {
             // Scrollable content area
             ScrollView {
                 VStack(spacing: 16) {
-                    // Header with count and mode toggle (US-041)
-                    VStack(spacing: 12) {
-                        HStack {
-                            Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
-                                .font(Theme.headline)
-                                .foregroundStyle(Theme.textPrimary)
-                            Spacer()
-                            Text("Max \(betSlipManager.maxSelections)")
-                                .font(Theme.caption)
-                                .foregroundStyle(Theme.textMuted)
-                        }
-
-                        // Singles/Parlay Toggle (US-041) - Styled
-                        // US-005: Added .contentShape(Rectangle()) to expand tap area to full button
-                        // US-003: Disable parlay when conflicting selections exist
-                        HStack(spacing: 0) {
-                            ForEach(BetMode.allCases, id: \.self) { mode in
-                                let isDisabled = isSubmitting || (mode == .parlay && betSlipManager.hasConflictingSelections)
-                                Button(action: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        betSlipManager.betMode = mode
-                                    }
-                                }) {
-                                    Text(mode.rawValue)
-                                        .font(Theme.subheadline)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(
-                                            isDisabled ? Theme.textMuted :
-                                            (betSlipManager.betMode == mode ? Theme.background : Theme.textSecondary)
-                                        )
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            isDisabled ? Color.clear :
-                                            (betSlipManager.betMode == mode ? Theme.accent : Color.clear)
-                                        )
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(isDisabled)
-                            }
-                        }
-                        .background(Theme.elevatedBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Theme.border, lineWidth: 1)
-                        )
-
-                        // US-003: Show conflict message when parlay is unavailable
-                        if let conflictMessage = betSlipManager.conflictDescription {
-                            HStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(Theme.caption)
-                                    .foregroundStyle(Theme.warning)
-                                Text(conflictMessage)
-                                    .font(Theme.caption)
-                                    .foregroundStyle(Theme.warning)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Theme.warning.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-
-                        // US-015: Show same-game parlay warning
-                        if let sgpWarning = betSlipManager.sameGameParlayWarning {
-                            HStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.warning)
-                                Text(sgpWarning)
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.warning)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Theme.warning.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-
-                        // US-005: Show mode switch message when auto-switched from parlay to singles
-                        if let switchMessage = betSlipManager.modeSwitchMessage {
-                            HStack(spacing: 6) {
-                                Image(systemName: "arrow.triangle.swap")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.accent)
-                                Text(switchMessage)
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.accent)
-                                Spacer()
-                                Button {
-                                    withAnimation {
-                                        betSlipManager.modeSwitchMessage = nil
-                                    }
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.caption2)
-                                        .foregroundStyle(Theme.textMuted)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Theme.accent.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 16)
+                    selectionsHeaderSection
 
                     // US-008: Player balance display
-                    if let player = player {
+                    if player != nil {
                         balanceDisplayRow
                     }
 
                     // US-007: Section header based on bet mode
-                    HStack {
-                        Text(betSlipManager.betMode == .parlay
-                             ? "\(betSlipManager.count)-LEG PARLAY"
-                             : "STRAIGHT BETS")
-                            .font(Theme.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Theme.textMuted)
-                            .tracking(1.5)
-                        Spacer()
-                    }
-                    .padding(.horizontal)
+                    sectionHeaderLabel
 
                     // Selections (US-053: animated item transitions, US-004: per-item stakes)
-                    VStack(spacing: 12) {
-                        // US-001: Use combination of marketId+side for unique ID to support both sides of same market
-                        ForEach(Array(betSlipManager.items.enumerated()), id: \.element) { index, item in
-                            let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
-                            PremiumBetSlipItemCard(
-                                item: item,
-                                onRemove: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                        // Clear active field if removing the active item
-                                        if activeFieldId == key {
-                                            activeFieldId = nil
-                                        }
-                                        betSlipManager.remove(at: index)
-                                        itemStakeTexts.removeValue(forKey: key)
-                                        itemToWinTexts.removeValue(forKey: key)
-                                        // US-013: Clear locked state for removed item
-                                        serverLockedEventIds.remove(item.eventId.uuidString.lowercased())
-                                    }
-                                },
-                                betMode: betSlipManager.betMode,
-                                stakeText: itemStakeTextBinding(for: item),
-                                toWinText: itemToWinTextBinding(for: item),
-                                betSlipManager: betSlipManager,
-                                isLocked: serverLockedEventIds.contains(item.eventId.uuidString.lowercased()),
-                                isSubmitting: isSubmitting,
-                                startTime: events.first(where: { $0.id.uuidString.lowercased() == item.eventId.uuidString.lowercased() })?.startTime,
-                                activeFieldId: $activeFieldId,
-                                fieldId: key
-                            )
-                            .transition(.asymmetric(
-                                insertion: .scale(scale: 0.9).combined(with: .opacity),
-                                removal: .scale(scale: 0.9).combined(with: .opacity).combined(with: .move(edge: .trailing))
-                            ))
-                        }
-                    }
-                    .padding(.horizontal)
-                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: betSlipManager.count)
+                    selectionsCardsSection
 
                     // Combined Parlay Odds + Wager/To Win (US-041, US-008)
                     if betSlipManager.betMode == .parlay && betSlipManager.count > 1 {
@@ -469,6 +308,15 @@ struct BetSlipSheet: View {
                         parlayStakeEntrySection
                             .padding(.horizontal)
                     }
+
+                    // Bet summary (scrollable, above sticky bottom)
+                    if betSlipManager.betMode == .parlay && betSlipManager.stake > 0 {
+                        payoutSummarySection
+                            .padding(.horizontal)
+                    } else if betSlipManager.betMode == .singles && betSlipManager.individualTotalStake > 0 {
+                        singlesSummarySection
+                            .padding(.horizontal)
+                    }
                 }
                 .padding(.bottom, 16)
             }
@@ -477,6 +325,172 @@ struct BetSlipSheet: View {
             // US-005: Sticky bottom section with divider
             stickyBottomSection
         }
+    }
+
+    // MARK: - Extracted Sub-Views (type-checker workaround)
+
+    @ViewBuilder
+    private var selectionsHeaderSection: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
+                    .font(Theme.headline)
+                    .foregroundStyle(Theme.textPrimary)
+                Spacer()
+                Text("Max \(betSlipManager.maxSelections)")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+            }
+
+            betModeToggle
+
+            // US-003: Show conflict message when parlay is unavailable
+            if let conflictMessage = betSlipManager.conflictDescription {
+                warningBanner(icon: "exclamationmark.triangle.fill", text: conflictMessage, color: Theme.warning)
+            }
+
+            // US-015: Show same-game parlay warning
+            if let sgpWarning = betSlipManager.sameGameParlayWarning {
+                warningBanner(icon: "exclamationmark.triangle.fill", text: sgpWarning, color: Theme.warning)
+            }
+
+            // US-005: Show mode switch message when auto-switched from parlay to singles
+            if let switchMessage = betSlipManager.modeSwitchMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.swap")
+                        .font(.caption)
+                        .foregroundStyle(Theme.accent)
+                    Text(switchMessage)
+                        .font(.caption)
+                        .foregroundStyle(Theme.accent)
+                    Spacer()
+                    Button {
+                        withAnimation {
+                            betSlipManager.modeSwitchMessage = nil
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.accent.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 16)
+    }
+
+    @ViewBuilder
+    private var betModeToggle: some View {
+        HStack(spacing: 0) {
+            ForEach(BetMode.allCases, id: \.self) { mode in
+                let isDisabled = isSubmitting || (mode == .parlay && betSlipManager.hasConflictingSelections)
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        betSlipManager.betMode = mode
+                    }
+                }) {
+                    Text(mode.rawValue)
+                        .font(Theme.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(
+                            isDisabled ? Theme.textMuted :
+                            (betSlipManager.betMode == mode ? Theme.background : Theme.textSecondary)
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            isDisabled ? Color.clear :
+                            (betSlipManager.betMode == mode ? Theme.accent : Color.clear)
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isDisabled)
+            }
+        }
+        .background(Theme.elevatedBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+    }
+
+    private func warningBanner(icon: String, text: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(Theme.caption)
+                .foregroundStyle(color)
+            Text(text)
+                .font(Theme.caption)
+                .foregroundStyle(color)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(color.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    @ViewBuilder
+    private var sectionHeaderLabel: some View {
+        HStack {
+            Text(betSlipManager.betMode == .parlay
+                 ? "\(betSlipManager.count)-LEG PARLAY"
+                 : "STRAIGHT BETS")
+                .font(Theme.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(Theme.textMuted)
+                .tracking(1.5)
+            Spacer()
+        }
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private var selectionsCardsSection: some View {
+        VStack(spacing: 12) {
+            ForEach(Array(betSlipManager.items.enumerated()), id: \.element) { index, item in
+                let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                PremiumBetSlipItemCard(
+                    item: item,
+                    onRemove: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            if activeFieldId == key {
+                                activeFieldId = nil
+                            }
+                            betSlipManager.remove(at: index)
+                            itemStakeTexts.removeValue(forKey: key)
+                            itemToWinTexts.removeValue(forKey: key)
+                            serverLockedEventIds.remove(item.eventId.uuidString.lowercased())
+                        }
+                    },
+                    betMode: betSlipManager.betMode,
+                    stakeText: itemStakeTextBinding(for: item),
+                    toWinText: itemToWinTextBinding(for: item),
+                    betSlipManager: betSlipManager,
+                    isLocked: serverLockedEventIds.contains(item.eventId.uuidString.lowercased()),
+                    isSubmitting: isSubmitting,
+                    startTime: events.first(where: { $0.id.uuidString.lowercased() == item.eventId.uuidString.lowercased() })?.startTime,
+                    activeFieldId: $activeFieldId,
+                    fieldId: key
+                )
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.9).combined(with: .opacity),
+                    removal: .scale(scale: 0.9).combined(with: .opacity).combined(with: .move(edge: .trailing))
+                ))
+            }
+        }
+        .padding(.horizontal)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: betSlipManager.count)
     }
 
     // MARK: - Sticky Bottom Section (US-005, US-006)
@@ -491,44 +505,41 @@ struct BetSlipSheet: View {
                 .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: -2)
 
             VStack(spacing: 16) {
-                // US-006: Different content based on bet mode
-                switch betSlipManager.betMode {
-                case .parlay:
-                    // US-008: Stake entry moved above (below parlay odds card)
-                    // Sticky bottom only shows summary + Place Bet
-                    if betSlipManager.stake > 0 {
-                        payoutSummarySection
-                    }
-
-                    // Stake validation warning for parlay mode (US-042)
+                // Stake validation warnings (inline, no summary)
+                if betSlipManager.betMode == .parlay {
                     if betSlipManager.stake > 0 && !betSlipManager.isStakeValid(availableCredit: availableCredit) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(Theme.warning)
-                            Text("Stake exceeds available credit (\(formatCurrency(availableCredit)))")
-                                .font(.caption)
-                                .foregroundStyle(Theme.warning)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Theme.warning.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        stakeValidationWarning
                     }
-
-                case .singles:
-                    // Singles mode: total stake summary (from per-bet stakes), total payout, Place Bet button
-                    // No stake entry here since stakes are entered per-card
-                    if betSlipManager.individualTotalStake > 0 {
-                        singlesSummarySection
-                    }
-
-                    // Stake validation warning for singles mode
+                } else {
                     if betSlipManager.individualTotalStake > 0 && !betSlipManager.isIndividualStakeValid(availableCredit: availableCredit) {
                         stakeValidationWarning
                     }
                 }
 
-                // Submit Button (US-001: Always visible, dimmed when disabled)
+                // Custom numeric keypad (shown when a field is active)
+                if activeFieldId != nil {
+                    VStack(spacing: 0) {
+                        // Dismiss bar
+                        HStack {
+                            Spacer()
+                            Button("Done") {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    activeFieldId = nil
+                                }
+                            }
+                            .font(Theme.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Theme.accent)
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
+                        NumericKeypadView(text: activeKeypadBinding)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
+                // Submit Button (always visible at bottom, dimmed when disabled)
                 submitSection
                     .opacity(canSubmit ? 1.0 : 0.4)
                     .disabled(!canSubmit)
@@ -693,46 +704,32 @@ struct BetSlipSheet: View {
 
     // MARK: - Parlay Stake Entry Section (US-008)
 
-    /// US-008: Side-by-side Wager/To Win fields with quick stake buttons
+    /// US-008: Side-by-side Wager/To Win tappable fields routed to custom keypad
     /// Placed directly below the parlay odds card in the scrollable area
     @ViewBuilder
     private var parlayStakeEntrySection: some View {
         VStack(spacing: 12) {
             // Side-by-side WAGER and TO WIN fields
             HStack(spacing: 12) {
-                // WAGER field
+                // WAGER field (tappable, routes to custom keypad)
+                let isWagerActive = activeFieldId == "parlay_stake"
                 VStack(alignment: .leading, spacing: 6) {
                     Text("WAGER")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundStyle(isParlayWagerFocused ? Theme.gold : Theme.textMuted)
+                        .foregroundStyle(isWagerActive ? Theme.gold : Theme.textMuted)
                         .tracking(1)
-                        .animation(.easeInOut(duration: 0.15), value: isParlayWagerFocused)
+                        .animation(.easeInOut(duration: 0.15), value: isWagerActive)
 
                     HStack(spacing: 4) {
                         Text("$")
-                            .font(.system(size: 18, weight: .bold))
+                            .font(Theme.font(size: 18, weight: .bold))
                             .foregroundStyle(Theme.gold)
 
-                        TextField("0", text: $stakeText)
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundStyle(isSubmitting ? Theme.textMuted : Theme.textPrimary)
-                            .keyboardType(.numberPad)
-                            .disabled(isSubmitting)
-                            .focused($isParlayWagerFocused)
-                            .onChange(of: stakeText) { _, newValue in
-                                guard parlayActiveField == .wager else { return }
-                                if let value = Decimal(string: newValue.filter { $0.isNumber }) {
-                                    betSlipManager.stake = value
-                                    if let odds = betSlipManager.combinedParlayOdds {
-                                        let calculatedToWin = betSlipManager.calculateToWin(odds: odds, stake: value)
-                                        toWinText = calculatedToWin > 0 ? formatToWin(calculatedToWin) : ""
-                                    }
-                                } else if newValue.isEmpty {
-                                    betSlipManager.stake = 0
-                                    toWinText = ""
-                                }
-                            }
+                        Text(stakeText.isEmpty ? "0" : stakeText)
+                            .font(Theme.font(size: 22, weight: .bold))
+                            .foregroundStyle(isSubmitting ? Theme.textMuted : (stakeText.isEmpty ? Theme.textMuted : Theme.textPrimary))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
@@ -741,48 +738,39 @@ struct BetSlipSheet: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
                             .stroke(
-                                isParlayWagerFocused ? Theme.gold.opacity(0.6) : Theme.border,
-                                lineWidth: isParlayWagerFocused ? 2 : 1
+                                isWagerActive ? Theme.gold.opacity(0.6) : Theme.border,
+                                lineWidth: isWagerActive ? 2 : 1
                             )
                     )
-                    .animation(.easeInOut(duration: 0.15), value: isParlayWagerFocused)
+                    .glowingBorder(color: Theme.gold, isActive: isWagerActive)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            activeFieldId = isWagerActive ? nil : "parlay_stake"
+                        }
+                    }
                 }
 
-                // TO WIN field
+                // TO WIN field (tappable, routes to custom keypad)
+                let isToWinActive = activeFieldId == "parlay_towin"
                 VStack(alignment: .leading, spacing: 6) {
                     Text("TO WIN")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundStyle(isParlayToWinFocused ? Theme.accent : Theme.textMuted)
+                        .foregroundStyle(isToWinActive ? Theme.accent : Theme.textMuted)
                         .tracking(1)
-                        .animation(.easeInOut(duration: 0.15), value: isParlayToWinFocused)
+                        .animation(.easeInOut(duration: 0.15), value: isToWinActive)
 
                     HStack(spacing: 4) {
                         Text("$")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(isParlayToWinFocused ? Theme.accent : (parlayToWin > 0 ? Theme.accent : Theme.textMuted))
-                            .animation(.easeInOut(duration: 0.15), value: isParlayToWinFocused)
+                            .font(Theme.font(size: 18, weight: .bold))
+                            .foregroundStyle(isToWinActive ? Theme.accent : (parlayToWin > 0 ? Theme.accent : Theme.textMuted))
+                            .animation(.easeInOut(duration: 0.15), value: isToWinActive)
 
-                        TextField("0", text: $toWinText)
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundStyle(isSubmitting ? Theme.textMuted : (isParlayToWinFocused ? Theme.accent : (parlayToWin > 0 ? Theme.accent : Theme.textMuted)))
-                            .keyboardType(.numberPad)
-                            .disabled(isSubmitting)
-                            .focused($isParlayToWinFocused)
-                            .onChange(of: toWinText) { _, newValue in
-                                guard parlayActiveField == .toWin else { return }
-                                if let toWinValue = Decimal(string: newValue.filter { $0.isNumber }), toWinValue > 0 {
-                                    if let odds = betSlipManager.combinedParlayOdds {
-                                        let calculatedWager = betSlipManager.calculateWagerFromToWin(odds: odds, toWin: toWinValue)
-                                        betSlipManager.stake = calculatedWager
-                                        let wagerInt = NSDecimalNumber(decimal: calculatedWager).intValue
-                                        stakeText = wagerInt > 0 ? "\(wagerInt)" : ""
-                                    }
-                                } else if newValue.isEmpty {
-                                    betSlipManager.stake = 0
-                                    stakeText = ""
-                                }
-                            }
+                        Text(toWinText.isEmpty ? "0" : toWinText)
+                            .font(Theme.font(size: 22, weight: .bold))
+                            .foregroundStyle(isSubmitting ? Theme.textMuted : (isToWinActive ? Theme.accent : (parlayToWin > 0 ? Theme.accent : Theme.textMuted)))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
@@ -791,33 +779,19 @@ struct BetSlipSheet: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
                             .stroke(
-                                isParlayToWinFocused ? Theme.accent.opacity(0.6) : Theme.border,
-                                lineWidth: isParlayToWinFocused ? 2 : 1
+                                isToWinActive ? Theme.accent.opacity(0.6) : Theme.border,
+                                lineWidth: isToWinActive ? 2 : 1
                             )
                     )
-                    .animation(.easeInOut(duration: 0.15), value: isParlayToWinFocused)
+                    .glowingBorder(color: Theme.accent, isActive: isToWinActive)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            activeFieldId = isToWinActive ? nil : "parlay_towin"
+                        }
+                    }
                 }
             }
-            // Track active field based on focus changes
-            .onChange(of: isParlayWagerFocused) { _, focused in
-                if focused { parlayActiveField = .wager }
-            }
-            .onChange(of: isParlayToWinFocused) { _, focused in
-                if focused { parlayActiveField = .toWin }
-            }
-
-            // Quick stake buttons below Wager/To Win
-            QuickStakeRow { amount in
-                let currentStake = betSlipManager.stake
-                let newStake = currentStake + amount
-                betSlipManager.stake = newStake
-                stakeText = "\(NSDecimalNumber(decimal: newStake).intValue)"
-                if let odds = betSlipManager.combinedParlayOdds {
-                    let calculatedToWin = betSlipManager.calculateToWin(odds: odds, stake: newStake)
-                    toWinText = calculatedToWin > 0 ? formatToWin(calculatedToWin) : ""
-                }
-            }
-            .disabled(isSubmitting)
         }
         .padding()
         .background(Theme.cardBackground)
@@ -910,103 +884,6 @@ struct BetSlipSheet: View {
         }
         .buttonStyle(PremiumButtonStyle())
         .disabled(isSubmitting)
-    }
-
-    // MARK: - Stake Entry Section (US-042)
-
-    @ViewBuilder
-    private var stakeEntrySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("STAKE")
-                .font(Theme.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(Theme.textMuted)
-                .tracking(1)
-
-            VStack(spacing: 16) {
-                // US-010: Tappable stake display (replaces TextField, routes to custom keypad)
-                let isParlayActive = activeFieldId == "parlay_stake"
-                HStack(spacing: 12) {
-                    Text("$")
-                        .font(Theme.title1)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Theme.gold)
-
-                    TextField("0", text: $stakeText)
-                        .font(Theme.font(size: 32, weight: .bold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .keyboardType(.decimalPad)
-                        .onChange(of: stakeText) { _, newValue in
-                            // Validate decimal input: one decimal point, max 2 decimal places
-                            let sanitized = Self.sanitizeStakeInput(newValue)
-                            if sanitized != newValue {
-                                stakeText = sanitized
-                                return
-                            }
-                            // Parse and update stake
-                            if let value = Decimal(string: newValue) {
-                                betSlipManager.stake = value
-                            } else if newValue.isEmpty {
-                                betSlipManager.stake = 0
-                            }
-                        }
-
-                    Spacer()
-
-                    if !stakeText.isEmpty {
-                        Button(action: {
-                            stakeText = ""
-                            betSlipManager.stake = 0
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(Theme.title2)
-                                .foregroundStyle(Theme.textMuted)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(Theme.elevatedBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .glowingBorder(color: Theme.accent, isActive: isParlayActive)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        activeFieldId = isParlayActive ? nil : "parlay_stake"
-                    }
-                }
-
-                // Stake validation warning (US-042)
-                if betSlipManager.stake > 0 && !betSlipManager.isStakeValid(availableCredit: availableCredit) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(Theme.warning)
-                        Text("Stake exceeds available credit (\(formatCurrency(availableCredit)))")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.warning)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Theme.warning.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-
-                // Footer note for singles
-                if betSlipManager.betMode == .singles && betSlipManager.count > 1 {
-                    Text("Stake applies to each of your \(betSlipManager.count) singles bets. Total stake: \(formatCurrency(betSlipManager.totalSinglesStake))")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                }
-            }
-            .padding()
-            .background(Theme.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Theme.border, lineWidth: 0.5)
-            )
-        }
     }
 
     /// US-001: Calculate "to win" for parlay mode display
@@ -1497,6 +1374,11 @@ struct BetSlipSheet: View {
                 guard let fieldId = activeFieldId else { return "" }
                 if fieldId == "parlay_stake" {
                     return stakeText
+                } else if fieldId == "parlay_towin" {
+                    return toWinText
+                } else if fieldId.hasSuffix("_towin") {
+                    let itemKey = String(fieldId.dropLast(6)) // remove "_towin"
+                    return itemToWinTexts[itemKey] ?? ""
                 } else {
                     return itemStakeTexts[fieldId] ?? ""
                 }
@@ -1505,19 +1387,62 @@ struct BetSlipSheet: View {
                 guard let fieldId = activeFieldId else { return }
                 if fieldId == "parlay_stake" {
                     stakeText = newValue
-                    // Sync to betSlipManager
+                    parlayActiveField = .wager
                     if let value = Decimal(string: newValue) {
                         betSlipManager.stake = value
+                        // Auto-calculate to-win
+                        if let odds = betSlipManager.combinedParlayOdds {
+                            let calculatedToWin = betSlipManager.calculateToWin(odds: odds, stake: value)
+                            toWinText = calculatedToWin > 0 ? formatToWin(calculatedToWin) : ""
+                        }
                     } else if newValue.isEmpty {
                         betSlipManager.stake = 0
+                        toWinText = ""
+                    }
+                } else if fieldId == "parlay_towin" {
+                    toWinText = newValue
+                    parlayActiveField = .toWin
+                    if let toWinValue = Decimal(string: newValue), toWinValue > 0 {
+                        if let odds = betSlipManager.combinedParlayOdds {
+                            let calculatedWager = betSlipManager.calculateWagerFromToWin(odds: odds, toWin: toWinValue)
+                            betSlipManager.stake = calculatedWager
+                            stakeText = Self.formatStakeText(calculatedWager)
+                        }
+                    } else if newValue.isEmpty {
+                        betSlipManager.stake = 0
+                        stakeText = ""
+                    }
+                } else if fieldId.hasSuffix("_towin") {
+                    let itemKey = String(fieldId.dropLast(6))
+                    itemToWinTexts[itemKey] = newValue
+                    // Reverse-calculate wager from to-win for this item
+                    if let item = betSlipManager.items.first(where: {
+                        betSlipManager.itemStakeKey(marketId: $0.marketId, sideIndicator: $0.sideIndicator) == itemKey
+                    }) {
+                        if let toWinValue = Decimal(string: newValue), toWinValue > 0 {
+                            let calculatedWager = betSlipManager.calculateWagerFromToWin(odds: item.odds, toWin: toWinValue)
+                            itemStakeTexts[itemKey] = Self.formatStakeText(calculatedWager)
+                            betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: calculatedWager)
+                        } else if newValue.isEmpty {
+                            itemStakeTexts[itemKey] = ""
+                            betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: 0)
+                        }
                     }
                 } else {
                     itemStakeTexts[fieldId] = newValue
-                    // Sync to betSlipManager - parse fieldId to get marketId and sideIndicator
+                    // Sync to betSlipManager and auto-calculate to-win
                     if let value = Decimal(string: newValue) {
                         syncItemStake(fieldId: fieldId, stake: value)
+                        // Auto-calculate to-win for this item
+                        if let item = betSlipManager.items.first(where: {
+                            betSlipManager.itemStakeKey(marketId: $0.marketId, sideIndicator: $0.sideIndicator) == fieldId
+                        }) {
+                            let toWin = betSlipManager.calculateToWin(odds: item.odds, stake: value)
+                            itemToWinTexts[fieldId] = toWin > 0 ? formatToWin(toWin) : ""
+                        }
                     } else if newValue.isEmpty {
                         syncItemStake(fieldId: fieldId, stake: 0)
+                        itemToWinTexts[fieldId] = ""
                     }
                 }
             }
@@ -1566,6 +1491,14 @@ struct BetSlipSheet: View {
         return Binding(
             get: { itemStakeTexts[key] ?? "" },
             set: { itemStakeTexts[key] = $0 }
+        )
+    }
+
+    private func itemToWinTextBinding(for item: BetSlipItem) -> Binding<String> {
+        let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+        return Binding(
+            get: { itemToWinTexts[key] ?? "" },
+            set: { itemToWinTexts[key] = $0 }
         )
     }
 
@@ -1644,15 +1577,6 @@ struct PremiumBetSlipItemCard: View {
 
     /// Unique field ID for this card's stake input
     var fieldId: String
-
-    /// Track if stake field is focused (US-004)
-    @FocusState private var isStakeFocused: Bool
-
-    /// US-002: Track if to-win field is focused
-    @FocusState private var isToWinFocused: Bool
-
-    /// US-002: Track which field is actively being edited
-    @State private var activeField: BetSlipSheet.ActiveField? = nil
 
     private var formattedOdds: String {
         item.odds >= 0 ? "+\(item.odds)" : "\(item.odds)"
@@ -1786,9 +1710,11 @@ struct PremiumBetSlipItemCard: View {
             }
             .padding(16)
 
-            // US-004/US-010: Per-bet stake input in singles mode (tappable, routes to custom keypad)
+            // US-004/US-010: Per-bet bidirectional WAGER/TO WIN in singles mode
             if betMode == .singles {
-                let isActive = activeFieldId == fieldId
+                let isWagerActive = activeFieldId == fieldId
+                let toWinFieldId = fieldId + "_towin"
+                let isToWinActive = activeFieldId == toWinFieldId
                 VStack(spacing: 8) {
                     // Divider
                     Rectangle()
@@ -1796,56 +1722,73 @@ struct PremiumBetSlipItemCard: View {
                         .frame(height: 1)
 
                     HStack(spacing: 12) {
-                        // Tappable stake display (US-010: replaces TextField, routes to custom keypad)
-                        HStack(spacing: 6) {
-                            Text("$")
-                                .font(Theme.font(size: 16, weight: .semibold))
-                                .foregroundStyle(Theme.gold)
+                        // WAGER field (tappable, routes to custom keypad)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("WAGER")
+                                .font(Theme.caption2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(isWagerActive ? Theme.gold : Theme.textMuted)
+                                .tracking(0.5)
 
-                            TextField("0", text: $stakeText)
-                                .font(Theme.font(size: 18, weight: .bold))
-                                .foregroundStyle(Theme.textPrimary)
-                                .keyboardType(.decimalPad)
-                                .focused($isStakeFocused)
-                                .frame(width: 60)
-                                .onChange(of: stakeText) { _, newValue in
-                                    // Validate decimal input: one decimal point, max 2 decimal places
-                                    let sanitized = BetSlipSheet.sanitizeStakeInput(newValue)
-                                    if sanitized != newValue {
-                                        stakeText = sanitized
-                                        return
-                                    }
-                                    // Parse and update per-item stake
-                                    if let value = Decimal(string: newValue) {
-                                        betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: value)
-                                    } else if newValue.isEmpty {
-                                        betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: 0)
-                                    }
-                                }
+                            HStack(spacing: 4) {
+                                Text("$")
+                                    .font(Theme.font(size: 14, weight: .semibold))
+                                    .foregroundStyle(Theme.gold)
+
+                                Text(stakeText.isEmpty ? "0" : stakeText)
+                                    .font(Theme.font(size: 16, weight: .bold))
+                                    .foregroundStyle(stakeText.isEmpty ? Theme.textMuted : Theme.textPrimary)
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(Theme.elevatedBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .glowingBorder(color: Theme.accent, isActive: isActive)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isWagerActive ? Theme.gold.opacity(0.6) : Theme.border, lineWidth: isWagerActive ? 2 : 0.5)
+                        )
+                        .glowingBorder(color: Theme.gold, isActive: isWagerActive)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                activeFieldId = isActive ? nil : fieldId
+                                activeFieldId = isWagerActive ? nil : fieldId
                             }
                         }
 
-                        Spacer()
+                        // TO WIN field (tappable, routes to custom keypad)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("TO WIN")
+                                .font(Theme.caption2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(isToWinActive ? Theme.accent : Theme.textMuted)
+                                .tracking(0.5)
 
-                        // Potential payout for this bet
-                        if individualPayout > 0 {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("To Win")
-                                    .font(Theme.caption2)
-                                    .foregroundStyle(Theme.textMuted)
-                                Text(formatCurrency(individualPayout))
+                            HStack(spacing: 4) {
+                                Text("$")
+                                    .font(Theme.font(size: 14, weight: .semibold))
+                                    .foregroundStyle(isToWinActive ? Theme.accent : (individualToWin > 0 ? Theme.accent : Theme.textMuted))
+
+                                Text(toWinText.isEmpty ? "0" : toWinText)
                                     .font(Theme.font(size: 16, weight: .bold))
-                                    .foregroundStyle(Theme.accent)
+                                    .foregroundStyle(isToWinActive ? Theme.accent : (individualToWin > 0 ? Theme.accent : Theme.textMuted))
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Theme.elevatedBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isToWinActive ? Theme.accent.opacity(0.6) : Theme.border, lineWidth: isToWinActive ? 2 : 0.5)
+                        )
+                        .glowingBorder(color: Theme.accent, isActive: isToWinActive)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                activeFieldId = isToWinActive ? nil : toWinFieldId
                             }
                         }
                     }
