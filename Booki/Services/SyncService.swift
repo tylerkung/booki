@@ -164,24 +164,43 @@ final class SyncService: ObservableObject {
             return
         }
 
+        // Guard against concurrent syncs
+        guard syncStatus != .syncing else { return }
+
         syncStatus = .syncing
 
-        do {
-            // Phase 1: Download all data from server
-            try await downloadAll(bookieId: bookieId)
+        // Run sync in a detached task so SwiftUI view redraws
+        // (triggered by @Published changes) don't cancel the network requests.
+        // .refreshable cancels its task on re-render, causing NSURLError -999.
+        await withCheckedContinuation { continuation in
+            Task.detached { [weak self] in
+                guard let self else {
+                    continuation.resume()
+                    return
+                }
+                do {
+                    // Phase 1: Download all data from server
+                    try await self.downloadAll(bookieId: bookieId)
 
-            // Phase 2: Upload pending local changes
-            try await uploadPendingChanges(bookieId: bookieId)
+                    // Phase 2: Upload pending local changes
+                    try await self.uploadPendingChanges(bookieId: bookieId)
 
-            // Update sync state
-            lastSyncedAt = Date()
-            syncStatus = .idle
+                    // Update sync state on main actor
+                    await MainActor.run {
+                        self.lastSyncedAt = Date()
+                        self.syncStatus = .idle
+                    }
 
-            // Refresh pending count
-            await updatePendingChangesCount()
-        } catch {
-            syncStatus = .error(error.localizedDescription)
-            print("Sync failed: \(error)")
+                    // Refresh pending count
+                    await self.updatePendingChangesCount()
+                } catch {
+                    await MainActor.run {
+                        self.syncStatus = .error(error.localizedDescription)
+                    }
+                    print("Sync failed: \(error)")
+                }
+                continuation.resume()
+            }
         }
     }
 
