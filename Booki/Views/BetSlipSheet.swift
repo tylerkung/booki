@@ -311,10 +311,10 @@ struct BetSlipSheet: View {
                     }
                 }
 
-                // Submit Button (US-006: Direct submission without review screen)
-                if canSubmit {
-                    submitSection
-                }
+                // Submit Button (US-001: Always visible, dimmed when disabled)
+                submitSection
+                    .opacity(canSubmit ? 1.0 : 0.4)
+                    .disabled(!canSubmit)
             }
             .padding(.horizontal)
             .padding(.top, 16)
