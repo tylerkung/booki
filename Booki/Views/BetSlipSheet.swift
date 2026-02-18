@@ -462,7 +462,11 @@ struct BetSlipSheet: View {
             guard betSlipManager.stake > 0 else { return false }
             return betSlipManager.isStakeValid(availableCredit: availableCredit)
         case .singles:
-            guard betSlipManager.individualTotalStake > 0 else { return false }
+            // US-003: Every single must have a stake > 0
+            let allHaveStakes = betSlipManager.items.allSatisfy { item in
+                betSlipManager.getItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator) > 0
+            }
+            guard allHaveStakes else { return false }
             return betSlipManager.isIndividualStakeValid(availableCredit: availableCredit)
         }
     }
