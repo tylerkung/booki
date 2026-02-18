@@ -32,20 +32,21 @@ struct LoginView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Header
-                VStack(spacing: 8) {
-                    Image(systemName: "person.circle.fill")
-                        .font(Theme.font(size: 60))
-                        .foregroundStyle(Theme.accent)
+                // Header with Booki Logo
+                VStack(spacing: 12) {
+                    Image("BookiLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 200)
 
                     Text("Welcome Back")
                         .font(Theme.title1)
                         .fontWeight(.bold)
-                        .foregroundStyle(Theme.textPrimary)
+                        .foregroundStyle(Theme.background)
 
                     Text("Log in to manage your book")
                         .font(Theme.subheadline)
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(Theme.background.opacity(0.7))
                 }
                 .padding(.top, 40)
                 .padding(.bottom, 20)
@@ -57,7 +58,7 @@ struct LoginView: View {
                         Text("Email")
                             .font(Theme.subheadline)
                             .fontWeight(.medium)
-                            .foregroundStyle(Theme.textSecondary)
+                            .foregroundStyle(Theme.background.opacity(0.8))
 
                         TextField("", text: $email)
                             .textFieldStyle(AuthTextFieldStyle())
@@ -76,7 +77,7 @@ struct LoginView: View {
                         Text("Password")
                             .font(Theme.subheadline)
                             .fontWeight(.medium)
-                            .foregroundStyle(Theme.textSecondary)
+                            .foregroundStyle(Theme.background.opacity(0.8))
 
                         SecureField("", text: $password)
                             .textFieldStyle(AuthTextFieldStyle())
@@ -93,7 +94,7 @@ struct LoginView: View {
                         Button(action: onNavigateToForgotPassword) {
                             Text("Forgot Password?")
                                 .font(Theme.subheadline)
-                                .foregroundStyle(Theme.accent)
+                                .foregroundStyle(Theme.background)
                         }
                     }
                 }
@@ -103,8 +104,11 @@ struct LoginView: View {
                 if let errorMessage = errorMessage {
                     Text(errorMessage)
                         .font(Theme.subheadline)
-                        .foregroundStyle(Theme.danger)
+                        .foregroundStyle(.white)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Theme.danger.cornerRadius(Theme.cornerRadiusSmall))
                         .padding(.horizontal, 24)
                 }
 
@@ -113,16 +117,20 @@ struct LoginView: View {
                     Group {
                         if isLoading {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
                             Text("Log In")
                                 .fontWeight(.semibold)
                         }
                     }
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
+                    .background(
+                        (!isFormValid || isLoading) ? Theme.elevatedBackground : Theme.background
+                    )
+                    .cornerRadius(Theme.cornerRadiusSmall)
                 }
-                .buttonStyle(PrimaryButtonStyle())
                 .disabled(!isFormValid || isLoading)
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
@@ -143,12 +151,12 @@ struct LoginView: View {
                 // Navigate to Sign Up
                 HStack(spacing: 4) {
                     Text("Don't have an account?")
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(Theme.background.opacity(0.7))
 
                     Button(action: onNavigateToSignUp) {
                         Text("Sign up")
                             .fontWeight(.semibold)
-                            .foregroundStyle(Theme.accent)
+                            .foregroundStyle(Theme.background)
                     }
                 }
                 .font(Theme.subheadline)
@@ -161,14 +169,14 @@ struct LoginView: View {
                             .fontWeight(.medium)
                     }
                     .font(Theme.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(Theme.background.opacity(0.7))
                 }
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Theme.backgroundGradient)
+        .background(Color(hex: 0x00F5D4).ignoresSafeArea())
     }
 
     // MARK: - Log In
