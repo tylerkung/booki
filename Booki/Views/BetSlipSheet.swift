@@ -36,6 +36,9 @@ struct BetSlipSheet: View {
     @State private var submissionError: String?
     @State private var submittedCount: Int = 0
 
+    /// US-005: Store submitted items for re-use
+    @State private var lastSubmittedItems: [BetSlipItem] = []
+
     /// Animation state for success (US-006)
     @State private var showCheckmark: Bool = false
     @State private var checkmarkScale: CGFloat = 0
@@ -731,17 +734,46 @@ struct BetSlipSheet: View {
 
             Spacer()
 
-            // Done button
-            Button(action: {
-                dismiss()
-            }) {
-                Text("Done")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Theme.accent)
-                    .foregroundStyle(Theme.background)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            VStack(spacing: 12) {
+                // US-005: Re-use selections button
+                if !lastSubmittedItems.isEmpty {
+                    Button(action: {
+                        // Re-add each saved selection
+                        for item in lastSubmittedItems {
+                            betSlipManager.add(item)
+                        }
+                        // Clear stake texts (only selections restored, not amounts)
+                        itemStakeTexts.removeAll()
+                        stakeText = ""
+                        betSlipManager.stake = 0
+                        // Return to bet slip view
+                        submissionComplete = false
+                        // Reset animation states
+                        showCheckmark = false
+                        checkmarkScale = 0
+                        outerRingScale = 0.8
+                        outerRingOpacity = 0
+                    }) {
+                        Text("Re-use selections")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // Done button
+                Button(action: {
+                    dismiss()
+                }) {
+                    Text("Done")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Theme.accent)
+                        .foregroundStyle(Theme.background)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
             }
             .padding()
         }
@@ -891,6 +923,8 @@ struct BetSlipSheet: View {
 
                 if successCount > 0 {
                     submittedCount = successCount
+                    // US-005: Save items before clearing for re-use
+                    lastSubmittedItems = itemsToSubmit
                     // Clear bet slip, stake, and local stake texts
                     betSlipManager.clearAll()
                     betSlipManager.stake = 0
