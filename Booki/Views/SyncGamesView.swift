@@ -13,12 +13,14 @@ struct SyncGamesView: View {
     @StateObject private var oddsService = OddsAPIService.shared
 
     @State private var isSyncing = false
+    @State private var isLoadingSports = true
     @State private var errorMessage: String?
     @State private var syncResult: SyncResult?
     @State private var selectedSports: Set<String> = []
+    @State private var activeSports: [(key: String, name: String)] = []
 
-    /// Available sports to sync
-    private let availableSports: [(key: String, name: String)] = [
+    /// All supported sports (filtered to active ones on load)
+    private static let allSports: [(key: String, name: String)] = [
         ("basketball_nba", "NBA"),
         ("americanfootball_nfl", "NFL"),
         ("basketball_ncaab", "NCAAB"),
@@ -49,10 +51,14 @@ struct SyncGamesView: View {
             VStack(spacing: 0) {
                 if !oddsService.hasAPIKey {
                     noAPIKeyView
+                } else if isLoadingSports {
+                    loadingSportsView
                 } else if let error = errorMessage {
                     errorView(error)
                 } else if let result = syncResult {
                     successView(result)
+                } else if activeSports.isEmpty {
+                    noSportsView
                 } else {
                     syncView
                 }
@@ -68,9 +74,48 @@ struct SyncGamesView: View {
                 }
             }
         }
+        .task {
+            await loadActiveSports()
+        }
     }
 
     // MARK: - Views
+
+    private var loadingSportsView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+            Text("Checking available sports...")
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var noSportsView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "sportscourt")
+                .font(.system(size: 48))
+                .foregroundStyle(Theme.textMuted)
+
+            Text("No Active Sports")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("There are no sports with upcoming games right now. Check back later.")
+                .font(.body)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+
+            Button("Retry") {
+                Task {
+                    await loadActiveSports()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.accent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
     private var noAPIKeyView: some View {
         ContentUnavailableView(
@@ -83,15 +128,15 @@ struct SyncGamesView: View {
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
-                .foregroundStyle(.orange)
+                .font(Theme.font(size: 48))
+                .foregroundStyle(Theme.warning)
 
             Text("Error")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
 
             Text(message)
-                .font(.body)
+                .font(Theme.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
@@ -108,11 +153,11 @@ struct SyncGamesView: View {
     private func successView(_ result: SyncResult) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
+                .font(Theme.font(size: 48))
+                .foregroundStyle(Theme.accent)
 
             Text("Games Synced")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
 
             VStack(spacing: 8) {
@@ -133,7 +178,7 @@ struct SyncGamesView: View {
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
-            .font(.body)
+            .font(Theme.body)
 
             Button("Done") {
                 dismiss()
@@ -150,15 +195,15 @@ struct SyncGamesView: View {
             // Header
             VStack(spacing: 8) {
                 Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 48))
+                    .font(Theme.font(size: 48))
                     .foregroundStyle(Theme.accent)
 
                 Text("Sync Games")
-                    .font(.title2)
+                    .font(Theme.title2)
                     .fontWeight(.semibold)
 
                 Text("Remove old games and fetch fresh upcoming games with current odds.")
-                    .font(.body)
+                    .font(Theme.body)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -168,11 +213,11 @@ struct SyncGamesView: View {
             // Sport selection
             VStack(alignment: .leading, spacing: 12) {
                 Text("Select Sports")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(availableSports, id: \.key) { sport in
+                    ForEach(activeSports, id: \.key) { sport in
                         SportToggleButton(
                             name: sport.name,
                             isSelected: selectedSports.contains(sport.key),
@@ -195,14 +240,14 @@ struct SyncGamesView: View {
                     Image(systemName: "info.circle")
                         .foregroundStyle(Theme.warning)
                     Text("\(staleEvents.count) old games will be removed")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
 
             if let remaining = oddsService.quotaRemaining {
                 Text("API quota: \(remaining) calls remaining")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
             }
 
@@ -236,6 +281,28 @@ struct SyncGamesView: View {
     }
 
     // MARK: - Actions
+
+    private func loadActiveSports() async {
+        guard oddsService.hasAPIKey else {
+            isLoadingSports = false
+            return
+        }
+
+        isLoadingSports = true
+        errorMessage = nil
+
+        do {
+            let activeKeys = try await oddsService.fetchActiveSportKeys()
+            activeSports = Self.allSports.filter { activeKeys.contains($0.key) }
+            isLoadingSports = false
+        } catch let error as OddsAPIError {
+            errorMessage = error.localizedDescription
+            isLoadingSports = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoadingSports = false
+        }
+    }
 
     private func syncGames() async {
         isSyncing = true

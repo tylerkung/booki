@@ -44,6 +44,15 @@ enum BetHistoryFilter: String, CaseIterable, Identifiable {
     }
 }
 
+/// Odds format preference for displaying betting odds
+enum OddsFormat: String, CaseIterable, Identifiable {
+    case american = "American"
+    case decimal = "Decimal"
+    case fractional = "Fractional"
+
+    var id: String { rawValue }
+}
+
 /// Enhanced account summary view for players showing balance, credit utilization, and quick stats
 struct AccountView: View {
     @Environment(\.modelContext) private var modelContext
@@ -64,6 +73,10 @@ struct AccountView: View {
 
     // Bet history filter state
     @State private var selectedBetFilter: BetHistoryFilter = .active
+
+    // Player preferences
+    @AppStorage("playerOddsFormat") private var oddsFormat: String = OddsFormat.american.rawValue
+    @AppStorage("playerNotificationsEnabled") private var notificationsEnabled: Bool = true
 
     // MARK: - Computed Properties
 
@@ -145,8 +158,17 @@ struct AccountView: View {
     }
 
     /// Total stake across all settled bets (for ROI calculation)
+    /// Groups by ticketId and uses first bet's stake for parlays to avoid overcounting
     private var totalStaked: Decimal {
-        settledBets.reduce(Decimal.zero) { $0 + $1.stake }
+        // Group settled bets by ticketId
+        let grouped = Dictionary(grouping: settledBets) { $0.ticketId }
+
+        // For each ticket, use first bet's stake (parlays share stake across legs)
+        return grouped.values.reduce(Decimal.zero) { total, ticketBets in
+            // All bets in a ticket share the same stake for parlays
+            // For singles, there's only one bet anyway
+            total + (ticketBets.first?.stake ?? 0)
+        }
     }
 
     /// Total profit/loss from settled bets
@@ -208,6 +230,12 @@ struct AccountView: View {
                 // Hero Balance Section
                 heroBalanceSection
 
+                // Profile Section
+                profileSection
+
+                // Preferences Section
+                preferencesSection
+
                 // Credit Utilization Section
                 creditUtilizationSection
 
@@ -223,7 +251,7 @@ struct AccountView: View {
                 // Transaction History Section
                 transactionHistorySection
 
-                // Logout Section (only show for actual players, not test mode)
+                // Logout Section (only show for authenticated players)
                 if authManager.userRole == .player {
                     logoutSection
                 }
@@ -252,20 +280,19 @@ struct AccountView: View {
 
     private var logoutSection: some View {
         VStack(spacing: 16) {
-            Button(role: .destructive) {
+            Button {
                 showingLogoutConfirmation = true
             } label: {
                 HStack {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                     Text("Log Out")
                 }
-                .font(.headline)
+                .font(Theme.headline)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Theme.danger)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
+            .buttonStyle(DestructiveButtonStyle())
         }
         .padding(.top, 20)
     }
@@ -286,13 +313,13 @@ struct AccountView: View {
     private var heroBalanceSection: some View {
         VStack(spacing: 12) {
             Text("CURRENT BALANCE")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .tracking(1.5)
                 .foregroundStyle(Theme.textSecondary)
 
             Text(formatCurrency(displayBalance))
-                .font(.system(size: 56, weight: .bold, design: .rounded))
+                .font(Theme.font(size: 56, weight: .bold))
                 .foregroundStyle(balanceColor)
                 .shadow(color: balanceColor.opacity(0.3), radius: 8, x: 0, y: 0)
 
@@ -301,7 +328,7 @@ struct AccountView: View {
                     Image(systemName: "arrow.up.circle.fill")
                         .foregroundStyle(Theme.accent)
                     Text("Amount owed to you")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
             } else if displayBalance < 0 {
@@ -309,7 +336,7 @@ struct AccountView: View {
                     Image(systemName: "arrow.down.circle.fill")
                         .foregroundStyle(Theme.danger)
                     Text("Amount you owe")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
             } else {
@@ -317,7 +344,7 @@ struct AccountView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(Theme.textSecondary)
                     Text("All settled up")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
@@ -342,6 +369,158 @@ struct AccountView: View {
         .shadow(color: Color.black.opacity(0.4), radius: 12, x: 0, y: 6)
     }
 
+    // MARK: - Profile Section
+
+    /// Formatted "member since" date
+    private var memberSinceDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: player.createdAt)
+    }
+
+    private var profileSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: "person.fill")
+                    .foregroundStyle(Theme.accentSecondary)
+                Text("PROFILE")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+
+            VStack(spacing: 0) {
+                // Name
+                profileRow(icon: "person.text.rectangle", label: "Name", value: player.name)
+
+                Divider().background(Theme.divider)
+
+                // Email
+                profileRow(icon: "envelope.fill", label: "Email", value: player.email ?? "—")
+
+                Divider().background(Theme.divider)
+
+                // Connected Bookie
+                profileRow(icon: "link.circle.fill", label: "Bookie", value: player.bookie?.name ?? "—")
+
+                Divider().background(Theme.divider)
+
+                // Member Since
+                profileRow(icon: "calendar", label: "Member Since", value: memberSinceDate)
+            }
+        }
+        .padding(20)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.cardBackground)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            }
+        )
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+
+    /// Helper for profile info rows
+    private func profileRow(icon: String, label: String, value: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(Theme.textMuted)
+                .frame(width: 24)
+
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+
+            Spacer()
+
+            Text(value)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .padding(.vertical, 12)
+    }
+
+    // MARK: - Preferences Section
+
+    /// Binding wrapper for OddsFormat stored as String in @AppStorage
+    private var oddsFormatBinding: Binding<OddsFormat> {
+        Binding(
+            get: { OddsFormat(rawValue: oddsFormat) ?? .american },
+            set: { oddsFormat = $0.rawValue }
+        )
+    }
+
+    private var preferencesSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: "gearshape.fill")
+                    .foregroundStyle(Theme.accentSecondary)
+                Text("PREFERENCES")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .tracking(1)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+
+            VStack(spacing: 0) {
+                // Odds Format
+                HStack(spacing: 12) {
+                    Image(systemName: "number.circle")
+                        .font(.body)
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 24)
+
+                    Text("Odds Format")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    Spacer()
+
+                    Picker("Odds Format", selection: oddsFormatBinding) {
+                        ForEach(OddsFormat.allCases) { format in
+                            Text(format.rawValue).tag(format)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Theme.accent)
+                }
+                .padding(.vertical, 12)
+
+                Divider().background(Theme.divider)
+
+                // Notifications
+                HStack(spacing: 12) {
+                    Image(systemName: "bell.fill")
+                        .font(.body)
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 24)
+
+                    Toggle(isOn: $notificationsEnabled) {
+                        Text("Bet Notifications")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .tint(Theme.accent)
+                }
+                .padding(.vertical, 12)
+            }
+        }
+        .padding(20)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.cardBackground)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            }
+        )
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+
     // MARK: - Credit Utilization Section
 
     private var creditUtilizationSection: some View {
@@ -352,7 +531,7 @@ struct AccountView: View {
                     Image(systemName: "creditcard.fill")
                         .foregroundStyle(Theme.accent)
                     Text("AVAILABLE CREDIT")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .fontWeight(.semibold)
                         .tracking(1)
                         .foregroundStyle(Theme.textSecondary)
@@ -361,7 +540,7 @@ struct AccountView: View {
                 Spacer()
 
                 Text(formatCurrency(balanceSummary.availableCredit))
-                    .font(.title2)
+                    .font(Theme.title2)
                     .fontWeight(.bold)
                     .foregroundColor(balanceSummary.availableCredit >= 0 ? Theme.textPrimary : Theme.danger)
             }
@@ -391,12 +570,12 @@ struct AccountView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("USED")
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.medium)
                         .tracking(0.5)
                         .foregroundStyle(Theme.textMuted)
                     Text(formatCurrency(player.creditLimit - balanceSummary.availableCredit))
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(creditUtilizationColor)
                 }
@@ -406,11 +585,11 @@ struct AccountView: View {
                 // Utilization percentage
                 VStack(spacing: 2) {
                     Text("\(Int(creditUtilization * 100))%")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.bold)
                         .foregroundStyle(creditUtilizationColor)
                     Text("utilized")
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .foregroundStyle(Theme.textMuted)
                 }
 
@@ -418,12 +597,12 @@ struct AccountView: View {
 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("LIMIT")
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.medium)
                         .tracking(0.5)
                         .foregroundStyle(Theme.textMuted)
                     Text(formatCurrency(player.creditLimit))
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textPrimary)
                 }
@@ -471,7 +650,7 @@ struct AccountView: View {
                 Image(systemName: "chart.bar.fill")
                     .foregroundStyle(Theme.gold)
                 Text("QUICK STATS")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
                     .foregroundStyle(Theme.textSecondary)
@@ -519,18 +698,18 @@ struct AccountView: View {
         VStack(spacing: 8) {
             // Icon
             Image(systemName: icon)
-                .font(.title3)
+                .font(Theme.title3)
                 .foregroundStyle(color)
 
             // Value
             Text(value)
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.bold)
                 .foregroundStyle(Theme.textPrimary)
 
             // Title
             Text(title)
-                .font(.caption2)
+                .font(Theme.caption2)
                 .fontWeight(.medium)
                 .foregroundStyle(Theme.textSecondary)
         }
@@ -558,7 +737,7 @@ struct AccountView: View {
                 Image(systemName: "trophy.fill")
                     .foregroundStyle(Theme.gold)
                 Text("BETTING STATS")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
                     .foregroundStyle(Theme.textSecondary)
@@ -567,7 +746,7 @@ struct AccountView: View {
             // Record display card (W-L-P)
             VStack(spacing: 12) {
                 Text("RECORD")
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.medium)
                     .tracking(0.5)
                     .foregroundStyle(Theme.textMuted)
@@ -584,25 +763,25 @@ struct AccountView: View {
                     Text("\(pushCount)")
                         .foregroundStyle(Theme.warning)
                 }
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .font(Theme.font(size: 32, weight: .bold))
 
                 HStack(spacing: 20) {
                     HStack(spacing: 4) {
                         Circle().fill(Theme.accent).frame(width: 8, height: 8)
                         Text("Wins")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.textSecondary)
                     }
                     HStack(spacing: 4) {
                         Circle().fill(Theme.danger).frame(width: 8, height: 8)
                         Text("Losses")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.textSecondary)
                     }
                     HStack(spacing: 4) {
                         Circle().fill(Theme.warning).frame(width: 8, height: 8)
                         Text("Pushes")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.textSecondary)
                     }
                 }
@@ -646,18 +825,18 @@ struct AccountView: View {
                         Image(systemName: "dollarsign.circle")
                             .foregroundStyle(Theme.textMuted)
                         Text("Total Profit/Loss")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
                     }
                     Spacer()
                     if settledBets.isEmpty {
                         Text("—")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.semibold)
                             .foregroundStyle(Theme.textSecondary)
                     } else {
                         Text(formatProfitLoss(totalProfitLoss))
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.bold)
                             .foregroundStyle(totalProfitLoss >= 0 ? Theme.accent : Theme.danger)
                             .padding(.horizontal, 10)
@@ -678,18 +857,18 @@ struct AccountView: View {
                         Image(systemName: "chart.line.uptrend.xyaxis")
                             .foregroundStyle(Theme.textMuted)
                         Text("ROI")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
                     }
                     Spacer()
                     if settledBets.isEmpty {
                         Text("—")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.semibold)
                             .foregroundStyle(Theme.textSecondary)
                     } else {
                         Text(String(format: "%+.1f%%", roiPercentage))
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.bold)
                             .foregroundStyle(roiPercentage >= 0 ? Theme.accent : Theme.danger)
                             .padding(.horizontal, 10)
@@ -718,11 +897,11 @@ struct AccountView: View {
     private func statsRow(label: String, value: String, valueColor: Color) -> some View {
         HStack {
             Text(label)
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
             Spacer()
             Text(value)
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .fontWeight(.semibold)
                 .foregroundStyle(valueColor)
         }
@@ -750,7 +929,7 @@ struct AccountView: View {
                 Image(systemName: "ticket.fill")
                     .foregroundStyle(Theme.scheduled)
                 Text("MY BETS")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
                     .foregroundStyle(Theme.textSecondary)
@@ -765,7 +944,7 @@ struct AccountView: View {
                         }
                     } label: {
                         Text(filter.rawValue)
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(selectedBetFilter == filter ? .semibold : .regular)
                             .foregroundStyle(selectedBetFilter == filter ? Theme.background : Theme.textSecondary)
                             .frame(maxWidth: .infinity)
@@ -789,14 +968,14 @@ struct AccountView: View {
             if filteredPlayerBets.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "ticket")
-                        .font(.system(size: 40))
+                        .font(Theme.font(size: 40))
                         .foregroundStyle(Theme.textMuted)
                     Text("No bets")
-                        .font(.headline)
+                        .font(Theme.headline)
                         .foregroundStyle(Theme.textSecondary)
                     if selectedBetFilter != .all {
                         Text("Try changing the filter")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                     }
                 }
@@ -849,7 +1028,7 @@ struct AccountView: View {
                 Image(systemName: "clock.arrow.circlepath")
                     .foregroundStyle(Theme.textSecondary)
                 Text("HISTORY")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
                     .foregroundStyle(Theme.textSecondary)
@@ -864,7 +1043,7 @@ struct AccountView: View {
                         }
                     } label: {
                         Text(filter.rawValue)
-                            .font(.caption)
+                            .font(Theme.caption)
                             .fontWeight(selectedTransactionFilter == filter ? .semibold : .regular)
                             .foregroundStyle(selectedTransactionFilter == filter ? Theme.background : Theme.textSecondary)
                             .frame(maxWidth: .infinity)
@@ -888,14 +1067,14 @@ struct AccountView: View {
             if filteredLedgerEntries.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "doc.text")
-                        .font(.system(size: 40))
+                        .font(Theme.font(size: 40))
                         .foregroundStyle(Theme.textMuted)
                     Text("No transactions")
-                        .font(.headline)
+                        .font(Theme.headline)
                         .foregroundStyle(Theme.textSecondary)
                     if selectedTransactionFilter != .all {
                         Text("Try changing the filter")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                     }
                 }
@@ -1015,21 +1194,21 @@ struct TransactionRowView: View {
                     .fill(iconColor.opacity(0.15))
                     .frame(width: 40, height: 40)
                 Image(systemName: iconName)
-                    .font(.body)
+                    .font(Theme.body)
                     .foregroundStyle(iconColor)
             }
 
             // Description and metadata
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.entryDescription)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
 
                 HStack(spacing: 6) {
                     Text(typeLabel)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(iconColor)
                         .padding(.horizontal, 8)
@@ -1040,7 +1219,7 @@ struct TransactionRowView: View {
                         )
 
                     Text(formattedDate)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                 }
             }
@@ -1049,7 +1228,7 @@ struct TransactionRowView: View {
 
             // Amount with background
             Text(formattedAmount)
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .fontWeight(.bold)
                 .foregroundStyle(amountColor)
                 .padding(.horizontal, 10)
@@ -1150,7 +1329,7 @@ struct AccountBetRowView: View {
             VStack(alignment: .leading, spacing: 6) {
                 // Event name
                 Text(eventName)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
@@ -1158,12 +1337,12 @@ struct AccountBetRowView: View {
                 // Side and odds
                 HStack(spacing: 8) {
                     Text(bet.side)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(Theme.textSecondary)
 
                     Text(formattedOdds)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.gold)
                         .padding(.horizontal, 6)
@@ -1174,7 +1353,7 @@ struct AccountBetRowView: View {
                         )
 
                     Text(formattedDate)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                 }
             }
@@ -1184,7 +1363,7 @@ struct AccountBetRowView: View {
             // Status badge and stake
             VStack(alignment: .trailing, spacing: 6) {
                 Text(statusText)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.background)
                     .padding(.horizontal, 10)
@@ -1193,14 +1372,14 @@ struct AccountBetRowView: View {
                     .clipShape(Capsule())
 
                 Text(formattedStake)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.textSecondary)
             }
 
             // Chevron indicator
             Image(systemName: "chevron.right")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textMuted)
         }
@@ -1360,7 +1539,7 @@ struct AccountBetDetailView: View {
                 }
             } header: {
                 Text("EVENT")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
                     .foregroundStyle(Theme.textMuted)
@@ -1388,7 +1567,7 @@ struct AccountBetDetailView: View {
                 detailRow(label: "Stake", value: formattedStake, valueColor: Theme.textPrimary)
             } header: {
                 Text("YOUR BET")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
                     .foregroundStyle(Theme.textMuted)
@@ -1410,13 +1589,13 @@ struct AccountBetDetailView: View {
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     Text(formatCurrency(totalReturn))
-                        .font(.title3)
+                        .font(Theme.title3)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.accent)
                 }
             } header: {
                 Text("POTENTIAL RETURN")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
                     .foregroundStyle(Theme.textMuted)
@@ -1429,7 +1608,7 @@ struct AccountBetDetailView: View {
                 detailRow(label: "Bet ID", value: String(bet.id.uuidString.prefix(8)) + "...")
             } header: {
                 Text("DETAILS")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
                     .foregroundStyle(Theme.textMuted)

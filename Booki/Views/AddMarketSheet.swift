@@ -158,8 +158,8 @@ struct AddMarketSheet: View {
         }
 
         Text("Enter the spread for the home team. Away team spread will be the opposite.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(Theme.caption)
+            .foregroundStyle(Theme.textSecondary)
     }
 
     @ViewBuilder
@@ -213,8 +213,8 @@ struct AddMarketSheet: View {
         }
 
         Text("Enter American odds (e.g., -110, +150)")
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(Theme.caption)
+            .foregroundStyle(Theme.textSecondary)
     }
 
     // MARK: - Helpers

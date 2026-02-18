@@ -1,0 +1,31 @@
+## Codebase Patterns
+- Use Theme.swift for all colors and styling constants - never use default iOS colors
+- AuthTextFieldStyle in SignUpView.swift is the standard TextFieldStyle for auth/onboarding forms
+- Form-based inputs (SettingsView, PlayersListView, PaymentSheet) use SwiftUI Form styling with .listRowBackground(Theme.cardBackground)
+- Standalone input forms use 50pt height, Theme.radiusMD corners, Theme.cardBackground, 1pt Theme.border
+- StatusBadge component in Theme.swift for status displays; extensions in Views/StatusBadgeExtensions.swift
+- PrimaryButtonStyle, SecondaryButtonStyle, DestructiveButtonStyle defined in SignUpView.swift
+- Existing animations use spring(response: 0.2-0.3, dampingFraction: 0.6-0.8) for interactive elements
+- easeInOut(duration: 0.2-0.3) for state transitions
+- BetSlipSheet has multi-layer success celebration animation as reference
+- EdgeFunctionService.shared for calling Supabase Edge Functions
+- BetSlipManager.shared for bet slip state management
+
+---
+
+## Betting Experience Overhaul Sprint
+Branch: ralph/betting-experience-overhaul
+Started: 2026-02-06
+
+### Summary
+Fix critical parlay submission bug and improve bet display clarity.
+
+### Key Issues Being Fixed
+1. **Parlay submission broken** - Creates N singles instead of 1 parlay
+2. **Per-item stakes not initialized** - Mode switch causes "No stake set" errors
+3. **Market type case inconsistency** - "SPREAD" vs "spread"
+4. **Sport/league not shown** - Must drill into detail view
+5. **Event fallback shows UUID** - No meaningful display when event not cached
+
+---
+

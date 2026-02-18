@@ -1,0 +1,171 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/auto-pilot-grading",
+  "description": "Auto-pilot mode: auto-accept bets and auto-grade when games complete",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Auto-accept bets by default in submit_bet",
+      "description": "As a player, I want my bets accepted immediately so I don't have to wait for bookie approval.",
+      "acceptanceCriteria": [
+        "Update submit_bet edge function to create bets with status 'accepted' instead of 'pending'",
+        "Remove or bypass acceptance policy evaluation for now (auto-pilot default)",
+        "Audit event logged with action_type 'bet_auto_accepted'",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Verified: submit_bet has bet_auto_accepted logic"
+    },
+    {
+      "id": "US-002",
+      "title": "Add grading helper function for moneyline bets",
+      "description": "As a system, I need to grade moneyline bets based on the game winner.",
+      "acceptanceCriteria": [
+        "Create gradeBet helper function in auto_refresh_games or _shared",
+        "For moneyline: compare home vs away score to determine winner",
+        "Bet side matching winning team → return 'won'",
+        "Bet side matching losing team → return 'lost'",
+        "Tie game → return 'push'",
+        "Function takes bet record, home_score, away_score as parameters",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Verified: _shared/grading.ts has gradeMoneylineBet"
+    },
+    {
+      "id": "US-003",
+      "title": "Add grading logic for spread bets",
+      "description": "As a system, I need to grade spread bets based on point differential.",
+      "acceptanceCriteria": [
+        "Extend gradeBet function to handle spread market type",
+        "Parse spread value from bet side string (e.g., 'Lakers -3.5' → -3.5) using regex",
+        "Calculate adjusted score: team score + spread",
+        "If adjusted score > opponent → 'won'",
+        "If adjusted score < opponent → 'lost'",
+        "If exactly equal → 'push'",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Verified: _shared/grading.ts has gradeSpreadBet"
+    },
+    {
+      "id": "US-004",
+      "title": "Add grading logic for total (over/under) bets",
+      "description": "As a system, I need to grade over/under bets based on combined score.",
+      "acceptanceCriteria": [
+        "Extend gradeBet function to handle total market type",
+        "Parse total value from bet side (e.g., 'Over 220.5' → 220.5) using regex",
+        "Calculate combined score: homeScore + awayScore",
+        "If combined > total and bet is Over → 'won'",
+        "If combined < total and bet is Under → 'won'",
+        "If combined equals total exactly → 'push'",
+        "Otherwise → 'lost'",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Verified: _shared/grading.ts has gradeTotalBet"
+    },
+    {
+      "id": "US-005",
+      "title": "Integrate auto-grading into auto_refresh_games",
+      "description": "As a developer, I need auto_refresh_games to grade bets when events finalize.",
+      "acceptanceCriteria": [
+        "After marking event as 'final' in auto_refresh_games, query all 'accepted' bets for that event",
+        "Call gradeBet function for each bet with event's home_score and away_score",
+        "Update bet status to 'won', 'lost', or 'push' in database",
+        "Set bet.grade_result field with outcome details (e.g., 'Moneyline: Team won')",
+        "Emit audit event for each graded bet with action_type 'bet_auto_graded'",
+        "Log count of bets graded per event",
+        "Handle grading errors gracefully (don't fail entire refresh)",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Verified: auto_refresh_games imports and uses grading.ts"
+    },
+    {
+      "id": "US-006",
+      "title": "Add grade_result column to bets table",
+      "description": "As a developer, I need to store grading outcome details on each bet.",
+      "acceptanceCriteria": [
+        "Create Supabase migration adding grade_result (text, nullable) to bets table",
+        "Document migration in SUPABASE_MIGRATIONS.md",
+        "Update BetRecord in SyncModels.swift to include gradeResult field",
+        "Update Bet model to include gradeResult property if not present",
+        "Update upsertBet in SyncService to handle gradeResult",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Verified: gradeResult exists in Bet.swift, SyncModels.swift, SyncService.swift"
+    },
+    {
+      "id": "US-007",
+      "title": "Display bet grade results in player Track view",
+      "description": "As a player, I want to see why my bet won, lost, or pushed.",
+      "acceptanceCriteria": [
+        "TrackView shows bet status (won/lost/push) with appropriate color coding",
+        "Won bets show in green/success color",
+        "Lost bets show in red/danger color",
+        "Push bets show in yellow/warning color",
+        "Grade result details shown if available (e.g., 'Final: 110-105')",
+        "Uses Theme colors consistently",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Verified: TrackView displays gradeResult"
+    },
+    {
+      "id": "US-008",
+      "title": "Add bookie settings for manual bet acceptance opt-in",
+      "description": "As a bookie, I want to opt-in to manually reviewing bets if I want more control.",
+      "acceptanceCriteria": [
+        "Create Supabase migration adding manual_bet_acceptance (boolean, default false) to bookies table",
+        "Document migration in SUPABASE_MIGRATIONS.md",
+        "Update submit_bet edge function to check bookie's manual_bet_acceptance setting",
+        "If manual_bet_acceptance is true, create bet with status 'pending' instead of 'accepted'",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Verified: submit_bet checks manual_bet_acceptance"
+    },
+    {
+      "id": "US-009",
+      "title": "Add bookie settings for manual grading opt-in",
+      "description": "As a bookie, I want to opt-in to manually grading bets if I want more control.",
+      "acceptanceCriteria": [
+        "Create Supabase migration adding manual_bet_grading (boolean, default false) to bookies table",
+        "Document migration in SUPABASE_MIGRATIONS.md",
+        "Update auto_refresh_games to check bookie's manual_bet_grading setting before auto-grading",
+        "If manual_bet_grading is true, skip auto-grading for that bookie's bets",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Verified: auto_refresh_games checks manual_bet_grading"
+    },
+    {
+      "id": "US-010",
+      "title": "Add Settings UI toggles for manual modes",
+      "description": "As a bookie, I want toggles in Settings to control auto-pilot vs manual mode.",
+      "acceptanceCriteria": [
+        "Add 'Bet Management' section to SettingsView",
+        "Toggle: 'Require manual bet approval' (maps to manual_bet_acceptance)",
+        "Toggle: 'Grade bets manually' (maps to manual_bet_grading)",
+        "Toggles default to OFF (auto-pilot mode)",
+        "Changes sync to Supabase bookies table",
+        "Uses Theme styling consistently",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Verified: SettingsView has Bet Management section"
+    }
+  ]
+}

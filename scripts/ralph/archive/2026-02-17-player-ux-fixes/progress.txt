@@ -1,0 +1,110 @@
+# Ralph Progress Log
+Started: Tue Feb 17 18:21:32 PST 2026
+---
+
+## Codebase Patterns
+- Xcode command line tools not available - cannot run xcodebuild or swiftc typecheck. Changes must be verified by reading code.
+- String literal changes in SwiftUI Text() views are safe if syntax is preserved.
+- BetSlipSheet.swift is the main bet slip UI file (~1800+ lines).
+- NumericKeypadView.swift is now a clean 4x3 grid (no quick stakes embedded). Quick stakes are handled separately in BetSlipSheet via QuickStakeRow.
+- Quick stakes are now in the keypad area (stickyBottomSection), shared by both singles and parlay modes. Use `addQuickStakeToActiveField()` to route amounts to the active field.
+- stickyBottomSection should only contain: validation warnings, keypad + quick stakes, and Place Bet button. Summary/info sections belong in the ScrollView.
+- Parlay custom keypad field IDs: `"parlay_wager"` (wager) and `"parlay_towin"` (to-win). Singles wager uses item-specific keys, singles to-win uses `"{key}_towin"` suffix. The `activeKeypadBinding` setter handles bidirectional calculation for all field types.
+- When adding new keypad-routed fields, update three places: `activeKeypadBinding` (get+set), `addQuickStakeToActiveField`, and item removal cleanup.
+
+---
+
+## 2026-02-17 - US-001
+- Changed success screen title from "Request Submitted!" to "Bet Placed!" (line 1145)
+- Changed success screen subtitle from "X bet(s) recorded and pending review" to "X bet(s) placed successfully" (line 1150)
+- Files changed: Booki/Views/BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - Success screen is in the `successOverlay` section of BetSlipSheet.swift around line 1130+
+  - `submittedCount` variable tracks how many bets were submitted
+  - No typecheck available via CLI - only Xcode IDE builds work
+---
+
+## 2026-02-17 - US-002
+- Redesigned NumericKeypadView from 4x4 mixed grid to clean 4x3 grid: [1,2,3], [4,5,6], [7,8,9], [0, 00, ⌫]
+- Removed embedded quick stake buttons (+$5, +$10, +$25, +$50) and decimal key from keypad
+- Added "00" key with proper validation (no-op on empty/zero text)
+- Backspace (⌫) moved to bottom-right position
+- Files changed: Booki/Views/NumericKeypadView.swift
+- **Learnings for future iterations:**
+  - NumericKeypadView takes `Binding<String>` and optional `onValueChanged` callback
+  - Quick stakes are NOT in the keypad anymore - they live in BetSlipSheet's QuickStakeRow (line ~1829)
+  - The "00" key needs special handling: don't append to empty/zero text to prevent "000" or "00" as starting value
+---
+
+## 2026-02-17 - US-003
+- Moved QuickStakeRow from parlayStakeEntrySection into the keypad area in stickyBottomSection
+- Quick stakes now appear in a horizontal row inline with the Done button (stakes on left, Done on right)
+- Quick stakes show whenever the keypad is visible, for both singles and parlay modes
+- Added `addQuickStakeToActiveField(amount:)` helper that routes quick stake additions to the correct field (parlay_stake or singles item stake)
+- Files changed: Booki/Views/BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - QuickStakeRow has a Spacer() at end of its HStack, so placing it in an outer HStack with a Done button naturally pushes Done to the right
+  - The `activeFieldId` state var determines which field the keypad is editing - "parlay_stake" for parlay mode, or item-specific keys for singles
+  - Quick stake logic for parlay also needs to update `toWinText` via `calculateToWin()` after changing the stake
+---
+
+## 2026-02-17 - US-004
+- Moved `payoutSummarySection` from stickyBottomSection into ScrollView (below parlayStakeEntrySection for parlay mode)
+- Moved `singlesSummarySection` from stickyBottomSection into ScrollView (below bet cards for singles mode)
+- Sticky bottom now only contains: validation warnings, quick stakes + keypad (when active), and Place Bet button
+- Replaced switch statement in stickyBottomSection with simple if-checks for validation warnings only
+- Files changed: Booki/Views/BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - stickyBottomSection should be kept minimal - only interactive controls and warnings, not info displays
+  - Summary sections need `.padding(.horizontal)` when placed in the ScrollView since the ScrollView children manage their own horizontal padding
+  - The parlay summary is conditional on `betSlipManager.stake > 0`; singles summary on `betSlipManager.individualTotalStake > 0`
+---
+
+## 2026-02-17 - US-005
+- Converted parlay Wager and To Win TextFields to tappable Text views that route to custom NumericKeypadView
+- Replaced `@FocusState isParlayWagerFocused/isParlayToWinFocused` with computed `isParlayWagerActive/isParlayToWinActive` based on `activeFieldId`
+- Added `"parlay_wager"` and `"parlay_towin"` field IDs (replacing old `"parlay_stake"`)
+- Updated `activeKeypadBinding` with switch statement to handle wager, towin, and singles fields with bidirectional calculation
+- Updated `addQuickStakeToActiveField` to support quick-adding to parlay to-win field
+- Applied `.glowingBorder()` modifier (gold for Wager, cyan/accent for To Win)
+- Updated `stakeEntrySection` references from `"parlay_stake"` to `"parlay_wager"`
+- Files changed: Booki/Views/BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - Parlay fields now use `"parlay_wager"` and `"parlay_towin"` as activeFieldId values (NOT `"parlay_stake"`)
+  - The `parlayActiveField` enum (.wager/.toWin) prevents feedback loops when one field recalculates the other
+  - When converting TextField to tappable Text, use `.contentShape(Rectangle())` + `.onTapGesture` to set `activeFieldId`, and `.glowingBorder()` for visual active state
+  - The `activeKeypadBinding` setter is where bidirectional calculation logic lives - it runs on every keypad press
+---
+
+## 2026-02-17 - US-006
+- Replaced read-only "To Win" display with tappable bidirectional to-win field on each singles bet card
+- Each card now shows side-by-side "Wager" (gold glow) and "To Win" (cyan glow) tappable fields
+- To-win field IDs use `"{wagerFieldId}_towin"` suffix convention (e.g., `"marketId_side_towin"`)
+- Updated `activeKeypadBinding` getter/setter to handle `_towin` suffix fields with reverse calculation via `calculateWagerFromToWin()`
+- Updated wager field setter to also recalculate to-win text via `calculateToWin()` when wager changes
+- Updated `addQuickStakeToActiveField` to handle both singles wager and to-win quick stake additions
+- Cleaned up removal logic to also clear `_towin` active field when removing an item
+- Removed unused `@FocusState` vars (`isStakeFocused`, `isToWinFocused`) and `activeField` state from PremiumBetSlipItemCard
+- Removed unused `individualPayout`, `individualToWin`, `formatCurrency`, `formatToWin` from PremiumBetSlipItemCard
+- Files changed: Booki/Views/BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - Singles to-win field IDs follow the pattern `"{wagerFieldId}_towin"` — use `hasSuffix("_towin")` and `dropLast(6)` to extract the wager key
+  - Both parlay and singles bidirectional calculation follow the same pattern: typing wager recalculates to-win and vice versa
+  - When adding a new tappable field to a card, remember to update: `activeKeypadBinding` (get + set), `addQuickStakeToActiveField`, and item removal cleanup
+---
+
+## 2026-02-17 - US-007
+- Replaced `Theme.backgroundGradient` with branded teal `Color(hex: 0x00F5D4)` background matching AuthGateView loading screen
+- Replaced `person.circle.fill` system icon with `BookiLogo` image asset at 200pt width
+- Updated text colors to use `Theme.background` (dark) for contrast against teal background
+- Changed login button from `PrimaryButtonStyle` to custom dark `Theme.background` button with white text
+- Error message now uses red pill-style badge (white text on `Theme.danger` background) for visibility on teal
+- Form field labels use `Theme.background.opacity(0.8)` for dark-on-teal readability
+- Navigation links (Sign Up, Player Claim) updated to dark text colors for teal contrast
+- Files changed: Booki/Views/Auth/LoginView.swift
+- **Learnings for future iterations:**
+  - AuthTextFieldStyle (in SignUpView.swift) uses `Theme.cardBackground` which is dark - works well on both dark and teal backgrounds without modification
+  - The branded teal color `Color(hex: 0x00F5D4)` is used in three places: LaunchScreen, AuthGateView.loadingView, and now LoginView
+  - When styling for teal background, use `Theme.background` (dark) as the foreground text color instead of `Theme.textPrimary` (light)
+  - `DividerWithText` and `AppleSignInButton` didn't need changes - they adapt well or have their own internal styling
+---

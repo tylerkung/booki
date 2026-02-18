@@ -132,16 +132,16 @@ struct PlayerClaimView: View {
     private var headerView: some View {
         VStack(spacing: 16) {
             Image(systemName: "ticket.fill")
-                .font(.system(size: 60))
+                .font(Theme.font(size: 60))
                 .foregroundStyle(Theme.accent)
 
             Text("Claim Your Account")
-                .font(.largeTitle)
+                .font(Theme.largeTitle)
                 .fontWeight(.bold)
                 .foregroundStyle(Theme.textPrimary)
 
             Text("Enter the invite code from your bookie to access your account")
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -152,7 +152,7 @@ struct PlayerClaimView: View {
             // Code input field
             VStack(alignment: .leading, spacing: 8) {
                 Text("Invite Code")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
 
                 TextField("XXXXXXXX", text: $inviteCode)
@@ -185,7 +185,7 @@ struct PlayerClaimView: View {
                 HStack {
                     Spacer()
                     Text("\(normalizedCode.count)/8")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(normalizedCode.count == 8 ? .green : Theme.textSecondary)
                 }
             }
@@ -193,8 +193,8 @@ struct PlayerClaimView: View {
             // Error message
             if let error = errorMessage {
                 Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
             }
 
@@ -224,16 +224,16 @@ struct PlayerClaimView: View {
         VStack(spacing: 24) {
             // Success checkmark
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 50))
-                .foregroundStyle(.green)
+                .font(Theme.font(size: 50))
+                .foregroundStyle(Theme.accent)
 
             Text("Welcome, \(player.name)!")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textPrimary)
 
             Text("This is your account. Create a login to access it anytime.")
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
 
@@ -258,8 +258,8 @@ struct PlayerClaimView: View {
             // Error message
             if let error = accountCreationError {
                 Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
             }
 
@@ -298,16 +298,16 @@ struct PlayerClaimView: View {
         VStack(spacing: 24) {
             // Success checkmark
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(.green)
+                .font(Theme.font(size: 60))
+                .foregroundStyle(Theme.accent)
 
             Text("Account Created!")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textPrimary)
 
             Text("Your account has been created. You can now log in with your email and password.")
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
 
@@ -333,7 +333,7 @@ struct PlayerClaimView: View {
                 Image(systemName: "arrow.left")
                 Text("Back to Bookie Login")
             }
-            .font(.subheadline)
+            .font(Theme.subheadline)
             .foregroundStyle(Theme.accent)
         }
         .padding(.top, 16)

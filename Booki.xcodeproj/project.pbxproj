@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		50F000012F33000000000001 /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */; };
+		50F000012F33000000000002 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */; };
+		50F000012F33000000000003 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */; };
 		50C083EF2F25F8B0001A0FE5 /* CompactOddsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */; };
 		50C083F02F25F8B0001A0FE5 /* CompactGameRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */; };
 		50C083F12F25F8B0001A0FE5 /* GameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */; };
@@ -26,6 +29,7 @@
 		50C0840D2F2BF4B0001A0FE5 /* TermsOfService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084092F2BF4B0001A0FE5 /* TermsOfService.swift */; };
 		50C0840F2F2C0347001A0FE5 /* SyncGamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C0840E2F2C0347001A0FE5 /* SyncGamesView.swift */; };
 		50C084112F2C4DA3001A0FE5 /* BetSlipManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084102F2C4DA3001A0FE5 /* BetSlipManager.swift */; };
+		50C084142F2C5000001A0FE5 /* NumericKeypadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084132F2C5000001A0FE5 /* NumericKeypadView.swift */; };
 		8A1234560001 /* BookiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550001 /* BookiApp.swift */; };
 		8A1234560002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550002 /* ContentView.swift */; };
 		8A1234560003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550003 /* Assets.xcassets */; };
@@ -98,6 +102,19 @@
 		8A1234560071 /* InviteCodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550071 /* InviteCodeService.swift */; };
 		8A1234560072 /* PlayerClaimView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550072 /* PlayerClaimView.swift */; };
 		8A1234560073 /* PlayerMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550073 /* PlayerMainView.swift */; };
+		8A1234560074 /* PlayerRiskService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550074 /* PlayerRiskService.swift */; };
+		8A1234560075 /* AttentionFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550075 /* AttentionFeedView.swift */; };
+		8A1234560076 /* SettlementSnapshotCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550076 /* SettlementSnapshotCard.swift */; };
+		8A1234560077 /* PlayerRiskWatchlistCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550077 /* PlayerRiskWatchlistCard.swift */; };
+		8A1234560078 /* TonightsExposureCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550078 /* TonightsExposureCard.swift */; };
+		8A1234560079 /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550079 /* OnboardingManager.swift */; };
+		8A1234560080 /* OnboardingWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550080 /* OnboardingWelcomeView.swift */; };
+		8A1234560081 /* OnboardingConfigureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550081 /* OnboardingConfigureView.swift */; };
+		8A1234560082 /* OnboardingAddPlayersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550082 /* OnboardingAddPlayersView.swift */; };
+		8A1234560083 /* OnboardingImportGamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550083 /* OnboardingImportGamesView.swift */; };
+		8A1234560084 /* OnboardingSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550084 /* OnboardingSuccessView.swift */; };
+		8A1234560085 /* OnboardingContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550085 /* OnboardingContainerView.swift */; };
+		8A1234560086 /* FinishSetupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550086 /* FinishSetupCard.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -111,6 +128,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
+		50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
+		50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
 		50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactGameRow.swift; sourceTree = "<group>"; };
 		50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactOddsButton.swift; sourceTree = "<group>"; };
 		50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDetailView.swift; sourceTree = "<group>"; };
@@ -130,6 +150,7 @@
 		50C0840A2F2BF4B0001A0FE5 /* UserAgreementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAgreementView.swift; sourceTree = "<group>"; };
 		50C0840E2F2C0347001A0FE5 /* SyncGamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGamesView.swift; sourceTree = "<group>"; };
 		50C084102F2C4DA3001A0FE5 /* BetSlipManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetSlipManager.swift; sourceTree = "<group>"; };
+		50C084132F2C5000001A0FE5 /* NumericKeypadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumericKeypadView.swift; sourceTree = "<group>"; };
 		8A1234550000 /* Booki.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Booki.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1234550001 /* BookiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookiApp.swift; sourceTree = "<group>"; };
 		8A1234550002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -204,6 +225,19 @@
 		8A1234550071 /* InviteCodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteCodeService.swift; sourceTree = "<group>"; };
 		8A1234550072 /* PlayerClaimView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerClaimView.swift; sourceTree = "<group>"; };
 		8A1234550073 /* PlayerMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMainView.swift; sourceTree = "<group>"; };
+		8A1234550074 /* PlayerRiskService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerRiskService.swift; sourceTree = "<group>"; };
+		8A1234550075 /* AttentionFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttentionFeedView.swift; sourceTree = "<group>"; };
+		8A1234550076 /* SettlementSnapshotCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementSnapshotCard.swift; sourceTree = "<group>"; };
+		8A1234550077 /* PlayerRiskWatchlistCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerRiskWatchlistCard.swift; sourceTree = "<group>"; };
+		8A1234550078 /* TonightsExposureCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonightsExposureCard.swift; sourceTree = "<group>"; };
+		8A1234550079 /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
+		8A1234550080 /* OnboardingWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWelcomeView.swift; sourceTree = "<group>"; };
+		8A1234550081 /* OnboardingConfigureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingConfigureView.swift; sourceTree = "<group>"; };
+		8A1234550082 /* OnboardingAddPlayersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingAddPlayersView.swift; sourceTree = "<group>"; };
+		8A1234550083 /* OnboardingImportGamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingImportGamesView.swift; sourceTree = "<group>"; };
+		8A1234550084 /* OnboardingSuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSuccessView.swift; sourceTree = "<group>"; };
+		8A1234550085 /* OnboardingContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingContainerView.swift; sourceTree = "<group>"; };
+		8A1234550086 /* FinishSetupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinishSetupCard.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -246,6 +280,7 @@
 				8A1234530004 /* Views */,
 				8A1234530005 /* ViewModels */,
 				8A1234530006 /* Services */,
+				50F000032F33000000000000 /* Fonts */,
 				8A1234550003 /* Assets.xcassets */,
 				8A1234530007 /* Preview Content */,
 			);
@@ -322,6 +357,13 @@
 				8A1234550051 /* AcceptancePolicySettingsView.swift */,
 				8A1234550072 /* PlayerClaimView.swift */,
 				8A1234550073 /* PlayerMainView.swift */,
+				50C084132F2C5000001A0FE5 /* NumericKeypadView.swift */,
+				8A1234550075 /* AttentionFeedView.swift */,
+				8A1234550076 /* SettlementSnapshotCard.swift */,
+				8A1234550077 /* PlayerRiskWatchlistCard.swift */,
+				8A1234550078 /* TonightsExposureCard.swift */,
+				8A1234550086 /* FinishSetupCard.swift */,
+				8A1234530011 /* Onboarding */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -363,6 +405,8 @@
 				8A1234550068 /* NetworkMonitor.swift */,
 				8A1234550070 /* SyncModels.swift */,
 				8A1234550071 /* InviteCodeService.swift */,
+				8A1234550074 /* PlayerRiskService.swift */,
+				8A1234550079 /* OnboardingManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -393,6 +437,16 @@
 			path = Config;
 			sourceTree = "<group>";
 		};
+		50F000032F33000000000000 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */,
+				50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */,
+				50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		8A1234530010 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
@@ -402,6 +456,19 @@
 				8A1234550063 /* ForgotPasswordView.swift */,
 			);
 			path = Auth;
+			sourceTree = "<group>";
+		};
+		8A1234530011 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				8A1234550080 /* OnboardingWelcomeView.swift */,
+				8A1234550081 /* OnboardingConfigureView.swift */,
+				8A1234550082 /* OnboardingAddPlayersView.swift */,
+				8A1234550083 /* OnboardingImportGamesView.swift */,
+				8A1234550084 /* OnboardingSuccessView.swift */,
+				8A1234550085 /* OnboardingContainerView.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -488,6 +555,9 @@
 			files = (
 				8A1234560004 /* Preview Assets.xcassets in Resources */,
 				8A1234560003 /* Assets.xcassets in Resources */,
+				50F000012F33000000000001 /* SpaceGrotesk-Regular.ttf in Resources */,
+				50F000012F33000000000002 /* SpaceGrotesk-Medium.ttf in Resources */,
+				50F000012F33000000000003 /* SpaceGrotesk-Bold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -583,6 +653,20 @@
 				8A1234560071 /* InviteCodeService.swift in Sources */,
 				8A1234560072 /* PlayerClaimView.swift in Sources */,
 				8A1234560073 /* PlayerMainView.swift in Sources */,
+				50C084142F2C5000001A0FE5 /* NumericKeypadView.swift in Sources */,
+				8A1234560074 /* PlayerRiskService.swift in Sources */,
+				8A1234560075 /* AttentionFeedView.swift in Sources */,
+				8A1234560076 /* SettlementSnapshotCard.swift in Sources */,
+				8A1234560077 /* PlayerRiskWatchlistCard.swift in Sources */,
+				8A1234560078 /* TonightsExposureCard.swift in Sources */,
+				8A1234560079 /* OnboardingManager.swift in Sources */,
+				8A1234560080 /* OnboardingWelcomeView.swift in Sources */,
+				8A1234560081 /* OnboardingConfigureView.swift in Sources */,
+				8A1234560082 /* OnboardingAddPlayersView.swift in Sources */,
+				8A1234560083 /* OnboardingImportGamesView.swift in Sources */,
+				8A1234560084 /* OnboardingSuccessView.swift in Sources */,
+				8A1234560085 /* OnboardingContainerView.swift in Sources */,
+				8A1234560086 /* FinishSetupCard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

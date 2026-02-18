@@ -314,7 +314,7 @@ struct TicketDetailView: View {
             }
         } header: {
             Text("TICKET SUMMARY")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .tracking(1)
                 .foregroundStyle(Theme.textMuted)
@@ -328,10 +328,10 @@ struct TicketDetailView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(bet.side)
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(Theme.textPrimary)
                         Text(eventName(for: bet))
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                             .lineLimit(1)
                     }
@@ -340,7 +340,7 @@ struct TicketDetailView: View {
 
                     let decimalOdds = americanToDecimal(bet.odds)
                     Text(String(format: "×%.3f", Double(truncating: decimalOdds as NSDecimalNumber)))
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.medium)
                         .foregroundStyle(Theme.scheduled)
                 }
@@ -358,7 +358,7 @@ struct TicketDetailView: View {
                     result * americanToDecimal(bet.odds)
                 }
                 Text(String(format: "×%.3f", Double(truncating: combinedDecimal as NSDecimalNumber)))
-                    .font(.headline)
+                    .font(Theme.headline)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.gold)
             }
@@ -372,9 +372,9 @@ struct TicketDetailView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "nosign")
                                 .foregroundStyle(Theme.textMuted)
-                                .font(.caption)
+                                .font(Theme.caption)
                             Text("\(voidedLegsCount) leg\(voidedLegsCount == 1 ? "" : "s") voided - odds adjusted")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.textMuted)
                         }
                     }
@@ -384,9 +384,9 @@ struct TicketDetailView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "equal.circle")
                                 .foregroundStyle(Theme.warning)
-                                .font(.caption)
+                                .font(Theme.caption)
                             Text("\(pushedLegsCount) leg\(pushedLegsCount == 1 ? "" : "s") pushed - odds adjusted")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.warning)
                         }
                     }
@@ -395,11 +395,11 @@ struct TicketDetailView: View {
                     if let adjustedOdds = adjustedCombinedOddsDisplay {
                         HStack {
                             Text("Adjusted Odds")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.textSecondary)
                             Spacer()
                             Text(adjustedOdds)
-                                .font(.subheadline)
+                                .font(Theme.subheadline)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(Theme.accentSecondary)
                                 .padding(.horizontal, 8)
@@ -415,7 +415,7 @@ struct TicketDetailView: View {
             }
         } header: {
             Text("ODDS BREAKDOWN")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .tracking(1)
                 .foregroundStyle(Theme.textMuted)
@@ -434,7 +434,7 @@ struct TicketDetailView: View {
             }
         } header: {
             Text("BETS (\(ticket.bets.count))")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .tracking(1)
                 .foregroundStyle(Theme.textMuted)
@@ -460,7 +460,7 @@ struct TicketDetailView: View {
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 Text(formatCurrency(totalReturn))
-                    .font(.title3)
+                    .font(Theme.title3)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.accent)
             }
@@ -476,7 +476,7 @@ struct TicketDetailView: View {
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
                     Text(formatProfitLoss(payout))
-                        .font(.title3)
+                        .font(Theme.title3)
                         .fontWeight(.bold)
                         .foregroundStyle(payout >= 0 ? Theme.accent : Theme.danger)
                         .padding(.horizontal, 12)
@@ -489,7 +489,7 @@ struct TicketDetailView: View {
             }
         } header: {
             Text("PAYOUT")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .tracking(1)
                 .foregroundStyle(Theme.textMuted)
@@ -517,11 +517,11 @@ struct TicketDetailView: View {
                 Text(String(ticket.id.uuidString.prefix(8)) + "...")
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.textMuted)
-                    .font(.footnote)
+                    .font(Theme.footnote)
             }
         } header: {
             Text("DETAILS")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .tracking(1)
                 .foregroundStyle(Theme.textMuted)
@@ -553,7 +553,7 @@ struct TicketDetailView: View {
             .padding(.vertical, 8)
         } header: {
             Text("PARLAY OUTCOME")
-                .font(.caption)
+                .font(Theme.caption)
                 .fontWeight(.semibold)
                 .tracking(1)
                 .foregroundStyle(Theme.textMuted)
@@ -571,18 +571,18 @@ struct TicketDetailView: View {
                     VStack(spacing: 4) {
                         // Outcome icon
                         Image(systemName: outcomeIcon(for: outcomeType))
-                            .font(.system(size: 28, weight: .bold))
+                            .font(Theme.font(size: 28, weight: .bold))
                             .foregroundStyle(outcomeColor(for: outcomeType))
 
                         // Outcome label and amount
                         Text(outcomeLabel(for: outcomeType))
-                            .font(.title2)
+                            .font(Theme.title2)
                             .fontWeight(.black)
                             .foregroundStyle(outcomeColor(for: outcomeType))
 
                         // Amount
                         Text(formatProfitLoss(parlaySettledAmount))
-                            .font(.title)
+                            .font(Theme.title1)
                             .fontWeight(.bold)
                             .foregroundStyle(outcomeColor(for: outcomeType))
                     }
@@ -609,12 +609,12 @@ struct TicketDetailView: View {
             // Original odds row
             HStack {
                 Text("Original Odds")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 let originalAmerican = decimalToAmerican(originalCombinedDecimalOdds)
                 Text(originalAmerican > 0 ? "+\(originalAmerican)" : "\(originalAmerican)")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(hasAdjustedOdds ? Theme.textMuted : Theme.gold)
                     .strikethrough(hasAdjustedOdds, color: Theme.textMuted)
@@ -624,12 +624,12 @@ struct TicketDetailView: View {
             if hasAdjustedOdds, let adjustedOdds = adjustedCombinedDecimalOdds {
                 HStack {
                     Text("Adjusted Odds")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     let adjustedAmerican = decimalToAmerican(adjustedOdds)
                     Text(adjustedAmerican > 0 ? "+\(adjustedAmerican)" : "\(adjustedAmerican)")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.accentSecondary)
                 }
@@ -646,45 +646,45 @@ struct TicketDetailView: View {
                 // Show calculation for wins
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Calculation")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textMuted)
 
                     HStack(spacing: 4) {
                         Text("Stake")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                         Text(formatCurrency(stake))
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.medium)
                             .foregroundStyle(Theme.textPrimary)
 
                         Text("×")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
 
                         Text(String(format: "%.3f", Double(truncating: effectiveOdds as NSDecimalNumber)))
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.medium)
                             .foregroundStyle(Theme.gold)
 
                         Text("=")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
 
                         let totalReturn = stake * effectiveOdds
                         Text(formatCurrency(totalReturn))
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.bold)
                             .foregroundStyle(Theme.accent)
                     }
 
                     HStack {
                         Text("Profit:")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                         Text(formatProfitLoss(parlaySettledAmount))
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.bold)
                             .foregroundStyle(Theme.accent)
                     }
@@ -693,11 +693,11 @@ struct TicketDetailView: View {
                 // Show stake lost
                 HStack {
                     Text("Stake Lost")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     Text(formatCurrency(stake))
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.danger)
                 }
@@ -705,11 +705,11 @@ struct TicketDetailView: View {
                 // Push - stake returned
                 HStack {
                     Text("Stake Returned")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     Text(formatCurrency(stake))
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.warning)
                 }
@@ -723,15 +723,15 @@ struct TicketDetailView: View {
             HStack(spacing: 6) {
                 Image(systemName: "info.circle.fill")
                     .foregroundStyle(Theme.accentSecondary)
-                    .font(.caption)
+                    .font(Theme.caption)
                 Text("Parlay Adjusted")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.accentSecondary)
             }
 
             Text("Originally \(ticket.bets.count) legs, \(voidedOrPushedLegsCount) \(voidedOrPushedLegsCount == 1 ? "was" : "were") \(reducedLegDescription), settled as \(validLegsCount)-leg parlay")
-                .font(.caption)
+                .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
         }
     }
@@ -778,6 +778,9 @@ struct TicketDetailView: View {
     private func eventName(for bet: Bet) -> String {
         if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        if let desc = bet.eventDescription, !desc.isEmpty {
+            return desc
         }
         return "Event \(bet.eventId.prefix(8))"
     }
@@ -911,13 +914,13 @@ struct TicketDetailBetRowView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(eventName)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textPrimary)
 
                     if let event = event {
                         Text("\(event.sport) • \(event.league)")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                     }
                 }
@@ -927,7 +930,7 @@ struct TicketDetailBetRowView: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     // Grade status badge
                     Text(statusText)
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.background)
                         .padding(.horizontal, 10)
@@ -938,7 +941,7 @@ struct TicketDetailBetRowView: View {
                     // Show muted text for pending legs
                     if isPendingResult {
                         Text("Awaiting Result")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
                             .italic()
                     }
@@ -948,19 +951,19 @@ struct TicketDetailBetRowView: View {
             // Row 2: Market and Selection
             HStack(spacing: 8) {
                 Text(bet.market)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
 
                 Text("•")
                     .foregroundStyle(Theme.textMuted)
 
                 Text(bet.side)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.textSecondary)
 
                 Text(formattedOdds)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.gold)
                     .padding(.horizontal, 6)
@@ -975,10 +978,10 @@ struct TicketDetailBetRowView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Stake")
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .foregroundStyle(Theme.textMuted)
                     Text(formattedStake)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textPrimary)
                 }
@@ -989,10 +992,10 @@ struct TicketDetailBetRowView: View {
                     // Settled - show actual result
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("Result")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
                         Text(formatProfitLoss(payout))
-                            .font(.caption)
+                            .font(Theme.caption)
                             .fontWeight(.bold)
                             .foregroundStyle(payout >= 0 ? Theme.accent : Theme.danger)
                     }
@@ -1000,10 +1003,10 @@ struct TicketDetailBetRowView: View {
                     // Not settled - show potential
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("To Win")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
                         Text(formatCurrency(potentialPayout))
-                            .font(.caption)
+                            .font(Theme.caption)
                             .fontWeight(.semibold)
                             .foregroundStyle(Theme.accent)
                     }
@@ -1019,10 +1022,10 @@ struct TicketDetailBetRowView: View {
                     // Event start time
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Event Time")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
                         Text(formatEventDate(event.startTime))
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
 
@@ -1031,12 +1034,12 @@ struct TicketDetailBetRowView: View {
                     // Event status and score
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(event.status.rawValue.capitalized)
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(eventStatusColor(event.status))
 
                         if let score = event.finalScore {
                             Text(score)
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(Theme.gold)
                         }
@@ -1051,10 +1054,10 @@ struct TicketDetailBetRowView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Placed")
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .foregroundStyle(Theme.textMuted)
                     Text(formattedBetDate)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
 
@@ -1063,13 +1066,13 @@ struct TicketDetailBetRowView: View {
                 if bet.status == .graded || bet.status == .settled {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(bet.status == .settled ? "Settled" : "Graded")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
                         // Note: We don't have graded/settled timestamps in the model
                         // so we show the status instead
                         if let result = bet.gradeResult {
                             Text(result.rawValue.capitalized)
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .fontWeight(.medium)
                                 .foregroundStyle(statusColor)
                         }

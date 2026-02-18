@@ -84,6 +84,7 @@ struct BetsListView: View {
                                     bet: bet,
                                     eventName: eventName(for: bet),
                                     betDisplayName: betDisplayName(for: bet),
+                                    sportLeague: sportLeague(for: bet),
                                     policyViolationReason: bet.policyViolationReason,
                                     parlayInfo: parlayInfo(for: bet)
                                 )
@@ -109,7 +110,20 @@ struct BetsListView: View {
         if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
+        if let desc = bet.eventDescription, !desc.isEmpty {
+            return desc
+        }
         return "Event \(bet.eventId.prefix(8))"
+    }
+
+    private func sportLeague(for bet: Bet) -> String? {
+        if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
+            return event.league
+        }
+        if let league = bet.sportLeague, !league.isEmpty {
+            return league
+        }
+        return nil
     }
 
     /// Creates a display name for the bet ticket
@@ -181,6 +195,7 @@ struct BetRowView: View {
     let bet: Bet
     let eventName: String
     let betDisplayName: String
+    var sportLeague: String? = nil
     var policyViolationReason: String? = nil
     var parlayInfo: ParlayPartialInfo? = nil
 
@@ -213,19 +228,19 @@ struct BetRowView: View {
     private var statusColor: Color {
         switch bet.status {
         case .pending:
-            return .orange
+            return Theme.warning
         case .accepted:
-            return .blue
+            return Theme.accent
         case .declined:
-            return .red
+            return Theme.danger
         case .readyToGrade:
             return .purple
         case .graded:
             return .indigo
         case .settled:
-            return .green
+            return Theme.accent
         case .void:
-            return .gray
+            return Theme.textMuted
         }
     }
 
@@ -234,7 +249,7 @@ struct BetRowView: View {
             // Top row: Bet display name and status badge
             HStack {
                 Text(betDisplayName)
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
 
                 Spacer()
@@ -242,18 +257,18 @@ struct BetRowView: View {
                 // Show parlay partial badge if applicable
                 if let info = parlayInfo, info.isPartiallyGraded {
                     Text("Partial (\(info.gradedCount)/\(info.totalLegs))")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .fontWeight(.medium)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.background)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Theme.warning)
                         .clipShape(Capsule())
                 } else {
                     Text(bet.status.rawValue.capitalized)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .fontWeight(.medium)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.background)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(statusColor)
@@ -263,19 +278,30 @@ struct BetRowView: View {
 
             // Second row: Player name
             Text(bet.player?.name ?? "Unknown Player")
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(Theme.textSecondary)
 
-            // Third row: Event name
-            Text(eventName)
-                .font(.caption)
-                .foregroundStyle(Theme.textMuted)
+            // Third row: Sport league + Event name
+            HStack(spacing: 4) {
+                if let league = sportLeague, !league.isEmpty {
+                    Text(league)
+                        .font(Theme.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.accent)
+                    Text("|")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
+                Text(eventName)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+            }
 
             // Policy violation reason (only for pending bets with violations)
             if bet.status == .pending, let reason = policyViolationReason, !reason.isEmpty {
                 Text("Review: \(reason)")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.warning)
             }
 
@@ -283,9 +309,9 @@ struct BetRowView: View {
             if let info = parlayInfo, info.willLose {
                 HStack(spacing: 4) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption)
+                        .font(Theme.caption)
                     Text("Parlay will lose when settled")
-                        .font(.caption)
+                        .font(Theme.caption)
                 }
                 .foregroundStyle(Theme.danger)
             }
@@ -295,14 +321,14 @@ struct BetRowView: View {
                 Spacer()
 
                 Text("Stake: \(formattedStake)")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
 
                 Text("•")
                     .foregroundStyle(Theme.textMuted)
 
                 Text("To Win: \(formattedPotentialPayout)")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.accent)
             }
@@ -359,6 +385,9 @@ struct BetDetailView: View {
     private var eventName: String {
         if let event = event {
             return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        if let desc = bet.eventDescription, !desc.isEmpty {
+            return desc
         }
         return "Event \(bet.eventId.prefix(8))"
     }
@@ -429,13 +458,13 @@ struct BetDetailView: View {
 
     private var statusColor: Color {
         switch bet.status {
-        case .pending: return .orange
-        case .accepted: return .blue
-        case .declined: return .red
+        case .pending: return Theme.warning
+        case .accepted: return Theme.accent
+        case .declined: return Theme.danger
         case .readyToGrade: return .purple
         case .graded: return .indigo
-        case .settled: return .green
-        case .void: return .gray
+        case .settled: return Theme.accent
+        case .void: return Theme.textMuted
         }
     }
 
@@ -484,7 +513,7 @@ struct BetDetailView: View {
                     Spacer()
                     Text(bet.status.rawValue.capitalized)
                         .fontWeight(.medium)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.background)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(statusColor)
@@ -527,7 +556,7 @@ struct BetDetailView: View {
 
             // MARK: - Bet Details Section
             Section("Bet Details") {
-                LabeledContent("Market", value: bet.market)
+                LabeledContent("Market", value: MarketType(rawValue: bet.market)?.displayName ?? bet.market)
                 LabeledContent("Side", value: bet.side)
                 LabeledContent("Odds", value: formattedOdds)
                 LabeledContent("Stake", value: formattedStake)
@@ -537,7 +566,7 @@ struct BetDetailView: View {
             // MARK: - Payout Section
             Section("Potential Payout") {
                 LabeledContent("Profit if Win", value: formattedPotentialPayout)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Theme.accent)
                 LabeledContent("Total Return", value: formattedTotalReturn)
                     .fontWeight(.semibold)
             }
@@ -552,7 +581,7 @@ struct BetDetailView: View {
                     }
                 } else {
                     Text("Unknown Player")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
             .listRowBackground(Theme.cardBackground)
@@ -561,7 +590,7 @@ struct BetDetailView: View {
             Section("Details") {
                 LabeledContent("Created", value: formattedDate)
                 LabeledContent("Bet ID", value: bet.id.uuidString.prefix(8) + "...")
-                    .font(.caption)
+                    .font(Theme.caption)
             }
             .listRowBackground(Theme.cardBackground)
 
@@ -577,7 +606,7 @@ struct BetDetailView: View {
                             .foregroundStyle(Theme.textPrimary)
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                     }
                 }
@@ -683,7 +712,7 @@ struct BetDetailView: View {
             } label: {
                 Label("Accept Bet", systemImage: "checkmark.circle.fill")
             }
-            .tint(.green)
+            .tint(Theme.accent)
 
             Button(role: .destructive) {
                 declineBet()
@@ -708,10 +737,10 @@ struct BetDetailView: View {
                             .foregroundStyle(Theme.warning)
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Partial (\(parlayBets.count - legsAwaitingCount)/\(parlayBets.count))")
-                                .font(.subheadline.weight(.medium))
+                                .font(Theme.font(size: 15, weight: .medium))
                                 .foregroundStyle(Theme.warning)
                             Text("Cannot settle - \(legsAwaitingCount) leg\(legsAwaitingCount == 1 ? "" : "s") awaiting results")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.textMuted)
                         }
                     }
@@ -722,7 +751,7 @@ struct BetDetailView: View {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(Theme.danger)
                             Text("Parlay will lose when settled")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.danger)
                         }
                     }
@@ -733,7 +762,7 @@ struct BetDetailView: View {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(Theme.danger)
                             Text("Parlay will lose when settled")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.danger)
                         }
                     }
@@ -743,7 +772,7 @@ struct BetDetailView: View {
                     } label: {
                         Label("Settle Parlay", systemImage: "dollarsign.circle.fill")
                     }
-                    .tint(.green)
+                    .tint(Theme.accent)
                 }
             } else {
                 // Single bet - allow settlement
@@ -752,7 +781,7 @@ struct BetDetailView: View {
                 } label: {
                     Label("Settle Bet", systemImage: "dollarsign.circle.fill")
                 }
-                .tint(.green)
+                .tint(Theme.accent)
             }
 
             // Override Grade button for graded bets (requires a grade to have been set)
@@ -905,22 +934,22 @@ struct BetDetailView: View {
                     // Current Grade Display
                     VStack(spacing: 8) {
                         Text("Current Grade")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
 
                         if let currentGrade = bet.gradeResult {
                             Text(outcomeLabel(currentGrade.rawValue))
-                                .font(.title2.bold())
+                                .font(Theme.title2)
                                 .foregroundStyle(outcomeColor(currentGrade.rawValue))
                         } else {
                             Text("Not Graded")
-                                .font(.title2.bold())
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.textMuted)
                         }
 
                         if bet.status == .settled {
                             Text("Settlement will be reversed")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.warning)
                                 .padding(.top, 4)
                         }
@@ -933,7 +962,7 @@ struct BetDetailView: View {
                     // New Grade Picker
                     VStack(alignment: .leading, spacing: 12) {
                         Text("New Grade")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
 
                         Picker("New Grade", selection: $overrideNewOutcome) {
@@ -948,7 +977,7 @@ struct BetDetailView: View {
                     // Reason TextField
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Reason (Required)")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
 
                         TextField("Enter reason for override...", text: $overrideReason, axis: .vertical)
@@ -974,7 +1003,7 @@ struct BetDetailView: View {
                                 .padding()
                         } else {
                             Text("Confirm Override")
-                                .font(.headline)
+                                .font(Theme.headline)
                                 .foregroundStyle(Theme.background)
                                 .frame(maxWidth: .infinity)
                                 .padding()
@@ -1071,15 +1100,15 @@ struct BetDetailView: View {
                     // Warning Section
                     VStack(spacing: 12) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.largeTitle)
+                            .font(Theme.largeTitle)
                             .foregroundStyle(Theme.warning)
 
                         Text("Reverse Settlement")
-                            .font(.title2.bold())
+                            .font(Theme.title2)
                             .foregroundStyle(Theme.textPrimary)
 
                         Text("This will undo the ledger entry created when this bet was settled. The player's balance will be adjusted accordingly.")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
                             .multilineTextAlignment(.center)
                     }
@@ -1091,11 +1120,11 @@ struct BetDetailView: View {
                     // Impact Description
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Balance Impact")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
 
                         Text(reversalImpactDescription)
-                            .font(.body)
+                            .font(Theme.body)
                             .foregroundStyle(Theme.textPrimary)
                             .padding()
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1106,7 +1135,7 @@ struct BetDetailView: View {
                     // Reason TextField
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Reason (Required)")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
 
                         TextField("Enter reason for reversal...", text: $reverseReason, axis: .vertical)
@@ -1127,13 +1156,13 @@ struct BetDetailView: View {
                     } label: {
                         if reverseIsLoading {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
                                 .frame(maxWidth: .infinity)
                                 .padding()
                         } else {
                             Text("Confirm Reversal")
-                                .font(.headline)
-                                .foregroundStyle(.white)
+                                .font(Theme.headline)
+                                .foregroundStyle(Theme.background)
                                 .frame(maxWidth: .infinity)
                                 .padding()
                         }
@@ -1211,9 +1240,9 @@ struct BetDetailView: View {
 
     private func gradeResultColor(_ result: GradeResult) -> Color {
         switch result {
-        case .win: return .green
-        case .loss: return .red
-        case .push: return .orange
+        case .win: return Theme.accent
+        case .loss: return Theme.danger
+        case .push: return Theme.warning
         }
     }
 }

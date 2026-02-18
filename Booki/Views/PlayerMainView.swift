@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 /// Main view for players after they log in
-/// Shows the full betting experience with Games, Track, and Settings tabs
+/// Shows the full betting experience with Games, Track, and Account tabs
 struct PlayerMainView: View {
 
     // MARK: - Environment
@@ -30,6 +30,10 @@ struct PlayerMainView: View {
         return -internalBalance  // Negate for display: positive = credit, negative = debt
     }
 
+    // MARK: - State
+
+    @State private var selectedTab = 0
+
     // MARK: - Body
 
     var body: some View {
@@ -40,27 +44,30 @@ struct PlayerMainView: View {
 
             // Main Content
             if let player = currentPlayer {
-                TabView {
-                    PlayerTabView(player: player, balance: playerBalance) {
+                TabView(selection: $selectedTab) {
+                    PlayerTabView(player: player, balance: playerBalance, onLogoTap: { selectedTab = 0 }) {
                         GamesView(player: player)
                     }
                     .tabItem {
                         Label("Games", systemImage: "house.fill")
                     }
+                    .tag(0)
 
-                    PlayerTabView(player: player, balance: playerBalance) {
+                    PlayerTabView(player: player, balance: playerBalance, onLogoTap: { selectedTab = 0 }) {
                         TrackView(player: player)
                     }
                     .tabItem {
                         Label("Track", systemImage: "list.bullet.rectangle")
                     }
+                    .tag(1)
 
-                    PlayerTabView(player: player, balance: playerBalance) {
-                        PlayerSettingsContent()
+                    NavigationStack {
+                        AccountView(player: player)
                     }
                     .tabItem {
-                        Label("Settings", systemImage: "gearshape.fill")
+                        Label("Account", systemImage: "person.circle")
                     }
+                    .tag(2)
                 }
                 .tint(Theme.accent)
             } else {

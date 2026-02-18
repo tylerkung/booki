@@ -38,16 +38,16 @@ struct ForgotPasswordView: View {
                 // Header
                 VStack(spacing: 8) {
                     Image(systemName: "lock.rotation")
-                        .font(.system(size: 60))
+                        .font(Theme.font(size: 60))
                         .foregroundStyle(Theme.accent)
 
                     Text("Reset Password")
-                        .font(.title)
+                        .font(Theme.title1)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.textPrimary)
 
                     Text("Enter your email to receive a reset link")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.center)
                 }
@@ -59,7 +59,7 @@ struct ForgotPasswordView: View {
                     // Email Field
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Email")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.medium)
                             .foregroundStyle(Theme.textSecondary)
 
@@ -76,7 +76,7 @@ struct ForgotPasswordView: View {
 
                         if let error = emailError {
                             Text(error)
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.danger)
                         }
                     }
@@ -86,7 +86,7 @@ struct ForgotPasswordView: View {
                 // Error Message
                 if let errorMessage = errorMessage {
                     Text(errorMessage)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.danger)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)
@@ -119,7 +119,7 @@ struct ForgotPasswordView: View {
                         Image(systemName: "chevron.left")
                         Text("Back to Login")
                     }
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.accent)
                 }

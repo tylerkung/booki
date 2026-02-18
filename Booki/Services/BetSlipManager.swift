@@ -104,6 +104,9 @@ class BetSlipManager: ObservableObject {
         }
     }
 
+    /// US-005: Message shown when mode auto-switches (e.g., from parlay to singles due to conflicts)
+    @Published var modeSwitchMessage: String?
+
     /// Published stake amount (US-042)
     @Published var stake: Decimal = 0 {
         didSet {
@@ -153,6 +156,26 @@ class BetSlipManager: ObservableObject {
     var conflictDescription: String? {
         guard hasConflictingSelections else { return nil }
         return "Parlay unavailable: conflicting selections on same game"
+    }
+
+    // MARK: - Same-Game Parlay Warning (US-015)
+
+    /// Detect when multiple items have the same eventId and warn the user
+    /// Returns nil if no same-game parlay detected, or a warning string with the event name
+    var sameGameParlayWarning: String? {
+        guard betMode == .parlay else { return nil }
+
+        // Group items by eventId
+        let eventGroups = Dictionary(grouping: items) { $0.eventId }
+
+        // Find events with multiple selections
+        for (_, eventItems) in eventGroups {
+            if eventItems.count > 1 {
+                return "Same-game parlay: multiple picks from \(eventItems[0].eventDescription)"
+            }
+        }
+
+        return nil
     }
 
     private init() {
@@ -209,6 +232,28 @@ class BetSlipManager: ObservableObject {
 
         let decimalOdds = toDecimalOdds(odds)
         return stake * Decimal(decimalOdds)
+    }
+
+    /// US-001: Calculate "to win" (profit only) from American odds and stake
+    /// For +odds: toWin = wager × (odds/100). For -odds: toWin = wager × (100/|odds|)
+    func calculateToWin(odds: Int, stake: Decimal) -> Decimal {
+        guard stake > 0 else { return 0 }
+        if odds >= 0 {
+            return stake * Decimal(odds) / Decimal(100)
+        } else {
+            return stake * Decimal(100) / Decimal(abs(odds))
+        }
+    }
+
+    /// US-001: Calculate required wager from desired "to win" amount and odds
+    /// For +odds: wager = toWin / (odds/100). For -odds: wager = toWin / (100/|odds|)
+    func calculateWagerFromToWin(odds: Int, toWin: Decimal) -> Decimal {
+        guard toWin > 0, odds != 0 else { return 0 }
+        if odds >= 0 {
+            return toWin * Decimal(100) / Decimal(odds)
+        } else {
+            return toWin * Decimal(abs(odds)) / Decimal(100)
+        }
     }
 
     /// Calculate payout for a single bet (using current stake)
@@ -326,10 +371,39 @@ class BetSlipManager: ObservableObject {
         items.append(item)
         saveItems()
 
-        // US-003: If adding this item creates a conflict while in parlay mode, switch to singles
+        // US-003/US-005: If adding this item creates a conflict while in parlay mode, switch to singles
         if betMode == .parlay && hasConflictingSelections {
+            // US-005: Initialize per-item stakes from parlay stake before switching
+            initializeItemStakesFromParlay()
             betMode = .singles
+            modeSwitchMessage = "Switched to Singles: conflicting selections on the same game"
         }
+    }
+
+    /// US-005: Initialize per-item stakes when switching from parlay to singles
+    /// Distributes the current parlay stake evenly across all items, or sets to zero if no stake
+    private func initializeItemStakesFromParlay() {
+        guard !items.isEmpty else { return }
+
+        if stake > 0 {
+            // Distribute parlay stake evenly across items
+            let perItemStake = Decimal(NSDecimalNumber(decimal: stake / Decimal(items.count)).intValue)
+            for item in items {
+                let key = itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                if itemStakes[key] == nil || itemStakes[key] == 0 {
+                    itemStakes[key] = perItemStake
+                }
+            }
+        } else {
+            // No parlay stake set — initialize all to zero
+            for item in items {
+                let key = itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+                if itemStakes[key] == nil {
+                    itemStakes[key] = 0
+                }
+            }
+        }
+        saveItemStakes()
     }
 
     /// Add from BetSlipSelection with event context

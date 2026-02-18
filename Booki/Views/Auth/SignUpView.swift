@@ -55,16 +55,16 @@ struct SignUpView: View {
                 // Header
                 VStack(spacing: 8) {
                     Image(systemName: "person.badge.plus")
-                        .font(.system(size: 60))
+                        .font(Theme.font(size: 60))
                         .foregroundStyle(Theme.accent)
 
                     Text("Create Account")
-                        .font(.title)
+                        .font(Theme.title1)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.textPrimary)
 
                     Text("Sign up to start managing your book")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .padding(.top, 40)
@@ -75,7 +75,7 @@ struct SignUpView: View {
                     // Email Field
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Email")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.medium)
                             .foregroundStyle(Theme.textSecondary)
 
@@ -92,7 +92,7 @@ struct SignUpView: View {
 
                         if let error = emailError {
                             Text(error)
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.danger)
                         }
                     }
@@ -100,7 +100,7 @@ struct SignUpView: View {
                     // Password Field
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Password")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.medium)
                             .foregroundStyle(Theme.textSecondary)
 
@@ -114,7 +114,7 @@ struct SignUpView: View {
 
                         if let error = passwordError {
                             Text(error)
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.danger)
                         }
                     }
@@ -122,7 +122,7 @@ struct SignUpView: View {
                     // Confirm Password Field
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Confirm Password")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.medium)
                             .foregroundStyle(Theme.textSecondary)
 
@@ -136,7 +136,7 @@ struct SignUpView: View {
 
                         if let error = confirmPasswordError {
                             Text(error)
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.danger)
                         }
                     }
@@ -146,7 +146,7 @@ struct SignUpView: View {
                 // Error Message
                 if let errorMessage = errorMessage {
                     Text(errorMessage)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.danger)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)
@@ -195,7 +195,7 @@ struct SignUpView: View {
                             .foregroundStyle(Theme.accent)
                     }
                 }
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .padding(.bottom, 24)
             }
         }
@@ -297,6 +297,22 @@ struct PrimaryButtonStyle: ButtonStyle {
                     }
                 }
             )
+            .cornerRadius(Theme.cornerRadiusSmall)
+            .opacity(configuration.isPressed ? 0.8 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Destructive Button Style
+
+struct DestructiveButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(isEnabled ? .white : Theme.textMuted)
+            .background(isEnabled ? Theme.danger : Theme.elevatedBackground)
             .cornerRadius(Theme.cornerRadiusSmall)
             .opacity(configuration.isPressed ? 0.8 : 1.0)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)

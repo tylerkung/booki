@@ -6,6 +6,14 @@ enum MarketType: String, Codable {
     case spread
     case total
     case moneyline
+
+    var displayName: String {
+        switch self {
+        case .spread: return "Spread"
+        case .total: return "Total"
+        case .moneyline: return "Moneyline"
+        }
+    }
 }
 
 /// Market model representing a betting market for an event

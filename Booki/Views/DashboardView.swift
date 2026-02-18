@@ -19,6 +19,7 @@ struct FlaggedPlayer: Identifiable {
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(OnboardingManager.self) private var onboardingManager: OnboardingManager?
     @EnvironmentObject private var syncService: SyncService
     @Query private var bets: [Bet]
     @Query private var events: [Event]
@@ -27,6 +28,7 @@ struct DashboardView: View {
 
     @State private var viewModel = DashboardViewModel()
     @State private var showingFlaggedPlayers = false
+    @State private var showOnboardingFromCard = false
 
     // Alert Threshold settings
     @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
@@ -137,7 +139,57 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             List {
-                // MARK: - Alert Banner Section
+                // MARK: - Finish Setup Card (only if onboarding incomplete)
+                if let manager = onboardingManager, !manager.isOnboardingComplete {
+                    Section {
+                        FinishSetupCard(
+                            onboardingManager: manager,
+                            onResume: { showOnboardingFromCard = true }
+                        )
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                }
+
+                // MARK: - Attention Feed Section
+                Section {
+                    AttentionFeedView()
+                } header: {
+                    Text("Attention")
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .listRowBackground(Theme.cardBackground)
+
+                // MARK: - Settlement Snapshot Section
+                Section {
+                    SettlementSnapshotCard()
+                } header: {
+                    Text("Settlement")
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .listRowBackground(Theme.cardBackground)
+
+                // MARK: - Player Risk Watchlist Section
+                Section {
+                    PlayerRiskWatchlistCard()
+                } header: {
+                    Text("Player Risk")
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .listRowBackground(Theme.cardBackground)
+
+                // MARK: - Tonight's Exposure Section
+                Section {
+                    TonightsExposureCard()
+                } header: {
+                    Text("Tonight's Exposure")
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .listRowBackground(Theme.cardBackground)
+
+                // MARK: - Activity Section (existing metrics)
+
+                // Alert Banner
                 if !flaggedPlayers.isEmpty {
                     Section {
                         Button {
@@ -157,7 +209,7 @@ struct DashboardView: View {
                                         .frame(width: 48, height: 48)
 
                                     Image(systemName: "exclamationmark.triangle.fill")
-                                        .font(.title2)
+                                        .font(Theme.title2)
                                         .foregroundStyle(
                                             LinearGradient(
                                                 colors: [Theme.danger, Theme.accentTertiary],
@@ -170,18 +222,18 @@ struct DashboardView: View {
 
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("\(flaggedPlayersCount) player\(flaggedPlayersCount == 1 ? "" : "s") need\(flaggedPlayersCount == 1 ? "s" : "") attention")
-                                        .font(.system(size: 15, weight: .bold))
+                                        .font(Theme.font(size: 15, weight: .bold))
                                         .foregroundStyle(Theme.textPrimary)
 
                                     Text("Tap to view flagged players")
-                                        .font(.caption)
+                                        .font(Theme.caption)
                                         .foregroundStyle(Theme.textSecondary)
                                 }
 
                                 Spacer()
 
                                 Image(systemName: "chevron.right.circle.fill")
-                                    .font(.title3)
+                                    .font(Theme.title3)
                                     .foregroundStyle(Theme.danger.opacity(0.6))
                             }
                             .padding(.vertical, 12)
@@ -212,29 +264,37 @@ struct DashboardView: View {
                         .buttonStyle(.plain)
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         .listRowBackground(Color.clear)
+                    } header: {
+                        Text("Activity")
+                            .foregroundStyle(Theme.textMuted)
                     }
                 }
 
-                // MARK: - Balances Section
+                // Balances
                 balancesSection
 
-                // MARK: - Exposure Overview Section
+                // Exposure Overview
                 Section {
                     ExposureCard(totalExposure: viewModel.totalExposure)
+                } header: {
+                    if flaggedPlayers.isEmpty && playersOweYou.isEmpty && youOwePlayers.isEmpty {
+                        Text("Activity")
+                            .foregroundStyle(Theme.textMuted)
+                    }
                 }
                 .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Pending Bets Count Section
+                // Pending Bets Count
                 Section {
                     PendingBetsCard(count: viewModel.pendingBetsCount)
                 }
                 .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Pending Bets Queue Section
+                // Pending Bets Queue
                 Section {
                     if viewModel.pendingBets.isEmpty {
                         Text("No pending bets")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textSecondary)
                     } else {
                         ForEach(viewModel.pendingBets) { bet in
                             PendingBetRow(
@@ -256,7 +316,7 @@ struct DashboardView: View {
                                 } label: {
                                     Label("Accept", systemImage: "checkmark.circle")
                                 }
-                                .tint(.green)
+                                .tint(Theme.accent)
                             }
                         }
                     }
@@ -265,11 +325,11 @@ struct DashboardView: View {
                 }
                 .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Top Risk Events Section
+                // Top Risk Events
                 Section {
                     if viewModel.topRiskEvents.isEmpty {
                         Text("No active exposure")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textSecondary)
                     } else {
                         ForEach(viewModel.topRiskEvents) { item in
                             if let event = events.first(where: { $0.id.uuidString.lowercased() == item.eventId.lowercased() }) {
@@ -293,23 +353,23 @@ struct DashboardView: View {
                     } label: {
                         HStack {
                             Image(systemName: "calendar.badge.clock")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.accent)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Weekly Settlement")
-                                    .font(.subheadline)
+                                    .font(Theme.subheadline)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 Text("View summary and export")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
 
                             Spacer()
 
                             Image(systemName: "chevron.right")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.textMuted)
                         }
                         .padding(.vertical, 4)
@@ -348,6 +408,16 @@ struct DashboardView: View {
                     SyncStatusIndicator(syncService: syncService)
                 }
             }
+            .fullScreenCover(isPresented: $showOnboardingFromCard) {
+                if let manager = onboardingManager {
+                    OnboardingContainerView(
+                        onboardingManager: manager,
+                        startAt: manager.nextIncompleteStep,
+                        onComplete: { showOnboardingFromCard = false },
+                        onSkip: { showOnboardingFromCard = false }
+                    )
+                }
+            }
         }
     }
 
@@ -382,6 +452,12 @@ struct DashboardView: View {
 
     // MARK: - Balances Section
 
+    /// Whether the Activity section header should appear on the balances section
+    /// (i.e., flagged players banner is not showing, so balances is the first activity item)
+    private var balancesShouldShowActivityHeader: Bool {
+        flaggedPlayers.isEmpty
+    }
+
     @ViewBuilder
     private var balancesSection: some View {
         // Show section only if there are any players with non-zero balances
@@ -400,12 +476,26 @@ struct DashboardView: View {
                         }
                     }
                 } header: {
-                    HStack {
-                        Text("Players Owe You")
-                        Spacer()
-                        Text(formatCurrency(totalPlayersOwe))
-                            .font(.caption.bold())
-                            .foregroundStyle(Theme.accent)
+                    if balancesShouldShowActivityHeader {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Activity")
+                                .foregroundStyle(Theme.textMuted)
+                            HStack {
+                                Text("Players Owe You")
+                                Spacer()
+                                Text(formatCurrency(totalPlayersOwe))
+                                    .font(Theme.font(size: 12, weight: .bold))
+                                    .foregroundStyle(Theme.accent)
+                            }
+                        }
+                    } else {
+                        HStack {
+                            Text("Players Owe You")
+                            Spacer()
+                            Text(formatCurrency(totalPlayersOwe))
+                                .font(Theme.font(size: 12, weight: .bold))
+                                .foregroundStyle(Theme.accent)
+                        }
                     }
                 }
                 .listRowBackground(Theme.cardBackground)
@@ -425,12 +515,26 @@ struct DashboardView: View {
                         }
                     }
                 } header: {
-                    HStack {
-                        Text("You Owe Players")
-                        Spacer()
-                        Text(formatCurrency(totalYouOwe))
-                            .font(.caption.bold())
-                            .foregroundStyle(Theme.danger)
+                    if playersOweYou.isEmpty && balancesShouldShowActivityHeader {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Activity")
+                                .foregroundStyle(Theme.textMuted)
+                            HStack {
+                                Text("You Owe Players")
+                                Spacer()
+                                Text(formatCurrency(totalYouOwe))
+                                    .font(Theme.font(size: 12, weight: .bold))
+                                    .foregroundStyle(Theme.danger)
+                            }
+                        }
+                    } else {
+                        HStack {
+                            Text("You Owe Players")
+                            Spacer()
+                            Text(formatCurrency(totalYouOwe))
+                                .font(Theme.font(size: 12, weight: .bold))
+                                .foregroundStyle(Theme.danger)
+                        }
                     }
                 }
                 .listRowBackground(Theme.cardBackground)
@@ -462,15 +566,15 @@ struct ExposureCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.accentSecondary)
                 Text("Total Open Exposure")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }
 
             Text(formattedExposure)
-                .font(.system(size: 36, weight: .black, design: .rounded))
+                .font(Theme.font(size: 36, weight: .black))
                 .foregroundStyle(
                     totalExposure > 0
                         ? LinearGradient(
@@ -509,7 +613,7 @@ struct PendingBetsCard: View {
                         .opacity(isPulsing ? 0 : 0.8)
                 }
                 Image(systemName: "clock.badge.exclamationmark")
-                    .font(.title2)
+                    .font(Theme.title2)
                     .foregroundStyle(
                         count > 0
                             ? LinearGradient(
@@ -523,11 +627,11 @@ struct PendingBetsCard: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Pending Bets")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
 
                 Text("\(count)")
-                    .font(.system(size: 24, weight: .black, design: .rounded))
+                    .font(Theme.font(size: 24, weight: .black))
                     .foregroundStyle(count > 0 ? Theme.warning : Theme.textPrimary)
             }
 
@@ -535,7 +639,7 @@ struct PendingBetsCard: View {
 
             if count > 0 {
                 Text("Action Required")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(Theme.font(size: 11, weight: .bold))
                     .foregroundStyle(Theme.background)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -591,29 +695,29 @@ struct PendingBetRow: View {
             // Top row: Player name and event
             HStack {
                 Text(bet.player?.name ?? "Unknown Player")
-                    .font(.headline)
+                    .font(Theme.headline)
 
                 Spacer()
 
                 Text(eventName)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
             }
 
             // Middle row: Side, odds, stake
             HStack {
                 Text(bet.side)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textPrimary)
 
                 Text(formattedOdds)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Spacer()
 
                 Text(formattedStake)
-                    .font(.subheadline.bold())
+                    .font(Theme.font(size: 15, weight: .bold))
             }
 
             // Bottom row: Action buttons with gamelike styling
@@ -622,7 +726,7 @@ struct PendingBetRow: View {
                     onAccept()
                 } label: {
                     Label("Accept", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(Theme.font(size: 14, weight: .bold))
                         .foregroundStyle(Theme.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
@@ -642,8 +746,8 @@ struct PendingBetRow: View {
                     onDecline()
                 } label: {
                     Label("Decline", systemImage: "xmark.circle.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
+                        .font(Theme.font(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(
@@ -672,12 +776,12 @@ struct RiskEventRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.displayName)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(Theme.font(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
 
                 if let startTime = item.formattedStartTime {
                     Text(startTime)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
@@ -685,7 +789,7 @@ struct RiskEventRow: View {
             Spacer()
 
             Text(item.formattedExposure)
-                .font(.system(size: 14, weight: .bold))
+                .font(Theme.font(size: 14, weight: .bold))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [Theme.danger, Theme.accentTertiary],
@@ -736,12 +840,12 @@ struct PlayerBalanceRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
 
                 if let days = daysText {
                     Text("Last activity: \(days)")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                 }
             }
@@ -749,7 +853,7 @@ struct PlayerBalanceRow: View {
             Spacer()
 
             Text(formattedBalance)
-                .font(.subheadline.bold())
+                .font(Theme.font(size: 15, weight: .bold))
                 .foregroundStyle(isOwedToYou ? Theme.accent : Theme.danger)
         }
         .padding(.vertical, 4)
@@ -827,7 +931,7 @@ struct FlaggedPlayerRow: View {
         case .highBalance:
             return Theme.gold
         case .aging:
-            return .orange
+            return Theme.warning
         case .both:
             return Theme.danger
         }
@@ -838,13 +942,13 @@ struct FlaggedPlayerRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(flaggedPlayer.player.name)
-                        .font(.headline)
+                        .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
 
                     Text(flaggedPlayer.reason.rawValue)
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.background)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(reasonColor)
@@ -853,12 +957,12 @@ struct FlaggedPlayerRow: View {
 
                 HStack(spacing: 12) {
                     Text("Owes: \(formattedBalance)")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.accent)
 
                     if let days = daysText {
                         Text("Last activity: \(days)")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                     }
                 }
@@ -867,7 +971,7 @@ struct FlaggedPlayerRow: View {
             Spacer()
 
             Image(systemName: "chevron.right")
-                .font(.caption)
+                .font(Theme.caption)
                 .foregroundStyle(Theme.textMuted)
         }
         .padding(.vertical, 6)

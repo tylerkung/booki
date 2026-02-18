@@ -270,7 +270,7 @@ struct WeeklySettlementView: View {
                             navigateToPreviousWeek()
                         } label: {
                             Image(systemName: "chevron.left.circle.fill")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(hasEarlierPeriodData ? Theme.accent : Theme.textMuted)
                         }
                         .disabled(!hasEarlierPeriodData)
@@ -279,7 +279,7 @@ struct WeeklySettlementView: View {
 
                         // Date range
                         Text(dateRangeDescription)
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .font(Theme.font(size: 24, weight: .bold))
                             .foregroundStyle(Theme.textPrimary)
 
                         Spacer()
@@ -289,7 +289,7 @@ struct WeeklySettlementView: View {
                             navigateToNextWeek()
                         } label: {
                             Image(systemName: "chevron.right.circle.fill")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(isViewingCurrentWeek ? Theme.textMuted : Theme.accent)
                         }
                         .disabled(isViewingCurrentWeek)
@@ -317,15 +317,15 @@ struct WeeklySettlementView: View {
                             HStack(spacing: 10) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundStyle(Theme.warning)
-                                    .font(.title3)
+                                    .font(Theme.title3)
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("\(unsettledFromPriorPeriodCount) player\(unsettledFromPriorPeriodCount == 1 ? "" : "s") unsettled from prior period")
-                                        .font(.subheadline.weight(.medium))
+                                        .font(Theme.font(size: 15, weight: .medium))
                                         .foregroundStyle(Theme.warning)
 
                                     Text("Balances carried forward")
-                                        .font(.caption)
+                                        .font(Theme.caption)
                                         .foregroundStyle(Theme.textSecondary)
                                 }
 
@@ -339,15 +339,15 @@ struct WeeklySettlementView: View {
                             HStack(spacing: 10) {
                                 Image(systemName: "arrow.left.arrow.right.circle.fill")
                                     .foregroundStyle(Theme.danger)
-                                    .font(.title3)
+                                    .font(Theme.title3)
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Balance verification issue")
-                                        .font(.subheadline.weight(.medium))
+                                        .font(Theme.font(size: 15, weight: .medium))
                                         .foregroundStyle(Theme.danger)
 
                                     Text("Starting balances carried from previous period")
-                                        .font(.caption)
+                                        .font(Theme.caption)
                                         .foregroundStyle(Theme.textSecondary)
                                 }
 
@@ -362,7 +362,7 @@ struct WeeklySettlementView: View {
                         Spacer()
                         if unsettledFromPriorPeriodCount > 0 {
                             Text("\(unsettledFromPriorPeriodCount)")
-                                .font(.caption.bold())
+                                .font(Theme.font(size: 12, weight: .bold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
@@ -543,18 +543,18 @@ struct SummaryStatView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: icon)
-                    .font(.title3)
+                    .font(Theme.title3)
                     .foregroundStyle(color)
 
                 Spacer()
             }
 
             Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(Theme.font(size: 20, weight: .bold))
                 .foregroundStyle(Theme.textPrimary)
 
             Text(title)
-                .font(.caption)
+                .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
         }
         .padding()
@@ -576,12 +576,12 @@ struct PlayerSettlementRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Text(report.player.name)
-                        .font(.headline)
+                        .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
 
                     if isSettled {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .foregroundStyle(Theme.accent)
                     }
 
@@ -591,7 +591,7 @@ struct PlayerSettlementRowView: View {
 
                 // Bet activity summary
                 Text("\(report.betsSettledCount) bets")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
 
@@ -602,11 +602,11 @@ struct PlayerSettlementRowView: View {
             // Negative = bookie owes player (green/accent)
             VStack(alignment: .trailing, spacing: 4) {
                 Text(formatCurrency(report.endingBalance))
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(Theme.font(size: 16, weight: .bold))
                     .foregroundStyle(balanceColor)
 
                 Text(balanceDescription)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
         }
@@ -618,7 +618,7 @@ struct PlayerSettlementRowView: View {
     private var collectionStatusBadge: some View {
         if let status = report.player.collectionStatus, status != .noStatus {
             Text(status.displayName)
-                .font(.caption2.weight(.semibold))
+                .font(Theme.font(size: 11, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
@@ -754,7 +754,7 @@ struct PlayerSettlementDetailView: View {
                             .foregroundStyle(Theme.textSecondary)
                         Spacer()
                         Text(formatCurrency(report.paymentsReceived))
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(Theme.font(size: 16, weight: .semibold))
                             .foregroundStyle(Theme.accent)
                     }
                     .padding(.vertical, 4)
@@ -772,7 +772,7 @@ struct PlayerSettlementDetailView: View {
                             .foregroundStyle(Theme.textSecondary)
                         Spacer()
                         Text(formatCurrencySigned(report.adjustments))
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(Theme.font(size: 16, weight: .semibold))
                             .foregroundStyle(report.adjustments >= 0 ? Theme.danger : Theme.accent)
                     }
                     .padding(.vertical, 4)
@@ -790,23 +790,23 @@ struct PlayerSettlementDetailView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: collectionStatusIcon(for: status))
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(collectionStatusColor(for: status))
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Collection Status")
-                                    .font(.subheadline)
+                                    .font(Theme.subheadline)
                                     .foregroundStyle(Theme.textSecondary)
 
                                 HStack(spacing: 8) {
                                     Text(status.displayName)
-                                        .font(.headline)
+                                        .font(Theme.headline)
                                         .foregroundStyle(Theme.textPrimary)
 
                                     // Show promised date if applicable
                                     if status == .promised, let promisedDate = player.promisedPaymentDate {
                                         Text("by \(promisedDate, style: .date)")
-                                            .font(.caption)
+                                            .font(Theme.caption)
                                             .foregroundStyle(Theme.textSecondary)
                                     }
                                 }
@@ -815,7 +815,7 @@ struct PlayerSettlementDetailView: View {
                             Spacer()
 
                             Text("Edit")
-                                .font(.subheadline)
+                                .font(Theme.subheadline)
                                 .foregroundStyle(Theme.accent)
                         }
                         .padding(.vertical, 4)
@@ -834,23 +834,23 @@ struct PlayerSettlementDetailView: View {
                     } label: {
                         HStack {
                             Image(systemName: "dollarsign.circle.fill")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.accent)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Record Payment")
-                                    .font(.headline)
+                                    .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 Text("Player owes \(formatCurrency(report.endingBalance))")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
 
                             Spacer()
 
                             Image(systemName: "chevron.right")
-                                .font(.subheadline)
+                                .font(Theme.subheadline)
                                 .foregroundStyle(Theme.textSecondary)
                         }
                         .padding(.vertical, 4)
@@ -869,17 +869,17 @@ struct PlayerSettlementDetailView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.accent)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Settled")
-                                    .font(.headline)
+                                    .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 if let settledAt = settlement.settledAt {
                                     Text(formatSettledDate(settledAt))
-                                        .font(.caption)
+                                        .font(Theme.caption)
                                         .foregroundStyle(Theme.textSecondary)
                                 }
                             }
@@ -890,11 +890,11 @@ struct PlayerSettlementDetailView: View {
                         if let notes = settlement.notes, !notes.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Notes")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
 
                                 Text(notes)
-                                    .font(.subheadline)
+                                    .font(Theme.subheadline)
                                     .foregroundStyle(Theme.textPrimary)
                             }
                             .padding(.top, 4)
@@ -919,7 +919,7 @@ struct PlayerSettlementDetailView: View {
                                 Image(systemName: "checkmark.circle")
                                 Text("Mark as Settled")
                             }
-                            .font(.headline)
+                            .font(Theme.headline)
                             .foregroundStyle(Theme.background)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -942,10 +942,10 @@ struct PlayerSettlementDetailView: View {
             ToolbarItem(placement: .principal) {
                 VStack {
                     Text(player.name)
-                        .font(.headline)
+                        .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Text(dateRangeDescription)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
@@ -1074,18 +1074,18 @@ struct BalanceSummaryCard: View {
             // Ending Balance (highlighted)
             HStack {
                 Text("Ending Balance")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
 
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(formatCurrency(report.endingBalance))
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .font(Theme.font(size: 20, weight: .bold))
                         .foregroundStyle(endingBalanceColor)
 
                     Text(balanceDescription)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
@@ -1138,7 +1138,7 @@ struct BalanceLineItem: View {
             Spacer()
 
             Text(formattedAmount)
-                .font(.system(size: isHighlighted ? 18 : 16, weight: isHighlighted ? .bold : .semibold, design: .rounded))
+                .font(Theme.font(size: isHighlighted ? 18 : 16, weight: isHighlighted ? .bold : .semibold))
                 .foregroundStyle(amountColor)
         }
     }
@@ -1180,7 +1180,7 @@ struct BettingActivityCard: View {
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 Text("\(report.betsSettledCount)")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(Theme.font(size: 16, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
             }
 
@@ -1192,10 +1192,10 @@ struct BettingActivityCard: View {
                         .foregroundStyle(Theme.accent)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(report.betsWonCount)")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .font(Theme.font(size: 16, weight: .bold))
                             .foregroundStyle(Theme.accent)
                         Text("Won")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
                 }
@@ -1207,10 +1207,10 @@ struct BettingActivityCard: View {
                         .foregroundStyle(Theme.danger)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(report.betsLostCount)")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .font(Theme.font(size: 16, weight: .bold))
                             .foregroundStyle(Theme.danger)
                         Text("Lost")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
                 }
@@ -1222,10 +1222,10 @@ struct BettingActivityCard: View {
                         .foregroundStyle(Theme.textSecondary)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(report.betsSettledCount - report.betsWonCount - report.betsLostCount)")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .font(Theme.font(size: 16, weight: .bold))
                             .foregroundStyle(Theme.textSecondary)
                         Text("Push")
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
                 }
@@ -1278,11 +1278,11 @@ struct QuickPaymentSheet: View {
                         // Amount input
                         HStack {
                             Text("$")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.textMuted)
                             TextField("0.00", text: $paymentAmount)
                                 .keyboardType(.decimalPad)
-                                .font(.title2.bold())
+                                .font(Theme.title2)
                         }
 
                         // Quick buttons
@@ -1291,7 +1291,7 @@ struct QuickPaymentSheet: View {
                                 paymentAmount = "\(amountOwed)"
                             } label: {
                                 Text("Full Payment")
-                                    .font(.subheadline.weight(.semibold))
+                                    .font(Theme.font(size: 15, weight: .semibold))
                                     .foregroundStyle(Theme.accent)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
@@ -1305,7 +1305,7 @@ struct QuickPaymentSheet: View {
                                     paymentAmount = "\(amountOwed / 2)"
                                 } label: {
                                     Text("Partial (50%)")
-                                        .font(.subheadline.weight(.semibold))
+                                        .font(Theme.font(size: 15, weight: .semibold))
                                         .foregroundStyle(Theme.warning)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 10)
@@ -1406,16 +1406,16 @@ struct QuickPaymentSheet: View {
     private var successOverlay: some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 60))
+                .font(Theme.font(size: 60))
                 .foregroundStyle(Theme.accent)
 
             Text("Payment Recorded")
-                .font(.title2.bold())
+                .font(Theme.title2)
                 .foregroundStyle(Theme.textPrimary)
 
             if let amount = amountDecimal {
                 Text(formatCurrency(amount))
-                    .font(.title3)
+                    .font(Theme.title3)
                     .foregroundStyle(Theme.textSecondary)
             }
         }

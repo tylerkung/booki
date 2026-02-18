@@ -1,0 +1,33 @@
+# Ralph Progress Log
+Started: Wed Feb  4 00:42:54 PST 2026
+
+## Codebase Patterns
+- Use `event.hasBettableLines` to check if an event has valid betting markets
+- SwiftData macros (like @Model, @Query) show errors in CLI but work in Xcode
+- Sorting events: use comparator that checks line availability first, then falls back to startTime
+---
+
+## 2026-02-04 - US-001 & US-003 (combined)
+- What was implemented: Gray out games with no available betting lines
+- Files changed:
+  - `Booki/Models/Event.swift` - Added `hasBettableLines` computed property
+  - `Booki/Views/CompactGameRow.swift` - Added grayed-out styling, "No lines" badge, disabled tap
+  - `Booki/Views/GamesView.swift` - Updated sorting to put no-lines games at bottom of sections
+- **Learnings for future iterations:**
+  - Events without markets or with all zero-odds markets should be considered as having no bettable lines
+  - `isRowDisabled` combines both hasNoLines and isEventCanceled for UI state management
+  - Favorites section also needs to be sorted by line availability
+  - The Preview section in CompactGameRow.swift can be used to test different states
+---
+
+## 2026-02-04 - US-002
+- What was implemented: Real-time timer to update games list when games start
+- Files changed:
+  - `Booki/Views/GamesView.swift` - Added Timer.publish, lastRefreshTime state, onReceive handler
+- **Learnings for future iterations:**
+  - Use `Timer.publish(every:on:in:).autoconnect()` for SwiftUI timers
+  - SwiftUI computed properties don't re-evaluate unless a state variable they reference changes
+  - Use `lastRefreshTime` pattern: timer updates state -> triggers view re-evaluation -> computed properties use new time
+  - Wrap state changes in `withAnimation()` to avoid jarring UI transitions
+  - Timer naturally only runs when view is visible (SwiftUI lifecycle)
+---

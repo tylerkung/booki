@@ -11,9 +11,15 @@ struct Ticket: Identifiable {
         bets.map(\.createdAt).min() ?? Date()
     }
 
-    /// Total stake across all bets in the ticket
+    /// Total stake for the ticket
+    /// For parlays: all legs share the same stake, so use first leg's stake
+    /// For singles: sum individual stakes (though typically only one bet)
     var totalStake: Decimal {
-        bets.reduce(0) { $0 + $1.stake }
+        // Check if this is a parlay (either by bet count or explicit isParlay flag)
+        if isParlay || (bets.first?.isParlay == true) {
+            return bets.first?.stake ?? 0
+        }
+        return bets.reduce(0) { $0 + $1.stake }
     }
 
     /// Whether this is a parlay (multiple bets) or singles
@@ -170,8 +176,7 @@ struct TrackView: View {
                     systemImage: "list.bullet.clipboard",
                     description: Text("Your bet requests will appear here.")
                 )
-            } header: {
-                Text("Tickets")
+                .listRowBackground(Theme.cardBackground)
             }
         } else {
             ForEach(tickets) { ticket in
@@ -191,7 +196,7 @@ struct TrackView: View {
                             TicketHeaderView(ticket: ticket)
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(Theme.textMuted)
                         }
@@ -207,6 +212,9 @@ struct TrackView: View {
     private func eventName(for bet: Bet) -> String {
         if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        if let desc = bet.eventDescription, !desc.isEmpty {
+            return desc
         }
         return "Event \(bet.eventId.prefix(8))"
     }
@@ -273,14 +281,14 @@ struct TicketHeaderView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(ticket.displayName)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textPrimary)
 
                     // Show leg grading progress for parlays
                     if showGradingProgress {
                         Text("\(gradedLegsCount)/\(ticket.bets.count) legs graded")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.accentSecondary)
                     }
                 }
@@ -288,7 +296,7 @@ struct TicketHeaderView: View {
                 Spacer()
 
                 Text(statusText)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.background)
                     .padding(.horizontal, 8)
@@ -311,14 +319,14 @@ struct TicketHeaderView: View {
             // Row 3: Stake and potential payout
             HStack {
                 Text("Stake: \(formatCurrency(ticket.totalStake))")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
 
                 Text("•")
                     .foregroundStyle(Theme.textMuted)
 
                 Text("To Win: \(formatCurrency(ticket.potentialPayout))")
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.accent)
             }
         }
@@ -350,7 +358,7 @@ struct TicketBetRowView: View {
         VStack(alignment: .leading, spacing: 6) {
             // Row 1: Event name
             Text(eventName)
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
@@ -358,18 +366,18 @@ struct TicketBetRowView: View {
             // Row 2: Side and odds
             HStack(spacing: 8) {
                 Text(bet.side)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
 
                 Text(formattedOdds)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.scheduled)
 
                 Spacer()
 
                 Text(formattedStake)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.textPrimary)
             }
@@ -379,7 +387,7 @@ struct TicketBetRowView: View {
                 // Show grade result badge when graded (even before settled)
                 HStack {
                     Text(result.rawValue.capitalized)
-                        .font(.caption)
+                        .font(Theme.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.background)
                         .padding(.horizontal, 8)
@@ -391,7 +399,7 @@ struct TicketBetRowView: View {
                 // Show pending indicator for legs awaiting result
                 HStack {
                     Text("Awaiting Result")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                         .italic()
                 }

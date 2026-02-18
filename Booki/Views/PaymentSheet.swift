@@ -74,11 +74,11 @@ struct PaymentSheet: View {
                 Section {
                     HStack {
                         Text("$")
-                            .font(.title2)
+                            .font(Theme.title2)
                             .foregroundStyle(Theme.textMuted)
                         TextField("0.00", text: $amount)
                             .keyboardType(.decimalPad)
-                            .font(.title2.bold())
+                            .font(Theme.title2)
                     }
                 } header: {
                     Text("Amount")

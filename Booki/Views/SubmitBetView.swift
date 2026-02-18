@@ -65,20 +65,20 @@ struct SubmitBetView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Available Credit")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
                         Text(formatCurrency(balanceSummary.availableCredit))
-                            .font(.title2.bold())
+                            .font(Theme.title2)
                             .foregroundStyle(availableCreditColor)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 4) {
                         Text("Credit Limit")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
                         Text(formatCurrency(player.creditLimit))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .font(Theme.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
                     }
                 }
             } header: {
@@ -181,13 +181,13 @@ struct EventRowView: View {
             // Teams matchup
             HStack {
                 Text("\(event.awayTeam) @ \(event.homeTeam)")
-                    .font(.headline)
+                    .font(Theme.headline)
 
                 Spacer()
 
                 if event.status == .live {
                     Text(statusText)
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.medium)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
@@ -200,12 +200,12 @@ struct EventRowView: View {
             // Start time
             HStack {
                 Image(systemName: "clock")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .font(Theme.caption)
 
                 Text(formattedStartTime)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
             }
         }
         .padding(.vertical, 4)
@@ -282,14 +282,14 @@ struct MarketSelectionView: View {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(event.awayTeam) @ \(event.homeTeam)")
-                        .font(.headline)
+                        .font(Theme.headline)
                     HStack {
                         Text(event.sport)
                         Text("•")
                         Text(event.league)
                     }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
                 }
             } header: {
                 Text("Event")
@@ -315,15 +315,15 @@ struct MarketSelectionView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Your Selection")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.textSecondary)
                             Text(selectedSideLabel ?? "")
-                                .font(.headline)
+                                .font(Theme.headline)
                         }
                         Spacer()
                         Text(formatOdds(selectedOdds ?? 0))
-                            .font(.title2.bold())
-                            .foregroundStyle(.blue)
+                            .font(Theme.title2)
+                            .foregroundStyle(Theme.accent)
                     }
                 } header: {
                     Text("Selected")
@@ -383,7 +383,7 @@ struct MarketSelectionView: View {
             sideIndicator: selectedSide == .sideA ? "a" : "b"
         )) {
             Text("Continue")
-                .font(.headline)
+                .font(Theme.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(Color.blue)
@@ -428,12 +428,12 @@ struct MarketRowView: View {
             Button(action: onSelectSideA) {
                 VStack(spacing: 4) {
                     Text(market.sideA)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.medium)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
                     Text(formatOdds(market.oddsA))
-                        .font(.headline.bold())
+                        .font(Theme.headline)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -448,12 +448,12 @@ struct MarketRowView: View {
             Button(action: onSelectSideB) {
                 VStack(spacing: 4) {
                     Text(market.sideB)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .fontWeight(.medium)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
                     Text(formatOdds(market.oddsB))
-                        .font(.headline.bold())
+                        .font(Theme.headline)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -624,20 +624,20 @@ struct StakeEntryView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Available Credit")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
                     Text(formatCurrency(balanceSummary.availableCredit))
-                        .font(.title2.bold())
+                        .font(Theme.title2)
                         .foregroundStyle(availableCreditColor)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
                     Text("Credit Limit")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
                     Text(formatCurrency(player.creditLimit))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(Theme.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
         } header: {
@@ -652,10 +652,10 @@ struct StakeEntryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("$")
-                        .font(.title)
-                        .foregroundStyle(.secondary)
+                        .font(Theme.title1)
+                        .foregroundStyle(Theme.textSecondary)
                     TextField("0", text: $stakeInput)
-                        .font(.title.bold())
+                        .font(Theme.title1)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.leading)
                 }
@@ -664,10 +664,10 @@ struct StakeEntryView: View {
                 if let error = stakeError {
                     HStack {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.danger)
                         Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.danger)
                     }
                 }
             }
@@ -683,18 +683,18 @@ struct StakeEntryView: View {
         Section {
             HStack {
                 Text("Potential Profit")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 if let payout = potentialPayout {
                     Text(formatCurrency(payout))
                         .fontWeight(.semibold)
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Theme.accent)
                 }
             }
 
             HStack {
                 Text("Total Return")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 if let total = totalReturn {
                     Text(formatCurrency(total))
@@ -715,13 +715,13 @@ struct StakeEntryView: View {
             // Event
             LabeledContent("Event") {
                 Text("\(event.awayTeam) @ \(event.homeTeam)")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
 
             // Market
             LabeledContent("Market") {
                 Text(selection.market.type.rawValue.capitalized)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
 
             // Side
@@ -734,7 +734,7 @@ struct StakeEntryView: View {
             LabeledContent("Odds") {
                 Text(formatOdds(selection.odds))
                     .fontWeight(.semibold)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(Theme.accent)
             }
 
             // Stake (if entered)
@@ -750,7 +750,7 @@ struct StakeEntryView: View {
                 LabeledContent("Potential Payout") {
                     Text(formatCurrency(payout))
                         .fontWeight(.semibold)
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Theme.accent)
                 }
             }
         } header: {
@@ -765,10 +765,10 @@ struct StakeEntryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "info.circle.fill")
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(Theme.accent)
                     Text("This submission records a bet request with your book. No money is wagered or transferred in this app.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(Theme.footnote)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
         } header: {
@@ -781,7 +781,7 @@ struct StakeEntryView: View {
     private var submitButton: some View {
         Button(action: submitRequest) {
             Text("Submit Request")
-                .font(.headline)
+                .font(Theme.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(Color.blue)

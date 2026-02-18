@@ -56,6 +56,9 @@ fastlane/test_output
 # Supabase credentials (keep Info.plist.template in repo)
 Booki/Info.plist
 
+# Node
+node_modules/
+
 # IDE
 .idea
 .vscode

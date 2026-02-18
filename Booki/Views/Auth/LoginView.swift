@@ -35,16 +35,16 @@ struct LoginView: View {
                 // Header
                 VStack(spacing: 8) {
                     Image(systemName: "person.circle.fill")
-                        .font(.system(size: 60))
+                        .font(Theme.font(size: 60))
                         .foregroundStyle(Theme.accent)
 
                     Text("Welcome Back")
-                        .font(.title)
+                        .font(Theme.title1)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.textPrimary)
 
                     Text("Log in to manage your book")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .padding(.top, 40)
@@ -55,7 +55,7 @@ struct LoginView: View {
                     // Email Field
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Email")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.medium)
                             .foregroundStyle(Theme.textSecondary)
 
@@ -74,7 +74,7 @@ struct LoginView: View {
                     // Password Field
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Password")
-                            .font(.subheadline)
+                            .font(Theme.subheadline)
                             .fontWeight(.medium)
                             .foregroundStyle(Theme.textSecondary)
 
@@ -92,7 +92,7 @@ struct LoginView: View {
                         Spacer()
                         Button(action: onNavigateToForgotPassword) {
                             Text("Forgot Password?")
-                                .font(.subheadline)
+                                .font(Theme.subheadline)
                                 .foregroundStyle(Theme.accent)
                         }
                     }
@@ -102,7 +102,7 @@ struct LoginView: View {
                 // Error Message
                 if let errorMessage = errorMessage {
                     Text(errorMessage)
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.danger)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)
@@ -151,7 +151,7 @@ struct LoginView: View {
                             .foregroundStyle(Theme.accent)
                     }
                 }
-                .font(.subheadline)
+                .font(Theme.subheadline)
 
                 // Player Claim Link
                 Button(action: onNavigateToPlayerClaim) {
@@ -160,7 +160,7 @@ struct LoginView: View {
                         Text("I'm a Player")
                             .fontWeight(.medium)
                     }
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                 }
                 .padding(.top, 8)

@@ -2,9 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
 	<key>SUPABASE_URL</key>
 	<string>https://vstfauqufwpdytmvjyfz.supabase.co</string>
 	<key>SUPABASE_ANON_KEY</key>
 	<string>sb_publishable_s7yECdf2DfdcD3m_9f2QFw_7rJpCJku</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>SpaceGrotesk-Regular.ttf</string>
+		<string>SpaceGrotesk-Medium.ttf</string>
+		<string>SpaceGrotesk-Bold.ttf</string>
+	</array>
 </dict>
 </plist>

@@ -97,6 +97,69 @@ struct SubmitBetResponse: Decodable {
     let error: String?
 }
 
+// MARK: - Parlay Edge Function Types
+
+/// A single leg in a parlay submission
+struct ParlayLeg: Encodable {
+    let eventId: String
+    let marketId: String
+    let side: String
+    let sideIndicator: String
+    let odds: Int
+
+    enum CodingKeys: String, CodingKey {
+        case eventId = "event_id"
+        case marketId = "market_id"
+        case side
+        case sideIndicator = "side_indicator"
+        case odds
+    }
+}
+
+/// Request body for submit_parlay Edge Function
+struct SubmitParlayRequest: Encodable {
+    let legs: [ParlayLeg]
+    let stake: String
+    let playerId: String
+    let bookieId: String
+    let combinedOdds: Int
+    let idempotencyKey: String
+
+    enum CodingKeys: String, CodingKey {
+        case legs
+        case stake
+        case playerId = "player_id"
+        case bookieId = "bookie_id"
+        case combinedOdds = "combined_odds"
+        case idempotencyKey = "idempotency_key"
+    }
+}
+
+/// Response from submit_parlay Edge Function
+struct SubmitParlayResponse: Decodable {
+    let success: Bool
+    let bets: [SubmitBetResponseBet]?
+    let ticketId: String?
+    let error: String?
+    let debug: SubmitParlayDebug?
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case bets
+        case ticketId = "ticket_id"
+        case error
+        case debug
+    }
+}
+
+/// Debug info from submit_parlay errors
+struct SubmitParlayDebug: Decodable {
+    let message: String?
+    let details: String?
+    let hint: String?
+    let code: String?
+}
+
 /// Service for bet operations including submission and status transitions
 enum BetService {
 
@@ -151,6 +214,57 @@ enum BetService {
         }
     }
 
+    // MARK: - Server-Side Parlay Submission (Edge Function)
+
+    /// Submits a parlay bet via the submit_parlay Edge Function for server-authoritative validation
+    /// - Parameters:
+    ///   - legs: Array of ParlayLeg structs representing each leg of the parlay
+    ///   - stake: The total amount being wagered on the parlay
+    ///   - playerId: The player's UUID
+    ///   - bookieId: The bookie's UUID
+    ///   - combinedOdds: The combined American odds for the parlay
+    /// - Returns: Result with SubmitParlayResponse on success, or Error on failure
+    static func submitParlayToServer(
+        legs: [ParlayLeg],
+        stake: Decimal,
+        playerId: UUID,
+        bookieId: UUID,
+        combinedOdds: Int
+    ) async -> Result<SubmitParlayResponse, Error> {
+        let idempotencyKey = UUID().uuidString
+
+        let request = SubmitParlayRequest(
+            legs: legs,
+            stake: "\(stake)",
+            playerId: playerId.uuidString,
+            bookieId: bookieId.uuidString,
+            combinedOdds: combinedOdds,
+            idempotencyKey: idempotencyKey
+        )
+
+        do {
+            let response: SubmitParlayResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "submit_parlay",
+                body: request
+            )
+
+            if response.success {
+                return .success(response)
+            } else {
+                var errorMessage = response.error ?? "Unknown error"
+                if let debug = response.debug {
+                    let debugParts = [debug.message, debug.details, debug.hint, debug.code].compactMap { $0 }
+                    if !debugParts.isEmpty {
+                        errorMessage += " | Debug: \(debugParts.joined(separator: ", "))"
+                    }
+                }
+                return .failure(BetServiceError.edgeFunctionError(errorMessage))
+            }
+        } catch {
+            return .failure(error)
+        }
+    }
+
     /// Creates a local Bet model from a SubmitBetResponse
     /// - Parameters:
     ///   - response: The successful response from submit_bet Edge Function
@@ -162,7 +276,11 @@ enum BetService {
         _ response: SubmitBetResponse,
         player: Player,
         localSide: String,
-        localMarket: String
+        localMarket: String,
+        eventDescription: String? = nil,
+        sportLeague: String? = nil,
+        sideIndicator: String? = nil,
+        marketId: UUID? = nil
     ) -> Bet? {
         guard let betResponse = response.bet,
               let betId = UUID(uuidString: betResponse.id),
@@ -188,6 +306,10 @@ enum BetService {
             policyViolationReason: nil,
             isParlay: false,
             parlayLegs: 1,
+            eventDescription: eventDescription,
+            sportLeague: sportLeague,
+            sideIndicator: sideIndicator,
+            marketId: marketId,
             bookieId: bookieId,
             needsSync: false,
             lastSyncedAt: Date(),
@@ -195,6 +317,75 @@ enum BetService {
         )
 
         return bet
+    }
+
+    /// Creates local Bet models from a SubmitParlayResponse
+    /// - Parameters:
+    ///   - response: The successful response from submit_parlay Edge Function
+    ///   - player: The Player to associate with the bets
+    ///   - items: The BetSlipItems used to submit (for local side/market values)
+    /// - Returns: Array of Bet models populated with server and local data
+    static func createLocalBetsFromParlayResponse(
+        _ response: SubmitParlayResponse,
+        player: Player,
+        items: [BetSlipItem],
+        events: [Event] = []
+    ) -> [Bet] {
+        guard let bets = response.bets,
+              let ticketIdString = response.ticketId,
+              let ticketId = UUID(uuidString: ticketIdString) else {
+            return []
+        }
+
+        let totalLegs = bets.count
+
+        return bets.compactMap { betResponse in
+            guard let betId = UUID(uuidString: betResponse.id),
+                  let bookieId = UUID(uuidString: betResponse.bookieId) else {
+                return nil
+            }
+
+            // Match server bet to local item by eventId + side indicator
+            let matchingItem = items.first { item in
+                item.eventId.uuidString.lowercased() == betResponse.eventId.lowercased()
+                    && item.sideIndicator == betResponse.side
+            }
+
+            let localSide = matchingItem?.side ?? betResponse.side
+            let localMarket = matchingItem?.marketType.rawValue ?? betResponse.market
+            let status = BetStatus(rawValue: betResponse.status) ?? .pending
+
+            // Look up event description and sport league
+            let eventDesc = matchingItem?.eventDescription
+            let league = events.first(where: {
+                $0.id.uuidString.lowercased() == betResponse.eventId.lowercased()
+            })?.league
+
+            return Bet(
+                id: betId,
+                eventId: betResponse.eventId,
+                market: localMarket,
+                side: localSide,
+                odds: betResponse.odds,
+                stake: Decimal(betResponse.stake),
+                status: status,
+                gradeResult: nil,
+                player: player,
+                createdAt: Date(),
+                ticketId: ticketId,
+                policyViolationReason: nil,
+                isParlay: true,
+                parlayLegs: totalLegs,
+                eventDescription: eventDesc,
+                sportLeague: league,
+                sideIndicator: matchingItem?.sideIndicator,
+                marketId: matchingItem?.marketId,
+                bookieId: bookieId,
+                needsSync: false,
+                lastSyncedAt: Date(),
+                version: 1
+            )
+        }
     }
 
     // MARK: - Local Bet Submission
