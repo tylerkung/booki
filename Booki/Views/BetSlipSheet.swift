@@ -52,12 +52,12 @@ struct BetSlipSheet: View {
         self.player = player
         // Initialize stake text from manager's current stake
         let currentStake = BetSlipManager.shared.stake
-        _stakeText = State(initialValue: currentStake > 0 ? "\(NSDecimalNumber(decimal: currentStake).intValue)" : "")
+        _stakeText = State(initialValue: currentStake > 0 ? Self.formatStakeText(currentStake) : "")
         // Initialize per-item stake texts from manager's existing itemStakes (US-004)
         var initialItemStakeTexts: [String: String] = [:]
         for (key, stake) in BetSlipManager.shared.itemStakes {
             if stake > 0 {
-                initialItemStakeTexts[key] = "\(NSDecimalNumber(decimal: stake).intValue)"
+                initialItemStakeTexts[key] = Self.formatStakeText(stake)
             }
         }
         _itemStakeTexts = State(initialValue: initialItemStakeTexts)
@@ -531,10 +531,16 @@ struct BetSlipSheet: View {
                     TextField("0", text: $stakeText)
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.textPrimary)
-                        .keyboardType(.numberPad)
+                        .keyboardType(.decimalPad)
                         .onChange(of: stakeText) { _, newValue in
+                            // Validate decimal input: one decimal point, max 2 decimal places
+                            let sanitized = Self.sanitizeStakeInput(newValue)
+                            if sanitized != newValue {
+                                stakeText = sanitized
+                                return
+                            }
                             // Parse and update stake
-                            if let value = Decimal(string: newValue.filter { $0.isNumber }) {
+                            if let value = Decimal(string: newValue) {
                                 betSlipManager.stake = value
                             } else if newValue.isEmpty {
                                 betSlipManager.stake = 0
@@ -920,6 +926,46 @@ struct BetSlipSheet: View {
             set: { itemStakeTexts[key] = $0 }
         )
     }
+
+    /// Sanitize stake input: allow digits and one decimal point, max 2 decimal places (US-002)
+    static func sanitizeStakeInput(_ input: String) -> String {
+        // Allow only digits and decimal point
+        var filtered = String(input.filter { $0.isNumber || $0 == "." })
+
+        // Only allow one decimal point
+        let parts = filtered.split(separator: ".", omittingEmptySubsequences: false)
+        if parts.count > 2 {
+            // More than one decimal — keep only first decimal
+            filtered = String(parts[0]) + "." + String(parts[1])
+        }
+
+        // Max 2 digits after decimal point
+        if let dotIndex = filtered.firstIndex(of: ".") {
+            let afterDot = filtered[filtered.index(after: dotIndex)...]
+            if afterDot.count > 2 {
+                let endIndex = filtered.index(dotIndex, offsetBy: 3) // dot + 2 chars
+                filtered = String(filtered[...endIndex])
+            }
+        }
+
+        return filtered
+    }
+
+    /// Format a Decimal stake for display in text field (US-002)
+    static func formatStakeText(_ value: Decimal) -> String {
+        let number = NSDecimalNumber(decimal: value)
+        let intPart = number.intValue
+        if value == Decimal(intPart) {
+            return "\(intPart)"
+        } else {
+            // Has decimal component — format with up to 2 decimal places
+            let formatter = NumberFormatter()
+            formatter.minimumFractionDigits = 0
+            formatter.maximumFractionDigits = 2
+            formatter.groupingSeparator = ""
+            return formatter.string(from: number) ?? "\(value)"
+        }
+    }
 }
 
 // MARK: - Premium Bet Slip Item Card (US-051, US-004)
@@ -1067,12 +1113,18 @@ struct PremiumBetSlipItemCard: View {
                             TextField("0", text: $stakeText)
                                 .font(.system(size: 18, weight: .bold, design: .rounded))
                                 .foregroundStyle(Theme.textPrimary)
-                                .keyboardType(.numberPad)
+                                .keyboardType(.decimalPad)
                                 .focused($isStakeFocused)
                                 .frame(width: 60)
                                 .onChange(of: stakeText) { _, newValue in
+                                    // Validate decimal input: one decimal point, max 2 decimal places
+                                    let sanitized = BetSlipSheet.sanitizeStakeInput(newValue)
+                                    if sanitized != newValue {
+                                        stakeText = sanitized
+                                        return
+                                    }
                                     // Parse and update per-item stake
-                                    if let value = Decimal(string: newValue.filter { $0.isNumber }) {
+                                    if let value = Decimal(string: newValue) {
                                         betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: value)
                                     } else if newValue.isEmpty {
                                         betSlipManager.setItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator, stake: 0)
