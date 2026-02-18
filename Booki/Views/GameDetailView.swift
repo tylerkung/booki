@@ -662,9 +662,13 @@ struct GameDetailView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color.blue)
+            .background(Theme.accent)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Theme.accent.opacity(0.3), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
     }
 }
 
