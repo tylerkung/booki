@@ -130,15 +130,15 @@ struct GradingView: View {
                 Group {
                     if readyToGradeBets.isEmpty && gradedBets.isEmpty {
                         ContentUnavailableView(
-                            "No Bets to Grade",
+                            "No Picks to Grade",
                             systemImage: "checkmark.circle",
-                            description: Text("Bets ready for grading will appear here.")
+                            description: Text("Picks ready for grading will appear here.")
                         )
                     } else if readyToGradeBets.isEmpty {
                         ContentUnavailableView(
-                            "No Bets to Grade",
+                            "No Picks to Grade",
                             systemImage: "checkmark.circle",
-                            description: Text("All bets have been graded. Use the button above to settle graded bets.")
+                            description: Text("All picks have been graded. Use the button above to reconcile graded picks.")
                         )
                     } else {
                         List {
@@ -211,30 +211,30 @@ struct GradingView: View {
                 }
             }
             .confirmationDialog(
-                "Settle All Graded Bets?",
+                "Reconcile All Graded Picks?",
                 isPresented: $showingBulkSettlementConfirmation,
                 titleVisibility: .visible
             ) {
-                Button("Settle All") {
+                Button("Reconcile All") {
                     performBulkSettlement()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 let preview = settlementPreview
                 Text("""
-                    Total bets to settle: \(preview.betCount)
-                    Total player winnings: \(formatCurrency(preview.totalWinnings))
-                    Total player losses: \(formatCurrency(preview.totalLosses))
+                    Total picks to reconcile: \(preview.betCount)
+                    Total member winnings: \(formatCurrency(preview.totalWinnings))
+                    Total member losses: \(formatCurrency(preview.totalLosses))
                     Net impact: \(formatCurrency(preview.netImpact))
                     """)
             }
-            .alert("Settlement Complete", isPresented: $showingBulkSettlementSuccess) {
+            .alert("Reconciliation Complete", isPresented: $showingBulkSettlementSuccess) {
                 Button("OK") {
                     settlementSummary = nil
                 }
             } message: {
                 if let summary = settlementSummary {
-                    Text("Settled \(summary.settledCount) bets: \(summary.winCount) wins, \(summary.lossCount) losses, \(summary.pushCount) pushes")
+                    Text("Reconciled \(summary.settledCount) picks: \(summary.winCount) wins, \(summary.lossCount) losses, \(summary.pushCount) pushes")
                 }
             }
         }
@@ -252,11 +252,11 @@ struct GradingView: View {
                     .foregroundStyle(Theme.accent)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Settle All Graded")
+                    Text("Reconcile All Graded")
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
 
-                    Text("\(gradedBets.count) bet\(gradedBets.count == 1 ? "" : "s") ready")
+                    Text("\(gradedBets.count) pick\(gradedBets.count == 1 ? "" : "s") ready")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                 }
@@ -584,7 +584,7 @@ struct GradingBetRow: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(bet.player?.name ?? "Unknown Player")
+                    Text(bet.player?.name ?? "Unknown Member")
                         .font(Theme.headline)
 
                     Text(eventName)
@@ -681,7 +681,7 @@ struct GradingBetRow: View {
                         Button {
                             onVoid()
                         } label: {
-                            Label("Void Bet", systemImage: "nosign")
+                            Label("Void Pick", systemImage: "nosign")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
@@ -860,7 +860,7 @@ struct ParlayGradingGroupView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Text("Parlay")
+                    Text("Multi-Pick")
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
 
@@ -933,7 +933,7 @@ struct ParlayGradingGroupView: View {
             // Projected payout if applicable
             if let payout = projectedPayout, payout > 0 {
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("Projected payout")
+                    Text("Projected return")
                         .font(Theme.caption2)
                         .foregroundStyle(Theme.textMuted)
                     Text(formatCurrency(payout))
