@@ -6,7 +6,7 @@ import Combine
 /// US-041: Support Multi-Bet (Parlay) Selections
 enum BetMode: String, Codable, CaseIterable {
     case singles = "Singles"
-    case parlay = "Parlay"
+    case parlay = "Multi-Pick"
 }
 
 /// Extended selection model for bet slip with event details for display
@@ -155,7 +155,7 @@ class BetSlipManager: ObservableObject {
     /// Get a human-readable description of why parlay is unavailable due to conflicts
     var conflictDescription: String? {
         guard hasConflictingSelections else { return nil }
-        return "Parlay unavailable: conflicting selections on same game"
+        return "Multi-Pick unavailable: conflicting selections on same game"
     }
 
     // MARK: - Same-Game Parlay Warning (US-015)
@@ -171,7 +171,7 @@ class BetSlipManager: ObservableObject {
         // Find events with multiple selections
         for (_, eventItems) in eventGroups {
             if eventItems.count > 1 {
-                return "Same-game parlay: multiple picks from \(eventItems[0].eventDescription)"
+                return "Same-game multi-pick: multiple picks from \(eventItems[0].eventDescription)"
             }
         }
 

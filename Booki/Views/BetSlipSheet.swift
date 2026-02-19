@@ -117,7 +117,7 @@ struct BetSlipSheet: View {
                     }
                 }
             }
-            .navigationTitle(submissionComplete ? "Success" : "Bet Slip")
+            .navigationTitle(submissionComplete ? "Success" : "Pick Entry")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Theme.cardBackground, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -164,7 +164,7 @@ struct BetSlipSheet: View {
                 }
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("The following events are locked for betting:\n\n\(lockedEventNames.joined(separator: "\n"))\n\nRemove them from your bet slip to continue.")
+                Text("The following events are locked:\n\n\(lockedEventNames.joined(separator: "\n"))\n\nRemove them from your pick entry to continue.")
             }
             // US-005: Sync itemStakeTexts and toWinTexts when mode switches
             .onChange(of: betSlipManager.betMode) { _, newMode in
@@ -203,7 +203,7 @@ struct BetSlipSheet: View {
                 .font(Theme.title2)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textPrimary)
-            Text("Tap odds buttons on game cards to add selections to your bet slip.")
+            Text("Tap odds buttons on game cards to add selections to your pick entry.")
                 .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -444,8 +444,8 @@ struct BetSlipSheet: View {
     private var sectionHeaderLabel: some View {
         HStack {
             Text(betSlipManager.betMode == .parlay
-                 ? "\(betSlipManager.count)-LEG PARLAY"
-                 : "STRAIGHT BETS")
+                 ? "\(betSlipManager.count)-LEG MULTI-PICK"
+                 : "STRAIGHT PICKS")
                 .font(Theme.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textMuted)
@@ -565,7 +565,7 @@ struct BetSlipSheet: View {
             VStack(spacing: 0) {
                 // Number of bets row
                 HStack {
-                    Text("Number of Bets")
+                    Text("Number of Picks")
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
@@ -602,7 +602,7 @@ struct BetSlipSheet: View {
 
                 // Potential payout row - Premium styled with accent highlight
                 HStack {
-                    Text("Potential Payout")
+                    Text("Potential Return")
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
@@ -660,7 +660,7 @@ struct BetSlipSheet: View {
     private var parlayOddsCard: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(betSlipManager.count)-Leg Parlay")
+                Text("\(betSlipManager.count)-Leg Multi-Pick")
                     .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
                 Text("Combined odds")
@@ -744,7 +744,7 @@ struct BetSlipSheet: View {
                 // TO WIN field (tappable, routes to custom keypad)
                 let isToWinActive = activeFieldId == "parlay_towin"
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("TO WIN")
+                    Text("POTENTIAL")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(isToWinActive ? Theme.accent : Theme.textMuted)
@@ -818,10 +818,10 @@ struct BetSlipSheet: View {
 
     /// US-014: Mode-specific submit button label
     private var submitButtonLabel: String {
-        guard isSubmitting else { return "Place Bet" }
+        guard isSubmitting else { return "Record Pick" }
         switch betSlipManager.betMode {
         case .parlay:
-            return "Submitting parlay..."
+            return "Submitting multi-pick..."
         case .singles:
             if singlesSubmissionTotal > 1 {
                 return "Submitting \(singlesSubmissionIndex) of \(singlesSubmissionTotal)..."
@@ -919,7 +919,7 @@ struct BetSlipSheet: View {
 
                 // Potential payout row - Premium styled with green accent
                 HStack {
-                    Text("Potential Payout")
+                    Text("Potential Return")
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
@@ -1000,7 +1000,7 @@ struct BetSlipSheet: View {
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.textPrimary)
 
-                Text("\(submittedCount) bet\(submittedCount == 1 ? "" : "s") recorded and pending review")
+                Text("\(submittedCount) pick\(submittedCount == 1 ? "" : "s") recorded and pending review")
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -1127,7 +1127,7 @@ struct BetSlipSheet: View {
             bookieId = playerBookieId
         } else {
             isSubmitting = false
-            submissionError = "Player is not associated with a bookie"
+            submissionError = "Member is not associated with an organizer"
             return
         }
 
@@ -1155,7 +1155,7 @@ struct BetSlipSheet: View {
                 guard sharedStake > 0 else {
                     await MainActor.run {
                         isSubmitting = false
-                        submissionError = "No stake set for parlay"
+                        submissionError = "No stake set for multi-pick"
                     }
                     return
                 }
@@ -1194,17 +1194,17 @@ struct BetSlipSheet: View {
                         }
                         successCount = localBets.count
                     } else {
-                        errors.append("Failed to process parlay server response")
+                        errors.append("Failed to process multi-pick server response")
                     }
 
                 case .failure(let error):
-                    var errorMessage = "Failed to submit parlay"
+                    var errorMessage = "Failed to submit multi-pick"
                     if let edgeFunctionError = error as? EdgeFunctionError {
                         switch edgeFunctionError {
                         case .notAuthenticated:
                             errorMessage = "Not authenticated - please sign in again"
                         case .serverError(_, let message):
-                            errorMessage = message ?? "Server error submitting parlay"
+                            errorMessage = message ?? "Server error submitting multi-pick"
                         default:
                             errorMessage = edgeFunctionError.localizedDescription
                         }
@@ -1216,7 +1216,7 @@ struct BetSlipSheet: View {
                             break
                         }
                     } else {
-                        errorMessage = "Failed to submit parlay: \(error.localizedDescription)"
+                        errorMessage = "Failed to submit multi-pick: \(error.localizedDescription)"
                     }
 
                     // US-013: Parse locked event IDs from server error
@@ -1351,7 +1351,7 @@ struct BetSlipSheet: View {
                     submissionError = errors.joined(separator: "\n")
                 } else if !errors.isEmpty {
                     // Partial success - some bets failed
-                    submissionError = "\(successCount) bets submitted. Some failed:\n" + errors.joined(separator: "\n")
+                    submissionError = "\(successCount) picks submitted. Some failed:\n" + errors.joined(separator: "\n")
                 }
             }
         }
@@ -1751,7 +1751,7 @@ struct PremiumBetSlipItemCard: View {
 
                         // TO WIN field (tappable, routes to custom keypad)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("TO WIN")
+                            Text("POTENTIAL")
                                 .font(Theme.caption2)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(isToWinActive ? Theme.accent : Theme.textMuted)
