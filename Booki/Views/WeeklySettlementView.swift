@@ -4,8 +4,8 @@ import SwiftData
 /// Filter options for the player settlement list
 enum SettlementFilterOption: String, CaseIterable, Identifiable {
     case all = "All"
-    case unsettled = "Unsettled"
-    case settled = "Settled"
+    case unsettled = "Unreconciled"
+    case settled = "Reconciled"
     case needsAttention = "Needs Attention"
 
     var id: String { rawValue }
@@ -194,7 +194,7 @@ struct WeeklySettlementView: View {
 
     /// Generate CSV content for the settlement report
     private func generateCSVContent() -> String {
-        var csvContent = "Player Name,Starting Balance,Net Results,Payments,Adjustments,Ending Balance,Settled\n"
+        var csvContent = "Member Name,Starting Balance,Net Results,Payments,Adjustments,Ending Balance,Reconciled\n"
 
         for report in playerReports.sorted(by: { $0.player.name < $1.player.name }) {
             let settled = isPlayerSettled(report.player) ? "Yes" : "No"
@@ -320,7 +320,7 @@ struct WeeklySettlementView: View {
                                     .font(Theme.title3)
 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("\(unsettledFromPriorPeriodCount) player\(unsettledFromPriorPeriodCount == 1 ? "" : "s") unsettled from prior period")
+                                    Text("\(unsettledFromPriorPeriodCount) member\(unsettledFromPriorPeriodCount == 1 ? "" : "s") unreconciled from prior period")
                                         .font(Theme.font(size: 15, weight: .medium))
                                         .foregroundStyle(Theme.warning)
 
@@ -380,14 +380,14 @@ struct WeeklySettlementView: View {
                     // First row: Total Players and Settled Count
                     HStack(spacing: 16) {
                         SummaryStatView(
-                            title: "Total Players",
+                            title: "Total Members",
                             value: "\(activePlayers.count)",
                             icon: "person.2.fill",
                             color: Theme.accent
                         )
 
                         SummaryStatView(
-                            title: "Settled",
+                            title: "Reconciled",
                             value: "\(settledCount) / \(activePlayers.count)",
                             icon: "checkmark.circle.fill",
                             color: settledCount == activePlayers.count ? Theme.accent : Theme.warning
@@ -444,12 +444,12 @@ struct WeeklySettlementView: View {
                     .listRowBackground(Theme.cardBackground)
                 }
             } header: {
-                Text("Players")
+                Text("Members")
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("Weekly Settlement")
+        .navigationTitle("Weekly Reconciliation")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if let fileURL = csvFileURL {
@@ -590,7 +590,7 @@ struct PlayerSettlementRowView: View {
                 }
 
                 // Bet activity summary
-                Text("\(report.betsSettledCount) bets")
+                Text("\(report.betsSettledCount) picks")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -742,7 +742,7 @@ struct PlayerSettlementDetailView: View {
             Section {
                 BettingActivityCard(report: report)
             } header: {
-                Text("Betting Activity")
+                Text("Pick Activity")
             }
             .listRowBackground(Theme.cardBackground)
 
@@ -842,7 +842,7 @@ struct PlayerSettlementDetailView: View {
                                     .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
-                                Text("Player owes \(formatCurrency(report.endingBalance))")
+                                Text("Member owes \(formatCurrency(report.endingBalance))")
                                     .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
@@ -873,7 +873,7 @@ struct PlayerSettlementDetailView: View {
                                 .foregroundStyle(Theme.accent)
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Settled")
+                                Text("Reconciled")
                                     .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
@@ -904,7 +904,7 @@ struct PlayerSettlementDetailView: View {
                 } else {
                     // Not settled - show mark as settled UI
                     VStack(alignment: .leading, spacing: 16) {
-                        TextField("Settlement notes (optional)", text: $settlementNotes, axis: .vertical)
+                        TextField("Reconciliation notes (optional)", text: $settlementNotes, axis: .vertical)
                             .textFieldStyle(.plain)
                             .foregroundStyle(Theme.textPrimary)
                             .padding(12)
@@ -917,7 +917,7 @@ struct PlayerSettlementDetailView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "checkmark.circle")
-                                Text("Mark as Settled")
+                                Text("Mark as Reconciled")
                             }
                             .font(Theme.headline)
                             .foregroundStyle(Theme.background)
@@ -930,7 +930,7 @@ struct PlayerSettlementDetailView: View {
                     .padding(.vertical, 8)
                 }
             } header: {
-                Text("Settlement Status")
+                Text("Reconciliation Status")
             }
             .listRowBackground(Theme.cardBackground)
         }
@@ -1003,7 +1003,7 @@ struct PlayerSettlementDetailView: View {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        return "Settled on \(formatter.string(from: date))"
+        return "Reconciled on \(formatter.string(from: date))"
     }
 
     // MARK: - Collection Status Helpers
@@ -1044,7 +1044,7 @@ struct BalanceSummaryCard: View {
             )
 
             BalanceLineItem(
-                label: "Net Bet Results",
+                label: "Net Pick Results",
                 amount: report.netBetResults,
                 showSign: true,
                 isHighlighted: false
@@ -1176,7 +1176,7 @@ struct BettingActivityCard: View {
         VStack(spacing: 12) {
             // Total bets
             HStack {
-                Text("Total Bets Settled")
+                Text("Total Picks Reconciled")
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 Text("\(report.betsSettledCount)")
@@ -1319,7 +1319,7 @@ struct QuickPaymentSheet: View {
                 } header: {
                     Text("Payment Amount")
                 } footer: {
-                    Text("Player owes \(formatCurrency(amountOwed))")
+                    Text("Member owes \(formatCurrency(amountOwed))")
                 }
 
                 // MARK: - Payment Method Section
