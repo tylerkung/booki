@@ -63,3 +63,31 @@ Started: Wed Feb 18 19:34:51 PST 2026
   - ForEach on summaries uses `\.player.id` as identifier since PlayerAnalyticsSummary isn't Identifiable
   - Signed currency formatting: prefix "+" for positive, "-" for negative, plain for zero
 ---
+
+## 2026-02-18 - US-005
+- Added search bar with magnifying glass icon and clear button above player list
+- Added horizontally scrolling filter chips: All / Attention needed / Overdue / High exposure / Big winners / Big losers
+- Added `filteredSummaries` computed property composing search + filter together
+- Result count label shown when filters/search active (e.g., "5 of 12 players")
+- Empty state message when no players match filters
+- Active chip uses Theme.accent background, inactive uses Theme.elevatedBackground
+- Files changed: `Booki/Views/AnalyticsDashboardView.swift` (modified)
+- **Learnings for future iterations:**
+  - Custom TextField search bar works better than .searchable() in ScrollView contexts (avoids NavigationStack dependency)
+  - Filter chip pattern: static array of options + @State activeFilter + switch in computed property
+  - `localizedCaseInsensitiveContains` is the idiomatic Swift way for case-insensitive search
+---
+
+## 2026-02-18 - US-006
+- Created `Booki/Views/PlayerAnalyticsDetailView.swift` with header and Today section
+- Header: player name (title1), balance color-coded (green=player owes, red=bookie owes), PAS badge, reason chips
+- Two CTA buttons: "ADD BET" (accent bg) and "SETTLE UP" (elevated bg) — placeholder print actions
+- Today section card: Open Exposure, Open Bets count, Largest Open Bet — metric rows with label/value layout
+- Extracted `DetailReasonChips` as private sub-view with chip color mapping (same as dashboard)
+- Files changed: `Booki/Views/PlayerAnalyticsDetailView.swift` (new)
+- **Learnings for future iterations:**
+  - PlayerAnalyticsDetailView accepts `PlayerAnalyticsSummary` — all metrics pre-computed, no @Query needed for basic sections
+  - Balance color for bookie view: positive (player owes) = accent/green, negative (bookie owes) = danger/red
+  - Future sections (Performance, Behavior, Reliability, History) will need access to raw bets/ledgerEntries — will need @Query or parameters added later
+  - Chip color mapping duplicated from PlayerAnalyticsRow — could be extracted to shared helper in future
+---

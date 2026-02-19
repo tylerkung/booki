@@ -102,7 +102,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Use @State private var searchText = '' and @State private var activeFilter = 'All'. Filter chips pattern similar to existing sport tabs in GamesView — horizontally scrolling HStack in a ScrollView(.horizontal)."
     },
     {
@@ -121,7 +121,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Balance convention for bookie: positive balanceOwed = player owes bookie (good, show in green/accent). Negative = bookie owes player (show in danger). Sections will be added below in strict order: Today → Performance → Behavior → Reliability → History."
     },
     {
