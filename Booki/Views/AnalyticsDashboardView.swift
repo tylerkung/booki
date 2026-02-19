@@ -73,6 +73,10 @@ struct AnalyticsDashboardView: View {
                         .foregroundStyle(Theme.textMuted)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.horizontal, 16)
+
+                    // MARK: - Player List
+                    playerListSection
+                        .padding(.horizontal, 16)
                 }
             }
             .padding(.vertical, 16)
@@ -179,6 +183,22 @@ struct AnalyticsDashboardView: View {
         }
     }
 
+    // MARK: - Player List Section
+
+    private var playerListSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("PLAYERS")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .tracking(1.0)
+                .padding(.leading, 4)
+
+            ForEach(summaries, id: \.player.id) { summary in
+                PlayerAnalyticsRow(summary: summary, formatCurrency: formatCurrency)
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private func formatCurrency(_ value: Decimal) -> String {
@@ -227,6 +247,138 @@ private struct SummaryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .cardStyle()
+    }
+}
+
+// MARK: - Player Analytics Row
+
+private struct PlayerAnalyticsRow: View {
+    let summary: PlayerAnalyticsSummary
+    let formatCurrency: (Decimal) -> String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Top: name + PAS badge
+            HStack {
+                Text(summary.player.name)
+                    .font(Theme.font(size: 17, weight: .bold))
+                    .foregroundStyle(Theme.textPrimary)
+
+                Spacer()
+
+                Text(summary.pas.label)
+                    .font(Theme.bodyFont(size: 11, weight: .semibold))
+                    .foregroundStyle(pasLabelColor == Theme.textMuted ? Theme.textPrimary : .black)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(pasLabelColor)
+                    .clipShape(Capsule())
+            }
+
+            // Primary metric
+            primaryMetric
+
+            // Secondary metrics
+            HStack(spacing: 16) {
+                secondaryLabel("Lifetime", value: formatSignedCurrency(summary.allTimePL))
+                secondaryLabel("Avg bet", value: formatCurrency(summary.avgBetSize30d))
+            }
+
+            // Reason chips
+            if !summary.pas.reasonChips.isEmpty {
+                reasonChipsView
+            }
+        }
+        .padding(14)
+        .background(Theme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+    }
+
+    // MARK: - PAS Badge Color
+
+    private var pasLabelColor: Color {
+        switch summary.pas.label {
+        case "High": return Theme.danger
+        case "Medium": return Theme.warning
+        default: return Theme.textMuted
+        }
+    }
+
+    // MARK: - Primary Metric
+
+    private var primaryMetric: some View {
+        Group {
+            if summary.isOverdue {
+                Text("Overdue: \(formatCurrency(summary.overdueAmount))")
+                    .font(Theme.bodyFont(size: 15))
+                    .foregroundStyle(Theme.danger)
+            } else if summary.exposure.grossExposure > 0 {
+                Text("Open exposure: \(formatCurrency(summary.exposure.grossExposure))")
+                    .font(Theme.bodyFont(size: 15))
+                    .foregroundStyle(Theme.textPrimary)
+            } else {
+                Text("7d P/L: \(formatSignedCurrency(summary.sevenDayPL))")
+                    .font(Theme.bodyFont(size: 15))
+                    .foregroundStyle(summary.sevenDayPL > 0 ? Theme.accent : summary.sevenDayPL < 0 ? Theme.danger : Theme.textSecondary)
+            }
+        }
+    }
+
+    // MARK: - Secondary Label
+
+    private func secondaryLabel(_ label: String, value: String) -> some View {
+        HStack(spacing: 4) {
+            Text(label + ":")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+            Text(value)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+        }
+    }
+
+    // MARK: - Reason Chips
+
+    private var reasonChipsView: some View {
+        HStack(spacing: 6) {
+            ForEach(Array(summary.pas.reasonChips.prefix(3)), id: \.self) { chip in
+                Text(chip)
+                    .font(Theme.bodyFont(size: 10, weight: .medium))
+                    .foregroundStyle(Theme.textPrimary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(chipColor(for: chip).opacity(0.25))
+                    .clipShape(Capsule())
+            }
+        }
+    }
+
+    // MARK: - Chip Colors
+
+    private func chipColor(for chip: String) -> Color {
+        switch chip {
+        case "Overdue": return Theme.danger
+        case "On heater": return Theme.gold
+        case "Cold streak": return Theme.accentTertiary
+        case "High roller": return Theme.accentSecondary
+        case "Parlay heavy": return Theme.scheduled
+        case "High volatility": return Theme.warning
+        case "Large pending": return Theme.accent
+        default: return Theme.textMuted
+        }
+    }
+
+    // MARK: - Signed Currency
+
+    private func formatSignedCurrency(_ value: Decimal) -> String {
+        let formatted = formatCurrency(abs(value))
+        if value > 0 { return "+\(formatted)" }
+        if value < 0 { return "-\(formatted)" }
+        return formatted
+    }
+
+    private func abs(_ value: Decimal) -> Decimal {
+        value < 0 ? -value : value
     }
 }
 
