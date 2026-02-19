@@ -10,6 +10,7 @@ struct PlayerAnalyticsDetailView: View {
                 headerSection
                 ctaButtons
                 todaySection
+                performanceSection
             }
             .padding(16)
         }
@@ -114,6 +115,43 @@ struct PlayerAnalyticsDetailView: View {
         }
     }
 
+    // MARK: - Performance Section
+
+    private var performanceSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("PERFORMANCE")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .tracking(1.0)
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                PerformanceMetricCard(label: "7d P/L", value: formatSignedCurrency(summary.sevenDayPL), color: plColor(summary.sevenDayPL))
+                PerformanceMetricCard(label: "30d P/L", value: formatSignedCurrency(summary.thirtyDayPL), color: plColor(summary.thirtyDayPL))
+                PerformanceMetricCard(label: "All-time P/L", value: formatSignedCurrency(summary.allTimePL), color: plColor(summary.allTimePL))
+                PerformanceMetricCard(label: "Win Rate", value: "\(Int(summary.winRate * 100))%", color: Theme.textPrimary)
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+
+    private func plColor(_ value: Decimal) -> Color {
+        if value > 0 { return Theme.accent }
+        if value < 0 { return Theme.danger }
+        return Theme.textSecondary
+    }
+
+    private func formatSignedCurrency(_ value: Decimal) -> String {
+        let formatted = formatCurrency(abs(value))
+        if value > 0 { return "+\(formatted)" }
+        if value < 0 { return "-\(formatted)" }
+        return formatted
+    }
+
+    private func abs(_ value: Decimal) -> Decimal {
+        return value < 0 ? -value : value
+    }
+
     // MARK: - Helpers
 
     private var balanceColor: Color {
@@ -137,6 +175,29 @@ struct PlayerAnalyticsDetailView: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+}
+
+// MARK: - Performance Metric Card
+
+private struct PerformanceMetricCard: View {
+    let label: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+            Text(value)
+                .font(Theme.font(size: 17, weight: .bold))
+                .foregroundStyle(color)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Theme.elevatedBackground)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
     }
 }
 
