@@ -202,7 +202,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "ContentView.swift bookieModeView has the TabView. First tab is DashboardView(). Just swap to AnalyticsDashboardView(). The flaggedPlayersCount computed property in ContentView is independent of DashboardView so it will still work. FinishSetupCard is referenced via onboardingManager environment — check how DashboardView currently uses it and replicate in AnalyticsDashboardView. Do NOT remove old files — just swap the reference."
     }
   ]

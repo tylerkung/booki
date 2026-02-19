@@ -9,6 +9,8 @@ Started: Wed Feb 18 19:34:51 PST 2026
 - Bet.player and LedgerEntry.player are optional relationships (`Player?`) — always use `?.id` for comparison
 - `BalanceService.balanceOwed(from:)` takes `[LedgerEntry]` — positive = player owes bookie
 - Xcode IDE required for full typecheck — SwiftData macros can't resolve via CLI
+- NavigationLink(value:) + .navigationDestination(for:) pattern for type-safe navigation in NavigationStack
+- Data model structs used as navigation values must conform to Hashable (use model `id` for @Model types)
 ---
 
 ## 2026-02-18 - US-001
@@ -138,4 +140,24 @@ Started: Wed Feb 18 19:34:51 PST 2026
   - Payment status logic: empty ledger = "New", isOverdue from summary = "Overdue", else "Current"
   - `gradeResult` is optional (`GradeResult?`) — use switch with `case nil:` for pending/open bets
   - DateFormatter with `"MMM d, h:mm a"` gives compact date display for bet history rows
+---
+
+## 2026-02-18 - US-010
+- Swapped DashboardView() → AnalyticsDashboardView() in ContentView.swift first tab
+- Added NavigationStack wrapping AnalyticsDashboardView body
+- Added .navigationDestination(for: PlayerAnalyticsSummary.self) for player detail navigation
+- Player list rows wrapped in NavigationLink(value:) for tap-to-navigate
+- Card 3 (Top Risk Player) uses NavigationLink to navigate to that player's detail
+- Card 4 (Outstanding Balances) taps to set activeFilter="Overdue" and scroll to player list
+- Card 1 (Net Exposure) taps to scroll to player list via ScrollViewReader
+- Made PlayerAnalyticsSummary, PlayerAttentionScore, PlayerExposure conform to Hashable (required for navigationDestination)
+- FinishSetupCard onboarding logic preserved (unchanged from US-003)
+- Old DashboardView.swift kept in codebase for reference (not deleted)
+- flaggedPlayersCount badge logic unchanged in ContentView (independent of dashboard view)
+- Files changed: `Booki/ContentView.swift`, `Booki/Views/AnalyticsDashboardView.swift`, `Booki/Services/PlayerAttentionService.swift`
+- **Learnings for future iterations:**
+  - SwiftUI navigationDestination(for:) requires the value type to conform to Hashable
+  - For SwiftData @Model types, implement Hashable via the model's `id` property
+  - ScrollViewReader + .id() + scrollTo() is the pattern for programmatic scrolling in ScrollView
+  - NavigationLink(value:) + .buttonStyle(.plain) avoids default list row styling in non-List contexts
 ---
