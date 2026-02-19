@@ -43,6 +43,8 @@ struct ImportEventsView: View {
                     errorView(error)
                 } else if let result = importResult {
                     successView(result)
+                } else if sports.isEmpty {
+                    noSportsView
                 } else {
                     sportPickerView
                 }
@@ -73,6 +75,33 @@ struct ImportEventsView: View {
         )
     }
 
+    private var noSportsView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "sportscourt")
+                .font(.system(size: 48))
+                .foregroundStyle(Theme.textMuted)
+
+            Text("No Active Sports")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("There are no sports with upcoming games right now. Check back later.")
+                .font(.body)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+
+            Button("Retry") {
+                Task {
+                    await loadSports()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.accent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     private var loadingView: some View {
         VStack(spacing: 16) {
             ProgressView()
@@ -85,15 +114,15 @@ struct ImportEventsView: View {
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
-                .foregroundStyle(.orange)
+                .font(Theme.font(size: 48))
+                .foregroundStyle(Theme.warning)
 
             Text("Error")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
 
             Text(message)
-                .font(.body)
+                .font(Theme.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
@@ -113,20 +142,20 @@ struct ImportEventsView: View {
     private func successView(_ result: ImportResult) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
+                .font(Theme.font(size: 48))
+                .foregroundStyle(Theme.accent)
 
             Text("Import Complete")
-                .font(.title2)
+                .font(Theme.title2)
                 .fontWeight(.semibold)
 
             VStack(spacing: 4) {
                 Text("Imported \(result.eventsImported) \(result.sportTitle) events")
-                    .font(.body)
+                    .font(Theme.body)
 
                 if result.eventsSkipped > 0 {
                     Text("\(result.eventsSkipped) events skipped (already exist)")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
@@ -151,11 +180,11 @@ struct ImportEventsView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(sport.title)
-                                    .font(.body)
+                                    .font(Theme.body)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 Text(sport.group)
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
 

@@ -116,25 +116,31 @@ struct CompactGameRow: View {
 
     // MARK: - Time Header
 
+    /// US-007: Count of additional markets beyond the 3 shown (spread/money/total)
+    private var additionalMarketsCount: Int {
+        let totalMarkets = event.markets?.count ?? 0
+        return max(0, totalMarkets - 3)
+    }
+
     @ViewBuilder
     private var timeHeader: some View {
         HStack(spacing: 4) {
             // Start time
             Text(formattedStartTime)
-                .font(.caption2)
+                .font(Theme.caption2)
                 .foregroundColor(Theme.textSecondary)
 
             // Lock indicator when event is locked
             if isEventLocked {
                 Image(systemName: "lock.fill")
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .foregroundColor(Theme.warning)
             }
 
             // Live indicator
             if event.status == .live {
                 Text("LIVE")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(Theme.font(size: 10, weight: .bold))
                     .foregroundColor(Theme.live)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -147,25 +153,42 @@ struct CompactGameRow: View {
             // Postponed indicator
             if event.status == .postponed {
                 Text("PPD")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(Theme.font(size: 10, weight: .bold))
                     .foregroundColor(Theme.warning)
             }
 
             // Canceled indicator
             if event.status == .canceled {
                 Text("CANCELED")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(Theme.font(size: 10, weight: .bold))
                     .foregroundColor(Theme.danger)
             }
 
             Spacer()
+
+            // US-007: Additional markets count badge
+            if additionalMarketsCount > 0 {
+                HStack(spacing: 2) {
+                    Text("+\(additionalMarketsCount)")
+                        .font(Theme.caption2)
+                        .foregroundColor(Theme.textMuted)
+
+                    Image(systemName: "chevron.right")
+                        .font(Theme.font(size: 9, weight: .medium))
+                        .foregroundColor(Theme.textMuted)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Theme.elevatedBackground)
+                .clipShape(Capsule())
+            }
         }
     }
 
     // MARK: - Team Row with Odds
 
     /// Fixed button size for consistent layout
-    private let oddsButtonWidth: CGFloat = 52
+    private let oddsButtonWidth: CGFloat = 65
     private let oddsButtonHeight: CGFloat = 44
 
     /// Single row with team name and aligned odds buttons
@@ -177,10 +200,12 @@ struct CompactGameRow: View {
         totalMarket: Market?,
         isAwayTeam: Bool
     ) -> some View {
-        HStack(spacing: 8) {
-            // Team name
+        HStack(spacing: 4) {
+            // Team abbreviation badge + name
+            teamBadge(teamName)
+
             Text(teamName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(Theme.font(size: 13, weight: .semibold))
                 .foregroundColor(Theme.textPrimary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -270,19 +295,19 @@ struct CompactGameRow: View {
                 VStack(spacing: 1) {
                     if let text = topText {
                         Text(text)
-                            .font(.system(size: 11, weight: .bold))
+                            .font(Theme.font(size: 11, weight: .bold))
                             .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
                     Text(formatOdds(odds))
-                        .font(.system(size: 9, weight: .medium))
+                        .font(Theme.font(size: 9, weight: .medium))
                         .foregroundColor(isSelected ? Theme.background.opacity(0.7) : Theme.textMuted)
                 }
             } else {
                 // Moneyline - just show odds prominently
                 Text(formatOdds(odds))
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(Theme.font(size: 12, weight: .semibold))
                     .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
             }
         }
@@ -297,6 +322,44 @@ struct CompactGameRow: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isSelected)
+    }
+
+    // MARK: - Team Abbreviation
+
+    /// Derives a 2-3 letter abbreviation from a team name
+    /// e.g., "Los Angeles Lakers" → "LAL", "Boston Celtics" → "CEL", "Golden State Warriors" → "GWA"
+    private func teamAbbreviation(_ teamName: String) -> String {
+        let words = teamName.components(separatedBy: " ").filter { !$0.isEmpty }
+        guard !words.isEmpty else { return "?" }
+
+        // Single word: take first 3 letters
+        if words.count == 1 {
+            return String(words[0].prefix(3)).uppercased()
+        }
+
+        // Team name is the last word
+        let teamWord = words.last!
+
+        // Two-word cities (3+ words total): first letter of city + first 2 letters of team name
+        if words.count >= 3 {
+            let cityInitial = String(words[0].prefix(1))
+            let teamPrefix = String(teamWord.prefix(2))
+            return (cityInitial + teamPrefix).uppercased()
+        }
+
+        // Two words: take first 3 letters of last word
+        return String(teamWord.prefix(3)).uppercased()
+    }
+
+    /// Small circle badge showing team abbreviation
+    @ViewBuilder
+    private func teamBadge(_ teamName: String) -> some View {
+        Text(teamAbbreviation(teamName))
+            .font(Theme.font(size: 9, weight: .bold))
+            .foregroundColor(Theme.textSecondary)
+            .frame(width: 24, height: 24)
+            .background(Theme.elevatedBackground)
+            .clipShape(Circle())
     }
 
     // MARK: - Helpers

@@ -110,6 +110,56 @@ enum Theme {
         endPoint: .bottomTrailing
     )
 
+    // MARK: - Typography
+
+    /// Returns a Space Grotesk font with the given size and weight (display/titles)
+    static func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .bold, .semibold, .heavy, .black:
+            name = "SpaceGrotesk-Bold"
+        case .medium:
+            name = "SpaceGrotesk-Medium"
+        default:
+            name = "SpaceGrotesk-Regular"
+        }
+        return Font.custom(name, size: size)
+    }
+
+    /// Returns an IBM Plex Sans font with the given size and weight (body/reading text)
+    static func bodyFont(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .bold, .semibold, .heavy, .black:
+            name = "IBMPlexSans-Bold"
+        case .medium:
+            name = "IBMPlexSans-Medium"
+        default:
+            name = "IBMPlexSans-Regular"
+        }
+        return Font.custom(name, size: size)
+    }
+
+    /// Space Grotesk with monospaced digits for odds/numbers
+    static func monoDigits(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        font(size: size, weight: weight).monospacedDigit()
+    }
+
+    // Convenience type scale — Space Grotesk for titles/headlines
+    static let largeTitle = font(size: 34, weight: .bold)
+    static let title1 = font(size: 28, weight: .bold)
+    static let title2 = font(size: 22, weight: .bold)
+    static let title3 = font(size: 20, weight: .bold)
+    static let headline = font(size: 17, weight: .bold)
+
+    // Convenience type scale — IBM Plex Sans for body/reading text
+    static let body = bodyFont(size: 17)
+    static let callout = bodyFont(size: 16)
+    static let subheadline = bodyFont(size: 15)
+    static let footnote = bodyFont(size: 13)
+    static let caption = bodyFont(size: 12)
+    static let caption2 = bodyFont(size: 11, weight: .medium)
+
     /// Card gradient: subtle purple depth
     static let cardGradient = LinearGradient(
         colors: [cardBackground, Color(hex: 0x0E0E18)],
@@ -195,10 +245,10 @@ extension View {
     }
 
     /// Apply a glowing border effect for highlighted elements
-    func glowingBorder(color: Color = Theme.accent, isActive: Bool = true) -> some View {
+    func glowingBorder(color: Color = Theme.accent, isActive: Bool = true, cornerRadius: CGFloat = Theme.cornerRadius) -> some View {
         self
             .overlay(
-                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(color, lineWidth: isActive ? 2 : 0)
             )
             .shadow(color: isActive ? color.opacity(0.5) : .clear, radius: 8, x: 0, y: 0)
@@ -220,7 +270,7 @@ extension View {
             // Background Colors
             VStack(alignment: .leading, spacing: 8) {
                 Text("Backgrounds")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
                 HStack(spacing: 12) {
                     colorSwatch(Theme.background, "Primary")
@@ -232,7 +282,7 @@ extension View {
             // Accent Colors
             VStack(alignment: .leading, spacing: 8) {
                 Text("Accents")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
                 HStack(spacing: 12) {
                     colorSwatch(Theme.accent, "Cyan")
@@ -249,7 +299,7 @@ extension View {
             // Text Colors
             VStack(alignment: .leading, spacing: 8) {
                 Text("Text")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
                 HStack(spacing: 12) {
                     colorSwatch(Theme.textPrimary, "Primary")
@@ -261,7 +311,7 @@ extension View {
             // Status Colors
             VStack(alignment: .leading, spacing: 8) {
                 Text("Status")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
                 HStack(spacing: 12) {
                     colorSwatch(Theme.live, "Live")
@@ -273,7 +323,7 @@ extension View {
             // Card Styles
             VStack(alignment: .leading, spacing: 8) {
                 Text("Card Styles")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
 
                 Text("Standard Card")
@@ -299,7 +349,7 @@ extension View {
             // Gradient Demo
             VStack(alignment: .leading, spacing: 8) {
                 Text("Gradients")
-                    .font(.headline)
+                    .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
 
                 HStack(spacing: 12) {
@@ -308,7 +358,7 @@ extension View {
                         .frame(height: 50)
                         .overlay(
                             Text("Button")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(Theme.background)
                         )
@@ -318,7 +368,7 @@ extension View {
                         .frame(height: 50)
                         .overlay(
                             Text("Rainbow")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
                         )
@@ -341,7 +391,7 @@ private func colorSwatch(_ color: Color, _ name: String) -> some View {
                     .stroke(Theme.border, lineWidth: 1)
             )
         Text(name)
-            .font(.caption2)
+            .font(Theme.caption2)
             .foregroundStyle(Theme.textSecondary)
     }
 }

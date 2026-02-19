@@ -1,66 +1,86 @@
 {
   "project": "Booki",
-  "branchName": "ralph/games-filtering",
-  "description": "Filter Games view to show relevant events while preserving historical data",
+  "branchName": "ralph/dashboard-earnings-header",
+  "description": "Dashboard Earnings Header - Robinhood-style lifetime P/L display with line chart and time range selector",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Filter GamesView to show upcoming and recent events",
-      "description": "As a bookie, I want to see only upcoming games and recently finished games so I can focus on active betting.",
+      "title": "Add daily cumulative P/L data method to PlayerAttentionService",
+      "description": "As a developer, I need a method to compute daily cumulative P/L data points so the chart and hero number can display earnings over time.",
       "acceptanceCriteria": [
-        "GamesView shows events where status is NOT 'final' OR status IS 'final' AND finished within last 48 hours",
-        "Events sorted by start_time ascending (soonest first)",
-        "Old finished events are hidden but NOT deleted from database",
-        "Use SwiftData predicate for filtering",
+        "Add a struct `DailyPLPoint` with fields `date: Date` and `cumulativePL: Decimal` to PlayerAttentionService.swift",
+        "Add static method `dailyCumulativePL(bets: [Bet], days: Int) -> [DailyPLPoint]` to PlayerAttentionService",
+        "Method filters to graded bets only (gradeResult != nil, excluding .push)",
+        "If days > 0, only include bets from last N days. If days == 0, include all bets.",
+        "Group bets by calendar day, compute daily bookie P/L per day: player .win → subtract payout (LiabilityService.calculatePayout), player .loss → add stake",
+        "Sort days ascending by date, compute running cumulative sum across days",
+        "Return array of DailyPLPoint sorted by date ascending",
+        "Handle empty state: return empty array if no graded bets",
+        "Also add static method `totalBookiePL(bets: [Bet]) -> Decimal` that returns aggregate lifetime P/L across all players (same logic as realizedPL but without player filter)",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": ""
+      "notes": "Bookie P/L convention: player win = bookie loses payout (negative), player loss = bookie gains stake (positive). Same logic as existing `realizedPL` method but aggregated across ALL players instead of filtering by one player. Use `LiabilityService.calculatePayout(stake:odds:)` for payout calculation. DateFormatter with 'yyyy-MM-dd' for day grouping (same pattern as existing `volatility` method)."
     },
     {
       "id": "US-002",
-      "title": "Add Past Events toggle to GamesView",
-      "description": "As a bookie, I want to optionally view past events so I can review historical games.",
+      "title": "Add earnings hero number to dashboard",
+      "description": "As a bookie, I want to see my total lifetime earnings as a large, prominent number at the top of my dashboard so I instantly know how much I've made.",
       "acceptanceCriteria": [
-        "Add segmented control or Picker: 'Upcoming' | 'Past'",
-        "'Upcoming' (default): Shows events per US-001 filter",
-        "'Past': Shows events that are 'final' and older than 48 hours",
-        "Past events sorted by start_time descending (most recent first)",
-        "Uses Theme styling consistently",
+        "Remove `.navigationTitle(\"Analytics\")` from AnalyticsDashboardView — use `.navigationBarTitleDisplayMode(.inline)` with no title or a minimal toolbar approach",
+        "Add an earnings header section at the very top of the ScrollView VStack, above the FinishSetupCard and summary cards",
+        "Display lifetime P/L using `PlayerAttentionService.totalBookiePL(bets:)` as a large number with `Theme.font(size: 34, weight: .bold)`",
+        "Color-code: positive → `Theme.accent`, negative → `Theme.danger`, zero → `Theme.textPrimary`",
+        "Format as currency with sign prefix (e.g., '+$1,245.00' or '-$320.50')",
+        "Add a smaller label below the hero number showing 'Lifetime P/L' in `Theme.caption` + `Theme.textSecondary`",
+        "No card background — render directly on `Theme.background` for an integrated look",
+        "Padding: horizontal 16pt to match summary cards",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "This story does NOT include the chart or time range selector — just the big number and label. Keep it simple. The earnings section should be the first thing visible in the ScrollView. The FinishSetupCard (onboarding) should appear below the earnings header if needed. Use the existing `formatCurrency` helper pattern (NumberFormatter with .currency style). The SyncStatusIndicator toolbar item should remain."
     },
     {
       "id": "US-003",
-      "title": "Ensure event details visible in bet history",
-      "description": "As a user, I want to see event details when viewing a historical bet.",
+      "title": "Add earnings line chart with Swift Charts",
+      "description": "As a bookie, I want to see a line chart of my earnings over time so I can understand my profit trend.",
       "acceptanceCriteria": [
-        "Bet rows/detail views show event info (teams, final score) for all bets",
-        "Handle case where bet references old event gracefully",
-        "No broken UI or crashes if event exists",
+        "Add `import Charts` to AnalyticsDashboardView.swift",
+        "Add a line chart between the hero number and the summary cards",
+        "Use `Chart { LineMark(...) }` with data from `PlayerAttentionService.dailyCumulativePL(bets:days:)`",
+        "X-axis: date, Y-axis: cumulative P/L decimal value",
+        "Line color: `Theme.accent` if lifetime P/L >= 0, `Theme.danger` if negative",
+        "Chart height: 160pt, full width with horizontal padding 16pt matching cards",
+        "Hide all axis labels and grid lines for clean Robinhood look: `.chartXAxis(.hidden)` and `.chartYAxis(.hidden)`",
+        "Handle empty state: if no data points, show a subtle 'No betting history yet' text in `Theme.textMuted` instead of the chart",
+        "Default to showing ALL time data (days: 0)",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "Swift Charts is available iOS 16+ and app targets iOS 17+ so no compatibility issue. LineMark uses `.value(\"Date\", point.date)` for x and `.value(\"P/L\", NSDecimalNumber(decimal: point.cumulativePL).doubleValue)` for y. Apply `.foregroundStyle(lineColor)` to the LineMark. Use `.interpolationMethod(.catmullRom)` for smooth curves like Robinhood. Extract chart into a private sub-view (e.g., `EarningsChart`) to keep the body manageable and avoid type-checker timeouts."
     },
     {
       "id": "US-004",
-      "title": "Filter player game browsing to bettable events only",
-      "description": "As a player, I want to see only upcoming games I can actually bet on.",
+      "title": "Add time range selector and period change label",
+      "description": "As a bookie, I want to switch between time ranges so I can see my earnings over different periods and know how much I made in each window.",
       "acceptanceCriteria": [
-        "Player's BetSlipSheet or game selection shows only events where status allows betting",
-        "Events with start_time in the past are hidden",
-        "Events with status 'final', 'locked', or 'canceled' are hidden",
+        "Add `@State private var selectedRange: String = \"ALL\"` to AnalyticsDashboardView",
+        "Add horizontally arranged time range tabs below the chart: 1W, 1M, 3M, 1Y, ALL",
+        "Tabs in an HStack with equal spacing — active tab text uses `Theme.accent` with a small underline or bold weight, inactive uses `Theme.textMuted`",
+        "Tab font: `Theme.bodyFont(size: 13, weight: .medium)`",
+        "Switching tabs updates the chart data by passing the correct days parameter: 1W=7, 1M=30, 3M=90, 1Y=365, ALL=0",
+        "Add `.animation(.easeInOut(duration: 0.3), value: selectedRange)` for smooth chart transitions",
+        "Add a period change label below the hero number (replace or supplement the 'Lifetime P/L' label): shows delta for selected range (e.g., '+$245.00 past 7 days') in green/red with up/down arrow (▲/▼)",
+        "Period change = current cumulative P/L minus cumulative P/L at start of the selected range. For ALL, show lifetime total.",
+        "Hero number always shows lifetime P/L regardless of selected range",
         "Typecheck passes"
       ],
       "priority": 4,
       "passes": false,
-      "notes": ""
+      "notes": "Time range mapping: '1W' → 7 days, '1M' → 30 days, '3M' → 90 days, '1Y' → 365 days, 'ALL' → 0 (all time). Period change calculation: compute totalBookiePL for all bets, then compute P/L for only bets in the selected range — the difference is the period change. Or simpler: just use realizedPL-style aggregation filtered to the selected range. For the label format: '+$245.00 past 7 days' or '+$1,200.00 all time'. Arrow: ▲ for positive, ▼ for negative, none for zero."
     }
   ]
 }

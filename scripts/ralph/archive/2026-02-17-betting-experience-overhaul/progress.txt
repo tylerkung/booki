@@ -1,0 +1,184 @@
+# Ralph Progress Log
+Started: Sun Feb 16 16:34:00 PST 2026
+---
+
+## Codebase Patterns
+- SwiftData @Query with sort creates ascending order by default - no need for explicit order parameter
+- Event filtering uses computed properties (like `availableEvents`) since SwiftData predicates have limitations with complex OR conditions
+- Use `Calendar.current.date(byAdding:value:to:)` for date math in Swift
+- Xcode IDE required for full typecheck - swiftc can't resolve SwiftData macros
+- UUID case sensitivity: iOS UUID.uuidString returns UPPERCASE, PostgreSQL stores lowercase - always use `.lowercased()` when comparing UUIDs across systems
+- Font registration: Space Grotesk fonts are in `Booki/Fonts/`, registered in Info.plist UIAppFonts. Use `Font.custom("SpaceGrotesk-Regular", size:)` etc.
+- Theme typography: Use `Theme.font(size:weight:)`, convenience properties (`Theme.largeTitle`, `Theme.title1`, `Theme.title2`, `Theme.title3`, `Theme.headline`, `Theme.body`, `Theme.callout`, `Theme.subheadline`, `Theme.footnote`, `Theme.caption`, `Theme.caption2`), and `Theme.monoDigits(size:weight:)` for odds/numbers
+- Only 2 system fonts remain: `.system(.title, design: .monospaced)` in PlayerClaimView and `.system(.title2, design: .monospaced)` in PlayersListView - these need actual monospace, not Space Grotesk
+- Custom keypad integration: Use `activeFieldId: String?` state + computed `Binding<String>` to route a single NumericKeypadView to multiple stake fields
+
+---
+
+## 2026-02-03 - US-001
+- **What was implemented**: Filter GamesView to show only upcoming events and recently finished events (within 48 hours)
+- **Files changed**:
+  - `Booki/Views/GamesView.swift` - Added `recentFinishedCutoff` computed property and updated `availableEvents` filter logic
+- **Learnings for future iterations:**
+  - The existing @Query already sorts by startTime ascending (line 22)
+  - The `availableEvents` computed property is the central filter used by all downstream filtering (sports, time, search, favorites)
+  - Event.startTime is used as proxy for "finished time" since there's no explicit finishedAt field
+  - SwiftData predicates don't easily support complex OR conditions with date comparisons - use Swift filter instead
+---
+
+## 2026-02-03 - US-002
+- **What was implemented**: Add Past Events toggle to GamesView with segmented Picker control
+- **Files changed**:
+  - `Booki/Views/GamesView.swift` - Added GameViewMode enum, viewMode state, segmented picker UI, pastEvents computed property
+- **Learnings for future iterations:**
+  - Use `.pickerStyle(.segmented)` for iOS-native segmented control appearance
+  - Chain filtering: `upcomingEvents` → `availableEvents` (based on viewMode) → `timeFilteredEvents` → `searchFilteredEvents` → `filteredEvents`
+  - When adding a view mode toggle, consider which existing filters make sense in each mode (time filters hidden in Past mode)
+  - Use `.onChange(of:)` to reset dependent state when parent state changes
+  - Sort descending in Swift: `.sorted { $0.startTime > $1.startTime }`
+---
+
+## 2026-02-03 - US-003
+- **What was implemented**: Fix UUID case sensitivity in event lookups for bet history views
+- **Files changed**:
+  - `Booki/Views/BetsListView.swift` - Fixed eventName(for:) and event computed property
+  - `Booki/Views/TrackView.swift` - Fixed eventName(for:)
+  - `Booki/Views/TicketDetailView.swift` - Fixed eventName(for:) and event lookup in betsSection
+  - `Booki/Views/AccountView.swift` - Fixed eventName(for:) and event computed property
+  - `Booki/Views/SettingsView.swift` - Fixed eventName(for:)
+  - `Booki/Views/DashboardView.swift` - Fixed risk events lookup and eventName(for:)
+  - `Booki/Views/GradingView.swift` - Fixed both event(for:) functions
+  - `Booki/Views/PlayersListView.swift` - Fixed eventName(for:)
+  - `Booki/Views/EventDetailView.swift` - Fixed eventBets filter
+- **Learnings for future iterations:**
+  - iOS UUID.uuidString returns UPPERCASE, PostgreSQL stores lowercase - always use `.lowercased()` for comparison
+  - Event lookup pattern: `events.first { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }`
+  - The existing fallback `"Event \(bet.eventId.prefix(8))"` already handles missing events gracefully
+  - Bet history views already show event info (teams, final score) when event exists - the issue was case-sensitive comparison failing
+---
+
+## 2026-02-16 - US-001 (Player UX Polish)
+- **What was implemented**: Added Space Grotesk font to the project (Regular, Medium, Bold weights)
+- **Files changed**:
+  - `Booki/Fonts/SpaceGrotesk-Regular.ttf` - Font file (400 weight)
+  - `Booki/Fonts/SpaceGrotesk-Medium.ttf` - Font file (500 weight)
+  - `Booki/Fonts/SpaceGrotesk-Bold.ttf` - Font file (700 weight)
+  - `Booki/Info.plist` - Added UIAppFonts array with font filenames
+  - `Booki.xcodeproj/project.pbxproj` - Added Fonts group, file references, and Copy Bundle Resources entries
+- **Learnings for future iterations:**
+  - Google Fonts CSS API (`fonts.googleapis.com/css2?family=...`) returns actual gstatic.com URLs for TTF files - use User-Agent header to get TTF format
+  - Font PostScript names for Space Grotesk: SpaceGrotesk-Regular, SpaceGrotesk-Medium, SpaceGrotesk-Bold (used in Font.custom())
+  - pbxproj needs 3 things for fonts: PBXFileReference, PBXBuildFile (in Resources), and PBXGroup entry
+  - Use `plutil -lint` to validate plist and pbxproj files after editing
+  - prd.json can be overwritten by hooks/processes — always re-read before editing
+---
+
+## 2026-02-16 - US-002 (Player UX Polish)
+- **What was implemented**: Added centralized font helpers to Theme.swift for Space Grotesk
+- **Files changed**:
+  - `Booki/Theme.swift` - Added Typography section with `font(size:weight:)`, `monoDigits(size:weight:)`, and convenience type scale properties
+- **Learnings for future iterations:**
+  - `Theme.font(size:weight:)` maps Font.Weight to font file names: .bold/.semibold/.heavy/.black → Bold, .medium → Medium, default → Regular
+  - Convenience properties: `Theme.title1` (28 bold), `Theme.headline` (17 bold), `Theme.body` (17), `Theme.subheadline` (15), `Theme.footnote` (13), `Theme.caption` (12), `Theme.caption2` (11 medium)
+  - `Theme.monoDigits(size:weight:)` adds `.monospacedDigit()` for tabular number alignment in odds displays
+  - Static let properties on Swift enums are lazily evaluated, so calling static methods from static lets works fine
+---
+
+## 2026-02-16 - US-003 (Player UX Polish)
+- **What was implemented**: Replaced all system font calls with Theme font helpers site-wide across 40 files (687 replacements)
+- **Files changed**:
+  - `Booki/Theme.swift` - Added `largeTitle`, `title2`, `title3`, `callout` convenience properties; updated preview section
+  - All 37 View files - Replaced `.font(.headline)`, `.font(.system(size:...))`, etc. with `Theme.headline`, `Theme.font(size:weight:)`, etc.
+  - `Booki/Services/NetworkMonitor.swift` - Replaced system fonts
+  - `Booki/Services/SyncService.swift` - Replaced system fonts
+  - `Booki/Views/CompactOddsButton.swift` - Changed odds number displays to use `Theme.monoDigits()` for tabular alignment
+- **Learnings for future iterations:**
+  - Use sed with `find ... -print0 | while IFS= read -r -d '' f` pattern for bulk replacements across many Swift files
+  - Font replacement mapping: `.largeTitle` → 34pt bold, `.title` → 28pt bold, `.title2` → 22pt bold, `.title3` → 20pt bold, `.headline` → 17pt bold, `.body` → 17pt, `.callout` → 16pt, `.subheadline` → 15pt, `.footnote` → 13pt, `.caption` → 12pt, `.caption2` → 11pt medium
+  - Chained font modifiers like `.font(.subheadline.bold())` need explicit `Theme.font(size: 15, weight: .bold)` replacement
+  - `.fontWeight()` can coexist with custom Font.custom - separate SwiftUI modifier
+  - Only keep `.system()` fonts for monospaced designs (invite codes) - Space Grotesk handles everything else
+  - `.design: .rounded` system fonts can be safely replaced with Theme.font since Space Grotesk provides the distinctive styling
+---
+
+## 2026-02-16 - US-004 (Player UX Polish)
+- **What was implemented**: Added team abbreviation badges (24x24pt circles) to the left of team names in CompactGameRow
+- **Files changed**:
+  - `Booki/Views/CompactGameRow.swift` - Added `teamAbbreviation(_:)` helper, `teamBadge(_:)` view builder, and integrated badge into `teamOddsRow`
+- **Learnings for future iterations:**
+  - CompactGameRow is in its own file `Booki/Views/CompactGameRow.swift`, not in GamesView.swift
+  - Team abbreviation logic: 1 word → first 3 letters; 2 words → first 3 of last word; 3+ words (multi-word city) → first letter of city + first 2 of team name
+  - Badge uses `clipShape(Circle())` for round shape, `Theme.font(size: 9, weight: .bold)` for compact text in 24x24 circle
+  - `teamOddsRow` is the function that renders each team line (away on top, home on bottom) with odds buttons
+---
+
+## 2026-02-16 - US-005 (Player UX Polish)
+- **What was implemented**: Widened odds buttons from 52pt to 65pt in CompactGameRow
+- **Files changed**:
+  - `Booki/Views/CompactGameRow.swift` - Changed `oddsButtonWidth` constant from 52 to 65
+- **Learnings for future iterations:**
+  - `oddsButtonWidth` on line 168 of CompactGameRow.swift is the single constant controlling all odds button widths (including placeholders for alignment)
+  - CompactGameRow has its own inline `compactOddsButton` method separate from the standalone `CompactOddsButton.swift` component - the inline version uses `oddsButtonWidth` directly
+  - The standalone CompactOddsButton.swift uses `frame(maxWidth: .infinity)` so it adapts to whatever parent frame is given - no width constant to change there
+---
+
+## 2026-02-16 - US-006 (Player UX Polish)
+- **What was implemented**: Added sport icons (SF Symbols) to sport filter tabs in GamesView
+- **Files changed**:
+  - `Booki/Views/GamesView.swift` - Added `sportIconName(for:)` mapping function, updated `SportTabButton` to accept optional `iconName` parameter, added icon to tab layout with HStack, passed icons from `sportTabsHeader`
+- **Learnings for future iterations:**
+  - Sport values in the app come from OddsAPIMapper: "Football", "Basketball", "Baseball", "Hockey", "Soccer", "MMA", "Boxing", "Golf", "Tennis"
+  - SportTabButton `init` uses default `iconName: nil` for backward compatibility (MarketCategoryTabButton in GameDetailView is a separate struct, not affected)
+  - SF Symbol icon size set with `.font(.system(size: 14))` to keep it independent of the custom Space Grotesk font
+  - The `sportIconName(for:)` function is a free function at file scope for reuse; uses `.lowercased()` for case-insensitive matching
+---
+
+## 2026-02-16 - US-007 (Player UX Polish)
+- **What was implemented**: Added available markets count badge (+N) to the trailing edge of CompactGameRow's time header
+- **Files changed**:
+  - `Booki/Views/CompactGameRow.swift` - Added `additionalMarketsCount` computed property and badge pill with chevron in `timeHeader`
+- **Learnings for future iterations:**
+  - `event.markets` is an optional `[Market]?` relationship on Event — use `event.markets?.count ?? 0` to safely count
+  - The 3 shown markets are spread, moneyline, and total — additional markets count is `max(0, totalMarkets - 3)`
+  - `timeHeader` in CompactGameRow is the natural place for trailing metadata (badges, indicators) since it spans the full width with a Spacer
+  - Capsule pill pattern: `.padding(.horizontal, 8).padding(.vertical, 3).background(Theme.elevatedBackground).clipShape(Capsule())`
+---
+
+## 2026-02-16 - US-008 (Player UX Polish)
+- **What was implemented**: Added player balance and credit limit display row in the bet slip header, between the mode toggle and bet cards
+- **Files changed**:
+  - `Booki/Views/BetSlipSheet.swift` - Added `balanceSummary`, `displayBalance`, `balanceColor` computed properties and `balanceDisplayRow` view builder; inserted balance row in `selectionsList`
+- **Learnings for future iterations:**
+  - BetSlipSheet already has `@Query private var bets: [Bet]` and `@Query private var ledgerEntries: [LedgerEntry]` — no need to pass balance data as parameters, compute it in-place using `BalanceService.playerSummary()`
+  - BetSlipSheet already has a `formatCurrency` helper at the bottom (MARK: Helpers section) — don't add a duplicate
+  - Balance display convention: negate `balanceSummary.balanceOwed` for player-facing display (positive = credit/green, negative = debt/red)
+  - Balance color uses `Theme.accent` (green) for positive, `Theme.danger` (red) for negative, `Theme.textSecondary` for zero — matching `AppHeaderView` pattern
+  - The `selectionsList` view in BetSlipSheet contains: header (count + mode toggle) → balance row → bet cards → sticky bottom (stakes/payout)
+---
+
+## 2026-02-16 - US-009 (Player UX Polish)
+- **What was implemented**: Created NumericKeypadView.swift — a custom numeric keypad component for stake entry
+- **Files changed**:
+  - `Booki/Views/NumericKeypadView.swift` - New file: 4x4 grid keypad with digit keys, decimal, delete, and quick stake buttons (+$5, +$10, +$25, +$50)
+  - `Booki.xcodeproj/project.pbxproj` - Added file reference and build phase entry
+- **Learnings for future iterations:**
+  - NumericKeypadView accepts `Binding<String>` and optional `onValueChanged` callback — integrate by binding to stake text state
+  - Quick stake buttons use `Decimal(string:)` for precise arithmetic, then format back to string with NumberFormatter
+  - KeypadButtonStyle is a private ButtonStyle that scales to 0.95 on press with spring animation
+  - Decimal key prevents double decimals; leading zeros are handled (e.g., "0" + "5" → "5")
+  - Keys use `frame(maxWidth: .infinity)` for equal-width distribution in HStack
+---
+
+## 2026-02-16 - US-010 (Player UX Polish)
+- **What was implemented**: Integrated NumericKeypadView into BetSlipSheet, replacing all TextFields with tappable Text views routed through the custom keypad
+- **Files changed**:
+  - `Booki/Views/BetSlipSheet.swift` - Replaced TextField inputs with tappable Text displays; added `activeFieldId` state tracking; added `activeKeypadBinding` computed binding that routes keypad input to parlay or per-item stake fields; added NumericKeypadView in sticky bottom section with Done dismiss button; PremiumBetSlipItemCard now accepts `activeFieldId` binding and `fieldId` for keypad routing; removed @FocusState
+- **Learnings for future iterations:**
+  - Track active field with `@State private var activeFieldId: String?` — "parlay_stake" for parlay mode, or the item's stake key for singles mode
+  - Use a computed `Binding<String>` (`activeKeypadBinding`) to route keypad input to the correct state variable based on `activeFieldId`
+  - `glowingBorder(color:isActive:)` modifier in Theme.swift provides accent glow effect for active fields
+  - Don't use `.onTapGesture` on ScrollView to dismiss — it interferes with scrolling. Use a "Done" button on the keypad instead
+  - When removing a bet slip item, check if it's the active keypad field and clear `activeFieldId` to avoid orphaned state
+  - Dismiss keypad on betMode change via `.onChange(of: betSlipManager.betMode)`
+  - `syncItemStake` helper finds the matching BetSlipItem by iterating all items and comparing keys, then calls `setItemStake` on the manager
+---

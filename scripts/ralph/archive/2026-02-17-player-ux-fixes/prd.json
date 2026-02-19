@@ -1,0 +1,90 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/betslip-bugfixes",
+  "description": "Bet Slip Bug Fixes & Polish - Fix layout shifts, add decimal support, require all stakes, fix indicator styling, add re-use selections",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Always show Place Bet button dimmed when disabled",
+      "description": "As a player, I don't want the UI to shift when I start entering a stake — the Place Bet button should always be visible.",
+      "acceptanceCriteria": [
+        "Remove the `if canSubmit` conditional wrapping `submitSection` in stickyBottomSection (around line 567 of BetSlipSheet.swift)",
+        "Place Bet button is always rendered in the sticky bottom section regardless of canSubmit state",
+        "When canSubmit is false: button has 0.4 opacity via .opacity(canSubmit ? 1.0 : 0.4) and is .disabled(!canSubmit)",
+        "When canSubmit is true: button has full opacity and is enabled",
+        "No layout shift occurs when typing a stake amount",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Simple conditional removal + opacity/disabled modifiers. File: Booki/Views/BetSlipSheet.swift stickyBottomSection"
+    },
+    {
+      "id": "US-002",
+      "title": "Add decimal key to numeric keypad for cents entry",
+      "description": "As a player, I want to enter cents (e.g. $25.50) on my wager.",
+      "acceptanceCriteria": [
+        "Bottom row of NumericKeypadView changes from [0, 00, backspace] to ['.', 0, backspace]",
+        "Decimal key inserts a '.' character into the text binding",
+        "If text already contains '.', tapping decimal key is a no-op (only one decimal allowed)",
+        "Maximum 2 digits after the decimal point — if text has '.XX' (2 decimal digits), number keys are no-op",
+        "Backspace deletes characters normally including the decimal point",
+        "The '00' key is removed entirely",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "File: Booki/Views/NumericKeypadView.swift. Validation logic goes in the key tap handler."
+    },
+    {
+      "id": "US-003",
+      "title": "Require all singles bets to have stakes before submission",
+      "description": "As a player, I should not be able to submit if some of my singles bets are missing stakes.",
+      "acceptanceCriteria": [
+        "In canSubmit computed property (around line 821 of BetSlipSheet.swift), singles case checks that EVERY item in betSlipManager.items has a stake > 0",
+        "Use betSlipManager.getItemStake(marketId:sideIndicator:) to check each item's individual stake",
+        "If any single item has stake == 0, canSubmit returns false",
+        "Place Bet button stays dimmed/disabled until all singles have stakes set (works with US-001 always-visible button)",
+        "Parlay mode validation unchanged — only checks total stake > 0",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "File: Booki/Views/BetSlipSheet.swift canSubmit property. Iterate betSlipManager.items and check each."
+    },
+    {
+      "id": "US-004",
+      "title": "Fix bet slip indicator to be a proper floating pill",
+      "description": "As a player, I want the bet slip indicator to look like a floating button, not a partially hidden sheet.",
+      "acceptanceCriteria": [
+        "GamesView betSlipIndicator (around line 249): add .clipShape(RoundedRectangle(cornerRadius: 16)) or equivalent rounded corners",
+        "Add horizontal padding: .padding(.horizontal, 16) to the indicator wrapper",
+        "Add bottom padding so indicator sits above the tab bar with spacing (e.g. .padding(.bottom, 8))",
+        "Add shadow: .shadow(color: Theme.accent.opacity(0.3), radius: 8, x: 0, y: 4)",
+        "When betSlipManager.isEmpty, indicator is completely hidden with no partial visibility",
+        "Apply the same styling fixes to GameDetailView betSlipIndicator (around line 645)",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Files: Booki/Views/GamesView.swift (betSlipIndicator ~line 249), Booki/Views/GameDetailView.swift (betSlipIndicator ~line 645). Both need identical fixes."
+    },
+    {
+      "id": "US-005",
+      "title": "Add re-use selections CTA on success screen",
+      "description": "As a player, I want to quickly re-add my same selections after placing a bet for a follow-up wager.",
+      "acceptanceCriteria": [
+        "Add a @State property to store submitted items (e.g. `lastSubmittedItems: [BetSlipItem]`) — save betSlipManager.items before clearing on successful submission",
+        "On the success screen, add a text-only button 'Re-use selections' positioned above the 'Done' button",
+        "Button uses Theme.accent foreground color with no background (text-only link style)",
+        "Tapping it: re-adds each item from lastSubmittedItems via betSlipManager.add(), clears all itemStakeTexts and itemToWinTexts, sets submissionComplete = false to return to bet slip view",
+        "Stakes are reset to 0 (only selections are restored, not amounts)",
+        "If lastSubmittedItems is empty, button is hidden",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "File: Booki/Views/BetSlipSheet.swift. Save items in submitBets() before clearing. Success view is around line 1095."
+    }
+  ]
+}

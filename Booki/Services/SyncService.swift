@@ -164,24 +164,43 @@ final class SyncService: ObservableObject {
             return
         }
 
+        // Guard against concurrent syncs
+        guard syncStatus != .syncing else { return }
+
         syncStatus = .syncing
 
-        do {
-            // Phase 1: Download all data from server
-            try await downloadAll(bookieId: bookieId)
+        // Run sync in a detached task so SwiftUI view redraws
+        // (triggered by @Published changes) don't cancel the network requests.
+        // .refreshable cancels its task on re-render, causing NSURLError -999.
+        await withCheckedContinuation { continuation in
+            Task.detached { [weak self] in
+                guard let self else {
+                    continuation.resume()
+                    return
+                }
+                do {
+                    // Phase 1: Download all data from server
+                    try await self.downloadAll(bookieId: bookieId)
 
-            // Phase 2: Upload pending local changes
-            try await uploadPendingChanges(bookieId: bookieId)
+                    // Phase 2: Upload pending local changes
+                    try await self.uploadPendingChanges(bookieId: bookieId)
 
-            // Update sync state
-            lastSyncedAt = Date()
-            syncStatus = .idle
+                    // Update sync state on main actor
+                    await MainActor.run {
+                        self.lastSyncedAt = Date()
+                        self.syncStatus = .idle
+                    }
 
-            // Refresh pending count
-            await updatePendingChangesCount()
-        } catch {
-            syncStatus = .error(error.localizedDescription)
-            print("Sync failed: \(error)")
+                    // Refresh pending count
+                    await self.updatePendingChangesCount()
+                } catch {
+                    await MainActor.run {
+                        self.syncStatus = .error(error.localizedDescription)
+                    }
+                    print("Sync failed: \(error)")
+                }
+                continuation.resume()
+            }
         }
     }
 
@@ -301,6 +320,8 @@ final class SyncService: ObservableObject {
             try await downloadPlayers(bookieId: bookieId, context: context)
         case .events:
             try await downloadEvents(bookieId: bookieId, context: context)
+            // Also download markets (they depend on events)
+            try await downloadMarkets(bookieId: bookieId, context: context)
         case .bets:
             try await downloadBets(bookieId: bookieId, context: context)
         case .ledgerEntries:
@@ -346,7 +367,9 @@ final class SyncService: ObservableObject {
     }
 
     /// Download events from Supabase and upsert into SwiftData
+    /// Fetches both bookie-specific events AND shared events (bookie_id is NULL)
     private func downloadEvents(bookieId: UUID, context: ModelContext) async throws {
+        // First, download bookie-specific events
         var offset = 0
         var hasMore = true
 
@@ -366,6 +389,92 @@ final class SyncService: ObservableObject {
 
             hasMore = records.count == pageLimit
             offset += pageLimit
+        }
+
+        // Then, download shared events (bookie_id is NULL) - from Odds API
+        offset = 0
+        hasMore = true
+
+        print("DEBUG downloadEvents: Fetching shared events (bookie_id is NULL)")
+        while hasMore {
+            do {
+                let records: [EventRecord] = try await supabase
+                    .from("events")
+                    .select()
+                    .is("bookie_id", value: nil)
+                    .order("created_at")
+                    .range(from: offset, to: offset + pageLimit - 1)
+                    .execute()
+                    .value
+
+                print("DEBUG downloadEvents: Got \(records.count) shared events")
+                for record in records {
+                    try upsertEvent(record, bookieId: bookieId, context: context)
+                }
+
+                hasMore = records.count == pageLimit
+                offset += pageLimit
+            } catch {
+                print("DEBUG downloadEvents: Error fetching shared events: \(error)")
+                throw error
+            }
+        }
+
+        try context.save()
+    }
+
+    /// Download markets from Supabase and upsert into SwiftData
+    /// Fetches both bookie-specific markets AND shared markets (bookie_id = NULL)
+    private func downloadMarkets(bookieId: UUID, context: ModelContext) async throws {
+        // First, download bookie-specific markets
+        var offset = 0
+        var hasMore = true
+
+        while hasMore {
+            let records: [MarketRecord] = try await supabase
+                .from("markets")
+                .select()
+                .eq("bookie_id", value: bookieId.uuidString)
+                .order("created_at")
+                .range(from: offset, to: offset + pageLimit - 1)
+                .execute()
+                .value
+
+            for record in records {
+                try upsertMarket(record, context: context)
+            }
+
+            hasMore = records.count == pageLimit
+            offset += pageLimit
+        }
+
+        // Then, download shared markets (bookie_id is NULL) - from Odds API
+        offset = 0
+        hasMore = true
+
+        print("DEBUG downloadMarkets: Fetching shared markets (bookie_id is NULL)")
+        while hasMore {
+            do {
+                let records: [MarketRecord] = try await supabase
+                    .from("markets")
+                    .select()
+                    .is("bookie_id", value: nil)
+                    .order("created_at")
+                    .range(from: offset, to: offset + pageLimit - 1)
+                    .execute()
+                    .value
+
+                print("DEBUG downloadMarkets: Got \(records.count) shared markets")
+                for record in records {
+                    try upsertMarket(record, context: context)
+                }
+
+                hasMore = records.count == pageLimit
+                offset += pageLimit
+            } catch {
+                print("DEBUG downloadMarkets: Error fetching shared markets: \(error)")
+                throw error
+            }
         }
 
         try context.save()
@@ -491,10 +600,14 @@ final class SyncService: ObservableObject {
     }
 
     /// Upsert an event record from server into local SwiftData
+    /// Handles both bookie-specific events and shared events (bookie_id = NULL)
     private func upsertEvent(_ record: EventRecord, bookieId: UUID, context: ModelContext) throws {
         let recordId = record.id
         let descriptor = FetchDescriptor<Event>(predicate: #Predicate { $0.id == recordId })
         let existingEvents = try context.fetch(descriptor)
+
+        // Use the record's bookieId if present, otherwise use the provided bookieId
+        let effectiveBookieId = record.bookieId ?? bookieId
 
         if let existing = existingEvents.first {
             // Update if server is newer
@@ -506,7 +619,11 @@ final class SyncService: ObservableObject {
                 existing.startTime = record.startTime
                 existing.status = EventStatus(rawValue: record.status) ?? .scheduled
                 existing.finalScore = record.finalScore
-                existing.bookieId = bookieId
+                existing.homeScore = record.homeScore
+                existing.awayScore = record.awayScore
+                existing.externalId = record.externalId
+                existing.externalSource = record.externalSource
+                existing.bookieId = effectiveBookieId
                 existing.needsSync = false
                 existing.lastSyncedAt = Date()
             }
@@ -521,11 +638,59 @@ final class SyncService: ObservableObject {
                 startTime: record.startTime,
                 status: EventStatus(rawValue: record.status) ?? .scheduled,
                 finalScore: record.finalScore,
-                bookieId: bookieId,
+                bookieId: effectiveBookieId,
                 needsSync: false,
                 lastSyncedAt: Date()
             )
+            event.homeScore = record.homeScore
+            event.awayScore = record.awayScore
+            event.externalId = record.externalId
+            event.externalSource = record.externalSource
             context.insert(event)
+        }
+    }
+
+    /// Upsert a market record from server into local SwiftData
+    private func upsertMarket(_ record: MarketRecord, context: ModelContext) throws {
+        let recordId = record.id
+        let descriptor = FetchDescriptor<Market>(predicate: #Predicate { $0.id == recordId })
+        let existingMarkets = try context.fetch(descriptor)
+
+        // Find the event for this market
+        let eventId = record.eventId
+        let eventDescriptor = FetchDescriptor<Event>(predicate: #Predicate { $0.id == eventId })
+        let event = try context.fetch(eventDescriptor).first
+
+        guard let event = event else {
+            // Event not found - skip this market
+            print("DEBUG upsertMarket: Event \(record.eventId) not found for market \(record.id)")
+            return
+        }
+
+        if let existing = existingMarkets.first {
+            // Update if server is newer
+            if record.updatedAt > existing.updatedAt {
+                existing.type = MarketType(rawValue: record.type) ?? .moneyline
+                existing.sideA = record.sideA
+                existing.sideB = record.sideB
+                existing.oddsA = record.oddsA
+                existing.oddsB = record.oddsB
+                existing.event = event
+                existing.updatedAt = record.updatedAt
+            }
+        } else {
+            // Insert new record
+            let market = Market(
+                id: record.id,
+                type: MarketType(rawValue: record.type) ?? .moneyline,
+                sideA: record.sideA,
+                sideB: record.sideB,
+                oddsA: record.oddsA,
+                oddsB: record.oddsB,
+                event: event,
+                updatedAt: record.updatedAt
+            )
+            context.insert(market)
         }
     }
 
@@ -1193,16 +1358,22 @@ final class SyncService: ObservableObject {
         print("DEBUG: Syncing player data for auth_user_id: \(authUserId)")
 
         // Fetch player record from Supabase using auth_user_id
+        // Use maybeSingle() instead of single() to handle case where player doesn't exist
         let response = try await supabase
             .from("players")
             .select()
             .eq("auth_user_id", value: authUserId.uuidString)
-            .single()
+            .limit(1)
             .execute()
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let record = try decoder.decode(PlayerRecord.self, from: response.data)
+        let records = try decoder.decode([PlayerRecord].self, from: response.data)
+
+        guard let record = records.first else {
+            print("DEBUG: No player found for auth_user_id: \(authUserId)")
+            return
+        }
 
         print("DEBUG: Fetched player from Supabase: \(record.name), bookie_id: \(record.bookieId)")
 
@@ -1274,18 +1445,18 @@ struct SyncStatusIndicator: View {
         HStack(spacing: 4) {
             Image(systemName: syncService.syncStatus.iconName)
                 .foregroundStyle(syncService.syncStatus.iconColor)
-                .font(.system(size: 14))
+                .font(Theme.font(size: 14))
                 .symbolEffect(.pulse, isActive: syncService.syncStatus == .syncing)
 
             if syncService.syncStatus == .syncing && showProgress && !syncService.syncProgressDescription.isEmpty {
                 Text(syncService.syncProgressDescription)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
             } else if syncService.pendingChangesCount > 0 && syncService.syncStatus != .syncing {
                 Text("\(syncService.pendingChangesCount)")
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -1309,11 +1480,11 @@ struct SyncProgressView: View {
 
             if !syncService.syncProgressDescription.isEmpty {
                 Text(syncService.syncProgressDescription)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             } else {
                 Text("Syncing...")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }
         }

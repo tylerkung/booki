@@ -51,7 +51,7 @@ struct BetHistoryView: View {
                 .scaleEffect(1.5)
 
             Text("Loading history...")
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
         }
     }
@@ -59,15 +59,15 @@ struct BetHistoryView: View {
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 48))
+                .font(Theme.font(size: 48))
                 .foregroundStyle(Theme.danger)
 
             Text("Failed to load history")
-                .font(.headline)
+                .font(Theme.headline)
                 .foregroundStyle(Theme.textPrimary)
 
             Text(message)
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
 
@@ -77,7 +77,7 @@ struct BetHistoryView: View {
                 }
             } label: {
                 Text("Try Again")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.accent)
             }
@@ -88,15 +88,15 @@ struct BetHistoryView: View {
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 48))
+                .font(Theme.font(size: 48))
                 .foregroundStyle(Theme.textMuted)
 
             Text("No History")
-                .font(.headline)
+                .font(Theme.headline)
                 .foregroundStyle(Theme.textPrimary)
 
             Text("No changes have been recorded for this bet.")
-                .font(.subheadline)
+                .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -227,7 +227,7 @@ private struct TimelineEventRow: View {
 
                 // Icon dot
                 Image(systemName: actionIcon)
-                    .font(.title2)
+                    .font(Theme.title2)
                     .foregroundStyle(actionColor)
 
                 // Line below (hidden for last item)
@@ -242,24 +242,24 @@ private struct TimelineEventRow: View {
             VStack(alignment: .leading, spacing: 8) {
                 // Action type badge
                 Text(humanReadableAction)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.textPrimary)
 
                 // Timestamp
                 Text(formattedTimestamp)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
 
                 // Reason (if present)
                 if let reason = event.reason, !reason.isEmpty {
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "quote.opening")
-                            .font(.caption2)
+                            .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
 
                         Text(reason)
-                            .font(.caption)
+                            .font(Theme.caption)
                             .foregroundStyle(Theme.textSecondary)
                             .italic()
                     }

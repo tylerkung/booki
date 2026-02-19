@@ -1,0 +1,2516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Booki Player View States</title>
+<style>
+  /* Theme.swift Colors */
+  :root {
+    --background: #0A0A12;
+    --card-bg: #14141F;
+    --elevated-bg: #1E1E2D;
+    --accent: #00F5D4;
+    --accent-secondary: #9D4EDD;
+    --accent-tertiary: #FF006E;
+    --gold: #FFE66D;
+    --scheduled: #7B68EE;
+    --final-status: #5C5C6F;
+    --danger: #FF6B6B;
+    --warning: #FFA94D;
+    --text-primary: #F8F8F8;
+    --text-secondary: #A8A8B8;
+    --text-muted: #6B6B7B;
+    --radius: 16px;
+    --radius-sm: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #050508;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    color: var(--text-primary);
+    padding: 40px;
+  }
+
+  .page-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .page-subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 48px;
+    text-align: center;
+  }
+
+  .section-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 16px;
+    margin-top: 48px;
+  }
+
+  .screen-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: center;
+    margin-bottom: 64px;
+  }
+
+  .screen-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .screen-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* iPhone 15 Pro frame */
+  .phone {
+    width: 393px;
+    height: 852px;
+    background: var(--background);
+    border-radius: 48px;
+    overflow: hidden;
+    position: relative;
+    border: 3px solid #2A2A3A;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .phone-inner {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding-top: 59px; /* status bar */
+    padding-bottom: 34px; /* home indicator */
+  }
+  .phone-inner::-webkit-scrollbar { display: none; }
+
+  /* Status bar */
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 59px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 32px 8px;
+    z-index: 100;
+    background: var(--background);
+  }
+  .status-bar .time { font-size: 15px; font-weight: 600; }
+  .status-bar .icons { font-size: 12px; color: var(--text-primary); display: flex; gap: 6px; align-items: center; }
+
+  /* Dynamic Island */
+  .dynamic-island {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 126px;
+    height: 36px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 200;
+  }
+
+  /* Home indicator */
+  .home-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 134px;
+    height: 5px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+    z-index: 100;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    position: absolute;
+    bottom: 34px; left: 0; right: 0;
+    height: 56px;
+    background: var(--card-bg);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 90;
+    padding: 0 24px;
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .tab-item.active { color: var(--accent); }
+  .tab-item .tab-icon { font-size: 22px; }
+
+  /* App header */
+  .app-header {
+    background: var(--card-bg);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .app-header .logo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .app-header .logo span { color: var(--accent); }
+  .app-header .balance {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  /* Common */
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin: 0 16px 12px;
+  }
+  .divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 0 16px;
+  }
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 16px 16px 8px;
+  }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 40px;
+    text-align: center;
+  }
+  .empty-state .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+  .empty-state h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  .empty-state p {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  /* Sport tabs */
+  .sport-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px 12px;
+    overflow-x: auto;
+  }
+  .sport-tab {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    background: var(--elevated-bg);
+    color: var(--text-secondary);
+  }
+  .sport-tab.active {
+    background: var(--accent);
+    color: #0A0A12;
+  }
+
+  /* Search bar */
+  .search-bar {
+    margin: 8px 16px;
+    padding: 10px 14px;
+    background: var(--elevated-bg);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Game row */
+  .game-card {
+    background: var(--card-bg);
+    margin: 0 16px 2px;
+    padding: 12px 14px;
+  }
+  .game-card:first-of-type { border-radius: var(--radius) var(--radius) 0 0; }
+  .game-card:last-of-type { border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 12px; }
+  .game-card.solo { border-radius: var(--radius); margin-bottom: 12px; }
+
+  .league-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 16px 16px 6px;
+  }
+
+  .column-headers {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 0 16px 4px;
+  }
+  .column-headers span {
+    width: 68px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  .game-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+  .game-row + .game-row {
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .team-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .team-name {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .game-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .odds-grid {
+    display: flex;
+    gap: 4px;
+  }
+  .odds-btn {
+    width: 68px;
+    padding: 8px 4px;
+    background: var(--elevated-bg);
+    border-radius: 8px;
+    text-align: center;
+    font-size: 12px;
+  }
+  .odds-btn .line { font-size: 11px; color: var(--text-muted); }
+  .odds-btn .odds { font-weight: 600; color: var(--text-primary); font-size: 13px; }
+  .odds-btn.selected {
+    background: var(--accent);
+  }
+  .odds-btn.selected .line,
+  .odds-btn.selected .odds { color: #0A0A12; }
+
+  /* Track View */
+  .ticket-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    margin: 0 16px 12px;
+    overflow: hidden;
+  }
+  .ticket-header {
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .ticket-header .title { font-size: 15px; font-weight: 700; }
+  .ticket-header .subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .ticket-bet-row {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .ticket-bet-row:last-child { border-bottom: none; }
+  .ticket-bet-row .event { font-size: 13px; color: var(--text-secondary); }
+  .ticket-bet-row .pick { font-size: 15px; font-weight: 600; margin-top: 2px; }
+  .ticket-bet-row .meta { display: flex; justify-content: space-between; margin-top: 4px; }
+  .ticket-bet-row .meta span { font-size: 12px; color: var(--text-muted); }
+  .ticket-footer {
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.02);
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+
+  /* Account View */
+  .hero-balance {
+    text-align: center;
+    padding: 32px 16px 24px;
+  }
+  .hero-balance .amount {
+    font-size: 56px;
+    font-weight: 800;
+    letter-spacing: -2px;
+  }
+  .hero-balance .label {
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  .profile-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+  }
+  .profile-row + .profile-row {
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .profile-row .icon-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--elevated-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .profile-row .label { font-size: 13px; color: var(--text-muted); }
+  .profile-row .value { font-size: 15px; font-weight: 500; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 0 16px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .stat-card .stat-icon { font-size: 20px; margin-bottom: 6px; }
+  .stat-card .stat-value { font-size: 22px; font-weight: 700; }
+  .stat-card .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .credit-bar {
+    height: 8px;
+    background: var(--elevated-bg);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 12px 0;
+  }
+  .credit-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+  }
+
+  /* Filter tabs */
+  .filter-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--elevated-bg);
+    border-radius: var(--radius-sm);
+    margin: 0 16px 12px;
+  }
+  .filter-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .filter-tab.active {
+    background: var(--card-bg);
+    color: var(--text-primary);
+  }
+
+  /* Bet slip */
+  .bet-slip-header {
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .bet-slip-header h2 { font-size: 18px; font-weight: 700; }
+
+  .mode-toggle {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--elevated-bg);
+    border-radius: var(--radius-sm);
+    margin: 12px 16px;
+  }
+  .mode-btn {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .mode-btn.active {
+    background: var(--card-bg);
+    color: var(--text-primary);
+  }
+
+  .selection-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    margin: 0 16px 10px;
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .selection-card .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .selection-card .team-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    background: var(--elevated-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+  .selection-card .pick-info { flex: 1; }
+  .selection-card .pick-name { font-size: 16px; font-weight: 700; }
+  .selection-card .odds-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-left: 8px;
+  }
+  .selection-card .matchup { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+  .selection-card .game-start { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .selection-card .market-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    margin-top: 10px;
+  }
+  .selection-card .remove-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .selection-card .stake-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .stake-field {
+    padding: 8px 12px;
+    background: var(--elevated-bg);
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    min-width: 100px;
+    text-align: center;
+  }
+  .stake-field.active {
+    box-shadow: 0 0 0 2px var(--gold);
+  }
+
+  .submit-btn {
+    margin: 12px 16px;
+    padding: 16px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-size: 17px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), #00C4A8);
+    color: #0A0A12;
+  }
+
+  .parlay-odds-card {
+    margin: 0 16px 12px;
+    padding: 20px;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(0,245,212,0.15), rgba(157,78,221,0.15));
+    border: 1px solid rgba(0,245,212,0.3);
+    text-align: center;
+  }
+  .parlay-odds-card .label { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+  .parlay-odds-card .odds { font-size: 36px; font-weight: 800; color: var(--accent); }
+
+  .payout-summary {
+    margin: 0 16px 12px;
+    padding: 16px;
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .payout-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 14px;
+  }
+  .payout-row .label { color: var(--text-secondary); }
+  .payout-row .value { font-weight: 600; }
+  .payout-row.total { font-size: 16px; }
+  .payout-row.total .value { color: var(--accent); font-weight: 700; }
+
+  /* Success state */
+  .success-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px;
+    text-align: center;
+  }
+  .success-ring {
+    width: 120px;
+    height: 120px;
+    border-radius: 60px;
+    border: 4px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    box-shadow: 0 0 40px rgba(0,245,212,0.2);
+  }
+  .success-ring .check { font-size: 56px; color: var(--accent); }
+  .success-view h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .success-view p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+  }
+  .success-view .done-btn {
+    padding: 14px 48px;
+    background: var(--accent);
+    color: #0A0A12;
+    border-radius: var(--radius-sm);
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  /* Claim view */
+  .claim-content {
+    padding: 40px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .claim-content .icon-large {
+    font-size: 64px;
+    margin-bottom: 24px;
+  }
+  .claim-content h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .claim-content p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    line-height: 1.4;
+  }
+  .code-input {
+    width: 100%;
+    padding: 16px;
+    background: var(--elevated-bg);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    font-family: 'SF Mono', monospace;
+    letter-spacing: 4px;
+    color: var(--text-primary);
+    border: 2px solid rgba(255,255,255,0.08);
+    margin-bottom: 8px;
+  }
+  .code-input.filled {
+    border-color: var(--accent);
+  }
+  .char-count {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+  .primary-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-size: 17px;
+    font-weight: 700;
+    background: var(--accent);
+    color: #0A0A12;
+  }
+  .primary-btn.disabled {
+    opacity: 0.4;
+  }
+  .secondary-btn {
+    width: 100%;
+    padding: 14px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-top: 12px;
+  }
+
+  .form-field {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--elevated-bg);
+    border-radius: var(--radius-sm);
+    font-size: 16px;
+    color: var(--text-primary);
+    border: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 12px;
+    text-align: left;
+  }
+  .form-label {
+    width: 100%;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  /* Game Detail */
+  .game-detail-header {
+    padding: 20px 16px;
+    text-align: center;
+  }
+  .game-detail-header .time-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .game-detail-header .time { font-size: 14px; color: var(--text-secondary); }
+  .live-badge {
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #0A0A12;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .matchup-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  .matchup-team {
+    text-align: center;
+    flex: 1;
+  }
+  .matchup-team .team-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    background: var(--elevated-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-secondary);
+  }
+  .matchup-team .name { font-size: 16px; font-weight: 700; }
+  .matchup-vs {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .game-detail-header .sport-info {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 12px;
+  }
+
+  .market-section { margin-bottom: 4px; }
+  .market-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: var(--card-bg);
+    margin: 0 16px;
+  }
+  .market-row:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+  .market-row:last-child { border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 12px; }
+  .market-row .team { flex: 1; font-size: 14px; font-weight: 600; }
+  .market-row .odds-buttons { display: flex; gap: 6px; }
+  .market-row .odds-buttons + .market-row { border-top: 1px solid rgba(255,255,255,0.04); }
+  .market-btn {
+    padding: 10px 14px;
+    background: var(--elevated-bg);
+    border-radius: 8px;
+    text-align: center;
+    min-width: 72px;
+  }
+  .market-btn .spread { font-size: 12px; color: var(--text-secondary); }
+  .market-btn .price { font-size: 14px; font-weight: 700; }
+  .market-btn.selected {
+    background: var(--accent);
+  }
+  .market-btn.selected .spread,
+  .market-btn.selected .price { color: #0A0A12; }
+
+  /* Loading state */
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+  }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-state p {
+    font-size: 15px;
+    color: var(--text-secondary);
+  }
+
+  /* Floating bet slip indicator */
+  .floating-indicator {
+    position: absolute;
+    bottom: 100px;
+    left: 16px;
+    right: 16px;
+    padding: 14px 20px;
+    background: var(--accent);
+    border-radius: var(--radius-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #0A0A12;
+    font-weight: 700;
+    font-size: 15px;
+    z-index: 80;
+    box-shadow: 0 8px 24px rgba(0,245,212,0.3);
+  }
+
+  /* Parlay dots */
+  .leg-dots {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .leg-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+  }
+
+  /* Bet slip balance display */
+  .balance-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  .balance-bar .label { color: var(--text-muted); }
+  .balance-bar .value { font-weight: 600; color: var(--accent); }
+
+  /* Nav back button */
+  .nav-bar {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    gap: 8px;
+  }
+  .nav-back {
+    font-size: 18px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .nav-title {
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  /* Transaction rows */
+  .transaction-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+  }
+  .transaction-row + .transaction-row {
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .transaction-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .transaction-info { flex: 1; }
+  .transaction-info .desc { font-size: 14px; font-weight: 500; }
+  .transaction-info .date { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .transaction-amount { font-size: 15px; font-weight: 700; }
+  .amount-capsule {
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* Quick stake buttons */
+  .quick-stakes {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px;
+    margin-bottom: 12px;
+  }
+  .quick-stake {
+    padding: 8px 16px;
+    background: var(--elevated-bg);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  /* Parlay stake area */
+  .parlay-stake-row {
+    display: flex;
+    gap: 12px;
+    padding: 0 16px;
+    margin-bottom: 8px;
+  }
+  .parlay-stake-field {
+    flex: 1;
+    padding: 14px;
+    background: var(--elevated-bg);
+    border-radius: var(--radius-sm);
+    text-align: center;
+  }
+  .parlay-stake-field .field-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .parlay-stake-field .field-value {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .parlay-stake-field.wager {
+    border: 2px solid var(--gold);
+  }
+  .parlay-stake-field.wager .field-value { color: var(--gold); }
+  .parlay-stake-field.to-win .field-value { color: var(--accent); }
+</style>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+</head>
+<body>
+
+<div class="page-title">Booki — Player View States</div>
+<div class="page-subtitle">All player-facing screens and states</div>
+
+<!-- ============================================ -->
+<!-- SECTION: LOADING STATE -->
+<!-- ============================================ -->
+<div class="section-label" style="text-align:center;">1. Loading State</div>
+<div class="screen-grid">
+  <div class="screen-wrapper">
+    <div class="screen-label">Player Loading</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">
+          <span>●●●●</span>
+          <span>WiFi</span>
+          <span>🔋</span>
+        </span>
+      </div>
+      <div class="phone-inner">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading your account...</p>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION: GAMES VIEW -->
+<!-- ============================================ -->
+<div class="section-label" style="text-align:center;">2. Games Tab</div>
+<div class="screen-grid">
+  <!-- Games - Full State -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Games — Full</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 90px;">
+        <div class="app-header">
+          <div class="logo">booki<span>.</span></div>
+          <div class="balance" style="color: var(--accent);">$250.00</div>
+        </div>
+
+        <div class="search-bar">
+          <span>🔍</span> Search teams...
+        </div>
+
+        <div class="sport-tabs">
+          <div class="sport-tab active">All</div>
+          <div class="sport-tab">🏀 NBA</div>
+          <div class="sport-tab">🏈 NFL</div>
+          <div class="sport-tab">⚾ MLB</div>
+          <div class="sport-tab">🏒 NHL</div>
+        </div>
+
+        <div class="column-headers">
+          <span>SPREAD</span>
+          <span>MONEY</span>
+          <span>TOTAL</span>
+        </div>
+
+        <div class="league-header">🏀 NBA</div>
+
+        <div class="game-card" style="border-radius: var(--radius) var(--radius) 0 0;">
+          <div class="game-row">
+            <div class="team-info">
+              <div class="team-name">Lakers</div>
+              <div class="game-time">Today 7:30 PM</div>
+            </div>
+            <div class="odds-grid">
+              <div class="odds-btn">
+                <div class="line">-3.5</div>
+                <div class="odds">-110</div>
+              </div>
+              <div class="odds-btn selected">
+                <div class="line">ML</div>
+                <div class="odds">-155</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">O 224.5</div>
+                <div class="odds">-110</div>
+              </div>
+            </div>
+          </div>
+          <div class="game-row">
+            <div class="team-info">
+              <div class="team-name">Celtics</div>
+            </div>
+            <div class="odds-grid">
+              <div class="odds-btn">
+                <div class="line">+3.5</div>
+                <div class="odds">-110</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">ML</div>
+                <div class="odds">+130</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">U 224.5</div>
+                <div class="odds">-110</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="game-card" style="border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 12px;">
+          <div class="game-row">
+            <div class="team-info">
+              <div class="team-name">Warriors</div>
+              <div class="game-time">Today 10:00 PM</div>
+            </div>
+            <div class="odds-grid">
+              <div class="odds-btn">
+                <div class="line">-1.5</div>
+                <div class="odds">-110</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">ML</div>
+                <div class="odds">-125</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">O 218</div>
+                <div class="odds">-105</div>
+              </div>
+            </div>
+          </div>
+          <div class="game-row">
+            <div class="team-info">
+              <div class="team-name">Nuggets</div>
+            </div>
+            <div class="odds-grid">
+              <div class="odds-btn">
+                <div class="line">+1.5</div>
+                <div class="odds">-110</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">ML</div>
+                <div class="odds">+105</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">U 218</div>
+                <div class="odds">-115</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="league-header">🏈 NFL</div>
+
+        <div class="game-card solo">
+          <div class="game-row">
+            <div class="team-info">
+              <div class="team-name">Chiefs</div>
+              <div class="game-time">Tomorrow 1:00 PM</div>
+            </div>
+            <div class="odds-grid">
+              <div class="odds-btn">
+                <div class="line">-7</div>
+                <div class="odds">-110</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">ML</div>
+                <div class="odds">-320</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">O 47.5</div>
+                <div class="odds">-110</div>
+              </div>
+            </div>
+          </div>
+          <div class="game-row">
+            <div class="team-info">
+              <div class="team-name">Bills</div>
+            </div>
+            <div class="odds-grid">
+              <div class="odds-btn">
+                <div class="line">+7</div>
+                <div class="odds">-110</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">ML</div>
+                <div class="odds">+260</div>
+              </div>
+              <div class="odds-btn">
+                <div class="line">U 47.5</div>
+                <div class="odds">-110</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating indicator -->
+        <div class="floating-indicator">
+          <span>Bet Slip (1)</span>
+          <span>→</span>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item active">
+          <span class="tab-icon">🏟</span>
+          Games
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">📋</span>
+          Track
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">👤</span>
+          Account
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Games - Empty State -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Games — Empty</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 90px;">
+        <div class="app-header">
+          <div class="logo">booki<span>.</span></div>
+          <div class="balance" style="color: var(--accent);">$250.00</div>
+        </div>
+
+        <div class="search-bar">
+          <span>🔍</span> Search teams...
+        </div>
+
+        <div class="sport-tabs">
+          <div class="sport-tab active">All</div>
+        </div>
+
+        <div class="empty-state">
+          <div class="icon">🏟</div>
+          <h3>No Upcoming Games</h3>
+          <p>There are no upcoming games to bet on.</p>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item active">
+          <span class="tab-icon">🏟</span>
+          Games
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">📋</span>
+          Track
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">👤</span>
+          Account
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Games - Filtered Empty -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Games — Filtered Empty</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 90px;">
+        <div class="app-header">
+          <div class="logo">booki<span>.</span></div>
+          <div class="balance" style="color: var(--accent);">$250.00</div>
+        </div>
+
+        <div class="search-bar">
+          <span>🔍</span> <span style="color: var(--text-primary);">rockets</span>
+        </div>
+
+        <div class="sport-tabs">
+          <div class="sport-tab active">All</div>
+          <div class="sport-tab">🏀 NBA</div>
+        </div>
+
+        <div class="empty-state">
+          <div class="icon">🔍</div>
+          <h3>No Results</h3>
+          <p>No games match "rockets".</p>
+          <div style="margin-top: 16px; padding: 10px 20px; border-radius: var(--radius-sm); background: var(--elevated-bg); color: var(--accent); font-weight: 600; font-size: 14px;">Clear Filters</div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item active">
+          <span class="tab-icon">🏟</span>
+          Games
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">📋</span>
+          Track
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">👤</span>
+          Account
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION: TRACK VIEW -->
+<!-- ============================================ -->
+<div class="section-label" style="text-align:center;">3. Track Tab</div>
+<div class="screen-grid">
+  <!-- Track - Full State -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Track — Bets List</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 90px;">
+        <div class="app-header">
+          <div class="logo">booki<span>.</span></div>
+          <div class="balance" style="color: var(--accent);">$250.00</div>
+        </div>
+
+        <div class="section-title">YOUR TICKETS</div>
+
+        <!-- Parlay ticket -->
+        <div class="ticket-card">
+          <div class="ticket-header">
+            <div>
+              <div class="title">3-Leg Parlay +450</div>
+              <div class="subtitle">Feb 15, 2026 • 3 legs</div>
+              <div class="leg-dots">
+                <div class="leg-dot" style="background: var(--accent);"></div>
+                <div class="leg-dot" style="background: var(--accent);"></div>
+                <div class="leg-dot" style="background: var(--text-muted);"></div>
+              </div>
+            </div>
+            <div class="badge" style="background: rgba(123,104,238,0.2); color: var(--scheduled);">Accepted</div>
+          </div>
+          <div class="ticket-bet-row">
+            <div class="event">Lakers @ Celtics</div>
+            <div class="pick">Lakers ML -155</div>
+            <div class="meta">
+              <span>Moneyline</span>
+              <span class="badge" style="background: rgba(0,245,212,0.15); color: var(--accent); font-size: 10px;">Win</span>
+            </div>
+          </div>
+          <div class="ticket-bet-row">
+            <div class="event">Warriors @ Nuggets</div>
+            <div class="pick">Over 218.0 -105</div>
+            <div class="meta">
+              <span>Total</span>
+              <span class="badge" style="background: rgba(0,245,212,0.15); color: var(--accent); font-size: 10px;">Win</span>
+            </div>
+          </div>
+          <div class="ticket-bet-row">
+            <div class="event">Chiefs @ Bills</div>
+            <div class="pick">Chiefs -7 -110</div>
+            <div class="meta">
+              <span>Spread</span>
+              <span style="font-style: italic; color: var(--text-muted); font-size: 12px;">Awaiting Result</span>
+            </div>
+          </div>
+          <div class="ticket-footer">
+            <span style="color: var(--text-muted);">Stake: <span style="color: var(--text-primary); font-weight: 600;">$25.00</span></span>
+            <span style="color: var(--text-muted);">To Win: <span style="color: var(--accent); font-weight: 600;">$112.50</span></span>
+          </div>
+        </div>
+
+        <!-- Single bet ticket - Settled Win -->
+        <div class="ticket-card">
+          <div class="ticket-header">
+            <div>
+              <div class="title">Lakers ML -150</div>
+              <div class="subtitle">Feb 14, 2026</div>
+            </div>
+            <div class="badge" style="background: rgba(0,245,212,0.2); color: var(--accent);">Settled</div>
+          </div>
+          <div class="ticket-bet-row">
+            <div class="event">Lakers @ Celtics</div>
+            <div class="pick">Lakers ML -150</div>
+            <div class="meta">
+              <span>Moneyline</span>
+              <span class="badge" style="background: rgba(0,245,212,0.15); color: var(--accent); font-size: 10px;">Win</span>
+            </div>
+          </div>
+          <div class="ticket-footer">
+            <span style="color: var(--text-muted);">Stake: <span style="color: var(--text-primary); font-weight: 600;">$50.00</span></span>
+            <span style="color: var(--text-muted);">Won: <span style="color: var(--accent); font-weight: 600;">+$33.33</span></span>
+          </div>
+        </div>
+
+        <!-- Single bet ticket - Settled Loss -->
+        <div class="ticket-card">
+          <div class="ticket-header">
+            <div>
+              <div class="title">Warriors -2.5 -110</div>
+              <div class="subtitle">Feb 13, 2026</div>
+            </div>
+            <div class="badge" style="background: rgba(0,245,212,0.2); color: var(--accent);">Settled</div>
+          </div>
+          <div class="ticket-bet-row">
+            <div class="event">Warriors @ Nuggets</div>
+            <div class="pick">Warriors -2.5 -110</div>
+            <div class="meta">
+              <span>Spread</span>
+              <span class="badge" style="background: rgba(255,107,107,0.15); color: var(--danger); font-size: 10px;">Loss</span>
+            </div>
+          </div>
+          <div class="ticket-footer">
+            <span style="color: var(--text-muted);">Stake: <span style="color: var(--text-primary); font-weight: 600;">$25.00</span></span>
+            <span style="color: var(--text-muted);">Result: <span style="color: var(--danger); font-weight: 600;">-$25.00</span></span>
+          </div>
+        </div>
+
+        <!-- Pending bet -->
+        <div class="ticket-card">
+          <div class="ticket-header">
+            <div>
+              <div class="title">Bills +7 -110</div>
+              <div class="subtitle">Feb 17, 2026</div>
+            </div>
+            <div class="badge" style="background: rgba(255,169,77,0.2); color: var(--warning);">Pending</div>
+          </div>
+          <div class="ticket-bet-row">
+            <div class="event">Chiefs @ Bills</div>
+            <div class="pick">Bills +7 -110</div>
+            <div class="meta">
+              <span>Spread</span>
+              <span style="font-style: italic; color: var(--text-muted); font-size: 12px;">Awaiting Result</span>
+            </div>
+          </div>
+          <div class="ticket-footer">
+            <span style="color: var(--text-muted);">Stake: <span style="color: var(--text-primary); font-weight: 600;">$15.00</span></span>
+            <span style="color: var(--text-muted);">To Win: <span style="color: var(--accent); font-weight: 600;">$13.64</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item">
+          <span class="tab-icon">🏟</span>
+          Games
+        </div>
+        <div class="tab-item active">
+          <span class="tab-icon">📋</span>
+          Track
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">👤</span>
+          Account
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Track - Empty State -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Track — Empty</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 90px;">
+        <div class="app-header">
+          <div class="logo">booki<span>.</span></div>
+          <div class="balance" style="color: var(--text-secondary);">$0.00</div>
+        </div>
+
+        <div class="empty-state" style="padding-top: 140px;">
+          <div class="icon">📋</div>
+          <h3>No Bets Yet</h3>
+          <p>Your bet requests will appear here.</p>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item">
+          <span class="tab-icon">🏟</span>
+          Games
+        </div>
+        <div class="tab-item active">
+          <span class="tab-icon">📋</span>
+          Track
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">👤</span>
+          Account
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION: ACCOUNT VIEW -->
+<!-- ============================================ -->
+<div class="section-label" style="text-align:center;">4. Account Tab</div>
+<div class="screen-grid">
+  <!-- Account - Credit Balance -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Account — Credit (Positive)</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 90px;">
+        <div class="app-header">
+          <div class="logo">booki<span>.</span></div>
+          <div class="balance" style="color: var(--accent);">$250.00</div>
+        </div>
+
+        <!-- Hero balance -->
+        <div class="hero-balance">
+          <div class="amount" style="color: var(--accent);">$250.00</div>
+          <div class="label" style="color: var(--accent);">↑ Amount owed to you</div>
+        </div>
+
+        <!-- Profile -->
+        <div class="card">
+          <div class="profile-row">
+            <div class="icon-circle">👤</div>
+            <div>
+              <div class="label">Name</div>
+              <div class="value">Mike Johnson</div>
+            </div>
+          </div>
+          <div class="profile-row">
+            <div class="icon-circle">✉️</div>
+            <div>
+              <div class="label">Email</div>
+              <div class="value">mike@email.com</div>
+            </div>
+          </div>
+          <div class="profile-row">
+            <div class="icon-circle">🎰</div>
+            <div>
+              <div class="label">Bookie</div>
+              <div class="value">Tyler's Book</div>
+            </div>
+          </div>
+          <div class="profile-row">
+            <div class="icon-circle">📅</div>
+            <div>
+              <div class="label">Member Since</div>
+              <div class="value">Jan 2026</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Available Credit -->
+        <div class="section-title">AVAILABLE CREDIT</div>
+        <div class="card">
+          <div style="font-size: 32px; font-weight: 800; color: var(--accent); text-align: center;">$750.00</div>
+          <div class="credit-bar">
+            <div class="credit-bar-fill" style="width: 25%; background: var(--accent);"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+            <span>Used: $250</span>
+            <span>25%</span>
+            <span>Limit: $1,000</span>
+          </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="section-title">QUICK STATS</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon" style="color: var(--scheduled);">📊</div>
+            <div class="stat-value" style="color: var(--scheduled);">3</div>
+            <div class="stat-label">Open Bets</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="color: var(--warning);">⏳</div>
+            <div class="stat-value" style="color: var(--warning);">1</div>
+            <div class="stat-label">Pending</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="color: var(--accent);">🎯</div>
+            <div class="stat-value" style="color: var(--accent);">62%</div>
+            <div class="stat-label">Win Rate</div>
+          </div>
+        </div>
+
+        <!-- Betting Stats -->
+        <div class="section-title">BETTING STATISTICS</div>
+        <div class="card">
+          <div style="text-align: center; margin-bottom: 16px;">
+            <span style="font-size: 24px; font-weight: 800;">
+              <span style="color: var(--accent);">8</span>
+              <span style="color: var(--text-muted);">-</span>
+              <span style="color: var(--danger);">5</span>
+              <span style="color: var(--text-muted);">-</span>
+              <span style="color: var(--warning);">1</span>
+            </span>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">W - L - P</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="text-align: center;">
+              <div style="font-size: 12px; color: var(--text-muted);">Total Bets</div>
+              <div style="font-size: 18px; font-weight: 700;">14</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 12px; color: var(--text-muted);">Win %</div>
+              <div style="font-size: 18px; font-weight: 700;">61.5%</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 12px; color: var(--text-muted);">Profit/Loss</div>
+              <div style="font-size: 18px; font-weight: 700;"><span class="amount-capsule" style="background: rgba(0,245,212,0.15); color: var(--accent);">+$142.50</span></div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 12px; color: var(--text-muted);">ROI</div>
+              <div style="font-size: 18px; font-weight: 700;"><span class="amount-capsule" style="background: rgba(0,245,212,0.15); color: var(--accent);">+28.5%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- My Bets -->
+        <div class="section-title">MY BETS</div>
+        <div class="filter-tabs">
+          <div class="filter-tab active">Active</div>
+          <div class="filter-tab">Settled</div>
+          <div class="filter-tab">All</div>
+        </div>
+        <div class="card">
+          <div class="transaction-row">
+            <div style="width: 8px; height: 8px; border-radius: 4px; background: var(--scheduled);"></div>
+            <div class="transaction-info">
+              <div class="desc">Lakers ML -155</div>
+              <div class="date">Lakers @ Celtics • Feb 15</div>
+            </div>
+            <div>
+              <div class="badge" style="background: rgba(123,104,238,0.2); color: var(--scheduled);">Accepted</div>
+              <div style="font-size: 12px; color: var(--text-muted); text-align: right; margin-top: 2px;">$50.00</div>
+            </div>
+          </div>
+          <div class="transaction-row">
+            <div style="width: 8px; height: 8px; border-radius: 4px; background: var(--warning);"></div>
+            <div class="transaction-info">
+              <div class="desc">Bills +7 -110</div>
+              <div class="date">Chiefs @ Bills • Feb 17</div>
+            </div>
+            <div>
+              <div class="badge" style="background: rgba(255,169,77,0.2); color: var(--warning);">Pending</div>
+              <div style="font-size: 12px; color: var(--text-muted); text-align: right; margin-top: 2px;">$15.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="section-title">TRANSACTION HISTORY</div>
+        <div class="filter-tabs">
+          <div class="filter-tab active">All</div>
+          <div class="filter-tab">Settlements</div>
+          <div class="filter-tab">Adjustments</div>
+        </div>
+        <div class="card">
+          <div class="transaction-row">
+            <div class="transaction-icon" style="background: rgba(0,245,212,0.15);">💰</div>
+            <div class="transaction-info">
+              <div class="desc">Bet Settlement — Win</div>
+              <div class="date">Feb 14, 2026</div>
+            </div>
+            <span class="amount-capsule" style="background: rgba(0,245,212,0.15); color: var(--accent);">+$33.33</span>
+          </div>
+          <div class="transaction-row">
+            <div class="transaction-icon" style="background: rgba(255,107,107,0.15);">💸</div>
+            <div class="transaction-info">
+              <div class="desc">Bet Settlement — Loss</div>
+              <div class="date">Feb 13, 2026</div>
+            </div>
+            <span class="amount-capsule" style="background: rgba(255,107,107,0.15); color: var(--danger);">-$25.00</span>
+          </div>
+          <div class="transaction-row">
+            <div class="transaction-icon" style="background: rgba(123,104,238,0.15);">⚖️</div>
+            <div class="transaction-info">
+              <div class="desc">Balance Adjustment</div>
+              <div class="date">Feb 10, 2026</div>
+            </div>
+            <span class="amount-capsule" style="background: rgba(123,104,238,0.15); color: var(--scheduled);">+$100.00</span>
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <div style="padding: 24px 16px;">
+          <div style="padding: 14px; text-align: center; border-radius: var(--radius-sm); border: 1px solid var(--danger); color: var(--danger); font-weight: 600; font-size: 16px;">Log Out</div>
+        </div>
+
+        <div style="height: 20px;"></div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item">
+          <span class="tab-icon">🏟</span>
+          Games
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">📋</span>
+          Track
+        </div>
+        <div class="tab-item active">
+          <span class="tab-icon">👤</span>
+          Account
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Account - Debt Balance -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Account — Debt (Negative)</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 90px;">
+        <div class="app-header">
+          <div class="logo">booki<span>.</span></div>
+          <div class="balance" style="color: var(--danger);">-$175.00</div>
+        </div>
+
+        <div class="hero-balance">
+          <div class="amount" style="color: var(--danger);">-$175.00</div>
+          <div class="label" style="color: var(--danger);">↓ Amount you owe</div>
+        </div>
+
+        <div class="section-title">AVAILABLE CREDIT</div>
+        <div class="card">
+          <div style="font-size: 32px; font-weight: 800; color: var(--danger); text-align: center;">$75.00</div>
+          <div class="credit-bar">
+            <div class="credit-bar-fill" style="width: 70%; background: var(--warning);"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+            <span>Used: $175</span>
+            <span>70%</span>
+            <span>Limit: $250</span>
+          </div>
+        </div>
+
+        <div class="section-title">QUICK STATS</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon" style="color: var(--scheduled);">📊</div>
+            <div class="stat-value" style="color: var(--scheduled);">1</div>
+            <div class="stat-label">Open Bets</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="color: var(--warning);">⏳</div>
+            <div class="stat-value" style="color: var(--warning);">0</div>
+            <div class="stat-label">Pending</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="color: var(--danger);">🎯</div>
+            <div class="stat-value" style="color: var(--danger);">35%</div>
+            <div class="stat-label">Win Rate</div>
+          </div>
+        </div>
+
+        <div class="section-title">BETTING STATISTICS</div>
+        <div class="card">
+          <div style="text-align: center; margin-bottom: 16px;">
+            <span style="font-size: 24px; font-weight: 800;">
+              <span style="color: var(--accent);">3</span>
+              <span style="color: var(--text-muted);">-</span>
+              <span style="color: var(--danger);">6</span>
+              <span style="color: var(--text-muted);">-</span>
+              <span style="color: var(--warning);">0</span>
+            </span>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">W - L - P</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="text-align: center;">
+              <div style="font-size: 12px; color: var(--text-muted);">Total Bets</div>
+              <div style="font-size: 18px; font-weight: 700;">9</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 12px; color: var(--text-muted);">Win %</div>
+              <div style="font-size: 18px; font-weight: 700;">33.3%</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 12px; color: var(--text-muted);">Profit/Loss</div>
+              <div style="font-size: 18px; font-weight: 700;"><span class="amount-capsule" style="background: rgba(255,107,107,0.15); color: var(--danger);">-$175.00</span></div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 12px; color: var(--text-muted);">ROI</div>
+              <div style="font-size: 18px; font-weight: 700;"><span class="amount-capsule" style="background: rgba(255,107,107,0.15); color: var(--danger);">-38.9%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="height: 20px;"></div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item">
+          <span class="tab-icon">🏟</span>
+          Games
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">📋</span>
+          Track
+        </div>
+        <div class="tab-item active">
+          <span class="tab-icon">👤</span>
+          Account
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Account - Zero Balance -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Account — Settled Up</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 90px;">
+        <div class="app-header">
+          <div class="logo">booki<span>.</span></div>
+          <div class="balance" style="color: var(--text-secondary);">$0.00</div>
+        </div>
+
+        <div class="hero-balance">
+          <div class="amount" style="color: var(--text-primary);">$0.00</div>
+          <div class="label" style="color: var(--text-secondary);">✓ All settled up</div>
+        </div>
+
+        <div class="section-title">MY BETS</div>
+        <div class="filter-tabs">
+          <div class="filter-tab active">Active</div>
+          <div class="filter-tab">Settled</div>
+          <div class="filter-tab">All</div>
+        </div>
+        <div class="empty-state" style="padding: 40px;">
+          <div class="icon">🎫</div>
+          <h3>No bets</h3>
+          <p>Try changing the filter</p>
+        </div>
+
+        <div style="height: 20px;"></div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item">
+          <span class="tab-icon">🏟</span>
+          Games
+        </div>
+        <div class="tab-item">
+          <span class="tab-icon">📋</span>
+          Track
+        </div>
+        <div class="tab-item active">
+          <span class="tab-icon">👤</span>
+          Account
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION: GAME DETAIL -->
+<!-- ============================================ -->
+<div class="section-label" style="text-align:center;">5. Game Detail</div>
+<div class="screen-grid">
+  <div class="screen-wrapper">
+    <div class="screen-label">Game Detail — Markets</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 90px;">
+        <div class="nav-bar">
+          <span class="nav-back">‹</span>
+          <span class="nav-title">Game Details</span>
+        </div>
+
+        <div class="game-detail-header">
+          <div class="time-row">
+            <span class="time" style="color: var(--text-secondary);">Today 7:30 PM</span>
+          </div>
+          <div class="matchup-display">
+            <div class="matchup-team">
+              <div class="team-logo">LAL</div>
+              <div class="name">Lakers</div>
+            </div>
+            <div class="matchup-vs">VS</div>
+            <div class="matchup-team">
+              <div class="team-logo">BOS</div>
+              <div class="name">Celtics</div>
+            </div>
+          </div>
+          <div class="sport-info">🏀 NBA • Basketball</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Main Lines -->
+        <div class="section-title">MAIN LINES</div>
+        <div class="market-section">
+          <div class="market-row" style="border-radius: var(--radius) var(--radius) 0 0;">
+            <div class="team" style="flex: 1;">Lakers</div>
+            <div style="display: flex; gap: 6px;">
+              <div class="market-btn">
+                <div class="spread">-3.5</div>
+                <div class="price">-110</div>
+              </div>
+              <div class="market-btn selected">
+                <div class="spread">ML</div>
+                <div class="price">-155</div>
+              </div>
+              <div class="market-btn">
+                <div class="spread">O 224.5</div>
+                <div class="price">-110</div>
+              </div>
+            </div>
+          </div>
+          <div class="market-row" style="border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 12px; border-top: 1px solid rgba(255,255,255,0.04);">
+            <div class="team" style="flex: 1;">Celtics</div>
+            <div style="display: flex; gap: 6px;">
+              <div class="market-btn">
+                <div class="spread">+3.5</div>
+                <div class="price">-110</div>
+              </div>
+              <div class="market-btn">
+                <div class="spread">ML</div>
+                <div class="price">+130</div>
+              </div>
+              <div class="market-btn">
+                <div class="spread">U 224.5</div>
+                <div class="price">-110</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market Category Tabs -->
+        <div class="sport-tabs" style="padding-top: 4px;">
+          <div class="sport-tab active">All Markets</div>
+          <div class="sport-tab">Alt Lines</div>
+          <div class="sport-tab">Player Props</div>
+          <div class="sport-tab">Game Props</div>
+        </div>
+
+        <!-- Alternate Spreads -->
+        <div class="section-title">ALTERNATE SPREAD</div>
+        <div class="market-section">
+          <div class="market-row" style="border-radius: var(--radius) var(--radius) 0 0;">
+            <div class="team" style="flex: 1;">Lakers -1.5</div>
+            <div class="market-btn">
+              <div class="price">-130</div>
+            </div>
+          </div>
+          <div class="market-row" style="border-top: 1px solid rgba(255,255,255,0.04);">
+            <div class="team" style="flex: 1;">Celtics +1.5</div>
+            <div class="market-btn">
+              <div class="price">+110</div>
+            </div>
+          </div>
+          <div class="market-row" style="border-top: 1px solid rgba(255,255,255,0.04);">
+            <div class="team" style="flex: 1;">Lakers -5.5</div>
+            <div class="market-btn">
+              <div class="price">+105</div>
+            </div>
+          </div>
+          <div class="market-row" style="border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 12px; border-top: 1px solid rgba(255,255,255,0.04);">
+            <div class="team" style="flex: 1;">Celtics +5.5</div>
+            <div class="market-btn">
+              <div class="price">-125</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alternate Totals -->
+        <div class="section-title">ALTERNATE TOTAL</div>
+        <div class="market-section">
+          <div class="market-row" style="border-radius: var(--radius) var(--radius) 0 0;">
+            <div class="team" style="flex: 1;">Over 220.5</div>
+            <div class="market-btn">
+              <div class="price">-150</div>
+            </div>
+          </div>
+          <div class="market-row" style="border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 12px; border-top: 1px solid rgba(255,255,255,0.04);">
+            <div class="team" style="flex: 1;">Under 220.5</div>
+            <div class="market-btn">
+              <div class="price">+130</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating indicator -->
+        <div class="floating-indicator">
+          <span>Bet Slip (1)</span>
+          <span>→</span>
+        </div>
+
+        <div style="height: 40px;"></div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Game Detail - Live -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Game Detail — Live</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 34px;">
+        <div class="nav-bar">
+          <span class="nav-back">‹</span>
+          <span class="nav-title">Game Details</span>
+        </div>
+
+        <div class="game-detail-header">
+          <div class="time-row">
+            <span class="time" style="color: var(--text-secondary);">Started 7:30 PM</span>
+            <span class="live-badge">LIVE</span>
+          </div>
+          <div class="matchup-display">
+            <div class="matchup-team">
+              <div class="team-logo">LAL</div>
+              <div class="name">Lakers</div>
+            </div>
+            <div class="matchup-vs">VS</div>
+            <div class="matchup-team">
+              <div class="team-logo">BOS</div>
+              <div class="name">Celtics</div>
+            </div>
+          </div>
+          <div class="sport-info">🏀 NBA • Basketball</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title">MAIN LINES</div>
+        <div class="market-section">
+          <div class="market-row" style="border-radius: var(--radius) var(--radius) 0 0; opacity: 0.5;">
+            <div class="team" style="flex: 1;">Lakers</div>
+            <div style="display: flex; gap: 6px;">
+              <div class="market-btn"><div class="spread">-3.5</div><div class="price">-110</div></div>
+              <div class="market-btn"><div class="spread">ML</div><div class="price">-155</div></div>
+              <div class="market-btn"><div class="spread">O 224.5</div><div class="price">-110</div></div>
+            </div>
+          </div>
+          <div class="market-row" style="border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 12px; border-top: 1px solid rgba(255,255,255,0.04); opacity: 0.5;">
+            <div class="team" style="flex: 1;">Celtics</div>
+            <div style="display: flex; gap: 6px;">
+              <div class="market-btn"><div class="spread">+3.5</div><div class="price">-110</div></div>
+              <div class="market-btn"><div class="spread">ML</div><div class="price">+130</div></div>
+              <div class="market-btn"><div class="spread">U 224.5</div><div class="price">-110</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Game Detail - Empty Markets -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Game Detail — No Markets</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 34px;">
+        <div class="nav-bar">
+          <span class="nav-back">‹</span>
+          <span class="nav-title">Game Details</span>
+        </div>
+
+        <div class="game-detail-header">
+          <div class="time-row">
+            <span class="time" style="color: var(--text-secondary);">Tomorrow 1:00 PM</span>
+          </div>
+          <div class="matchup-display">
+            <div class="matchup-team">
+              <div class="team-logo">KC</div>
+              <div class="name">Chiefs</div>
+            </div>
+            <div class="matchup-vs">VS</div>
+            <div class="matchup-team">
+              <div class="team-logo">BUF</div>
+              <div class="name">Bills</div>
+            </div>
+          </div>
+          <div class="sport-info">🏈 NFL • Football</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="sport-tabs" style="padding-top: 4px;">
+          <div class="sport-tab">All Markets</div>
+          <div class="sport-tab active">Player Props</div>
+        </div>
+
+        <div class="empty-state" style="padding-top: 60px;">
+          <div class="icon">📊</div>
+          <h3>No Player Props</h3>
+          <p>Player prop markets aren't available yet for this game.</p>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION: BET SLIP -->
+<!-- ============================================ -->
+<div class="section-label" style="text-align:center;">6. Bet Slip</div>
+<div class="screen-grid">
+  <!-- Bet Slip - Empty -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Bet Slip — Empty</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 34px;">
+        <div class="bet-slip-header">
+          <h2>Bet Slip</h2>
+          <span style="font-size: 20px; color: var(--text-muted); cursor: pointer;">✕</span>
+        </div>
+
+        <div class="empty-state" style="padding-top: 160px;">
+          <div class="icon">🎫</div>
+          <h3>No Selections</h3>
+          <p>Tap odds buttons on game cards to add selections to your bet slip.</p>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Bet Slip - Singles -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Bet Slip — Singles</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 34px;">
+        <div class="bet-slip-header">
+          <h2>Bet Slip</h2>
+          <span style="font-size: 14px; color: var(--text-secondary);">2 Selections</span>
+        </div>
+
+        <div class="mode-toggle">
+          <div class="mode-btn active">Singles</div>
+          <div class="mode-btn">Parlay</div>
+        </div>
+
+        <div class="balance-bar">
+          <span class="label">Available Credit</span>
+          <span class="value">$750.00</span>
+        </div>
+
+        <div class="section-title">STRAIGHT BETS</div>
+
+        <!-- Selection 1 -->
+        <div class="selection-card">
+          <div class="top-row">
+            <div style="display: flex; align-items: flex-start;">
+              <div class="team-circle">LAL</div>
+              <div class="pick-info">
+                <div class="pick-name">Lakers ML <span class="odds-badge" style="background: var(--elevated-bg); color: var(--text-primary);">-155</span></div>
+                <div class="matchup">Lakers @ Celtics</div>
+                <div class="game-start">Today 7:30 PM</div>
+              </div>
+            </div>
+            <div class="remove-btn">✕</div>
+          </div>
+          <div class="market-tag">MONEYLINE</div>
+          <div class="stake-row">
+            <div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Wager</div>
+              <div class="stake-field active">$50.00</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">To Win</div>
+              <div style="font-size: 16px; font-weight: 600; color: var(--accent);">$32.26</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selection 2 -->
+        <div class="selection-card">
+          <div class="top-row">
+            <div style="display: flex; align-items: flex-start;">
+              <div class="team-circle">GSW</div>
+              <div class="pick-info">
+                <div class="pick-name">Over 218 <span class="odds-badge" style="background: rgba(0,245,212,0.15); color: var(--accent);">-105</span></div>
+                <div class="matchup">Warriors @ Nuggets</div>
+                <div class="game-start">Today 10:00 PM</div>
+              </div>
+            </div>
+            <div class="remove-btn">✕</div>
+          </div>
+          <div class="market-tag">TOTAL</div>
+          <div class="stake-row">
+            <div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Wager</div>
+              <div class="stake-field">$25.00</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">To Win</div>
+              <div style="font-size: 16px; font-weight: 600; color: var(--accent);">$23.81</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="payout-summary">
+          <div class="payout-row">
+            <span class="label">Bets with stake</span>
+            <span class="value">2 of 2</span>
+          </div>
+          <div class="payout-row">
+            <span class="label">Total Stake</span>
+            <span class="value">$75.00</span>
+          </div>
+          <div class="payout-row total" style="padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); margin-top: 4px;">
+            <span class="label">Potential Payout</span>
+            <span class="value">$131.07</span>
+          </div>
+        </div>
+
+        <div class="submit-btn">Place Bet</div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Bet Slip - Parlay -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Bet Slip — Parlay</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 34px;">
+        <div class="bet-slip-header">
+          <h2>Bet Slip</h2>
+          <span style="font-size: 14px; color: var(--text-secondary);">3 Selections</span>
+        </div>
+
+        <div class="mode-toggle">
+          <div class="mode-btn">Singles</div>
+          <div class="mode-btn active">Parlay</div>
+        </div>
+
+        <div class="balance-bar">
+          <span class="label">Available Credit</span>
+          <span class="value">$750.00</span>
+        </div>
+
+        <div class="section-title">3-LEG PARLAY</div>
+
+        <!-- Compact selections for parlay -->
+        <div class="selection-card">
+          <div class="top-row">
+            <div style="display: flex; align-items: flex-start;">
+              <div class="team-circle">LAL</div>
+              <div class="pick-info">
+                <div class="pick-name">Lakers ML <span class="odds-badge" style="background: var(--elevated-bg); color: var(--text-primary);">-155</span></div>
+                <div class="matchup">Lakers @ Celtics</div>
+                <div class="game-start">Today 7:30 PM</div>
+              </div>
+            </div>
+            <div class="remove-btn">✕</div>
+          </div>
+          <div class="market-tag">MONEYLINE</div>
+        </div>
+
+        <div class="selection-card">
+          <div class="top-row">
+            <div style="display: flex; align-items: flex-start;">
+              <div class="team-circle">GSW</div>
+              <div class="pick-info">
+                <div class="pick-name">Over 218 <span class="odds-badge" style="background: rgba(0,245,212,0.15); color: var(--accent);">-105</span></div>
+                <div class="matchup">Warriors @ Nuggets</div>
+                <div class="game-start">Today 10:00 PM</div>
+              </div>
+            </div>
+            <div class="remove-btn">✕</div>
+          </div>
+          <div class="market-tag">TOTAL</div>
+        </div>
+
+        <div class="selection-card">
+          <div class="top-row">
+            <div style="display: flex; align-items: flex-start;">
+              <div class="team-circle">KC</div>
+              <div class="pick-info">
+                <div class="pick-name">Chiefs -7 <span class="odds-badge" style="background: var(--elevated-bg); color: var(--text-primary);">-110</span></div>
+                <div class="matchup">Chiefs @ Bills</div>
+                <div class="game-start">Tomorrow 1:00 PM</div>
+              </div>
+            </div>
+            <div class="remove-btn">✕</div>
+          </div>
+          <div class="market-tag">SPREAD</div>
+        </div>
+
+        <!-- Parlay Odds -->
+        <div class="parlay-odds-card">
+          <div class="label">Combined Odds</div>
+          <div class="odds">+487</div>
+        </div>
+
+        <!-- Parlay Stake -->
+        <div class="parlay-stake-row">
+          <div class="parlay-stake-field wager">
+            <div class="field-label">Wager</div>
+            <div class="field-value">$25.00</div>
+          </div>
+          <div class="parlay-stake-field to-win">
+            <div class="field-label">To Win</div>
+            <div class="field-value">$121.75</div>
+          </div>
+        </div>
+
+        <div class="quick-stakes">
+          <div class="quick-stake">+$5</div>
+          <div class="quick-stake">+$10</div>
+          <div class="quick-stake">+$25</div>
+          <div class="quick-stake">+$50</div>
+        </div>
+
+        <!-- Summary -->
+        <div class="payout-summary">
+          <div class="payout-row">
+            <span class="label">Stake</span>
+            <span class="value">$25.00</span>
+          </div>
+          <div class="payout-row">
+            <span class="label">Combined Odds</span>
+            <span class="value" style="color: var(--accent);">+487</span>
+          </div>
+          <div class="payout-row total" style="padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); margin-top: 4px;">
+            <span class="label">Potential Payout</span>
+            <span class="value">$146.75</span>
+          </div>
+        </div>
+
+        <div class="submit-btn">Place Bet</div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Bet Slip - Success -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Bet Slip — Success</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 34px;">
+        <div class="success-view">
+          <div class="success-ring">
+            <span class="check">✓</span>
+          </div>
+          <h2>Request Submitted!</h2>
+          <p>2 bet(s) recorded and pending review</p>
+          <div class="done-btn">Done</div>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION: PLAYER CLAIM -->
+<!-- ============================================ -->
+<div class="section-label" style="text-align:center;">7. Player Onboarding</div>
+<div class="screen-grid">
+  <!-- Code Entry -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Claim — Code Entry</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 34px;">
+        <div class="claim-content">
+          <div class="icon-large">🎰</div>
+          <h1>Join Your Bookie</h1>
+          <p>Enter the 8-character invite code from your bookie to claim your player account.</p>
+
+          <div class="code-input">A3X7 _ _ _ _</div>
+          <div class="char-count">4 / 8 characters</div>
+
+          <div class="primary-btn disabled">Validate Code</div>
+          <div class="secondary-btn">← Back to Login</div>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Code Validated + Create Account -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Claim — Confirmation</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 34px;">
+        <div class="claim-content">
+          <div style="width: 64px; height: 64px; border-radius: 32px; background: rgba(0,245,212,0.15); display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 16px;">✓</div>
+          <h1 style="font-size: 24px;">Welcome, Mike!</h1>
+          <p>Create your account to start betting.</p>
+
+          <div class="form-label">Email</div>
+          <div class="form-field">mike@email.com</div>
+
+          <div class="form-label">Password</div>
+          <div class="form-field" style="color: var(--text-muted);">Min 6 characters</div>
+
+          <div style="height: 8px;"></div>
+          <div class="primary-btn">Create Account</div>
+          <div class="secondary-btn">Use Different Code</div>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Account Created Success -->
+  <div class="screen-wrapper">
+    <div class="screen-label">Claim — Success</div>
+    <div class="phone">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">●●●● WiFi 🔋</span>
+      </div>
+      <div class="phone-inner" style="padding-bottom: 34px;">
+        <div class="claim-content" style="padding-top: 120px;">
+          <div class="success-ring" style="width: 80px; height: 80px; border-radius: 40px;">
+            <span class="check" style="font-size: 36px;">✓</span>
+          </div>
+          <h1 style="font-size: 24px; margin-top: 24px;">Account Created!</h1>
+          <p>You're all set. Log in to start placing bets.</p>
+          <div class="primary-btn" style="margin-top: 16px;">Go to Login</div>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

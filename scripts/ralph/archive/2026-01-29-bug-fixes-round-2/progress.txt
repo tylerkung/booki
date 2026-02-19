@@ -1,0 +1,4 @@
+# Ralph Progress Log
+# Branch: ralph/auth-fixes-v1
+# Started: 2026-01-29
+

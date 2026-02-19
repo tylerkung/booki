@@ -1,14 +1,6 @@
 import SwiftUI
 import SwiftData
 
-/// US-002: View mode for GamesView (Upcoming vs Past)
-enum GameViewMode: String, CaseIterable, Identifiable {
-    case upcoming = "Upcoming"
-    case past = "Past"
-
-    var id: String { rawValue }
-}
-
 /// Time filter options for games (US-038)
 enum TimeFilter: String, CaseIterable, Identifiable {
     case all = "All"
@@ -27,6 +19,7 @@ enum TimeFilter: String, CaseIterable, Identifiable {
 /// US-039: Favorites system with filter and section
 struct GamesView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var syncService: SyncService
     @Query(sort: \Event.startTime) private var events: [Event]
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
@@ -61,18 +54,10 @@ struct GamesView: View {
     /// Show filter options sheet (US-038)
     @State private var showingFilterSheet: Bool = false
 
-    /// US-002: View mode selection (Upcoming vs Past)
-    @State private var viewMode: GameViewMode = .upcoming
-
     /// Favorites manager (US-039)
     @ObservedObject private var favoritesManager = FavoritesManager.shared
 
     // MARK: - Computed Properties
-
-    /// US-001: Cutoff date for showing recently finished events (48 hours ago)
-    private var recentFinishedCutoff: Date {
-        Calendar.current.date(byAdding: .hour, value: -48, to: Date()) ?? Date()
-    }
 
     /// US-004: Bettable events - only shows events the player can actually bet on
     /// Filters to: status is scheduled, not locked, and start time is in the future
@@ -89,37 +74,9 @@ struct GamesView: View {
         }
     }
 
-    /// US-001: Upcoming events - shows bettable events PLUS recently finished events for reference
-    /// Events are sorted by startTime ascending (soonest first)
-    private var upcomingEvents: [Event] {
-        let bettable = bettableEvents
-        let recentlyFinished = events.filter { event in
-            // Include final events from the last 48 hours for bet result reference
-            event.status == .final && event.startTime >= recentFinishedCutoff
-        }
-        // Combine and sort by start time ascending
-        return (bettable + recentlyFinished).sorted { $0.startTime < $1.startTime }
-    }
-
-    /// US-002: Past events - final events older than 48 hours
-    /// Events are sorted by startTime descending (most recent first)
-    private var pastEvents: [Event] {
-        events
-            .filter { event in
-                event.status == .final && event.startTime < recentFinishedCutoff
-            }
-            .sorted { $0.startTime > $1.startTime }
-    }
-
-    /// US-002: Available events based on view mode
-    /// Returns upcomingEvents for .upcoming mode, pastEvents for .past mode
+    /// Available events - only bettable upcoming events, sorted soonest first
     private var availableEvents: [Event] {
-        switch viewMode {
-        case .upcoming:
-            return upcomingEvents
-        case .past:
-            return pastEvents
-        }
+        bettableEvents.sorted { $0.startTime < $1.startTime }
     }
 
     /// Unique sports that have available events, sorted alphabetically
@@ -129,13 +86,7 @@ struct GamesView: View {
     }
 
     /// Events filtered by time (US-038) and favorites (US-039)
-    /// US-002: Time filters are bypassed in past mode (only search/sport filtering applies)
     private var timeFilteredEvents: [Event] {
-        // US-002: Past mode bypasses time filters (they don't apply to historical data)
-        if viewMode == .past {
-            return availableEvents
-        }
-
         let calendar = Calendar.current
         let now = Date()
 
@@ -186,13 +137,9 @@ struct GamesView: View {
         return searchFilteredEvents
     }
 
-    /// Whether any filters are active (US-038, US-039, US-002)
+    /// Whether any filters are active (US-038, US-039)
     private var hasActiveFilters: Bool {
-        // US-002: In past mode, time filters don't apply
-        if viewMode == .past {
-            return !searchText.isEmpty
-        }
-        return timeFilter != .all || !searchText.isEmpty
+        timeFilter != .all || !searchText.isEmpty
     }
 
     /// Whether showing favorites filter (US-039)
@@ -200,19 +147,8 @@ struct GamesView: View {
         timeFilter == .favorites
     }
 
-    /// Description of empty state based on filters (US-038, US-039, US-002)
+    /// Description of empty state based on filters (US-038, US-039)
     private var emptyStateDescription: String {
-        // US-002: Handle past mode empty states
-        if viewMode == .past {
-            if !searchText.isEmpty {
-                return "No past games match '\(searchText)'."
-            } else if let sport = selectedSport {
-                return "There are no past \(sport) games."
-            }
-            return "There are no past games to view."
-        }
-
-        // Upcoming mode empty states
         if timeFilter == .favorites && favoritesManager.favoriteTeams.isEmpty {
             return "Star your favorite teams to see them here."
         } else if timeFilter == .favorites {
@@ -305,12 +241,6 @@ struct GamesView: View {
             BetSlipSheet(availableCredit: balanceSummary.availableCredit, player: player)
                 .presentationDetents([.large])
         }
-        // US-002: Reset time filter when switching to past mode (time filters don't apply)
-        .onChange(of: viewMode) { _, newMode in
-            if newMode == .past {
-                timeFilter = .all
-            }
-        }
     }
 
     // MARK: - Bet Slip Indicator (US-040)
@@ -322,86 +252,76 @@ struct GamesView: View {
         }) {
             HStack {
                 Image(systemName: "ticket.fill")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
 
                 Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
 
                 Spacer()
 
                 Image(systemName: "chevron.up")
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Theme.background.opacity(0.7))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color.blue)
+            .background(Theme.accent)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Theme.accent.opacity(0.3), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
     }
 
-    // MARK: - Search and Filter Header (US-038, US-002)
+    // MARK: - Search and Filter Header (US-038)
 
     @ViewBuilder
     private var searchAndFilterHeader: some View {
-        VStack(spacing: 12) {
-            // US-002: View mode picker (Upcoming/Past)
-            Picker("View Mode", selection: $viewMode) {
-                ForEach(GameViewMode.allCases) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
+        HStack(spacing: 12) {
+            // Search bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(Theme.textSecondary)
 
-            // Search bar and filter row
-            HStack(spacing: 12) {
-                // Search bar
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
+                TextField("Search teams...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
 
-                    TextField("Search teams...", text: $searchText)
-                        .textFieldStyle(.plain)
-                        .autocorrectionDisabled()
-
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Theme.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                // Filter button - only show for upcoming mode (past mode doesn't need time filters)
-                if viewMode == .upcoming {
-                    Button(action: { showingFilterSheet = true }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "line.3.horizontal.decrease.circle")
-                                .font(.system(size: 16))
-                            if timeFilter != .all {
-                                Text(timeFilter.rawValue)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                            }
-                        }
-                        .foregroundStyle(timeFilter != .all ? Theme.background : Theme.textPrimary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(timeFilter != .all ? Theme.accent : Theme.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(Theme.textSecondary)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            // Filter button
+            Button(action: { showingFilterSheet = true }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .font(Theme.font(size: 16))
+                    if timeFilter != .all {
+                        Text(timeFilter.rawValue)
+                            .font(Theme.caption)
+                            .fontWeight(.medium)
+                    }
+                }
+                .foregroundStyle(timeFilter != .all ? Theme.background : Theme.textPrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(timeFilter != .all ? Theme.accent : Theme.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, 16)
         .padding(.vertical, 10)
     }
 
@@ -414,14 +334,16 @@ struct GamesView: View {
                 // "All" tab
                 SportTabButton(
                     title: "All",
+                    iconName: "sportscourt",
                     isSelected: selectedSport == nil,
                     action: { selectedSport = nil }
                 )
 
-                // Sport-specific tabs (only sports with events)
+                // Sport-specific tabs (only sports with events) - US-006: with sport icons
                 ForEach(availableSports, id: \.self) { sport in
                     SportTabButton(
                         title: sport,
+                        iconName: sportIconName(for: sport),
                         isSelected: selectedSport == sport,
                         action: { selectedSport = sport }
                     )
@@ -460,6 +382,9 @@ struct GamesView: View {
                 }
             }
         }
+        .refreshable {
+            await syncService.sync()
+        }
         .background(Theme.background)
     }
 
@@ -469,25 +394,25 @@ struct GamesView: View {
     @ViewBuilder
     private var columnHeadersRow: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
+            HStack(spacing: 4) {
                 // Spacer for team name column
                 Spacer()
 
                 // Column headers aligned with odds buttons
                 Text("SPREAD")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(Theme.textMuted)
-                    .frame(width: 52)
+                    .frame(width: 65)
 
                 Text("MONEY")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(Theme.textMuted)
-                    .frame(width: 52)
+                    .frame(width: 65)
 
                 Text("TOTAL")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(Theme.textMuted)
-                    .frame(width: 52)
+                    .frame(width: 65)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -509,11 +434,11 @@ struct GamesView: View {
             HStack {
                 Image(systemName: "star.fill")
                     .foregroundStyle(.yellow)
-                    .font(.system(size: 10))
+                    .font(Theme.font(size: 10))
                 Text("Favorites")
                     .fontWeight(.medium)
             }
-            .font(.system(size: 12, weight: .medium))
+            .font(Theme.font(size: 12, weight: .medium))
             .foregroundStyle(Theme.textSecondary)
             .padding(.top, 16)
             .padding(.bottom, 8)
@@ -554,7 +479,7 @@ struct GamesView: View {
                     Text(league)
                         .foregroundStyle(Theme.textSecondary)
                 }
-                .font(.system(size: 12, weight: .medium))
+                .font(Theme.font(size: 12, weight: .medium))
                 .foregroundStyle(Theme.textSecondary)
                 .padding(.top, 16)
                 .padding(.bottom, 8)
@@ -616,24 +541,36 @@ struct GamesView: View {
 
     @ViewBuilder
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            ContentUnavailableView(
-                hasActiveFilters ? "No Results" : "No Games Available",
-                systemImage: hasActiveFilters ? "magnifyingglass" : "sportscourt",
-                description: Text(emptyStateDescription)
-            )
+        ScrollView {
+            VStack(spacing: 16) {
+                ContentUnavailableView(
+                    hasActiveFilters ? "No Results" : "No Games Available",
+                    systemImage: hasActiveFilters ? "magnifyingglass" : "sportscourt",
+                    description: Text(emptyStateDescription)
+                )
 
-            // Clear filters button if filters are active (US-038)
-            if hasActiveFilters {
-                Button(action: clearFilters) {
-                    Text("Clear Filters")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                // Clear filters button if filters are active (US-038)
+                if hasActiveFilters {
+                    Button(action: clearFilters) {
+                        Text("Clear Filters")
+                            .font(Theme.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
+
+                // Refresh hint
+                if !hasActiveFilters {
+                    Text("Pull down to refresh")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
             }
+            .frame(maxWidth: .infinity, minHeight: 400)
         }
-        .frame(maxHeight: .infinity)
+        .refreshable {
+            await syncService.sync()
+        }
     }
 
     /// Clear all search and time filters (US-038)
@@ -652,17 +589,54 @@ struct GamesView: View {
     }
 }
 
+// MARK: - Sport Icon Mapping (US-006)
+
+/// Maps sport names to SF Symbol icon names
+func sportIconName(for sport: String) -> String? {
+    switch sport.lowercased() {
+    case "basketball":
+        return "basketball.fill"
+    case "football":
+        return "football.fill"
+    case "soccer":
+        return "soccerball"
+    case "baseball":
+        return "baseball.diamond.bases"
+    case "hockey":
+        return "hockey.puck.fill"
+    case "mma":
+        return "figure.martial.arts"
+    case "boxing":
+        return "figure.boxing"
+    case "tennis":
+        return "tennisball.fill"
+    case "golf":
+        return "figure.golf"
+    default:
+        return "sportscourt"
+    }
+}
+
 // MARK: - Sport Tab Button
 
 /// Button for sport filter tabs with selected state styling
 /// US-053: Enhanced with smooth selection animation
+/// US-006: Optional sport icon support
 struct SportTabButton: View {
     let title: String
+    let iconName: String?
     let isSelected: Bool
     let action: () -> Void
 
     /// US-053: Press state for scale animation
     @State private var isPressed: Bool = false
+
+    init(title: String, iconName: String? = nil, isSelected: Bool, action: @escaping () -> Void) {
+        self.title = title
+        self.iconName = iconName
+        self.isSelected = isSelected
+        self.action = action
+    }
 
     var body: some View {
         Button(action: {
@@ -671,16 +645,23 @@ struct SportTabButton: View {
                 action()
             }
         }) {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .medium)
-                .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(isSelected ? Theme.accent : Theme.cardBackground)
-                .clipShape(Capsule())
-                // US-053: Scale animation on press
-                .scaleEffect(isPressed ? 0.95 : 1.0)
+            HStack(spacing: 6) {
+                // US-006: Sport icon
+                if let iconName = iconName {
+                    Image(systemName: iconName)
+                        .font(.system(size: 14))
+                }
+                Text(title)
+                    .font(Theme.subheadline)
+                    .fontWeight(isSelected ? .semibold : .medium)
+            }
+            .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(isSelected ? Theme.accent : Theme.cardBackground)
+            .clipShape(Capsule())
+            // US-053: Scale animation on press
+            .scaleEffect(isPressed ? 0.95 : 1.0)
         }
         .buttonStyle(.plain)
         // US-053: Smooth background/selection animation
@@ -716,11 +697,11 @@ struct GameRowView: View {
 
     private var statusColor: Color {
         switch event.status {
-        case .scheduled: return .blue
-        case .live: return .green
-        case .final: return .gray
-        case .postponed: return .orange
-        case .canceled: return .red
+        case .scheduled: return Theme.accent
+        case .live: return Theme.accent
+        case .final: return Theme.textMuted
+        case .postponed: return Theme.warning
+        case .canceled: return Theme.danger
         }
     }
 
@@ -739,15 +720,15 @@ struct GameRowView: View {
             // Teams matchup
             HStack {
                 Text("\(event.awayTeam) @ \(event.homeTeam)")
-                    .font(.headline)
+                    .font(Theme.headline)
 
                 Spacer()
 
                 if event.status == .live {
                     Text(statusText)
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.medium)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.background)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
                         .background(statusColor)
@@ -758,12 +739,12 @@ struct GameRowView: View {
             // Start time
             HStack {
                 Image(systemName: "clock")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .font(Theme.caption)
 
                 Text(formattedStartTime)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
             }
         }
         .padding(.vertical, 4)
@@ -787,7 +768,7 @@ struct TimeFilterSheet: View {
                     }) {
                         HStack {
                             Text(filter.rawValue)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(Theme.textPrimary)
                             Spacer()
                             if selectedFilter == filter {
                                 Image(systemName: "checkmark")

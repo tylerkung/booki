@@ -199,16 +199,16 @@ struct OfflineBannerView: View {
         if !networkMonitor.isConnected {
             HStack(spacing: 8) {
                 Image(systemName: "wifi.slash")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(Theme.font(size: 14, weight: .semibold))
 
                 Text("You are offline")
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.semibold)
 
                 if showExpandedMessage {
                     Spacer()
                     Text("Some features may be limited")
-                        .font(.caption)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.warning.opacity(0.8))
                 }
             }

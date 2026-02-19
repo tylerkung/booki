@@ -1,0 +1,54 @@
+# Ralph Progress Log
+Started: Tue Feb  3 13:34:20 PST 2026
+---
+
+## Codebase Patterns
+- SwiftData @Query with sort creates ascending order by default - no need for explicit order parameter
+- Event filtering uses computed properties (like `availableEvents`) since SwiftData predicates have limitations with complex OR conditions
+- Use `Calendar.current.date(byAdding:value:to:)` for date math in Swift
+- Xcode IDE required for full typecheck - swiftc can't resolve SwiftData macros
+- UUID case sensitivity: iOS UUID.uuidString returns UPPERCASE, PostgreSQL stores lowercase - always use `.lowercased()` when comparing UUIDs across systems
+
+---
+
+## 2026-02-03 - US-001
+- **What was implemented**: Filter GamesView to show only upcoming events and recently finished events (within 48 hours)
+- **Files changed**:
+  - `Booki/Views/GamesView.swift` - Added `recentFinishedCutoff` computed property and updated `availableEvents` filter logic
+- **Learnings for future iterations:**
+  - The existing @Query already sorts by startTime ascending (line 22)
+  - The `availableEvents` computed property is the central filter used by all downstream filtering (sports, time, search, favorites)
+  - Event.startTime is used as proxy for "finished time" since there's no explicit finishedAt field
+  - SwiftData predicates don't easily support complex OR conditions with date comparisons - use Swift filter instead
+---
+
+## 2026-02-03 - US-002
+- **What was implemented**: Add Past Events toggle to GamesView with segmented Picker control
+- **Files changed**:
+  - `Booki/Views/GamesView.swift` - Added GameViewMode enum, viewMode state, segmented picker UI, pastEvents computed property
+- **Learnings for future iterations:**
+  - Use `.pickerStyle(.segmented)` for iOS-native segmented control appearance
+  - Chain filtering: `upcomingEvents` → `availableEvents` (based on viewMode) → `timeFilteredEvents` → `searchFilteredEvents` → `filteredEvents`
+  - When adding a view mode toggle, consider which existing filters make sense in each mode (time filters hidden in Past mode)
+  - Use `.onChange(of:)` to reset dependent state when parent state changes
+  - Sort descending in Swift: `.sorted { $0.startTime > $1.startTime }`
+---
+
+## 2026-02-03 - US-003
+- **What was implemented**: Fix UUID case sensitivity in event lookups for bet history views
+- **Files changed**:
+  - `Booki/Views/BetsListView.swift` - Fixed eventName(for:) and event computed property
+  - `Booki/Views/TrackView.swift` - Fixed eventName(for:)
+  - `Booki/Views/TicketDetailView.swift` - Fixed eventName(for:) and event lookup in betsSection
+  - `Booki/Views/AccountView.swift` - Fixed eventName(for:) and event computed property
+  - `Booki/Views/SettingsView.swift` - Fixed eventName(for:)
+  - `Booki/Views/DashboardView.swift` - Fixed risk events lookup and eventName(for:)
+  - `Booki/Views/GradingView.swift` - Fixed both event(for:) functions
+  - `Booki/Views/PlayersListView.swift` - Fixed eventName(for:)
+  - `Booki/Views/EventDetailView.swift` - Fixed eventBets filter
+- **Learnings for future iterations:**
+  - iOS UUID.uuidString returns UPPERCASE, PostgreSQL stores lowercase - always use `.lowercased()` for comparison
+  - Event lookup pattern: `events.first { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }`
+  - The existing fallback `"Event \(bet.eventId.prefix(8))"` already handles missing events gracefully
+  - Bet history views already show event info (teams, final score) when event exists - the issue was case-sensitive comparison failing
+---

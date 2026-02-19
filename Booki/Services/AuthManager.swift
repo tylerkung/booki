@@ -110,9 +110,9 @@ final class AuthManager: ObservableObject {
         // Players are linked via auth_user_id in the players table
         do {
             let playerRecord = try await fetchPlayerRecord(forAuthUserId: authUserId)
-            // User is a player - set role and player ID
+            // User is a player - set role, player ID, and bookie ID (for syncing)
             currentPlayerId = playerRecord.id
-            currentBookieId = nil
+            currentBookieId = playerRecord.bookieId  // Players need their bookie's ID to sync data
             userRole = .player
             // Check agreement status for player
             await checkAgreementRequired(for: authUserId)
@@ -129,8 +129,8 @@ final class AuthManager: ObservableObject {
             currentBookieId = bookie.id
             currentPlayerId = nil
             userRole = .bookie
-            // Check agreement status for existing bookie
-            await checkAgreementRequired(for: bookie.id)
+            // Check agreement status using auth user ID (not bookie record ID)
+            await checkAgreementRequired(for: authUserId)
             isLoadingBookie = false
             return
         } catch {
@@ -144,8 +144,8 @@ final class AuthManager: ObservableObject {
             currentBookieId = bookie.id
             currentPlayerId = nil
             userRole = .bookie
-            // Check agreement status for new bookie
-            await checkAgreementRequired(for: bookie.id)
+            // Check agreement status using auth user ID (not bookie record ID)
+            await checkAgreementRequired(for: authUserId)
         } catch {
             bookieError = error.localizedDescription
             print("Failed to determine user role: \(error)")
@@ -177,11 +177,12 @@ final class AuthManager: ObservableObject {
     /// Sets the current user as a player
     /// Called when a player successfully claims their account
     /// - Parameter playerId: The player's record UUID (from players table)
+    /// - Parameter bookieId: The player's bookie's ID (needed for syncing)
     /// - Parameter authUserId: The player's auth user UUID (for agreement check)
     /// - Parameter checkAgreement: Whether to check agreement status (default true)
-    func setAsPlayer(playerId: UUID, authUserId: UUID, checkAgreement: Bool = true) {
+    func setAsPlayer(playerId: UUID, bookieId: UUID, authUserId: UUID, checkAgreement: Bool = true) {
         currentPlayerId = playerId
-        currentBookieId = nil
+        currentBookieId = bookieId  // Players need their bookie's ID to sync data
         userRole = .player
 
         // Check agreement status for players on app launch

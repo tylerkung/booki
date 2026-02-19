@@ -1,0 +1,124 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/player-ux-fixes",
+  "description": "Player UX Fixes & Login Branding - Bidirectional bet slip entry, custom keypad consistency, success copy update, summary layout fix, and branded login screen",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Update submission success copy",
+      "description": "As a player, I want the success screen to confirm my bet was placed, not make it sound like a pending request.",
+      "acceptanceCriteria": [
+        "Success screen title changed from 'Request Submitted!' to 'Bet Placed!' in BetSlipSheet.swift line 1145",
+        "Success screen subtitle changed from 'X bet(s) recorded and pending review' to 'X bet(s) placed successfully' at line 1150",
+        "No other success screen behavior changes",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Smallest change, no dependencies. File: Booki/Views/BetSlipSheet.swift"
+    },
+    {
+      "id": "US-002",
+      "title": "Redesign numeric keypad to 4x3 grid with backspace bottom-right",
+      "description": "As a player, I want a clean 4x3 keypad layout so number entry feels natural.",
+      "acceptanceCriteria": [
+        "Keypad is a 4x3 grid: row 1 = [1, 2, 3], row 2 = [4, 5, 6], row 3 = [7, 8, 9], row 4 = [0, 00, ⌫]",
+        "Backspace (⌫) is in the bottom-right cell of the grid",
+        "Keypad styling matches existing Theme (elevatedBackground buttons, textPrimary text, accent highlights)",
+        "Existing functionality preserved: text binding updates on tap, backspace deletes last character",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Prerequisite for US-003 and US-004. File: Booki/Views/NumericKeypadView.swift"
+    },
+    {
+      "id": "US-003",
+      "title": "Move quick stake buttons above keypad with Done button",
+      "description": "As a player, I want quick stake buttons (+$5, +$10, +$25, +$50) accessible above the keypad for both singles and parlay modes.",
+      "acceptanceCriteria": [
+        "Quick stake buttons appear in a horizontal row above the NumericKeypadView, inline with the 'Done' button (Done on right, quick stakes on left)",
+        "Quick stake buttons show whenever the keypad is visible, regardless of singles or parlay mode",
+        "Tapping a quick stake button adds that amount to the currently active field's wager value and recalculates the corresponding to-win",
+        "Remove QuickStakeRow from parlayStakeEntrySection (around line 844) since it moves into the keypad area",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Depends on US-002 (keypad redesign). Files: Booki/Views/BetSlipSheet.swift (stickyBottomSection lines 496-575, parlayStakeEntrySection lines 843-852)"
+    },
+    {
+      "id": "US-004",
+      "title": "Move payout summary from sticky bottom into scrollable area",
+      "description": "As a player, I want to see my bet selections while the keypad is open instead of the summary blocking them.",
+      "acceptanceCriteria": [
+        "Remove payoutSummarySection from stickyBottomSection parlay case (around line 511)",
+        "Remove singlesSummarySection from stickyBottomSection singles case (around line 533)",
+        "For parlay mode: payoutSummarySection appears in the ScrollView below parlayStakeEntrySection",
+        "For singles mode: singlesSummarySection appears in the ScrollView below all PremiumBetSlipItemCards",
+        "Sticky bottom section only contains: validation warnings, quick stakes + keypad (when active), and Place Bet button",
+        "Bet selections remain scrollable and visible when the keypad is showing",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Depends on US-003 (keypad area has quick stakes). File: Booki/Views/BetSlipSheet.swift (stickyBottomSection lines 496-575, main body lines 400-490)"
+    },
+    {
+      "id": "US-005",
+      "title": "Convert parlay stake entry to custom numeric keypad",
+      "description": "As a player, I want the parlay wager and to-win fields to use the custom keypad instead of the system keyboard for a consistent experience.",
+      "acceptanceCriteria": [
+        "Parlay Wager field is a tappable Text view (not TextField) that sets activeFieldId to 'parlay_wager' on tap",
+        "Parlay To Win field is a tappable Text view (not TextField) that sets activeFieldId to 'parlay_towin' on tap",
+        "Tapping either field shows the NumericKeypadView in the sticky bottom section",
+        "Typing on the keypad updates the active field text and recalculates the other field bidirectionally using existing calculateToWin() and calculateWagerFromToWin() methods",
+        "Active field has glowing border via .glowingBorder() modifier (gold for Wager, cyan for To Win)",
+        "Remove @FocusState variables isParlayWagerFocused and isParlayToWinFocused (lines 63-66) since system keyboard is no longer used",
+        "Update activeKeypadBinding computed property (around line 1481) to handle 'parlay_wager' and 'parlay_towin' field IDs",
+        "No system keyboard appears when interacting with parlay stake fields",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Depends on US-002/US-003 (keypad redesign). File: Booki/Views/BetSlipSheet.swift (parlayStakeEntrySection lines 733-852, activeKeypadBinding around line 1481)"
+    },
+    {
+      "id": "US-006",
+      "title": "Add bidirectional to-win entry on singles bet cards",
+      "description": "As a player, I want to enter either a wager or a desired to-win amount on each singles bet card so I can work backwards from my desired payout.",
+      "acceptanceCriteria": [
+        "Each PremiumBetSlipItemCard in singles mode shows side-by-side Wager and To Win fields (replacing the current single stake display + read-only To Win label)",
+        "Tapping the Wager field sets activeFieldId to the card's wager fieldId and opens the custom keypad",
+        "Tapping the To Win field sets activeFieldId to a new toWin fieldId (e.g. '{fieldId}_towin') and opens the custom keypad",
+        "Typing a wager amount recalculates To Win using BetSlipManager.calculateToWin(odds:stake:)",
+        "Typing a to-win amount recalculates Wager using BetSlipManager.calculateWagerFromToWin(odds:toWin:)",
+        "Active field has glowing border (gold for Wager, cyan for To Win) matching parlay styling",
+        "itemToWinTexts dictionary (already exists at BetSlipSheet line 44) stores per-item to-win text",
+        "Update activeKeypadBinding to handle singles to-win field IDs",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Depends on US-005 (parlay keypad pattern established). File: Booki/Views/BetSlipSheet.swift (PremiumBetSlipItemCard lines 1742-1792, activeKeypadBinding)"
+    },
+    {
+      "id": "US-007",
+      "title": "Branded teal login screen with Booki logo",
+      "description": "As a player, I want the login screen to match the branded teal launch screen with the Booki logo so the app feels polished.",
+      "acceptanceCriteria": [
+        "Login screen background uses teal Color(hex: 0x00F5D4) matching the launch screen and AuthGateView.loadingView",
+        "BookiLogo asset displayed prominently at top with 200pt width (same as loading screen)",
+        "Remove existing gradient background (Theme.backgroundGradient) and header icon (sportscourt.fill)",
+        "Email and password form fields use dark styling (Theme.background or Theme.cardBackground fill) that contrasts against teal background",
+        "Login button uses dark background (Theme.background) with light text to contrast teal",
+        "Sign Up and Claim Account navigation links remain visible and accessible",
+        "Apple Sign-In button remains functional and appropriately styled",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Independent of bet slip changes, last priority. File: Booki/Views/Auth/LoginView.swift"
+    }
+  ]
+}

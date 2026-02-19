@@ -21,9 +21,6 @@ struct SyncConflict: Identifiable, Equatable {
 }
 
 struct ContentView: View {
-    @AppStorage("isPlayerMode") private var isPlayerMode: Bool = false
-    @AppStorage("selectedPlayerID") private var selectedPlayerID: String = ""
-
     // Alert Threshold settings
     @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
     @AppStorage("agingThreshold") private var agingThreshold: Int = 7
@@ -46,21 +43,6 @@ struct ContentView: View {
 
     /// Navigation to view the conflicting record
     @State private var navigateToConflictRecord: Bool = false
-
-    /// The currently selected player for player mode
-    private var selectedPlayer: Player? {
-        guard !selectedPlayerID.isEmpty else { return nil }
-        return players.first { $0.id.uuidString == selectedPlayerID }
-    }
-
-    /// Calculate display balance for the selected player
-    /// Note: Internal balance has opposite sign (positive = owes), so we negate for display
-    /// Display convention: positive = player in credit, negative = player in debt
-    private func playerBalance(for player: Player) -> Decimal {
-        let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
-        let internalBalance = BalanceService.balanceOwed(from: playerLedger)
-        return -internalBalance  // Negate for display: positive = credit, negative = debt
-    }
 
     /// Count of flagged players based on alert thresholds (for badge)
     private var flaggedPlayersCount: Int {
@@ -96,19 +78,7 @@ struct ContentView: View {
                 .animation(.easeInOut(duration: 0.3), value: networkMonitor.isConnected)
 
             // MARK: - Main Content
-            Group {
-                if isPlayerMode, let player = selectedPlayer {
-                    // Player Mode UI
-                    playerModeView(player: player)
-                        // US-053: Smooth transition when switching between modes
-                        .transition(.opacity.animation(.easeInOut(duration: 0.2)))
-                } else {
-                    // Bookie Mode UI (default)
-                    bookieModeView
-                        // US-053: Smooth transition when switching between modes
-                        .transition(.opacity.animation(.easeInOut(duration: 0.2)))
-                }
-            }
+            bookieModeView
         }
         // MARK: - Sync Conflict Alert
         .alert("Sync Conflict", isPresented: $showConflictAlert) {
@@ -172,7 +142,7 @@ struct ContentView: View {
 
     private var bookieModeView: some View {
         TabView {
-            DashboardView()
+            AnalyticsDashboardView()
                 .tabItem {
                     Label("Dashboard", systemImage: "chart.bar.fill")
                 }
@@ -206,33 +176,6 @@ struct ContentView: View {
         .tint(Theme.accent)
     }
 
-    // MARK: - Player Mode
-
-    private func playerModeView(player: Player) -> some View {
-        TabView {
-            PlayerTabView(player: player, balance: playerBalance(for: player)) {
-                GamesView(player: player)
-            }
-            .tabItem {
-                Label("Games", systemImage: "house.fill")
-            }
-
-            PlayerTabView(player: player, balance: playerBalance(for: player)) {
-                TrackView(player: player)
-            }
-            .tabItem {
-                Label("Track", systemImage: "list.bullet.rectangle")
-            }
-
-            PlayerTabView(player: player, balance: playerBalance(for: player)) {
-                PlayerSettingsContent()
-            }
-            .tabItem {
-                Label("Settings", systemImage: "gearshape.fill")
-            }
-        }
-        .tint(Theme.accent)
-    }
 }
 
 // MARK: - Player Tab View Wrapper
@@ -241,9 +184,8 @@ struct ContentView: View {
 struct PlayerTabView<Content: View>: View {
     let player: Player
     let balance: Decimal
+    var onLogoTap: (() -> Void)? = nil
     @ViewBuilder let content: Content
-
-    @State private var navigateToAccount = false
 
     var body: some View {
         NavigationStack {
@@ -252,16 +194,11 @@ struct PlayerTabView<Content: View>: View {
                 AppHeaderView(
                     player: player,
                     balance: balance,
-                    navigateToAccount: {
-                        navigateToAccount = true
-                    }
+                    onLogoTap: onLogoTap
                 )
 
                 // Tab content
                 content
-            }
-            .navigationDestination(isPresented: $navigateToAccount) {
-                AccountView(player: player)
             }
         }
     }
@@ -271,48 +208,60 @@ struct PlayerTabView<Content: View>: View {
 
 /// Settings content view without NavigationStack (wrapper provides it)
 struct PlayerSettingsContent: View {
-    @AppStorage("isPlayerMode") private var isPlayerMode: Bool = false
-    @AppStorage("selectedPlayerID") private var selectedPlayerID: String = ""
+    @EnvironmentObject private var authManager: AuthManager
 
-    @Query private var players: [Player]
-
-    private var selectedPlayer: Player? {
-        guard !selectedPlayerID.isEmpty else { return nil }
-        return players.first { $0.id.uuidString == selectedPlayerID }
-    }
+    @State private var showingLogoutConfirmation = false
+    @State private var showingLogoutError = false
+    @State private var logoutErrorMessage = ""
 
     var body: some View {
         List {
-            // Current Player Info
-            if let player = selectedPlayer {
-                Section {
-                    LabeledContent("Name", value: player.name)
-                    if let email = player.email {
-                        LabeledContent("Email", value: email)
-                    }
-                } header: {
-                    Text("Player Account")
-                }
-                .listRowBackground(Theme.cardBackground)
-            }
-
-            // Switch to Bookie Mode
+            // Account Section
             Section {
-                Button {
-                    isPlayerMode = false
+                Button(role: .destructive) {
+                    showingLogoutConfirmation = true
                 } label: {
-                    Label("Switch to Bookie Mode", systemImage: "arrow.left.arrow.right")
+                    HStack {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                        Text("Log Out")
+                    }
+                    .font(Theme.headline)
+                    .textCase(.uppercase)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Theme.danger)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .buttonStyle(.plain)
             } header: {
-                Text("Test Mode")
-            } footer: {
-                Text("Switch back to the bookie view to manage bets and players.")
+                Text("Account")
             }
             .listRowBackground(Theme.cardBackground)
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("Settings")
+        .alert("Log Out", isPresented: $showingLogoutConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Log Out", role: .destructive) {
+                Task {
+                    do {
+                        try await authManager.signOut()
+                    } catch {
+                        logoutErrorMessage = error.localizedDescription
+                        showingLogoutError = true
+                    }
+                }
+            }
+        } message: {
+            Text("Are you sure you want to log out?")
+        }
+        .alert("Logout Error", isPresented: $showingLogoutError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(logoutErrorMessage)
+        }
     }
 }
 

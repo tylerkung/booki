@@ -1,0 +1,91 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/bug-fixes-round-2",
+  "description": "Bug fixes round 2 - Bet slip display issues, submission errors, layout fixes, and bet details improvements",
+  "techStack": {
+    "platform": "iOS 17+",
+    "language": "Swift 5.9+",
+    "ui": "SwiftUI",
+    "persistence": "SwiftData (local-first) + Supabase (cloud)",
+    "architecture": "MVVM with Services layer",
+    "serverFunctions": "Supabase Edge Functions (Deno/TypeScript)"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Fix Duplicate Team Display When Both Moneylines Selected",
+      "description": "As a player, I want to see the correct team names when I select both moneylines on the same game so that I can clearly identify each selection.",
+      "acceptanceCriteria": [
+        "When both moneylines are selected (e.g., Hawks ML and Rockets ML), each bet slip item shows the correct team name",
+        "No duplicate team names displayed in bet slip",
+        "Verify the issue is in the display logic (BetSlipSheet) not the selection logic (BetSlipManager)",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Fix 'Requested function was not found' Error on Bet Submission",
+      "description": "As a player, I want to submit bets without getting a 'function not found' error so that my bets are placed successfully.",
+      "acceptanceCriteria": [
+        "Identify which code path is still calling a non-existent Edge Function",
+        "Check all bet submission flows: single bets, parlays, BetSlipSheet, BetConfirmationSheet, SubmitBetView",
+        "Ensure all submissions call the correct submit_bet Edge Function",
+        "Verify the Edge Function is deployed and accessible",
+        "Bet submissions complete successfully without NOT_FOUND error",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Fix Overlapping CTAs on Game Table View",
+      "description": "As a player, I want the betting buttons on each game row to be properly spaced so that I can tap them accurately.",
+      "acceptanceCriteria": [
+        "Identify where the overlapping CTAs occur (likely GameCardView, CompactGameRow, or market table)",
+        "Fix spacing/layout so buttons do not overlap",
+        "Ensure buttons are tappable without accidentally hitting adjacent buttons",
+        "Test on various screen sizes",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Fix Background Colors on Player Settings CTAs",
+      "description": "As a player, I want the settings buttons to have consistent styling so that the UI looks cohesive.",
+      "acceptanceCriteria": [
+        "Update 'Account' button/section background to use Theme.cardBackground",
+        "Update 'Test Mode' button/section background to use Theme.cardBackground",
+        "Ensure consistent styling with rest of the app",
+        "Check PlayerMainView or PlayerSettingsView for the affected components",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Display 'To Win' Amount Alongside Stake on Bet Views",
+      "description": "As a bookie or player, I want to see the potential payout ('To Win') amount alongside the stake so that I can quickly understand the bet's value.",
+      "acceptanceCriteria": [
+        "Player bet views show 'To Win: $X' alongside the stake",
+        "Bookie bet summary views show 'To Win: $X' alongside the stake",
+        "Calculate 'To Win' based on odds and stake (American odds conversion)",
+        "Update relevant views: BetsListView, TrackView, TicketDetailView, BetDetailView",
+        "Use consistent formatting (e.g., 'Stake: $50 | To Win: $45.45')",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}

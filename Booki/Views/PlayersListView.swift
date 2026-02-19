@@ -100,7 +100,7 @@ struct PlayersListView: View {
                             Label("Show Archived", systemImage: "archivebox")
                         }
                         .toggleStyle(.button)
-                        .tint(showArchived ? .blue : .secondary)
+                        .tint(showArchived ? Theme.accent : Theme.textSecondary)
 
                         Menu {
                             ForEach(CollectionFilter.allCases) { filter in
@@ -117,16 +117,16 @@ struct PlayersListView: View {
                             }
                         } label: {
                             Label("Collection Filter", systemImage: "line.3.horizontal.decrease.circle")
-                                .foregroundStyle(collectionFilter != .all ? Theme.accent : .secondary)
+                                .foregroundStyle(collectionFilter != .all ? Theme.accent : Theme.textSecondary)
                         }
                         .overlay(alignment: .topTrailing) {
                             if playersWithCollectionStatus > 0 && collectionFilter == .all {
                                 Text("\(playersWithCollectionStatus)")
-                                    .font(.caption2)
+                                    .font(Theme.caption2)
                                     .fontWeight(.bold)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Theme.background)
                                     .padding(4)
-                                    .background(Color.red)
+                                    .background(Theme.danger)
                                     .clipShape(Circle())
                                     .offset(x: 8, y: -8)
                             }
@@ -194,10 +194,10 @@ struct PlayerRowView: View {
 
     private var collectionStatusColor: Color {
         switch player.collectionStatus {
-        case .noStatus, nil: return .gray
-        case .reminded: return .yellow
-        case .promised: return .blue
-        case .overdue: return .red
+        case .noStatus, nil: return Theme.textMuted
+        case .reminded: return Theme.warning
+        case .promised: return Theme.accent
+        case .overdue: return Theme.danger
         }
     }
 
@@ -218,9 +218,9 @@ struct PlayerRowView: View {
 
     private var statusColor: Color {
         switch player.status {
-        case .active: return .green
-        case .archived: return .gray
-        case .banned: return .red
+        case .active: return Theme.accent
+        case .archived: return Theme.textMuted
+        case .banned: return Theme.danger
         }
     }
 
@@ -237,11 +237,11 @@ struct PlayerRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(player.name)
-                        .font(.headline)
+                        .font(Theme.headline)
 
                     Text(statusText)
-                        .font(.caption)
-                        .foregroundStyle(.white)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.background)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(statusColor)
@@ -249,8 +249,8 @@ struct PlayerRowView: View {
 
                     if shouldShowCollectionStatus, let collectionStatus = player.collectionStatus {
                         Text(collectionStatus.displayName)
-                            .font(.caption)
-                            .foregroundStyle(.white)
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.background)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(collectionStatusColor)
@@ -260,12 +260,12 @@ struct PlayerRowView: View {
 
                 HStack(spacing: 12) {
                     Text("Balance: \(formattedBalance)")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(balanceColor)
 
                     Text("Limit: \(formattedCreditLimit)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(Theme.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
 
@@ -274,12 +274,12 @@ struct PlayerRowView: View {
             // Utilization percentage
             VStack(alignment: .trailing, spacing: 2) {
                 Text("\(Int(utilization))%")
-                    .font(.title3.bold())
+                    .font(Theme.title3)
                     .foregroundStyle(utilizationColor)
 
                 Text("Utilized")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
             }
         }
         .padding(.vertical, 4)
@@ -287,18 +287,18 @@ struct PlayerRowView: View {
 
     private var utilizationColor: Color {
         if utilization >= 90 {
-            return .red
+            return Theme.danger
         } else if utilization >= 70 {
-            return .orange
+            return Theme.warning
         } else {
-            return .primary
+            return Theme.textPrimary
         }
     }
 
     private var balanceColor: Color {
         // Positive balance = player owes bookie (secondary color)
-        // Negative balance = bookie owes player (green - player is winning)
-        balance >= 0 ? .secondary : .green
+        // Negative balance = bookie owes player (accent - player is winning)
+        balance >= 0 ? Theme.textSecondary : Theme.accent
     }
 }
 
@@ -364,9 +364,9 @@ struct PlayerDetailView: View {
 
     private var statusColor: Color {
         switch player.status {
-        case .active: return .green
-        case .archived: return .gray
-        case .banned: return .red
+        case .active: return Theme.accent
+        case .archived: return Theme.textMuted
+        case .banned: return Theme.danger
         }
     }
 
@@ -379,15 +379,15 @@ struct PlayerDetailView: View {
     }
 
     private var balanceOwedColor: Color {
-        balanceSummary.balanceOwed >= 0 ? Color.secondary : Color.green
+        balanceSummary.balanceOwed >= 0 ? Theme.textSecondary : Theme.accent
     }
 
     private var availableCreditColor: Color {
-        balanceSummary.availableCredit >= 0 ? Color.primary : Color.red
+        balanceSummary.availableCredit >= 0 ? Theme.textPrimary : Theme.danger
     }
 
     private var openLiabilityColor: Color {
-        balanceSummary.openLiability > 0 ? Color.orange : Color.secondary
+        balanceSummary.openLiability > 0 ? Theme.warning : Theme.textSecondary
     }
 
     /// Whether to show collection status section (only when player owes money)
@@ -397,10 +397,10 @@ struct PlayerDetailView: View {
 
     private var collectionStatusColor: Color {
         switch player.collectionStatus {
-        case .noStatus, nil: return .gray
-        case .reminded: return .yellow
-        case .promised: return .blue
-        case .overdue: return .red
+        case .noStatus, nil: return Theme.textMuted
+        case .reminded: return Theme.warning
+        case .promised: return Theme.accent
+        case .overdue: return Theme.danger
         }
     }
 
@@ -424,7 +424,7 @@ struct PlayerDetailView: View {
                     Spacer()
                     Text(statusText)
                         .fontWeight(.medium)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.background)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(statusColor)
@@ -443,21 +443,21 @@ struct PlayerDetailView: View {
                     // Account has been claimed
                     HStack {
                         Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(Theme.accent)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Account Claimed")
-                                .font(.headline)
+                                .font(Theme.headline)
                             Text(claimedAt, style: .date)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.textSecondary)
                         }
                     }
                 } else if let code = player.inviteCode {
                     // Code exists but not claimed
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Invite Code")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
 
                         HStack(spacing: 12) {
                             Text(code)
@@ -479,26 +479,26 @@ struct PlayerDetailView: View {
                                 }
                             } label: {
                                 Image(systemName: codeCopied ? "checkmark" : "doc.on.doc")
-                                    .font(.title3)
-                                    .foregroundStyle(codeCopied ? .green : Theme.accent)
+                                    .font(Theme.title3)
+                                    .foregroundStyle(codeCopied ? Theme.accent : Theme.accent)
                             }
                         }
 
                         if let generatedAt = player.inviteCodeGeneratedAt {
                             Text("Generated \(generatedAt, style: .relative) ago")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .font(Theme.caption2)
+                                .foregroundStyle(Theme.textSecondary)
                         }
 
                         if let expiresAt = player.inviteCodeExpiresAt {
                             if Date() > expiresAt {
                                 Text("Expired")
-                                    .font(.caption)
-                                    .foregroundStyle(.red)
+                                    .font(Theme.caption)
+                                    .foregroundStyle(Theme.danger)
                             } else {
                                 Text("Expires \(expiresAt, style: .date)")
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
+                                    .font(Theme.caption)
+                                    .foregroundStyle(Theme.warning)
                             }
                         }
                     }
@@ -511,7 +511,7 @@ struct PlayerDetailView: View {
                 } else {
                     // No code exists
                     Text("No invite code generated")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .italic()
 
                     Button {
@@ -552,7 +552,7 @@ struct PlayerDetailView: View {
                         Spacer()
                         Text(collectionStatusText)
                             .fontWeight(.medium)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.background)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .background(collectionStatusColor)
@@ -562,14 +562,14 @@ struct PlayerDetailView: View {
                     if let statusDate = player.collectionStatusDate {
                         LabeledContent("Status Updated") {
                             Text(statusDate, style: .date)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.textSecondary)
                         }
                     }
 
                     if player.collectionStatus == .promised, let promisedDate = player.promisedPaymentDate {
                         LabeledContent("Promised Date") {
                             Text(promisedDate, style: .date)
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(Theme.accent)
                         }
                     }
 
@@ -583,7 +583,7 @@ struct PlayerDetailView: View {
             Section("Bet History (\(playerBets.count))") {
                 if playerBets.isEmpty {
                     Text("No bets yet")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .italic()
                 } else {
                     ForEach(playerBets) { bet in
@@ -751,7 +751,7 @@ struct PlayerDetailView: View {
             } label: {
                 Label("Reactivate Player", systemImage: "arrow.uturn.backward.circle")
             }
-            .tint(.green)
+            .tint(Theme.accent)
 
         case .banned:
             Button {
@@ -759,7 +759,7 @@ struct PlayerDetailView: View {
             } label: {
                 Label("Reactivate Player", systemImage: "arrow.uturn.backward.circle")
             }
-            .tint(.green)
+            .tint(Theme.accent)
         }
 
         // Delete button available for all statuses
@@ -781,7 +781,7 @@ struct PlayerDetailView: View {
             } label: {
                 Label("Mark as Reminded", systemImage: "bell.badge")
             }
-            .tint(.yellow)
+            .tint(Theme.warning)
         }
 
         if player.collectionStatus != .promised {
@@ -790,7 +790,7 @@ struct PlayerDetailView: View {
             } label: {
                 Label("Mark as Promised", systemImage: "calendar.badge.clock")
             }
-            .tint(.blue)
+            .tint(Theme.accent)
         }
 
         if player.collectionStatus != .overdue {
@@ -799,7 +799,7 @@ struct PlayerDetailView: View {
             } label: {
                 Label("Mark as Overdue", systemImage: "exclamationmark.triangle")
             }
-            .tint(.red)
+            .tint(Theme.danger)
         }
 
         if player.collectionStatus != nil && player.collectionStatus != .noStatus {
@@ -808,7 +808,7 @@ struct PlayerDetailView: View {
             } label: {
                 Label("Clear Status", systemImage: "xmark.circle")
             }
-            .tint(.gray)
+            .tint(Theme.textMuted)
         }
     }
 
@@ -992,13 +992,13 @@ struct PlayerBetRowView: View {
 
     private var statusColor: Color {
         switch bet.status {
-        case .pending: return .orange
-        case .accepted: return .blue
-        case .declined: return .red
+        case .pending: return Theme.warning
+        case .accepted: return Theme.accent
+        case .declined: return Theme.danger
         case .readyToGrade: return .purple
         case .graded: return .indigo
-        case .settled: return .green
-        case .void: return .gray
+        case .settled: return Theme.accent
+        case .void: return Theme.textMuted
         }
     }
 
@@ -1014,15 +1014,15 @@ struct PlayerBetRowView: View {
             // Top row: Event name and status
             HStack {
                 Text(eventName)
-                    .font(.subheadline)
+                    .font(Theme.subheadline)
                     .fontWeight(.medium)
 
                 Spacer()
 
                 Text(bet.status.rawValue.capitalized)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .fontWeight(.medium)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(statusColor)
@@ -1032,34 +1032,34 @@ struct PlayerBetRowView: View {
             // Middle row: Side and odds
             HStack {
                 Text(bet.side)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Text("•")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Text(formattedOdds)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Spacer()
 
                 Text(formattedStake)
-                    .font(.caption)
+                    .font(Theme.caption)
                     .fontWeight(.medium)
             }
 
             // Bottom row: Date and result (if any)
             HStack {
                 Text(formattedDate)
-                    .font(.caption2)
+                    .font(Theme.caption2)
                     .foregroundStyle(.tertiary)
 
                 Spacer()
 
                 if let result = bet.gradeResult {
                     Text(result.rawValue.capitalized)
-                        .font(.caption2)
+                        .font(Theme.caption2)
                         .fontWeight(.medium)
                         .foregroundStyle(gradeResultColor(result))
                 }
@@ -1070,9 +1070,9 @@ struct PlayerBetRowView: View {
 
     private func gradeResultColor(_ result: GradeResult) -> Color {
         switch result {
-        case .win: return .green
-        case .loss: return .red
-        case .push: return .orange
+        case .win: return Theme.accent
+        case .loss: return Theme.danger
+        case .push: return Theme.warning
         }
     }
 }
@@ -1126,7 +1126,7 @@ struct BalanceAdjustmentSheet: View {
                     if let value = amountDecimal {
                         LabeledContent("Adjustment Amount") {
                             Text(formatCurrency(value))
-                                .foregroundStyle(value >= 0 ? Color.secondary : Color.green)
+                                .foregroundStyle(value >= 0 ? Theme.textSecondary : Theme.accent)
                         }
                     }
                 } header: {
@@ -1242,12 +1242,12 @@ struct AddPlayerSheet: View {
                 Section {
                     LabeledContent("Name") {
                         Text(name.isEmpty ? "—" : name)
-                            .foregroundStyle(name.isEmpty ? .secondary : .primary)
+                            .foregroundStyle(name.isEmpty ? Theme.textSecondary : Theme.textPrimary)
                     }
 
                     LabeledContent("Email") {
                         Text(email.isEmpty ? "Not provided" : email)
-                            .foregroundStyle(email.isEmpty ? .secondary : .primary)
+                            .foregroundStyle(email.isEmpty ? Theme.textSecondary : Theme.textPrimary)
                     }
 
                     LabeledContent("Credit Limit") {
@@ -1256,7 +1256,7 @@ struct AddPlayerSheet: View {
 
                     LabeledContent("Username") {
                         Text(username.isEmpty ? "Not provided" : username)
-                            .foregroundStyle(username.isEmpty ? .secondary : .primary)
+                            .foregroundStyle(username.isEmpty ? Theme.textSecondary : Theme.textPrimary)
                     }
                 } header: {
                     Text("Preview")
@@ -1303,7 +1303,7 @@ struct AddPlayerSheet: View {
         modelContext.insert(player)
 
         // Trigger sync to upload the new player to Supabase
-        // This ensures the player exists in the backend before test mode is used
+        // This ensures the player exists in the backend
         Task {
             await syncService.triggerUpload()
         }
@@ -1326,16 +1326,16 @@ struct AddPlayerInterstitialSheet: View {
                 // Header
                 VStack(spacing: 8) {
                     Image(systemName: "person.badge.plus")
-                        .font(.system(size: 48))
+                        .font(Theme.font(size: 48))
                         .foregroundStyle(Theme.accent)
 
                     Text("Add to Your Book")
-                        .font(.title2)
+                        .font(Theme.title2)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.textPrimary)
 
                     Text("Choose how you want to add players")
-                        .font(.subheadline)
+                        .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .padding(.top, 32)
@@ -1354,7 +1354,7 @@ struct AddPlayerInterstitialSheet: View {
                     } label: {
                         HStack(spacing: 16) {
                             Image(systemName: "person.fill.badge.plus")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.accent)
                                 .frame(width: 44, height: 44)
                                 .background(Theme.accent.opacity(0.15))
@@ -1362,11 +1362,11 @@ struct AddPlayerInterstitialSheet: View {
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Add Player")
-                                    .font(.headline)
+                                    .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 Text("Create a new player manually")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
 
@@ -1391,7 +1391,7 @@ struct AddPlayerInterstitialSheet: View {
                     } label: {
                         HStack(spacing: 16) {
                             Image(systemName: "person.3.fill")
-                                .font(.title2)
+                                .font(Theme.title2)
                                 .foregroundStyle(Theme.gold)
                                 .frame(width: 44, height: 44)
                                 .background(Theme.gold.opacity(0.15))
@@ -1399,11 +1399,11 @@ struct AddPlayerInterstitialSheet: View {
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Purchase Seats")
-                                    .font(.headline)
+                                    .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 Text("Buy additional player slots")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
 

@@ -1,0 +1,52 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/games-availability-states",
+  "description": "Gray out games with no lines and add real-time updates when games start",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Gray out games with no available betting lines",
+      "description": "As a player, I want to see games without betting lines displayed as grayed out so I understand why I can't bet on them.",
+      "acceptanceCriteria": [
+        "Games with no markets (empty markets array) appear grayed out in player's game list",
+        "Grayed out games show 'No lines available' text or badge",
+        "Grayed out games are not tappable / cannot open bet slip",
+        "Grayed out games appear at bottom of their section (after bettable games)",
+        "Uses Theme.textSecondary or reduced opacity for disabled state",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "NOT IMPLEMENTED - hasBettableLines not found in codebase"
+    },
+    {
+      "id": "US-002",
+      "title": "Add real-time timer to update games list",
+      "description": "As a player, I want games to update in real-time as they start so I only see current betting options.",
+      "acceptanceCriteria": [
+        "Add Timer that fires every 30-60 seconds to re-evaluate games list",
+        "Games where startTime <= now are filtered out when timer fires",
+        "No visual flicker or jarring transitions when games disappear",
+        "Timer only runs when player's games view is visible",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "NOT IMPLEMENTED - no Timer found in GamesView"
+    },
+    {
+      "id": "US-003",
+      "title": "Create helper to check if game has bettable lines",
+      "description": "As a developer, I need a clean way to check if a game has valid betting lines.",
+      "acceptanceCriteria": [
+        "Add computed property or helper function: hasBettableLines on Event or as extension",
+        "Returns true if event has at least one market with valid odds (non-nil, non-zero)",
+        "Used by both graying logic and filtering logic",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "NOT IMPLEMENTED - helper does not exist"
+    }
+  ]
+}

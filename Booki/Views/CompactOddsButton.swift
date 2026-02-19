@@ -45,25 +45,25 @@ struct CompactOddsButton: View {
                     // US-005: Spread/Total style - line value prominent, odds de-emphasized
                     if let text = topText {
                         Text(text)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(Theme.monoDigits(size: 13, weight: .bold))
                             .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
                     Text(formattedOdds)
-                        .font(.system(size: 10, weight: .medium))
+                        .font(Theme.monoDigits(size: 10, weight: .medium))
                         .foregroundColor(isSelected ? Theme.background.opacity(0.7) : Theme.textMuted)
                 } else {
                     // Original style - used for moneyline (team name secondary, odds primary)
                     if let text = topText {
                         Text(text)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(Theme.font(size: 11, weight: .medium))
                             .foregroundColor(isSelected ? Theme.background : Theme.textSecondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
                     Text(formattedOdds)
-                        .font(.system(size: 13, weight: .bold))
+                        .font(Theme.monoDigits(size: 13, weight: .bold))
                         .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
                 }
             }
@@ -88,7 +88,7 @@ struct CompactOddsButton: View {
     VStack(spacing: 16) {
         // US-005: Spread buttons - line value prominent, odds secondary
         Text("Spread (US-005)")
-            .font(.caption)
+            .font(Theme.caption)
             .foregroundColor(Theme.textSecondary)
         HStack(spacing: 8) {
             CompactOddsButton(
@@ -112,7 +112,7 @@ struct CompactOddsButton: View {
 
         // Moneyline buttons - odds prominent (no secondary needed)
         Text("Moneyline")
-            .font(.caption)
+            .font(Theme.caption)
             .foregroundColor(Theme.textSecondary)
         HStack(spacing: 8) {
             CompactOddsButton(
@@ -134,7 +134,7 @@ struct CompactOddsButton: View {
 
         // US-005: Total buttons - line value prominent, odds secondary
         Text("Total (US-005)")
-            .font(.caption)
+            .font(Theme.caption)
             .foregroundColor(Theme.textSecondary)
         HStack(spacing: 8) {
             CompactOddsButton(

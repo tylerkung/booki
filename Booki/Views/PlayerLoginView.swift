@@ -54,15 +54,15 @@ struct PlayerLoginView: View {
                         // Logo/Header Section
                         VStack(spacing: 16) {
                             Image(systemName: "sportscourt.fill")
-                                .font(.system(size: 64))
+                                .font(Theme.font(size: 64))
                                 .foregroundStyle(Theme.accent)
 
                             Text("Player Login")
-                                .font(.system(size: 28, weight: .bold))
+                                .font(Theme.font(size: 28, weight: .bold))
                                 .foregroundStyle(Theme.textPrimary)
 
                             Text("Sign in to view your bets and place wagers")
-                                .font(.subheadline)
+                                .font(Theme.subheadline)
                                 .foregroundStyle(Theme.textSecondary)
                                 .multilineTextAlignment(.center)
                         }
@@ -73,7 +73,7 @@ struct PlayerLoginView: View {
                             // Username Field
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("USERNAME")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .fontWeight(.semibold)
                                     .tracking(1)
                                     .foregroundStyle(Theme.textMuted)
@@ -105,7 +105,7 @@ struct PlayerLoginView: View {
                             // Password Field
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("PASSWORD")
-                                    .font(.caption)
+                                    .font(Theme.caption)
                                     .fontWeight(.semibold)
                                     .tracking(1)
                                     .foregroundStyle(Theme.textMuted)
@@ -139,7 +139,7 @@ struct PlayerLoginView: View {
                                     showingForgotPasswordAlert = true
                                 } label: {
                                     Text("Forgot Password?")
-                                        .font(.subheadline)
+                                        .font(Theme.subheadline)
                                         .foregroundStyle(Theme.accent)
                                 }
                             }
@@ -156,10 +156,10 @@ struct PlayerLoginView: View {
                                         .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
                                 } else if loginSuccess {
                                     Image(systemName: "checkmark")
-                                        .font(.headline)
+                                        .font(Theme.headline)
                                 } else {
                                     Text("Login")
-                                        .font(.headline)
+                                        .font(Theme.headline)
                                 }
                             }
                             .foregroundStyle(Theme.background)
@@ -181,12 +181,12 @@ struct PlayerLoginView: View {
                         // Test Mode Note
                         VStack(spacing: 8) {
                             Text("Test Mode")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(Theme.gold)
 
                             Text("Enter a player's username or name to login as that player. Password is not validated in test mode.")
-                                .font(.caption)
+                                .font(Theme.caption)
                                 .foregroundStyle(Theme.textMuted)
                                 .multilineTextAlignment(.center)
                         }
@@ -260,11 +260,4 @@ extension View {
             self
         }
     }
-}
-
-// MARK: - Preview
-
-#Preview {
-    PlayerLoginView()
-        .modelContainer(for: [Player.self], inMemory: true)
 }

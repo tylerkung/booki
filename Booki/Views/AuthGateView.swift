@@ -22,6 +22,15 @@ struct AuthGateView: View {
     /// Tracks if initial sync has been triggered for this session
     @State private var hasTriggeredInitialSync: Bool = false
 
+    /// Whether to show the onboarding flow
+    @State private var showOnboarding: Bool = false
+
+    /// Onboarding manager for tracking setup progress
+    @State private var onboardingManager = OnboardingManager()
+
+    /// Scene phase for detecting app foreground/background
+    @Environment(\.scenePhase) private var scenePhase
+
     // MARK: - Body
 
     var body: some View {
@@ -39,10 +48,30 @@ struct AuthGateView: View {
                         PlayerMainView()
                     case .bookie, nil:
                         ContentView()
+                            .environment(onboardingManager)
                     }
                 }
             } else {
                 authFlowView
+            }
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingContainerView(
+                onboardingManager: onboardingManager,
+                onComplete: { showOnboarding = false },
+                onSkip: { showOnboarding = false }
+            )
+        }
+        .onChange(of: authManager.userRole) { _, newRole in
+            // Show onboarding for new bookies who haven't completed it
+            if newRole == .bookie && !onboardingManager.isOnboardingComplete {
+                showOnboarding = true
+            }
+        }
+        .onAppear {
+            // Check if we should show onboarding on initial load
+            if authManager.userRole == .bookie && !onboardingManager.isOnboardingComplete {
+                showOnboarding = true
             }
         }
         .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
@@ -69,15 +98,14 @@ struct AuthGateView: View {
             }
         }
         .onChange(of: authManager.currentPlayerId) { _, newPlayerId in
-            // Sync player data when a player logs in
-            if let playerId = newPlayerId, authManager.userRole == .player && !hasTriggeredInitialSync {
+            // Sync data when a player logs in (uses their bookie's ID for sync)
+            if newPlayerId != nil, authManager.userRole == .player && !hasTriggeredInitialSync {
                 hasTriggeredInitialSync = true
                 Task {
-                    do {
-                        try await syncService.syncPlayerData(authUserId: playerId)
-                    } catch {
-                        print("Failed to sync player data: \(error)")
-                    }
+                    // Players use the regular sync flow - their bookie_id is set in currentBookieId
+                    await syncService.sync()
+                    // Then subscribe to realtime updates
+                    await realtimeService.subscribe()
                 }
             }
         }
@@ -110,6 +138,19 @@ struct AuthGateView: View {
                 syncService.setOffline()
             }
         }
+        // MARK: - Foreground Sync Handler
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            // Sync when app comes to foreground (active)
+            if newPhase == .active && oldPhase != .active {
+                // Only sync if authenticated and has bookie ID
+                if authManager.currentBookieId != nil {
+                    Task {
+                        print("DEBUG: App became active - triggering sync")
+                        await syncService.sync()
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Agreement View
@@ -119,22 +160,22 @@ struct AuthGateView: View {
         UserAgreementView(
             onAccept: {
                 Task {
-                    // Determine user ID and role based on current authentication state
-                    let userId: UUID?
-                    let role: String
+                    // Use auth user ID for agreements (not record IDs)
+                    guard let userIdString = authManager.currentUserId,
+                          let userId = UUID(uuidString: userIdString) else {
+                        print("Failed to submit agreement: No auth user ID")
+                        return
+                    }
 
+                    let role: String
                     switch authManager.userRole {
                     case .bookie:
-                        userId = authManager.currentBookieId
                         role = "bookie"
                     case .player:
-                        userId = authManager.currentPlayerId
                         role = "player"
                     case nil:
                         return
                     }
-
-                    guard let userId = userId else { return }
 
                     do {
                         try await authManager.submitAgreement(for: userId, role: role)
@@ -154,22 +195,18 @@ struct AuthGateView: View {
     /// Loading view with app logo shown while checking auth state
     private var loadingView: some View {
         ZStack {
-            Theme.backgroundGradient
+            Color(hex: 0x00F5D4)
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
-                // App Logo
-                Image(systemName: "book.closed.fill")
-                    .font(.system(size: 80))
-                    .foregroundStyle(Theme.accent)
-
-                Text("Booki")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundStyle(Theme.textPrimary)
+                // App Logo (BookiLogo asset from branding)
+                Image("BookiLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 200)
 
                 ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: Theme.accent))
+                    .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
                     .scaleEffect(1.2)
                     .padding(.top, 16)
             }

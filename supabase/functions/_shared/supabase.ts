@@ -49,30 +49,19 @@ export function createUserClient(authHeader: string): SupabaseClient {
  */
 export async function getUserIdFromAuthHeader(authHeader: string | null): Promise<string | null> {
   if (!authHeader) {
-    console.log('DEBUG getUserIdFromAuthHeader: No auth header provided');
     return null;
   }
-
-  console.log('DEBUG getUserIdFromAuthHeader: Auth header prefix:', authHeader.substring(0, 30) + '...');
 
   try {
     const client = createUserClient(authHeader);
     const { data: { user }, error } = await client.auth.getUser();
 
-    if (error) {
-      console.error('DEBUG getUserIdFromAuthHeader: getUser error:', error.message, error);
+    if (error || !user) {
       return null;
     }
 
-    if (!user) {
-      console.log('DEBUG getUserIdFromAuthHeader: No user returned');
-      return null;
-    }
-
-    console.log('DEBUG getUserIdFromAuthHeader: Successfully got user:', user.id);
     return user.id;
-  } catch (e) {
-    console.error('DEBUG getUserIdFromAuthHeader: Exception:', e);
+  } catch {
     return null;
   }
 }
