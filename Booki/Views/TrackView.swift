@@ -30,7 +30,7 @@ struct Ticket: Identifiable {
     /// Display label for ticket type
     var typeLabel: String {
         if isParlay {
-            return "Parlay (\(bets.count) legs)"
+            return "Multi-Pick (\(bets.count) legs)"
         } else {
             return "Single"
         }
@@ -43,7 +43,7 @@ struct Ticket: Identifiable {
         if isParlay {
             let combinedOdds = combinedAmericanOdds
             let oddsString = combinedOdds > 0 ? "+\(combinedOdds)" : "\(combinedOdds)"
-            return "\(bets.count)-leg parlay \(oddsString)"
+            return "\(bets.count)-leg multi-pick \(oddsString)"
         } else if let bet = bets.first {
             let oddsString = bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
             return "\(bet.side) \(oddsString)"
@@ -172,9 +172,9 @@ struct TrackView: View {
         if tickets.isEmpty {
             Section {
                 ContentUnavailableView(
-                    "No Bets Yet",
+                    "No Picks Yet",
                     systemImage: "list.bullet.clipboard",
-                    description: Text("Your bet requests will appear here.")
+                    description: Text("Your pick requests will appear here.")
                 )
                 .listRowBackground(Theme.cardBackground)
             }
@@ -325,7 +325,7 @@ struct TicketHeaderView: View {
                 Text("•")
                     .foregroundStyle(Theme.textMuted)
 
-                Text("To Win: \(formatCurrency(ticket.potentialPayout))")
+                Text("Potential Return: \(formatCurrency(ticket.potentialPayout))")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.accent)
             }

@@ -29,7 +29,7 @@ struct TicketDetailView: View {
         case .accepted: return "Open"
         case .readyToGrade: return "Awaiting Results"
         case .graded: return "Graded"
-        case .settled: return "Settled"
+        case .settled: return "Reconciled"
         case .declined: return "Declined"
         case .void: return "Void"
         }
@@ -433,7 +433,7 @@ struct TicketDetailView: View {
                 )
             }
         } header: {
-            Text("BETS (\(ticket.bets.count))")
+            Text("PICKS (\(ticket.bets.count))")
                 .font(Theme.caption)
                 .fontWeight(.semibold)
                 .tracking(1)
@@ -488,7 +488,7 @@ struct TicketDetailView: View {
                 }
             }
         } header: {
-            Text("PAYOUT")
+            Text("RETURNS")
                 .font(Theme.caption)
                 .fontWeight(.semibold)
                 .tracking(1)
@@ -552,7 +552,7 @@ struct TicketDetailView: View {
             }
             .padding(.vertical, 8)
         } header: {
-            Text("PARLAY OUTCOME")
+            Text("MULTI-PICK OUTCOME")
                 .font(Theme.caption)
                 .fontWeight(.semibold)
                 .tracking(1)
@@ -724,13 +724,13 @@ struct TicketDetailView: View {
                 Image(systemName: "info.circle.fill")
                     .foregroundStyle(Theme.accentSecondary)
                     .font(Theme.caption)
-                Text("Parlay Adjusted")
+                Text("Multi-Pick Adjusted")
                     .font(Theme.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.accentSecondary)
             }
 
-            Text("Originally \(ticket.bets.count) legs, \(voidedOrPushedLegsCount) \(voidedOrPushedLegsCount == 1 ? "was" : "were") \(reducedLegDescription), settled as \(validLegsCount)-leg parlay")
+            Text("Originally \(ticket.bets.count) legs, \(voidedOrPushedLegsCount) \(voidedOrPushedLegsCount == 1 ? "was" : "were") \(reducedLegDescription), reconciled as \(validLegsCount)-leg multi-pick")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
         }
@@ -1002,7 +1002,7 @@ struct TicketDetailBetRowView: View {
                 } else {
                     // Not settled - show potential
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("To Win")
+                        Text("Potential Return")
                             .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
                         Text(formatCurrency(potentialPayout))
@@ -1065,7 +1065,7 @@ struct TicketDetailBetRowView: View {
 
                 if bet.status == .graded || bet.status == .settled {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(bet.status == .settled ? "Settled" : "Graded")
+                        Text(bet.status == .settled ? "Reconciled" : "Graded")
                             .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
                         // Note: We don't have graded/settled timestamps in the model
