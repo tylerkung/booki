@@ -57,11 +57,11 @@ struct PlayerLoginView: View {
                                 .font(Theme.font(size: 64))
                                 .foregroundStyle(Theme.accent)
 
-                            Text("Player Login")
+                            Text("Member Login")
                                 .font(Theme.font(size: 28, weight: .bold))
                                 .foregroundStyle(Theme.textPrimary)
 
-                            Text("Sign in to view your bets and place wagers")
+                            Text("Sign in to view your picks and record entries")
                                 .font(Theme.subheadline)
                                 .foregroundStyle(Theme.textSecondary)
                                 .multilineTextAlignment(.center)
@@ -185,7 +185,7 @@ struct PlayerLoginView: View {
                                 .fontWeight(.semibold)
                                 .foregroundStyle(Theme.gold)
 
-                            Text("Enter a player's username or name to login as that player. Password is not validated in test mode.")
+                            Text("Enter a member's username or name to login as that member. Password is not validated in test mode.")
                                 .font(Theme.caption)
                                 .foregroundStyle(Theme.textMuted)
                                 .multilineTextAlignment(.center)
@@ -211,12 +211,12 @@ struct PlayerLoginView: View {
             .alert("Forgot Password", isPresented: $showingForgotPasswordAlert) {
                 Button("OK") { }
             } message: {
-                Text("Password reset is not available in this version. Contact your bookie to reset your credentials.")
+                Text("Password reset is not available in this version. Contact your organizer to reset your credentials.")
             }
             .alert("Login Failed", isPresented: $showingLoginError) {
                 Button("OK") { }
             } message: {
-                Text("No player found with that username. Please check your credentials and try again.")
+                Text("No member found with that username. Please check your credentials and try again.")
             }
         }
     }

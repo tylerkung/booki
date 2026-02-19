@@ -73,9 +73,9 @@ struct PlayersListView: View {
             List {
                 if filteredPlayers.isEmpty {
                     ContentUnavailableView(
-                        "No Players",
+                        "No Members",
                         systemImage: "person.2.slash",
-                        description: Text("Add players to start managing your book.")
+                        description: Text("Add members to start managing your group.")
                     )
                 } else {
                     ForEach(filteredPlayers) { player in
@@ -92,7 +92,7 @@ struct PlayersListView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
-            .navigationTitle("Players")
+            .navigationTitle("Members")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     HStack(spacing: 8) {
@@ -138,7 +138,7 @@ struct PlayersListView: View {
                     Button {
                         showingAddPlayerInterstitial = true
                     } label: {
-                        Label("Add Player", systemImage: "plus")
+                        Label("Add Member", systemImage: "plus")
                     }
                 }
             }
@@ -438,7 +438,7 @@ struct PlayerDetailView: View {
             .listRowBackground(Theme.cardBackground)
 
             // MARK: - Invite Code Section
-            Section("Player Account") {
+            Section("Member Account") {
                 if let claimedAt = player.claimedAt {
                     // Account has been claimed
                     HStack {
@@ -580,9 +580,9 @@ struct PlayerDetailView: View {
             }
 
             // MARK: - Bet History Section
-            Section("Bet History (\(playerBets.count))") {
+            Section("Pick History (\(playerBets.count))") {
                 if playerBets.isEmpty {
-                    Text("No bets yet")
+                    Text("No picks yet")
                         .foregroundStyle(Theme.textSecondary)
                         .italic()
                 } else {
@@ -602,7 +602,7 @@ struct PlayerDetailView: View {
                 NavigationLink {
                     TrackView(player: player)
                 } label: {
-                    Label("View My Bets", systemImage: "clock.arrow.circlepath")
+                    Label("View My Picks", systemImage: "clock.arrow.circlepath")
                 }
 
                 // Submit Bet Request (only for active players)
@@ -652,40 +652,40 @@ struct PlayerDetailView: View {
             )
         }
         .confirmationDialog(
-            "Archive this player?",
+            "Archive this member?",
             isPresented: $showingArchiveConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Archive Player") {
+            Button("Archive Member") {
                 archivePlayer()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Archived players retain their history but are hidden from the active players list.")
+            Text("Archived members retain their history but are hidden from the active members list.")
         }
         .confirmationDialog(
-            "Ban this player?",
+            "Ban this member?",
             isPresented: $showingBanConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Ban Player", role: .destructive) {
+            Button("Ban Member", role: .destructive) {
                 banPlayer()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Banned players cannot submit new bets. Their existing bets and history are retained.")
+            Text("Banned members cannot submit new picks. Their existing picks and history are retained.")
         }
         .confirmationDialog(
-            "Reactivate this player?",
+            "Reactivate this member?",
             isPresented: $showingReactivateConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Reactivate Player") {
+            Button("Reactivate Member") {
                 reactivatePlayer()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will restore the player to active status, allowing them to submit new bets.")
+            Text("This will restore the member to active status, allowing them to submit new picks.")
         }
         .confirmationDialog(
             "Revoke invite code?",
@@ -697,22 +697,22 @@ struct PlayerDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("The player will no longer be able to use this code to claim their account.")
+            Text("The member will no longer be able to use this code to claim their account.")
         }
         .confirmationDialog(
             "Delete \(player.name)?",
             isPresented: $showingDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete Player", role: .destructive) {
+            Button("Delete Member", role: .destructive) {
                 deletePlayer()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             if playerHasHistory {
-                Text("This player has bets or ledger entries. Deleting will permanently remove the player and all their history. This cannot be undone.")
+                Text("This member has picks or ledger entries. Deleting will permanently remove the member and all their history. This cannot be undone.")
             } else {
-                Text("This will permanently delete the player. This cannot be undone.")
+                Text("This will permanently delete the member. This cannot be undone.")
             }
         }
         .alert("Delete Error", isPresented: .init(
@@ -736,20 +736,20 @@ struct PlayerDetailView: View {
             Button {
                 showingArchiveConfirmation = true
             } label: {
-                Label("Archive Player", systemImage: "archivebox")
+                Label("Archive Member", systemImage: "archivebox")
             }
 
             Button(role: .destructive) {
                 showingBanConfirmation = true
             } label: {
-                Label("Ban Player", systemImage: "person.crop.circle.badge.xmark")
+                Label("Ban Member", systemImage: "person.crop.circle.badge.xmark")
             }
 
         case .archived:
             Button {
                 showingReactivateConfirmation = true
             } label: {
-                Label("Reactivate Player", systemImage: "arrow.uturn.backward.circle")
+                Label("Reactivate Member", systemImage: "arrow.uturn.backward.circle")
             }
             .tint(Theme.accent)
 
@@ -757,7 +757,7 @@ struct PlayerDetailView: View {
             Button {
                 showingReactivateConfirmation = true
             } label: {
-                Label("Reactivate Player", systemImage: "arrow.uturn.backward.circle")
+                Label("Reactivate Member", systemImage: "arrow.uturn.backward.circle")
             }
             .tint(Theme.accent)
         }
@@ -766,7 +766,7 @@ struct PlayerDetailView: View {
         Button(role: .destructive) {
             showingDeleteConfirmation = true
         } label: {
-            Label("Delete Player", systemImage: "trash")
+            Label("Delete Member", systemImage: "trash")
         }
         .disabled(isDeleting)
     }
@@ -898,7 +898,7 @@ struct PlayerDetailView: View {
             } catch {
                 await MainActor.run {
                     isDeleting = false
-                    deleteError = "Failed to delete player: \(error.localizedDescription)"
+                    deleteError = "Failed to delete member: \(error.localizedDescription)"
                 }
             }
         }
@@ -1115,9 +1115,9 @@ struct BalanceAdjustmentSheet: View {
                     Text("Adjustment Details")
                 } footer: {
                     if isNegative {
-                        Text("A negative adjustment credits the player (reduces what they owe).")
+                        Text("A negative adjustment credits the member (reduces what they owe).")
                     } else {
-                        Text("A positive adjustment debits the player (increases what they owe).")
+                        Text("A positive adjustment debits the member (increases what they owe).")
                     }
                 }
                 .listRowBackground(Theme.cardBackground)
@@ -1221,7 +1221,7 @@ struct AddPlayerSheet: View {
                     TextField("Credit Limit", text: $creditLimitString)
                         .keyboardType(.decimalPad)
                 } header: {
-                    Text("Player Details")
+                    Text("Member Details")
                 } footer: {
                     Text("Name is required. Email and credit limit are optional.")
                 }
@@ -1235,7 +1235,7 @@ struct AddPlayerSheet: View {
                 } header: {
                     Text("Authentication")
                 } footer: {
-                    Text("Username can be used for player login in the future.")
+                    Text("Username can be used for member login in the future.")
                 }
                 .listRowBackground(Theme.cardBackground)
 
@@ -1265,7 +1265,7 @@ struct AddPlayerSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
-            .navigationTitle("Add Player")
+            .navigationTitle("Add Member")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1329,12 +1329,12 @@ struct AddPlayerInterstitialSheet: View {
                         .font(Theme.font(size: 48))
                         .foregroundStyle(Theme.accent)
 
-                    Text("Add to Your Book")
+                    Text("Add to Your Group")
                         .font(Theme.title2)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.textPrimary)
 
-                    Text("Choose how you want to add players")
+                    Text("Choose how you want to add members")
                         .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -1361,11 +1361,11 @@ struct AddPlayerInterstitialSheet: View {
                                 .clipShape(Circle())
 
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Add Player")
+                                Text("Add Member")
                                     .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
-                                Text("Create a new player manually")
+                                Text("Create a new member manually")
                                     .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
@@ -1402,7 +1402,7 @@ struct AddPlayerInterstitialSheet: View {
                                     .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
-                                Text("Buy additional player slots")
+                                Text("Buy additional member slots")
                                     .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
@@ -1464,9 +1464,9 @@ struct PromisedDateSheet: View {
                     )
                     .datePickerStyle(.graphical)
                 } header: {
-                    Text("When did the player promise to pay?")
+                    Text("When did the member promise to pay?")
                 } footer: {
-                    Text("Select the date the player has promised to make payment.")
+                    Text("Select the date the member has promised to make payment.")
                 }
                 .listRowBackground(Theme.cardBackground)
             }
