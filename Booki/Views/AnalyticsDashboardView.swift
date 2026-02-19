@@ -43,9 +43,9 @@ struct AnalyticsDashboardView: View {
         case "High exposure":
             result = result.filter { $0.exposure.grossExposure > 0 }
         case "Big winners":
-            result = result.filter { $0.sevenDayPL > 0 }
+            result = result.filter { $0.sevenDayPL < 0 }  // Bookie P/L negative = player winning
         case "Big losers":
-            result = result.filter { $0.sevenDayPL < 0 }
+            result = result.filter { $0.sevenDayPL > 0 }  // Bookie P/L positive = player losing
         default:
             break
         }
@@ -228,7 +228,7 @@ struct AnalyticsDashboardView: View {
                         icon: "person.fill.exclamationmark",
                         label: "Top Risk",
                         value: top.player.name,
-                        subtitle: top.pas.reasonChips.first,
+                        subtitle: formatCurrency(top.exposure.grossExposure) + " exposure",
                         valueColor: top.pas.label == "High" ? Theme.danger : Theme.warning
                     )
                 }
@@ -356,16 +356,10 @@ private struct SummaryCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textMuted)
-
-                Text(label.uppercased())
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                    .tracking(0.5)
-            }
+            Text(label.uppercased())
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .tracking(0.5)
 
             Text(value)
                 .font(Theme.font(size: 20, weight: .bold))
@@ -380,7 +374,7 @@ private struct SummaryCard: View {
                     .lineLimit(1)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(14)
         .cardStyle()
     }

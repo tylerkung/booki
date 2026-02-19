@@ -118,6 +118,9 @@
 		8A1234560084 /* OnboardingSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550084 /* OnboardingSuccessView.swift */; };
 		8A1234560085 /* OnboardingContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550085 /* OnboardingContainerView.swift */; };
 		8A1234560086 /* FinishSetupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550086 /* FinishSetupCard.swift */; };
+		8A1234560087 /* AnalyticsDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550087 /* AnalyticsDashboardView.swift */; };
+		8A1234560088 /* PlayerAnalyticsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550088 /* PlayerAnalyticsDetailView.swift */; };
+		8A1234560089 /* PlayerAttentionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550089 /* PlayerAttentionService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -244,6 +247,9 @@
 		8A1234550084 /* OnboardingSuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSuccessView.swift; sourceTree = "<group>"; };
 		8A1234550085 /* OnboardingContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingContainerView.swift; sourceTree = "<group>"; };
 		8A1234550086 /* FinishSetupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinishSetupCard.swift; sourceTree = "<group>"; };
+		8A1234550087 /* AnalyticsDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDashboardView.swift; sourceTree = "<group>"; };
+		8A1234550088 /* PlayerAnalyticsDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAnalyticsDetailView.swift; sourceTree = "<group>"; };
+		8A1234550089 /* PlayerAttentionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAttentionService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -369,6 +375,8 @@
 				8A1234550077 /* PlayerRiskWatchlistCard.swift */,
 				8A1234550078 /* TonightsExposureCard.swift */,
 				8A1234550086 /* FinishSetupCard.swift */,
+				8A1234550087 /* AnalyticsDashboardView.swift */,
+				8A1234550088 /* PlayerAnalyticsDetailView.swift */,
 				8A1234530011 /* Onboarding */,
 			);
 			path = Views;
@@ -413,6 +421,7 @@
 				8A1234550071 /* InviteCodeService.swift */,
 				8A1234550074 /* PlayerRiskService.swift */,
 				8A1234550079 /* OnboardingManager.swift */,
+				8A1234550089 /* PlayerAttentionService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -679,6 +688,9 @@
 				8A1234560084 /* OnboardingSuccessView.swift in Sources */,
 				8A1234560085 /* OnboardingContainerView.swift in Sources */,
 				8A1234560086 /* FinishSetupCard.swift in Sources */,
+				8A1234560087 /* AnalyticsDashboardView.swift in Sources */,
+				8A1234560088 /* PlayerAnalyticsDetailView.swift in Sources */,
+				8A1234560089 /* PlayerAttentionService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

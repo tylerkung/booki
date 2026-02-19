@@ -161,3 +161,16 @@ Started: Wed Feb 18 19:34:51 PST 2026
   - ScrollViewReader + .id() + scrollTo() is the pattern for programmatic scrolling in ScrollView
   - NavigationLink(value:) + .buttonStyle(.plain) avoids default list row styling in non-List contexts
 ---
+
+## 2026-02-19 - Dashboard Polish & Xcode Project Fix
+- Fixed "Big winners" / "Big losers" filters — were reversed due to bookie-perspective P/L convention
+- Added AnalyticsDashboardView.swift, PlayerAnalyticsDetailView.swift, PlayerAttentionService.swift to project.pbxproj (Ralph created files but didn't register them)
+- Summary cards: removed icons from titles, set top-left alignment for consistent grid layout, matched card heights
+- Top Risk card now shows player exposure amount instead of first reason chip
+- Player detail CTAs: swapped "Add Bet" → "Settle Up" (primary) + "Adjust Balance" (secondary) — more relevant for bookie workflow
+- Files changed: `Booki.xcodeproj/project.pbxproj`, `Booki/Views/AnalyticsDashboardView.swift`, `Booki/Views/PlayerAnalyticsDetailView.swift`
+- **Learnings for future iterations:**
+  - Ralph doesn't add new files to project.pbxproj — always check and add manually after Ralph runs
+  - `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)` pins content top-left in LazyVGrid cells for uniform card heights
+  - Bookie P/L convention: positive = bookie profited (player lost), negative = bookie lost (player won) — easy to reverse filters
+---

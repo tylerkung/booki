@@ -64,9 +64,9 @@ struct PlayerAnalyticsDetailView: View {
     private var ctaButtons: some View {
         HStack(spacing: 12) {
             Button {
-                print("Add Bet tapped for \(summary.player.name)")
+                print("Settle Up tapped for \(summary.player.name)")
             } label: {
-                Text("ADD BET")
+                Text("SETTLE UP")
                     .font(Theme.headline)
                     .textCase(.uppercase)
                     .foregroundStyle(.black)
@@ -77,9 +77,9 @@ struct PlayerAnalyticsDetailView: View {
             }
 
             Button {
-                print("Settle Up tapped for \(summary.player.name)")
+                print("Adjust Balance tapped for \(summary.player.name)")
             } label: {
-                Text("SETTLE UP")
+                Text("ADJUST BALANCE")
                     .font(Theme.headline)
                     .textCase(.uppercase)
                     .foregroundStyle(Theme.textPrimary)

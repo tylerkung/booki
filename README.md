@@ -426,4 +426,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 18, 2026 - Typography polish (dual-font system, uppercase CTAs, odds grid alignment)*
+*Last updated: February 19, 2026 - Bookie Analytics Dashboard v2 (PAS scoring, player detail views, dashboard polish)*
