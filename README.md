@@ -426,4 +426,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 19, 2026 - Bookie Analytics Dashboard v2 (PAS scoring, player detail views, dashboard polish)*
+*Last updated: February 19, 2026 - Compliance Language Overhaul (all user-facing strings use App Store compliant vocabulary), merged all feature branches to main*

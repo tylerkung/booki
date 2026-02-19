@@ -139,13 +139,30 @@ Events are filtered in the UI while all data is preserved in the database:
 - **Historical Data**: All events kept forever for bet history references
 - **Event Lookups**: Use case-insensitive UUID comparison (`.lowercased()`) due to iOS/PostgreSQL casing differences
 
+## Compliance Language
+
+All user-facing strings use App Store compliant vocabulary. Internal Swift types/variables keep original names.
+
+| Old Term | New Term |
+|----------|----------|
+| Bookie | Organizer |
+| Player | Member |
+| Bet/Bets | Pick/Picks |
+| Parlay | Multi-Pick |
+| Settlement | Reconciliation |
+| Exposure | Open Activity |
+| Payout | Potential Return |
+| Profit/Loss | Performance |
+| Wager | Stake |
+
 ## Current State (February 19, 2026)
 
-- **Branch**: `ralph/bookie-analytics-v2`
-- **Phases complete**: 1-12 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul)
+- **Branch**: `main`
+- **Phases complete**: 1-14 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
 - **Edge Functions**: 10 functions for server-authoritative operations (including `submit_parlay`, `sync_games`)
 - **Odds API key**: Configured in Settings (free tier, 500 calls/month)
-- **Auto-pilot mode**: Bets auto-accepted and auto-graded by default
+- **Auto-pilot mode**: Picks auto-accepted and auto-graded by default
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
 - **Branding**: App icon and in-app logo (`BookiLogo` image set), branded launch screen (electric cyan), `DESIGN_SYSTEM.md` restored
+- **Compliance**: All user-facing strings use approved vocabulary; disclaimers on auth and pick entry screens

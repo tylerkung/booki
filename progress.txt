@@ -240,3 +240,14 @@ Started: Thu Feb 19 10:05:11 PST 2026
   - Compliance disclaimers must avoid the word "gambling" per PRD notes — use "real-money wagering" instead
   - MarketMixBar in PlayerAnalyticsDetailView uses string keys ("Parlay") as both dictionary keys and chart legend labels — update all occurrences
 ---
+
+## 2026-02-19 - Compliance Language Overhaul Complete + Merge to Main
+- **What was implemented**: Full compliance language rename across all Views (12 Ralph stories + manual fixes). Merged all feature branches (betting overhaul, player UX, betslip bugfixes, analytics dashboard, launch animations, compliance) into main.
+- **Files changed**: ~40 View files renamed user-facing strings, CLAUDE.md, README.md, Ralph guardrails (CLAUDE.md, ralph.sh)
+- **Key additions**: Ralph destructive change prevention (line count check in ralph.sh, instructions in CLAUDE.md), branching fix (create from HEAD not main)
+- **Learnings for future iterations:**
+  - Ralph creates branches from `main` by default — if main is behind, it works with old code and "rewrites" files to old versions
+  - Added safety check in ralph.sh: stops if any file loses >50 net lines between iterations
+  - Compliance disclaimers should avoid the very terms they disclaim (don't say "gambling" in a disclaimer about not being gambling)
+  - WAGER in BetSlipSheet field labels was missed by Ralph — always check all-caps variants separately
+---
