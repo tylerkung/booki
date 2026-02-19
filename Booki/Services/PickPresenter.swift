@@ -39,6 +39,24 @@ struct PickPresenter {
     let stake: Decimal
     let profit: Decimal
 
+    // MARK: - Private memberwise init (used by factory methods)
+
+    private init(title: String, contextLine: String, stakeLine: String, profitLine: String,
+                 profitColor: Color, settlementStatus: SettlementStatus, workflowStatus: WorkflowStatus,
+                 isMultiPick: Bool, selections: [SelectionInfo], stake: Decimal, profit: Decimal) {
+        self.title = title
+        self.contextLine = contextLine
+        self.stakeLine = stakeLine
+        self.profitLine = profitLine
+        self.profitColor = profitColor
+        self.settlementStatus = settlementStatus
+        self.workflowStatus = workflowStatus
+        self.isMultiPick = isMultiPick
+        self.selections = selections
+        self.stake = stake
+        self.profit = profit
+    }
+
     // MARK: - Single Pick Init
 
     init(bet: Bet, event: Event? = nil, playerName: String? = nil) {
@@ -95,6 +113,115 @@ struct PickPresenter {
             self.profitLine = "Potential: +$\(PickPresenter.formatDecimal(payout))"
             self.profitColor = Theme.accent
         }
+    }
+
+    // MARK: - Multi-Pick Factory
+
+    static func multiPick(bets: [Bet], events: [Event], playerName: String? = nil) -> PickPresenter {
+        let sortedBets = bets.sorted { $0.createdAt < $1.createdAt }
+        let eventMap = Dictionary(uniqueKeysWithValues: events.map { ($0.id.uuidString.lowercased(), $0) })
+
+        // Combined odds: multiply decimal odds of all legs
+        let combinedDecimal = sortedBets.reduce(Decimal(1)) { result, bet in
+            result * americanToDecimal(bet.odds)
+        }
+        let combinedAmerican = decimalToAmerican(combinedDecimal)
+        let combinedOddsStr = formatOdds(combinedAmerican)
+
+        // Title
+        let title = "Multi-Pick · \(sortedBets.count) Selections · \(combinedOddsStr)"
+
+        // Context
+        var context = "Multi-Pick"
+        if let name = playerName {
+            context = "\(name) · \(context)"
+        }
+
+        // Stake from first bet (parlay stake is identical on all legs)
+        let stake = sortedBets.first?.stake ?? .zero
+
+        // Settlement status from all legs
+        let legStatuses = sortedBets.map { mapStatus(betStatus: $0.status, gradeResult: $0.gradeResult) }
+        let settlement: SettlementStatus
+        let workflow: WorkflowStatus
+
+        if legStatuses.contains(where: { $0.1 == .rejected }) {
+            settlement = .open; workflow = .rejected
+        } else if legStatuses.contains(where: { $0.0 == .lost }) {
+            settlement = .lost; workflow = .approved
+        } else if legStatuses.allSatisfy({ $0.0 == .won }) {
+            settlement = .won; workflow = .approved
+        } else if legStatuses.allSatisfy({ $0.0 == .push || $0.0 == .void || $0.0 == .cancelled }) {
+            // All non-active: push if all push, void otherwise
+            if legStatuses.allSatisfy({ $0.0 == .push }) {
+                settlement = .push; workflow = .approved
+            } else {
+                settlement = .void; workflow = .approved
+            }
+        } else if legStatuses.contains(where: { $0.1 == .pending }) {
+            settlement = .open; workflow = .pending
+        } else {
+            settlement = .open; workflow = .approved
+        }
+
+        // Profit calculation
+        let profit: Decimal
+        let profitLine: String
+        let profitColor: Color
+
+        switch settlement {
+        case .won:
+            profit = stake * combinedDecimal - stake
+            profitLine = "+$\(formatDecimal(profit)) Profit"
+            profitColor = Theme.accent
+        case .lost:
+            profit = -stake
+            profitLine = "-$\(formatDecimal(stake))"
+            profitColor = Theme.danger
+        case .push, .void, .cancelled:
+            profit = .zero
+            profitLine = "$0.00"
+            profitColor = Theme.textSecondary
+        case .open:
+            profit = stake * combinedDecimal - stake
+            profitLine = "Potential: +$\(formatDecimal(profit))"
+            profitColor = Theme.accent
+        }
+
+        // Build selections array
+        let selections: [SelectionInfo] = sortedBets.map { bet in
+            let event = eventMap[bet.eventId.lowercased()]
+            let eventName: String
+            let league: String?
+            if let event = event {
+                eventName = "\(event.awayTeam) @ \(event.homeTeam)"
+                league = event.league
+            } else {
+                eventName = bet.eventDescription ?? "Unknown"
+                league = bet.sportLeague
+            }
+            return SelectionInfo(
+                label: bet.side,
+                odds: bet.odds,
+                eventName: eventName,
+                league: league,
+                gradeResult: bet.gradeResult
+            )
+        }
+
+        return PickPresenter(
+            title: title,
+            contextLine: context,
+            stakeLine: "$\(formatDecimal(stake)) Stake",
+            profitLine: profitLine,
+            profitColor: profitColor,
+            settlementStatus: settlement,
+            workflowStatus: workflow,
+            isMultiPick: true,
+            selections: selections,
+            stake: stake,
+            profit: profit
+        )
     }
 
     // MARK: - Status Mapping
