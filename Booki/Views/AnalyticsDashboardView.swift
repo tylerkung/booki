@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Charts
 
 struct AnalyticsDashboardView: View {
     @Environment(\.modelContext) private var modelContext
@@ -91,6 +92,10 @@ struct AnalyticsDashboardView: View {
                     VStack(spacing: 16) {
                         // Earnings Hero Number
                         earningsHeader
+                            .padding(.horizontal, 16)
+
+                        // Earnings Chart
+                        EarningsChart(bets: bets, lineColor: lifetimePL >= 0 ? Theme.accent : Theme.danger)
                             .padding(.horizontal, 16)
 
                         // Finish Setup Card
@@ -372,6 +377,41 @@ struct AnalyticsDashboardView: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+}
+
+// MARK: - Earnings Chart
+
+private struct EarningsChart: View {
+    let bets: [Bet]
+    let lineColor: Color
+
+    private var dataPoints: [DailyPLPoint] {
+        PlayerAttentionService.dailyCumulativePL(bets: bets, days: 0)
+    }
+
+    var body: some View {
+        if dataPoints.isEmpty {
+            Text("No betting history yet")
+                .font(Theme.bodyFont(size: 14))
+                .foregroundStyle(Theme.textMuted)
+                .frame(maxWidth: .infinity)
+                .frame(height: 160)
+        } else {
+            Chart {
+                ForEach(dataPoints, id: \.date) { point in
+                    LineMark(
+                        x: .value("Date", point.date),
+                        y: .value("P/L", NSDecimalNumber(decimal: point.cumulativePL).doubleValue)
+                    )
+                    .foregroundStyle(lineColor)
+                    .interpolationMethod(.catmullRom)
+                }
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .frame(height: 160)
+        }
     }
 }
 
