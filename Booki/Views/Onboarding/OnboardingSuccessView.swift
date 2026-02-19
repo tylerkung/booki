@@ -69,7 +69,8 @@ struct OnboardingSuccessView: View {
             if showButton {
                 Button(action: onComplete) {
                     Text("Go to Dashboard")
-                        .font(.headline)
+                        .font(Theme.headline)
+                        .textCase(.uppercase)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                 }

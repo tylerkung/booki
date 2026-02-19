@@ -10,6 +10,9 @@
 		50F000012F33000000000001 /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */; };
 		50F000012F33000000000002 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */; };
 		50F000012F33000000000003 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */; };
+		50F000012F33000000000004 /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */; };
+		50F000012F33000000000005 /* IBMPlexSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */; };
+		50F000012F33000000000006 /* IBMPlexSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */; };
 		50C083EF2F25F8B0001A0FE5 /* CompactOddsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */; };
 		50C083F02F25F8B0001A0FE5 /* CompactGameRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */; };
 		50C083F12F25F8B0001A0FE5 /* GameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */; };
@@ -131,6 +134,9 @@
 		50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
 		50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
 		50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
+		50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
+		50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Medium.ttf"; sourceTree = "<group>"; };
+		50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Bold.ttf"; sourceTree = "<group>"; };
 		50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactGameRow.swift; sourceTree = "<group>"; };
 		50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactOddsButton.swift; sourceTree = "<group>"; };
 		50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDetailView.swift; sourceTree = "<group>"; };
@@ -443,6 +449,9 @@
 				50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */,
 				50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */,
 				50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */,
+				50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */,
+				50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */,
+				50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */,
 			);
 			path = Fonts;
 			sourceTree = "<group>";
@@ -558,6 +567,9 @@
 				50F000012F33000000000001 /* SpaceGrotesk-Regular.ttf in Resources */,
 				50F000012F33000000000002 /* SpaceGrotesk-Medium.ttf in Resources */,
 				50F000012F33000000000003 /* SpaceGrotesk-Bold.ttf in Resources */,
+				50F000012F33000000000004 /* IBMPlexSans-Regular.ttf in Resources */,
+				50F000012F33000000000005 /* IBMPlexSans-Medium.ttf in Resources */,
+				50F000012F33000000000006 /* IBMPlexSans-Bold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -95,7 +95,8 @@ struct OnboardingImportGamesView: View {
             if !isLoadingSports && !isImporting && !importComplete && !activeSportsList.isEmpty && oddsService.hasAPIKey {
                 Button(action: importGames) {
                     Text("Import Games")
-                        .font(.headline)
+                        .font(Theme.headline)
+                        .textCase(.uppercase)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                 }

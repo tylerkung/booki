@@ -208,6 +208,9 @@ struct PlayerClaimView: View {
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     } else {
                         Text("Validate Code")
+                            .font(Theme.headline)
+                            .fontWeight(.bold)
+                            .textCase(.uppercase)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -273,6 +276,9 @@ struct PlayerClaimView: View {
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     } else {
                         Text("Create Account")
+                            .font(Theme.headline)
+                            .fontWeight(.bold)
+                            .textCase(.uppercase)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -316,6 +322,9 @@ struct PlayerClaimView: View {
                 onNavigateToLogin()
             } label: {
                 Text("Go to Login")
+                    .font(Theme.headline)
+                    .fontWeight(.bold)
+                    .textCase(.uppercase)
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Theme.accent)

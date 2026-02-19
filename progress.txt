@@ -182,3 +182,48 @@ Started: Sun Feb 16 16:34:00 PST 2026
   - Dismiss keypad on betMode change via `.onChange(of: betSlipManager.betMode)`
   - `syncItemStake` helper finds the matching BetSlipItem by iterating all items and comparing keys, then calls `setItemStake` on the manager
 ---
+
+## 2026-02-17 - Post-merge polish (betslip-bugfixes)
+- **What was implemented**: Resolved merge conflicts between ralph/player-ux-polish and ralph/betslip-bugfixes, then polished bet slip UX
+- **Merge fixes**:
+  - Added missing `@State` vars: `singlesSubmissionIndex`, `singlesSubmissionTotal`
+  - Added missing `itemToWinTextBinding(for:)` function
+  - Extracted `selectionsList` into sub-views to fix Swift type-checker timeout: `selectionsHeaderSection`, `betModeToggle`, `warningBanner`, `sectionHeaderLabel`, `selectionsCardsSection`
+- **UX polish**:
+  - Added bidirectional WAGER/TO WIN on singles cards (was only on parlay before)
+  - Converted parlay WAGER/TO WIN from iOS TextFields to tappable Text views routed through custom NumericKeypadView
+  - Extended `activeKeypadBinding` to handle 4 field types: `parlay_stake`, `parlay_towin`, `{itemKey}` (singles wager), `{itemKey}_towin` (singles to-win)
+  - Each binding auto-calculates the complementary field (wager↔to-win) using `calculateToWin` / `calculateWagerFromToWin`
+  - Simplified NumericKeypadView to clean 4x3 grid: [1-9, ., 0, ⌫] — removed quick stake buttons
+  - Moved bet summary (parlay payout / singles summary) from sticky bottom into scrollable area
+  - Place Bet button always visible at bottom (dimmed+disabled when not eligible), positioned below keypad
+  - Removed dead code: unused `stakeEntrySection`, `@FocusState` vars, `parlayActiveField` reads
+- **Files changed**:
+  - `Booki/Views/BetSlipSheet.swift` - Major restructure of sticky bottom, bidirectional entry, keypad routing
+  - `Booki/Views/NumericKeypadView.swift` - Simplified to 4x3 grid, added max 2 decimal enforcement
+- **Learnings for future iterations:**
+  - `activeFieldId` naming convention: `"parlay_stake"`, `"parlay_towin"`, `"{itemKey}"` for singles wager, `"{itemKey}_towin"` for singles to-win
+  - When merging branches that both modified a large SwiftUI view, expect type-checker timeouts — extract sub-views proactively
+  - Swift type-checker timeout fix: break complex `@ViewBuilder` bodies into smaller computed properties
+  - Bidirectional entry: set `parlayActiveField` in the binding setter to track direction, use guard to prevent feedback loops
+---
+
+## 2026-02-18 - Typography & Design Polish
+- **What was implemented**: Dual-font system (IBM Plex Sans for body, Space Grotesk for display), uppercase primary CTAs, bet slip fixes, odds grid alignment
+- **Files changed**:
+  - `Booki/Fonts/IBMPlexSans-{Regular,Medium,Bold}.ttf` - New body font files
+  - `Booki/Info.plist` - Registered IBM Plex Sans in UIAppFonts
+  - `Booki/Theme.swift` - Added `bodyFont(size:weight:)` method, updated body/callout/subheadline/footnote/caption/caption2 to use IBM Plex Sans; added `cornerRadius` param to `glowingBorder()`
+  - `Booki/Views/Auth/LoginView.swift`, `SignUpView.swift`, `PlayerClaimView.swift` - Fixed CTA buttons to use `Theme.headline` + `.textCase(.uppercase)`
+  - `Booki/Views/Onboarding/*.swift` - Changed `.font(.headline)` to `Theme.headline` + `.textCase(.uppercase)` on all CTAs
+  - `Booki/Views/BetSlipSheet.swift` - Uppercase Place Bet/Done CTAs; fixed double-stroke on WAGER/TO WIN fields by passing matching cornerRadius to `glowingBorder()`; removed redundant bet count under Total Stake
+  - `Booki/Views/CompactGameRow.swift` - Changed horizontal button spacing from 8 to 4
+  - `Booki/Views/GamesView.swift` - Fixed SPREAD/MONEY/TOTAL header widths from 52 to 65 to match button width; matched header spacing to 4
+  - `Booki/Views/SettingsView.swift`, `AccountView.swift`, `ContentView.swift` - Uppercase Log Out buttons
+- **Learnings for future iterations:**
+  - Dual font: `Theme.font()` = Space Grotesk (titles/headlines/digits), `Theme.bodyFont()` = IBM Plex Sans (body/reading text)
+  - `.textCase(.uppercase)` is the SwiftUI way to uppercase button text — avoids hardcoding caps in strings
+  - `glowingBorder()` had hardcoded `Theme.cornerRadius` (16) — must pass matching cornerRadius when used on elements with smaller radii (10, 8)
+  - Column header widths must match `oddsButtonWidth` constant in CompactGameRow (65pt) for alignment
+  - Primary CTA convention: `Theme.headline` + `.textCase(.uppercase)` + Space Grotesk bold
+---

@@ -426,4 +426,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 16, 2026 - Phase 12 (Betting Experience Overhaul) + Branding completed*
+*Last updated: February 18, 2026 - Typography polish (dual-font system, uppercase CTAs, odds grid alignment)*

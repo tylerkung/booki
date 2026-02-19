@@ -394,7 +394,7 @@ struct GamesView: View {
     @ViewBuilder
     private var columnHeadersRow: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
+            HStack(spacing: 4) {
                 // Spacer for team name column
                 Spacer()
 
@@ -402,17 +402,17 @@ struct GamesView: View {
                 Text("SPREAD")
                     .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(Theme.textMuted)
-                    .frame(width: 52)
+                    .frame(width: 65)
 
                 Text("MONEY")
                     .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(Theme.textMuted)
-                    .frame(width: 52)
+                    .frame(width: 65)
 
                 Text("TOTAL")
                     .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(Theme.textMuted)
-                    .frame(width: 52)
+                    .frame(width: 65)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

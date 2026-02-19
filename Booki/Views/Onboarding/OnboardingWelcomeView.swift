@@ -45,8 +45,9 @@ struct OnboardingWelcomeView: View {
 
             // Primary CTA
             Button(action: onContinue) {
-                Text("Set up your book")
-                    .font(.headline)
+                Text("Set Up Your Book")
+                    .font(Theme.headline)
+                    .textCase(.uppercase)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
             }

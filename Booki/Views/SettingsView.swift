@@ -247,6 +247,7 @@ struct SettingsView: View {
                             Text("Log Out")
                         }
                         .font(Theme.headline)
+                        .textCase(.uppercase)
                         .foregroundStyle(Theme.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)

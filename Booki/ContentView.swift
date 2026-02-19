@@ -225,7 +225,8 @@ struct PlayerSettingsContent: View {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
                         Text("Log Out")
                     }
-                    .font(.headline)
+                    .font(Theme.headline)
+                    .textCase(.uppercase)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)

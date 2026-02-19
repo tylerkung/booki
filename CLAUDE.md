@@ -139,9 +139,9 @@ Events are filtered in the UI while all data is preserved in the database:
 - **Historical Data**: All events kept forever for bet history references
 - **Event Lookups**: Use case-insensitive UUID comparison (`.lowercased()`) due to iOS/PostgreSQL casing differences
 
-## Current State (February 16, 2026)
+## Current State (February 18, 2026)
 
-- **Branch**: `ralph/betting-experience-overhaul`
+- **Branch**: `ralph/betslip-bugfixes`
 - **Phases complete**: 1-12 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
 - **Edge Functions**: 10 functions for server-authoritative operations (including `submit_parlay`, `sync_games`)

@@ -143,6 +143,7 @@ struct UserAgreementView: View {
         } label: {
             Text("Continue")
                 .font(Theme.headline)
+                .textCase(.uppercase)
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(hasAgreed ? Theme.accent : Theme.accent.opacity(0.5))

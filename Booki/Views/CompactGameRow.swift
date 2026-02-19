@@ -200,7 +200,7 @@ struct CompactGameRow: View {
         totalMarket: Market?,
         isAwayTeam: Bool
     ) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             // Team abbreviation badge + name
             teamBadge(teamName)
 

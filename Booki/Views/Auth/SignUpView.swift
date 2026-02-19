@@ -160,7 +160,9 @@ struct SignUpView: View {
                                 .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
                         } else {
                             Text("Create Account")
-                                .fontWeight(.semibold)
+                                .font(Theme.headline)
+                                .fontWeight(.bold)
+                                .textCase(.uppercase)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -171,31 +173,18 @@ struct SignUpView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
 
-                // Divider
-                DividerWithText(text: "or")
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 8)
-
-                // Sign in with Apple
-                AppleSignInButton { error in
-                    errorMessage = error
-                }
-                .padding(.horizontal, 24)
-
                 Spacer(minLength: 40)
 
-                // Navigate to Login
-                HStack(spacing: 4) {
-                    Text("Already have an account?")
-                        .foregroundStyle(Theme.textSecondary)
-
-                    Button(action: onNavigateToLogin) {
-                        Text("Log in")
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Theme.accent)
+                // Back button
+                Button(action: onNavigateToLogin) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
                     }
+                    .font(Theme.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Theme.textSecondary)
                 }
-                .font(Theme.subheadline)
                 .padding(.bottom, 24)
             }
         }

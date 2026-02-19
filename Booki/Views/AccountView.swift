@@ -288,6 +288,7 @@ struct AccountView: View {
                     Text("Log Out")
                 }
                 .font(Theme.headline)
+                .textCase(.uppercase)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)

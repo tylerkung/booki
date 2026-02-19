@@ -112,7 +112,7 @@ enum Theme {
 
     // MARK: - Typography
 
-    /// Returns a Space Grotesk font with the given size and weight
+    /// Returns a Space Grotesk font with the given size and weight (display/titles)
     static func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         let name: String
         switch weight {
@@ -126,23 +126,39 @@ enum Theme {
         return Font.custom(name, size: size)
     }
 
+    /// Returns an IBM Plex Sans font with the given size and weight (body/reading text)
+    static func bodyFont(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .bold, .semibold, .heavy, .black:
+            name = "IBMPlexSans-Bold"
+        case .medium:
+            name = "IBMPlexSans-Medium"
+        default:
+            name = "IBMPlexSans-Regular"
+        }
+        return Font.custom(name, size: size)
+    }
+
     /// Space Grotesk with monospaced digits for odds/numbers
     static func monoDigits(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         font(size: size, weight: weight).monospacedDigit()
     }
 
-    // Convenience type scale properties
+    // Convenience type scale — Space Grotesk for titles/headlines
     static let largeTitle = font(size: 34, weight: .bold)
     static let title1 = font(size: 28, weight: .bold)
     static let title2 = font(size: 22, weight: .bold)
     static let title3 = font(size: 20, weight: .bold)
     static let headline = font(size: 17, weight: .bold)
-    static let body = font(size: 17)
-    static let callout = font(size: 16)
-    static let subheadline = font(size: 15)
-    static let footnote = font(size: 13)
-    static let caption = font(size: 12)
-    static let caption2 = font(size: 11, weight: .medium)
+
+    // Convenience type scale — IBM Plex Sans for body/reading text
+    static let body = bodyFont(size: 17)
+    static let callout = bodyFont(size: 16)
+    static let subheadline = bodyFont(size: 15)
+    static let footnote = bodyFont(size: 13)
+    static let caption = bodyFont(size: 12)
+    static let caption2 = bodyFont(size: 11, weight: .medium)
 
     /// Card gradient: subtle purple depth
     static let cardGradient = LinearGradient(
@@ -229,10 +245,10 @@ extension View {
     }
 
     /// Apply a glowing border effect for highlighted elements
-    func glowingBorder(color: Color = Theme.accent, isActive: Bool = true) -> some View {
+    func glowingBorder(color: Color = Theme.accent, isActive: Bool = true, cornerRadius: CGFloat = Theme.cornerRadius) -> some View {
         self
             .overlay(
-                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(color, lineWidth: isActive ? 2 : 0)
             )
             .shadow(color: isActive ? color.opacity(0.5) : .clear, radius: 8, x: 0, y: 0)

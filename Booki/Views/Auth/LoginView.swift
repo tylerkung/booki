@@ -1,7 +1,7 @@
 import SwiftUI
 import Supabase
 
-/// Login view for returning bookies to access their account
+/// Welcome landing screen — the first thing users see
 struct LoginView: View {
 
     // MARK: - Environment
@@ -10,6 +10,7 @@ struct LoginView: View {
 
     // MARK: - State
 
+    @State private var showSignIn: Bool = false
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var isLoading: Bool = false
@@ -30,152 +31,222 @@ struct LoginView: View {
     // MARK: - Body
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Header with Booki Logo
-                VStack(spacing: 12) {
-                    Image("BookiLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 200)
+        if showSignIn {
+            signInView
+        } else {
+            welcomeView
+        }
+    }
 
-                    Text("Welcome Back")
-                        .font(Theme.title1)
+    // MARK: - Welcome Screen
+
+    private var welcomeView: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            // Hero section
+            VStack(spacing: 20) {
+                Image("BookiLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 300)
+
+                Text("Your edge starts here.")
+                    .font(Theme.title1)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Theme.background)
+
+                Text("Run your book. Set the odds. Stack the wins.")
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.background.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+
+            Spacer()
+
+            // CTAs
+            VStack(spacing: 20) {
+                // GET STARTED button
+                Button {
+                    onNavigateToSignUp()
+                } label: {
+                    Text("Get Started")
+                        .font(Theme.headline)
                         .fontWeight(.bold)
-                        .foregroundStyle(Theme.background)
-
-                    Text("Log in to manage your book")
-                        .font(Theme.subheadline)
-                        .foregroundStyle(Theme.background.opacity(0.7))
-                }
-                .padding(.top, 40)
-                .padding(.bottom, 20)
-
-                // Form Fields
-                VStack(spacing: 16) {
-                    // Email Field
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Email")
-                            .font(Theme.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(Theme.background.opacity(0.8))
-
-                        TextField("", text: $email)
-                            .textFieldStyle(AuthTextFieldStyle())
-                            .textContentType(.emailAddress)
-                            .keyboardType(.emailAddress)
-                            .autocapitalization(.none)
-                            .autocorrectionDisabled()
-                            .placeholder(when: email.isEmpty) {
-                                Text("Enter your email")
-                                    .foregroundStyle(Theme.textMuted)
-                            }
-                    }
-
-                    // Password Field
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Password")
-                            .font(Theme.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(Theme.background.opacity(0.8))
-
-                        SecureField("", text: $password)
-                            .textFieldStyle(AuthTextFieldStyle())
-                            .textContentType(.password)
-                            .placeholder(when: password.isEmpty) {
-                                Text("Enter your password")
-                                    .foregroundStyle(Theme.textMuted)
-                            }
-                    }
-
-                    // Forgot Password Link
-                    HStack {
-                        Spacer()
-                        Button(action: onNavigateToForgotPassword) {
-                            Text("Forgot Password?")
-                                .font(Theme.subheadline)
-                                .foregroundStyle(Theme.background)
-                        }
-                    }
+                        .textCase(.uppercase)
+                        .tracking(1)
+                        .foregroundStyle(Color(hex: 0x00F5D4))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(Theme.background)
+                        .cornerRadius(12)
                 }
                 .padding(.horizontal, 24)
 
-                // Error Message
-                if let errorMessage = errorMessage {
-                    Text(errorMessage)
-                        .font(Theme.subheadline)
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Theme.danger.cornerRadius(Theme.cornerRadiusSmall))
-                        .padding(.horizontal, 24)
-                }
-
-                // Log In Button
-                Button(action: logIn) {
-                    Group {
-                        if isLoading {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        } else {
-                            Text("Log In")
-                                .fontWeight(.semibold)
-                        }
-                    }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(
-                        (!isFormValid || isLoading) ? Theme.elevatedBackground : Theme.background
-                    )
-                    .cornerRadius(Theme.cornerRadiusSmall)
-                }
-                .disabled(!isFormValid || isLoading)
-                .padding(.horizontal, 24)
-                .padding(.top, 8)
-
-                // Divider
-                DividerWithText(text: "or")
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 8)
-
-                // Sign in with Apple
-                AppleSignInButton { error in
-                    errorMessage = error
-                }
-                .padding(.horizontal, 24)
-
-                Spacer(minLength: 40)
-
-                // Navigate to Sign Up
-                HStack(spacing: 4) {
-                    Text("Don't have an account?")
-                        .foregroundStyle(Theme.background.opacity(0.7))
-
-                    Button(action: onNavigateToSignUp) {
-                        Text("Sign up")
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Theme.background)
-                    }
-                }
-                .font(Theme.subheadline)
-
-                // Player Claim Link
+                // I have an invite (player claim)
                 Button(action: onNavigateToPlayerClaim) {
                     HStack(spacing: 6) {
-                        Image(systemName: "person.badge.key")
-                        Text("I'm a Player")
+                        Image(systemName: "ticket.fill")
+                        Text("I have an invite code")
                             .fontWeight(.medium)
                     }
                     .font(Theme.subheadline)
-                    .foregroundStyle(Theme.background.opacity(0.7))
+                    .foregroundStyle(Theme.background.opacity(0.8))
                 }
-                .padding(.top, 8)
-                .padding(.bottom, 24)
+
+                // Already have an account
+                HStack(spacing: 4) {
+                    Text("I already have an account.")
+                        .foregroundStyle(Theme.background.opacity(0.6))
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showSignIn = true
+                        }
+                    } label: {
+                        Text("Sign in")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Theme.background)
+                            .underline()
+                    }
+                }
+                .font(Theme.subheadline)
+                .padding(.bottom, 40)
             }
         }
-        .scrollDismissesKeyboard(.interactively)
+        .background(Color(hex: 0x00F5D4).ignoresSafeArea())
+    }
+
+    // MARK: - Sign In View
+
+    private var signInView: some View {
+        VStack(spacing: 0) {
+            // Back button at top-left
+            HStack {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showSignIn = false
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .font(Theme.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Theme.background.opacity(0.7))
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+
+            Spacer()
+
+            // Header with logo
+            VStack(spacing: 12) {
+                Image("BookiLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 200)
+
+                Text("Welcome Back")
+                    .font(Theme.title1)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Theme.background)
+            }
+            .padding(.bottom, 24)
+
+            // Form Fields
+            VStack(spacing: 16) {
+                // Email Field
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Email")
+                        .font(Theme.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(Theme.background.opacity(0.8))
+
+                    TextField("", text: $email)
+                        .textFieldStyle(AuthTextFieldStyle())
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                        .placeholder(when: email.isEmpty) {
+                            Text("Enter your email")
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                }
+
+                // Password Field
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Password")
+                        .font(Theme.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(Theme.background.opacity(0.8))
+
+                    SecureField("", text: $password)
+                        .textFieldStyle(AuthTextFieldStyle())
+                        .textContentType(.password)
+                        .placeholder(when: password.isEmpty) {
+                            Text("Enter your password")
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                }
+
+                // Forgot Password Link
+                HStack {
+                    Spacer()
+                    Button(action: onNavigateToForgotPassword) {
+                        Text("Forgot Password?")
+                            .font(Theme.subheadline)
+                            .foregroundStyle(Theme.background)
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+
+            // Error Message
+            if let errorMessage = errorMessage {
+                Text(errorMessage)
+                    .font(Theme.subheadline)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Theme.danger.cornerRadius(Theme.cornerRadiusSmall))
+                    .padding(.horizontal, 24)
+                    .padding(.top, 12)
+            }
+
+            // Log In Button
+            Button(action: logIn) {
+                Group {
+                    if isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Text("Log In")
+                            .font(Theme.headline)
+                            .fontWeight(.bold)
+                            .textCase(.uppercase)
+                    }
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    (!isFormValid || isLoading) ? Theme.elevatedBackground : Theme.background
+                )
+                .cornerRadius(Theme.cornerRadiusSmall)
+            }
+            .disabled(!isFormValid || isLoading)
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+
+            Spacer()
+        }
         .background(Color(hex: 0x00F5D4).ignoresSafeArea())
     }
 

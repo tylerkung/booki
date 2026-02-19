@@ -595,16 +595,6 @@ struct BetSlipSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
 
-                // Bet count
-                HStack {
-                    Text("\(betSlipManager.count) Bet\(betSlipManager.count == 1 ? "" : "s")")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-
                 // Divider
                 Rectangle()
                     .fill(Theme.divider)
@@ -742,7 +732,7 @@ struct BetSlipSheet: View {
                                 lineWidth: isWagerActive ? 2 : 1
                             )
                     )
-                    .glowingBorder(color: Theme.gold, isActive: isWagerActive)
+                    .glowingBorder(color: Theme.gold, isActive: isWagerActive, cornerRadius: 10)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -783,7 +773,7 @@ struct BetSlipSheet: View {
                                 lineWidth: isToWinActive ? 2 : 1
                             )
                     )
-                    .glowingBorder(color: Theme.accent, isActive: isToWinActive)
+                    .glowingBorder(color: Theme.accent, isActive: isToWinActive, cornerRadius: 10)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -856,6 +846,7 @@ struct BetSlipSheet: View {
                 Text(submitButtonLabel)
                     .font(Theme.headline)
                     .fontWeight(.bold)
+                    .textCase(.uppercase)
             }
             .foregroundStyle(Theme.background)
             .frame(maxWidth: .infinity)
@@ -1051,6 +1042,7 @@ struct BetSlipSheet: View {
                 }) {
                     Text("Done")
                         .font(Theme.headline)
+                        .textCase(.uppercase)
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Theme.accent)
@@ -1749,7 +1741,7 @@ struct PremiumBetSlipItemCard: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(isWagerActive ? Theme.gold.opacity(0.6) : Theme.border, lineWidth: isWagerActive ? 2 : 0.5)
                         )
-                        .glowingBorder(color: Theme.gold, isActive: isWagerActive)
+                        .glowingBorder(color: Theme.gold, isActive: isWagerActive, cornerRadius: 8)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -1784,7 +1776,7 @@ struct PremiumBetSlipItemCard: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(isToWinActive ? Theme.accent.opacity(0.6) : Theme.border, lineWidth: isToWinActive ? 2 : 0.5)
                         )
-                        .glowingBorder(color: Theme.accent, isActive: isToWinActive)
+                        .glowingBorder(color: Theme.accent, isActive: isToWinActive, cornerRadius: 8)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation(.easeInOut(duration: 0.2)) {

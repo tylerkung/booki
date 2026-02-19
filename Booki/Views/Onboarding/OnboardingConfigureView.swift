@@ -153,7 +153,8 @@ struct OnboardingConfigureView: View {
             // Continue Button
             Button(action: saveAndContinue) {
                 Text("Continue")
-                    .font(.headline)
+                    .font(Theme.headline)
+                    .textCase(.uppercase)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
             }

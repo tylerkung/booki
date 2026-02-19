@@ -93,7 +93,8 @@ struct OnboardingAddPlayersView: View {
             if canContinue {
                 Button(action: onContinue) {
                     Text("Continue")
-                        .font(.headline)
+                        .font(Theme.headline)
+                        .textCase(.uppercase)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                 }
@@ -210,7 +211,8 @@ struct OnboardingAddPlayersView: View {
                 if generatedCode.isEmpty {
                     Button(action: generateInviteCode) {
                         Text("Generate Code")
-                            .font(.headline)
+                            .font(Theme.headline)
+                            .textCase(.uppercase)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                     }
@@ -308,7 +310,8 @@ struct OnboardingAddPlayersView: View {
 
                 Button(action: addPlayer) {
                     Text("Add Player")
-                        .font(.headline)
+                        .font(Theme.headline)
+                        .textCase(.uppercase)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                 }
