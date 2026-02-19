@@ -352,6 +352,12 @@ struct AccountView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
+        .overlay(alignment: .bottom) {
+            Text("Balances are informational and not processed by Booki.")
+                .font(.caption)
+                .foregroundStyle(Theme.textMuted)
+                .padding(.bottom, 8)
+        }
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 20)

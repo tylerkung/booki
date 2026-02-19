@@ -301,7 +301,7 @@ struct MarketSelectionView: View {
                 ContentUnavailableView(
                     "No Markets Available",
                     systemImage: "exclamationmark.triangle",
-                    description: Text("No betting markets are available for this event.")
+                    description: Text("No markets are available for this event.")
                 )
             } else {
                 ForEach(orderedMarketTypes, id: \.self) { marketType in
@@ -559,7 +559,7 @@ struct StakeEntryView: View {
     private var stakeError: String? {
         guard let _ = stake, let payout = potentialPayout else { return nil }
         if payout > balanceSummary.availableCredit {
-            return "Potential payout exceeds available credit"
+            return "Potential return exceeds available credit"
         }
         return nil
     }
@@ -602,7 +602,7 @@ struct StakeEntryView: View {
                 dismiss()
             }
         } message: {
-            Text("Your bet request has been recorded and is pending review.")
+            Text("Your pick request has been recorded and is pending review.")
         }
         .alert("Submission Failed", isPresented: .init(
             get: { submissionError != nil },
@@ -702,9 +702,9 @@ struct StakeEntryView: View {
                 }
             }
         } header: {
-            Text("Potential Payout")
+            Text("Potential Return")
         } footer: {
-            Text("Returns include your original stake if bet wins.")
+            Text("Returns include your original stake if pick wins.")
         }
         .listRowBackground(Theme.cardBackground)
     }
@@ -747,7 +747,7 @@ struct StakeEntryView: View {
 
             // Potential Payout (if calculated)
             if let payout = potentialPayout {
-                LabeledContent("Potential Payout") {
+                LabeledContent("Potential Return") {
                     Text(formatCurrency(payout))
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.accent)
@@ -766,7 +766,7 @@ struct StakeEntryView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "info.circle.fill")
                         .foregroundStyle(Theme.accent)
-                    Text("This submission records a bet request with your book. No money is wagered or transferred in this app.")
+                    Text("This submission records a pick request with your group. No money is wagered or transferred in this app.")
                         .font(Theme.footnote)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -799,7 +799,7 @@ struct StakeEntryView: View {
 
         // Get bookieId from player
         guard let bookieId = player.bookieId else {
-            submissionError = "Player is not associated with a bookie"
+            submissionError = "Member is not associated with an organizer"
             return
         }
 

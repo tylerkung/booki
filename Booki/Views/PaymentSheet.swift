@@ -3,8 +3,8 @@ import SwiftData
 
 /// Payment direction enum
 enum PaymentDirection: String, CaseIterable, Identifiable {
-    case playerPaidBookie = "Player Paid Me"
-    case bookiePaidPlayer = "I Paid Player"
+    case playerPaidBookie = "Member Paid Me"
+    case bookiePaidPlayer = "I Paid Member"
 
     var id: String { rawValue }
 }

@@ -543,6 +543,11 @@ struct BetSlipSheet: View {
                 submitSection
                     .opacity(canSubmit ? 1.0 : 0.4)
                     .disabled(!canSubmit)
+
+                // Compliance disclaimer
+                Text("For tracking purposes only.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textMuted)
             }
             .padding(.horizontal)
             .padding(.top, 16)

@@ -330,7 +330,7 @@ private struct DetailReasonChips: View {
         case "On heater": return Theme.gold
         case "Cold streak": return Theme.accentTertiary
         case "High roller": return Theme.accentSecondary
-        case "Parlay heavy": return Theme.scheduled
+        case "Multi-Pick heavy": return Theme.scheduled
         case "High volatility": return Theme.warning
         case "Large pending": return Theme.accent
         default: return Theme.textMuted
@@ -351,10 +351,10 @@ private struct MarketMixBar: View {
     }
 
     private var segments: [MarketSegment] {
-        var counts: [String: Int] = ["Spread": 0, "Moneyline": 0, "Total": 0, "Parlay": 0]
+        var counts: [String: Int] = ["Spread": 0, "Moneyline": 0, "Total": 0, "Multi-Pick": 0]
         for bet in bets {
             if bet.isParlay {
-                counts["Parlay", default: 0] += 1
+                counts["Multi-Pick", default: 0] += 1
             } else {
                 let market = bet.market.lowercased()
                 if market.contains("spread") {
@@ -374,10 +374,10 @@ private struct MarketMixBar: View {
             "Spread": Theme.accent,
             "Moneyline": Theme.accentSecondary,
             "Total": Theme.gold,
-            "Parlay": Theme.accentTertiary
+            "Multi-Pick": Theme.accentTertiary
         ]
 
-        let order = ["Spread", "Moneyline", "Total", "Parlay"]
+        let order = ["Spread", "Moneyline", "Total", "Multi-Pick"]
         return order.compactMap { key in
             let count = counts[key] ?? 0
             guard count > 0 else { return nil }

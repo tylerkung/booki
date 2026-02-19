@@ -140,7 +140,7 @@ struct PlayerClaimView: View {
                 .fontWeight(.bold)
                 .foregroundStyle(Theme.textPrimary)
 
-            Text("Enter the invite code from your bookie to access your account")
+            Text("Enter the invite code from your organizer to access your account")
                 .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -340,7 +340,7 @@ struct PlayerClaimView: View {
         } label: {
             HStack {
                 Image(systemName: "arrow.left")
-                Text("Back to Bookie Login")
+                Text("Back to Organizer Login")
             }
             .font(Theme.subheadline)
             .foregroundStyle(Theme.accent)
@@ -390,7 +390,7 @@ struct PlayerClaimView: View {
 
                     // Check expiration
                     if let expiresAt = record.expiresAtDate, Date() > expiresAt {
-                        errorMessage = "This invite code has expired. Please contact your bookie for a new one."
+                        errorMessage = "This invite code has expired. Please contact your organizer for a new one."
                         return
                     }
 

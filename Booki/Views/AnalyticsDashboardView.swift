@@ -628,7 +628,7 @@ private struct PlayerAnalyticsRow: View {
         case "On heater": return Theme.gold
         case "Cold streak": return Theme.accentTertiary
         case "High roller": return Theme.accentSecondary
-        case "Parlay heavy": return Theme.scheduled
+        case "Multi-Pick heavy": return Theme.scheduled
         case "High volatility": return Theme.warning
         case "Large pending": return Theme.accent
         default: return Theme.textMuted

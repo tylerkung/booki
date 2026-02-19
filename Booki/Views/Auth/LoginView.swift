@@ -114,7 +114,7 @@ struct LoginView: View {
                 .font(Theme.subheadline)
                 .padding(.bottom, 16)
 
-                Text("This app is designed for tracking and organizing private group activity. Booki does not process payments or facilitate gambling.")
+                Text("This app is designed for tracking and organizing private group activity. Booki does not process payments or facilitate real-money wagering.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)

@@ -54,7 +54,7 @@ struct BetConfirmationSheet: View {
                     confirmationContent
                 }
             }
-            .navigationTitle("Confirm Bet")
+            .navigationTitle("Confirm Pick")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -110,7 +110,7 @@ struct BetConfirmationSheet: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(betSlipManager.betMode == .parlay
-                         ? "\(betSlipManager.count)-Leg Parlay"
+                         ? "\(betSlipManager.count)-Leg Multi-Pick"
                          : "\(betSlipManager.count) Single\(betSlipManager.count == 1 ? "" : "s")")
                         .font(Theme.headline)
 
@@ -157,7 +157,7 @@ struct BetConfirmationSheet: View {
             // Stake per bet (for singles)
             if betSlipManager.betMode == .singles && betSlipManager.count > 1 {
                 HStack {
-                    Text("Stake per Bet")
+                    Text("Stake per Pick")
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     Text(formatCurrency(betSlipManager.stake))
@@ -178,9 +178,9 @@ struct BetConfirmationSheet: View {
             // Potential payout
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Potential Payout")
+                    Text("Potential Return")
                         .font(Theme.headline)
-                    Text("If all bets win")
+                    Text("If all picks win")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -204,7 +204,7 @@ struct BetConfirmationSheet: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "info.circle.fill")
                         .foregroundStyle(Theme.accent)
-                    Text("This submission records bet requests with your book. No money is wagered or transferred in this app. All bets are subject to bookie approval.")
+                    Text("This submission records pick requests with your group. No money is wagered or transferred in this app. All picks are subject to organizer approval.")
                         .font(Theme.footnote)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -308,7 +308,7 @@ struct BetConfirmationSheet: View {
                     .font(Theme.title2)
                     .fontWeight(.bold)
 
-                Text("\(submittedCount) bet\(submittedCount == 1 ? "" : "s") recorded and pending review")
+                Text("\(submittedCount) pick\(submittedCount == 1 ? "" : "s") recorded and pending review")
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -340,7 +340,7 @@ struct BetConfirmationSheet: View {
 
         // Get bookieId from player
         guard let bookieId = player.bookieId else {
-            submissionError = "Player is not associated with a bookie"
+            submissionError = "Member is not associated with an organizer"
             return
         }
 
@@ -441,7 +441,7 @@ struct BetConfirmationSheet: View {
                     submissionError = errors.joined(separator: "\n")
                 } else if !errors.isEmpty {
                     // Partial success - some bets failed
-                    submissionError = "\(successCount) bets submitted. Some failed:\n" + errors.joined(separator: "\n")
+                    submissionError = "\(successCount) picks submitted. Some failed:\n" + errors.joined(separator: "\n")
                 }
             }
         }

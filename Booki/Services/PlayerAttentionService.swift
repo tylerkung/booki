@@ -315,7 +315,7 @@ enum PlayerAttentionService {
         if !recentBets.isEmpty {
             let parlayCount = recentBets.filter(\.isParlay).count
             if Double(parlayCount) / Double(recentBets.count) > 0.5 {
-                chips.append(("Parlay heavy", 0.7))
+                chips.append(("Multi-Pick heavy", 0.7))
             }
         }
 

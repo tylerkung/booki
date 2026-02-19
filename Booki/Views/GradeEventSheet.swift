@@ -176,7 +176,7 @@ struct GradeEventSheet: View {
                 }
             }
             .background(Theme.background)
-            .navigationTitle("Grade Event Bets")
+            .navigationTitle("Grade Event Picks")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -203,7 +203,7 @@ struct GradeEventSheet: View {
                 }
             } message: {
                 let counts = gradeCounts
-                Text("Grade \(betsToGrade.count) bets?\n\n• \(counts.wins) wins\n• \(counts.losses) losses\n• \(counts.pushes) pushes")
+                Text("Grade \(betsToGrade.count) picks?\n\n• \(counts.wins) wins\n• \(counts.losses) losses\n• \(counts.pushes) pushes")
             }
         }
     }
@@ -343,7 +343,7 @@ struct GradeEventSheet: View {
 
                 Spacer()
 
-                Text("\(bets.count) bet\(bets.count == 1 ? "" : "s")")
+                Text("\(bets.count) pick\(bets.count == 1 ? "" : "s")")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
             }
@@ -513,7 +513,7 @@ struct BetGradeRow: View {
             // Bet info row
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(bet.player?.name ?? "Unknown Player")
+                    Text(bet.player?.name ?? "Unknown Member")
                         .font(Theme.subheadline)
                         .fontWeight(.medium)
 

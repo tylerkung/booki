@@ -5,7 +5,7 @@ import SwiftData
 enum MarketCategory: String, CaseIterable, Identifiable {
     case allMarkets = "All Markets"
     case alternateLines = "Alternate Lines"
-    case playerProps = "Player Props"
+    case playerProps = "Athlete Props"
     case gameProps = "Game Props"
 
     var id: String { rawValue }
@@ -143,7 +143,7 @@ struct GameDetailView: View {
         case .alternateLines:
             return "No alternate lines available for this game."
         case .playerProps:
-            return "No player props available for this game."
+            return "No athlete props available for this game."
         case .gameProps:
             return "No game props available for this game."
         }

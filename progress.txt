@@ -5,6 +5,9 @@ Started: Thu Feb 19 10:05:11 PST 2026
 ## Codebase Patterns
 - String-only compliance changes: only modify text inside `Text()`, `Label()`, `.navigationTitle()`, enum `rawValue` strings. Never rename Swift types/variables/filenames.
 - PlayerMainView tabs are "Games", "Track", "Account" — no gambling terms, typically no changes needed.
+- Chip labels from PlayerAttentionService (e.g., "Parlay heavy") are used as switch-case keys in multiple view files — update the service AND all matching views.
+- Compliance disclaimers should avoid the word "gambling" — use "real-money wagering" instead.
+- Theme.textMuted is the standard style for disclaimer text (not textSecondary).
 
 ---
 
@@ -192,4 +195,48 @@ Started: Thu Feb 19 10:05:11 PST 2026
   - OnboardingImportGamesView and OnboardingContainerView have no banned terms — they deal with sports/games concepts which are acceptable
   - LoginView disclaimer goes on the welcomeView (not signInView) — that's the first screen users see
   - The disclaimer text intentionally avoids the word "gambling" in the disclaimer itself per PRD notes
+---
+
+## 2026-02-19 - US-011
+- TrackView.swift: Already updated in US-004 (typeLabel, displayName, "No Picks Yet", "pick requests", "Potential Return") — no changes needed
+- GamesView.swift: 'games to bet on' → 'games to browse' in empty state description
+- BetHistoryView.swift: Nav title 'Bet History' → 'Pick History', empty state 'this bet' → 'this pick'
+- BetHistoryView.swift: humanReadableAction audit strings: 'Bet Created/Accepted/Graded' → 'Pick Created/Accepted/Graded', 'Bet Settled' → 'Pick Reconciled', 'Settlement Reversed' → 'Reconciliation Reversed'
+- EventDetailView.swift: 'Grade All Bets' → 'Grade All Picks', 'Void All Bets' → 'Void All Picks' (button, title, confirmation)
+- EventDetailView.swift: 'Exposure Breakdown' → 'Activity Breakdown', 'Max Exposure' → 'Max Activity'
+- EventDetailView.swift: 'No bets for this event' → 'No picks', 'Bets' section header → 'Picks'
+- EventDetailView.swift: 'Unknown Player' → 'Unknown Member', 'bets (pending, accepted)' → 'picks (pending, accepted)'
+- EventDetailView.swift: 'bet(s) will be marked' → 'pick(s) will be marked' in FinalScoreSheet
+- Files changed: GamesView.swift (806→806), BetHistoryView.swift (291→291), EventDetailView.swift (689→689)
+- **Learnings for future iterations:**
+  - TrackView was fully updated in US-004 — always check progress log before starting a story to avoid duplicate work
+  - BetHistoryView humanReadableAction switch maps audit action types to display strings — these are user-visible in the timeline
+  - EventDetailView has 3 sub-views with user-facing strings: ExposureSideRow, EventBetRow, LiabilitySideRow, plus FinalScoreSheet
+  - The "Void All Bets?" alert has 3 separate string locations: title, button label, and message text
+---
+
+## 2026-02-19 - US-012
+- BetSlipSheet: Added 'For tracking purposes only.' disclaimer below Record Pick button using Theme.textMuted
+- AccountView: Added 'Balances are informational and not processed by Booki.' overlay on heroBalanceSection
+- BetConfirmationSheet: 'Confirm Bet' → 'Confirm Pick', 'Leg Parlay' → 'Leg Multi-Pick', 'Stake per Bet' → 'Stake per Pick'
+- BetConfirmationSheet: 'Potential Payout' → 'Potential Return', 'If all bets win' → 'If all picks win', compliance section updated
+- BetConfirmationSheet: Success message 'bet(s)' → 'pick(s)', error messages updated (player→member, bookie→organizer, bets→picks)
+- SubmitBetView: 'Potential Payout' → 'Potential Return' (section header, LabeledContent, error message), 'bet request' → 'pick request'
+- SubmitBetView: 'No betting markets' → 'No markets', compliance disclosure updated (bet→pick, book→group)
+- GradeEventSheet: 'Grade Event Bets' → 'Grade Event Picks', 'bets?' → 'picks?', 'bet(s)' → 'pick(s)', 'Unknown Player' → 'Unknown Member'
+- PlayerClaimView: 'from your bookie' → 'from your organizer', expired code error 'bookie' → 'organizer', 'Back to Bookie Login' → 'Back to Organizer Login'
+- PaymentSheet: PaymentDirection rawValues 'Player Paid Me' → 'Member Paid Me', 'I Paid Player' → 'I Paid Member'
+- GameDetailView: MarketCategory.playerProps rawValue 'Player Props' → 'Athlete Props', empty state string updated
+- Final sweep: Fixed remaining violations in PlayerRiskWatchlistCard ('players' → 'members'), AttentionFeedView ('settlement' → 'reconciliation', 'exposure' → 'activity')
+- Final sweep: SettlementSnapshotCard ('Settlement' → 'Reconciliation', 'View Settlements' → 'View Reconciliations')
+- Final sweep: PlayerAnalyticsDetailView/AnalyticsDashboardView 'Parlay heavy' → 'Multi-Pick heavy', chart labels 'Parlay' → 'Multi-Pick'
+- Final sweep: PlayerAttentionService chip label 'Parlay heavy' → 'Multi-Pick heavy' (source of chip data)
+- Final sweep: LoginView/SignUpView disclaimers replaced 'gambling' with 'real-money wagering' per PRD notes
+- Files changed: BetSlipSheet.swift (+5), AccountView.swift (+6), BetConfirmationSheet.swift (522→522), SubmitBetView.swift (885→885), GradeEventSheet.swift (637→637), PlayerClaimView.swift (514→514), PaymentSheet.swift (220→220), GameDetailView.swift (772→772), PlayerRiskWatchlistCard.swift, AttentionFeedView.swift, SettlementSnapshotCard.swift, PlayerAnalyticsDetailView.swift, AnalyticsDashboardView.swift, PlayerAttentionService.swift, LoginView.swift, SignUpView.swift
+- **Learnings for future iterations:**
+  - Chip labels from PlayerAttentionService are used as switch-case string keys in 3 view files (PlayerAnalyticsDetailView, AnalyticsDashboardView, PlayerRiskWatchlistCard) — always update the service source AND all matching views
+  - MarketCategory enum rawValues in GameDetailView.swift are used as tab labels AND in emptyStateDescription switch — update both
+  - PaymentDirection enum rawValues are used as Picker display strings AND in LabeledContent previews
+  - Compliance disclaimers must avoid the word "gambling" per PRD notes — use "real-money wagering" instead
+  - MarketMixBar in PlayerAnalyticsDetailView uses string keys ("Parlay") as both dictionary keys and chart legend labels — update all occurrences
 ---

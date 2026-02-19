@@ -65,7 +65,7 @@ struct PlayerRiskWatchlistCard: View {
                 .font(.title2)
                 .foregroundStyle(Theme.accent)
 
-            Text("No players need attention")
+            Text("No members need attention")
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
 

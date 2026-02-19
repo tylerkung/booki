@@ -215,7 +215,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "TrackView ticket display helpers (typeLabel, displayName) were already updated in US-004. Focus on remaining strings. GamesView has very few banned terms. BetHistoryView has a humanReadableAction switch for audit trail display."
     },
     {
@@ -238,7 +238,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "This combines the disclaimers and final sweep into one story. BetConfirmationSheet.swift is separate from BetSlipSheet. SubmitBetView.swift has 'Potential Payout' and 'bet request' strings. PaymentDirection enum rawValues in PaymentSheet.swift are used as Picker display strings. MarketCategory enum rawValues in GameDetailView.swift are tab labels. Check LoginView/SignUpView disclaimers don't use the word 'gambling' in the disclaimer itself."
     }
   ]
