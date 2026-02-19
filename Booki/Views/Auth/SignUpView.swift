@@ -63,7 +63,7 @@ struct SignUpView: View {
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.textPrimary)
 
-                    Text("Sign up to start managing your book")
+                    Text("Sign up to start managing your group")
                         .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }

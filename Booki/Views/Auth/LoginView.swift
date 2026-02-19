@@ -56,7 +56,7 @@ struct LoginView: View {
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.background)
 
-                Text("Run your book. Set the odds. Stack the wins.")
+                Text("Run your group. Track the action. Stay organized.")
                     .font(Theme.body)
                     .foregroundStyle(Theme.background.opacity(0.7))
                     .multilineTextAlignment(.center)

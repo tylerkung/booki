@@ -77,7 +77,7 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("Bookie Profile")
+                    Text("Organizer Profile")
                 }
                 .listRowBackground(Theme.cardBackground)
 
@@ -96,7 +96,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Balance Alerts")
                 } footer: {
-                    Text("Get alerted when players have balances above the threshold or aging balances older than the specified days.")
+                    Text("Get alerted when members have balances above the threshold or aging balances older than the specified days.")
                 }
                 .listRowBackground(Theme.cardBackground)
 
@@ -104,7 +104,7 @@ struct SettingsView: View {
                 Section {
                     // Auto-pilot mode toggles
                     Toggle(isOn: $manualBetAcceptance) {
-                        Label("Require Manual Bet Approval", systemImage: "hand.raised")
+                        Label("Require Manual Pick Approval", systemImage: "hand.raised")
                     }
                     .onChange(of: manualBetAcceptance) { _, newValue in
                         Task {
@@ -113,7 +113,7 @@ struct SettingsView: View {
                     }
 
                     Toggle(isOn: $manualBetGrading) {
-                        Label("Grade Bets Manually", systemImage: "checkmark.circle")
+                        Label("Grade Picks Manually", systemImage: "checkmark.circle")
                     }
                     .onChange(of: manualBetGrading) { _, newValue in
                         Task {
@@ -127,12 +127,12 @@ struct SettingsView: View {
                         Label("Acceptance Rules", systemImage: "checkmark.shield")
                     }
                 } header: {
-                    Text("Bet Management")
+                    Text("Pick Management")
                 } footer: {
                     if manualBetAcceptance || manualBetGrading {
-                        Text("Manual mode enabled. You'll need to review bets and/or grade them yourself.")
+                        Text("Manual mode enabled. You'll need to review picks and/or grade them yourself.")
                     } else {
-                        Text("Auto-pilot mode: Bets are auto-accepted and auto-graded when games complete.")
+                        Text("Auto-pilot mode: Picks are auto-accepted and auto-graded when games complete.")
                     }
                 }
                 .listRowBackground(Theme.cardBackground)
@@ -578,7 +578,7 @@ struct ExportDataView: View {
         numberFormatter.minimumFractionDigits = 2
         numberFormatter.maximumFractionDigits = 2
 
-        var csv = "Date,Player,Event,Market,Side,Odds,Stake,Status,Result,Payout\n"
+        var csv = "Date,Member,Event,Market,Side,Odds,Stake,Status,Result,Return\n"
 
         for bet in bets {
             let date = dateFormatter.string(from: bet.createdAt)
@@ -627,7 +627,7 @@ struct ExportDataView: View {
         numberFormatter.minimumFractionDigits = 2
         numberFormatter.maximumFractionDigits = 2
 
-        var csv = "Date,Player,Type,Amount,Description,Related Bet\n"
+        var csv = "Date,Member,Type,Amount,Description,Related Pick\n"
 
         for entry in ledgerEntries {
             let date = dateFormatter.string(from: entry.createdAt)
@@ -666,7 +666,7 @@ struct ExportDataView: View {
                         showingBetExportShare = true
                     }
                 } label: {
-                    Label("Export Bets (\(bets.count))", systemImage: "list.bullet.rectangle")
+                    Label("Export Picks (\(bets.count))", systemImage: "list.bullet.rectangle")
                 }
                 .disabled(bets.isEmpty)
 

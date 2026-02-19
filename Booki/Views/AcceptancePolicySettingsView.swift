@@ -49,35 +49,35 @@ struct AcceptancePolicySettingsView: View {
             } header: {
                 Text("Stake Thresholds")
             } footer: {
-                Text("Bets up to Auto-Accept Max are automatically accepted. Bets above Review Above require manual review.")
+                Text("Picks up to Auto-Accept Max are automatically accepted. Picks above Review Above require manual review.")
             }
             .listRowBackground(Theme.cardBackground)
 
             // MARK: - Player Rules Section
             Section {
-                Toggle("Auto-Accept New Players", isOn: Binding(
+                Toggle("Auto-Accept New Members", isOn: Binding(
                     get: { policy?.autoAcceptNewPlayers ?? false },
                     set: { newValue in
                         getOrCreatePolicy().autoAcceptNewPlayers = newValue
                     }
                 ))
 
-                Stepper("Bet Threshold: \(policy?.newPlayerBetThreshold ?? 5)", value: Binding(
+                Stepper("Pick Threshold: \(policy?.newPlayerBetThreshold ?? 5)", value: Binding(
                     get: { policy?.newPlayerBetThreshold ?? 5 },
                     set: { newValue in
                         getOrCreatePolicy().newPlayerBetThreshold = newValue
                     }
                 ), in: 1...20)
             } header: {
-                Text("Player Rules")
+                Text("Member Rules")
             } footer: {
-                Text("New players with fewer than the bet threshold will have bets queued for review unless auto-accept is enabled.")
+                Text("New members with fewer than the pick threshold will have picks queued for review unless auto-accept is enabled.")
             }
             .listRowBackground(Theme.cardBackground)
 
             // MARK: - Parlay Rules Section
             Section {
-                Toggle("Auto-Accept Parlays", isOn: Binding(
+                Toggle("Auto-Accept Multi-Picks", isOn: Binding(
                     get: { policy?.autoAcceptParlays ?? false },
                     set: { newValue in
                         getOrCreatePolicy().autoAcceptParlays = newValue
@@ -91,9 +91,9 @@ struct AcceptancePolicySettingsView: View {
                     }
                 ), in: 2...10)
             } header: {
-                Text("Parlay Rules")
+                Text("Multi-Pick Rules")
             } footer: {
-                Text("Parlay bets with more legs than the maximum will be queued for review regardless of the toggle.")
+                Text("Multi-picks with more legs than the maximum will be queued for review regardless of the toggle.")
             }
             .listRowBackground(Theme.cardBackground)
 
@@ -110,7 +110,7 @@ struct AcceptancePolicySettingsView: View {
                     }
                 }
             } header: {
-                Text("Parlay Settlement")
+                Text("Multi-Pick Reconciliation")
             } footer: {
                 Text(policy?.parlayPushVoidPolicyEnum.explanation ?? ParlayPushVoidPolicy.reduceLegReprice.explanation)
             }
@@ -131,7 +131,7 @@ struct AcceptancePolicySettingsView: View {
             } header: {
                 Text("Event Lock")
             } footer: {
-                Text("Bets will be blocked this many minutes before the event starts.")
+                Text("Picks will be blocked this many minutes before the event starts.")
             }
             .listRowBackground(Theme.cardBackground)
         }

@@ -4,7 +4,7 @@ import SwiftData
 /// Filter options for transaction history
 enum TransactionFilter: String, CaseIterable, Identifiable {
     case all = "All"
-    case settlements = "Settlements"
+    case settlements = "Reconciliations"
     case adjustments = "Adjustments"
     case payments = "Payments"
 
@@ -24,7 +24,7 @@ enum TransactionFilter: String, CaseIterable, Identifiable {
 /// Filter options for bet history (player view)
 enum BetHistoryFilter: String, CaseIterable, Identifiable {
     case active = "Active"
-    case settled = "Settled"
+    case settled = "Reconciled"
     case all = "All"
 
     var id: String { rawValue }
@@ -344,7 +344,7 @@ struct AccountView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(Theme.textSecondary)
-                    Text("All settled up")
+                    Text("All reconciled")
                         .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -403,7 +403,7 @@ struct AccountView: View {
                 Divider().background(Theme.divider)
 
                 // Connected Bookie
-                profileRow(icon: "link.circle.fill", label: "Bookie", value: player.bookie?.name ?? "—")
+                profileRow(icon: "link.circle.fill", label: "Organizer", value: player.bookie?.name ?? "—")
 
                 Divider().background(Theme.divider)
 
@@ -501,7 +501,7 @@ struct AccountView: View {
                         .frame(width: 24)
 
                     Toggle(isOn: $notificationsEnabled) {
-                        Text("Bet Notifications")
+                        Text("Pick Notifications")
                             .font(.subheadline)
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -660,7 +660,7 @@ struct AccountView: View {
             HStack(spacing: 12) {
                 // Open Bets
                 statCard(
-                    title: "Open Bets",
+                    title: "Open Picks",
                     value: "\(openBetsCount)",
                     icon: "ticket.fill",
                     color: Theme.scheduled
@@ -737,7 +737,7 @@ struct AccountView: View {
             HStack(spacing: 8) {
                 Image(systemName: "trophy.fill")
                     .foregroundStyle(Theme.gold)
-                Text("BETTING STATS")
+                Text("PICK STATS")
                     .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
@@ -802,7 +802,7 @@ struct AccountView: View {
             VStack(spacing: 16) {
                 // Total Bets Placed
                 statsRow(
-                    label: "Total Bets Placed",
+                    label: "Total Picks Placed",
                     value: "\(totalBetsPlaced)",
                     valueColor: Theme.textPrimary
                 )
@@ -825,7 +825,7 @@ struct AccountView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "dollarsign.circle")
                             .foregroundStyle(Theme.textMuted)
-                        Text("Total Profit/Loss")
+                        Text("Total Performance")
                             .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -929,7 +929,7 @@ struct AccountView: View {
             HStack(spacing: 8) {
                 Image(systemName: "ticket.fill")
                     .foregroundStyle(Theme.scheduled)
-                Text("MY BETS")
+                Text("MY PICKS")
                     .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
@@ -971,7 +971,7 @@ struct AccountView: View {
                     Image(systemName: "ticket")
                         .font(Theme.font(size: 40))
                         .foregroundStyle(Theme.textMuted)
-                    Text("No bets")
+                    Text("No picks")
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textSecondary)
                     if selectedBetFilter != .all {
@@ -1154,7 +1154,7 @@ struct TransactionRowView: View {
     private var typeLabel: String {
         switch entry.type {
         case .settlement:
-            return "Settlement"
+            return "Reconciliation"
         case .adjustment:
             return "Adjustment"
         case .paymentLogged:
@@ -1284,7 +1284,7 @@ struct AccountBetRowView: View {
             if let result = bet.gradeResult {
                 return result.rawValue.capitalized
             }
-            return "Settled"
+            return "Reconciled"
         case .declined:
             return "Declined"
         case .void:
@@ -1465,7 +1465,7 @@ struct AccountBetDetailView: View {
             if let result = bet.gradeResult {
                 return result.rawValue.capitalized
             }
-            return "Settled"
+            return "Reconciled"
         case .declined: return "Declined"
         case .void: return "Void"
         }
@@ -1567,7 +1567,7 @@ struct AccountBetDetailView: View {
                 }
                 detailRow(label: "Stake", value: formattedStake, valueColor: Theme.textPrimary)
             } header: {
-                Text("YOUR BET")
+                Text("YOUR PICK")
                     .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)
@@ -1606,7 +1606,7 @@ struct AccountBetDetailView: View {
             // Details Section
             Section {
                 detailRow(label: "Placed", value: formattedDate)
-                detailRow(label: "Bet ID", value: String(bet.id.uuidString.prefix(8)) + "...")
+                detailRow(label: "Pick ID", value: String(bet.id.uuidString.prefix(8)) + "...")
             } header: {
                 Text("DETAILS")
                     .font(Theme.caption)
@@ -1618,7 +1618,7 @@ struct AccountBetDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("Bet Details")
+        .navigationTitle("Pick Details")
         .navigationBarTitleDisplayMode(.inline)
     }
 
