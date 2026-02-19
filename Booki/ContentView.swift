@@ -149,12 +149,12 @@ struct ContentView: View {
 
             BetsListView()
                 .tabItem {
-                    Label("Bets", systemImage: "list.bullet.rectangle")
+                    Label("Picks", systemImage: "list.bullet.rectangle")
                 }
 
             PlayersListView()
                 .tabItem {
-                    Label("Players", systemImage: "person.2.fill")
+                    Label("Members", systemImage: "person.2.fill")
                 }
                 .badge(flaggedPlayersCount > 0 ? flaggedPlayersCount : 0)
 
