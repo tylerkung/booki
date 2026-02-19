@@ -10,6 +10,17 @@ Started: Thu Feb 19 02:07:59 PST 2026
 
 ---
 
+## 2026-02-19 - US-002
+- **What was implemented**: Added earnings hero number to the top of AnalyticsDashboardView — large lifetime P/L number with color-coding and "Lifetime P/L" subtitle label
+- **Files changed**:
+  - `Booki/Views/AnalyticsDashboardView.swift` - Added `lifetimePL` computed property, `earningsHeader` sub-view, `formatSignedCurrency` helper; replaced `.navigationTitle("Analytics")` with `.navigationBarTitleDisplayMode(.inline)`; moved earnings header above FinishSetupCard in ScrollView
+- **Learnings for future iterations:**
+  - `PlayerAttentionService.totalBookiePL(bets:)` gives aggregate bookie P/L across all players
+  - Signed currency formatting: use abs value for NumberFormatter, prepend +/- manually
+  - Earnings header renders directly on `Theme.background` (no card) for integrated Robinhood look
+  - Hero number uses `Theme.font(size: 34, weight: .bold)` per design spec
+---
+
 ## 2026-02-19 - US-001
 - **What was implemented**: Added `DailyPLPoint` struct, `totalBookiePL(bets:)` and `dailyCumulativePL(bets:days:)` methods to PlayerAttentionService
 - **Files changed**:

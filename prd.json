@@ -39,7 +39,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "This story does NOT include the chart or time range selector — just the big number and label. Keep it simple. The earnings section should be the first thing visible in the ScrollView. The FinishSetupCard (onboarding) should appear below the earnings header if needed. Use the existing `formatCurrency` helper pattern (NumberFormatter with .currency style). The SyncStatusIndicator toolbar item should remain."
     },
     {
