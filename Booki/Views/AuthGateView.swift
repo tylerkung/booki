@@ -31,28 +31,39 @@ struct AuthGateView: View {
     /// Scene phase for detecting app foreground/background
     @Environment(\.scenePhase) private var scenePhase
 
+    // MARK: - Splash Animation State
+
+    @State private var splashLogoScale: CGFloat = 0.7
+    @State private var splashLogoOpacity: Double = 0
+    @State private var splashSpinnerOpacity: Double = 0
+
     // MARK: - Body
 
     var body: some View {
-        Group {
+        ZStack {
             if authManager.isLoading || (authManager.isAuthenticated && authManager.isLoadingBookie) {
                 loadingView
+                    .transition(.opacity.combined(with: .scale(scale: 1.04)))
             } else if authManager.isAuthenticated {
                 // Check if agreement is required for any authenticated user (bookie or player)
                 if authManager.agreementRequired {
                     agreementView
+                        .transition(.opacity)
                 } else {
                     // Route based on user role
                     switch authManager.userRole {
                     case .player:
                         PlayerMainView()
+                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     case .bookie, nil:
                         ContentView()
                             .environment(onboardingManager)
+                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     }
                 }
             } else {
                 authFlowView
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .fullScreenCover(isPresented: $showOnboarding) {
@@ -74,9 +85,9 @@ struct AuthGateView: View {
                 showOnboarding = true
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
-        .animation(.easeInOut(duration: 0.2), value: authManager.isLoading)
-        .animation(.easeInOut(duration: 0.2), value: authManager.isLoadingBookie)
+        .animation(.easeInOut(duration: 0.5), value: authManager.isAuthenticated)
+        .animation(.easeInOut(duration: 0.4), value: authManager.isLoading)
+        .animation(.easeInOut(duration: 0.4), value: authManager.isLoadingBookie)
         .onChange(of: authManager.bookieError) { _, newError in
             showBookieErrorAlert = newError != nil
         }
@@ -204,11 +215,23 @@ struct AuthGateView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 200)
+                    .scaleEffect(splashLogoScale)
+                    .opacity(splashLogoOpacity)
 
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
                     .scaleEffect(1.2)
                     .padding(.top, 16)
+                    .opacity(splashSpinnerOpacity)
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                splashLogoScale = 1.0
+                splashLogoOpacity = 1.0
+            }
+            withAnimation(.easeInOut(duration: 0.3).delay(0.4)) {
+                splashSpinnerOpacity = 1.0
             }
         }
     }

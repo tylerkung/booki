@@ -60,3 +60,14 @@ Started: Thu Feb 19 02:07:59 PST 2026
   - Running cumulative sum: sort day keys ascending, accumulate P/L across days
   - Empty state handled: returns empty array if no graded bets
 ---
+
+## 2026-02-19 - Launch & Transition Animations
+- **What was implemented**: Polished app launch and auth state transition animations in AuthGateView
+- **Files changed**:
+  - `Booki/Views/AuthGateView.swift` - Splash logo spring animation, spinner delayed fade-in, smooth transitions between auth states (splash/login/dashboard)
+- **Learnings for future iterations:**
+  - Use `ZStack` (not `Group`) as root container when views need `.transition()` modifiers
+  - `.move(edge:)` transitions feel jarring for splash dismissal — prefer `.opacity + .scale` for dissolve effects
+  - Spring animation (`response: 0.6, dampingFraction: 0.7`) gives a nice bouncy logo entrance
+  - Longer animation durations (0.4–0.5s) feel more cinematic for auth state changes
+---
