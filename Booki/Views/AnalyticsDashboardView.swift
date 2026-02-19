@@ -15,6 +15,36 @@ struct AnalyticsDashboardView: View {
     @State private var searchText = ""
     @State private var activeFilter = "All"
     @State private var scrollToPlayers = false
+    @State private var selectedRange: String = "ALL"
+
+    private static let timeRanges = ["1W", "1M", "3M", "1Y", "ALL"]
+
+    private var selectedDays: Int {
+        switch selectedRange {
+        case "1W": return 7
+        case "1M": return 30
+        case "3M": return 90
+        case "1Y": return 365
+        default: return 0
+        }
+    }
+
+    private var periodPL: Decimal {
+        if selectedRange == "ALL" { return lifetimePL }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -selectedDays, to: Date())!
+        let rangeBets = bets.filter { $0.createdAt >= cutoff }
+        return PlayerAttentionService.totalBookiePL(bets: rangeBets)
+    }
+
+    private var periodLabel: String {
+        switch selectedRange {
+        case "1W": return "past 7 days"
+        case "1M": return "past 30 days"
+        case "3M": return "past 90 days"
+        case "1Y": return "past year"
+        default: return "all time"
+        }
+    }
 
     private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
 
@@ -95,7 +125,12 @@ struct AnalyticsDashboardView: View {
                             .padding(.horizontal, 16)
 
                         // Earnings Chart
-                        EarningsChart(bets: bets, lineColor: lifetimePL >= 0 ? Theme.accent : Theme.danger)
+                        EarningsChart(bets: bets, days: selectedDays, lineColor: lifetimePL >= 0 ? Theme.accent : Theme.danger)
+                            .padding(.horizontal, 16)
+                            .animation(.easeInOut(duration: 0.3), value: selectedRange)
+
+                        // Time Range Tabs
+                        timeRangeTabs
                             .padding(.horizontal, 16)
 
                         // Finish Setup Card
@@ -176,11 +211,23 @@ struct AnalyticsDashboardView: View {
                 .font(Theme.font(size: 34, weight: .bold))
                 .foregroundStyle(lifetimePL > 0 ? Theme.accent : lifetimePL < 0 ? Theme.danger : Theme.textPrimary)
 
-            Text("Lifetime P/L")
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textSecondary)
+            periodChangeLabel
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var periodChangeLabel: some View {
+        Group {
+            if periodPL != 0 {
+                Text("\(periodPL > 0 ? "▲" : "▼") \(formatSignedCurrency(periodPL)) \(periodLabel)")
+                    .font(Theme.caption)
+                    .foregroundStyle(periodPL > 0 ? Theme.accent : Theme.danger)
+            } else {
+                Text("\(formatSignedCurrency(periodPL)) \(periodLabel)")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
     }
 
     private func formatSignedCurrency(_ value: Decimal) -> String {
@@ -188,6 +235,31 @@ struct AnalyticsDashboardView: View {
         if value > 0 { return "+\(formatted)" }
         if value < 0 { return "-\(formatted)" }
         return formatted
+    }
+
+    // MARK: - Time Range Tabs
+
+    private var timeRangeTabs: some View {
+        HStack(spacing: 0) {
+            ForEach(Self.timeRanges, id: \.self) { range in
+                Button {
+                    selectedRange = range
+                } label: {
+                    Text(range)
+                        .font(Theme.bodyFont(size: 13, weight: selectedRange == range ? .bold : .medium))
+                        .foregroundStyle(selectedRange == range ? Theme.accent : Theme.textMuted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .overlay(alignment: .bottom) {
+                            if selectedRange == range {
+                                Rectangle()
+                                    .fill(Theme.accent)
+                                    .frame(height: 2)
+                            }
+                        }
+                }
+            }
+        }
     }
 
     // MARK: - Empty State
@@ -384,10 +456,11 @@ struct AnalyticsDashboardView: View {
 
 private struct EarningsChart: View {
     let bets: [Bet]
+    var days: Int = 0
     let lineColor: Color
 
     private var dataPoints: [DailyPLPoint] {
-        PlayerAttentionService.dailyCumulativePL(bets: bets, days: 0)
+        PlayerAttentionService.dailyCumulativePL(bets: bets, days: days)
     }
 
     var body: some View {
