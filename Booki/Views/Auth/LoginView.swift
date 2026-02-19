@@ -112,7 +112,14 @@ struct LoginView: View {
                     }
                 }
                 .font(Theme.subheadline)
-                .padding(.bottom, 40)
+                .padding(.bottom, 16)
+
+                Text("This app is designed for tracking and organizing private group activity. Booki does not process payments or facilitate gambling.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 24)
             }
         }
         .background(Color(hex: 0x00F5D4).ignoresSafeArea())

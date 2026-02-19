@@ -38,7 +38,7 @@ struct OnboardingSuccessView: View {
             .padding(.bottom, 32)
 
             // Headline
-            Text("Your book is ready")
+            Text("Your group is ready")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .foregroundStyle(Theme.textPrimary)
@@ -47,12 +47,12 @@ struct OnboardingSuccessView: View {
             // Checklist
             VStack(alignment: .leading, spacing: 20) {
                 ChecklistItem(
-                    title: "Book configured",
+                    title: "Group configured",
                     isComplete: showCheckmarks[0]
                 )
 
                 ChecklistItem(
-                    title: "Players added",
+                    title: "Members added",
                     isComplete: showCheckmarks[1]
                 )
 

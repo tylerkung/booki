@@ -45,12 +45,12 @@ struct OnboardingAddPlayersView: View {
         VStack(spacing: 0) {
             // Header
             VStack(spacing: 8) {
-                Text("Your book needs players.")
+                Text("Your group needs members.")
                     .font(.title)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.textPrimary)
 
-                Text("Add at least one player to continue")
+                Text("Add at least one member to continue")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -126,7 +126,7 @@ struct OnboardingAddPlayersView: View {
                         .cornerRadius(Theme.cornerRadiusSmall)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Invite Players")
+                        Text("Invite Members")
                             .font(.headline)
                             .foregroundStyle(Theme.textPrimary)
                         Text("Generate a code to share")
@@ -162,7 +162,7 @@ struct OnboardingAddPlayersView: View {
                         Text("Add Manually")
                             .font(.headline)
                             .foregroundStyle(Theme.textPrimary)
-                        Text("Create a player yourself")
+                        Text("Create a member yourself")
                             .font(.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -204,7 +204,7 @@ struct OnboardingAddPlayersView: View {
 
             // Code display
             VStack(spacing: 16) {
-                Text("Share this code with your player")
+                Text("Share this code with your member")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
 
@@ -234,7 +234,7 @@ struct OnboardingAddPlayersView: View {
                                 .cornerRadius(Theme.cornerRadiusSmall)
                         }
 
-                        ShareLink(item: "Join my book on Booki! Use code: \(generatedCode)") {
+                        ShareLink(item: "Join my group on Booki! Use code: \(generatedCode)") {
                             Label("Share", systemImage: "square.and.arrow.up")
                                 .font(.subheadline)
                                 .foregroundStyle(Theme.textPrimary)
@@ -275,7 +275,7 @@ struct OnboardingAddPlayersView: View {
             // Form
             VStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Player Name")
+                    Text("Member Name")
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
 
@@ -309,7 +309,7 @@ struct OnboardingAddPlayersView: View {
                 }
 
                 Button(action: addPlayer) {
-                    Text("Add Player")
+                    Text("Add Member")
                         .font(Theme.headline)
                         .textCase(.uppercase)
                         .frame(maxWidth: .infinity)
@@ -347,7 +347,7 @@ struct OnboardingAddPlayersView: View {
     private var addedPlayersView: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Players")
+                Text("Members")
                     .font(.headline)
                     .foregroundStyle(Theme.textPrimary)
 

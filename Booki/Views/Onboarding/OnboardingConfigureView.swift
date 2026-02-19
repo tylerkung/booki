@@ -45,12 +45,12 @@ struct OnboardingConfigureView: View {
         VStack(spacing: 0) {
             // Header
             VStack(spacing: 8) {
-                Text("Configure your book")
+                Text("Configure your group")
                     .font(.title)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.textPrimary)
 
-                Text("Set up how your sportsbook operates")
+                Text("Set up how your group operates")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -63,7 +63,7 @@ struct OnboardingConfigureView: View {
                     // Settlement Frequency
                     settingCard {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Settlement Frequency")
+                            Text("Reconciliation Frequency")
                                 .font(.headline)
                                 .foregroundStyle(Theme.textPrimary)
 
@@ -81,14 +81,14 @@ struct OnboardingConfigureView: View {
                         Toggle(isOn: $autoAcceptBets) {
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(spacing: 6) {
-                                    Text("Auto-accept bets")
+                                    Text("Auto-accept picks")
                                         .font(.headline)
                                         .foregroundStyle(Theme.textPrimary)
                                     Text("(Recommended)")
                                         .font(.caption)
                                         .foregroundStyle(Theme.accent)
                                 }
-                                Text("Bets are accepted automatically without manual approval")
+                                Text("Picks are accepted automatically without manual approval")
                                     .font(.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
@@ -101,14 +101,14 @@ struct OnboardingConfigureView: View {
                         Toggle(isOn: $autoGradeBets) {
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(spacing: 6) {
-                                    Text("Auto-grade bets")
+                                    Text("Auto-grade picks")
                                         .font(.headline)
                                         .foregroundStyle(Theme.textPrimary)
                                     Text("(Recommended)")
                                         .font(.caption)
                                         .foregroundStyle(Theme.accent)
                                 }
-                                Text("Bets are graded automatically when games finish")
+                                Text("Picks are graded automatically when games finish")
                                     .font(.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
@@ -123,7 +123,7 @@ struct OnboardingConfigureView: View {
                                 .font(.headline)
                                 .foregroundStyle(Theme.textPrimary)
 
-                            Text("New players will start with this credit limit")
+                            Text("New members will start with this credit limit")
                                 .font(.caption)
                                 .foregroundStyle(Theme.textSecondary)
 

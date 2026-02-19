@@ -26,7 +26,7 @@ struct OnboardingWelcomeView: View {
                 .padding(.bottom, 32)
 
             // Headline
-            Text("Run your sportsbook like a business.")
+            Text("Run your group like a pro.")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .foregroundStyle(Theme.textPrimary)
@@ -34,7 +34,7 @@ struct OnboardingWelcomeView: View {
                 .padding(.horizontal, 32)
 
             // Body
-            Text("Booki helps you track bets, manage players, and run weekly settlements.")
+            Text("Booki helps you track picks, manage members, and run weekly reconciliations.")
                 .font(.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -45,7 +45,7 @@ struct OnboardingWelcomeView: View {
 
             // Primary CTA
             Button(action: onContinue) {
-                Text("Set Up Your Book")
+                Text("Set Up Your Group")
                     .font(Theme.headline)
                     .textCase(.uppercase)
                     .frame(maxWidth: .infinity)

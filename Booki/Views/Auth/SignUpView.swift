@@ -173,6 +173,13 @@ struct SignUpView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
 
+                Text("This app is designed for tracking and organizing private group activity. Booki does not process payments or facilitate gambling.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 12)
+
                 Spacer(minLength: 40)
 
                 // Back button
