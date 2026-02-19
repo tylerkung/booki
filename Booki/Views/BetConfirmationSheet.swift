@@ -178,7 +178,7 @@ struct BetConfirmationSheet: View {
             // Potential payout
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Potential Return")
+                    Text("Total Return")
                         .font(Theme.headline)
                     Text("If all picks win")
                         .font(Theme.caption)

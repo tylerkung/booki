@@ -682,7 +682,7 @@ struct StakeEntryView: View {
     private var payoutSection: some View {
         Section {
             HStack {
-                Text("Potential Profit")
+                Text("Profit")
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 if let payout = potentialPayout {
@@ -702,9 +702,9 @@ struct StakeEntryView: View {
                 }
             }
         } header: {
-            Text("Potential Return")
+            Text("Financials")
         } footer: {
-            Text("Returns include your original stake if pick wins.")
+            Text("Total return includes your original stake if pick wins.")
         }
         .listRowBackground(Theme.cardBackground)
     }
@@ -745,9 +745,9 @@ struct StakeEntryView: View {
                 }
             }
 
-            // Potential Payout (if calculated)
+            // Total Return (if calculated)
             if let payout = potentialPayout {
-                LabeledContent("Potential Return") {
+                LabeledContent("Total Return") {
                     Text(formatCurrency(payout))
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.accent)

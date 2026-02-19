@@ -44,9 +44,9 @@ struct PickDetailHeader: View {
         VStack(spacing: 8) {
             if isSettled {
                 labeledRow(label: "Final Profit", value: formattedProfit, valueColor: presenter.profitColor)
-                labeledRow(label: "Final Payout", value: "$\(PickPresenter.formatDecimal(totalReturn))")
+                labeledRow(label: "Total Return", value: "$\(PickPresenter.formatDecimal(totalReturn))")
             } else {
-                labeledRow(label: "Potential Profit", value: "+$\(PickPresenter.formatDecimal(presenter.profit))", valueColor: Theme.accent)
+                labeledRow(label: "Profit", value: "+$\(PickPresenter.formatDecimal(presenter.profit))", valueColor: Theme.accent)
                 labeledRow(label: "Total Return", value: "$\(PickPresenter.formatDecimal(totalReturn))")
             }
         }

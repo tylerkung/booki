@@ -1584,7 +1584,7 @@ struct AccountBetDetailView: View {
             // Payout Section
             Section {
                 HStack {
-                    Text("Profit if Win")
+                    Text("Profit")
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     Text(formatCurrency(potentialPayout))
@@ -1601,7 +1601,7 @@ struct AccountBetDetailView: View {
                         .foregroundStyle(Theme.accent)
                 }
             } header: {
-                Text("POTENTIAL RETURN")
+                Text("FINANCIALS")
                     .font(Theme.caption)
                     .fontWeight(.semibold)
                     .tracking(1)

@@ -607,7 +607,7 @@ struct BetSlipSheet: View {
 
                 // Potential payout row - Premium styled with accent highlight
                 HStack {
-                    Text("Potential Return")
+                    Text("Total Return")
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
@@ -924,7 +924,7 @@ struct BetSlipSheet: View {
 
                 // Potential payout row - Premium styled with green accent
                 HStack {
-                    Text("Potential Return")
+                    Text("Total Return")
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()

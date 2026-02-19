@@ -486,9 +486,9 @@ struct BetDetailView: View {
             }
             .listRowBackground(Theme.cardBackground)
 
-            // MARK: - Payout Section
-            Section("Potential Return") {
-                LabeledContent("Profit if Win", value: formattedPotentialPayout)
+            // MARK: - Financials Section
+            Section("Financials") {
+                LabeledContent("Profit", value: formattedPotentialPayout)
                     .foregroundStyle(Theme.accent)
                 LabeledContent("Total Return", value: formattedTotalReturn)
                     .fontWeight(.semibold)
