@@ -59,7 +59,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Swift Charts is available iOS 16+ and app targets iOS 17+ so no compatibility issue. LineMark uses `.value(\"Date\", point.date)` for x and `.value(\"P/L\", NSDecimalNumber(decimal: point.cumulativePL).doubleValue)` for y. Apply `.foregroundStyle(lineColor)` to the LineMark. Use `.interpolationMethod(.catmullRom)` for smooth curves like Robinhood. Extract chart into a private sub-view (e.g., `EarningsChart`) to keep the body manageable and avoid type-checker timeouts."
     },
     {

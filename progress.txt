@@ -8,6 +8,21 @@ Started: Thu Feb 19 02:07:59 PST 2026
 - Day grouping pattern: `DateFormatter` with `"yyyy-MM-dd"` format, used in both `volatility` and `dailyCumulativePL`
 - LiabilityService.calculatePayout(stake:odds:) for American odds payout calculation
 
+- Extract chart into private sub-view (`EarningsChart`) to avoid SwiftUI type-checker timeouts
+- Swift Charts: use `NSDecimalNumber(decimal:).doubleValue` to convert Decimal for chart values
+
+---
+
+## 2026-02-19 - US-003
+- **What was implemented**: Added earnings line chart using Swift Charts between the hero number and summary cards
+- **Files changed**:
+  - `Booki/Views/AnalyticsDashboardView.swift` - Added `import Charts`, created `EarningsChart` private sub-view with LineMark, catmullRom interpolation, hidden axes, empty state handling; inserted chart below earnings header
+- **Learnings for future iterations:**
+  - Swift Charts `LineMark` needs `.foregroundStyle()` applied to the mark itself, not the Chart
+  - `DailyPLPoint` is a top-level struct in PlayerAttentionService.swift (not nested)
+  - `.interpolationMethod(.catmullRom)` gives smooth Robinhood-style curves
+  - Extract chart sub-views to avoid type-checker issues with complex Chart bodies
+  - Line color is conditional on lifetime P/L sign: accent for positive, danger for negative
 ---
 
 ## 2026-02-19 - US-002
