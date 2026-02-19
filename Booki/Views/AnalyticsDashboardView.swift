@@ -270,11 +270,11 @@ struct AnalyticsDashboardView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(Theme.textMuted)
 
-            Text("No Players Yet")
+            Text("No Members Yet")
                 .font(Theme.title3)
                 .foregroundStyle(Theme.textPrimary)
 
-            Text("Add players to start tracking analytics and risk.")
+            Text("Add members to start tracking analytics and risk.")
                 .font(Theme.bodyFont(size: 15))
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -302,7 +302,7 @@ struct AnalyticsDashboardView: View {
 
             // Card 2 — Pending Bets
             SummaryCard(
-                label: "Pending Bets",
+                label: "Pending Picks",
                 value: "\(totalPendingBets)",
                 subtitle: formatCurrency(totalPendingStake) + " at stake",
                 valueColor: totalPendingBets > 0 ? Theme.warning : Theme.textPrimary
@@ -316,7 +316,7 @@ struct AnalyticsDashboardView: View {
                 SummaryCard(
                     label: "Outstanding",
                     value: overduePlayers.isEmpty ? "All clear" : formatCurrency(totalOverdueAmount),
-                    subtitle: overduePlayers.isEmpty ? nil : "\(overduePlayers.count) player\(overduePlayers.count == 1 ? "" : "s")",
+                    subtitle: overduePlayers.isEmpty ? nil : "\(overduePlayers.count) member\(overduePlayers.count == 1 ? "" : "s")",
                     valueColor: overduePlayers.isEmpty ? Theme.accent : Theme.danger
                 )
             }
@@ -350,7 +350,7 @@ struct AnalyticsDashboardView: View {
 
     private var playerListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("PLAYERS")
+            Text("MEMBERS")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .tracking(1.0)
@@ -364,7 +364,7 @@ struct AnalyticsDashboardView: View {
 
             // Result count
             if activeFilter != "All" || !searchText.isEmpty {
-                Text("\(filteredSummaries.count) of \(summaries.count) players")
+                Text("\(filteredSummaries.count) of \(summaries.count) members")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
                     .padding(.leading, 4)
@@ -372,7 +372,7 @@ struct AnalyticsDashboardView: View {
 
             // Player rows
             if filteredSummaries.isEmpty {
-                Text("No players match filters")
+                Text("No members match filters")
                     .font(Theme.bodyFont(size: 15))
                     .foregroundStyle(Theme.textMuted)
                     .frame(maxWidth: .infinity)
@@ -396,7 +396,7 @@ struct AnalyticsDashboardView: View {
                 .foregroundStyle(Theme.textMuted)
                 .font(.system(size: 14))
 
-            TextField("Search players", text: $searchText)
+            TextField("Search members", text: $searchText)
                 .font(Theme.bodyFont(size: 15))
                 .foregroundStyle(Theme.textPrimary)
 
@@ -460,7 +460,7 @@ private struct EarningsChart: View {
 
     var body: some View {
         if dataPoints.isEmpty {
-            Text("No betting history yet")
+            Text("No pick history yet")
                 .font(Theme.bodyFont(size: 14))
                 .foregroundStyle(Theme.textMuted)
                 .frame(maxWidth: .infinity)
@@ -470,7 +470,7 @@ private struct EarningsChart: View {
                 ForEach(dataPoints, id: \.date) { point in
                     LineMark(
                         x: .value("Date", point.date),
-                        y: .value("P/L", NSDecimalNumber(decimal: point.cumulativePL).doubleValue)
+                        y: .value("Performance", NSDecimalNumber(decimal: point.cumulativePL).doubleValue)
                     )
                     .foregroundStyle(lineColor)
                     .interpolationMethod(.catmullRom)
@@ -548,7 +548,7 @@ private struct PlayerAnalyticsRow: View {
             // Secondary metrics
             HStack(spacing: 16) {
                 secondaryLabel("Lifetime", value: formatSignedCurrency(summary.allTimePL))
-                secondaryLabel("Avg bet", value: formatCurrency(summary.avgBetSize30d))
+                secondaryLabel("Avg pick", value: formatCurrency(summary.avgBetSize30d))
             }
 
             // Reason chips
@@ -580,11 +580,11 @@ private struct PlayerAnalyticsRow: View {
                     .font(Theme.bodyFont(size: 15))
                     .foregroundStyle(Theme.danger)
             } else if summary.exposure.grossExposure > 0 {
-                Text("Open exposure: \(formatCurrency(summary.exposure.grossExposure))")
+                Text("Open activity: \(formatCurrency(summary.exposure.grossExposure))")
                     .font(Theme.bodyFont(size: 15))
                     .foregroundStyle(Theme.textPrimary)
             } else {
-                Text("7d P/L: \(formatSignedCurrency(summary.sevenDayPL))")
+                Text("7d Performance: \(formatSignedCurrency(summary.sevenDayPL))")
                     .font(Theme.bodyFont(size: 15))
                     .foregroundStyle(summary.sevenDayPL > 0 ? Theme.accent : summary.sevenDayPL < 0 ? Theme.danger : Theme.textSecondary)
             }
