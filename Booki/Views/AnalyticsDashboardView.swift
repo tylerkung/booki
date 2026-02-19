@@ -17,6 +17,10 @@ struct AnalyticsDashboardView: View {
 
     private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
 
+    private var lifetimePL: Decimal {
+        PlayerAttentionService.totalBookiePL(bets: bets)
+    }
+
     private var summaries: [PlayerAnalyticsSummary] {
         let activePlayers = players.filter { $0.status == .active }
         return PlayerAttentionService.generateSummaries(
@@ -85,6 +89,10 @@ struct AnalyticsDashboardView: View {
             ScrollViewReader { scrollProxy in
                 ScrollView {
                     VStack(spacing: 16) {
+                        // Earnings Hero Number
+                        earningsHeader
+                            .padding(.horizontal, 16)
+
                         // Finish Setup Card
                         if let manager = onboardingManager, !manager.isOnboardingComplete {
                             FinishSetupCard(
@@ -127,7 +135,7 @@ struct AnalyticsDashboardView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
-            .navigationTitle("Analytics")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: PlayerAnalyticsSummary.self) { summary in
                 PlayerAnalyticsDetailView(
                     summary: summary,
@@ -153,6 +161,28 @@ struct AnalyticsDashboardView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Earnings Header
+
+    private var earningsHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(formatSignedCurrency(lifetimePL))
+                .font(Theme.font(size: 34, weight: .bold))
+                .foregroundStyle(lifetimePL > 0 ? Theme.accent : lifetimePL < 0 ? Theme.danger : Theme.textPrimary)
+
+            Text("Lifetime P/L")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func formatSignedCurrency(_ value: Decimal) -> String {
+        let formatted = formatCurrency(value < 0 ? -value : value)
+        if value > 0 { return "+\(formatted)" }
+        if value < 0 { return "-\(formatted)" }
+        return formatted
     }
 
     // MARK: - Empty State
