@@ -2,7 +2,8 @@
 Started: Wed Feb 18 19:34:51 PST 2026
 
 ## Codebase Patterns
-- PlayerAnalyticsDetailView accepts `playerBets: [Bet]` parameter for sections needing raw bet data (Behavior, History)
+- PlayerAnalyticsDetailView accepts `playerBets: [Bet]` and `playerLedgerEntries: [LedgerEntry]` parameters for sections needing raw data
+- Extract sub-views as `private struct` at file scope for complex sections (RecentActivitySection, BetHistoryRow) to avoid type-checker timeouts
 - Services are caseless `enum` with `static` methods (stateless namespace pattern)
 - P/L calculations use `LiabilityService.calculatePayout(stake:odds:)` — returns profit only, not stake back
 - Bet.player and LedgerEntry.player are optional relationships (`Player?`) — always use `?.id` for comparison
@@ -122,4 +123,19 @@ Started: Wed Feb 18 19:34:51 PST 2026
   - Market mix uses case-insensitive `.lowercased().contains()` for market type matching
   - GeometryReader for proportional bar segments — subtract spacing from width calculation to avoid overflow
   - Reuse `todayMetricRow` helper for simple label/value metric rows across sections
+---
+
+## 2026-02-18 - US-009
+- Added Reliability section with payment status badge (New/Overdue/Current), days since last payment, overdue amount
+- Added Recent Activity section showing last 10 bets sorted by date descending
+- Each bet row shows: date, event description, side + odds, stake, and result badge (W/L/P/Pending)
+- "View All" link shown when player has more than 10 bets
+- Added `playerLedgerEntries: [LedgerEntry]` parameter to PlayerAnalyticsDetailView
+- Extracted `RecentActivitySection` and `BetHistoryRow` as private structs at file scope
+- Files changed: `Booki/Views/PlayerAnalyticsDetailView.swift` (modified)
+- **Learnings for future iterations:**
+  - PlayerAnalyticsDetailView now requires 3 params: summary, playerBets, playerLedgerEntries — US-010 navigation wiring must pass all three
+  - Payment status logic: empty ledger = "New", isOverdue from summary = "Overdue", else "Current"
+  - `gradeResult` is optional (`GradeResult?`) — use switch with `case nil:` for pending/open bets
+  - DateFormatter with `"MMM d, h:mm a"` gives compact date display for bet history rows
 ---

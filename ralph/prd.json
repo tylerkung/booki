@@ -102,7 +102,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Use @State private var searchText = '' and @State private var activeFilter = 'All'. Filter chips pattern similar to existing sport tabs in GamesView — horizontally scrolling HStack in a ScrollView(.horizontal)."
     },
     {
@@ -121,7 +121,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Balance convention for bookie: positive balanceOwed = player owes bookie (good, show in green/accent). Negative = bookie owes player (show in danger). Sections will be added below in strict order: Today → Performance → Behavior → Reliability → History."
     },
     {
@@ -139,7 +139,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Sparkline removed from this story to keep it right-sized. Can be added as a follow-up. All P/L values come from PlayerAnalyticsSummary — no additional computation needed. Win rate from summary.winRate, format as percentage."
     },
     {
@@ -160,7 +160,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Bet.market is a String field (e.g., 'Spread', 'Moneyline', 'Total'). Use case-insensitive .lowercased().contains() matching. Bet.isParlay is a Bool field. Bets per week = (count of bets in 30d) / 4.3. PlayerAnalyticsDetailView will need access to the player's bets — either pass them as a parameter or add @Query filtered by player."
     },
     {
@@ -181,7 +181,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "PlayerAnalyticsDetailView needs access to player's ledgerEntries and bets. Either pass as parameters or use @Query with a predicate filtering by player. Bet.eventDescription exists for offline display. Bet.createdAt for sorting. Use case-insensitive UUID comparison (.lowercased()) if looking up events by eventId."
     },
     {

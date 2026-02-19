@@ -181,7 +181,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "PlayerAnalyticsDetailView needs access to player's ledgerEntries and bets. Either pass as parameters or use @Query with a predicate filtering by player. Bet.eventDescription exists for offline display. Bet.createdAt for sorting. Use case-insensitive UUID comparison (.lowercased()) if looking up events by eventId."
     },
     {
