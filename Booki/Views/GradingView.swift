@@ -984,17 +984,6 @@ struct ParlayLegRow: View {
         }
     }
 
-    /// Status text
-    private var statusText: String {
-        if bet.status == .void {
-            return "Void"
-        }
-        guard let result = bet.gradeResult else {
-            return "Pending"
-        }
-        return result.rawValue.capitalized
-    }
-
     var body: some View {
         HStack(spacing: 12) {
             // Status indicator dot for ungraded legs (SelectionRow handles graded legs)
@@ -1030,13 +1019,8 @@ struct ParlayLegRow: View {
 
             // Status badge or grading buttons
             if isGraded {
-                Text(statusText)
-                    .font(Theme.font(size: 12, weight: .semibold))
-                    .foregroundStyle(Theme.background)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(statusColor)
-                    .clipShape(Capsule())
+                let (settlement, _) = PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
+                StatusPill(settlementStatus: settlement)
             } else if !isMultiSelectMode {
                 // Compact grading buttons
                 HStack(spacing: 8) {

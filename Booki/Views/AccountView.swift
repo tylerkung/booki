@@ -1268,7 +1268,7 @@ struct AccountBetRowView: View {
                 switch result {
                 case .win: return Theme.accent
                 case .loss: return Theme.danger
-                case .push: return Theme.warning
+                case .push: return Theme.textMuted
                 }
             }
             return Theme.accent
@@ -1276,25 +1276,6 @@ struct AccountBetRowView: View {
             return Theme.danger
         case .void:
             return Theme.textMuted
-        }
-    }
-
-    /// Status display text
-    private var statusText: String {
-        switch bet.status {
-        case .pending:
-            return "Pending"
-        case .accepted, .readyToGrade:
-            return "Open"
-        case .graded, .settled:
-            if let result = bet.gradeResult {
-                return result.rawValue.capitalized
-            }
-            return "Reconciled"
-        case .declined:
-            return "Declined"
-        case .void:
-            return "Void"
         }
     }
 
@@ -1369,14 +1350,8 @@ struct AccountBetRowView: View {
 
             // Status badge and stake
             VStack(alignment: .trailing, spacing: 6) {
-                Text(statusText)
-                    .font(Theme.caption2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(Theme.background)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(statusColor)
-                    .clipShape(Capsule())
+                let (settlement, workflow) = PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
+                StatusPill(settlementStatus: settlement, workflowStatus: workflow)
 
                 Text(formattedStake)
                     .font(Theme.caption)
@@ -1442,51 +1417,6 @@ struct AccountBetDetailView: View {
     }
 
     /// Status color
-    private var statusColor: Color {
-        switch bet.status {
-        case .pending: return Theme.warning
-        case .accepted, .readyToGrade: return Theme.scheduled
-        case .declined: return Theme.danger
-        case .graded, .settled:
-            if let result = bet.gradeResult {
-                switch result {
-                case .win: return Theme.accent
-                case .loss: return Theme.danger
-                case .push: return Theme.warning
-                }
-            }
-            return Theme.accent
-        case .void: return Theme.textMuted
-        }
-    }
-
-    /// Status text
-    private var statusText: String {
-        switch bet.status {
-        case .pending: return "Pending Approval"
-        case .accepted: return "Open"
-        case .readyToGrade: return "Awaiting Result"
-        case .graded: return "Graded"
-        case .settled:
-            if let result = bet.gradeResult {
-                return result.rawValue.capitalized
-            }
-            return "Reconciled"
-        case .declined: return "Declined"
-        case .void: return "Void"
-        }
-    }
-
-    /// Grade result color
-    private var gradeResultColor: Color {
-        guard let result = bet.gradeResult else { return Theme.textPrimary }
-        switch result {
-        case .win: return Theme.accent
-        case .loss: return Theme.danger
-        case .push: return Theme.warning
-        }
-    }
-
     /// Formatted date
     private var formattedDate: String {
         let formatter = DateFormatter()
@@ -1503,24 +1433,8 @@ struct AccountBetDetailView: View {
                     Text("Status")
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
-                    Text(statusText)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Theme.background)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(statusColor)
-                        .clipShape(Capsule())
-                }
-
-                if let gradeResult = bet.gradeResult {
-                    HStack {
-                        Text("Result")
-                            .foregroundStyle(Theme.textSecondary)
-                        Spacer()
-                        Text(gradeResult.rawValue.capitalized)
-                            .fontWeight(.bold)
-                            .foregroundStyle(gradeResultColor)
-                    }
+                    let (settlement, workflow) = PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
+                    StatusPill(settlementStatus: settlement, workflowStatus: workflow)
                 }
             }
             .listRowBackground(Theme.cardBackground)

@@ -379,18 +379,6 @@ struct BetDetailView: View {
         formatCurrency(totalReturn)
     }
 
-    private var statusColor: Color {
-        switch bet.status {
-        case .pending: return Theme.warning
-        case .accepted: return Theme.accent
-        case .declined: return Theme.danger
-        case .readyToGrade: return .purple
-        case .graded: return .indigo
-        case .settled: return Theme.accent
-        case .void: return Theme.textMuted
-        }
-    }
-
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -434,13 +422,8 @@ struct BetDetailView: View {
                 HStack {
                     Text("Status")
                     Spacer()
-                    Text(bet.status.rawValue.capitalized)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Theme.background)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(statusColor)
-                        .clipShape(Capsule())
+                    let (settlement, workflow) = PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
+                    StatusPill(settlementStatus: settlement, workflowStatus: workflow)
                 }
 
                 if let gradeResult = bet.gradeResult {
