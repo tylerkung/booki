@@ -10,7 +10,21 @@ Started: Thu Feb 19 02:07:59 PST 2026
 
 - Extract chart into private sub-view (`EarningsChart`) to avoid SwiftUI type-checker timeouts
 - Swift Charts: use `NSDecimalNumber(decimal:).doubleValue` to convert Decimal for chart values
+- Bet model has `createdAt` but no `gradedAt` — filter by `createdAt` for time range filtering
+- Time range tabs: use HStack with equal spacing + bottom underline for active tab (Robinhood style)
 
+---
+
+## 2026-02-19 - US-004
+- **What was implemented**: Added time range selector (1W/1M/3M/1Y/ALL) below the earnings chart and period change label below the hero number with directional arrows
+- **Files changed**:
+  - `Booki/Views/AnalyticsDashboardView.swift` - Added `selectedRange` state, `selectedDays`/`periodPL`/`periodLabel` computed properties, `timeRangeTabs` sub-view with underline active indicator, `periodChangeLabel` sub-view with ▲/▼ arrows; updated `EarningsChart` to accept `days` parameter; added chart animation on range change
+- **Learnings for future iterations:**
+  - Bet model only has `createdAt` date — no `gradedAt` or `updatedAt` fields
+  - Period change label: use ▲/▼ Unicode arrows for positive/negative indicators
+  - `EarningsChart` `days` parameter controls `dailyCumulativePL` filtering
+  - Time range tabs use `.overlay(alignment: .bottom)` for underline indicator
+  - Animation applied to chart container via `.animation(.easeInOut, value: selectedRange)`
 ---
 
 ## 2026-02-19 - US-003

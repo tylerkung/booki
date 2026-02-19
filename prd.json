@@ -79,7 +79,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Time range mapping: '1W' → 7 days, '1M' → 30 days, '3M' → 90 days, '1Y' → 365 days, 'ALL' → 0 (all time). Period change calculation: compute totalBookiePL for all bets, then compute P/L for only bets in the selected range — the difference is the period change. Or simpler: just use realizedPL-style aggregation filtered to the selected range. For the label format: '+$245.00 past 7 days' or '+$1,200.00 all time'. Arrow: ▲ for positive, ▼ for negative, none for zero."
     }
   ]
