@@ -11,6 +11,10 @@ struct AnalyticsDashboardView: View {
 
     @State private var showOnboardingFromCard = false
     @State private var lastUpdated = Date()
+    @State private var searchText = ""
+    @State private var activeFilter = "All"
+
+    private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
 
     private var summaries: [PlayerAnalyticsSummary] {
         let activePlayers = players.filter { $0.status == .active }
@@ -19,6 +23,33 @@ struct AnalyticsDashboardView: View {
             bets: bets,
             ledgerEntries: ledgerEntries
         )
+    }
+
+    private var filteredSummaries: [PlayerAnalyticsSummary] {
+        var result = summaries
+
+        // Apply search
+        if !searchText.isEmpty {
+            result = result.filter { $0.player.name.localizedCaseInsensitiveContains(searchText) }
+        }
+
+        // Apply filter
+        switch activeFilter {
+        case "Attention needed":
+            result = result.filter { $0.pas.score >= 34 }
+        case "Overdue":
+            result = result.filter { $0.isOverdue }
+        case "High exposure":
+            result = result.filter { $0.exposure.grossExposure > 0 }
+        case "Big winners":
+            result = result.filter { $0.sevenDayPL > 0 }
+        case "Big losers":
+            result = result.filter { $0.sevenDayPL < 0 }
+        default:
+            break
+        }
+
+        return result
     }
 
     // MARK: - Aggregated Metrics
@@ -193,8 +224,80 @@ struct AnalyticsDashboardView: View {
                 .tracking(1.0)
                 .padding(.leading, 4)
 
-            ForEach(summaries, id: \.player.id) { summary in
-                PlayerAnalyticsRow(summary: summary, formatCurrency: formatCurrency)
+            // Search bar
+            searchBar
+
+            // Filter chips
+            filterChips
+
+            // Result count
+            if activeFilter != "All" || !searchText.isEmpty {
+                Text("\(filteredSummaries.count) of \(summaries.count) players")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.leading, 4)
+            }
+
+            // Player rows
+            if filteredSummaries.isEmpty {
+                Text("No players match filters")
+                    .font(Theme.bodyFont(size: 15))
+                    .foregroundStyle(Theme.textMuted)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+            } else {
+                ForEach(filteredSummaries, id: \.player.id) { summary in
+                    PlayerAnalyticsRow(summary: summary, formatCurrency: formatCurrency)
+                }
+            }
+        }
+    }
+
+    // MARK: - Search Bar
+
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(Theme.textMuted)
+                .font(.system(size: 14))
+
+            TextField("Search players", text: $searchText)
+                .font(Theme.bodyFont(size: 15))
+                .foregroundStyle(Theme.textPrimary)
+
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Theme.textMuted)
+                        .font(.system(size: 14))
+                }
+            }
+        }
+        .padding(10)
+        .background(Theme.elevatedBackground)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+    }
+
+    // MARK: - Filter Chips
+
+    private var filterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Self.filterOptions, id: \.self) { filter in
+                    Button {
+                        activeFilter = filter
+                    } label: {
+                        Text(filter)
+                            .font(Theme.bodyFont(size: 13, weight: .medium))
+                            .foregroundStyle(activeFilter == filter ? .black : Theme.textSecondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(activeFilter == filter ? Theme.accent : Theme.elevatedBackground)
+                            .clipShape(Capsule())
+                    }
+                }
             }
         }
     }
