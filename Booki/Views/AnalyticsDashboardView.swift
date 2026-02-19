@@ -13,6 +13,7 @@ struct AnalyticsDashboardView: View {
     @State private var lastUpdated = Date()
     @State private var searchText = ""
     @State private var activeFilter = "All"
+    @State private var scrollToPlayers = false
 
     private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
 
@@ -80,56 +81,76 @@ struct AnalyticsDashboardView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                // Finish Setup Card
-                if let manager = onboardingManager, !manager.isOnboardingComplete {
-                    FinishSetupCard(
-                        onboardingManager: manager,
-                        onResume: { showOnboardingFromCard = true }
-                    )
-                    .padding(.horizontal, 16)
+        NavigationStack {
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Finish Setup Card
+                        if let manager = onboardingManager, !manager.isOnboardingComplete {
+                            FinishSetupCard(
+                                onboardingManager: manager,
+                                onResume: { showOnboardingFromCard = true }
+                            )
+                            .padding(.horizontal, 16)
+                        }
+
+                        if players.filter({ $0.status == .active }).isEmpty {
+                            emptyState
+                        } else {
+                            // Summary Cards 2x2
+                            summaryCardsGrid
+                                .padding(.horizontal, 16)
+
+                            // Last updated
+                            Text("Last updated \(lastUpdated.formatted(date: .omitted, time: .shortened))")
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.textMuted)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                .padding(.horizontal, 16)
+
+                            // MARK: - Player List
+                            playerListSection
+                                .padding(.horizontal, 16)
+                                .id("playerList")
+                        }
+                    }
+                    .padding(.vertical, 16)
                 }
-
-                if players.filter({ $0.status == .active }).isEmpty {
-                    emptyState
-                } else {
-                    // Summary Cards 2x2
-                    summaryCardsGrid
-                        .padding(.horizontal, 16)
-
-                    // Last updated
-                    Text("Last updated \(lastUpdated.formatted(date: .omitted, time: .shortened))")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .padding(.horizontal, 16)
-
-                    // MARK: - Player List
-                    playerListSection
-                        .padding(.horizontal, 16)
+                .onChange(of: scrollToPlayers) {
+                    if scrollToPlayers {
+                        withAnimation {
+                            scrollProxy.scrollTo("playerList", anchor: .top)
+                        }
+                        scrollToPlayers = false
+                    }
                 }
             }
-            .padding(.vertical, 16)
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.background)
-        .navigationTitle("Analytics")
-        .onAppear { lastUpdated = Date() }
-        .onChange(of: bets.count) { lastUpdated = Date() }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                SyncStatusIndicator(syncService: syncService)
-            }
-        }
-        .fullScreenCover(isPresented: $showOnboardingFromCard) {
-            if let manager = onboardingManager {
-                OnboardingContainerView(
-                    onboardingManager: manager,
-                    startAt: manager.nextIncompleteStep,
-                    onComplete: { showOnboardingFromCard = false },
-                    onSkip: { showOnboardingFromCard = false }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .navigationTitle("Analytics")
+            .navigationDestination(for: PlayerAnalyticsSummary.self) { summary in
+                PlayerAnalyticsDetailView(
+                    summary: summary,
+                    playerBets: bets.filter { $0.player?.id == summary.player.id },
+                    playerLedgerEntries: ledgerEntries.filter { $0.player?.id == summary.player.id }
                 )
+            }
+            .onAppear { lastUpdated = Date() }
+            .onChange(of: bets.count) { lastUpdated = Date() }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    SyncStatusIndicator(syncService: syncService)
+                }
+            }
+            .fullScreenCover(isPresented: $showOnboardingFromCard) {
+                if let manager = onboardingManager {
+                    OnboardingContainerView(
+                        onboardingManager: manager,
+                        startAt: manager.nextIncompleteStep,
+                        onComplete: { showOnboardingFromCard = false },
+                        onSkip: { showOnboardingFromCard = false }
+                    )
+                }
             }
         }
     }
@@ -162,13 +183,16 @@ struct AnalyticsDashboardView: View {
             GridItem(.flexible(), spacing: 12),
             GridItem(.flexible(), spacing: 12)
         ], spacing: 12) {
-            // Card 1 — Net Exposure
-            SummaryCard(
-                icon: "chart.line.uptrend.xyaxis",
-                label: "Net Exposure",
-                value: formatCurrency(totalExposure),
-                valueColor: totalExposure > 0 ? Theme.danger : Theme.textPrimary
-            )
+            // Card 1 — Net Exposure → scroll to player list
+            Button { scrollToPlayers = true } label: {
+                SummaryCard(
+                    icon: "chart.line.uptrend.xyaxis",
+                    label: "Net Exposure",
+                    value: formatCurrency(totalExposure),
+                    valueColor: totalExposure > 0 ? Theme.danger : Theme.textPrimary
+                )
+            }
+            .buttonStyle(.plain)
 
             // Card 2 — Pending Bets
             SummaryCard(
@@ -179,30 +203,36 @@ struct AnalyticsDashboardView: View {
                 valueColor: totalPendingBets > 0 ? Theme.warning : Theme.textPrimary
             )
 
-            // Card 3 — Top Risk Player
+            // Card 3 — Top Risk Player → navigate to that player
             topRiskCard
 
-            // Card 4 — Outstanding Balances
-            SummaryCard(
-                icon: "exclamationmark.triangle.fill",
-                label: "Outstanding",
-                value: overduePlayers.isEmpty ? "All clear" : formatCurrency(totalOverdueAmount),
-                subtitle: overduePlayers.isEmpty ? nil : "\(overduePlayers.count) player\(overduePlayers.count == 1 ? "" : "s")",
-                valueColor: overduePlayers.isEmpty ? Theme.accent : Theme.danger
-            )
+            // Card 4 — Outstanding Balances → filter to Overdue
+            Button { activeFilter = "Overdue"; scrollToPlayers = true } label: {
+                SummaryCard(
+                    icon: "exclamationmark.triangle.fill",
+                    label: "Outstanding",
+                    value: overduePlayers.isEmpty ? "All clear" : formatCurrency(totalOverdueAmount),
+                    subtitle: overduePlayers.isEmpty ? nil : "\(overduePlayers.count) player\(overduePlayers.count == 1 ? "" : "s")",
+                    valueColor: overduePlayers.isEmpty ? Theme.accent : Theme.danger
+                )
+            }
+            .buttonStyle(.plain)
         }
     }
 
     private var topRiskCard: some View {
         Group {
             if let top = topRiskSummary {
-                SummaryCard(
-                    icon: "person.fill.exclamationmark",
-                    label: "Top Risk",
-                    value: top.player.name,
-                    subtitle: top.pas.reasonChips.first,
-                    valueColor: top.pas.label == "High" ? Theme.danger : Theme.warning
-                )
+                NavigationLink(value: top) {
+                    SummaryCard(
+                        icon: "person.fill.exclamationmark",
+                        label: "Top Risk",
+                        value: top.player.name,
+                        subtitle: top.pas.reasonChips.first,
+                        valueColor: top.pas.label == "High" ? Theme.danger : Theme.warning
+                    )
+                }
+                .buttonStyle(.plain)
             } else {
                 SummaryCard(
                     icon: "checkmark.shield.fill",
@@ -247,7 +277,10 @@ struct AnalyticsDashboardView: View {
                     .padding(.vertical, 24)
             } else {
                 ForEach(filteredSummaries, id: \.player.id) { summary in
-                    PlayerAnalyticsRow(summary: summary, formatCurrency: formatCurrency)
+                    NavigationLink(value: summary) {
+                        PlayerAnalyticsRow(summary: summary, formatCurrency: formatCurrency)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -486,9 +519,7 @@ private struct PlayerAnalyticsRow: View {
 }
 
 #Preview {
-    NavigationStack {
-        AnalyticsDashboardView()
-    }
-    .modelContainer(for: [Bet.self, Event.self, Player.self, LedgerEntry.self], inMemory: true)
-    .environmentObject(SyncService())
+    AnalyticsDashboardView()
+        .modelContainer(for: [Bet.self, Event.self, Player.self, LedgerEntry.self], inMemory: true)
+        .environmentObject(SyncService())
 }

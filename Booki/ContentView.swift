@@ -142,7 +142,7 @@ struct ContentView: View {
 
     private var bookieModeView: some View {
         TabView {
-            DashboardView()
+            AnalyticsDashboardView()
                 .tabItem {
                     Label("Dashboard", systemImage: "chart.bar.fill")
                 }

@@ -3,19 +3,19 @@ import SwiftData
 
 // MARK: - Data Structures
 
-struct PlayerExposure {
+struct PlayerExposure: Hashable {
     let grossExposure: Decimal
     let pendingBetCount: Int
     let largestPendingBet: Decimal
 }
 
-struct PlayerAttentionScore {
+struct PlayerAttentionScore: Hashable {
     let score: Int        // 0-100
     let label: String     // "Low", "Medium", "High"
     let reasonChips: [String]
 }
 
-struct PlayerAnalyticsSummary {
+struct PlayerAnalyticsSummary: Hashable {
     let player: Player
     let pas: PlayerAttentionScore
     let exposure: PlayerExposure
@@ -27,6 +27,14 @@ struct PlayerAnalyticsSummary {
     let isOverdue: Bool
     let overdueAmount: Decimal
     let winRate: Double
+
+    static func == (lhs: PlayerAnalyticsSummary, rhs: PlayerAnalyticsSummary) -> Bool {
+        lhs.player.id == rhs.player.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(player.id)
+    }
 }
 
 // MARK: - PlayerAttentionService
