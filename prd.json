@@ -139,7 +139,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Sparkline removed from this story to keep it right-sized. Can be added as a follow-up. All P/L values come from PlayerAnalyticsSummary — no additional computation needed. Win rate from summary.winRate, format as percentage."
     },
     {

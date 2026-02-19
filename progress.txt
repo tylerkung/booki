@@ -91,3 +91,17 @@ Started: Wed Feb 18 19:34:51 PST 2026
   - Future sections (Performance, Behavior, Reliability, History) will need access to raw bets/ledgerEntries — will need @Query or parameters added later
   - Chip color mapping duplicated from PlayerAnalyticsRow — could be extracted to shared helper in future
 ---
+
+## 2026-02-18 - US-007
+- Added Performance section below Today section in PlayerAnalyticsDetailView
+- 2x2 LazyVGrid showing: 7d P/L, 30d P/L, All-time P/L, Win Rate
+- P/L values color-coded: positive green (accent), negative red (danger), zero neutral (textSecondary)
+- Win rate displayed as percentage (e.g., "62%")
+- Extracted `PerformanceMetricCard` as private sub-view with elevated background styling
+- Added `formatSignedCurrency` helper for +/- prefix formatting and `plColor` for conditional coloring
+- Files changed: `Booki/Views/PlayerAnalyticsDetailView.swift` (modified)
+- **Learnings for future iterations:**
+  - All P/L values come pre-computed from PlayerAnalyticsSummary — no additional @Query or service calls needed
+  - `PerformanceMetricCard` uses `Theme.elevatedBackground` inside the card (not cardBackground) to create visual depth within the `.cardStyle()` wrapper
+  - `formatSignedCurrency` uses custom `abs()` for Decimal since Swift's `abs()` doesn't work on Decimal directly
+---
