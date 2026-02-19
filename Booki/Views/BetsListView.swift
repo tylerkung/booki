@@ -18,7 +18,7 @@ enum BetFilter: String, CaseIterable {
     case pending = "Pending"
     case open = "Open"
     case readyToGrade = "Ready to Grade"
-    case settled = "Settled"
+    case settled = "Reconciled"
     case all = "All"
 
     /// Returns the bet statuses that match this filter
@@ -73,9 +73,9 @@ struct BetsListView: View {
                 List {
                     if filteredBets.isEmpty {
                         ContentUnavailableView(
-                            "No Bets",
+                            "No Picks",
                             systemImage: "list.bullet.rectangle",
-                            description: Text("No bets match the selected filter.")
+                            description: Text("No picks match the selected filter.")
                         )
                     } else {
                         ForEach(filteredBets) { bet in
@@ -97,7 +97,7 @@ struct BetsListView: View {
                 .background(Theme.background)
             }
             .background(Theme.background)
-            .navigationTitle("Bets")
+            .navigationTitle("Picks")
             .navigationDestination(for: Bet.self) { bet in
                 BetDetailView(bet: bet)
             }
@@ -128,14 +128,14 @@ struct BetsListView: View {
 
     /// Creates a display name for the bet ticket
     /// - Single bets: "Lakers ML -150" or "OKC -6.5 (-110)"
-    /// - Parlays: "3-leg parlay +450"
+    /// - Parlays: "3-leg multi-pick +450"
     private func betDisplayName(for bet: Bet) -> String {
         if bet.isParlay {
             // For parlays, show leg count and combined odds
             let parlayBets = bets.filter { $0.ticketId == bet.ticketId }
             let combinedOdds = calculateCombinedOdds(for: parlayBets)
             let oddsString = combinedOdds > 0 ? "+\(combinedOdds)" : "\(combinedOdds)"
-            return "\(parlayBets.count)-leg parlay \(oddsString)"
+            return "\(parlayBets.count)-leg multi-pick \(oddsString)"
         } else {
             // For singles, show side with odds
             let oddsString = bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
@@ -310,7 +310,7 @@ struct BetRowView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(Theme.caption)
-                    Text("Parlay will lose when settled")
+                    Text("Multi-pick will lose when reconciled")
                         .font(Theme.caption)
                 }
                 .foregroundStyle(Theme.danger)
@@ -394,13 +394,13 @@ struct BetDetailView: View {
 
     /// Creates a display name for the bet ticket
     /// - Single bets: "Lakers ML -150" or "OKC -6.5 (-110)"
-    /// - Parlays: "3-leg parlay +450"
+    /// - Parlays: "3-leg multi-pick +450"
     private var betDisplayName: String {
         if bet.isParlay {
             // For parlays, show leg count and combined odds
             let combinedOdds = calculateCombinedOdds(for: parlayBets)
             let oddsString = combinedOdds > 0 ? "+\(combinedOdds)" : "\(combinedOdds)"
-            return "\(parlayBets.count)-leg parlay \(oddsString)"
+            return "\(parlayBets.count)-leg multi-pick \(oddsString)"
         } else {
             // For singles, show side with odds
             let oddsString = bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
