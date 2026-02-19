@@ -204,7 +204,7 @@ struct BetConfirmationSheet: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "info.circle.fill")
                         .foregroundStyle(Theme.accent)
-                    Text("This submission records pick requests with your group. No money is wagered or transferred in this app. All picks are subject to organizer approval.")
+                    Text("This submission records pick requests with your group. No money is processed or transferred in this app. All picks are subject to organizer approval.")
                         .font(Theme.footnote)
                         .foregroundStyle(Theme.textSecondary)
                 }

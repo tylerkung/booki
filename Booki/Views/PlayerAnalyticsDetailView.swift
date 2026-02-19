@@ -66,7 +66,7 @@ struct PlayerAnalyticsDetailView: View {
             Button {
                 print("Settle Up tapped for \(summary.player.name)")
             } label: {
-                Text("SETTLE UP")
+                Text("RECONCILE")
                     .font(Theme.headline)
                     .textCase(.uppercase)
                     .foregroundStyle(.black)

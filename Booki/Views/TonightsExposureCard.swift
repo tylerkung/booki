@@ -79,7 +79,7 @@ struct TonightsExposureCard: View {
                     )
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Tonight's Exposure")
+                    Text("Tonight's Open Activity")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(Theme.textPrimary)
 
@@ -157,7 +157,7 @@ struct TonightsExposureCard: View {
                                 .foregroundStyle(Theme.textPrimary)
                                 .lineLimit(1)
 
-                            Text("Highest risk: \(formatCurrency(riskGame.exposure))")
+                            Text("Highest activity: \(formatCurrency(riskGame.exposure))")
                                 .font(.caption)
                                 .foregroundStyle(Theme.warning)
                         }
@@ -175,7 +175,7 @@ struct TonightsExposureCard: View {
                     EventsListView()
                 } label: {
                     HStack {
-                        Text("View Exposure")
+                        Text("View Open Activity")
                             .font(.system(size: 14, weight: .bold))
 
                         Spacer()

@@ -177,7 +177,7 @@ struct EventDetailView: View {
                     }
                     .padding(.top, 4)
                 } else {
-                    Text("No active exposure")
+                    Text("No open activity")
                         .foregroundStyle(Theme.textSecondary)
                 }
             }

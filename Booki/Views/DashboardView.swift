@@ -328,7 +328,7 @@ struct DashboardView: View {
                 // Top Risk Events
                 Section {
                     if viewModel.topRiskEvents.isEmpty {
-                        Text("No active exposure")
+                        Text("No open activity")
                             .foregroundStyle(Theme.textSecondary)
                     } else {
                         ForEach(viewModel.topRiskEvents) { item in

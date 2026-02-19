@@ -709,7 +709,7 @@ struct BetSlipSheet: View {
                 // WAGER field (tappable, routes to custom keypad)
                 let isWagerActive = activeFieldId == "parlay_stake"
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("WAGER")
+                    Text("STAKE")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(isWagerActive ? Theme.gold : Theme.textMuted)
@@ -1721,7 +1721,7 @@ struct PremiumBetSlipItemCard: View {
                     HStack(spacing: 12) {
                         // WAGER field (tappable, routes to custom keypad)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("WAGER")
+                            Text("STAKE")
                                 .font(Theme.caption2)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(isWagerActive ? Theme.gold : Theme.textMuted)

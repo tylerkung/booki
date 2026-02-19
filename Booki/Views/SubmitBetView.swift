@@ -766,7 +766,7 @@ struct StakeEntryView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "info.circle.fill")
                         .foregroundStyle(Theme.accent)
-                    Text("This submission records a pick request with your group. No money is wagered or transferred in this app.")
+                    Text("This submission records a pick request with your group. No money is processed or transferred in this app.")
                         .font(Theme.footnote)
                         .foregroundStyle(Theme.textSecondary)
                 }
