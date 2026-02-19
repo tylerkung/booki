@@ -293,7 +293,6 @@ struct AnalyticsDashboardView: View {
             // Card 1 — Net Exposure → scroll to player list
             Button { scrollToPlayers = true } label: {
                 SummaryCard(
-                    icon: "chart.line.uptrend.xyaxis",
                     label: "Net Exposure",
                     value: formatCurrency(totalExposure),
                     valueColor: totalExposure > 0 ? Theme.danger : Theme.textPrimary
@@ -303,7 +302,6 @@ struct AnalyticsDashboardView: View {
 
             // Card 2 — Pending Bets
             SummaryCard(
-                icon: "clock.badge.exclamationmark",
                 label: "Pending Bets",
                 value: "\(totalPendingBets)",
                 subtitle: formatCurrency(totalPendingStake) + " at stake",
@@ -316,7 +314,6 @@ struct AnalyticsDashboardView: View {
             // Card 4 — Outstanding Balances → filter to Overdue
             Button { activeFilter = "Overdue"; scrollToPlayers = true } label: {
                 SummaryCard(
-                    icon: "exclamationmark.triangle.fill",
                     label: "Outstanding",
                     value: overduePlayers.isEmpty ? "All clear" : formatCurrency(totalOverdueAmount),
                     subtitle: overduePlayers.isEmpty ? nil : "\(overduePlayers.count) player\(overduePlayers.count == 1 ? "" : "s")",
@@ -332,7 +329,6 @@ struct AnalyticsDashboardView: View {
             if let top = topRiskSummary {
                 NavigationLink(value: top) {
                     SummaryCard(
-                        icon: "person.fill.exclamationmark",
                         label: "Top Risk",
                         value: top.player.name,
                         subtitle: formatCurrency(top.exposure.grossExposure) + " exposure",
@@ -342,7 +338,6 @@ struct AnalyticsDashboardView: View {
                 .buttonStyle(.plain)
             } else {
                 SummaryCard(
-                    icon: "checkmark.shield.fill",
                     label: "Top Risk",
                     value: "All clear",
                     valueColor: Theme.accent
@@ -491,7 +486,6 @@ private struct EarningsChart: View {
 // MARK: - Summary Card
 
 private struct SummaryCard: View {
-    let icon: String
     let label: String
     let value: String
     var subtitle: String? = nil
