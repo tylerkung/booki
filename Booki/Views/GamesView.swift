@@ -162,7 +162,7 @@ struct GamesView: View {
         } else if let sport = selectedSport {
             return "There are no upcoming \(sport) games."
         }
-        return "There are no upcoming games to bet on."
+        return "There are no upcoming games to browse."
     }
 
     /// Events grouped by sport and league for display

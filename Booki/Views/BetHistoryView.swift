@@ -35,7 +35,7 @@ struct BetHistoryView: View {
                 timelineView
             }
         }
-        .navigationTitle("Bet History")
+        .navigationTitle("Pick History")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await fetchAuditHistory()
@@ -95,7 +95,7 @@ struct BetHistoryView: View {
                 .font(Theme.headline)
                 .foregroundStyle(Theme.textPrimary)
 
-            Text("No changes have been recorded for this bet.")
+            Text("No changes have been recorded for this pick.")
                 .font(Theme.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -156,15 +156,15 @@ private struct TimelineEventRow: View {
     private var humanReadableAction: String {
         switch event.actionType {
         case "create":
-            return "Bet Created"
+            return "Pick Created"
         case "accept":
-            return "Bet Accepted"
+            return "Pick Accepted"
         case "grade":
-            return "Bet Graded"
+            return "Pick Graded"
         case "settle":
-            return "Bet Settled"
+            return "Pick Reconciled"
         case "reverse":
-            return "Settlement Reversed"
+            return "Reconciliation Reversed"
         case "override":
             return "Grade Overridden"
         case "adjust":

@@ -100,7 +100,7 @@ struct EventDetailView: View {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(Theme.accent)
-                            Text("Grade All Bets (\(betsToGrade.count))")
+                            Text("Grade All Picks (\(betsToGrade.count))")
                                 .fontWeight(.semibold)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -119,7 +119,7 @@ struct EventDetailView: View {
                         HStack {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(Theme.danger)
-                            Text("Void All Bets (\(activeBets.count))")
+                            Text("Void All Picks (\(activeBets.count))")
                                 .fontWeight(.semibold)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -160,7 +160,7 @@ struct EventDetailView: View {
             }
 
             // MARK: - Exposure Breakdown Section
-            Section("Exposure Breakdown") {
+            Section("Activity Breakdown") {
                 if let exposure = eventExposure {
                     ForEach(exposure.sides.sorted(by: { $0.totalExposure > $1.totalExposure }), id: \.side) { sideExposure in
                         ExposureSideRow(sideExposure: sideExposure)
@@ -168,7 +168,7 @@ struct EventDetailView: View {
 
                     // Total max exposure
                     HStack {
-                        Text("Max Exposure")
+                        Text("Max Activity")
                             .fontWeight(.semibold)
                         Spacer()
                         Text(formatCurrency(exposure.maxExposure))
@@ -185,7 +185,7 @@ struct EventDetailView: View {
             // MARK: - Bets for Event Section
             Section {
                 if eventBets.isEmpty {
-                    Text("No bets for this event")
+                    Text("No picks for this event")
                         .foregroundStyle(Theme.textSecondary)
                 } else {
                     ForEach(eventBets) { bet in
@@ -194,7 +194,7 @@ struct EventDetailView: View {
                 }
             } header: {
                 HStack {
-                    Text("Bets")
+                    Text("Picks")
                     Spacer()
                     Text("\(eventBets.count) total")
                         .font(Theme.caption)
@@ -265,13 +265,13 @@ struct EventDetailView: View {
         .sheet(isPresented: $showingGradeEventSheet) {
             GradeEventSheet(event: event, betsToGrade: betsToGrade)
         }
-        .alert("Void All Bets?", isPresented: $showingVoidConfirmation) {
+        .alert("Void All Picks?", isPresented: $showingVoidConfirmation) {
             Button("Cancel", role: .cancel) { }
-            Button("Void Bets", role: .destructive) {
+            Button("Void Picks", role: .destructive) {
                 voidAllBetsForCanceledEvent()
             }
         } message: {
-            Text("This will void \(activeBets.count) pending/accepted bet(s) for this canceled event. This action cannot be undone.")
+            Text("This will void \(activeBets.count) pending/accepted pick(s) for this canceled event. This action cannot be undone.")
         }
     }
 
@@ -417,7 +417,7 @@ struct EventBetRow: View {
         VStack(alignment: .leading, spacing: 6) {
             // Top row: Player name and status
             HStack {
-                Text(bet.player?.name ?? "Unknown Player")
+                Text(bet.player?.name ?? "Unknown Member")
                     .font(Theme.font(size: 15, weight: .bold))
 
                 Spacer()
@@ -482,7 +482,7 @@ struct LiabilitySideRow: View {
                 Text(side)
                     .font(Theme.headline)
 
-                Text("\(bets.count) bets (\(pendingCount) pending, \(acceptedCount) accepted)")
+                Text("\(bets.count) picks (\(pendingCount) pending, \(acceptedCount) accepted)")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -634,7 +634,7 @@ struct FinalScoreSheet: View {
                         HStack {
                             Image(systemName: "info.circle.fill")
                                 .foregroundStyle(Theme.accent)
-                            Text("\(acceptedBetsCount) bet(s) will be marked as ready to grade")
+                            Text("\(acceptedBetsCount) pick(s) will be marked as ready to grade")
                                 .font(Theme.subheadline)
                         }
                     }
