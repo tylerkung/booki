@@ -9,29 +9,30 @@ struct TicketDetailView: View {
 
     // MARK: - Computed Properties
 
-    /// Status color based on ticket combined status
-    private var statusColor: Color {
-        switch ticket.combinedStatus {
-        case .pending: return Theme.warning
-        case .accepted: return Theme.scheduled
-        case .declined: return Theme.danger
-        case .readyToGrade: return Theme.accentSecondary
-        case .graded: return Theme.accentSecondary
-        case .settled: return Theme.accent
-        case .void: return Theme.textMuted
+    /// Build a PickPresenter from the ticket for shared component display
+    private var presenter: PickPresenter {
+        if ticket.isParlay {
+            return PickPresenter.multiPick(bets: ticket.bets, events: Array(events))
+        } else if let bet = ticket.bets.first {
+            let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() })
+            return PickPresenter(bet: bet, event: event)
+        } else {
+            // Fallback — shouldn't happen
+            return PickPresenter(bet: ticket.bets[0])
         }
     }
 
-    /// Status display text
-    private var statusText: String {
-        switch ticket.combinedStatus {
-        case .pending: return "Pending Approval"
-        case .accepted: return "Open"
-        case .readyToGrade: return "Awaiting Results"
-        case .graded: return "Graded"
-        case .settled: return "Reconciled"
-        case .declined: return "Declined"
-        case .void: return "Void"
+    /// Combined odds display for parlays
+    private var combinedOddsDisplay: String {
+        if ticket.isParlay {
+            let combinedDecimal = ticket.bets.reduce(Decimal(1)) { result, bet in
+                result * americanToDecimal(bet.odds)
+            }
+            let americanOdds = decimalToAmerican(combinedDecimal)
+            return americanOdds > 0 ? "+\(americanOdds)" : "\(americanOdds)"
+        } else {
+            let odds = ticket.bets.first?.odds ?? 0
+            return PickPresenter.formatOdds(odds)
         }
     }
 
@@ -41,26 +42,6 @@ struct TicketDetailView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: ticket.createdAt)
-    }
-
-    /// Combined odds display for parlays
-    private var combinedOddsDisplay: String {
-        if ticket.isParlay {
-            let combinedDecimal = ticket.bets.reduce(Decimal(1)) { result, bet in
-                result * americanToDecimal(bet.odds)
-            }
-            // Convert back to American odds
-            let americanOdds = decimalToAmerican(combinedDecimal)
-            return americanOdds > 0 ? "+\(americanOdds)" : "\(americanOdds)"
-        } else {
-            let odds = ticket.bets.first?.odds ?? 0
-            return odds > 0 ? "+\(odds)" : "\(odds)"
-        }
-    }
-
-    /// Total return (stake + profit) if all bets win
-    private var totalReturn: Decimal {
-        ticket.totalStake + ticket.potentialPayout
     }
 
     /// Count of voided legs in this parlay
@@ -95,22 +76,25 @@ struct TicketDetailView: View {
         return americanOdds > 0 ? "+\(americanOdds)" : "\(americanOdds)"
     }
 
+    /// Total return (stake + profit) if all bets win
+    private var totalReturn: Decimal {
+        ticket.totalStake + ticket.potentialPayout
+    }
+
     /// Actual payout for settled tickets
     private var actualPayout: Decimal? {
         guard ticket.combinedStatus == .settled else { return nil }
 
         if ticket.isParlay {
-            // For parlay, all bets must win to get payout
             let allWin = ticket.bets.allSatisfy { $0.gradeResult == .win }
             let anyPush = ticket.bets.contains { $0.gradeResult == .push }
 
             if allWin {
                 return ticket.potentialPayout
             } else if anyPush && ticket.bets.filter({ $0.gradeResult != .push }).allSatisfy({ $0.gradeResult == .win }) {
-                // Recalculate parlay odds excluding pushed legs
                 let activeBets = ticket.bets.filter { $0.gradeResult != .push }
                 if activeBets.isEmpty {
-                    return Decimal.zero // All pushed, return stake (net zero profit)
+                    return Decimal.zero
                 }
                 var combinedMultiplier: Decimal = 1.0
                 for bet in activeBets {
@@ -118,10 +102,9 @@ struct TicketDetailView: View {
                 }
                 return ticket.totalStake * combinedMultiplier - ticket.totalStake
             } else {
-                return -ticket.totalStake // Lost
+                return -ticket.totalStake
             }
         } else {
-            // For singles, sum individual results
             return ticket.bets.reduce(Decimal.zero) { total, bet in
                 guard let result = bet.gradeResult else { return total }
                 switch result {
@@ -130,7 +113,7 @@ struct TicketDetailView: View {
                 case .loss:
                     return total - bet.stake
                 case .push:
-                    return total // No change
+                    return total
                 }
             }
         }
@@ -138,9 +121,14 @@ struct TicketDetailView: View {
 
     // MARK: - Parlay Outcome Properties
 
+    /// Whether the ticket is settled (for displaying actual result)
+    private var isTicketSettled: Bool {
+        ticket.combinedStatus == .settled
+    }
+
     /// Whether this parlay is settled and should show outcome summary
     private var showParlayOutcome: Bool {
-        ticket.isParlay && ticket.combinedStatus == .settled
+        ticket.isParlay && isTicketSettled
     }
 
     /// Original combined decimal odds (all legs)
@@ -236,8 +224,9 @@ struct TicketDetailView: View {
                 parlayOutcomeSection
             }
 
-            // Ticket Summary Section
+            // Ticket Summary (uses StatusPill for consistent status display)
             ticketSummarySection
+
 
             // Odds Breakdown Section (for parlays)
             if ticket.isParlay {
@@ -247,7 +236,7 @@ struct TicketDetailView: View {
             // Bets Section
             betsSection
 
-            // Payout Section
+            // Returns Section
             payoutSection
 
             // Details Section
@@ -273,23 +262,20 @@ struct TicketDetailView: View {
                     .foregroundStyle(Theme.textPrimary)
             }
 
-            // Status
+            // Status (using StatusPill)
             HStack {
                 Text("Status")
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
-                Text(statusText)
-                    .fontWeight(.bold)
-                    .foregroundStyle(Theme.background)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(statusColor)
-                    .clipShape(Capsule())
+                StatusPill(
+                    settlementStatus: presenter.settlementStatus,
+                    workflowStatus: presenter.workflowStatus
+                )
             }
 
             // Total Stake
             HStack {
-                Text("Total Stake")
+                Text("Stake")
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 Text(formatCurrency(ticket.totalStake))
@@ -444,28 +430,10 @@ struct TicketDetailView: View {
 
     private var payoutSection: some View {
         Section {
-            // Potential profit
-            HStack {
-                Text("Potential Profit")
-                    .foregroundStyle(Theme.textSecondary)
-                Spacer()
-                Text(formatCurrency(ticket.potentialPayout))
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Theme.accent)
-            }
+            // Use PickDetailHeader for standardized financial display
+            PickDetailHeader(presenter: presenter)
 
-            // Total return
-            HStack {
-                Text("Total Return if Win")
-                    .foregroundStyle(Theme.textSecondary)
-                Spacer()
-                Text(formatCurrency(totalReturn))
-                    .font(Theme.title3)
-                    .fontWeight(.bold)
-                    .foregroundStyle(Theme.accent)
-            }
-
-            // Actual payout (for settled tickets)
+            // Actual result badge (for settled tickets — unique to this detail view)
             if let payout = actualPayout {
                 Divider()
                     .background(Theme.divider)
@@ -834,46 +802,16 @@ struct TicketDetailBetRowView: View {
 
     // MARK: - Computed Properties
 
+    private var betStatus: (PickPresenter.SettlementStatus, PickPresenter.WorkflowStatus) {
+        PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
+    }
+
     private var formattedOdds: String {
-        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
+        PickPresenter.formatOdds(bet.odds)
     }
 
     private var formattedStake: String {
         formatCurrency(bet.stake)
-    }
-
-    private var statusColor: Color {
-        switch bet.status {
-        case .pending: return Theme.warning
-        case .accepted, .readyToGrade: return Theme.scheduled
-        case .declined: return Theme.danger
-        case .graded, .settled:
-            if let result = bet.gradeResult {
-                switch result {
-                case .win: return Theme.accent
-                case .loss: return Theme.danger
-                case .push: return Theme.warning
-                }
-            }
-            return Theme.accent
-        case .void: return Theme.textMuted
-        }
-    }
-
-    private var statusText: String {
-        // Show grade result if available (even for graded but not settled)
-        if let result = bet.gradeResult {
-            return result.rawValue.capitalized
-        }
-        switch bet.status {
-        case .pending: return "Pending"
-        case .accepted: return "Open"
-        case .readyToGrade: return "Awaiting Result"
-        case .graded, .settled:
-            return bet.status.rawValue.capitalized
-        case .declined: return "Declined"
-        case .void: return "Void"
-        }
     }
 
     /// Whether this leg is pending grading result
@@ -888,9 +826,26 @@ struct TicketDetailBetRowView: View {
         return formatter.string(from: bet.createdAt)
     }
 
-    /// Potential payout for this individual bet
-    private var potentialPayout: Decimal {
-        LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
+    /// Profit for this individual bet
+    private var betProfit: Decimal {
+        let (settlement, _) = betStatus
+        switch settlement {
+        case .won:
+            return LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
+        case .lost:
+            return -bet.stake
+        case .push, .void, .cancelled:
+            return .zero
+        case .open:
+            return LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
+        }
+    }
+
+    private var isSettled: Bool {
+        switch betStatus.0 {
+        case .won, .lost, .push, .void, .cancelled: return true
+        case .open: return false
+        }
     }
 
     /// Actual payout for settled bets
@@ -898,7 +853,7 @@ struct TicketDetailBetRowView: View {
         guard bet.status == .settled, let result = bet.gradeResult else { return nil }
         switch result {
         case .win:
-            return potentialPayout
+            return LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
         case .loss:
             return -bet.stake
         case .push:
@@ -910,71 +865,38 @@ struct TicketDetailBetRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Row 1: Event name and status
+            // Row 1: Selection info (using SelectionRow) + StatusPill
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(eventName)
-                        .font(Theme.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Theme.textPrimary)
+                SelectionRow(
+                    selectionLabel: bet.side,
+                    odds: bet.odds,
+                    eventName: eventName,
+                    league: event?.league,
+                    gradeResult: bet.gradeResult
+                )
 
-                    if let event = event {
-                        Text("\(event.sport) • \(event.league)")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textMuted)
-                    }
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    // Grade status badge
-                    Text(statusText)
-                        .font(Theme.caption2)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Theme.background)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(statusColor)
-                        .clipShape(Capsule())
-
-                    // Show muted text for pending legs
-                    if isPendingResult {
-                        Text("Awaiting Result")
-                            .font(Theme.caption2)
-                            .foregroundStyle(Theme.textMuted)
-                            .italic()
-                    }
-                }
+                StatusPill(
+                    settlementStatus: betStatus.0,
+                    workflowStatus: betStatus.1
+                )
             }
 
-            // Row 2: Market and Selection
+            // Row 2: Market type
             HStack(spacing: 8) {
                 Text(bet.market)
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
 
-                Text("•")
-                    .foregroundStyle(Theme.textMuted)
-
-                Text(bet.side)
-                    .font(Theme.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(Theme.textSecondary)
-
-                Text(formattedOdds)
-                    .font(Theme.caption)
-                    .fontWeight(.bold)
-                    .foregroundStyle(Theme.gold)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(Theme.gold.opacity(0.15))
-                    )
+                // Show muted text for pending legs
+                if isPendingResult {
+                    Text("Awaiting Result")
+                        .font(Theme.caption2)
+                        .foregroundStyle(Theme.textMuted)
+                        .italic()
+                }
             }
 
-            // Row 3: Stake and Payout
+            // Row 3: Stake and Profit
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Stake")
@@ -989,9 +911,9 @@ struct TicketDetailBetRowView: View {
                 Spacer()
 
                 if let payout = actualPayout {
-                    // Settled - show actual result
+                    // Settled - show actual profit
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("Result")
+                        Text("Profit")
                             .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
                         Text(formatProfitLoss(payout))
@@ -1000,12 +922,12 @@ struct TicketDetailBetRowView: View {
                             .foregroundStyle(payout >= 0 ? Theme.accent : Theme.danger)
                     }
                 } else {
-                    // Not settled - show potential
+                    // Not settled - show potential profit
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("Potential Return")
+                        Text("Profit")
                             .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
-                        Text(formatCurrency(potentialPayout))
+                        Text("+\(formatCurrency(betProfit))")
                             .font(Theme.caption)
                             .fontWeight(.semibold)
                             .foregroundStyle(Theme.accent)
@@ -1068,13 +990,12 @@ struct TicketDetailBetRowView: View {
                         Text(bet.status == .settled ? "Reconciled" : "Graded")
                             .font(Theme.caption2)
                             .foregroundStyle(Theme.textMuted)
-                        // Note: We don't have graded/settled timestamps in the model
-                        // so we show the status instead
-                        if let result = bet.gradeResult {
-                            Text(result.rawValue.capitalized)
-                                .font(Theme.caption)
-                                .fontWeight(.medium)
-                                .foregroundStyle(statusColor)
+                        // Show grade result via StatusPill
+                        if bet.gradeResult != nil {
+                            StatusPill(
+                                settlementStatus: betStatus.0,
+                                workflowStatus: betStatus.1
+                            )
                         }
                     }
                 }
