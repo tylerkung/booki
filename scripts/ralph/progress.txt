@@ -1,27 +1,24 @@
 # Ralph Progress Log
-Started: Mon Feb 3 13:45:00 PST 2026
-Branch: ralph/games-filtering
+Started: Wed Feb 19 2026
+Branch: ralph/compliance-language
 ---
 
 ## Codebase Patterns
-- Use Theme.swift for all colors (Theme.accent, Theme.danger, Theme.warning, etc.)
-- SwiftData models in Booki/Models/, sync models in Services/SyncModels.swift
-- EventStatus enum: 'scheduled', 'live', 'final', 'postponed', 'canceled'
-- Event.isLocked(offsetMinutes:) determines if betting is locked
-- GamesView is the PLAYER's view for browsing games (takes Player parameter)
-- EventsListView is the BOOKIE's view for managing events
-- All filtering happens in computed properties (not SwiftData predicates)
----
-
-## 2026-02-03 13:50 - US-004
-- What was implemented: Filter player game browsing to show only bettable events
-- Files changed:
-  - Booki/Views/GamesView.swift
-- **Learnings for future iterations:**
-  - Added bettableEvents computed property: scheduled + not locked + future start time
-  - upcomingEvents now combines bettableEvents + recently finished (48hr) for reference
-  - Locked events are hidden, not just disabled (per US-004 requirements)
-  - Event.isLocked() already existed and handles lock offset from AcceptancePolicy
-  - GamesView already queries acceptancePolicies to get lockOffsetMinutes
+- CRITICAL: Only change user-facing string literals (Text(), Label(), .navigationTitle, .tabItem labels, enum rawValues used as display text, error messages assigned to @State vars)
+- NEVER rename Swift types, variables, file names, enum cases, or internal identifiers
+- NEVER delete code, functions, views, or files — this is a string-rename-only task
+- NEVER rewrite or restructure files — use targeted find-and-replace on string literals only
+- Use Theme.swift for all colors and styling
+- Approved vocabulary: Organizer (not Bookie), Member (not Player), Pick (not Bet), Multi-Pick (not Parlay), Reconciliation (not Settlement), Activity Balance (not Balance), Open Activity (not Exposure), Performance (not Profit/Loss), Success Rate (not Win Rate), Potential Return (not Payout/To Win), Game Lines (not Odds)
+- PlayerMainView tabs are: Games, Track, Settings — no banned terms to rename
+- BetsListView.swift contains BetsListView, BetRowView, AND BetDetailView — all in one file
+- BetFilter/SettlementFilterOption enum rawValues are user-facing display strings
+- Ticket.displayName and Ticket.typeLabel extensions are in TrackView.swift
+- All dashboard UI (exposure card, pending bets, flagged players) is in DashboardView.swift sub-views
+- OnboardingWelcomeView, OnboardingConfigureView exist in Booki/Views/Onboarding/ — do NOT delete them
+- BetConfirmationSheet.swift is separate from BetSlipSheet.swift
+- "BetMGM" and "Bookmaker" in SettingsView are third-party brand names — exempt from renaming
+- PaymentDirection and MarketCategory enum rawValues are used as UI display strings
+- Error messages in @State vars (submissionError, errorMessage) are user-facing
 ---
 

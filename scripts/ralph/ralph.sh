@@ -96,6 +96,26 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     OUTPUT=$(claude --dangerously-skip-permissions --print < "$SCRIPT_DIR/CLAUDE.md" 2>&1 | tee /dev/stderr) || true
   fi
   
+  # Safety check: detect destructive changes (files losing >50 lines)
+  DESTRUCTIVE=$(git diff --stat HEAD~1 2>/dev/null | grep -E '\|.*[0-9]+ \+' | while read line; do
+    file=$(echo "$line" | awk '{print $1}')
+    insertions=$(echo "$line" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)
+    deletions=$(echo "$line" | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' || echo 0)
+    net=$((deletions - insertions))
+    if [ "$net" -gt 50 ]; then
+      echo "WARNING: $file lost ~${net} net lines (${insertions}+/${deletions}-)"
+    fi
+  done)
+
+  if [ -n "$DESTRUCTIVE" ]; then
+    echo ""
+    echo "!!! DESTRUCTIVE CHANGE DETECTED !!!"
+    echo "$DESTRUCTIVE"
+    echo "Ralph may have rewritten files instead of making targeted edits."
+    echo "Stopping to prevent further damage. Review the last commit."
+    exit 1
+  fi
+
   # Check for completion signal
   if echo "$OUTPUT" | grep -q "<promise>COMPLETE</promise>"; then
     echo ""
@@ -103,7 +123,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     echo "Completed at iteration $i of $MAX_ITERATIONS"
     exit 0
   fi
-  
+
   echo "Iteration $i complete. Continuing..."
   sleep 2
 done

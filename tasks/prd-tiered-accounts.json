@@ -1,0 +1,206 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/tiered-accounts",
+  "description": "Tiered Accounts - Bookie & Player tier system with entitlements, feature gating, upgrade prompts, and paywall UX",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add tier fields to SwiftData models and Supabase schema",
+      "description": "As a developer, I need tier fields on the Bookie and Player models so the app can track each user's subscription tier.",
+      "acceptanceCriteria": [
+        "Add `tier: String` field to Bookie SwiftData model with default value 'starter'",
+        "Add `tier: String` field to Player SwiftData model with default value 'basic'",
+        "Valid bookie tiers: 'starter', 'pro', 'elite'",
+        "Valid player tiers: 'basic', 'pro', 'elite'",
+        "Add Supabase migration SQL in SUPABASE_MIGRATIONS.md: ALTER TABLE bookies ADD COLUMN tier TEXT DEFAULT 'starter'; ALTER TABLE players ADD COLUMN tier TEXT DEFAULT 'basic'",
+        "SyncService properly syncs tier fields between local and cloud",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Use String type (not enum) for tier fields so they sync cleanly with Supabase text columns. The sync models (SyncModels.swift) also need the tier field added to their Codable structs. Existing users get default tiers automatically."
+    },
+    {
+      "id": "US-002",
+      "title": "Create EntitlementService with feature-check API",
+      "description": "As a developer, I need a central service that determines whether a user can access a given feature based on their tier.",
+      "acceptanceCriteria": [
+        "Create Booki/Services/EntitlementService.swift",
+        "Define enum `BookieFeature`: playerManagement, riskAlerts, advancedDashboard, bulkActions, playerAnalytics, automation, unlimitedPlayers",
+        "Define enum `PlayerFeature`: straightPicks, parlays, pickAnalytics, liveScorePriority, advancedAnalytics, vipTagging",
+        "Static method `canAccess(_ feature: BookieFeature, tier: String) -> Bool` returns true/false based on tier matrix",
+        "Static method `canAccess(_ feature: PlayerFeature, tier: String) -> Bool` returns true/false based on tier matrix",
+        "Static method `maxPlayers(tier: String) -> Int` returns 10 for starter, 50 for pro, Int.max for elite",
+        "Feature matrix matches the PRD gating tables exactly",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Bookie feature matrix: Starter gets basic ops only. Pro adds riskAlerts, advancedDashboard, bulkActions. Elite adds playerAnalytics, automation, unlimitedPlayers. Player feature matrix: Basic gets straightPicks only. Pro adds parlays, pickAnalytics, liveScorePriority. Elite adds advancedAnalytics, vipTagging. All tiers include everything below them."
+    },
+    {
+      "id": "US-003",
+      "title": "Gate parlay/multi-pick feature for Basic tier players",
+      "description": "As a developer, I need to prevent Basic tier players from creating multi-picks (parlays) and show them an upgrade prompt instead.",
+      "acceptanceCriteria": [
+        "In BetSlipSheet (pick entry), check player tier before allowing parlay/multi-pick mode",
+        "If player tier is 'basic', disable the multi-pick toggle or tab",
+        "Show a lock icon or 'Pro' badge on the multi-pick option for basic players",
+        "Tapping locked multi-pick shows an alert or sheet: 'Multi-Pick tracking is available with a Pro membership. Upgrade to unlock.'",
+        "Pro and Elite players can use multi-picks normally (no change)",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "The BetSlipSheet has a mode toggle between singles and parlay. Gate the parlay mode activation. Use EntitlementService.canAccess(.parlays, tier: player.tier) for the check. The player's tier comes from the Player model which is available in the view context."
+    },
+    {
+      "id": "US-004",
+      "title": "Gate advanced analytics for Starter tier bookies",
+      "description": "As a developer, I need to lock advanced analytics features for Starter tier bookies and show upgrade prompts.",
+      "acceptanceCriteria": [
+        "In AnalyticsDashboardView, check bookie tier before showing advanced sections",
+        "Starter bookies see: basic dashboard (today's picks, pending picks, member balances, total open activity as simple number)",
+        "Advanced sections (trends, risk insights, member analytics) show a locked overlay or placeholder for Starter tier",
+        "Locked sections show text like 'Upgrade to Pro to unlock advanced analytics'",
+        "Pro and Elite bookies see all analytics normally",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Use EntitlementService.canAccess(.advancedDashboard, tier: bookie.tier). The AnalyticsDashboardView already has sections — wrap the advanced ones in a tier check. For the locked state, use a ZStack with the content blurred/dimmed and a lock overlay on top."
+    },
+    {
+      "id": "US-005",
+      "title": "Enforce player limits per bookie tier",
+      "description": "As a developer, I need to enforce the maximum number of active members a bookie can have based on their tier.",
+      "acceptanceCriteria": [
+        "Before adding a new player in PlayersListView, check current active player count against EntitlementService.maxPlayers(tier:)",
+        "Starter: max 10, Pro: max 50, Elite: unlimited",
+        "If at limit, show alert: 'You have reached the maximum of [N] members for your plan. Upgrade to add more.'",
+        "The 'Add Member' button is still visible but triggers the limit check before proceeding",
+        "Existing players above the limit are NOT removed (grandfathered)",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Count active players (status == .active) only, not archived/inactive. The limit check happens client-side for UX but should also be validated server-side in the future. For now, client-side gating is sufficient."
+    },
+    {
+      "id": "US-006",
+      "title": "Gate bulk actions for Starter tier bookies",
+      "description": "As a developer, I need to lock bulk grading and bulk reconciliation actions for Starter tier bookies.",
+      "acceptanceCriteria": [
+        "In GradingView, check bookie tier before showing bulk grade actions",
+        "In WeeklySettlementView, check tier before showing bulk reconcile actions",
+        "Starter bookies can only grade/reconcile one at a time",
+        "Bulk action buttons show a lock icon for Starter tier",
+        "Tapping locked bulk actions shows upgrade prompt: 'Bulk actions are available with a Pro membership.'",
+        "Pro and Elite bookies use bulk actions normally",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Use EntitlementService.canAccess(.bulkActions, tier: bookie.tier). Individual grading and reconciliation remain available for all tiers — only the bulk/batch operations are gated."
+    },
+    {
+      "id": "US-007",
+      "title": "Gate automation features for non-Elite bookies",
+      "description": "As a developer, I need to lock automation settings (auto-grading, auto-reconciliation) for Starter and Pro tier bookies.",
+      "acceptanceCriteria": [
+        "In SettingsView, automation toggles (auto-grade, auto-settle) show a lock icon for non-Elite tiers",
+        "Tapping locked automation settings shows: 'Automation is available with an Elite membership.'",
+        "Elite bookies can toggle automation normally",
+        "If a bookie downgrades from Elite, automation settings are disabled (toggled off)",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Use EntitlementService.canAccess(.automation, tier: bookie.tier). The existing auto-pilot toggles in SettingsView need tier gating. The settings values persist but the UI prevents non-Elite bookies from enabling them."
+    },
+    {
+      "id": "US-008",
+      "title": "Create tier comparison screen",
+      "description": "As a developer, I need a reusable tier comparison view that shows features available at each tier level.",
+      "acceptanceCriteria": [
+        "Create Booki/Views/TierComparisonView.swift",
+        "View takes a `role: String` parameter ('organizer' or 'member') to show the correct tier table",
+        "Organizer tiers: Starter / Professional / Business with feature checkmarks matching PRD matrix",
+        "Member tiers: Basic / Sharp / VIP with feature checkmarks matching PRD matrix",
+        "Current tier is highlighted with Theme.accent border or badge",
+        "Each tier column has an 'Upgrade' button (except current/higher tiers)",
+        "Use approved vocabulary throughout (picks, members, reconciliation, etc.)",
+        "Uses Theme colors and dark styling",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "This is a standalone view that will be presented modally from upgrade prompts. Use a horizontal ScrollView with cards for each tier, or a vertical comparison table. The 'Upgrade' button is non-functional for now (just shows a placeholder — payment integration comes later). Use compliant language from the compliance PRD."
+    },
+    {
+      "id": "US-009",
+      "title": "Create upgrade prompt sheet with contextual messaging",
+      "description": "As a developer, I need a reusable upgrade prompt sheet that can be triggered from any locked feature with context-specific messaging.",
+      "acceptanceCriteria": [
+        "Create Booki/Views/UpgradePromptSheet.swift",
+        "View takes parameters: `featureName: String`, `requiredTier: String`, `role: String`",
+        "Shows the locked feature name, what tier unlocks it, and a brief benefit description",
+        "Has a 'View Plans' button that navigates to TierComparisonView",
+        "Has a 'Maybe Later' dismiss button",
+        "Uses Theme colors, dark styling, and approved vocabulary",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "This sheet replaces all the individual upgrade alerts from previous stories. Previous stories can use simple alerts initially, and this sheet becomes the polished version. Include a subtle icon (lock or star) at the top. The 'View Plans' button presents TierComparisonView as a sheet."
+    },
+    {
+      "id": "US-010",
+      "title": "Wire upgrade prompts to all gated features",
+      "description": "As a developer, I need to connect the UpgradePromptSheet to all previously gated features so tapping any locked feature shows the proper upgrade flow.",
+      "acceptanceCriteria": [
+        "Multi-pick lock (US-003) presents UpgradePromptSheet with featureName 'Multi-Pick Tracking'",
+        "Advanced analytics lock (US-004) presents UpgradePromptSheet with featureName 'Advanced Analytics'",
+        "Player limit lock (US-005) presents UpgradePromptSheet with featureName 'More Members'",
+        "Bulk actions lock (US-006) presents UpgradePromptSheet with featureName 'Bulk Actions'",
+        "Automation lock (US-007) presents UpgradePromptSheet with featureName 'Automation Tools'",
+        "Each prompt correctly specifies the required tier and role",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Replace any simple Alert-based upgrade prompts from earlier stories with the sheet presentation. Use @State private var showUpgradePrompt = false and .sheet(isPresented:) pattern. Each gated location should pass the appropriate context to UpgradePromptSheet."
+    },
+    {
+      "id": "US-011",
+      "title": "Add tier badge to member profiles and organizer settings",
+      "description": "As a developer, I need to display the current tier as a badge in relevant profile and settings areas.",
+      "acceptanceCriteria": [
+        "In SettingsView or AccountView, show current bookie tier as a styled badge (e.g., 'Starter', 'Professional', 'Business')",
+        "In player profile/account area, show current player tier badge ('Basic', 'Sharp', 'VIP')",
+        "Pro/Elite badges use Theme.accent color, Starter/Basic use Theme.textMuted",
+        "Badge is tappable and navigates to TierComparisonView",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Use display names: bookie tiers show as 'Starter'/'Professional'/'Business', player tiers as 'Basic'/'Sharp'/'VIP'. Create a small reusable TierBadgeView that takes tier string and role. Use capsule shape with tier-appropriate color."
+    },
+    {
+      "id": "US-012",
+      "title": "Add locked feature visual indicators across the app",
+      "description": "As a developer, I need subtle lock icons and 'Pro'/'Elite' badges on features that are gated for the current user's tier.",
+      "acceptanceCriteria": [
+        "Locked features show a small lock icon (SF Symbol 'lock.fill') or tier badge inline with the feature label",
+        "Lock indicators appear on: multi-pick toggle, analytics sections, bulk action buttons, automation toggles, add member button (when at limit)",
+        "Lock indicators use Theme.textMuted color and small size (12-14pt)",
+        "Tapping any locked indicator triggers the UpgradePromptSheet",
+        "Features that are unlocked for the current tier show no indicator",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Use a consistent pattern: HStack { Text(featureLabel) Spacer() if locked { Image(systemName: 'lock.fill').foregroundColor(Theme.textMuted) } }. The lock check uses EntitlementService throughout. Keep indicators subtle — they should inform, not clutter."
+    }
+  ]
+}

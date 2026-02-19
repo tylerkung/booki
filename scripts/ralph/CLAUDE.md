@@ -77,6 +77,21 @@ Only update CLAUDE.md if you have **genuinely reusable knowledge** that would he
 - Keep changes focused and minimal
 - Follow existing code patterns
 
+## Destructive Change Prevention
+
+**CRITICAL: Never rewrite, restructure, or regenerate entire files.**
+
+When modifying existing files:
+1. **Use targeted edits only** — change specific lines/strings, not whole files
+2. **Never delete code unless the story explicitly requires removing a feature**
+3. **Verify line count before committing** — if a file's line count decreased by more than 20 lines compared to before your changes, STOP and review what you deleted. You likely rewrote the file instead of editing it.
+4. **Never replace a file's contents wholesale** — if you find yourself rewriting more than 30% of a file, you are doing it wrong. Read the file, make surgical edits, and preserve everything else.
+5. **Preserve all existing functions, views, and architecture** — if code existed before your story, it must still exist after (unless the story says to remove it)
+
+If a story says "rename strings" or "update labels", that means find-and-replace on string literals ONLY. It does NOT mean rewrite the file from scratch.
+
+**Pre-commit check**: Run `git diff --stat` before committing. If any file shows more deletions than insertions by a large margin, you likely broke something. Undo and redo with targeted edits.
+
 ## Browser Testing (If Available)
 
 For any story that changes UI, verify it works in the browser if you have browser testing tools configured (e.g., via MCP):

@@ -1,0 +1,228 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/compliance-language",
+  "description": "Compliance Language & Positioning Overhaul - Replace all gambling/betting terminology with tracking/record-keeping language for App Store compliance",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Rename main tab labels and navigation titles",
+      "description": "As a developer, I need to rename the primary tab labels in ContentView and PlayerMainView so all top-level navigation uses compliant language.",
+      "acceptanceCriteria": [
+        "In ContentView.swift: rename 'Bets' tab to 'Picks'",
+        "In ContentView.swift: rename 'Players' tab to 'Members'",
+        "In PlayerMainView.swift: rename any 'Bets' tab to 'Picks'",
+        "In PlayerMainView.swift: rename any 'Players' reference to 'Members'",
+        "All .navigationTitle() calls in these files use compliant terms",
+        "Tab icons remain unchanged — only labels change",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Only change user-facing string literals (Text(), Label(), .navigationTitle, .tabItem labels). Do NOT rename Swift types, variables, or file names. The goal is cosmetic language changes only. Check both bookie and player tab bars."
+    },
+    {
+      "id": "US-002",
+      "title": "Rename BetsListView user-facing strings",
+      "description": "As a developer, I need to replace all gambling language in BetsListView.swift with compliant terminology.",
+      "acceptanceCriteria": [
+        "Navigation title changed from 'Bets' to 'Picks'",
+        "'No Bets' empty state changed to 'No Picks'",
+        "'No bets match the selected filter' changed to 'No picks match the selected filter'",
+        "'parlay' display strings changed to 'multi-pick' (e.g., '3-leg parlay' → '3-leg multi-pick')",
+        "'Settled' filter label changed to 'Reconciled'",
+        "All user-visible Text() strings use approved vocabulary",
+        "Do NOT rename BetFilter enum, BetStatus, or any Swift identifiers",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "BetsListView has ~80 occurrences of 'bet'. Most are in variable/type names which we keep. Only change string literals shown to users. The BetFilter enum cases like .settled display 'Settled' as rawValue — change the rawValue strings. The betDisplayName helper builds display strings like '3-leg parlay +450' — change 'parlay' to 'multi-pick' in those strings."
+    },
+    {
+      "id": "US-003",
+      "title": "Rename BetSlipSheet and bet entry UI strings",
+      "description": "As a developer, I need to replace all betting language in the bet slip / pick entry flow with compliant terminology.",
+      "acceptanceCriteria": [
+        "Any 'Bet Slip' title/header changed to 'Pick Entry'",
+        "'Place Bet' button text changed to 'Record Pick'",
+        "'Wager' labels changed to 'Stake' or 'Amount'",
+        "'Parlay' display text changed to 'Multi-Pick'",
+        "'To Win' labels changed to 'Potential Return'",
+        "Any 'bet' references in validation messages use 'pick' instead",
+        "Do NOT rename BetSlipSheet.swift filename or Swift type names",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "The BetSlipSheet has complex architecture with activeFieldId routing. Only change string literals in Text(), Label(), and Button title parameters. Field ID conventions ('parlay_stake', etc.) are internal identifiers — do NOT change those. PremiumBetSlipItemCard also has user-facing strings to update."
+    },
+    {
+      "id": "US-004",
+      "title": "Rename TicketDetailView user-facing strings",
+      "description": "As a developer, I need to replace all gambling/betting language in TicketDetailView.swift with compliant terms.",
+      "acceptanceCriteria": [
+        "All 'bet' display text changed to 'pick'",
+        "'Parlay' display text changed to 'Multi-Pick'",
+        "'Payout' labels changed to 'Potential Return' or 'Results Summary'",
+        "'Settled' status text changed to 'Reconciled'",
+        "'Wager' or 'Stake' labels — 'Stake' is acceptable, keep it",
+        "Section headers and labels use approved vocabulary",
+        "Do NOT rename Swift types or variables",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "TicketDetailView has ~25 occurrences. Status text like 'Pending Approval', 'Open', 'Graded' are acceptable — 'Graded' can stay as-is since it's not a banned word. Focus on 'bet', 'parlay', 'payout', 'settled' display strings."
+    },
+    {
+      "id": "US-005",
+      "title": "Rename PlayersListView and player management strings",
+      "description": "As a developer, I need to replace 'Player' with 'Member' in all player management views.",
+      "acceptanceCriteria": [
+        "PlayersListView navigation title changed from 'Players' to 'Members'",
+        "'Add Player' button/action text changed to 'Add Member'",
+        "Any 'player' references in empty states changed to 'member'",
+        "Player detail/edit views: labels like 'Player Name' → 'Member Name'",
+        "'Player Balances' section headers → 'Member Activity Balances'",
+        "Do NOT rename Player model, PlayerStatus enum, or Swift identifiers",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Check PlayersListView.swift, any player add/edit sheets, and PlayerAnalyticsDetailView.swift for user-facing 'player' strings. The Player SwiftData model name stays as-is."
+    },
+    {
+      "id": "US-006",
+      "title": "Rename WeeklySettlementView strings to Reconciliation",
+      "description": "As a developer, I need to replace all 'settlement' language with 'reconciliation' in the weekly settlement flow.",
+      "acceptanceCriteria": [
+        "Navigation title changed from 'Weekly Settlement' to 'Weekly Reconciliation'",
+        "'Settlement' filter options changed to 'Reconciliation' equivalents (e.g., 'Settled' → 'Reconciled', 'Unsettled' → 'Unreconciled')",
+        "All section headers, button labels, and status text use 'reconciliation/reconciled'",
+        "'Settle' action buttons changed to 'Reconcile'",
+        "SettlementSnapshotCard.swift: update all user-facing 'settlement' strings to 'reconciliation'",
+        "Do NOT rename WeeklySettlementView type, SettlementService, or any Swift identifiers",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "WeeklySettlementView.swift has ~119 occurrences of bet-related terms. SettlementSnapshotCard.swift has ~35. Focus on string literals only. The SettlementFilterOption enum rawValues ('Settled', 'Unsettled', etc.) ARE user-facing and need changing."
+    },
+    {
+      "id": "US-007",
+      "title": "Rename DashboardView and analytics strings",
+      "description": "As a developer, I need to replace gambling language in the bookie dashboard and analytics views.",
+      "acceptanceCriteria": [
+        "DashboardView: 'Exposure' labels changed to 'Open Activity'",
+        "DashboardView: 'Profit/Loss' or 'P/L' display labels changed to 'Performance'",
+        "AnalyticsDashboardView: 'Earnings' is acceptable — keep it",
+        "AttentionFeedView: 'bet' references in alert/feed text changed to 'pick'",
+        "TonightsExposureCard: 'Exposure' labels changed to 'Open Activity'",
+        "'Win Rate' labels changed to 'Success Rate' if present",
+        "Do NOT rename service methods or Swift identifiers",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "DashboardView has ~16 player/exposure references. AttentionFeedView has ~14 bet references. TonightsExposureCard has ~26 exposure references. AnalyticsDashboardView has ~13 player references. Focus on user-visible Text() and label strings only."
+    },
+    {
+      "id": "US-008",
+      "title": "Rename GradingView user-facing strings",
+      "description": "As a developer, I need to replace gambling language in the GradingView and related grading UI.",
+      "acceptanceCriteria": [
+        "Any 'bet' display text in GradingView changed to 'pick'",
+        "'Grade Bets' or similar headers changed to 'Grade Picks'",
+        "'Settle' action labels changed to 'Reconcile'",
+        "'Payout' display text changed to 'Results Summary' or 'Return'",
+        "BetDetailView: all user-facing 'bet' strings changed to 'pick'",
+        "Do NOT rename GradingView, BetDetailView, or any Swift identifiers",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "GradingView has ~45 bet-related occurrences. The word 'grade' itself is not banned and can stay. Focus on 'bet', 'settle', 'payout' string literals. BetDetailView is the detail screen reached from BetsListView."
+    },
+    {
+      "id": "US-009",
+      "title": "Rename Settings, Account, and Auth view strings",
+      "description": "As a developer, I need to replace 'bookie' and 'player' terminology in settings, account, and authentication views.",
+      "acceptanceCriteria": [
+        "SettingsView: any 'Bookie' labels changed to 'Organizer'",
+        "AccountView: 'Bookie' references changed to 'Organizer', 'Player' to 'Member'",
+        "AcceptancePolicySettingsView: 'bet' references in descriptions changed to 'pick'",
+        "LoginView/SignUpView: any 'bookie'/'player' role labels changed to 'organizer'/'member'",
+        "AuthGateView: no user-facing strings to change (already checked)",
+        "Do NOT rename AuthManager roles or Swift identifiers",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "AccountView has ~33 bet-related occurrences. SettingsView has ~1. AcceptancePolicySettingsView has ~2. Check LoginView, SignUpView, PlayerClaimView for role selection labels. The internal .bookie/.player enum cases stay as-is."
+    },
+    {
+      "id": "US-010",
+      "title": "Rename Onboarding view strings and add compliance disclaimer",
+      "description": "As a developer, I need to update onboarding language and add a compliance disclaimer statement.",
+      "acceptanceCriteria": [
+        "OnboardingWelcomeView: 'bookie'/'sportsbook' text changed to 'organizer'/'group'",
+        "OnboardingConfigureView: all 'bet'/'player'/'bookie' display text uses approved vocabulary",
+        "Add compliance disclaimer to onboarding flow: 'This app is designed for tracking and organizing private group activity. Booki does not process payments or facilitate gambling.'",
+        "Disclaimer appears as a visible text element during onboarding (not just hidden)",
+        "Do NOT rename OnboardingManager or Swift identifiers",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "OnboardingWelcomeView has ~1 bet occurrence. OnboardingConfigureView has ~7. The compliance disclaimer is legally important — make it clearly visible but not obtrusive. Use Theme.textSecondary for the disclaimer text. Place it near the bottom of the welcome screen or as its own step."
+    },
+    {
+      "id": "US-011",
+      "title": "Rename player-side views (TrackView, GamesView, BetHistoryView)",
+      "description": "As a developer, I need to replace all gambling language in the player-facing views.",
+      "acceptanceCriteria": [
+        "TrackView: 'bet' display strings changed to 'pick', 'parlay' to 'multi-pick'",
+        "GamesView: any 'bet'/'betting' labels changed to 'pick'/'picking' or 'browse'",
+        "BetHistoryView: navigation title and all display strings use 'pick' instead of 'bet'",
+        "'Balance' labels changed to 'Activity Balance' where shown to players",
+        "EventDetailView: 'bet' display strings changed to 'pick'",
+        "Do NOT rename Swift types, file names, or internal identifiers",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "TrackView has ~5 occurrences, BetHistoryView ~5, EventDetailView ~22 (many are variable names, focus on string literals), GamesView ~1. These are all player-facing views so compliance is critical."
+    },
+    {
+      "id": "US-012",
+      "title": "Add feature disclaimers to sensitive screens",
+      "description": "As a developer, I need to add subtle compliance disclaimers to screens that could be interpreted as gambling features.",
+      "acceptanceCriteria": [
+        "Pick Entry screen (BetSlipSheet): add small disclaimer text 'For tracking purposes only.' below the Record Pick button or at the bottom of the sheet",
+        "Activity Balance screen: add disclaimer 'Balances are informational and not processed by Booki.' near the balance display",
+        "Disclaimers use Theme.textMuted and Theme.caption styling",
+        "Disclaimers do not interfere with existing layout or scrolling",
+        "Disclaimer text is subtle but visible",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "These disclaimers are legal buffers for App Store review. Keep them small and non-intrusive. Use .font(Theme.caption) and .foregroundColor(Theme.textMuted). Place them in natural footer positions."
+    },
+    {
+      "id": "US-013",
+      "title": "Final audit sweep for banned words in all View files",
+      "description": "As a developer, I need to do a final pass to ensure no banned gambling terms remain in any user-facing strings across the entire Views directory.",
+      "acceptanceCriteria": [
+        "Grep all .swift files in Booki/Views/ for banned terms in string literals: 'bet ', 'bets', 'betting', 'wager', 'gamble', 'gambling', 'sportsbook', 'bookmaker', 'place bet', 'payout', 'cash out', 'odds boost', 'win money', 'lose money', 'risk free'",
+        "Any remaining banned terms in user-facing Text(), Label(), .navigationTitle(), Button title, or string interpolation are replaced with approved vocabulary",
+        "Internal Swift identifiers (type names, variable names, enum cases) are NOT changed",
+        "Comments that are not user-facing can keep technical terminology",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "This is a safety net story. Previous stories should have caught most occurrences, but this final sweep ensures nothing was missed. Use grep/search to find any remaining banned words in string literals. Pay special attention to string interpolations like \"\\(count) bets\" which should become \"\\(count) picks\"."
+    }
+  ]
+}

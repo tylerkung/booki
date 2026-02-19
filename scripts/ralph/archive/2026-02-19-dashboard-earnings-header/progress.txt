@@ -1,0 +1,73 @@
+# Ralph Progress Log
+Started: Thu Feb 19 02:07:59 PST 2026
+---
+
+## Codebase Patterns
+- Xcode IDE required for full typecheck - swiftc can't resolve SwiftData macros
+- PlayerAttentionService uses `realizedPL` pattern: filter graded bets, sum win/loss per bookie P/L convention
+- Day grouping pattern: `DateFormatter` with `"yyyy-MM-dd"` format, used in both `volatility` and `dailyCumulativePL`
+- LiabilityService.calculatePayout(stake:odds:) for American odds payout calculation
+
+- Extract chart into private sub-view (`EarningsChart`) to avoid SwiftUI type-checker timeouts
+- Swift Charts: use `NSDecimalNumber(decimal:).doubleValue` to convert Decimal for chart values
+- Bet model has `createdAt` but no `gradedAt` — filter by `createdAt` for time range filtering
+- Time range tabs: use HStack with equal spacing + bottom underline for active tab (Robinhood style)
+
+---
+
+## 2026-02-19 - US-004
+- **What was implemented**: Added time range selector (1W/1M/3M/1Y/ALL) below the earnings chart and period change label below the hero number with directional arrows
+- **Files changed**:
+  - `Booki/Views/AnalyticsDashboardView.swift` - Added `selectedRange` state, `selectedDays`/`periodPL`/`periodLabel` computed properties, `timeRangeTabs` sub-view with underline active indicator, `periodChangeLabel` sub-view with ▲/▼ arrows; updated `EarningsChart` to accept `days` parameter; added chart animation on range change
+- **Learnings for future iterations:**
+  - Bet model only has `createdAt` date — no `gradedAt` or `updatedAt` fields
+  - Period change label: use ▲/▼ Unicode arrows for positive/negative indicators
+  - `EarningsChart` `days` parameter controls `dailyCumulativePL` filtering
+  - Time range tabs use `.overlay(alignment: .bottom)` for underline indicator
+  - Animation applied to chart container via `.animation(.easeInOut, value: selectedRange)`
+---
+
+## 2026-02-19 - US-003
+- **What was implemented**: Added earnings line chart using Swift Charts between the hero number and summary cards
+- **Files changed**:
+  - `Booki/Views/AnalyticsDashboardView.swift` - Added `import Charts`, created `EarningsChart` private sub-view with LineMark, catmullRom interpolation, hidden axes, empty state handling; inserted chart below earnings header
+- **Learnings for future iterations:**
+  - Swift Charts `LineMark` needs `.foregroundStyle()` applied to the mark itself, not the Chart
+  - `DailyPLPoint` is a top-level struct in PlayerAttentionService.swift (not nested)
+  - `.interpolationMethod(.catmullRom)` gives smooth Robinhood-style curves
+  - Extract chart sub-views to avoid type-checker issues with complex Chart bodies
+  - Line color is conditional on lifetime P/L sign: accent for positive, danger for negative
+---
+
+## 2026-02-19 - US-002
+- **What was implemented**: Added earnings hero number to the top of AnalyticsDashboardView — large lifetime P/L number with color-coding and "Lifetime P/L" subtitle label
+- **Files changed**:
+  - `Booki/Views/AnalyticsDashboardView.swift` - Added `lifetimePL` computed property, `earningsHeader` sub-view, `formatSignedCurrency` helper; replaced `.navigationTitle("Analytics")` with `.navigationBarTitleDisplayMode(.inline)`; moved earnings header above FinishSetupCard in ScrollView
+- **Learnings for future iterations:**
+  - `PlayerAttentionService.totalBookiePL(bets:)` gives aggregate bookie P/L across all players
+  - Signed currency formatting: use abs value for NumberFormatter, prepend +/- manually
+  - Earnings header renders directly on `Theme.background` (no card) for integrated Robinhood look
+  - Hero number uses `Theme.font(size: 34, weight: .bold)` per design spec
+---
+
+## 2026-02-19 - US-001
+- **What was implemented**: Added `DailyPLPoint` struct, `totalBookiePL(bets:)` and `dailyCumulativePL(bets:days:)` methods to PlayerAttentionService
+- **Files changed**:
+  - `Booki/Services/PlayerAttentionService.swift` - Added DailyPLPoint struct, totalBookiePL method (aggregate P/L across all players), dailyCumulativePL method (daily cumulative P/L data points)
+- **Learnings for future iterations:**
+  - `totalBookiePL` is same logic as `realizedPL` but without player filter — operates on all bets
+  - `dailyCumulativePL` reuses the day-grouping pattern from `volatility` method
+  - Running cumulative sum: sort day keys ascending, accumulate P/L across days
+  - Empty state handled: returns empty array if no graded bets
+---
+
+## 2026-02-19 - Launch & Transition Animations
+- **What was implemented**: Polished app launch and auth state transition animations in AuthGateView
+- **Files changed**:
+  - `Booki/Views/AuthGateView.swift` - Splash logo spring animation, spinner delayed fade-in, smooth transitions between auth states (splash/login/dashboard)
+- **Learnings for future iterations:**
+  - Use `ZStack` (not `Group`) as root container when views need `.transition()` modifiers
+  - `.move(edge:)` transitions feel jarring for splash dismissal — prefer `.opacity + .scale` for dissolve effects
+  - Spring animation (`response: 0.6, dampingFraction: 0.7`) gives a nice bouncy logo entrance
+  - Longer animation durations (0.4–0.5s) feel more cinematic for auth state changes
+---
