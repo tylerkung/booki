@@ -4,6 +4,7 @@ import SwiftData
 struct PlayerAnalyticsDetailView: View {
     let summary: PlayerAnalyticsSummary
     let playerBets: [Bet]
+    let playerLedgerEntries: [LedgerEntry]
 
     var body: some View {
         ScrollView {
@@ -13,6 +14,8 @@ struct PlayerAnalyticsDetailView: View {
                 todaySection
                 performanceSection
                 behaviorSection
+                reliabilitySection
+                RecentActivitySection(playerBets: playerBets)
             }
             .padding(16)
         }
@@ -172,6 +175,69 @@ struct PlayerAnalyticsDetailView: View {
             todayMetricRow(label: "Bets Per Week (30d)", value: String(format: "%.1f", Double(recentBets.count) / 4.3))
         }
     }
+
+    // MARK: - Reliability Section
+
+    private var paymentStatus: (label: String, color: Color) {
+        if playerLedgerEntries.isEmpty {
+            return ("New", Theme.textSecondary)
+        } else if summary.isOverdue {
+            return ("Overdue", Theme.danger)
+        } else {
+            return ("Current", Theme.accent)
+        }
+    }
+
+    private var daysSinceLastPayment: String {
+        guard let mostRecent = playerLedgerEntries.max(by: { $0.createdAt < $1.createdAt }) else {
+            return "No payments yet"
+        }
+        let days = Calendar.current.dateComponents([.day], from: mostRecent.createdAt, to: Date()).day ?? 0
+        if days == 0 { return "Today" }
+        if days == 1 { return "1 day ago" }
+        return "\(days) days ago"
+    }
+
+    private var reliabilitySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("RELIABILITY")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .tracking(1.0)
+
+            HStack {
+                Text("Payment Status")
+                    .font(Theme.bodyFont(size: 15))
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Text(paymentStatus.label)
+                    .font(Theme.bodyFont(size: 11, weight: .semibold))
+                    .foregroundStyle(paymentStatus.color == Theme.textSecondary ? Theme.textPrimary : .black)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(paymentStatus.color)
+                    .clipShape(Capsule())
+            }
+
+            todayMetricRow(label: "Last Payment", value: daysSinceLastPayment)
+
+            if summary.isOverdue && summary.overdueAmount > 0 {
+                HStack {
+                    Text("Overdue Amount")
+                        .font(Theme.bodyFont(size: 15))
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Text(formatCurrency(summary.overdueAmount))
+                        .font(Theme.font(size: 17, weight: .bold))
+                        .foregroundStyle(Theme.danger)
+                }
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+
+    // MARK: - Helpers (P/L)
 
     private func plColor(_ value: Decimal) -> Color {
         if value > 0 { return Theme.accent }
@@ -350,5 +416,146 @@ private struct MarketMixBar: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Recent Activity Section
+
+private struct RecentActivitySection: View {
+    let playerBets: [Bet]
+
+    private var sortedBets: [Bet] {
+        playerBets.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private var displayBets: [Bet] {
+        Array(sortedBets.prefix(10))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("RECENT ACTIVITY")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .tracking(1.0)
+
+            if playerBets.isEmpty {
+                Text("No betting history")
+                    .font(Theme.bodyFont(size: 15))
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+            } else {
+                ForEach(displayBets, id: \.id) { bet in
+                    BetHistoryRow(bet: bet)
+                    if bet.id != displayBets.last?.id {
+                        Divider().overlay(Theme.elevatedBackground)
+                    }
+                }
+
+                if sortedBets.count > 10 {
+                    HStack {
+                        Spacer()
+                        Text("View All (\(sortedBets.count))")
+                            .font(Theme.bodyFont(size: 13, weight: .medium))
+                            .foregroundStyle(Theme.accent)
+                        Spacer()
+                    }
+                    .padding(.top, 4)
+                }
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+// MARK: - Bet History Row
+
+private struct BetHistoryRow: View {
+    let bet: Bet
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(formatDate(bet.createdAt))
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                resultBadge
+            }
+
+            Text(bet.eventDescription ?? "Unknown Event")
+                .font(Theme.bodyFont(size: 14, weight: .medium))
+                .foregroundStyle(Theme.textPrimary)
+                .lineLimit(1)
+
+            HStack {
+                Text("\(bet.side) \(formatOdds(bet.odds))")
+                    .font(Theme.bodyFont(size: 12))
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Text(formatCurrency(bet.stake))
+                    .font(Theme.bodyFont(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var resultBadge: some View {
+        Group {
+            switch bet.gradeResult {
+            case .win:
+                Text("W")
+                    .font(Theme.bodyFont(size: 11, weight: .bold))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Theme.accent)
+                    .clipShape(Capsule())
+            case .loss:
+                Text("L")
+                    .font(Theme.bodyFont(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Theme.danger)
+                    .clipShape(Capsule())
+            case .push:
+                Text("P")
+                    .font(Theme.bodyFont(size: 11, weight: .bold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Theme.textMuted)
+                    .clipShape(Capsule())
+            case nil:
+                Text("Pending")
+                    .font(Theme.bodyFont(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Theme.elevatedBackground)
+                    .clipShape(Capsule())
+            }
+        }
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, h:mm a"
+        return formatter.string(from: date)
+    }
+
+    private func formatOdds(_ odds: Int) -> String {
+        odds > 0 ? "+\(odds)" : "\(odds)"
+    }
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 }
