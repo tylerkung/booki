@@ -160,7 +160,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Bet.market is a String field (e.g., 'Spread', 'Moneyline', 'Total'). Use case-insensitive .lowercased().contains() matching. Bet.isParlay is a Bool field. Bets per week = (count of bets in 30d) / 4.3. PlayerAnalyticsDetailView will need access to the player's bets — either pass them as a parameter or add @Query filtered by player."
     },
     {

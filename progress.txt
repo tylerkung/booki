@@ -2,6 +2,7 @@
 Started: Wed Feb 18 19:34:51 PST 2026
 
 ## Codebase Patterns
+- PlayerAnalyticsDetailView accepts `playerBets: [Bet]` parameter for sections needing raw bet data (Behavior, History)
 - Services are caseless `enum` with `static` methods (stateless namespace pattern)
 - P/L calculations use `LiabilityService.calculatePayout(stake:odds:)` — returns profit only, not stake back
 - Bet.player and LedgerEntry.player are optional relationships (`Player?`) — always use `?.id` for comparison
@@ -104,4 +105,21 @@ Started: Wed Feb 18 19:34:51 PST 2026
   - All P/L values come pre-computed from PlayerAnalyticsSummary — no additional @Query or service calls needed
   - `PerformanceMetricCard` uses `Theme.elevatedBackground` inside the card (not cardBackground) to create visual depth within the `.cardStyle()` wrapper
   - `formatSignedCurrency` uses custom `abs()` for Decimal since Swift's `abs()` doesn't work on Decimal directly
+---
+
+## 2026-02-18 - US-008
+- Added Behavior section below Performance in PlayerAnalyticsDetailView
+- Shows avg bet size (30d) and bets per week (30d) as metric rows
+- Market mix horizontal stacked bar with GeometryReader + colored rectangles
+- Market type detection: isParlay → Parlay, else case-insensitive contains for spread/moneyline/total
+- Legend below bar with color dots + label + percentage for each type >0%
+- Empty state "No recent activity" when no bets in last 30 days
+- Extracted `MarketMixBar` as private sub-view at file scope
+- Added `playerBets: [Bet]` parameter to PlayerAnalyticsDetailView (needed for raw bet data)
+- Files changed: `Booki/Views/PlayerAnalyticsDetailView.swift` (modified)
+- **Learnings for future iterations:**
+  - PlayerAnalyticsDetailView now requires `playerBets` parameter — US-009 (History) and US-010 (navigation wiring) need to pass player's bets when constructing this view
+  - Market mix uses case-insensitive `.lowercased().contains()` for market type matching
+  - GeometryReader for proportional bar segments — subtract spacing from width calculation to avoid overflow
+  - Reuse `todayMetricRow` helper for simple label/value metric rows across sections
 ---
