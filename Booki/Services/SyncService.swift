@@ -130,6 +130,10 @@ final class SyncService: ObservableObject {
     private weak var authManager: AuthManager?
     private var modelContext: ModelContext?
 
+    /// Tracks whether the first sync after login has completed.
+    /// clearLocalData only runs on the first sync to avoid flickering on pull-to-refresh.
+    private var hasCompletedInitialSync = false
+
     /// Maximum records to fetch per page for pagination
     private let pageLimit = 1000
 
@@ -147,6 +151,7 @@ final class SyncService: ObservableObject {
     func configure(modelContext: ModelContext, authManager: AuthManager) {
         self.modelContext = modelContext
         self.authManager = authManager
+        self.hasCompletedInitialSync = false
     }
 
     // MARK: - Data Clearing
@@ -169,6 +174,41 @@ final class SyncService: ObservableObject {
             try context.save()
         } catch {
             print("Failed to clear local data: \(error)")
+        }
+    }
+
+    // MARK: - Server-Side Game Sync
+
+    /// Triggers the sync_games Edge Function to fetch fresh odds from the Odds API.
+    /// This is idempotent — the server only fetches from the API once per morning/afternoon window.
+    /// Safe to call on every pull-to-refresh.
+    func triggerServerGameSync() async {
+        let baseURL = SupabaseConfig.url
+        guard let url = URL(string: "\(baseURL.absoluteString)/functions/v1/sync_games") else {
+            print("DEBUG triggerServerGameSync: Invalid URL")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Add auth token if available (sync_games doesn't require it, but good practice)
+        if let session = try? await supabase.auth.session {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse {
+                print("DEBUG triggerServerGameSync: status=\(httpResponse.statusCode)")
+                if httpResponse.statusCode == 200, let body = String(data: data, encoding: .utf8) {
+                    print("DEBUG triggerServerGameSync: \(body.prefix(200))")
+                }
+            }
+        } catch {
+            // Non-fatal — the local sync still works, odds just won't be refreshed
+            print("DEBUG triggerServerGameSync: \(error.localizedDescription)")
         }
     }
 
@@ -202,8 +242,11 @@ final class SyncService: ObservableObject {
                     return
                 }
                 do {
-                    // Clear stale data from any previous account before syncing
-                    if let context = await MainActor.run(body: { self.modelContext }) {
+                    // Clear stale data only on the first sync after login to prevent
+                    // cross-bookie data leakage. Subsequent refreshes skip the clear
+                    // to avoid UI flickering (empty state flash).
+                    let needsClear = await MainActor.run { !self.hasCompletedInitialSync }
+                    if needsClear, let context = await MainActor.run(body: { self.modelContext }) {
                         await MainActor.run {
                             SyncService.clearLocalData(context: context)
                         }
@@ -217,6 +260,7 @@ final class SyncService: ObservableObject {
 
                     // Update sync state on main actor
                     await MainActor.run {
+                        self.hasCompletedInitialSync = true
                         self.lastSyncedAt = Date()
                         self.syncStatus = .idle
                     }
@@ -516,6 +560,8 @@ final class SyncService: ObservableObject {
         var hasMore = true
 
         while hasMore {
+            // Players can only read their own bets via RLS, but we still filter by bookie_id
+            // to match the query pattern. RLS handles the player_id filtering server-side.
             let records: [BetRecord] = try await supabase
                 .from("bets")
                 .select()

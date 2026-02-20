@@ -118,3 +118,23 @@ Started: Fri Feb 20 02:20:05 PST 2026
   - `.move` transitions cause visual jumping between auth states; `.opacity` is smoother
   - PlayerClaimView headerView is a separate computed property from the body
 ---
+
+## 2026-02-20 - Player RLS fixes, grading/settlement bugfixes
+- **RLS player claim fix**: PlayerClaimView's direct Supabase update to set `auth_user_id` was silently blocked by RLS (`players_update` requires `is_bookie()`). Created `claim_player` edge function using service role to bypass RLS.
+- **Spurious bookie record**: When player claim failed, AuthManager fell through and created a bookie record for the player. `get_user_bookie_id()` COALESCE checked bookies first, returning wrong bookie ID. Fix: delete spurious bookie record from DB.
+- **submit_bet/submit_parlay stored "a"/"b" as side**: Edge functions now look up the market table to resolve full side labels (e.g., "Lakers -3.5") and market type (e.g., "moneyline") before storing.
+- **Grading was broken**: `bet.market` stored UUID (not type), `bet.side` stored "a"/"b" (not label). Grading logic couldn't parse either → defaulted all bets to "push". Fixed at source in edge functions.
+- **Combined odds returning 0**: `Int(truncating: NSDecimalNumber)` silently returns 0 when Decimal has 38+ significant digits. Fixed `decimalToAmerican` in PickPresenter and Ticket to convert through Double first.
+- **Auto-settlement**: `auto_refresh_games` now goes accepted → settled in one step, creating ledger entries automatically. No more manual settle step needed.
+- **Pull-to-refresh flicker**: `clearLocalData` was running on every sync. Added `hasCompletedInitialSync` flag to only clear on first sync after login.
+- **Sync_games on refresh**: Added fire-and-forget `triggerServerGameSync()` to pull-to-refresh so odds update automatically.
+- **Anon key**: Updated Info.plist with real Supabase JWT anon key.
+- **Debug cleanup**: Removed debug prints from TrackView, SyncService, TicketDetailView.
+- Files changed: SyncService.swift, PlayerClaimView.swift, PickPresenter.swift, TrackView.swift, TicketDetailView.swift, GamesView.swift, Info.plist, auto_refresh_games/index.ts, submit_bet/index.ts, submit_parlay/index.ts, claim_player/index.ts (new)
+- **Learnings for future iterations:**
+  - RLS `players_update` requires `is_bookie()` — newly signed-up players can't update their own record. Always use edge functions with service role for cross-role mutations.
+  - `Int(truncating: NSDecimalNumber)` fails silently with high-precision Decimals — always convert through Double for final Int conversion.
+  - Supabase `.update().execute()` returns success even when RLS blocks all rows (0 rows affected, no error).
+  - Auto-grading only fires when events transition to `final` — if bets are reset after events are already final, must re-grade manually or re-trigger the transition.
+  - Store resolved human-readable data (team names, market types) in bets, not raw indicators ("a"/"b") or UUIDs — downstream consumers (grading, display) need readable data.
+---

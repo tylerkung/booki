@@ -210,6 +210,7 @@ struct PlayerTabView<Content: View>: View {
 
 /// Settings content view without NavigationStack (wrapper provides it)
 struct PlayerSettingsContent: View {
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var authManager: AuthManager
 
     @State private var showingLogoutConfirmation = false

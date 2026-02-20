@@ -449,19 +449,25 @@ struct PlayerClaimView: View {
                 )
                 print("DEBUG: Supabase signUp succeeded, user ID: \(response.user.id)")
 
-                // Update the player's auth_user_id directly in Supabase
-                // This links the auth credentials to the existing player record
-                print("DEBUG: Updating player record in Supabase with auth_user_id...")
-                try await supabase
-                    .from("players")
-                    .update([
-                        "auth_user_id": response.user.id.uuidString,
-                        "claimed_at": ISO8601DateFormatter().string(from: Date()),
-                        "updated_at": ISO8601DateFormatter().string(from: Date())
-                    ])
-                    .eq("invite_code", value: normalizedCode)
-                    .execute()
-                print("DEBUG: Supabase player record updated successfully")
+                // Call claim_player edge function to link auth account to player record
+                // Uses service role to bypass RLS (players can't update their own record)
+                print("DEBUG: Calling claim_player edge function...")
+                let baseURL = SupabaseConfig.url
+                guard let claimURL = URL(string: "\(baseURL.absoluteString)/functions/v1/claim_player") else {
+                    throw NSError(domain: "PlayerClaimView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+                }
+                var claimRequest = URLRequest(url: claimURL)
+                claimRequest.httpMethod = "POST"
+                claimRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                let session = try await supabase.auth.session
+                claimRequest.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+                claimRequest.httpBody = try JSONEncoder().encode(["invite_code": normalizedCode])
+                let (claimData, claimResponse) = try await URLSession.shared.data(for: claimRequest)
+                if let httpResp = claimResponse as? HTTPURLResponse, !(200...299).contains(httpResp.statusCode) {
+                    let msg = String(data: claimData, encoding: .utf8) ?? "Unknown error"
+                    throw NSError(domain: "PlayerClaimView", code: httpResp.statusCode, userInfo: [NSLocalizedDescriptionKey: "Failed to claim account: \(msg)"])
+                }
+                print("DEBUG: claim_player edge function succeeded")
 
                 // Also update the local SwiftData model
                 let inviteCodeService = InviteCodeService(modelContext: modelContext)

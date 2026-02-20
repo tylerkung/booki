@@ -266,10 +266,13 @@ struct PickPresenter {
     }
 
     static func decimalToAmerican(_ decimal: Decimal) -> Int {
-        if decimal >= 2 {
-            return Int(truncating: ((decimal - 1) * 100) as NSDecimalNumber)
+        let d = Double(truncating: decimal as NSDecimalNumber)
+        if d >= 2 {
+            return Int((d - 1) * 100)
+        } else if d > 1 {
+            return Int(-100.0 / (d - 1))
         } else {
-            return Int(truncating: (-100 / (decimal - 1)) as NSDecimalNumber)
+            return 0
         }
     }
 }

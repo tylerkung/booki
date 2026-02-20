@@ -83,7 +83,7 @@ All critical betting operations are server-authoritative via Supabase Edge Funct
 
 - **Location**: `supabase/functions/`
 - **Shared helpers**: `_shared/cors.ts`, `_shared/supabase.ts`, `_shared/idempotency.ts`, `_shared/audit.ts`, `_shared/grading.ts`
-- **Functions**: `submit_bet`, `accept_bet`, `grade_bet`, `settle_bet`, `adjust_balance`, `reverse_settlement`, `override_grade`, `auto_refresh_games`
+- **Functions**: `submit_bet`, `accept_bet`, `grade_bet`, `settle_bet`, `adjust_balance`, `reverse_settlement`, `override_grade`, `auto_refresh_games`, `claim_player`
 - **Deploy**: `supabase functions deploy <function-name>`
 
 All functions:
@@ -98,7 +98,7 @@ All functions:
 Bets are auto-accepted and auto-graded by default:
 
 - **Auto-accept**: `submit_bet` creates bets with status `'accepted'` immediately
-- **Auto-grade**: `auto_refresh_games` grades bets when events reach `'final'` status
+- **Auto-grade + settle**: `auto_refresh_games` grades bets when events reach `'final'` status and immediately creates ledger entries (accepted → settled in one step)
 - **Grading logic**: Moneyline (winner), Spread (point differential), Totals (over/under)
 - **Opt-in manual modes**: Bookies can enable `manual_bet_acceptance` or `manual_bet_grading` in Settings
 
@@ -157,12 +157,12 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 
 ## Current State (February 20, 2026)
 
-- **Branch**: `ralph/pick-instance-refactor`
+- **Branch**: `ralph/onboarding-isolation-polish`
 - **Phases complete**: 1-15 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
-- **Edge Functions**: 10 functions for server-authoritative operations (including `submit_parlay`, `sync_games`)
+- **Edge Functions**: 11 functions for server-authoritative operations (including `submit_parlay`, `sync_games`, `claim_player`)
 - **Odds API key**: Configured in Settings (free tier, 500 calls/month)
-- **Auto-pilot mode**: Picks auto-accepted and auto-graded by default
+- **Auto-pilot mode**: Picks auto-accepted, auto-graded, and auto-settled (ledger entries created automatically)
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
 - **Branding**: App icon and in-app logo (`BookiLogo` image set), dark launch screen, `DESIGN_SYSTEM.md` restored
 - **Landing page**: `landing/` directory with index.html, styles.css, assets (screenshots + SVG logo)

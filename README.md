@@ -426,4 +426,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 20, 2026 - Landing page overhaul (real screenshots, SVG logo, Space Grotesk headers, compliance copy), dark launch screen replacing teal, auth flow visual polish (gradient CTAs, accent glow, entrance animations)*
+*Last updated: February 20, 2026 - Player RLS fixes (claim_player edge function), auto-settlement in auto_refresh_games, submit_bet/submit_parlay resolve full side labels and market types, combined odds precision fix*

@@ -232,6 +232,26 @@ Deno.serve(async (req) => {
     const acceptedAt = isAutoAccept ? new Date().toISOString() : null;
     const policyViolationReason = hasPolicyViolations ? policyViolations.join(', ') : null;
 
+    // Look up the market to resolve the full side label and market type
+    // The client sends side as 'a' or 'b'; we store the human-readable label
+    const normalizedMarketId = body.market_id?.toLowerCase();
+    const { data: market, error: marketError } = await client
+      .from('markets')
+      .select('id, type, side_a, side_b')
+      .eq('id', normalizedMarketId)
+      .single();
+
+    if (marketError || !market) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Market not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Resolve the full side label from the market
+    const resolvedSide = body.side === 'a' ? market.side_a : market.side_b;
+    const marketType = market.type; // 'moneyline', 'spread', 'total'
+
     // Generate ticket_id for this bet submission
     const ticketId = crypto.randomUUID();
 
@@ -244,8 +264,8 @@ Deno.serve(async (req) => {
         player_id: normalizedPlayerId,
         event_id: normalizedEventId,
         ticket_id: ticketId,
-        market: body.market_id,
-        side: body.side,
+        market: marketType,
+        side: resolvedSide,
         odds: body.odds,
         stake: stakeNum,
         status: betStatus,

@@ -266,21 +266,44 @@ Deno.serve(async (req) => {
     const ticketId = crypto.randomUUID();
     const parlayLegsCount = body.legs.length;
 
+    // Look up all markets to resolve full side labels and market types
+    const marketIds = body.legs.map(leg => leg.market_id.toLowerCase());
+    const { data: markets, error: marketsError } = await client
+      .from('markets')
+      .select('id, type, side_a, side_b')
+      .in('id', marketIds);
+
+    if (marketsError) {
+      console.error('Error fetching markets:', marketsError);
+    }
+
+    const marketMap = new Map(
+      (markets ?? []).map(m => [m.id.toLowerCase(), m])
+    );
+
     // Build insert records for all legs
-    const betInserts = body.legs.map(leg => ({
-      bookie_id: requestBookieId,
-      player_id: normalizedPlayerId,
-      event_id: leg.event_id.toLowerCase(),
-      ticket_id: ticketId,
-      market: leg.market_id.toLowerCase(),
-      side: leg.side_indicator,
-      odds: leg.odds,
-      stake: stakeNum,
-      status: betStatus,
-      is_parlay: true,
-      parlay_legs: parlayLegsCount,
-      policy_violation_reason: policyViolationReason,
-    }));
+    const betInserts = body.legs.map(leg => {
+      const market = marketMap.get(leg.market_id.toLowerCase());
+      const resolvedSide = market
+        ? (leg.side_indicator === 'a' ? market.side_a : market.side_b)
+        : leg.side; // fallback to client-provided side
+      const marketType = market?.type ?? leg.market_id.toLowerCase();
+
+      return {
+        bookie_id: requestBookieId,
+        player_id: normalizedPlayerId,
+        event_id: leg.event_id.toLowerCase(),
+        ticket_id: ticketId,
+        market: marketType,
+        side: resolvedSide,
+        odds: leg.odds,
+        stake: stakeNum,
+        status: betStatus,
+        is_parlay: true,
+        parlay_legs: parlayLegsCount,
+        policy_violation_reason: policyViolationReason,
+      };
+    });
 
     // Insert all legs in a single transaction (batch insert)
     const { data: bets, error: betsError } = await client
