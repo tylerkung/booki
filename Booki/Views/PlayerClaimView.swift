@@ -131,9 +131,11 @@ struct PlayerClaimView: View {
 
     private var headerView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "ticket.fill")
-                .font(Theme.font(size: 60))
-                .foregroundStyle(Theme.accent)
+            Image("BookiLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 180)
+                .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
 
             Text("Claim Your Account")
                 .font(Theme.largeTitle)

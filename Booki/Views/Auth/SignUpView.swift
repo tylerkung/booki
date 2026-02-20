@@ -53,10 +53,12 @@ struct SignUpView: View {
         ScrollView {
             VStack(spacing: 24) {
                 // Header
-                VStack(spacing: 8) {
-                    Image(systemName: "person.badge.plus")
-                        .font(Theme.font(size: 60))
-                        .foregroundStyle(Theme.accent)
+                VStack(spacing: 12) {
+                    Image("BookiLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 180)
+                        .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
 
                     Text("Create Account")
                         .font(Theme.title1)

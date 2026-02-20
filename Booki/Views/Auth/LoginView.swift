@@ -59,8 +59,8 @@ struct LoginView: View {
                 Image("BookiLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 220)
-                    .shadow(color: Theme.accent.opacity(0.4), radius: 40, x: 0, y: 0)
+                    .frame(width: 180)
+                    .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
                     .opacity(logoOpacity)
                     .scaleEffect(logoScale)
 
@@ -224,8 +224,8 @@ struct LoginView: View {
                 Image("BookiLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 160)
-                    .shadow(color: Theme.accent.opacity(0.3), radius: 24, x: 0, y: 0)
+                    .frame(width: 180)
+                    .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
 
                 Text("Welcome Back")
                     .font(Theme.title1)

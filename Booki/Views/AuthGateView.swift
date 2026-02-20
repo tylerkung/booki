@@ -63,7 +63,7 @@ struct AuthGateView: View {
                 }
             } else {
                 authFlowView
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(.opacity)
             }
         }
         .fullScreenCover(isPresented: $showOnboarding) {
@@ -214,7 +214,7 @@ struct AuthGateView: View {
                 Image("BookiLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 200)
+                    .frame(width: 180)
                     .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
                     .scaleEffect(splashLogoScale)
                     .opacity(splashLogoOpacity)

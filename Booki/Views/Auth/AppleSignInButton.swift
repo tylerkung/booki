@@ -26,7 +26,7 @@ struct AppleSignInButton: View {
                     .progressViewStyle(CircularProgressViewStyle(tint: Theme.textPrimary))
                     .frame(height: 50)
                     .frame(maxWidth: .infinity)
-                    .background(Color.black)
+                    .background(Theme.cardBackground)
                     .cornerRadius(Theme.cornerRadiusSmall)
             } else {
                 SignInWithAppleButton(.signIn) { request in
