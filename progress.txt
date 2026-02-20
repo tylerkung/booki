@@ -200,3 +200,13 @@ Started: Thu Feb 19 13:11:23 PST 2026
   - PickPresenter has static americanToDecimal/decimalToAmerican — reuse instead of local copies
   - Generic segmented picker needs `T.ID == String` constraint for reliable equality comparison
 ---
+
+## 2026-02-19 - College Team Abbreviations
+- Expanded TeamAbbreviations.swift with ~250 college football teams across all conferences (ACC, B1G, B12, P12, SEC, AAC, CUSA, MAC, MWC, SBC, Big Sky, Big South, CAA, Ivy, MEAC, MVFC, NEC, OVC, Patriot, Pioneer, SoCon, Southland, SWAC)
+- Restructured lookup: full-name match → prefix match (drop mascot) → pro mascot match → fallback
+- Full-name matching prevents college/pro mascot collisions (e.g. "Tigers" mapping to DET instead of LSU)
+- Files changed: TeamAbbreviations.swift (+209/-28)
+- **Learnings:**
+  - College teams share mascots heavily — can't use mascot-based lookup; must match on school name
+  - API may send "Boston College Eagles" or just "Boston College" — prefix stripping handles both
+---
