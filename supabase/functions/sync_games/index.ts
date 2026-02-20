@@ -145,7 +145,7 @@ async function fetchOddsFromApi(
   const url = new URL(`https://api.the-odds-api.com/v4/sports/${sportKey}/odds/`);
   url.searchParams.set('apiKey', apiKey);
   url.searchParams.set('regions', 'us');
-  url.searchParams.set('markets', 'h2h,spreads,totals');
+  url.searchParams.set('markets', 'h2h,spreads,totals,alternate_spreads,alternate_totals');
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());
@@ -182,7 +182,7 @@ interface MarketRecord {
   id?: string; // UUID from database if existing
   event_id: string;
   bookie_id: null; // Shared markets have NULL bookie_id
-  type: string; // 'moneyline', 'spread', 'total'
+  type: string; // 'moneyline', 'spread', 'total', 'alternate_spread', 'alternate_total'
   side_a: string;
   side_b: string;
   odds_a: number;
@@ -207,6 +207,15 @@ function formatNumber(value: number): string {
     return String(value);
   }
   return value.toFixed(1);
+}
+
+/**
+ * Extracts the numeric line value from a side string for use as a composite key.
+ * e.g., "Lakers -3.5" -> "-3.5", "Over 220.5" -> "220.5", "Lakers" -> ""
+ */
+function extractLineValue(sideA: string): string {
+  const match = sideA.match(/-?\d+\.?\d*/);
+  return match ? match[0] : '';
 }
 
 /**
@@ -275,6 +284,61 @@ function extractMarketsFromOddsEvent(
             odds_a: overOutcome.price,
             odds_b: underOutcome.price,
           });
+        }
+        break;
+      }
+      case 'alternate_spreads': {
+        // Alternate spreads: group outcomes by |point| into home/away pairs
+        const byPoint = new Map<number, { home?: OddsOutcome; away?: OddsOutcome }>();
+        for (const outcome of market.outcomes) {
+          if (outcome.point === undefined) continue;
+          const key = Math.abs(outcome.point);
+          const pair = byPoint.get(key) || {};
+          if (outcome.name === oddsEvent.home_team) {
+            pair.home = outcome;
+          } else {
+            pair.away = outcome;
+          }
+          byPoint.set(key, pair);
+        }
+        for (const [_, pair] of byPoint) {
+          if (pair.home && pair.away) {
+            const awaySpread = formatSpread(pair.away.point ?? 0);
+            const homeSpread = formatSpread(pair.home.point ?? 0);
+            markets.push({
+              type: 'alternate_spread',
+              side_a: `${oddsEvent.away_team} ${awaySpread}`,
+              side_b: `${oddsEvent.home_team} ${homeSpread}`,
+              odds_a: pair.away.price,
+              odds_b: pair.home.price,
+            });
+          }
+        }
+        break;
+      }
+      case 'alternate_totals': {
+        // Alternate totals: group outcomes by point into Over/Under pairs
+        const byTotal = new Map<number, { over?: OddsOutcome; under?: OddsOutcome }>();
+        for (const outcome of market.outcomes) {
+          if (outcome.point === undefined) continue;
+          const pair = byTotal.get(outcome.point) || {};
+          if (outcome.name === 'Over') {
+            pair.over = outcome;
+          } else if (outcome.name === 'Under') {
+            pair.under = outcome;
+          }
+          byTotal.set(outcome.point, pair);
+        }
+        for (const [pointVal, pair] of byTotal) {
+          if (pair.over && pair.under) {
+            markets.push({
+              type: 'alternate_total',
+              side_a: `Over ${formatNumber(pointVal)}`,
+              side_b: `Under ${formatNumber(pointVal)}`,
+              odds_a: pair.over.price,
+              odds_b: pair.under.price,
+            });
+          }
         }
         break;
       }
@@ -526,7 +590,7 @@ Deno.serve(async (req) => {
     const eventDbIds = Array.from(eventIdMap.values());
     const { data: existingMarkets, error: existingMarketsError } = await client
       .from('markets')
-      .select('id, event_id, type')
+      .select('id, event_id, type, side_a')
       .in('event_id', eventDbIds);
 
     if (existingMarketsError) {
@@ -534,11 +598,12 @@ Deno.serve(async (req) => {
       stats.errors.push(`Markets query error: ${existingMarketsError.message}`);
     }
 
-    // Build a map of event_id+type -> market id for existing markets
+    // Build a map of event_id+type+lineValue -> market id for existing markets
+    // This composite key supports multiple alternate lines per type per event
     const existingMarketsMap = new Map<string, string>();
     if (existingMarkets) {
       for (const market of existingMarkets) {
-        const key = `${market.event_id}_${market.type}`;
+        const key = `${market.event_id}_${market.type}_${extractLineValue(market.side_a)}`;
         existingMarketsMap.set(key, market.id);
       }
     }
@@ -563,7 +628,7 @@ Deno.serve(async (req) => {
       }
 
       for (const market of extractedMarkets) {
-        const marketKey = `${eventId}_${market.type}`;
+        const marketKey = `${eventId}_${market.type}_${extractLineValue(market.side_a)}`;
         const existingMarketId = existingMarketsMap.get(marketKey);
 
         if (existingMarketId) {

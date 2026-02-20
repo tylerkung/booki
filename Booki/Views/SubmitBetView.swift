@@ -244,11 +244,7 @@ struct MarketSelectionView: View {
 
     /// Display name for market type
     private func marketTypeName(_ type: MarketType) -> String {
-        switch type {
-        case .spread: return "Spread"
-        case .total: return "Total"
-        case .moneyline: return "Moneyline"
-        }
+        return type.displayName
     }
 
     /// Check if a selection has been made

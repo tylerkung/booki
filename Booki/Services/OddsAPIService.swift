@@ -156,7 +156,7 @@ final class OddsAPIService: ObservableObject {
         components.queryItems = [
             URLQueryItem(name: "apiKey", value: apiKey),
             URLQueryItem(name: "regions", value: "us"),
-            URLQueryItem(name: "markets", value: "h2h,spreads,totals"),
+            URLQueryItem(name: "markets", value: "h2h,spreads,totals,alternate_spreads,alternate_totals"),
             URLQueryItem(name: "oddsFormat", value: "american")
         ]
 

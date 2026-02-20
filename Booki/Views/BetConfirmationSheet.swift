@@ -472,6 +472,9 @@ struct ConfirmationItemRow: View {
         case .spread: return "Spread"
         case .total: return "Total"
         case .moneyline: return "Moneyline"
+        case .alternateSpread: return "Alt Spread"
+        case .alternateTotal: return "Alt Total"
+        case .teamTotal: return "Team Total"
         }
     }
 

@@ -138,3 +138,18 @@ Started: Fri Feb 20 02:20:05 PST 2026
   - Auto-grading only fires when events transition to `final` — if bets are reset after events are already final, must re-grade manually or re-trigger the transition.
   - Store resolved human-readable data (team names, market types) in bets, not raw indicators ("a"/"b") or UUIDs — downstream consumers (grading, display) need readable data.
 ---
+
+## 2026-02-20 - Alternate Lines & Alternate Totals
+- Added `alternateSpread`, `alternateTotal`, `teamTotal` cases to `MarketType` enum with helper properties (`gradesAsSpread`, `gradesAsTotal`, `isAlternate`, `isMainLine`)
+- Updated `sync_games` edge function: API query now fetches `alternate_spreads,alternate_totals`, parses outcomes into paired markets, fixed composite upsert key from `event_id_type` to `event_id_type_lineValue` to support multiple markets per type
+- Updated `grading.ts`: `alternate_spread` → `gradeSpreadBet()`, `alternate_total` → `gradeTotalBet()`, new `gradeTeamTotalBet()` for future team totals
+- Updated `OddsAPIMapper.swift`: new `mapAlternateSpreads()` and `mapAlternateTotals()` methods that group outcomes by point value
+- Updated `OddsAPIService.swift`: markets query param includes alternate markets
+- Wired up GameDetailView "Alternate Lines" tab: `hasMarketsForCategory` and `marketsForSelectedCategory` now filter by `isAlternate`/`isMainLine`, added sorted `alternateSpreadMarkets`/`alternateTotalMarkets` computed properties
+- Files changed: Market.swift, sync_games/index.ts, grading.ts, OddsAPIMapper.swift, OddsAPIService.swift, GameDetailView.swift
+- **Learnings for future iterations:**
+  - The Odds API alternate markets come back with many outcomes per market key — must group by point value into pairs before storing
+  - The `markets` table `type` column is `TEXT` (not a PostgreSQL enum) — no migration needed for new market types
+  - Market upsert composite key must include line value to avoid overwriting alternates with each other
+  - `event.markets` filtering by `.isMainLine` keeps "All Markets" tab clean; alternates go to dedicated tab
+---

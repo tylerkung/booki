@@ -331,6 +331,20 @@ The app is **local-first** with cloud sync:
   - Sport league abbreviation (e.g., "NBA") shown in bet list rows
   - Consistent `MarketType.displayName` for title-case market labels
 
+### Phase 16: Alternate Lines
+- **Alternate Spreads & Totals**
+  - Fetches alternate_spreads and alternate_totals from The Odds API (same endpoint, no extra API cost)
+  - Groups outcomes by point value into paired markets (home/away for spreads, over/under for totals)
+  - New MarketType cases: `alternateSpread`, `alternateTotal`, `teamTotal`
+  - Composite market upsert key supports multiple markets per type per event
+  - Grading reuses existing spread/total logic for alternate lines
+
+- **GameDetailView Alternate Lines Tab**
+  - "Alternate Lines" tab now populated with alt spreads and alt totals
+  - Markets sorted by line value for easy browsing
+  - "All Markets" tab filtered to main lines only (no alternate clutter)
+  - Alternate markets selectable and addable to bet slip
+
 ### Branding & Design System
 - **App Icon**: Custom Booki wordmark on electric cyan background (1024x1024)
 - **Launch Screen**: Electric cyan background → SwiftUI loading view with logo and spinner
@@ -426,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 20, 2026 - Player RLS fixes (claim_player edge function), auto-settlement in auto_refresh_games, submit_bet/submit_parlay resolve full side labels and market types, combined odds precision fix*
+*Last updated: February 20, 2026 - Alternate lines (alternate spreads, alternate totals) fetched from Odds API and displayed in GameDetailView Alternate Lines tab*

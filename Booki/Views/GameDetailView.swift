@@ -87,18 +87,12 @@ struct GameDetailView: View {
 
         switch category {
         case .allMarkets:
-            return !markets.isEmpty
+            return markets.contains { $0.type.isMainLine }
         case .alternateLines:
-            // Future: filter for alternate spread/total markets
-            // Currently no alternate lines support in model
-            return false
+            return markets.contains { $0.type.isAlternate }
         case .playerProps:
-            // Future: filter for player prop markets
-            // Currently no player props support in model
             return false
         case .gameProps:
-            // Future: filter for game prop markets
-            // Currently no game props support in model
             return false
         }
     }
@@ -109,15 +103,12 @@ struct GameDetailView: View {
 
         switch selectedCategory {
         case .allMarkets:
-            return markets
+            return markets.filter { $0.type.isMainLine }
         case .alternateLines:
-            // Future: filter for alternate spread/total markets
-            return []
+            return markets.filter { $0.type.isAlternate }
         case .playerProps:
-            // Future: filter for player prop markets
             return []
         case .gameProps:
-            // Future: filter for game prop markets
             return []
         }
     }
@@ -133,6 +124,27 @@ struct GameDetailView: View {
 
     private var totalMarkets: [Market] {
         marketsForSelectedCategory.filter { $0.type == .total }
+    }
+
+    private var alternateSpreadMarkets: [Market] {
+        marketsForSelectedCategory
+            .filter { $0.type == .alternateSpread }
+            .sorted { extractNumericLineValue($0.sideB) < extractNumericLineValue($1.sideB) }
+    }
+
+    private var alternateTotalMarkets: [Market] {
+        marketsForSelectedCategory
+            .filter { $0.type == .alternateTotal }
+            .sorted { extractNumericLineValue($0.sideA) < extractNumericLineValue($1.sideA) }
+    }
+
+    /// Extract numeric value from side string for sorting
+    private func extractNumericLineValue(_ side: String) -> Double {
+        let pattern = #"-?\d+\.?\d*"#
+        if let range = side.range(of: pattern, options: .regularExpression) {
+            return Double(side[range]) ?? 0
+        }
+        return 0
     }
 
     /// US-012: Description for empty state based on category
@@ -351,7 +363,7 @@ struct GameDetailView: View {
     ) -> some View {
         // US-005: Spread and Total show line value prominently, odds as secondary
         // Moneyline shows odds prominently (the odds ARE the key value)
-        let useSecondaryOdds = market.type == .spread || market.type == .total
+        let useSecondaryOdds = market.type.gradesAsSpread || market.type.gradesAsTotal
 
         VStack(spacing: 4) {
             // Market type label
@@ -460,6 +472,26 @@ struct GameDetailView: View {
                     formatSideB: formatTotalLabel
                 )
             }
+
+            // Alternate spread markets section
+            if !alternateSpreadMarkets.isEmpty {
+                marketTypeSection(
+                    title: "Alt Spread",
+                    markets: alternateSpreadMarkets,
+                    formatSideA: { $0 },
+                    formatSideB: { $0 }
+                )
+            }
+
+            // Alternate total markets section
+            if !alternateTotalMarkets.isEmpty {
+                marketTypeSection(
+                    title: "Alt Total",
+                    markets: alternateTotalMarkets,
+                    formatSideA: formatTotalLabel,
+                    formatSideB: formatTotalLabel
+                )
+            }
         }
         .padding(.horizontal, 16)
     }
@@ -515,7 +547,7 @@ struct GameDetailView: View {
     ) -> some View {
         // US-005: Spread and Total show line value prominently, odds as secondary
         // Moneyline shows odds prominently (the odds ARE the key value)
-        let useSecondaryOdds = market.type == .spread || market.type == .total
+        let useSecondaryOdds = market.type.gradesAsSpread || market.type.gradesAsTotal
 
         VStack(spacing: 4) {
             // Market label (for alternate lines, show "Alt Spread -5.5" style)
@@ -569,14 +601,14 @@ struct GameDetailView: View {
     /// For total: extracts the total value (e.g., "220.5" from "Over 220.5")
     private func extractLineValue(from market: Market) -> String {
         switch market.type {
-        case .spread:
+        case .spread, .alternateSpread:
             // Extract spread value from sideB (home team line)
             let components = market.sideB.components(separatedBy: " ")
             if let last = components.last, (last.hasPrefix("+") || last.hasPrefix("-")) {
                 return last
             }
             return ""
-        case .total:
+        case .total, .alternateTotal, .teamTotal:
             // Extract total value from sideA
             let components = market.sideA.components(separatedBy: " ")
             if components.count >= 2 {

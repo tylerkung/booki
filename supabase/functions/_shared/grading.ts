@@ -233,6 +233,75 @@ export function gradeTotalBet(bet: BetInfo, scores: EventScores): GradeOutcome {
 }
 
 /**
+ * Grades a team total bet.
+ * The bettor picks whether an individual team's score will be over or under a specified total.
+ *
+ * Example: "Lakers Over 110.5" - Lakers need to score 111+ to win
+ * Example: "Celtics Under 108.5" - Celtics need to score 108 or less to win
+ */
+export function gradeTeamTotalBet(bet: BetInfo, scores: EventScores): GradeOutcome {
+  const { homeScore, awayScore, homeTeam, awayTeam } = scores;
+
+  // Extract the total value from the side string
+  const total = extractNumericValue(bet.side);
+  if (total === null) {
+    return {
+      result: 'push',
+      gradeDetails: `Team Total: Could not parse total from "${bet.side}". Treating as push.`,
+    };
+  }
+
+  // Determine if it's an over or under bet
+  const normalizedSide = bet.side.toLowerCase();
+  const isOver = normalizedSide.includes('over');
+  const isUnder = normalizedSide.includes('under');
+
+  if (!isOver && !isUnder) {
+    return {
+      result: 'push',
+      gradeDetails: `Team Total: Could not determine over/under from "${bet.side}". Treating as push.`,
+    };
+  }
+
+  // Determine which team this bet is for
+  const bettorPickedHome = isHomeTeamSide(bet.side, homeTeam, awayTeam);
+  const teamName = bettorPickedHome ? homeTeam : awayTeam;
+  const teamScore = bettorPickedHome ? homeScore : awayScore;
+  const finalScoreStr = `Final: ${awayScore}-${homeScore} (${teamName}: ${teamScore})`;
+
+  if (teamScore > total) {
+    if (isOver) {
+      return {
+        result: 'win',
+        gradeDetails: `Team Total: ${teamName} Over ${total} hit (${teamScore} > ${total}). ${finalScoreStr}`,
+      };
+    } else {
+      return {
+        result: 'loss',
+        gradeDetails: `Team Total: ${teamName} Under ${total} missed (${teamScore} > ${total}). ${finalScoreStr}`,
+      };
+    }
+  } else if (teamScore < total) {
+    if (isUnder) {
+      return {
+        result: 'win',
+        gradeDetails: `Team Total: ${teamName} Under ${total} hit (${teamScore} < ${total}). ${finalScoreStr}`,
+      };
+    } else {
+      return {
+        result: 'loss',
+        gradeDetails: `Team Total: ${teamName} Over ${total} missed (${teamScore} < ${total}). ${finalScoreStr}`,
+      };
+    }
+  } else {
+    return {
+      result: 'push',
+      gradeDetails: `Team Total: ${teamName} pushed at ${total} (${teamScore} = ${total}). ${finalScoreStr}`,
+    };
+  }
+}
+
+/**
  * Main grading function that dispatches to the appropriate grading logic
  * based on market type.
  *
@@ -250,12 +319,17 @@ export function gradeBet(bet: BetInfo, scores: EventScores): GradeOutcome {
 
     case 'spread':
     case 'spreads':
+    case 'alternate_spread':
       return gradeSpreadBet(bet, scores);
 
     case 'total':
     case 'totals':
     case 'over_under':
+    case 'alternate_total':
       return gradeTotalBet(bet, scores);
+
+    case 'team_total':
+      return gradeTeamTotalBet(bet, scores);
 
     default:
       // Unknown market type - cannot grade automatically

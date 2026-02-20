@@ -442,10 +442,6 @@ struct GamesView: View {
             }
         }
         .refreshable {
-            // Fire-and-forget: trigger server-side odds sync without blocking.
-            // The edge function is idempotent (max 2x/day for odds).
-            // Local sync runs immediately so the UI updates fast.
-            Task { await syncService.triggerServerGameSync() }
             await syncService.sync()
         }
         .background(Theme.background)
@@ -514,9 +510,9 @@ struct GamesView: View {
         }
 
         switch market.type {
-        case .spread:
+        case .spread, .alternateSpread:
             return "Spread"
-        case .total:
+        case .total, .alternateTotal, .teamTotal:
             return "Total"
         case .moneyline:
             return "Moneyline"
@@ -555,10 +551,6 @@ struct GamesView: View {
             .frame(maxWidth: .infinity, minHeight: 400)
         }
         .refreshable {
-            // Fire-and-forget: trigger server-side odds sync without blocking.
-            // The edge function is idempotent (max 2x/day for odds).
-            // Local sync runs immediately so the UI updates fast.
-            Task { await syncService.triggerServerGameSync() }
             await syncService.sync()
         }
     }

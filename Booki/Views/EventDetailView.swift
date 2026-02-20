@@ -490,9 +490,9 @@ struct EventMarketRowView: View {
 
     private var typeColor: Color {
         switch market.type {
-        case .spread:
+        case .spread, .alternateSpread:
             return Theme.accent
-        case .total:
+        case .total, .alternateTotal, .teamTotal:
             return .purple
         case .moneyline:
             return Theme.warning
