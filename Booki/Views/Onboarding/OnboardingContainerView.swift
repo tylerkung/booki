@@ -20,7 +20,6 @@ struct OnboardingContainerView: View {
 
     init(
         onboardingManager: OnboardingManager,
-        startAt step: OnboardingStep? = nil,
         onComplete: @escaping () -> Void,
         onSkip: @escaping () -> Void
     ) {

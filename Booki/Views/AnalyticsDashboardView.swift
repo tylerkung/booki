@@ -4,13 +4,11 @@ import Charts
 
 struct AnalyticsDashboardView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(OnboardingManager.self) private var onboardingManager: OnboardingManager?
     @EnvironmentObject private var syncService: SyncService
     @Query private var bets: [Bet]
     @Query private var players: [Player]
     @Query private var ledgerEntries: [LedgerEntry]
 
-    @State private var showOnboardingFromCard = false
     @State private var lastUpdated = Date()
     @State private var searchText = ""
     @State private var activeFilter = "All"
@@ -172,15 +170,6 @@ struct AnalyticsDashboardView: View {
                         timeRangeTabs
                             .padding(.horizontal, 16)
 
-                        // Finish Setup Card
-                        if let manager = onboardingManager, !manager.isOnboardingComplete {
-                            FinishSetupCard(
-                                onboardingManager: manager,
-                                onResume: { showOnboardingFromCard = true }
-                            )
-                            .padding(.horizontal, 16)
-                        }
-
                         if players.filter({ $0.status == .active }).isEmpty {
                             emptyState
                         } else {
@@ -233,16 +222,6 @@ struct AnalyticsDashboardView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     SyncStatusIndicator(syncService: syncService)
-                }
-            }
-            .fullScreenCover(isPresented: $showOnboardingFromCard) {
-                if let manager = onboardingManager {
-                    OnboardingContainerView(
-                        onboardingManager: manager,
-                        startAt: manager.nextIncompleteStep,
-                        onComplete: { showOnboardingFromCard = false },
-                        onSkip: { showOnboardingFromCard = false }
-                    )
                 }
             }
         }
