@@ -202,6 +202,13 @@ final class SyncService: ObservableObject {
                     return
                 }
                 do {
+                    // Clear stale data from any previous account before syncing
+                    if let context = await MainActor.run(body: { self.modelContext }) {
+                        await MainActor.run {
+                            SyncService.clearLocalData(context: context)
+                        }
+                    }
+
                     // Phase 1: Download all data from server
                     try await self.downloadAll(bookieId: bookieId)
 
