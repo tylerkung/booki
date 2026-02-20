@@ -473,21 +473,57 @@ struct AnalyticsDashboardView: View {
 
 // MARK: - Earnings Chart
 
+/// A normalized chart point with a fixed index for smooth animation between time ranges
+private struct NormalizedChartPoint: Identifiable {
+    let id: Int       // 0..<sampleCount — fixed index for animation interpolation
+    let value: Double // cumulative P/L value
+}
+
 private struct EarningsChart: View {
     let bets: [Bet]
     var days: Int = 0
     let lineColor: Color
     var mockDataPoints: [DailyPLPoint]? = nil
 
-    private var dataPoints: [DailyPLPoint] {
+    /// Fixed number of data points so Swift Charts can animate between time ranges
+    private static let sampleCount = 30
+
+    private var rawDataPoints: [DailyPLPoint] {
         if let mock = mockDataPoints, !mock.isEmpty {
             return mock
         }
         return PlayerAttentionService.dailyCumulativePL(bets: bets, days: days)
     }
 
+    /// Resample raw data to a fixed number of points using linear interpolation
+    private var normalizedPoints: [NormalizedChartPoint] {
+        let raw = rawDataPoints
+        guard raw.count >= 2 else {
+            if let single = raw.first {
+                let val = NSDecimalNumber(decimal: single.cumulativePL).doubleValue
+                return (0..<Self.sampleCount).map { NormalizedChartPoint(id: $0, value: val) }
+            }
+            return []
+        }
+
+        let values = raw.map { NSDecimalNumber(decimal: $0.cumulativePL).doubleValue }
+        let count = Self.sampleCount
+        var result: [NormalizedChartPoint] = []
+
+        for i in 0..<count {
+            let t = Double(i) / Double(count - 1) // 0.0 ... 1.0
+            let srcIndex = t * Double(values.count - 1)
+            let lo = Int(srcIndex)
+            let hi = min(lo + 1, values.count - 1)
+            let frac = srcIndex - Double(lo)
+            let interpolated = values[lo] + frac * (values[hi] - values[lo])
+            result.append(NormalizedChartPoint(id: i, value: interpolated))
+        }
+        return result
+    }
+
     var body: some View {
-        if dataPoints.isEmpty {
+        if rawDataPoints.isEmpty {
             Text("No pick history yet")
                 .font(Theme.bodyFont(size: 14))
                 .foregroundStyle(Theme.textMuted)
@@ -495,10 +531,10 @@ private struct EarningsChart: View {
                 .frame(height: 160)
         } else {
             Chart {
-                ForEach(dataPoints, id: \.date) { point in
+                ForEach(normalizedPoints) { point in
                     LineMark(
-                        x: .value("Date", point.date),
-                        y: .value("Performance", NSDecimalNumber(decimal: point.cumulativePL).doubleValue)
+                        x: .value("Index", point.id),
+                        y: .value("Performance", point.value)
                     )
                     .foregroundStyle(lineColor)
                     .interpolationMethod(.catmullRom)
