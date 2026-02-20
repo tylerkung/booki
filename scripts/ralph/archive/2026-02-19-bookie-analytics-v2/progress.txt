@@ -1,0 +1,176 @@
+# Ralph Progress Log
+Started: Wed Feb 18 19:34:51 PST 2026
+
+## Codebase Patterns
+- PlayerAnalyticsDetailView accepts `playerBets: [Bet]` and `playerLedgerEntries: [LedgerEntry]` parameters for sections needing raw data
+- Extract sub-views as `private struct` at file scope for complex sections (RecentActivitySection, BetHistoryRow) to avoid type-checker timeouts
+- Services are caseless `enum` with `static` methods (stateless namespace pattern)
+- P/L calculations use `LiabilityService.calculatePayout(stake:odds:)` — returns profit only, not stake back
+- Bet.player and LedgerEntry.player are optional relationships (`Player?`) — always use `?.id` for comparison
+- `BalanceService.balanceOwed(from:)` takes `[LedgerEntry]` — positive = player owes bookie
+- Xcode IDE required for full typecheck — SwiftData macros can't resolve via CLI
+- NavigationLink(value:) + .navigationDestination(for:) pattern for type-safe navigation in NavigationStack
+- Data model structs used as navigation values must conform to Hashable (use model `id` for @Model types)
+---
+
+## 2026-02-18 - US-001
+- Implemented PlayerAttentionService as enum with static methods
+- Created `PlayerExposure` struct (grossExposure, pendingBetCount, largestPendingBet)
+- Implemented: `calculateExposure`, `realizedPL`, `volatility`, `isOverdue`, `winRate`, `avgBetSize`
+- Files changed: `Booki/Services/PlayerAttentionService.swift` (new)
+- **Learnings for future iterations:**
+  - P/L from bookie perspective: win for player = negative P/L for bookie, loss for player = positive P/L
+  - Volatility uses max absolute daily P/L swing, grouped by calendar day
+  - `isOverdue` requires both balance > 0 AND no recent ledger entries
+  - LiabilityService.calculatePayout returns profit amount only (not total return including stake)
+---
+
+## 2026-02-18 - US-002
+- Added `PlayerAttentionScore` struct (score 0-100, label, reasonChips)
+- Added `PlayerAnalyticsSummary` struct as composite model with all player metrics
+- Implemented `calculatePAS()` with weighted formula: 0.35*exposure + 0.20*PL + 0.15*largestBet + 0.20*overdue + 0.10*volatility
+- Implemented `generateSummaries()` returning sorted array of summaries (PAS descending)
+- Reason chips: Large pending, Overdue, On heater, Cold streak, High volatility, High roller, Parlay heavy
+- Files changed: `Booki/Services/PlayerAttentionService.swift` (modified)
+- **Learnings for future iterations:**
+  - PAS normalization caps: exposure/$5000, P/L/$2000, single bet/$1000, overdue/$2000, volatility/$1000
+  - "On heater" = bookie P/L negative (player winning), "Cold streak" = bookie P/L positive (player losing)
+  - Reason chips are sorted by contribution weight, top 3 selected
+  - `NSDecimalNumber(decimal:).doubleValue` is the pattern for Decimal→Double conversion in this codebase
+---
+
+## 2026-02-18 - US-003
+- Created `Booki/Views/AnalyticsDashboardView.swift` as a new standalone view (DashboardView untouched)
+- 4 summary cards in 2x2 LazyVGrid: Net Exposure, Pending Bets, Top Risk Player, Outstanding Balances
+- Extracted `SummaryCard` private sub-view to keep body simple and avoid type-checker timeouts
+- Empty state with icon when bookie has no active players
+- "Last updated" timestamp below cards
+- FinishSetupCard onboarding integration preserved (same pattern as DashboardView)
+- Uses @Query for bets, players, ledgerEntries; computes summaries via PlayerAttentionService.generateSummaries()
+- Files changed: `Booki/Views/AnalyticsDashboardView.swift` (new)
+- **Learnings for future iterations:**
+  - Use ScrollView instead of List for analytics dashboard — more control over layout than List sections
+  - Extract sub-views as `private struct` at file scope (not nested) to keep compiler happy
+  - `.cardStyle()` view modifier from Theme.swift handles background gradient + border stroke
+  - OnboardingManager is `@Environment(OnboardingManager.self)` with optional binding pattern
+---
+
+## 2026-02-18 - US-004
+- Added ranked player list below summary cards in AnalyticsDashboardView
+- Extracted `PlayerAnalyticsRow` as private struct sub-view to avoid type-checker timeouts
+- Each row shows: player name, PAS label badge (colored capsule), primary metric (overdue/exposure/7d P/L), secondary metrics (lifetime P/L, avg bet), reason chips (max 3)
+- Chip color mapping: Overdue→danger, On heater→gold, Cold streak→accentTertiary, High roller→accentSecondary, Parlay heavy→scheduled, High volatility→warning, Large pending→accent
+- Files changed: `Booki/Views/AnalyticsDashboardView.swift` (modified)
+- **Learnings for future iterations:**
+  - Pass `formatCurrency` as a closure to sub-views rather than duplicating NumberFormatter logic
+  - PAS badge uses `.textMuted` for "Low" label — need conditional foreground color (black on colored, white on muted)
+  - ForEach on summaries uses `\.player.id` as identifier since PlayerAnalyticsSummary isn't Identifiable
+  - Signed currency formatting: prefix "+" for positive, "-" for negative, plain for zero
+---
+
+## 2026-02-18 - US-005
+- Added search bar with magnifying glass icon and clear button above player list
+- Added horizontally scrolling filter chips: All / Attention needed / Overdue / High exposure / Big winners / Big losers
+- Added `filteredSummaries` computed property composing search + filter together
+- Result count label shown when filters/search active (e.g., "5 of 12 players")
+- Empty state message when no players match filters
+- Active chip uses Theme.accent background, inactive uses Theme.elevatedBackground
+- Files changed: `Booki/Views/AnalyticsDashboardView.swift` (modified)
+- **Learnings for future iterations:**
+  - Custom TextField search bar works better than .searchable() in ScrollView contexts (avoids NavigationStack dependency)
+  - Filter chip pattern: static array of options + @State activeFilter + switch in computed property
+  - `localizedCaseInsensitiveContains` is the idiomatic Swift way for case-insensitive search
+---
+
+## 2026-02-18 - US-006
+- Created `Booki/Views/PlayerAnalyticsDetailView.swift` with header and Today section
+- Header: player name (title1), balance color-coded (green=player owes, red=bookie owes), PAS badge, reason chips
+- Two CTA buttons: "ADD BET" (accent bg) and "SETTLE UP" (elevated bg) — placeholder print actions
+- Today section card: Open Exposure, Open Bets count, Largest Open Bet — metric rows with label/value layout
+- Extracted `DetailReasonChips` as private sub-view with chip color mapping (same as dashboard)
+- Files changed: `Booki/Views/PlayerAnalyticsDetailView.swift` (new)
+- **Learnings for future iterations:**
+  - PlayerAnalyticsDetailView accepts `PlayerAnalyticsSummary` — all metrics pre-computed, no @Query needed for basic sections
+  - Balance color for bookie view: positive (player owes) = accent/green, negative (bookie owes) = danger/red
+  - Future sections (Performance, Behavior, Reliability, History) will need access to raw bets/ledgerEntries — will need @Query or parameters added later
+  - Chip color mapping duplicated from PlayerAnalyticsRow — could be extracted to shared helper in future
+---
+
+## 2026-02-18 - US-007
+- Added Performance section below Today section in PlayerAnalyticsDetailView
+- 2x2 LazyVGrid showing: 7d P/L, 30d P/L, All-time P/L, Win Rate
+- P/L values color-coded: positive green (accent), negative red (danger), zero neutral (textSecondary)
+- Win rate displayed as percentage (e.g., "62%")
+- Extracted `PerformanceMetricCard` as private sub-view with elevated background styling
+- Added `formatSignedCurrency` helper for +/- prefix formatting and `plColor` for conditional coloring
+- Files changed: `Booki/Views/PlayerAnalyticsDetailView.swift` (modified)
+- **Learnings for future iterations:**
+  - All P/L values come pre-computed from PlayerAnalyticsSummary — no additional @Query or service calls needed
+  - `PerformanceMetricCard` uses `Theme.elevatedBackground` inside the card (not cardBackground) to create visual depth within the `.cardStyle()` wrapper
+  - `formatSignedCurrency` uses custom `abs()` for Decimal since Swift's `abs()` doesn't work on Decimal directly
+---
+
+## 2026-02-18 - US-008
+- Added Behavior section below Performance in PlayerAnalyticsDetailView
+- Shows avg bet size (30d) and bets per week (30d) as metric rows
+- Market mix horizontal stacked bar with GeometryReader + colored rectangles
+- Market type detection: isParlay → Parlay, else case-insensitive contains for spread/moneyline/total
+- Legend below bar with color dots + label + percentage for each type >0%
+- Empty state "No recent activity" when no bets in last 30 days
+- Extracted `MarketMixBar` as private sub-view at file scope
+- Added `playerBets: [Bet]` parameter to PlayerAnalyticsDetailView (needed for raw bet data)
+- Files changed: `Booki/Views/PlayerAnalyticsDetailView.swift` (modified)
+- **Learnings for future iterations:**
+  - PlayerAnalyticsDetailView now requires `playerBets` parameter — US-009 (History) and US-010 (navigation wiring) need to pass player's bets when constructing this view
+  - Market mix uses case-insensitive `.lowercased().contains()` for market type matching
+  - GeometryReader for proportional bar segments — subtract spacing from width calculation to avoid overflow
+  - Reuse `todayMetricRow` helper for simple label/value metric rows across sections
+---
+
+## 2026-02-18 - US-009
+- Added Reliability section with payment status badge (New/Overdue/Current), days since last payment, overdue amount
+- Added Recent Activity section showing last 10 bets sorted by date descending
+- Each bet row shows: date, event description, side + odds, stake, and result badge (W/L/P/Pending)
+- "View All" link shown when player has more than 10 bets
+- Added `playerLedgerEntries: [LedgerEntry]` parameter to PlayerAnalyticsDetailView
+- Extracted `RecentActivitySection` and `BetHistoryRow` as private structs at file scope
+- Files changed: `Booki/Views/PlayerAnalyticsDetailView.swift` (modified)
+- **Learnings for future iterations:**
+  - PlayerAnalyticsDetailView now requires 3 params: summary, playerBets, playerLedgerEntries — US-010 navigation wiring must pass all three
+  - Payment status logic: empty ledger = "New", isOverdue from summary = "Overdue", else "Current"
+  - `gradeResult` is optional (`GradeResult?`) — use switch with `case nil:` for pending/open bets
+  - DateFormatter with `"MMM d, h:mm a"` gives compact date display for bet history rows
+---
+
+## 2026-02-18 - US-010
+- Swapped DashboardView() → AnalyticsDashboardView() in ContentView.swift first tab
+- Added NavigationStack wrapping AnalyticsDashboardView body
+- Added .navigationDestination(for: PlayerAnalyticsSummary.self) for player detail navigation
+- Player list rows wrapped in NavigationLink(value:) for tap-to-navigate
+- Card 3 (Top Risk Player) uses NavigationLink to navigate to that player's detail
+- Card 4 (Outstanding Balances) taps to set activeFilter="Overdue" and scroll to player list
+- Card 1 (Net Exposure) taps to scroll to player list via ScrollViewReader
+- Made PlayerAnalyticsSummary, PlayerAttentionScore, PlayerExposure conform to Hashable (required for navigationDestination)
+- FinishSetupCard onboarding logic preserved (unchanged from US-003)
+- Old DashboardView.swift kept in codebase for reference (not deleted)
+- flaggedPlayersCount badge logic unchanged in ContentView (independent of dashboard view)
+- Files changed: `Booki/ContentView.swift`, `Booki/Views/AnalyticsDashboardView.swift`, `Booki/Services/PlayerAttentionService.swift`
+- **Learnings for future iterations:**
+  - SwiftUI navigationDestination(for:) requires the value type to conform to Hashable
+  - For SwiftData @Model types, implement Hashable via the model's `id` property
+  - ScrollViewReader + .id() + scrollTo() is the pattern for programmatic scrolling in ScrollView
+  - NavigationLink(value:) + .buttonStyle(.plain) avoids default list row styling in non-List contexts
+---
+
+## 2026-02-19 - Dashboard Polish & Xcode Project Fix
+- Fixed "Big winners" / "Big losers" filters — were reversed due to bookie-perspective P/L convention
+- Added AnalyticsDashboardView.swift, PlayerAnalyticsDetailView.swift, PlayerAttentionService.swift to project.pbxproj (Ralph created files but didn't register them)
+- Summary cards: removed icons from titles, set top-left alignment for consistent grid layout, matched card heights
+- Top Risk card now shows player exposure amount instead of first reason chip
+- Player detail CTAs: swapped "Add Bet" → "Settle Up" (primary) + "Adjust Balance" (secondary) — more relevant for bookie workflow
+- Files changed: `Booki.xcodeproj/project.pbxproj`, `Booki/Views/AnalyticsDashboardView.swift`, `Booki/Views/PlayerAnalyticsDetailView.swift`
+- **Learnings for future iterations:**
+  - Ralph doesn't add new files to project.pbxproj — always check and add manually after Ralph runs
+  - `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)` pins content top-left in LazyVGrid cells for uniform card heights
+  - Bookie P/L convention: positive = bookie profited (player lost), negative = bookie lost (player won) — easy to reverse filters
+---

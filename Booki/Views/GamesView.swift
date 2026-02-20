@@ -48,6 +48,12 @@ struct GamesView: View {
     /// Search text for filtering by team name (US-038)
     @State private var searchText: String = ""
 
+    /// Whether the inline search field is expanded
+    @State private var isSearchExpanded: Bool = false
+
+    /// Focus state for the inline search field
+    @FocusState private var isSearchFocused: Bool
+
     /// Time filter option (US-038, US-039)
     @State private var timeFilter: TimeFilter = .all
 
@@ -202,11 +208,7 @@ struct GamesView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search bar and filter (US-038)
-            searchAndFilterHeader
-                .background(Theme.background)
-
-            // Sticky sport tabs header
+            // Sport tabs with inline search (US-038)
             sportTabsHeader
                 .background(Theme.background)
 
@@ -275,62 +277,71 @@ struct GamesView: View {
         .padding(.bottom, 8)
     }
 
-    // MARK: - Search and Filter Header (US-038)
-
-    @ViewBuilder
-    private var searchAndFilterHeader: some View {
-        HStack(spacing: 12) {
-            // Search bar
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(Theme.textSecondary)
-
-                TextField("Search teams...", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Theme.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-
-            // Filter button
-            Button(action: { showingFilterSheet = true }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                        .font(Theme.font(size: 16))
-                    if timeFilter != .all {
-                        Text(timeFilter.rawValue)
-                            .font(Theme.caption)
-                            .fontWeight(.medium)
-                    }
-                }
-                .foregroundStyle(timeFilter != .all ? Theme.background : Theme.textPrimary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(timeFilter != .all ? Theme.accent : Theme.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-    }
-
-    // MARK: - Sport Tabs Header
+    // MARK: - Sport Tabs Header (with inline search)
 
     @ViewBuilder
     private var sportTabsHeader: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
+                // Inline expandable search
+                if isSearchExpanded {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.textSecondary)
+
+                        TextField("Search teams...", text: $searchText)
+                            .textFieldStyle(.plain)
+                            .font(Theme.subheadline)
+                            .autocorrectionDisabled()
+                            .focused($isSearchFocused)
+
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                searchText = ""
+                                isSearchExpanded = false
+                                isSearchFocused = false
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Theme.cardBackground)
+                    .clipShape(Capsule())
+                    .frame(width: 200)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity),
+                        removal: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity)
+                    ))
+                } else {
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            isSearchExpanded = true
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            isSearchFocused = true
+                        }
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.textPrimary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Theme.cardBackground)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity),
+                        removal: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity)
+                    ))
+                }
+
                 // "All" tab
                 SportTabButton(
                     title: "All",
@@ -366,18 +377,66 @@ struct GamesView: View {
     @ViewBuilder
     private var gamesList: some View {
         ScrollView {
-            // US-006: Use LazyVStack with pinnedViews for sticky column headers
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                // Column headers section - sticks below sport tabs
-                Section(header: columnHeadersRow) {
-                    // US-008: Favorites section at top of All games (US-039)
-                    if timeFilter == .all && selectedSport == nil && !favoriteEvents.isEmpty {
-                        favoritesSection
+                // Favorites section with its own sticky header
+                if timeFilter == .all && selectedSport == nil && !favoriteEvents.isEmpty {
+                    Section(header: stickyHeader(leftContent: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill")
+                                .foregroundStyle(.yellow)
+                                .font(.system(size: 10))
+                            Text("Favorites")
+                                .fontWeight(.medium)
+                        }
+                    })) {
+                        ForEach(favoriteEvents, id: \.id) { event in
+                            CompactGameRow(
+                                event: event,
+                                selections: betSlipManager.selectionsSet,
+                                onSelectOdds: { selection in
+                                    handleOddsSelection(selection, event: event)
+                                },
+                                onTapCard: {
+                                    selectedEventForNavigation = event
+                                },
+                                lockOffsetMinutes: lockOffsetMinutes
+                            )
+                        }
+                        Color.clear.frame(height: 16)
                     }
+                }
 
-                    // Events grouped by sport and league
-                    ForEach(sortedSports, id: \.self) { sport in
-                        sportSection(sport: sport)
+                // Each sport+league group is its own section with sticky header
+                ForEach(sortedSports, id: \.self) { sport in
+                    let leaguesByEvent = eventsBySportAndLeague[sport] ?? [:]
+                    let sortedLeagues = leaguesByEvent.keys.sorted()
+
+                    ForEach(sortedLeagues, id: \.self) { league in
+                        Section(header: stickyHeader(leftContent: {
+                            HStack(spacing: 4) {
+                                Text(sport)
+                                    .fontWeight(.medium)
+                                Text("·")
+                                    .foregroundStyle(Theme.textMuted)
+                                Text(league)
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                        })) {
+                            ForEach(leaguesByEvent[league] ?? [], id: \.id) { event in
+                                CompactGameRow(
+                                    event: event,
+                                    selections: betSlipManager.selectionsSet,
+                                    onSelectOdds: { selection in
+                                        handleOddsSelection(selection, event: event)
+                                    },
+                                    onTapCard: {
+                                        selectedEventForNavigation = event
+                                    },
+                                    lockOffsetMinutes: lockOffsetMinutes
+                                )
+                            }
+                            Color.clear.frame(height: 16)
+                        }
                     }
                 }
             }
@@ -388,17 +447,19 @@ struct GamesView: View {
         .background(Theme.background)
     }
 
-    // MARK: - Column Headers Row (US-006)
+    // MARK: - Sticky Section Header
 
-    /// Sticky column headers for SPREAD/MONEY/TOTAL columns
+    /// Reusable sticky header: sport/league title on the left, SPREAD/MONEY/TOTAL on the right
     @ViewBuilder
-    private var columnHeadersRow: some View {
+    private func stickyHeader<Left: View>(@ViewBuilder leftContent: () -> Left) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 4) {
-                // Spacer for team name column
+                leftContent()
+                    .font(Theme.font(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+
                 Spacer()
 
-                // Column headers aligned with odds buttons
                 Text("SPREAD")
                     .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundColor(Theme.textMuted)
@@ -418,88 +479,9 @@ struct GamesView: View {
             .padding(.vertical, 8)
             .background(Theme.background)
 
-            // Bottom border
             Rectangle()
                 .fill(Theme.divider)
                 .frame(height: 0.5)
-        }
-    }
-
-    // MARK: - Favorites Section (US-039, US-008)
-
-    @ViewBuilder
-    private var favoritesSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Section header - styled similar to sport headers
-            HStack {
-                Image(systemName: "star.fill")
-                    .foregroundStyle(.yellow)
-                    .font(Theme.font(size: 10))
-                Text("Favorites")
-                    .fontWeight(.medium)
-            }
-            .font(Theme.font(size: 12, weight: .medium))
-            .foregroundStyle(Theme.textSecondary)
-            .padding(.top, 16)
-            .padding(.bottom, 8)
-            .padding(.horizontal, 12)
-
-            // US-008: Favorite games using CompactGameRow
-            ForEach(favoriteEvents, id: \.id) { event in
-                CompactGameRow(
-                    event: event,
-                    selections: betSlipManager.selectionsSet,
-                    onSelectOdds: { selection in
-                        handleOddsSelection(selection, event: event)
-                    },
-                    onTapCard: {
-                        selectedEventForNavigation = event
-                    },
-                    lockOffsetMinutes: lockOffsetMinutes
-                )
-            }
-        }
-    }
-
-    // MARK: - Sport Section
-
-    @ViewBuilder
-    private func sportSection(sport: String) -> some View {
-        let leaguesByEvent = eventsBySportAndLeague[sport] ?? [:]
-        let sortedLeagues = leaguesByEvent.keys.sorted()
-
-        ForEach(sortedLeagues, id: \.self) { league in
-            VStack(alignment: .leading, spacing: 0) {
-                // US-007: Section header - compact inline format
-                HStack {
-                    Text(sport)
-                        .fontWeight(.medium)
-                    Text("•")
-                        .foregroundStyle(Theme.textSecondary)
-                    Text(league)
-                        .foregroundStyle(Theme.textSecondary)
-                }
-                .font(Theme.font(size: 12, weight: .medium))
-                .foregroundStyle(Theme.textSecondary)
-                .padding(.top, 16)
-                .padding(.bottom, 8)
-                .padding(.horizontal, 12)
-
-                // US-008: Game rows using CompactGameRow
-                ForEach(leaguesByEvent[league] ?? [], id: \.id) { event in
-                    CompactGameRow(
-                        event: event,
-                        selections: betSlipManager.selectionsSet,
-                        onSelectOdds: { selection in
-                            handleOddsSelection(selection, event: event)
-                        },
-                        onTapCard: {
-                            selectedEventForNavigation = event
-                        },
-                        lockOffsetMinutes: lockOffsetMinutes
-                    )
-                }
-            }
         }
     }
 

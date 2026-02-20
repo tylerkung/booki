@@ -23,7 +23,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": "This is the canonical presentation model from the PRD. BetStatus maps to the two-axis system: pending/accepted → workflow=pending/approved + settlement=open. graded/settled with .win → settlement=won. graded/settled with .loss → settlement=lost. declined → workflow=rejected. void → settlement=void. Use LiabilityService.calculatePayout(stake:odds:) for profit calculation. American odds formatting: positive gets '+' prefix. Event name format: 'awayTeam @ homeTeam'. For multi-picks, take an array of Bets sharing a ticketId. combinedOdds calculated from all legs."
     },
     {
@@ -42,7 +42,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": "This replaces all the inline status coloring and labeling across views. The key insight is that settlement status drives the primary visual, and workflow status is secondary metadata. Use .background(statusColor.opacity(0.15)) with .foregroundStyle(statusColor) for the pill styling, matching existing Theme patterns."
     },
     {
@@ -61,7 +61,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": "This component is used inside both compact cards and detail views. The selection label comes from bet.side (e.g., 'Houston Rockets -2.5'). Odds formatting: positive gets '+' prefix. League might be nil if not available. Keep the component simple — it just displays, no interaction."
     },
     {
@@ -82,7 +82,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": "This is the primary reusable card that replaces BetRowView, PlayerBetRowView, TicketHeaderView, etc. The PickPresenter provides all the display strings so the card just lays them out. The card should match the existing visual density of BetRowView. No interaction — wrapping views handle NavigationLink etc."
     },
     {
@@ -101,7 +101,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
       "notes": "This header replaces the top sections of TicketDetailView and BetDetailView. The PickPresenter already computes profitLine and whether the pick is settled. For Total Return, calculate stake + profit. Section styling should match existing Theme.cardBackground card patterns."
     },
     {
@@ -120,7 +120,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
+      "passes": false,
       "notes": "Parlay odds calculation: convert each leg's American odds to decimal, multiply together, convert back to American. Use the existing americanToDecimal/decimalToAmerican helper pattern from BetsListView. The selections array is used by SelectionRow in detail views to show each leg."
     },
     {
@@ -139,7 +139,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
+      "passes": false,
       "notes": "BetRowView currently takes (bet, eventName, betDisplayName, sportLeague, policyViolationReason, parlayInfo). Construct a PickPresenter from these params and pass to PickCardCompact. Keep the ParlayPartialInfo badge as an overlay or additional element — PickCardCompact is the base, extra bookie-specific info layers on top. BetsListView.swift contains BetRowView, BetDetailView — only change BetRowView."
     },
     {
@@ -157,7 +157,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
+      "passes": false,
       "notes": "TrackView groups bets into Ticket structs by ticketId. The Ticket struct and grouping logic stays as-is — only the row rendering changes. TicketHeaderView currently shows displayName, stake, payout, status — this maps directly to PickCardCompact. The mini status dots for parlay legs are a TrackView-specific addition on top of the base card."
     },
     {
@@ -174,7 +174,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
+      "passes": false,
       "notes": "GradingBetRow and ParlayLegRow have unique grading UI (Win/Loss/Push/Void buttons, suggested outcome) that can't be replaced by PickCardCompact. Instead, use SelectionRow for the pick info portion and keep the grading controls as-is. PlayerBetRowView is simpler and can fully adopt PickCardCompact."
     },
     {
@@ -192,7 +192,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": true,
+      "passes": false,
       "notes": "TicketDetailView is the most complex detail screen (~1100 lines). The parlay outcome section with odds breakdown is unique and should stay. Replace the header summary and individual bet rows with shared components. The adjusted odds display for voided/pushed legs also stays as-is."
     },
     {
@@ -210,7 +210,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": true,
+      "passes": false,
       "notes": "This is a sweep story to catch any remaining inconsistencies after the component refactors. Focus on string literals in views not fully refactored in earlier stories. BetDetailView in BetsListView.swift is a large detail view (~400 lines) that should adopt PickDetailHeader if feasible, or at minimum use consistent labels."
     },
     {
@@ -228,7 +228,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": true,
+      "passes": false,
       "notes": "Final safety net story. Check that the refactor is complete and consistent. Fix any remaining deviations. The goal: any developer looking at pick display code sees the same component patterns everywhere."
     }
   ]

@@ -426,4 +426,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 19, 2026 - Compliance Language Overhaul (all user-facing strings use App Store compliant vocabulary), merged all feature branches to main*
+*Last updated: February 19, 2026 - Pick Instance Refactor (shared PickPresenter, StatusPill, SelectionRow, PickCardCompact, PickDetailHeader components), GamesView sticky sport headers and inline search, TrackView unified card layout*

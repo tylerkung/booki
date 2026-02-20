@@ -93,20 +93,20 @@ struct PickPresenter {
 
         // Financial
         let payout = LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
-        self.stakeLine = "$\(PickPresenter.formatDecimal(bet.stake)) Stake"
+        self.stakeLine = "Stake: $\(PickPresenter.formatDecimal(bet.stake))"
 
         switch settlement {
         case .won:
             self.profit = payout
-            self.profitLine = "+$\(PickPresenter.formatDecimal(payout)) Profit"
+            self.profitLine = "Profit: +$\(PickPresenter.formatDecimal(payout))"
             self.profitColor = Theme.accent
         case .lost:
             self.profit = -bet.stake
-            self.profitLine = "-$\(PickPresenter.formatDecimal(bet.stake))"
+            self.profitLine = "Loss: -$\(PickPresenter.formatDecimal(bet.stake))"
             self.profitColor = Theme.danger
         case .push, .void, .cancelled:
             self.profit = .zero
-            self.profitLine = "$0.00"
+            self.profitLine = "Returned: $\(PickPresenter.formatDecimal(bet.stake))"
             self.profitColor = Theme.textSecondary
         case .open:
             self.profit = payout
@@ -128,14 +128,11 @@ struct PickPresenter {
         let combinedAmerican = decimalToAmerican(combinedDecimal)
         let combinedOddsStr = formatOdds(combinedAmerican)
 
-        // Title
-        let title = "Multi-Pick · \(sortedBets.count) Selections · \(combinedOddsStr)"
+        // Title — parentheses around odds to match single pick format
+        let title = "Multi-Pick · \(sortedBets.count) Selections (\(combinedOddsStr))"
 
-        // Context
-        var context = "Multi-Pick"
-        if let name = playerName {
-            context = "\(name) · \(context)"
-        }
+        // Context — only show player name prefix for bookie views, no "Multi-Pick" redundancy
+        let context = playerName ?? ""
 
         // Stake from first bet (parlay stake is identical on all legs)
         let stake = sortedBets.first?.stake ?? .zero
@@ -172,15 +169,15 @@ struct PickPresenter {
         switch settlement {
         case .won:
             profit = stake * combinedDecimal - stake
-            profitLine = "+$\(formatDecimal(profit)) Profit"
+            profitLine = "Profit: +$\(formatDecimal(profit))"
             profitColor = Theme.accent
         case .lost:
             profit = -stake
-            profitLine = "-$\(formatDecimal(stake))"
+            profitLine = "Loss: -$\(formatDecimal(stake))"
             profitColor = Theme.danger
         case .push, .void, .cancelled:
             profit = .zero
-            profitLine = "$0.00"
+            profitLine = "Returned: $\(formatDecimal(stake))"
             profitColor = Theme.textSecondary
         case .open:
             profit = stake * combinedDecimal - stake
@@ -212,7 +209,7 @@ struct PickPresenter {
         return PickPresenter(
             title: title,
             contextLine: context,
-            stakeLine: "$\(formatDecimal(stake)) Stake",
+            stakeLine: "Stake: $\(formatDecimal(stake))",
             profitLine: profitLine,
             profitColor: profitColor,
             settlementStatus: settlement,
@@ -260,6 +257,7 @@ struct PickPresenter {
     }
 
     static func americanToDecimal(_ odds: Int) -> Decimal {
+        guard odds != 0 else { return Decimal(1) } // safety: treat 0 odds as even money
         if odds > 0 {
             return 1 + Decimal(odds) / 100
         } else {

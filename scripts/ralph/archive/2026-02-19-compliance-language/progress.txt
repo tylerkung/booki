@@ -1,0 +1,4 @@
+# Ralph Progress Log
+Started: Wed Feb 19 2026
+Branch: ralph/pick-instance-refactor
+---

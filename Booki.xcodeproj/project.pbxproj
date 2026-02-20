@@ -121,6 +121,11 @@
 		8A1234560087 /* AnalyticsDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550087 /* AnalyticsDashboardView.swift */; };
 		8A1234560088 /* PlayerAnalyticsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550088 /* PlayerAnalyticsDetailView.swift */; };
 		8A1234560089 /* PlayerAttentionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550089 /* PlayerAttentionService.swift */; };
+		8A1234560090 /* PickPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550090 /* PickPresenter.swift */; };
+		8A1234560091 /* StatusPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550091 /* StatusPill.swift */; };
+		8A1234560092 /* SelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550092 /* SelectionRow.swift */; };
+		8A1234560093 /* PickCardCompact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550093 /* PickCardCompact.swift */; };
+		8A1234560094 /* PickDetailHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550094 /* PickDetailHeader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -250,6 +255,11 @@
 		8A1234550087 /* AnalyticsDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDashboardView.swift; sourceTree = "<group>"; };
 		8A1234550088 /* PlayerAnalyticsDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAnalyticsDetailView.swift; sourceTree = "<group>"; };
 		8A1234550089 /* PlayerAttentionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAttentionService.swift; sourceTree = "<group>"; };
+		8A1234550090 /* PickPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickPresenter.swift; sourceTree = "<group>"; };
+		8A1234550091 /* StatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPill.swift; sourceTree = "<group>"; };
+		8A1234550092 /* SelectionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionRow.swift; sourceTree = "<group>"; };
+		8A1234550093 /* PickCardCompact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickCardCompact.swift; sourceTree = "<group>"; };
+		8A1234550094 /* PickDetailHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickDetailHeader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -378,6 +388,7 @@
 				8A1234550087 /* AnalyticsDashboardView.swift */,
 				8A1234550088 /* PlayerAnalyticsDetailView.swift */,
 				8A1234530011 /* Onboarding */,
+				8A1234530012 /* Components */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -422,6 +433,7 @@
 				8A1234550074 /* PlayerRiskService.swift */,
 				8A1234550079 /* OnboardingManager.swift */,
 				8A1234550089 /* PlayerAttentionService.swift */,
+				8A1234550090 /* PickPresenter.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -487,6 +499,17 @@
 				8A1234550085 /* OnboardingContainerView.swift */,
 			);
 			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		8A1234530012 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				8A1234550091 /* StatusPill.swift */,
+				8A1234550092 /* SelectionRow.swift */,
+				8A1234550093 /* PickCardCompact.swift */,
+				8A1234550094 /* PickDetailHeader.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -691,6 +714,11 @@
 				8A1234560087 /* AnalyticsDashboardView.swift in Sources */,
 				8A1234560088 /* PlayerAnalyticsDetailView.swift in Sources */,
 				8A1234560089 /* PlayerAttentionService.swift in Sources */,
+				8A1234560090 /* PickPresenter.swift in Sources */,
+				8A1234560091 /* StatusPill.swift in Sources */,
+				8A1234560092 /* SelectionRow.swift in Sources */,
+				8A1234560093 /* PickCardCompact.swift in Sources */,
+				8A1234560094 /* PickDetailHeader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
