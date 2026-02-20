@@ -730,10 +730,13 @@ final class SyncService: ObservableObject {
         let descriptor = FetchDescriptor<Bet>(predicate: #Predicate { $0.id == recordId })
         let existingBets = try context.fetch(descriptor)
 
-        // Find the player for this bet
+        // Find the player for this bet (players must be downloaded first so this lookup succeeds)
         let playerId = record.playerId
         let playerDescriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.id == playerId })
         let player = try context.fetch(playerDescriptor).first
+        if player == nil {
+            print("⚠️ upsertBet: player \(record.playerId) not found for bet \(record.id) — bet will have nil player relationship")
+        }
 
         if let existing = existingBets.first {
             // Update if server is newer
