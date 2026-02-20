@@ -21,29 +21,6 @@ enum TransactionFilter: String, CaseIterable, Identifiable {
     }
 }
 
-/// Filter options for bet history (player view)
-enum BetHistoryFilter: String, CaseIterable, Identifiable {
-    case active = "Active"
-    case settled = "Reconciled"
-    case all = "All"
-
-    var id: String { rawValue }
-
-    /// Returns the bet statuses that match this filter
-    var matchingStatuses: [BetStatus] {
-        switch self {
-        case .active:
-            // Active = pending + accepted (+ readyToGrade since it's still in-play)
-            return [.pending, .accepted, .readyToGrade]
-        case .settled:
-            // Settled = won, lost, push, void (graded bets awaiting settlement also shown here)
-            return [.graded, .settled, .void]
-        case .all:
-            return BetStatus.allCases
-        }
-    }
-}
-
 /// Odds format preference for displaying betting odds
 enum OddsFormat: String, CaseIterable, Identifiable {
     case american = "American"
@@ -59,167 +36,105 @@ struct AccountView: View {
     @EnvironmentObject private var authManager: AuthManager
     @Query private var allBets: [Bet]
     @Query private var allLedgerEntries: [LedgerEntry]
-    @Query private var allEvents: [Event]
-
     let player: Player
 
-    // Logout state
     @State private var showingLogoutConfirmation = false
     @State private var showingLogoutError = false
     @State private var logoutErrorMessage = ""
-
-    // Transaction history filter state
     @State private var selectedTransactionFilter: TransactionFilter = .all
-
-    // Bet history filter state
-    @State private var selectedBetFilter: BetHistoryFilter = .active
-
-    // Player preferences
     @AppStorage("playerOddsFormat") private var oddsFormat: String = OddsFormat.american.rawValue
     @AppStorage("playerNotificationsEnabled") private var notificationsEnabled: Bool = true
 
     // MARK: - Computed Properties
 
-    /// All bets for this player
     private var playerBets: [Bet] {
         allBets.filter { $0.player?.id == player.id }
     }
 
-    /// Ledger entries for this player
     private var playerLedgerEntries: [LedgerEntry] {
         allLedgerEntries.filter { $0.player?.id == player.id }
     }
 
-    /// Filtered ledger entries based on selected filter, sorted by date (newest first)
     private var filteredLedgerEntries: [LedgerEntry] {
         let sorted = playerLedgerEntries.sorted { $0.createdAt > $1.createdAt }
-        guard let entryType = selectedTransactionFilter.entryType else {
-            return sorted
-        }
+        guard let entryType = selectedTransactionFilter.entryType else { return sorted }
         return sorted.filter { $0.type == entryType }
     }
 
-    /// Player balance summary
     private var balanceSummary: PlayerBalanceSummary {
-        BalanceService.playerSummary(
-            for: player,
-            bets: playerBets,
-            ledgerEntries: playerLedgerEntries
-        )
+        BalanceService.playerSummary(for: player, bets: playerBets, ledgerEntries: playerLedgerEntries)
     }
 
-    /// Display balance - negated for user-facing semantics
-    /// Positive = player in credit (bookie owes player)
-    /// Negative = player in debt (player owes bookie)
-    private var displayBalance: Decimal {
-        -balanceSummary.balanceOwed
-    }
+    private var displayBalance: Decimal { -balanceSummary.balanceOwed }
 
-    /// Open bets count (pending + accepted)
     private var openBetsCount: Int {
         playerBets.filter { $0.status == .pending || $0.status == .accepted || $0.status == .readyToGrade }.count
     }
 
-    /// Pending bets count (awaiting acceptance)
-    private var pendingBetsCount: Int {
-        playerBets.filter { $0.status == .pending }.count
-    }
-
-    /// Settled bets for win rate calculation
     private var settledBets: [Bet] {
         playerBets.filter { $0.status == .settled && $0.gradeResult != nil }
     }
 
-    /// Win count
-    private var winCount: Int {
-        settledBets.filter { $0.gradeResult == .win }.count
-    }
+    private var winCount: Int { settledBets.filter { $0.gradeResult == .win }.count }
+    private var lossCount: Int { settledBets.filter { $0.gradeResult == .loss }.count }
+    private var pushCount: Int { settledBets.filter { $0.gradeResult == .push }.count }
 
-    /// Loss count
-    private var lossCount: Int {
-        settledBets.filter { $0.gradeResult == .loss }.count
-    }
-
-    /// Win rate percentage
     private var winRate: Double {
-        let winsAndLosses = winCount + lossCount
-        guard winsAndLosses > 0 else { return 0 }
-        return Double(winCount) / Double(winsAndLosses) * 100
+        let total = winCount + lossCount
+        guard total > 0 else { return 0 }
+        return Double(winCount) / Double(total) * 100
     }
 
-    /// Push count
-    private var pushCount: Int {
-        settledBets.filter { $0.gradeResult == .push }.count
-    }
-
-    /// Total bets placed (all bets except void)
-    private var totalBetsPlaced: Int {
-        playerBets.filter { $0.status != .void }.count
-    }
-
-    /// Total stake across all settled bets (for ROI calculation)
-    /// Groups by ticketId and uses first bet's stake for parlays to avoid overcounting
     private var totalStaked: Decimal {
-        // Group settled bets by ticketId
         let grouped = Dictionary(grouping: settledBets) { $0.ticketId }
-
-        // For each ticket, use first bet's stake (parlays share stake across legs)
         return grouped.values.reduce(Decimal.zero) { total, ticketBets in
-            // All bets in a ticket share the same stake for parlays
-            // For singles, there's only one bet anyway
             total + (ticketBets.first?.stake ?? 0)
         }
     }
 
-    /// Total profit/loss from settled bets
     private var totalProfitLoss: Decimal {
         settledBets.reduce(Decimal.zero) { total, bet in
             guard let result = bet.gradeResult else { return total }
             switch result {
             case .win:
-                // Calculate profit from win
-                let decimalOdds: Decimal
-                if bet.odds > 0 {
-                    decimalOdds = Decimal(bet.odds) / 100
-                } else {
-                    decimalOdds = 100 / Decimal(abs(bet.odds))
-                }
+                let decimalOdds: Decimal = bet.odds > 0
+                    ? Decimal(bet.odds) / 100
+                    : 100 / Decimal(Swift.abs(bet.odds))
                 return total + (bet.stake * decimalOdds)
             case .loss:
-                // Lost stake
                 return total - bet.stake
             case .push:
-                // No change
                 return total
             }
         }
     }
 
-    /// ROI percentage (profit / total staked)
     private var roiPercentage: Double {
         guard totalStaked > 0 else { return 0 }
         return Double(truncating: (totalProfitLoss / totalStaked * 100) as NSDecimalNumber)
     }
 
-    /// Credit utilization percentage (0.0 to 1.0+)
     private var creditUtilization: Double {
         guard player.creditLimit > 0 else { return 0 }
         let used = player.creditLimit - balanceSummary.availableCredit
         return Double(truncating: (used / player.creditLimit) as NSDecimalNumber)
     }
 
-    /// Filtered bets based on selected filter, sorted by date (newest first)
-    private var filteredPlayerBets: [Bet] {
-        playerBets
-            .filter { selectedBetFilter.matchingStatuses.contains($0.status) }
-            .sorted { $0.createdAt > $1.createdAt }
+    private var balanceColor: Color {
+        displayBalance > 0 ? .green : (displayBalance < 0 ? .red : .primary)
     }
 
-    /// Color for balance display
-    private var balanceColor: Color {
-        // Positive displayBalance = player is in credit (green - bookie owes player)
-        // Negative displayBalance = player owes bookie (red - player is in debt)
-        displayBalance > 0 ? .green : (displayBalance < 0 ? .red : .primary)
+    private var oddsFormatBinding: Binding<OddsFormat> {
+        Binding(
+            get: { OddsFormat(rawValue: oddsFormat) ?? .american },
+            set: { oddsFormat = $0.rawValue }
+        )
+    }
+
+    private var memberSinceDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: player.createdAt)
     }
 
     // MARK: - Body
@@ -227,31 +142,11 @@ struct AccountView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Hero Balance Section
                 heroBalanceSection
-
-                // Profile Section
-                profileSection
-
-                // Preferences Section
-                preferencesSection
-
-                // Credit Utilization Section
-                creditUtilizationSection
-
-                // Quick Stats Section
-                quickStatsSection
-
-                // Betting Statistics Section
-                bettingStatisticsSection
-
-                // My Bets Section
-                myBetsSection
-
-                // Transaction History Section
+                profileAndPreferencesCard
+                performanceCard
                 transactionHistorySection
 
-                // Logout Section (only show for authenticated players)
                 if authManager.userRole == .player {
                     logoutSection
                 }
@@ -263,9 +158,7 @@ struct AccountView: View {
         .navigationBarTitleDisplayMode(.large)
         .alert("Log Out", isPresented: $showingLogoutConfirmation) {
             Button("Cancel", role: .cancel) { }
-            Button("Log Out", role: .destructive) {
-                performLogout()
-            }
+            Button("Log Out", role: .destructive) { performLogout() }
         } message: {
             Text("Are you sure you want to log out?")
         }
@@ -276,40 +169,7 @@ struct AccountView: View {
         }
     }
 
-    // MARK: - Logout Section
-
-    private var logoutSection: some View {
-        VStack(spacing: 16) {
-            Button {
-                showingLogoutConfirmation = true
-            } label: {
-                HStack {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                    Text("Log Out")
-                }
-                .font(Theme.headline)
-                .textCase(.uppercase)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-            }
-            .buttonStyle(DestructiveButtonStyle())
-        }
-        .padding(.top, 20)
-    }
-
-    private func performLogout() {
-        Task {
-            do {
-                try await authManager.signOut()
-            } catch {
-                logoutErrorMessage = error.localizedDescription
-                showingLogoutError = true
-            }
-        }
-    }
-
-    // MARK: - Hero Balance Section
+    // MARK: - Hero Balance Section (unchanged)
 
     private var heroBalanceSection: some View {
         VStack(spacing: 12) {
@@ -376,46 +236,61 @@ struct AccountView: View {
         .shadow(color: Color.black.opacity(0.4), radius: 12, x: 0, y: 6)
     }
 
-    // MARK: - Profile Section
+    // MARK: - Profile & Preferences (merged)
 
-    /// Formatted "member since" date
-    private var memberSinceDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: player.createdAt)
-    }
+    private var profileAndPreferencesCard: some View {
+        VStack(spacing: 0) {
+            // Profile rows
+            profileRow(icon: "person.text.rectangle", label: "Name", value: player.name)
+            Divider().background(Theme.divider)
+            profileRow(icon: "envelope.fill", label: "Email", value: player.email ?? "—")
+            Divider().background(Theme.divider)
+            profileRow(icon: "link.circle.fill", label: "Organizer", value: player.bookie?.name ?? "—")
+            Divider().background(Theme.divider)
+            profileRow(icon: "calendar", label: "Member Since", value: memberSinceDate)
 
-    private var profileSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 8) {
-                Image(systemName: "person.fill")
-                    .foregroundStyle(Theme.accentSecondary)
-                Text("PROFILE")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .tracking(1)
+            Divider().background(Theme.divider).padding(.vertical, 4)
+
+            // Odds Format
+            HStack(spacing: 12) {
+                Image(systemName: "number.circle")
+                    .font(.body)
+                    .foregroundStyle(Theme.textMuted)
+                    .frame(width: 24)
+
+                Text("Odds Format")
+                    .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
+
+                Spacer()
+
+                Picker("Odds Format", selection: oddsFormatBinding) {
+                    ForEach(OddsFormat.allCases) { format in
+                        Text(format.rawValue).tag(format)
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(Theme.accent)
             }
+            .padding(.vertical, 12)
 
-            VStack(spacing: 0) {
-                // Name
-                profileRow(icon: "person.text.rectangle", label: "Name", value: player.name)
+            Divider().background(Theme.divider)
 
-                Divider().background(Theme.divider)
+            // Notifications
+            HStack(spacing: 12) {
+                Image(systemName: "bell.fill")
+                    .font(.body)
+                    .foregroundStyle(Theme.textMuted)
+                    .frame(width: 24)
 
-                // Email
-                profileRow(icon: "envelope.fill", label: "Email", value: player.email ?? "—")
-
-                Divider().background(Theme.divider)
-
-                // Connected Bookie
-                profileRow(icon: "link.circle.fill", label: "Organizer", value: player.bookie?.name ?? "—")
-
-                Divider().background(Theme.divider)
-
-                // Member Since
-                profileRow(icon: "calendar", label: "Member Since", value: memberSinceDate)
+                Toggle(isOn: $notificationsEnabled) {
+                    Text("Pick Notifications")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .tint(Theme.accent)
             }
+            .padding(.vertical, 12)
         }
         .padding(20)
         .background(
@@ -429,7 +304,6 @@ struct AccountView: View {
         .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
-    /// Helper for profile info rows
     private func profileRow(icon: String, label: String, value: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
@@ -451,307 +325,12 @@ struct AccountView: View {
         .padding(.vertical, 12)
     }
 
-    // MARK: - Preferences Section
+    // MARK: - Performance Card (merged Quick Stats + Betting Stats + Credit)
 
-    /// Binding wrapper for OddsFormat stored as String in @AppStorage
-    private var oddsFormatBinding: Binding<OddsFormat> {
-        Binding(
-            get: { OddsFormat(rawValue: oddsFormat) ?? .american },
-            set: { oddsFormat = $0.rawValue }
-        )
-    }
-
-    private var preferencesSection: some View {
+    private var performanceCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 8) {
-                Image(systemName: "gearshape.fill")
-                    .foregroundStyle(Theme.accentSecondary)
-                Text("PREFERENCES")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .tracking(1)
-                    .foregroundStyle(Theme.textSecondary)
-            }
-
-            VStack(spacing: 0) {
-                // Odds Format
-                HStack(spacing: 12) {
-                    Image(systemName: "number.circle")
-                        .font(.body)
-                        .foregroundStyle(Theme.textMuted)
-                        .frame(width: 24)
-
-                    Text("Odds Format")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textSecondary)
-
-                    Spacer()
-
-                    Picker("Odds Format", selection: oddsFormatBinding) {
-                        ForEach(OddsFormat.allCases) { format in
-                            Text(format.rawValue).tag(format)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .tint(Theme.accent)
-                }
-                .padding(.vertical, 12)
-
-                Divider().background(Theme.divider)
-
-                // Notifications
-                HStack(spacing: 12) {
-                    Image(systemName: "bell.fill")
-                        .font(.body)
-                        .foregroundStyle(Theme.textMuted)
-                        .frame(width: 24)
-
-                    Toggle(isOn: $notificationsEnabled) {
-                        Text("Pick Notifications")
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                    .tint(Theme.accent)
-                }
-                .padding(.vertical, 12)
-            }
-        }
-        .padding(20)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Theme.cardBackground)
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Theme.border, lineWidth: 0.5)
-            }
-        )
-        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
-    }
-
-    // MARK: - Credit Utilization Section
-
-    private var creditUtilizationSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header with icon
-            HStack {
-                HStack(spacing: 8) {
-                    Image(systemName: "creditcard.fill")
-                        .foregroundStyle(Theme.accent)
-                    Text("AVAILABLE CREDIT")
-                        .font(Theme.caption)
-                        .fontWeight(.semibold)
-                        .tracking(1)
-                        .foregroundStyle(Theme.textSecondary)
-                }
-
-                Spacer()
-
-                Text(formatCurrency(balanceSummary.availableCredit))
-                    .font(Theme.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(balanceSummary.availableCredit >= 0 ? Theme.textPrimary : Theme.danger)
-            }
-
-            // Styled progress bar
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    // Background track with gradient
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Theme.elevatedBackground)
-                        .frame(height: 16)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Theme.border, lineWidth: 1)
-                        )
-
-                    // Filled portion with gradient
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(creditUtilizationGradient)
-                        .frame(width: max(min(CGFloat(creditUtilization) * geometry.size.width, geometry.size.width), 8), height: 16)
-                        .shadow(color: creditUtilizationColor.opacity(0.5), radius: 4, x: 0, y: 0)
-                }
-            }
-            .frame(height: 16)
-
-            // Footer stats
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("USED")
-                        .font(Theme.caption2)
-                        .fontWeight(.medium)
-                        .tracking(0.5)
-                        .foregroundStyle(Theme.textMuted)
-                    Text(formatCurrency(player.creditLimit - balanceSummary.availableCredit))
-                        .font(Theme.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(creditUtilizationColor)
-                }
-
-                Spacer()
-
-                // Utilization percentage
-                VStack(spacing: 2) {
-                    Text("\(Int(creditUtilization * 100))%")
-                        .font(Theme.subheadline)
-                        .fontWeight(.bold)
-                        .foregroundStyle(creditUtilizationColor)
-                    Text("utilized")
-                        .font(Theme.caption2)
-                        .foregroundStyle(Theme.textMuted)
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("LIMIT")
-                        .font(Theme.caption2)
-                        .fontWeight(.medium)
-                        .tracking(0.5)
-                        .foregroundStyle(Theme.textMuted)
-                    Text(formatCurrency(player.creditLimit))
-                        .font(Theme.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Theme.textPrimary)
-                }
-            }
-        }
-        .padding(20)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Theme.cardBackground)
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Theme.border, lineWidth: 0.5)
-            }
-        )
-        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
-    }
-
-    /// Color for credit utilization bar
-    private var creditUtilizationColor: Color {
-        if creditUtilization >= 1.0 {
-            return Theme.danger
-        } else if creditUtilization >= 0.8 {
-            return Theme.warning
-        } else if creditUtilization >= 0.5 {
-            return Theme.gold
-        } else {
-            return Theme.accent
-        }
-    }
-
-    /// Gradient for credit utilization bar
-    private var creditUtilizationGradient: LinearGradient {
-        LinearGradient(
-            colors: [creditUtilizationColor, creditUtilizationColor.opacity(0.7)],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
-    }
-
-    // MARK: - Quick Stats Section
-
-    private var quickStatsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 8) {
-                Image(systemName: "chart.bar.fill")
-                    .foregroundStyle(Theme.gold)
-                Text("QUICK STATS")
-                    .font(Theme.caption)
-                    .fontWeight(.semibold)
-                    .tracking(1)
-                    .foregroundStyle(Theme.textSecondary)
-            }
-
-            HStack(spacing: 12) {
-                // Open Bets
-                statCard(
-                    title: "Open Picks",
-                    value: "\(openBetsCount)",
-                    icon: "ticket.fill",
-                    color: Theme.scheduled
-                )
-
-                // Pending Bets
-                statCard(
-                    title: "Pending",
-                    value: "\(pendingBetsCount)",
-                    icon: "clock.fill",
-                    color: Theme.warning
-                )
-
-                // Win Rate
-                statCard(
-                    title: "Win Rate",
-                    value: settledBets.isEmpty ? "—" : String(format: "%.0f%%", winRate),
-                    icon: "percent",
-                    color: Theme.accent
-                )
-            }
-        }
-        .padding(20)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Theme.cardBackground)
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Theme.border, lineWidth: 0.5)
-            }
-        )
-        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
-    }
-
-    private func statCard(title: String, value: String, icon: String, color: Color) -> some View {
-        VStack(spacing: 8) {
-            // Icon
-            Image(systemName: icon)
-                .font(Theme.title3)
-                .foregroundStyle(color)
-
-            // Value
-            Text(value)
-                .font(Theme.title2)
-                .fontWeight(.bold)
-                .foregroundStyle(Theme.textPrimary)
-
-            // Title
-            Text(title)
-                .font(Theme.caption2)
-                .fontWeight(.medium)
-                .foregroundStyle(Theme.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Theme.elevatedBackground)
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(color.opacity(0.3), lineWidth: 1)
-            }
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(color.opacity(0.05))
-        )
-    }
-
-    // MARK: - Betting Statistics Section
-
-    private var bettingStatisticsSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack(spacing: 8) {
-                Image(systemName: "trophy.fill")
-                    .foregroundStyle(Theme.gold)
-                Text("PICK STATS")
-                    .font(Theme.caption)
-                    .fontWeight(.semibold)
-                    .tracking(1)
-                    .foregroundStyle(Theme.textSecondary)
-            }
-
-            // Record display card (W-L-P)
-            VStack(spacing: 12) {
+            // Record hero
+            VStack(spacing: 8) {
                 Text("RECORD")
                     .font(Theme.caption2)
                     .fontWeight(.medium)
@@ -772,29 +351,14 @@ struct AccountView: View {
                 }
                 .font(Theme.font(size: 32, weight: .bold))
 
-                HStack(spacing: 20) {
-                    HStack(spacing: 4) {
-                        Circle().fill(Theme.accent).frame(width: 8, height: 8)
-                        Text("Wins")
-                            .font(Theme.caption2)
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                    HStack(spacing: 4) {
-                        Circle().fill(Theme.danger).frame(width: 8, height: 8)
-                        Text("Losses")
-                            .font(Theme.caption2)
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                    HStack(spacing: 4) {
-                        Circle().fill(Theme.warning).frame(width: 8, height: 8)
-                        Text("Pushes")
-                            .font(Theme.caption2)
-                            .foregroundStyle(Theme.textSecondary)
-                    }
+                HStack(spacing: 16) {
+                    legendDot(color: Theme.accent, label: "W")
+                    legendDot(color: Theme.danger, label: "L")
+                    legendDot(color: Theme.warning, label: "P")
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 20)
+            .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Theme.elevatedBackground)
@@ -804,89 +368,39 @@ struct AccountView: View {
                     )
             )
 
-            // Stats grid
-            VStack(spacing: 16) {
-                // Total Bets Placed
-                statsRow(
-                    label: "Total Picks Placed",
-                    value: "\(totalBetsPlaced)",
-                    valueColor: Theme.textPrimary
+            // Compact stat rows
+            VStack(spacing: 12) {
+                statRow(label: "Open Picks", value: "\(openBetsCount)", color: Theme.scheduled)
+
+                Divider().background(Theme.divider)
+
+                statRow(
+                    label: "Win Rate",
+                    value: settledBets.isEmpty ? "—" : String(format: "%.0f%%", winRate),
+                    color: settledBets.isEmpty ? Theme.textSecondary : (winRate >= 50 ? Theme.accent : Theme.danger)
                 )
 
-                Divider()
-                    .background(Theme.divider)
+                Divider().background(Theme.divider)
 
-                // Win Percentage
-                statsRow(
-                    label: "Win Percentage",
-                    value: settledBets.isEmpty ? "—" : String(format: "%.1f%%", winRate),
-                    valueColor: settledBets.isEmpty ? Theme.textSecondary : (winRate >= 50 ? Theme.accent : Theme.danger)
+                statRow(
+                    label: "Performance",
+                    value: settledBets.isEmpty ? "—" : formatProfitLoss(totalProfitLoss),
+                    color: settledBets.isEmpty ? Theme.textSecondary : (totalProfitLoss >= 0 ? Theme.accent : Theme.danger)
                 )
 
-                Divider()
-                    .background(Theme.divider)
+                Divider().background(Theme.divider)
 
-                // Total Profit/Loss
-                HStack {
-                    HStack(spacing: 8) {
-                        Image(systemName: "dollarsign.circle")
-                            .foregroundStyle(Theme.textMuted)
-                        Text("Total Performance")
-                            .font(Theme.subheadline)
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                    Spacer()
-                    if settledBets.isEmpty {
-                        Text("—")
-                            .font(Theme.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Theme.textSecondary)
-                    } else {
-                        Text(formatProfitLoss(totalProfitLoss))
-                            .font(Theme.subheadline)
-                            .fontWeight(.bold)
-                            .foregroundStyle(totalProfitLoss >= 0 ? Theme.accent : Theme.danger)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill((totalProfitLoss >= 0 ? Theme.accent : Theme.danger).opacity(0.15))
-                            )
-                    }
-                }
-
-                Divider()
-                    .background(Theme.divider)
-
-                // ROI
-                HStack {
-                    HStack(spacing: 8) {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .foregroundStyle(Theme.textMuted)
-                        Text("ROI")
-                            .font(Theme.subheadline)
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                    Spacer()
-                    if settledBets.isEmpty {
-                        Text("—")
-                            .font(Theme.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Theme.textSecondary)
-                    } else {
-                        Text(String(format: "%+.1f%%", roiPercentage))
-                            .font(Theme.subheadline)
-                            .fontWeight(.bold)
-                            .foregroundStyle(roiPercentage >= 0 ? Theme.accent : Theme.danger)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill((roiPercentage >= 0 ? Theme.accent : Theme.danger).opacity(0.15))
-                            )
-                    }
-                }
+                statRow(
+                    label: "ROI",
+                    value: settledBets.isEmpty ? "—" : String(format: "%+.1f%%", roiPercentage),
+                    color: settledBets.isEmpty ? Theme.textSecondary : (roiPercentage >= 0 ? Theme.accent : Theme.danger)
+                )
             }
+
+            // Credit utilization bar
+            Divider().background(Theme.divider)
+
+            creditBar
         }
         .padding(20)
         .background(
@@ -900,8 +414,16 @@ struct AccountView: View {
         .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
-    /// Helper for stats row
-    private func statsRow(label: String, value: String, valueColor: Color) -> some View {
+    private func legendDot(color: Color, label: String) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(label)
+                .font(Theme.caption2)
+                .foregroundStyle(Theme.textSecondary)
+        }
+    }
+
+    private func statRow(label: String, value: String, color: Color) -> some View {
         HStack {
             Text(label)
                 .font(Theme.subheadline)
@@ -910,121 +432,43 @@ struct AccountView: View {
             Text(value)
                 .font(Theme.subheadline)
                 .fontWeight(.semibold)
-                .foregroundStyle(valueColor)
+                .foregroundStyle(color)
         }
     }
 
-    /// Format profit/loss with sign
-    private func formatProfitLoss(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        let absValue = abs(value)
-        let formatted = formatter.string(from: absValue as NSDecimalNumber) ?? "$\(absValue)"
-        if value >= 0 {
-            return "+\(formatted)"
-        } else {
-            return "-\(formatted)"
-        }
-    }
-
-    // MARK: - My Bets Section
-
-    private var myBetsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 8) {
-                Image(systemName: "ticket.fill")
-                    .foregroundStyle(Theme.scheduled)
-                Text("MY PICKS")
-                    .font(Theme.caption)
-                    .fontWeight(.semibold)
-                    .tracking(1)
+    private var creditBar: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("Credit")
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Text("\(formatCurrency(balanceSummary.availableCredit)) / \(formatCurrency(player.creditLimit))")
+                    .font(Theme.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(balanceSummary.availableCredit >= 0 ? Theme.textPrimary : Theme.danger)
             }
 
-            // Custom segmented picker
-            HStack(spacing: 0) {
-                ForEach(BetHistoryFilter.allCases) { filter in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedBetFilter = filter
-                        }
-                    } label: {
-                        Text(filter.rawValue)
-                            .font(Theme.subheadline)
-                            .fontWeight(selectedBetFilter == filter ? .semibold : .regular)
-                            .foregroundStyle(selectedBetFilter == filter ? Theme.background : Theme.textSecondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                selectedBetFilter == filter
-                                ? AnyView(Theme.accent)
-                                : AnyView(Color.clear)
-                            )
-                    }
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Theme.elevatedBackground)
+                        .frame(height: 10)
+
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(creditUtilizationColor)
+                        .frame(width: max(min(CGFloat(creditUtilization) * geometry.size.width, geometry.size.width), 4), height: 10)
                 }
             }
-            .background(Theme.elevatedBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Theme.border, lineWidth: 0.5)
-            )
-
-            // Bets list
-            if filteredPlayerBets.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "ticket")
-                        .font(Theme.font(size: 40))
-                        .foregroundStyle(Theme.textMuted)
-                    Text("No picks")
-                        .font(Theme.headline)
-                        .foregroundStyle(Theme.textSecondary)
-                    if selectedBetFilter != .all {
-                        Text("Try changing the filter")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textMuted)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-            } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(filteredPlayerBets) { bet in
-                        NavigationLink {
-                            AccountBetDetailView(bet: bet)
-                        } label: {
-                            AccountBetRowView(bet: bet, eventName: eventName(for: bet))
-                        }
-                        .buttonStyle(.plain)
-
-                        if bet.id != filteredPlayerBets.last?.id {
-                            Divider()
-                                .background(Theme.divider)
-                                .padding(.leading, 52)
-                        }
-                    }
-                }
-            }
+            .frame(height: 10)
         }
-        .padding(20)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Theme.cardBackground)
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Theme.border, lineWidth: 0.5)
-            }
-        )
-        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
-    /// Get event name for a bet
-    private func eventName(for bet: Bet) -> String {
-        if let event = allEvents.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
-            return "\(event.awayTeam) @ \(event.homeTeam)"
-        }
-        return "Event \(bet.eventId.prefix(8))"
+    private var creditUtilizationColor: Color {
+        if creditUtilization >= 1.0 { return Theme.danger }
+        else if creditUtilization >= 0.8 { return Theme.warning }
+        else if creditUtilization >= 0.5 { return Theme.gold }
+        else { return Theme.accent }
     }
 
     // MARK: - Transaction History Section
@@ -1041,60 +485,16 @@ struct AccountView: View {
                     .foregroundStyle(Theme.textSecondary)
             }
 
-            // Custom segmented picker
-            HStack(spacing: 0) {
-                ForEach(TransactionFilter.allCases) { filter in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedTransactionFilter = filter
-                        }
-                    } label: {
-                        Text(filter.rawValue)
-                            .font(Theme.caption)
-                            .fontWeight(selectedTransactionFilter == filter ? .semibold : .regular)
-                            .foregroundStyle(selectedTransactionFilter == filter ? Theme.background : Theme.textSecondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                selectedTransactionFilter == filter
-                                ? AnyView(Theme.accent)
-                                : AnyView(Color.clear)
-                            )
-                    }
-                }
-            }
-            .background(Theme.elevatedBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Theme.border, lineWidth: 0.5)
-            )
+            segmentedPicker(selection: $selectedTransactionFilter, items: TransactionFilter.allCases)
 
-            // Transaction list
             if filteredLedgerEntries.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "doc.text")
-                        .font(Theme.font(size: 40))
-                        .foregroundStyle(Theme.textMuted)
-                    Text("No transactions")
-                        .font(Theme.headline)
-                        .foregroundStyle(Theme.textSecondary)
-                    if selectedTransactionFilter != .all {
-                        Text("Try changing the filter")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textMuted)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
+                emptyState(icon: "doc.text", title: "No transactions", showFilterHint: selectedTransactionFilter != .all)
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(filteredLedgerEntries) { entry in
                         TransactionRowView(entry: entry)
                         if entry.id != filteredLedgerEntries.last?.id {
-                            Divider()
-                                .background(Theme.divider)
-                                .padding(.leading, 52)
+                            Divider().background(Theme.divider).padding(.leading, 52)
                         }
                     }
                 }
@@ -1112,7 +512,88 @@ struct AccountView: View {
         .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
+    // MARK: - Logout Section
+
+    private var logoutSection: some View {
+        Button {
+            showingLogoutConfirmation = true
+        } label: {
+            HStack {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                Text("Log Out")
+            }
+            .font(Theme.headline)
+            .textCase(.uppercase)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+        }
+        .buttonStyle(DestructiveButtonStyle())
+        .padding(.top, 20)
+    }
+
+    // MARK: - Shared Components
+
+    private func segmentedPicker<T: CaseIterable & Identifiable & RawRepresentable>(
+        selection: Binding<T>,
+        items: [T]
+    ) -> some View where T.RawValue == String, T.ID == String {
+        HStack(spacing: 0) {
+            ForEach(items) { item in
+                let isSelected = selection.wrappedValue.id == item.id
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selection.wrappedValue = item
+                    }
+                } label: {
+                    Text(item.rawValue)
+                        .font(Theme.caption)
+                        .fontWeight(isSelected ? .semibold : .regular)
+                        .foregroundStyle(isSelected ? Theme.background : Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(isSelected ? AnyView(Theme.accent) : AnyView(Color.clear))
+                }
+            }
+        }
+        .background(Theme.elevatedBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Theme.border, lineWidth: 0.5)
+        )
+    }
+
+    private func emptyState(icon: String, title: String, showFilterHint: Bool) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(Theme.font(size: 40))
+                .foregroundStyle(Theme.textMuted)
+            Text(title)
+                .font(Theme.headline)
+                .foregroundStyle(Theme.textSecondary)
+            if showFilterHint {
+                Text("Try changing the filter")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+
     // MARK: - Helpers
+
+    private func performLogout() {
+        Task {
+            do {
+                try await authManager.signOut()
+            } catch {
+                logoutErrorMessage = error.localizedDescription
+                showingLogoutError = true
+            }
+        }
+    }
 
     private func formatCurrency(_ value: Decimal) -> String {
         let formatter = NumberFormatter()
@@ -1120,62 +601,53 @@ struct AccountView: View {
         formatter.currencyCode = "USD"
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
+
+    private func formatProfitLoss(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        let absValue = Swift.abs(Double(truncating: value as NSDecimalNumber))
+        let formatted = formatter.string(from: NSDecimalNumber(value: absValue)) ?? "$\(absValue)"
+        return value >= 0 ? "+\(formatted)" : "-\(formatted)"
+    }
 }
 
 // MARK: - Transaction Row View
 
-/// Row view for displaying a single ledger entry in the transaction history
 struct TransactionRowView: View {
     let entry: LedgerEntry
 
-    /// Icon name based on entry type
     private var iconName: String {
         switch entry.type {
-        case .settlement:
-            return "checkmark.circle.fill"
-        case .adjustment:
-            return "slider.horizontal.3"
-        case .paymentLogged:
-            return "dollarsign.circle.fill"
-        case .reversal:
-            return "arrow.uturn.backward.circle.fill"
+        case .settlement: return "checkmark.circle.fill"
+        case .adjustment: return "slider.horizontal.3"
+        case .paymentLogged: return "dollarsign.circle.fill"
+        case .reversal: return "arrow.uturn.backward.circle.fill"
         }
     }
 
-    /// Icon color based on entry type
     private var iconColor: Color {
         switch entry.type {
-        case .settlement:
-            return Theme.scheduled
-        case .adjustment:
-            return Theme.warning
-        case .paymentLogged:
-            return Theme.accent
-        case .reversal:
-            return Color.purple
+        case .settlement: return Theme.scheduled
+        case .adjustment: return Theme.warning
+        case .paymentLogged: return Theme.accent
+        case .reversal: return Color.purple
         }
     }
 
-    /// Formatted type label
     private var typeLabel: String {
         switch entry.type {
-        case .settlement:
-            return "Reconciliation"
-        case .adjustment:
-            return "Adjustment"
-        case .paymentLogged:
-            return "Payment"
-        case .reversal:
-            return "Reversal"
+        case .settlement: return "Reconciliation"
+        case .adjustment: return "Adjustment"
+        case .paymentLogged: return "Payment"
+        case .reversal: return "Reversal"
         }
     }
 
-    /// Amount color: green for positive (credits), red for negative (debits)
     private var amountColor: Color {
         entry.amount >= 0 ? Theme.accent : Theme.danger
     }
 
-    /// Formatted amount with sign
     private var formattedAmount: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -1185,7 +657,6 @@ struct TransactionRowView: View {
         return entry.amount >= 0 ? "+\(formatted)" : "-\(formatted)"
     }
 
-    /// Formatted date
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
@@ -1195,7 +666,6 @@ struct TransactionRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Type icon with background
             ZStack {
                 Circle()
                     .fill(iconColor.opacity(0.15))
@@ -1205,7 +675,6 @@ struct TransactionRowView: View {
                     .foregroundStyle(iconColor)
             }
 
-            // Description and metadata
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.entryDescription)
                     .font(Theme.subheadline)
@@ -1220,10 +689,7 @@ struct TransactionRowView: View {
                         .foregroundStyle(iconColor)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(
-                            Capsule()
-                                .fill(iconColor.opacity(0.1))
-                        )
+                        .background(Capsule().fill(iconColor.opacity(0.1)))
 
                     Text(formattedDate)
                         .font(Theme.caption)
@@ -1233,333 +699,15 @@ struct TransactionRowView: View {
 
             Spacer()
 
-            // Amount with background
             Text(formattedAmount)
                 .font(Theme.subheadline)
                 .fontWeight(.bold)
                 .foregroundStyle(amountColor)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(amountColor.opacity(0.1))
-                )
+                .background(RoundedRectangle(cornerRadius: 8).fill(amountColor.opacity(0.1)))
         }
         .padding(.vertical, 12)
-    }
-}
-
-// MARK: - Player Bet Row View
-
-/// Row view for displaying a bet in the player's bet history
-struct AccountBetRowView: View {
-    let bet: Bet
-    let eventName: String
-
-    /// Status color based on bet status
-    private var statusColor: Color {
-        switch bet.status {
-        case .pending:
-            return Theme.warning
-        case .accepted, .readyToGrade:
-            return Theme.scheduled
-        case .graded, .settled:
-            if let result = bet.gradeResult {
-                switch result {
-                case .win: return Theme.accent
-                case .loss: return Theme.danger
-                case .push: return Theme.textMuted
-                }
-            }
-            return Theme.accent
-        case .declined:
-            return Theme.danger
-        case .void:
-            return Theme.textMuted
-        }
-    }
-
-    /// Formatted odds
-    private var formattedOdds: String {
-        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
-    }
-
-    /// Formatted stake
-    private var formattedStake: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
-    }
-
-    /// Formatted date
-    private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .none
-        return formatter.string(from: bet.createdAt)
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            // Status indicator with glow effect
-            ZStack {
-                Circle()
-                    .fill(statusColor.opacity(0.2))
-                    .frame(width: 36, height: 36)
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 14, height: 14)
-                    .shadow(color: statusColor.opacity(0.5), radius: 4, x: 0, y: 0)
-            }
-
-            // Bet info
-            VStack(alignment: .leading, spacing: 6) {
-                // Event name
-                Text(eventName)
-                    .font(Theme.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(1)
-
-                // Side and odds
-                HStack(spacing: 8) {
-                    Text(bet.side)
-                        .font(Theme.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Theme.textSecondary)
-
-                    Text(formattedOdds)
-                        .font(Theme.caption)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Theme.gold)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(
-                            Capsule()
-                                .fill(Theme.gold.opacity(0.15))
-                        )
-
-                    Text(formattedDate)
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                }
-            }
-
-            Spacer()
-
-            // Status badge and stake
-            VStack(alignment: .trailing, spacing: 6) {
-                let (settlement, workflow) = PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
-                StatusPill(settlementStatus: settlement, workflowStatus: workflow)
-
-                Text(formattedStake)
-                    .font(Theme.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Theme.textSecondary)
-            }
-
-            // Chevron indicator
-            Image(systemName: "chevron.right")
-                .font(Theme.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(Theme.textMuted)
-        }
-        .padding(.vertical, 12)
-    }
-}
-
-// MARK: - Player Bet Detail View
-
-/// Detail view for a player to see full bet information
-struct AccountBetDetailView: View {
-    @Query private var events: [Event]
-
-    let bet: Bet
-
-    /// Event for this bet
-    private var event: Event? {
-        events.first { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }
-    }
-
-    /// Event name
-    private var eventName: String {
-        if let event = event {
-            return "\(event.awayTeam) @ \(event.homeTeam)"
-        }
-        return "Event \(bet.eventId.prefix(8))"
-    }
-
-    /// Formatted odds
-    private var formattedOdds: String {
-        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
-    }
-
-    /// Formatted stake
-    private var formattedStake: String {
-        formatCurrency(bet.stake)
-    }
-
-    /// Potential payout (profit only)
-    private var potentialPayout: Decimal {
-        let decimalOdds: Decimal
-        if bet.odds > 0 {
-            decimalOdds = Decimal(bet.odds) / 100
-        } else {
-            decimalOdds = 100 / Decimal(abs(bet.odds))
-        }
-        return bet.stake * decimalOdds
-    }
-
-    /// Total return (stake + profit)
-    private var totalReturn: Decimal {
-        bet.stake + potentialPayout
-    }
-
-    /// Status color
-    /// Formatted date
-    private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: bet.createdAt)
-    }
-
-    var body: some View {
-        List {
-            // Status Section
-            Section {
-                HStack {
-                    Text("Status")
-                        .foregroundStyle(Theme.textSecondary)
-                    Spacer()
-                    let (settlement, workflow) = PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
-                    StatusPill(settlementStatus: settlement, workflowStatus: workflow)
-                }
-            }
-            .listRowBackground(Theme.cardBackground)
-
-            // Event Section
-            Section {
-                detailRow(label: "Matchup", value: eventName)
-
-                if let event = event {
-                    detailRow(label: "Sport", value: event.sport)
-                    detailRow(label: "League", value: event.league)
-
-                    let eventFormatter = DateFormatter()
-                    let _ = eventFormatter.dateStyle = .medium
-                    let _ = eventFormatter.timeStyle = .short
-                    detailRow(label: "Start Time", value: eventFormatter.string(from: event.startTime))
-
-                    detailRow(label: "Event Status", value: event.status.rawValue.capitalized)
-
-                    if let finalScore = event.finalScore {
-                        detailRow(label: "Final Score", value: finalScore, valueColor: Theme.gold)
-                    }
-                }
-            } header: {
-                Text("EVENT")
-                    .font(Theme.caption)
-                    .fontWeight(.semibold)
-                    .tracking(1)
-                    .foregroundStyle(Theme.textMuted)
-            }
-            .listRowBackground(Theme.cardBackground)
-
-            // Bet Details Section
-            Section {
-                detailRow(label: "Market", value: bet.market)
-                detailRow(label: "Selection", value: bet.side, valueColor: Theme.textPrimary)
-                HStack {
-                    Text("Odds")
-                        .foregroundStyle(Theme.textSecondary)
-                    Spacer()
-                    Text(formattedOdds)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Theme.gold)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill(Theme.gold.opacity(0.15))
-                        )
-                }
-                detailRow(label: "Stake", value: formattedStake, valueColor: Theme.textPrimary)
-            } header: {
-                Text("YOUR PICK")
-                    .font(Theme.caption)
-                    .fontWeight(.semibold)
-                    .tracking(1)
-                    .foregroundStyle(Theme.textMuted)
-            }
-            .listRowBackground(Theme.cardBackground)
-
-            // Payout Section
-            Section {
-                HStack {
-                    Text("Profit")
-                        .foregroundStyle(Theme.textSecondary)
-                    Spacer()
-                    Text(formatCurrency(potentialPayout))
-                        .fontWeight(.bold)
-                        .foregroundStyle(Theme.accent)
-                }
-                HStack {
-                    Text("Total Return")
-                        .foregroundStyle(Theme.textSecondary)
-                    Spacer()
-                    Text(formatCurrency(totalReturn))
-                        .font(Theme.title3)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Theme.accent)
-                }
-            } header: {
-                Text("FINANCIALS")
-                    .font(Theme.caption)
-                    .fontWeight(.semibold)
-                    .tracking(1)
-                    .foregroundStyle(Theme.textMuted)
-            }
-            .listRowBackground(Theme.cardBackground)
-
-            // Details Section
-            Section {
-                detailRow(label: "Placed", value: formattedDate)
-                detailRow(label: "Pick ID", value: String(bet.id.uuidString.prefix(8)) + "...")
-            } header: {
-                Text("DETAILS")
-                    .font(Theme.caption)
-                    .fontWeight(.semibold)
-                    .tracking(1)
-                    .foregroundStyle(Theme.textMuted)
-            }
-            .listRowBackground(Theme.cardBackground)
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.background)
-        .navigationTitle("Pick Details")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    /// Helper for detail rows
-    private func detailRow(label: String, value: String, valueColor: Color = Theme.textSecondary) -> some View {
-        HStack {
-            Text(label)
-                .foregroundStyle(Theme.textSecondary)
-            Spacer()
-            Text(value)
-                .fontWeight(.medium)
-                .foregroundStyle(valueColor)
-        }
-    }
-
-    /// Format currency helper
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 }
 

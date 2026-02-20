@@ -426,4 +426,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 19, 2026 - Pick Instance Refactor (shared PickPresenter, StatusPill, SelectionRow, PickCardCompact, PickDetailHeader components), GamesView sticky sport headers and inline search, TrackView unified card layout*
+*Last updated: February 19, 2026 - Pick Instance Refactor, TicketDetailView restructure (4-card layout with odds format preference), AccountView condensed (merged cards, removed My Picks to Track tab)*

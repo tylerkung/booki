@@ -122,6 +122,7 @@
 		8A1234560088 /* PlayerAnalyticsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550088 /* PlayerAnalyticsDetailView.swift */; };
 		8A1234560089 /* PlayerAttentionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550089 /* PlayerAttentionService.swift */; };
 		8A1234560090 /* PickPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550090 /* PickPresenter.swift */; };
+		8A1234560095 /* TeamAbbreviations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550095 /* TeamAbbreviations.swift */; };
 		8A1234560091 /* StatusPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550091 /* StatusPill.swift */; };
 		8A1234560092 /* SelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550092 /* SelectionRow.swift */; };
 		8A1234560093 /* PickCardCompact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550093 /* PickCardCompact.swift */; };
@@ -256,6 +257,7 @@
 		8A1234550088 /* PlayerAnalyticsDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAnalyticsDetailView.swift; sourceTree = "<group>"; };
 		8A1234550089 /* PlayerAttentionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAttentionService.swift; sourceTree = "<group>"; };
 		8A1234550090 /* PickPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickPresenter.swift; sourceTree = "<group>"; };
+		8A1234550095 /* TeamAbbreviations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamAbbreviations.swift; sourceTree = "<group>"; };
 		8A1234550091 /* StatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPill.swift; sourceTree = "<group>"; };
 		8A1234550092 /* SelectionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionRow.swift; sourceTree = "<group>"; };
 		8A1234550093 /* PickCardCompact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickCardCompact.swift; sourceTree = "<group>"; };
@@ -434,6 +436,7 @@
 				8A1234550079 /* OnboardingManager.swift */,
 				8A1234550089 /* PlayerAttentionService.swift */,
 				8A1234550090 /* PickPresenter.swift */,
+				8A1234550095 /* TeamAbbreviations.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -715,6 +718,7 @@
 				8A1234560088 /* PlayerAnalyticsDetailView.swift in Sources */,
 				8A1234560089 /* PlayerAttentionService.swift in Sources */,
 				8A1234560090 /* PickPresenter.swift in Sources */,
+				8A1234560095 /* TeamAbbreviations.swift in Sources */,
 				8A1234560091 /* StatusPill.swift in Sources */,
 				8A1234560092 /* SelectionRow.swift in Sources */,
 				8A1234560093 /* PickCardCompact.swift in Sources */,

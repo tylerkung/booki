@@ -186,3 +186,17 @@ Started: Thu Feb 19 13:11:23 PST 2026
   - EventDetailView has a bet row (EventDetailBetRowView) that also needs shared component treatment
   - CSV export in SettingsView uses raw status values intentionally — data export is exempt from display vocabulary rules
 ---
+
+## 2026-02-19 - TicketDetailView Restructure & AccountView Condensing
+- Rewrote TicketDetailView from 1077→456 lines (4 card sections: Hero, Financials, Odds Breakdown, Activity)
+- Removed parlayOutcomeSection (large win/loss badge), TicketDetailBetRowView (250 lines), redundant StatusPill/stake/odds displays
+- Switched from List to ScrollView with card-based layout matching TrackView's TicketCardView pattern
+- Added @AppStorage("playerOddsFormat") support — odds breakdown respects American/Decimal/Fractional preference
+- Condensed AccountView from 1576→723 lines: merged Profile+Preferences into one card, merged Quick Stats+Betting Stats+Credit into one Performance card
+- Removed My Picks section from Account tab (belongs on Track tab), deleted AccountBetRowView, AccountBetDetailView, BetHistoryFilter enum
+- Files changed: TicketDetailView.swift (-621), AccountView.swift (-853)
+- **Learnings:**
+  - Binding(get:set:) `set` closure has `(Value, Transaction)` overload in newer SwiftUI — use `$stateVar` directly and put animation in button action
+  - PickPresenter has static americanToDecimal/decimalToAmerican — reuse instead of local copies
+  - Generic segmented picker needs `T.ID == String` constraint for reliable equality comparison
+---

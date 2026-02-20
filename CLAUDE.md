@@ -166,3 +166,5 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
 - **Branding**: App icon and in-app logo (`BookiLogo` image set), branded launch screen (electric cyan), `DESIGN_SYSTEM.md` restored
 - **Compliance**: All user-facing strings use approved vocabulary; disclaimers on auth and pick entry screens
+- **TicketDetailView**: 4-card layout (Hero, Financials, Odds Breakdown, Activity) with odds format preference support
+- **AccountView**: Condensed — Profile+Preferences merged, Performance card (Record + stats + credit bar), no My Picks (Track tab)

@@ -7,34 +7,29 @@ struct NumericKeypadView: View {
     var onValueChanged: ((String) -> Void)?
 
     var body: some View {
-        VStack(spacing: 8) {
-            // Row 1: 1, 2, 3
-            HStack(spacing: 8) {
+        VStack(spacing: 6) {
+            HStack(spacing: 6) {
                 digitKey("1")
                 digitKey("2")
                 digitKey("3")
             }
-            // Row 2: 4, 5, 6
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 digitKey("4")
                 digitKey("5")
                 digitKey("6")
             }
-            // Row 3: 7, 8, 9
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 digitKey("7")
                 digitKey("8")
                 digitKey("9")
             }
-            // Row 4: ., 0, ⌫
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 digitKey(".")
                 digitKey("0")
                 actionKey("DEL", systemImage: "delete.left") { deleteLast() }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
     }
 
     // MARK: - Key Views
@@ -48,7 +43,7 @@ struct NumericKeypadView: View {
                 .font(Theme.font(size: 20, weight: .medium))
                 .foregroundStyle(Theme.textPrimary)
                 .frame(maxWidth: .infinity)
-                .frame(height: 44)
+                .frame(height: 42)
                 .background(Theme.elevatedBackground)
                 .cornerRadius(Theme.cornerRadiusSmall)
         }
@@ -64,7 +59,7 @@ struct NumericKeypadView: View {
                 .font(.system(size: 18))
                 .foregroundStyle(Theme.textPrimary)
                 .frame(maxWidth: .infinity)
-                .frame(height: 44)
+                .frame(height: 42)
                 .background(Theme.elevatedBackground)
                 .cornerRadius(Theme.cornerRadiusSmall)
         }

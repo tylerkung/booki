@@ -648,17 +648,17 @@ struct GameDetailView: View {
         }) {
             HStack {
                 Image(systemName: "ticket.fill")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
 
                 Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
                     .font(Theme.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.background)
 
                 Spacer()
 
                 Image(systemName: "chevron.up")
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Theme.background.opacity(0.7))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
