@@ -100,7 +100,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "The root cause of disappearing bets is likely broken bet.player relationships from stale SwiftData (same root cause as the isolation bug). After US-001/002 clear data before sync, the fresh sync should correctly link Bet→Player. Check SyncService upsertBet method to verify it sets bet.player = player (the SwiftData relationship). Also check TrackView.swift for how playerBets are filtered."
     },
     {
@@ -116,7 +116,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "The issue is that different time ranges produce different numbers of data points, so Swift Charts can't interpolate between them — it jumps. Fix by always resampling the data to a fixed count (e.g. 30 points) using linear interpolation, then normalizing x-positions to 0...1 range. Check AnalyticsDashboardView.swift for the EarningsChart view and how dataPoints are computed per time range."
     },
     {
@@ -134,7 +134,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Auth views are in Booki/Views/Auth/ (LoginView, SignUpView, ForgotPasswordView) and Booki/Views/ (PlayerClaimView, AuthGateView). LoginView has welcome and sign-in states with different logo sizes — standardize both to 180pt. The .move(edge: .bottom) transition in AuthGateView loading view causes jumping — switch to .opacity. Check each file for current background and logo usage."
     }
   ]

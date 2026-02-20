@@ -75,3 +75,46 @@ Started: Fri Feb 20 02:20:05 PST 2026
   - FinishSetupCard was effectively dead code after single-screen onboarding — it depended on completedStepCount which was removed
   - DashboardView and AnalyticsDashboardView both had identical onboarding resume patterns (FinishSetupCard + fullScreenCover)
 ---
+
+## 2026-02-20 - US-006
+- Verified player bet visibility after sync — code audit confirmed correct behavior
+- Sync order: players download+save before bets, so upsertBet finds players in local SwiftData
+- upsertBet correctly fetches Player by UUID and sets bet.player relationship (lines 734-736, 752, 768)
+- TrackView filters only by `$0.player?.id == player.id` — no status filtering, ALL bets shown
+- StatusPill handles all states: open, won, lost, push, void, cancelled + pending/rejected workflow
+- UUID types used throughout (not strings), so case sensitivity is not an issue for player lookup
+- Added warning log in upsertBet when player is nil — helps debug if bets ever appear orphaned
+- Files changed: SyncService.swift
+- **Learnings for future iterations:**
+  - downloadAll order is critical: players → events → policies → bets → ledger entries (dependency order)
+  - context.save() runs after each downloadX method, ensuring relationships are available for subsequent downloads
+  - TrackView uses @Query for allBets (SwiftData live query) then filters in computed property — no predicate filtering by status
+  - upsertLedgerEntry has a guard+skip for missing players, but upsertBet intentionally allows nil player (now with warning log)
+---
+
+## 2026-02-20 - US-007
+- Added NormalizedChartPoint struct with fixed id (0-29) for animation interpolation
+- EarningsChart now resamples raw data to exactly 30 points using linear interpolation
+- Chart uses integer index as x-axis instead of Date — allows Swift Charts to animate smoothly between matching x-positions
+- Preserved .catmullRom interpolation and .animation(.easeInOut) modifier
+- Files changed: AnalyticsDashboardView.swift
+- **Learnings for future iterations:**
+  - Swift Charts can only animate between datasets with matching x-values — different counts cause jump cuts
+  - Fix: resample to fixed count, use normalized index (0..N-1) as x-value
+  - Linear interpolation for resampling: `t * (count-1)` maps normalized position to source index, then lerp between adjacent values
+  - DailyPLPoint uses Date as id — not suitable for animation since dates change between ranges
+---
+
+## 2026-02-20 - US-008
+- Standardized BookiLogo to 180pt width across all auth screens (was 220/160/200)
+- Added BookiLogo with accent glow to SignUpView, ForgotPasswordView, and PlayerClaimView (replaced system icons)
+- Consistent glow: `shadow(color: Theme.accent.opacity(0.3), radius: 40)`
+- Changed AuthGateView auth flow transition from `.move(edge: .bottom).combined(with: .opacity)` to `.opacity`
+- AppleSignInButton loading state uses `Theme.cardBackground` instead of `Color.black`
+- Files changed: LoginView.swift, SignUpView.swift, ForgotPasswordView.swift, PlayerClaimView.swift, AuthGateView.swift, AppleSignInButton.swift
+- **Learnings for future iterations:**
+  - Auth views are split: LoginView and SignUpView/ForgotPasswordView in Views/Auth/, PlayerClaimView in Views/, AuthGateView in Views/
+  - LoginView has two states (welcome + sign-in) with separate logo instances — both need updating
+  - `.move` transitions cause visual jumping between auth states; `.opacity` is smoother
+  - PlayerClaimView headerView is a separate computed property from the body
+---
