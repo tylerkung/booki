@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Booki - Run your sportsbook like a business. Track bets, manage players, and automate settlements.">
-    <title>Booki - Run Your Sportsbook Like a Business</title>
+    <meta name="description" content="Booki - Run your group like a pro. Track picks, manage members, and automate reconciliation.">
+    <title>Booki - Run Your Group Like a Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,55 +15,79 @@
         <section id="hero" class="hero">
             <div class="container hero-content">
                 <div class="hero-text">
-                    <span class="badge">Coming Soon</span>
-                    <h1>Run your sportsbook like a business</h1>
-                    <p class="subheadline">Track bets, manage players, and automate settlements — all from one app. Booki gives you the tools to run a professional book without the spreadsheets.</p>
-                    <div class="hero-buttons">
+                    <img src="assets/logo-booki-blk.svg" alt="Booki" class="hero-logo fade-in" />
+                    <span class="badge fade-in fade-in--delay-1">Coming Soon</span>
+                    <h1 class="fade-in fade-in--delay-2">Run your group <span class="gradient-text">like a pro</span></h1>
+                    <p class="subheadline fade-in fade-in--delay-3">Track picks, manage members, and automate reconciliation &mdash; all from one app. Booki gives you the tools to organize your group without the spreadsheets.</p>
+                    <div class="hero-buttons fade-in fade-in--delay-4">
                         <a href="#waitlist" class="btn-primary">Join the Waitlist</a>
                         <a href="#pricing" class="btn-secondary">See Pricing</a>
                     </div>
                 </div>
-                <div class="hero-mockup" aria-label="App mockup placeholder"></div>
-            </div>
-        </section>
-
-        <section id="features" class="features">
-            <div class="container">
-                <h2 class="section-headline">Everything you need to run your book</h2>
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="feature-icon" aria-hidden="true">👥</div>
-                        <h3>Player Management</h3>
-                        <p>Track credit limits, balances, and collection status</p>
+                <div class="hero-phones fade-in">
+                    <div class="phone-frame phone-frame--back">
+                        <img src="assets/mock-2.png" alt="Booki games view showing live odds for NBA and college football" />
                     </div>
-                    <div class="feature-card">
-                        <div class="feature-icon" aria-hidden="true">🎯</div>
-                        <h3>Bet Tracking</h3>
-                        <p>Straights, parlays, and automatic odds calculation</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon" aria-hidden="true">📡</div>
-                        <h3>Live Odds</h3>
-                        <p>Import games from NFL, NBA, MLB, NHL</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon" aria-hidden="true">⚡</div>
-                        <h3>Auto Grading</h3>
-                        <p>Bets graded automatically when games finish</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon" aria-hidden="true">💰</div>
-                        <h3>Settlements</h3>
-                        <p>Weekly settlements show who owes what</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon" aria-hidden="true">📊</div>
-                        <h3>Risk Dashboard</h3>
-                        <p>Exposure alerts and player watchlist</p>
+                    <div class="phone-frame phone-frame--front">
+                        <img src="assets/mock-1.png" alt="Booki dashboard showing earnings, exposure, and member management" />
                     </div>
                 </div>
             </div>
         </section>
+
+        <div class="section-divider"></div>
+
+        <section id="features" class="features">
+            <div class="container">
+                <h2 class="section-headline">Everything you need to run your group</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent)"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <h3>Member Management</h3>
+                        <p>Track credit limits, balances, and collection status for every member in your group.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent)"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                        </div>
+                        <h3>Pick Tracking</h3>
+                        <p>Straights, multi-picks, and automatic odds calculation. Every pick accounted for.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent)"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+                        </div>
+                        <h3>Live Odds</h3>
+                        <p>Import games from NFL, NBA, MLB, NHL, and college sports with real-time lines.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent)"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        </div>
+                        <h3>Auto Grading</h3>
+                        <p>Picks are graded automatically when games finish. No manual work required.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent)"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
+                        </div>
+                        <h3>Reconciliation</h3>
+                        <p>Weekly reconciliation shows who owes what. Clear, transparent, and automatic.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent)"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                        </div>
+                        <h3>Activity Dashboard</h3>
+                        <p>Open activity alerts and member watchlist keep you informed at a glance.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
 
         <section id="how-it-works" class="how-it-works">
             <div class="container">
@@ -69,26 +96,29 @@
                     <div class="step">
                         <div class="step-number">1</div>
                         <h3>Sign Up</h3>
-                        <p>Sign up and configure your book settings</p>
+                        <p>Create your account and configure your group settings</p>
                     </div>
                     <div class="step">
                         <div class="step-number">2</div>
-                        <h3>Add Players</h3>
-                        <p>Add your players and set credit limits</p>
+                        <h3>Add Members</h3>
+                        <p>Invite your members and set credit limits</p>
                     </div>
                     <div class="step">
                         <div class="step-number">3</div>
                         <h3>Import Games</h3>
-                        <p>Import games from major sports leagues</p>
+                        <p>Pull in games from major sports leagues</p>
                     </div>
                     <div class="step">
                         <div class="step-number">4</div>
                         <h3>Track It All</h3>
-                        <p>Players bet, you track everything automatically</p>
+                        <p>Members pick, you track everything automatically</p>
                     </div>
                 </div>
             </div>
         </section>
+
+        <div class="section-divider"></div>
+
         <section id="pricing" class="pricing">
             <div class="container">
                 <h2 class="section-headline">Simple, transparent pricing</h2>
@@ -97,12 +127,12 @@
                     <div class="pricing-card">
                         <h3>Starter</h3>
                         <div class="pricing-amount">Free</div>
-                        <p class="pricing-players">Up to 5 players</p>
+                        <p class="pricing-players">Up to 5 members</p>
                         <ul class="pricing-features">
-                            <li>✓ Player management</li>
-                            <li>✓ Bet tracking</li>
-                            <li>✓ Weekly settlements</li>
-                            <li>✓ Basic reporting</li>
+                            <li><span class="pricing-check">&check;</span> Member management</li>
+                            <li><span class="pricing-check">&check;</span> Pick tracking</li>
+                            <li><span class="pricing-check">&check;</span> Weekly reconciliation</li>
+                            <li><span class="pricing-check">&check;</span> Basic reporting</li>
                         </ul>
                         <a href="#waitlist" class="btn-secondary pricing-btn">Get Started Free</a>
                     </div>
@@ -110,32 +140,35 @@
                         <span class="badge pricing-popular-badge">Most Popular</span>
                         <h3>Pro</h3>
                         <div class="pricing-amount">$19<span class="pricing-period">/mo</span></div>
-                        <p class="pricing-players">Up to 25 players</p>
+                        <p class="pricing-players">Up to 25 members</p>
                         <ul class="pricing-features">
-                            <li>✓ Everything in Starter</li>
-                            <li>✓ Live odds integration</li>
-                            <li>✓ Auto grading</li>
-                            <li>✓ Risk dashboard</li>
-                            <li>✓ Priority support</li>
+                            <li><span class="pricing-check">&check;</span> Everything in Starter</li>
+                            <li><span class="pricing-check">&check;</span> Live odds integration</li>
+                            <li><span class="pricing-check">&check;</span> Auto grading</li>
+                            <li><span class="pricing-check">&check;</span> Activity dashboard</li>
+                            <li><span class="pricing-check">&check;</span> Priority support</li>
                         </ul>
                         <a href="#waitlist" class="btn-primary pricing-btn">Get Started</a>
                     </div>
                     <div class="pricing-card">
                         <h3>Unlimited</h3>
                         <div class="pricing-amount">$49<span class="pricing-period">/mo</span></div>
-                        <p class="pricing-players">Unlimited players</p>
+                        <p class="pricing-players">Unlimited members</p>
                         <ul class="pricing-features">
-                            <li>✓ Everything in Pro</li>
-                            <li>✓ Unlimited players</li>
-                            <li>✓ Advanced analytics</li>
-                            <li>✓ Dedicated support</li>
-                            <li>✓ Custom integrations</li>
+                            <li><span class="pricing-check">&check;</span> Everything in Pro</li>
+                            <li><span class="pricing-check">&check;</span> Unlimited members</li>
+                            <li><span class="pricing-check">&check;</span> Advanced analytics</li>
+                            <li><span class="pricing-check">&check;</span> Dedicated support</li>
+                            <li><span class="pricing-check">&check;</span> Custom integrations</li>
                         </ul>
                         <a href="#waitlist" class="btn-secondary pricing-btn">Get Started</a>
                     </div>
                 </div>
             </div>
         </section>
+
+        <div class="section-divider"></div>
+
         <section id="waitlist" class="waitlist">
             <div class="container">
                 <h2 class="section-headline">Be the first to know when we launch</h2>
@@ -152,7 +185,7 @@
     </main>
     <footer class="footer">
         <div class="container footer-content">
-            <div class="footer-logo">Booki</div>
+            <img src="assets/logo-booki-blk.svg" alt="Booki" class="footer-logo" />
             <p class="footer-copyright">&copy; 2026 Booki. All rights reserved.</p>
             <div class="footer-links">
                 <a href="privacy.html">Privacy Policy</a>

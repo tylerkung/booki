@@ -206,20 +206,21 @@ struct AuthGateView: View {
     /// Loading view with app logo shown while checking auth state
     private var loadingView: some View {
         ZStack {
-            Color(hex: 0x00F5D4)
+            Theme.backgroundGradient
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
-                // App Logo (BookiLogo asset from branding)
+                // App Logo with accent glow
                 Image("BookiLogo")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 200)
+                    .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
                     .scaleEffect(splashLogoScale)
                     .opacity(splashLogoOpacity)
 
                 ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
+                    .progressViewStyle(CircularProgressViewStyle(tint: Theme.accent))
                     .scaleEffect(1.2)
                     .padding(.top, 16)
                     .opacity(splashSpinnerOpacity)

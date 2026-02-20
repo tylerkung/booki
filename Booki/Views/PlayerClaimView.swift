@@ -215,8 +215,16 @@ struct PlayerClaimView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(isValidCodeLength && !isValidating ? Theme.accent : Theme.accent.opacity(0.5))
-                .foregroundStyle(Theme.background)
+                .background(
+                    Group {
+                        if isValidCodeLength && !isValidating {
+                            Theme.buttonGradient
+                        } else {
+                            LinearGradient(colors: [Theme.elevatedBackground], startPoint: .leading, endPoint: .trailing)
+                        }
+                    }
+                )
+                .foregroundStyle(isValidCodeLength && !isValidating ? Theme.background : Theme.textMuted)
                 .cornerRadius(12)
             }
             .disabled(!isValidCodeLength || isValidating)
@@ -283,8 +291,16 @@ struct PlayerClaimView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(isValidCredentials && !isCreatingAccount ? Theme.accent : Theme.accent.opacity(0.5))
-                .foregroundStyle(Theme.background)
+                .background(
+                    Group {
+                        if isValidCredentials && !isCreatingAccount {
+                            Theme.buttonGradient
+                        } else {
+                            LinearGradient(colors: [Theme.elevatedBackground], startPoint: .leading, endPoint: .trailing)
+                        }
+                    }
+                )
+                .foregroundStyle(isValidCredentials && !isCreatingAccount ? Theme.background : Theme.textMuted)
                 .cornerRadius(12)
             }
             .disabled(!isValidCredentials || isCreatingAccount)
@@ -327,7 +343,7 @@ struct PlayerClaimView: View {
                     .textCase(.uppercase)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Theme.accent)
+                    .background(Theme.buttonGradient)
                     .foregroundStyle(Theme.background)
                     .cornerRadius(12)
             }

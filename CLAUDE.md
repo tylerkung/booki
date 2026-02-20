@@ -155,7 +155,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (February 19, 2026)
+## Current State (February 20, 2026)
 
 - **Branch**: `ralph/pick-instance-refactor`
 - **Phases complete**: 1-15 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor)
@@ -164,7 +164,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Odds API key**: Configured in Settings (free tier, 500 calls/month)
 - **Auto-pilot mode**: Picks auto-accepted and auto-graded by default
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
-- **Branding**: App icon and in-app logo (`BookiLogo` image set), branded launch screen (electric cyan), `DESIGN_SYSTEM.md` restored
+- **Branding**: App icon and in-app logo (`BookiLogo` image set), dark launch screen, `DESIGN_SYSTEM.md` restored
+- **Landing page**: `landing/` directory with index.html, styles.css, assets (screenshots + SVG logo)
 - **Compliance**: All user-facing strings use approved vocabulary; disclaimers on auth and pick entry screens
 - **TicketDetailView**: 4-card layout (Hero, Financials, Odds Breakdown, Activity) with odds format preference support
 - **AccountView**: Condensed — Profile+Preferences merged, Performance card (Record + stats + credit bar), no My Picks (Track tab)

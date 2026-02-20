@@ -426,4 +426,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 19, 2026 - Pick Instance Refactor, TicketDetailView restructure (4-card layout with odds format preference), AccountView condensed (merged cards, removed My Picks to Track tab)*
+*Last updated: February 20, 2026 - Landing page overhaul (real screenshots, SVG logo, Space Grotesk headers, compliance copy), dark launch screen replacing teal, auth flow visual polish (gradient CTAs, accent glow, entrance animations)*

@@ -16,6 +16,15 @@ struct LoginView: View {
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
 
+    // Welcome animation state
+    @State private var logoOpacity: Double = 0
+    @State private var logoScale: CGFloat = 0.85
+    @State private var headlineOpacity: Double = 0
+    @State private var headlineOffset: CGFloat = 12
+    @State private var featuresOpacity: Double = 0
+    @State private var ctaOpacity: Double = 0
+    @State private var ctaOffset: CGFloat = 20
+
     // MARK: - Validation
 
     private var isFormValid: Bool {
@@ -45,46 +54,62 @@ struct LoginView: View {
             Spacer()
 
             // Hero section
-            VStack(spacing: 20) {
+            VStack(spacing: 28) {
+                // Logo with accent glow
                 Image("BookiLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 300)
+                    .frame(width: 220)
+                    .shadow(color: Theme.accent.opacity(0.4), radius: 40, x: 0, y: 0)
+                    .opacity(logoOpacity)
+                    .scaleEffect(logoScale)
 
-                Text("Your edge starts here.")
-                    .font(Theme.title1)
-                    .fontWeight(.bold)
-                    .foregroundStyle(Theme.background)
+                // Headline
+                VStack(spacing: 8) {
+                    Text("Your edge starts here.")
+                        .font(Theme.font(size: 30, weight: .bold))
+                        .foregroundStyle(Theme.textPrimary)
 
-                Text("Run your group. Track the action. Stay organized.")
-                    .font(Theme.body)
-                    .foregroundStyle(Theme.background.opacity(0.7))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
+                    Text("Run your group. Track the action.")
+                        .font(Theme.bodyFont(size: 16))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .multilineTextAlignment(.center)
+                .opacity(headlineOpacity)
+                .offset(y: headlineOffset)
             }
+
+            Spacer()
+                .frame(height: 48)
+
+            // Feature pills
+            VStack(spacing: 12) {
+                featurePill(icon: "person.3.fill", text: "Manage your group")
+                featurePill(icon: "chart.bar.fill", text: "Track every pick")
+                featurePill(icon: "arrow.triangle.2.circlepath", text: "Reconcile weekly")
+            }
+            .opacity(featuresOpacity)
 
             Spacer()
 
             // CTAs
-            VStack(spacing: 20) {
-                // GET STARTED button
-                Button {
-                    onNavigateToSignUp()
-                } label: {
+            VStack(spacing: 16) {
+                // GET STARTED button — primary CTA with gradient
+                Button(action: onNavigateToSignUp) {
                     Text("Get Started")
                         .font(Theme.headline)
                         .fontWeight(.bold)
                         .textCase(.uppercase)
                         .tracking(1)
-                        .foregroundStyle(Color(hex: 0x00F5D4))
+                        .foregroundStyle(Theme.background)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(Theme.background)
-                        .cornerRadius(12)
+                        .background(Theme.buttonGradient)
+                        .cornerRadius(Theme.cornerRadiusSmall)
                 }
                 .padding(.horizontal, 24)
 
-                // I have an invite (player claim)
+                // Invite code link
                 Button(action: onNavigateToPlayerClaim) {
                     HStack(spacing: 6) {
                         Image(systemName: "ticket.fill")
@@ -92,14 +117,13 @@ struct LoginView: View {
                             .fontWeight(.medium)
                     }
                     .font(Theme.subheadline)
-                    .foregroundStyle(Theme.background.opacity(0.8))
+                    .foregroundStyle(Theme.accent)
                 }
 
-                // Already have an account
+                // Sign in link
                 HStack(spacing: 4) {
-                    Text("I already have an account.")
-                        .foregroundStyle(Theme.background.opacity(0.6))
-
+                    Text("Already have an account?")
+                        .foregroundStyle(Theme.textMuted)
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             showSignIn = true
@@ -107,33 +131,77 @@ struct LoginView: View {
                     } label: {
                         Text("Sign in")
                             .fontWeight(.semibold)
-                            .foregroundStyle(Theme.background)
-                            .underline()
+                            .foregroundStyle(Theme.textPrimary)
                     }
                 }
                 .font(Theme.subheadline)
-                .padding(.bottom, 16)
 
+                // Disclaimer
                 Text("This app is designed for tracking and organizing private group activity. No real money is processed or transferred through Booki.")
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
                     .padding(.bottom, 24)
             }
+            .opacity(ctaOpacity)
+            .offset(y: ctaOffset)
         }
-        .background(Color(hex: 0x00F5D4).ignoresSafeArea())
+        .background(Theme.backgroundGradient.ignoresSafeArea())
+        .onAppear { runEntrance() }
+    }
+
+    // MARK: - Feature Pill
+
+    private func featurePill(icon: String, text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(Theme.bodyFont(size: 14))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 20)
+            Text(text)
+                .font(Theme.bodyFont(size: 14, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(Theme.cardBackground)
+                .overlay(Capsule().stroke(Theme.border, lineWidth: 0.5))
+        )
+    }
+
+    // MARK: - Entrance Animation
+
+    private func runEntrance() {
+        withAnimation(.spring(response: 0.7, dampingFraction: 0.8)) {
+            logoOpacity = 1
+            logoScale = 1
+        }
+        withAnimation(.easeOut(duration: 0.5).delay(0.2)) {
+            headlineOpacity = 1
+            headlineOffset = 0
+        }
+        withAnimation(.easeOut(duration: 0.4).delay(0.4)) {
+            featuresOpacity = 1
+        }
+        withAnimation(.easeOut(duration: 0.5).delay(0.5)) {
+            ctaOpacity = 1
+            ctaOffset = 0
+        }
     }
 
     // MARK: - Sign In View
 
     private var signInView: some View {
         VStack(spacing: 0) {
-            // Back button at top-left
+            // Back button
             HStack {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         showSignIn = false
+                        errorMessage = nil
                     }
                 } label: {
                     HStack(spacing: 6) {
@@ -142,7 +210,7 @@ struct LoginView: View {
                     }
                     .font(Theme.subheadline)
                     .fontWeight(.medium)
-                    .foregroundStyle(Theme.background.opacity(0.7))
+                    .foregroundStyle(Theme.textSecondary)
                 }
                 Spacer()
             }
@@ -151,29 +219,27 @@ struct LoginView: View {
 
             Spacer()
 
-            // Header with logo
+            // Header
             VStack(spacing: 12) {
                 Image("BookiLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 200)
+                    .frame(width: 160)
+                    .shadow(color: Theme.accent.opacity(0.3), radius: 24, x: 0, y: 0)
 
                 Text("Welcome Back")
                     .font(Theme.title1)
                     .fontWeight(.bold)
-                    .foregroundStyle(Theme.background)
+                    .foregroundStyle(Theme.textPrimary)
             }
-            .padding(.bottom, 24)
+            .padding(.bottom, 32)
 
-            // Form Fields
+            // Form
             VStack(spacing: 16) {
-                // Email Field
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Email")
-                        .font(Theme.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Theme.background.opacity(0.8))
-
+                        .font(Theme.bodyFont(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
                     TextField("", text: $email)
                         .textFieldStyle(AuthTextFieldStyle())
                         .textContentType(.emailAddress)
@@ -186,13 +252,10 @@ struct LoginView: View {
                         }
                 }
 
-                // Password Field
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Password")
-                        .font(Theme.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Theme.background.opacity(0.8))
-
+                        .font(Theme.bodyFont(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
                     SecureField("", text: $password)
                         .textFieldStyle(AuthTextFieldStyle())
                         .textContentType(.password)
@@ -202,19 +265,18 @@ struct LoginView: View {
                         }
                 }
 
-                // Forgot Password Link
                 HStack {
                     Spacer()
                     Button(action: onNavigateToForgotPassword) {
                         Text("Forgot Password?")
                             .font(Theme.subheadline)
-                            .foregroundStyle(Theme.background)
+                            .foregroundStyle(Theme.accent)
                     }
                 }
             }
             .padding(.horizontal, 24)
 
-            // Error Message
+            // Error
             if let errorMessage = errorMessage {
                 Text(errorMessage)
                     .font(Theme.subheadline)
@@ -227,12 +289,12 @@ struct LoginView: View {
                     .padding(.top, 12)
             }
 
-            // Log In Button
+            // Log In button
             Button(action: logIn) {
                 Group {
                     if isLoading {
                         ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
                     } else {
                         Text("Log In")
                             .font(Theme.headline)
@@ -240,11 +302,17 @@ struct LoginView: View {
                             .textCase(.uppercase)
                     }
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.background)
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
                 .background(
-                    (!isFormValid || isLoading) ? Theme.elevatedBackground : Theme.background
+                    Group {
+                        if isFormValid && !isLoading {
+                            Theme.buttonGradient
+                        } else {
+                            LinearGradient(colors: [Theme.elevatedBackground], startPoint: .leading, endPoint: .trailing)
+                        }
+                    }
                 )
                 .cornerRadius(Theme.cornerRadiusSmall)
             }
@@ -254,7 +322,7 @@ struct LoginView: View {
 
             Spacer()
         }
-        .background(Color(hex: 0x00F5D4).ignoresSafeArea())
+        .background(Theme.backgroundGradient.ignoresSafeArea())
     }
 
     // MARK: - Log In
@@ -271,7 +339,6 @@ struct LoginView: View {
                     email: email,
                     password: password
                 )
-                // AuthManager will update automatically via auth state listener
                 await MainActor.run {
                     isLoading = false
                 }
@@ -289,7 +356,6 @@ struct LoginView: View {
         }
     }
 
-    /// Maps Supabase auth errors to user-friendly messages
     private func mapAuthError(_ error: AuthError) -> String {
         let message = error.localizedDescription.lowercased()
 

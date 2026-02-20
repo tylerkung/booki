@@ -210,3 +210,23 @@ Started: Thu Feb 19 13:11:23 PST 2026
   - College teams share mascots heavily — can't use mascot-based lookup; must match on school name
   - API may send "Boston College Eagles" or just "Boston College" — prefix stripping handles both
 ---
+
+## 2026-02-20 - Landing Page & Auth Visual Polish
+- Overhauled web landing page (landing/index.html, landing/styles.css):
+  - Added Space Grotesk font for headings/buttons, Inter for body
+  - Gradient headline text, accent glow behind hero/waitlist sections
+  - Replaced empty mockup div with two overlapping phone frames using real app screenshots (mock-1.png, mock-2.png)
+  - Added Booki SVG logo (logo-booki-blk.svg) to hero and footer
+  - SVG feature icons replacing emojis, hover glow on cards, section dividers
+  - Updated copy to compliance vocabulary (members, picks, reconciliation)
+- Removed teal backgrounds from iOS auth flow:
+  - LaunchBackground color asset: #00F5D4 → #0A0A12 (dark)
+  - AuthGateView loadingView: solid teal → Theme.backgroundGradient + accent glow on logo
+  - PlayerClaimView: 3 solid Theme.accent button backgrounds → Theme.buttonGradient with proper disabled states
+- LoginView visual refresh: dark background, staggered entrance animations, gradient CTA, feature pills, accent glow logo
+- Files changed: landing/index.html, landing/styles.css, LoginView.swift, AuthGateView.swift, PlayerClaimView.swift, LaunchBackground.colorset/Contents.json
+- **Learnings:**
+  - LaunchBackground is a color asset in Assets.xcassets — controls the native launch screen color before SwiftUI loads
+  - BookiLogo asset already uses the white-on-transparent SVG (logo-booki-blk.svg) — works on dark backgrounds
+  - Solid Theme.accent button backgrounds should always be Theme.buttonGradient for consistency
+---
