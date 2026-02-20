@@ -149,6 +149,29 @@ final class SyncService: ObservableObject {
         self.authManager = authManager
     }
 
+    // MARK: - Data Clearing
+
+    /// Deletes all locally cached SwiftData records.
+    /// Call before logout or before a fresh sync to prevent data leaking between accounts.
+    static func clearLocalData(context: ModelContext) {
+        do {
+            try context.delete(model: Bet.self)
+            try context.delete(model: Player.self)
+            try context.delete(model: Event.self)
+            try context.delete(model: Market.self)
+            try context.delete(model: LedgerEntry.self)
+            try context.delete(model: AcceptancePolicy.self)
+            try context.delete(model: SettlementPeriod.self)
+            try context.delete(model: PlayerSettlement.self)
+            try context.delete(model: UserAgreement.self)
+            try context.delete(model: AuditEvent.self)
+            try context.delete(model: Bookie.self)
+            try context.save()
+        } catch {
+            print("Failed to clear local data: \(error)")
+        }
+    }
+
     // MARK: - Public Sync Methods
 
     /// Performs a full sync cycle: download from server, then upload pending changes

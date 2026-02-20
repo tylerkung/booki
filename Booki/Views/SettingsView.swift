@@ -389,6 +389,7 @@ struct SettingsView: View {
     private func performLogout() {
         Task {
             do {
+                SyncService.clearLocalData(context: modelContext)
                 try await authManager.signOut()
             } catch {
                 logoutErrorMessage = error.localizedDescription

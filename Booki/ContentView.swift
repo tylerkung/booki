@@ -21,6 +21,8 @@ struct SyncConflict: Identifiable, Equatable {
 }
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+
     // Alert Threshold settings
     @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
     @AppStorage("agingThreshold") private var agingThreshold: Int = 7
@@ -247,6 +249,7 @@ struct PlayerSettingsContent: View {
             Button("Log Out", role: .destructive) {
                 Task {
                     do {
+                        SyncService.clearLocalData(context: modelContext)
                         try await authManager.signOut()
                     } catch {
                         logoutErrorMessage = error.localizedDescription
