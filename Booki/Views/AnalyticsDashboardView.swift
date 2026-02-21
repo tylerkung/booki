@@ -117,6 +117,22 @@ struct AnalyticsDashboardView: View {
             break
         }
 
+        // Sort: open activity (highest first), then 7d performance (highest absolute value first)
+        result.sort { a, b in
+            let aExposure = a.exposure.grossExposure
+            let bExposure = b.exposure.grossExposure
+            // Players with open activity come first
+            if (aExposure > 0) != (bExposure > 0) {
+                return aExposure > 0
+            }
+            // Among players with open activity, sort by exposure descending
+            if aExposure > 0 && bExposure > 0 {
+                return aExposure > bExposure
+            }
+            // Among players without open activity, sort by 7d performance absolute value descending
+            return abs(a.sevenDayPL) > abs(b.sevenDayPL)
+        }
+
         return result
     }
 

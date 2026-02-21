@@ -1,19 +1,17 @@
 import SwiftUI
 
 /// Container view that manages the onboarding flow
-/// Shows a single welcome screen, then dismisses to dashboard
+/// Welcome → Profile Setup → Dashboard
 struct OnboardingContainerView: View {
 
     // MARK: - Environment
 
     @Bindable var onboardingManager: OnboardingManager
+    @EnvironmentObject private var authManager: AuthManager
 
     // MARK: - Properties
 
-    /// Called when onboarding is completed
     let onComplete: () -> Void
-
-    /// Called when user skips onboarding
     let onSkip: () -> Void
 
     // MARK: - Initialization
@@ -30,19 +28,37 @@ struct OnboardingContainerView: View {
 
     // MARK: - Body
 
+    @ViewBuilder
     var body: some View {
-        OnboardingWelcomeView(
-            onContinue: {
-                onboardingManager.markAllComplete()
-                onComplete()
-            },
-            onSkip: {
-                onboardingManager.markAllComplete()
-                onSkip()
-            }
-        )
-        .background(Theme.backgroundGradient)
-        .navigationBarHidden(true)
+        switch onboardingManager.currentStep {
+        case .welcome:
+            OnboardingWelcomeView(
+                onContinue: {
+                    withAnimation {
+                        onboardingManager.advance()
+                    }
+                },
+                onSkip: {
+                    onboardingManager.markAllComplete()
+                    onSkip()
+                }
+            )
+            .background(Theme.backgroundGradient)
+            .navigationBarHidden(true)
+        case .profile:
+            OnboardingProfileView(
+                onComplete: {
+                    onboardingManager.markAllComplete()
+                    onComplete()
+                },
+                onSkip: {
+                    onboardingManager.markAllComplete()
+                    onSkip()
+                }
+            )
+            .background(Theme.backgroundGradient)
+            .navigationBarHidden(true)
+        }
     }
 }
 

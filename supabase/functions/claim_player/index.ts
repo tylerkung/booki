@@ -91,11 +91,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Update the player record with the auth user's ID
+    // Update the player record with the auth user's ID and email
+    const authEmail = authUser.user.email ?? null;
     const { error: updateError } = await serviceClient
       .from('players')
       .update({
         auth_user_id: userId,
+        email: authEmail,
         claimed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })

@@ -112,6 +112,7 @@
 		8A1234560078 /* TonightsExposureCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550078 /* TonightsExposureCard.swift */; };
 		8A1234560079 /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550079 /* OnboardingManager.swift */; };
 		8A1234560080 /* OnboardingWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550080 /* OnboardingWelcomeView.swift */; };
+		8A1234560081 /* OnboardingProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550081 /* OnboardingProfileView.swift */; };
 		8A1234560085 /* OnboardingContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550085 /* OnboardingContainerView.swift */; };
 		8A1234560087 /* AnalyticsDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550087 /* AnalyticsDashboardView.swift */; };
 		8A1234560088 /* PlayerAnalyticsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550088 /* PlayerAnalyticsDetailView.swift */; };
@@ -243,6 +244,7 @@
 		8A1234550078 /* TonightsExposureCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonightsExposureCard.swift; sourceTree = "<group>"; };
 		8A1234550079 /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
 		8A1234550080 /* OnboardingWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWelcomeView.swift; sourceTree = "<group>"; };
+		8A1234550081 /* OnboardingProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingProfileView.swift; sourceTree = "<group>"; };
 		8A1234550085 /* OnboardingContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingContainerView.swift; sourceTree = "<group>"; };
 		8A1234550087 /* AnalyticsDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDashboardView.swift; sourceTree = "<group>"; };
 		8A1234550088 /* PlayerAnalyticsDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAnalyticsDetailView.swift; sourceTree = "<group>"; };
@@ -486,6 +488,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1234550080 /* OnboardingWelcomeView.swift */,
+				8A1234550081 /* OnboardingProfileView.swift */,
 				8A1234550085 /* OnboardingContainerView.swift */,
 			);
 			path = Onboarding;
@@ -695,6 +698,7 @@
 				8A1234560078 /* TonightsExposureCard.swift in Sources */,
 				8A1234560079 /* OnboardingManager.swift in Sources */,
 				8A1234560080 /* OnboardingWelcomeView.swift in Sources */,
+				8A1234560081 /* OnboardingProfileView.swift in Sources */,
 				8A1234560085 /* OnboardingContainerView.swift in Sources */,
 				8A1234560087 /* AnalyticsDashboardView.swift in Sources */,
 				8A1234560088 /* PlayerAnalyticsDetailView.swift in Sources */,

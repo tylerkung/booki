@@ -229,6 +229,29 @@ enum BookieService {
         }
     }
 
+    // MARK: - Update Bookie Profile
+
+    /// Updates the bookie's name and email in Supabase
+    static func updateProfile(
+        bookieId: UUID,
+        name: String,
+        email: String
+    ) async throws {
+        do {
+            try await supabase
+                .from("bookies")
+                .update([
+                    "name": name,
+                    "email": email,
+                    "updated_at": ISO8601DateFormatter().string(from: Date())
+                ])
+                .eq("id", value: bookieId.uuidString)
+                .execute()
+        } catch {
+            throw BookieServiceError.networkError(error)
+        }
+    }
+
     // MARK: - Helpers
 
     /// Derives a display name from an email address

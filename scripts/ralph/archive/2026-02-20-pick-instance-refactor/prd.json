@@ -1,0 +1,141 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/onboarding-isolation-polish",
+  "description": "Simplify onboarding to single welcome screen, fix critical SwiftData isolation bug between bookie accounts, verify player bet visibility, smooth earnings chart animation, and unify auth flow visuals",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Clear local SwiftData on logout",
+      "description": "As a bookie, when I log out, all locally cached data should be removed so the next user who logs in doesn't see my data.",
+      "acceptanceCriteria": [
+        "Create a `clearLocalData(context:)` utility function (in a new file or in SyncService) that deletes all records from every SwiftData @Model type",
+        "@Model types to clear: Player, Bet, Event, Market, LedgerEntry, AcceptancePolicy, SettlementPeriod, PlayerSettlement, UserAgreement, AuditEvent, Bookie",
+        "Use `try context.delete(model: Player.self)` pattern for each type (batch delete, not looping)",
+        "Call `clearLocalData` when AuthManager.signOut() is invoked — AuthGateView has @Environment(\\.modelContext) and can call it before signOut()",
+        "After logout, the local database is empty and user returns to login screen",
+        "@AppStorage preferences (odds format, credit limit, etc.) are NOT cleared — they're device-level settings",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "AuthManager doesn't have ModelContext. The cleanest approach: add a `clearLocalData(context:)` free function or static method, then call it from AuthGateView (which has @Environment(\\.modelContext)) right before calling authManager.signOut(). Or pass modelContext into signOut(). Check AuthGateView.swift and AuthManager.swift for the current logout flow."
+    },
+    {
+      "id": "US-002",
+      "title": "Clear local SwiftData before initial sync on login",
+      "description": "As a bookie logging into a device that may have another bookie's cached data, I need the local store wiped before my data syncs down.",
+      "acceptanceCriteria": [
+        "SyncService.performFullSync() (or equivalent) calls clearLocalData(context:) before starting downloadPlayers/downloadBets/etc.",
+        "This runs AFTER authentication succeeds but BEFORE any entity downloads",
+        "Reuse the clearLocalData(context:) utility from US-001",
+        "After sync completes, only the current bookie's data exists locally",
+        "Events (shared, no bookie_id) are re-downloaded correctly after the clear",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "SyncService already has ModelContext access. The clear should happen at the very start of performFullSync(). This ensures even if logout clear was skipped (app crash, force quit), the next login starts fresh. Check SyncService.swift for performFullSync() method structure."
+    },
+    {
+      "id": "US-003",
+      "title": "Strip onboarding to welcome-only flow",
+      "description": "As a new bookie, I want to get to the dashboard immediately after signing up so I can start exploring the app without a multi-step wizard.",
+      "acceptanceCriteria": [
+        "OnboardingContainerView only shows the Welcome step, then dismisses onboarding",
+        "The 'Set Up Your Group' button on OnboardingWelcomeView marks onboarding complete and goes to dashboard",
+        "The 'Skip for now' button also marks onboarding complete and goes to dashboard",
+        "No Configure, Add Members, Import Games, or Success screens are shown",
+        "Progress dots / 'Step X of 3' header is removed (only one screen, no steps needed)",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Check Booki/Views/Onboarding/ directory for OnboardingContainerView, OnboardingWelcomeView, and OnboardingManager. The container currently drives a multi-step flow. Simplify it to show welcome only, then both buttons call onboardingManager.markAllComplete() or equivalent. AuthGateView presents onboarding as .fullScreenCover — this mechanism stays."
+    },
+    {
+      "id": "US-004",
+      "title": "Apply sensible defaults on account creation",
+      "description": "As a new bookie, I want the app to use good defaults so everything works without manual configuration during onboarding.",
+      "acceptanceCriteria": [
+        "Auto-accept picks defaults to ON (bookie.manualBetAcceptance = false) — verify this is already the default in Bookie model",
+        "Auto-grade picks defaults to ON (bookie.manualBetGrading = false) — verify this is already the default in Bookie model",
+        "Default credit limit is set to $500 via @AppStorage(\"default_credit_limit\") if not already set — add initialization in BookiApp.swift or AuthGateView",
+        "Reconciliation frequency defaults to 'weekly' — verify this is already the default",
+        "All defaults are applied without user interaction during onboarding",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Most defaults likely already exist in the Bookie model initializer. This story is mainly verification + setting the @AppStorage credit limit default. Check Bookie.swift for model defaults and SettingsView.swift for what @AppStorage keys exist."
+    },
+    {
+      "id": "US-005",
+      "title": "Clean up unused onboarding files",
+      "description": "As a developer, I want to remove dead onboarding code so the codebase stays clean.",
+      "acceptanceCriteria": [
+        "OnboardingConfigureView.swift is deleted",
+        "OnboardingAddPlayersView.swift is deleted",
+        "OnboardingImportGamesView.swift is deleted",
+        "OnboardingSuccessView.swift is deleted",
+        "OnboardingStep enum is simplified — only needs .welcome or can be removed entirely",
+        "OnboardingManager is simplified — markStepComplete() and per-step tracking removed, only isOnboardingComplete / markAllComplete() needed",
+        "All references to removed files/types are cleaned up (no dead imports or switch cases)",
+        "Deleted files are removed from Xcode project file (project.pbxproj) — search for the filenames and remove their PBXBuildFile + PBXFileReference + PBXGroup entries",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Files are in Booki/Views/Onboarding/. After deleting, grep for any references to the deleted view names. The Xcode project file (Booki.xcodeproj/project.pbxproj) has entries for each file — remove them or Xcode will show missing file errors. OnboardingManager likely uses @AppStorage for per-step completion — simplify to single isOnboardingComplete flag."
+    },
+    {
+      "id": "US-006",
+      "title": "Verify player bet visibility after sync",
+      "description": "As a player, all my bets should be visible on my Track tab regardless of bet status or event status. Bets should never disappear after games start.",
+      "acceptanceCriteria": [
+        "After clearLocalData runs before sync (from US-002), the fresh sync correctly re-establishes all Player↔Bet relationships",
+        "Verify upsertBet in SyncService links the Bet to the correct Player SwiftData object (bet.player relationship is set)",
+        "TrackView's playerBets filter ($0.player?.id == player.id) correctly matches after a fresh sync (no nil player references)",
+        "ALL player bets appear on Track tab regardless of status (accepted, readyToGrade, graded, settled, pending)",
+        "Bets on games that have started but not been graded show with appropriate status via StatusPill",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "The root cause of disappearing bets is likely broken bet.player relationships from stale SwiftData (same root cause as the isolation bug). After US-001/002 clear data before sync, the fresh sync should correctly link Bet→Player. Check SyncService upsertBet method to verify it sets bet.player = player (the SwiftData relationship). Also check TrackView.swift for how playerBets are filtered."
+    },
+    {
+      "id": "US-007",
+      "title": "Smooth earnings chart animation when switching time ranges",
+      "description": "As a bookie, when I tap between time ranges (1W, 1M, 3M, 1Y, ALL) on the earnings chart, the line should animate smoothly instead of jumping.",
+      "acceptanceCriteria": [
+        "When switching time ranges, the chart line morphs smoothly between states",
+        "Use a fixed number of data points (e.g. always resample to 30 points) regardless of time range, so Swift Charts can interpolate between matching x-positions",
+        "The EarningsChart in AnalyticsDashboardView.swift normalizes dataPoints to a fixed count before rendering",
+        "The .animation modifier on the Chart produces a smooth line morph (not a jump cut)",
+        ".interpolationMethod(.catmullRom) is preserved for smooth curves",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "The issue is that different time ranges produce different numbers of data points, so Swift Charts can't interpolate between them — it jumps. Fix by always resampling the data to a fixed count (e.g. 30 points) using linear interpolation, then normalizing x-positions to 0...1 range. Check AnalyticsDashboardView.swift for the EarningsChart view and how dataPoints are computed per time range."
+    },
+    {
+      "id": "US-008",
+      "title": "Auth flow visual consistency",
+      "description": "As a user, I want the login, signup, and launch screens to feel like one cohesive flow with consistent backgrounds, logo placement, and smooth transitions.",
+      "acceptanceCriteria": [
+        "All auth screens (LoginView welcome, LoginView sign-in, SignUpView, ForgotPasswordView, PlayerClaimView) use Theme.backgroundGradient as the background",
+        "BookiLogo appears on every auth screen at a consistent size (180pt width) with accent glow: shadow(color: Theme.accent.opacity(0.3), radius: 40)",
+        "SignUpView and ForgotPasswordView add the BookiLogo (Image(\"BookiLogo\")) above their form content — currently missing",
+        "PlayerClaimView adds the BookiLogo above its claim code form — currently missing",
+        "Logo size standardized to 180pt width across welcome (currently 220pt), sign-in (currently 160pt), loading (currently 200pt)",
+        "Transitions between auth screens use .opacity only (no .move transitions that cause visual jumping)",
+        "AppleSignInButton uses Theme colors instead of hardcoded Color.black",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Auth views are in Booki/Views/Auth/ (LoginView, SignUpView, ForgotPasswordView) and Booki/Views/ (PlayerClaimView, AuthGateView). LoginView has welcome and sign-in states with different logo sizes — standardize both to 180pt. The .move(edge: .bottom) transition in AuthGateView loading view causes jumping — switch to .opacity. Check each file for current background and logo usage."
+    }
+  ]
+}
