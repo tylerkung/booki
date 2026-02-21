@@ -23,7 +23,7 @@ enum BalanceService {
         return calculateBalance(from: ledgerEntries)
     }
 
-    /// Calculates the open liability for a player's active bets
+    /// Calculates the open liability for a player's active bets (bookie-facing)
     /// Open liability = sum of potential payouts for pending and accepted bets
     /// - Parameter bets: All bets for the player
     /// - Returns: Total potential payout the bookie would owe if all active bets win
@@ -31,12 +31,23 @@ enum BalanceService {
         return LiabilityService.calculateActiveLiability(for: bets)
     }
 
+    /// Calculates the total stakes at risk for a player's active bets (credit calculation)
+    /// Open stakes = sum of stakes for pending and accepted bets
+    /// - Parameter bets: All bets for the player
+    /// - Returns: Total stakes committed on open bets
+    static func openStakes(from bets: [Bet]) -> Decimal {
+        let activeBets = bets.filter { $0.status == .pending || $0.status == .accepted }
+        return activeBets.reduce(Decimal.zero) { total, bet in
+            total + bet.stake
+        }
+    }
+
     /// Calculates the available credit for a player
-    /// Available credit = creditLimit - openLiability - balanceOwed
+    /// Available credit = creditLimit - openStakes - balanceOwed
     /// This represents how much more the player can bet
     /// - Parameters:
     ///   - creditLimit: The player's credit limit
-    ///   - bets: All bets for the player (used to calculate open liability)
+    ///   - bets: All bets for the player (used to calculate open stakes)
     ///   - ledgerEntries: All ledger entries for the player (used to calculate balance owed)
     /// - Returns: The available credit amount (may be negative if over limit)
     static func availableCredit(
@@ -44,9 +55,9 @@ enum BalanceService {
         bets: [Bet],
         ledgerEntries: [LedgerEntry]
     ) -> Decimal {
-        let liability = openLiability(from: bets)
+        let stakes = openStakes(from: bets)
         let owed = balanceOwed(from: ledgerEntries)
-        return creditLimit - liability - owed
+        return creditLimit - stakes - owed
     }
 
     /// Convenience method to calculate available credit for a player
@@ -78,12 +89,14 @@ enum BalanceService {
         bets: [Bet],
         ledgerEntries: [LedgerEntry]
     ) -> PlayerBalanceSummary {
+        let stakes = openStakes(from: bets)
         let liability = openLiability(from: bets)
         let owed = balanceOwed(from: ledgerEntries)
-        let available = player.creditLimit - liability - owed
+        let available = player.creditLimit - stakes - owed
 
         return PlayerBalanceSummary(
             creditLimit: player.creditLimit,
+            openStakes: stakes,
             openLiability: liability,
             balanceOwed: owed,
             availableCredit: available
@@ -95,7 +108,9 @@ enum BalanceService {
 struct PlayerBalanceSummary {
     /// The player's credit limit
     let creditLimit: Decimal
-    /// Total potential payout from active bets
+    /// Total stakes committed on open bets (used for credit calculation)
+    let openStakes: Decimal
+    /// Total potential payouts from active bets (bookie-facing exposure)
     let openLiability: Decimal
     /// Net balance from all ledger entries (internal: positive = player owes, negate for display)
     let balanceOwed: Decimal

@@ -262,7 +262,7 @@ struct PlayerClaimView: View {
                     .cornerRadius(12)
 
                 SecureField("Password (min 6 characters)", text: $password)
-                    .textContentType(.newPassword)
+                    .textContentType(.oneTimeCode)
                     .padding()
                     .background(Theme.cardBackground)
                     .cornerRadius(12)
@@ -441,6 +441,12 @@ struct PlayerClaimView: View {
         Task {
             do {
                 print("DEBUG: Starting Supabase signUp...")
+                // Prevent the auth state listener from creating a bookie record
+                // during the signUp → claim_player sequence
+                await MainActor.run {
+                    authManager.isClaimingPlayerAccount = true
+                }
+
                 // Create Supabase auth account for the player
                 let supabase = SupabaseClientManager.shared.client
                 let response = try await supabase.auth.signUp(
@@ -450,7 +456,7 @@ struct PlayerClaimView: View {
                 print("DEBUG: Supabase signUp succeeded, user ID: \(response.user.id)")
 
                 // Call claim_player edge function to link auth account to player record
-                // Uses service role to bypass RLS (players can't update their own record)
+                // Uses anon key (not JWT) because signUp with email confirmation doesn't produce a valid session
                 print("DEBUG: Calling claim_player edge function...")
                 let baseURL = SupabaseConfig.url
                 guard let claimURL = URL(string: "\(baseURL.absoluteString)/functions/v1/claim_player") else {
@@ -459,9 +465,12 @@ struct PlayerClaimView: View {
                 var claimRequest = URLRequest(url: claimURL)
                 claimRequest.httpMethod = "POST"
                 claimRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let session = try await supabase.auth.session
-                claimRequest.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-                claimRequest.httpBody = try JSONEncoder().encode(["invite_code": normalizedCode])
+                claimRequest.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
+                let claimBody: [String: String] = [
+                    "invite_code": normalizedCode,
+                    "auth_user_id": response.user.id.uuidString
+                ]
+                claimRequest.httpBody = try JSONEncoder().encode(claimBody)
                 let (claimData, claimResponse) = try await URLSession.shared.data(for: claimRequest)
                 if let httpResp = claimResponse as? HTTPURLResponse, !(200...299).contains(httpResp.statusCode) {
                     let msg = String(data: claimData, encoding: .utf8) ?? "Unknown error"
@@ -475,6 +484,7 @@ struct PlayerClaimView: View {
                 print("DEBUG: Local player account claimed")
 
                 // Store the auth user ID and show agreement view
+                // Stay signed in until agreement is submitted (RLS requires auth)
                 await MainActor.run {
                     isCreatingAccount = false
                     createdAuthUserId = response.user.id
@@ -483,6 +493,7 @@ struct PlayerClaimView: View {
             } catch {
                 print("DEBUG: Error creating account: \(error)")
                 await MainActor.run {
+                    authManager.isClaimingPlayerAccount = false
                     isCreatingAccount = false
                     accountCreationError = "Failed to create account: \(error.localizedDescription)"
                 }
@@ -493,9 +504,10 @@ struct PlayerClaimView: View {
     private func submitPlayerAgreement() {
         guard let userId = createdAuthUserId else {
             print("DEBUG: No user ID available for agreement submission")
-            // Fall back to showing success screen anyway
-            showAgreement = false
-            accountCreated = true
+            // Fall back: sign in fresh (will require agreement on next login)
+            Task {
+                await authManager.completePlayerClaimFlow(email: email, password: password)
+            }
             return
         }
 
@@ -510,22 +522,15 @@ struct PlayerClaimView: View {
                     version: AgreementService.currentAgreementVersion
                 )
                 print("DEBUG: Player agreement submitted successfully")
-
-                await MainActor.run {
-                    isSubmittingAgreement = false
-                    showAgreement = false
-                    accountCreated = true
-                }
             } catch {
                 print("DEBUG: Failed to submit agreement: \(error)")
-                // Even on failure, proceed to success screen
                 // Agreement will be required on next login
-                await MainActor.run {
-                    isSubmittingAgreement = false
-                    showAgreement = false
-                    accountCreated = true
-                }
             }
+
+            // Sign out the invalid session and sign in fresh with confirmed credentials.
+            // This produces a valid JWT for edge function calls.
+            await authManager.completePlayerClaimFlow(email: email, password: password)
+            print("DEBUG: Player claim flow complete, session activated")
         }
     }
 }

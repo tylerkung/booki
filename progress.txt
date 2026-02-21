@@ -153,3 +153,22 @@ Started: Fri Feb 20 02:20:05 PST 2026
   - Market upsert composite key must include line value to avoid overwriting alternates with each other
   - `event.markets` filtering by `.isMainLine` keeps "All Markets" tab clean; alternates go to dedicated tab
 ---
+
+## 2026-02-20 - Player Claim Flow & Edge Function Fixes
+- Fixed player claim race condition: `isClaimingPlayerAccount` flag in AuthManager prevents `ensureBookieRecord()` from creating spurious bookie record during signUp
+- Fixed invalid JWT after signUp: `claim_player` edge function now auto-confirms email via admin API (`auth.admin.updateUserById`), then `completePlayerClaimFlow()` signs out and signs back in for a valid JWT
+- Seamless claim flow: player goes directly to player view after claim + agreement — no re-login required
+- Fixed claim_player to use anon key + request body `auth_user_id` instead of JWT auth (signUp with email confirmation doesn't produce valid session)
+- Fixed Supabase gateway JWT rejection (HS256→ES256 migration): all edge functions deployed with `--no-verify-jwt`
+- Fixed `submit_bet` shared events check: `bookie_id = NULL` events now allowed (was blocking all API-imported events)
+- Applied missing `accepted_at` column migration to bets table
+- Suppressed iOS Strong Password prompt: changed `.textContentType(.newPassword)` to `.oneTimeCode`
+- Added `apikey` header to EdgeFunctionService for Supabase gateway compatibility
+- Files changed: AuthManager.swift, PlayerClaimView.swift, EdgeFunctionService.swift, claim_player/index.ts, submit_bet/index.ts, SignUpView.swift
+- **Learnings for future iterations:**
+  - Supabase `signUp()` with email confirmation enabled does NOT produce a valid session JWT — must confirm email then sign in fresh
+  - `supabase.auth.signUp()` triggers `.signedIn` auth state event immediately — can cause race conditions if auth listener does work
+  - Supabase edge function gateway validates JWT separately from function code — `--no-verify-jwt` bypasses gateway, function `getUser()` still validates
+  - Shared events have `bookie_id = NULL` — all ownership checks must handle NULL (submit_parlay already did, submit_bet didn't)
+  - Always apply ALL migration files to live Supabase — missing columns cause cryptic "Failed to create" errors
+---

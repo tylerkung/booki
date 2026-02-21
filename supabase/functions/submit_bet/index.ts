@@ -156,8 +156,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate event belongs to the same bookie
-    if (event.bookie_id?.toLowerCase() !== requestBookieId) {
+    // Validate event belongs to the same bookie (shared events have bookie_id = NULL)
+    const eventBookieId = event.bookie_id?.toLowerCase() ?? null;
+    if (eventBookieId !== null && eventBookieId !== requestBookieId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Event does not belong to specified bookie' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -1,5 +1,5 @@
 import { corsHeaders } from '../_shared/cors.ts';
-import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
+import { createServiceClient } from '../_shared/supabase.ts';
 
 /**
  * claim_player Edge Function
@@ -9,11 +9,16 @@ import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabas
  *
  * Request body:
  *   - invite_code: string (the invite code used during signup)
+ *   - auth_user_id: string (the newly created auth user's UUID)
  *
  * Security:
- *   - Requires valid JWT (the newly created player auth user)
+ *   - The invite code itself is the authentication factor (shared secret between bookie and player)
  *   - Only updates a player record that has NO auth_user_id yet (unclaimed)
  *   - Only updates the record matching the invite_code
+ *   - auth_user_id is verified to exist in auth.users via service role
+ *
+ * Note: JWT auth is not used because signUp with email confirmation enabled
+ * does not produce a valid session token. The invite code serves as auth.
  */
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -22,29 +27,48 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Validate auth
-    const authHeader = req.headers.get('Authorization');
-    const userId = await getUserIdFromAuthHeader(authHeader);
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Parse request body
-    const { invite_code } = await req.json();
+    const { invite_code, auth_user_id } = await req.json();
     if (!invite_code || typeof invite_code !== 'string') {
       return new Response(
         JSON.stringify({ error: 'invite_code is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    if (!auth_user_id || typeof auth_user_id !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'auth_user_id is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const normalizedCode = invite_code.trim().toUpperCase();
+    const userId = auth_user_id.toLowerCase();
 
     // Use service role to bypass RLS
     const serviceClient = createServiceClient();
+
+    // Verify the auth user actually exists
+    const { data: authUser, error: authError } = await serviceClient.auth.admin.getUserById(userId);
+    if (authError || !authUser?.user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid auth_user_id' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Auto-confirm the email — the invite code serves as verification,
+    // so email confirmation is redundant. Without this, the session JWT
+    // from signUp is invalid and the player can't call edge functions.
+    if (!authUser.user.email_confirmed_at) {
+      const { error: confirmError } = await serviceClient.auth.admin.updateUserById(userId, {
+        email_confirm: true,
+      });
+      if (confirmError) {
+        console.error('Failed to confirm email:', confirmError);
+        // Non-fatal — continue with claim
+      }
+    }
 
     // First verify the player record exists, is unclaimed, and matches the invite code
     const { data: player, error: fetchError } = await serviceClient

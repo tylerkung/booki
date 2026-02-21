@@ -108,7 +108,7 @@ struct SignUpView: View {
 
                         SecureField("", text: $password)
                             .textFieldStyle(AuthTextFieldStyle())
-                            .textContentType(.newPassword)
+                            .textContentType(.oneTimeCode)
                             .placeholder(when: password.isEmpty) {
                                 Text("Enter your password")
                                     .foregroundStyle(Theme.textMuted)
@@ -130,7 +130,7 @@ struct SignUpView: View {
 
                         SecureField("", text: $confirmPassword)
                             .textFieldStyle(AuthTextFieldStyle())
-                            .textContentType(.newPassword)
+                            .textContentType(.oneTimeCode)
                             .placeholder(when: confirmPassword.isEmpty) {
                                 Text("Confirm your password")
                                     .foregroundStyle(Theme.textMuted)

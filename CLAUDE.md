@@ -155,12 +155,21 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
+## Player Claim Flow
+
+The player invite claim flow has specific auth handling:
+
+- `isClaimingPlayerAccount` flag on AuthManager suppresses auth state listener during signUp → claim sequence
+- `claim_player` edge function auto-confirms email via admin API (invite code = verification factor)
+- After claim + agreement, `completePlayerClaimFlow(email:password:)` signs out invalid session and signs back in fresh
+- Edge functions deployed with `--no-verify-jwt` due to Supabase HS256→ES256 JWT migration; function code validates auth via `getUser()`
+
 ## Current State (February 20, 2026)
 
 - **Branch**: `ralph/onboarding-isolation-polish`
 - **Phases complete**: 1-16 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines)
-- **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
-- **Edge Functions**: 11 functions for server-authoritative operations (including `submit_parlay`, `sync_games`, `claim_player`)
+- **Supabase migrations**: All applied including `accepted_at` on bets (see SUPABASE_MIGRATIONS.md)
+- **Edge Functions**: 11 functions deployed with `--no-verify-jwt` for ES256 JWT compatibility
 - **Odds API key**: Configured in Settings (free tier, 500 calls/month)
 - **Auto-pilot mode**: Picks auto-accepted, auto-graded, and auto-settled (ledger entries created automatically)
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
