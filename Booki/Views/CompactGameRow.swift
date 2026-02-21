@@ -13,6 +13,9 @@ struct CompactGameRow: View {
     /// Minutes before event start to lock betting (default 0 = lock at start time)
     var lockOffsetMinutes: Int = 0
 
+    /// When true, odds buttons are rendered muted/disabled and non-interactive (bookie view-only mode)
+    var isViewOnly: Bool = false
+
     /// Computed property to determine if event is locked for betting
     private var isEventLocked: Bool {
         event.isLocked(offsetMinutes: lockOffsetMinutes)
@@ -55,9 +58,9 @@ struct CompactGameRow: View {
         event.markets?.first { $0.type == .total }
     }
 
-    /// Check if a specific selection is in the bet slip
+    /// Check if a specific selection is in the bet slip (always false in view-only mode)
     private func isSelected(_ selection: BetSlipSelection) -> Bool {
-        selections.contains(selection)
+        isViewOnly ? false : selections.contains(selection)
     }
 
     /// Create a selection for a given market and side
@@ -221,9 +224,9 @@ struct CompactGameRow: View {
                     topText: formatSpreadValue(side),
                     odds: odds,
                     isSelected: isSelected(selection),
-                    isDisabled: isEventLocked,
+                    isDisabled: isViewOnly || isEventLocked,
                     showOddsAsSecondary: true,
-                    action: { if !isEventLocked { onSelectOdds(selection) } }
+                    action: { if !isViewOnly && !isEventLocked { onSelectOdds(selection) } }
                 )
             } else if moneylineMarket != nil || totalMarket != nil {
                 // Placeholder to maintain alignment
@@ -242,9 +245,9 @@ struct CompactGameRow: View {
                     topText: nil,
                     odds: odds,
                     isSelected: isSelected(selection),
-                    isDisabled: isEventLocked,
+                    isDisabled: isViewOnly || isEventLocked,
                     showOddsAsSecondary: false,
-                    action: { if !isEventLocked { onSelectOdds(selection) } }
+                    action: { if !isViewOnly && !isEventLocked { onSelectOdds(selection) } }
                 )
             } else if spreadMarket != nil || totalMarket != nil {
                 // Placeholder to maintain alignment
@@ -263,9 +266,9 @@ struct CompactGameRow: View {
                     topText: formatTotalValue(side),
                     odds: odds,
                     isSelected: isSelected(selection),
-                    isDisabled: isEventLocked,
+                    isDisabled: isViewOnly || isEventLocked,
                     showOddsAsSecondary: true,
-                    action: { if !isEventLocked { onSelectOdds(selection) } }
+                    action: { if !isViewOnly && !isEventLocked { onSelectOdds(selection) } }
                 )
             } else if spreadMarket != nil || moneylineMarket != nil {
                 // Placeholder to maintain alignment

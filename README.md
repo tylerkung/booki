@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 20, 2026 - Alternate lines (alternate spreads, alternate totals) fetched from Odds API and displayed in GameDetailView Alternate Lines tab*
+*Last updated: February 21, 2026 - Bookie Events tab redesigned with player-style compact card layout, sport tabs, search, sticky headers; Settings streamlined (removed Odds API, sample data, sync)*

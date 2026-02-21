@@ -156,13 +156,14 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (February 20, 2026)
+## Current State (February 21, 2026)
 
 - **Branch**: `ralph/onboarding-isolation-polish`
 - **Phases complete**: 1-16 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
 - **Edge Functions**: 11 functions for server-authoritative operations (including `submit_parlay`, `sync_games`, `claim_player`)
-- **Odds API key**: Configured in Settings (free tier, 500 calls/month)
+- **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
+- **Settings**: Streamlined — removed Odds API config, sample data, and sync button
 - **Auto-pilot mode**: Picks auto-accepted, auto-graded, and auto-settled (ledger entries created automatically)
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
 - **Branding**: App icon and in-app logo (`BookiLogo` image set), dark launch screen, `DESIGN_SYSTEM.md` restored

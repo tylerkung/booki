@@ -171,3 +171,16 @@ Started: Fri Feb 20 02:20:05 PST 2026
   - Shared events (`bookie_id = NULL`) need explicit null checks in all edge function validation
   - Always verify migration files have been applied to live database, not just checked into repo
 ---
+
+## 2026-02-21 - Bookie Events Tab Redesign & Settings Cleanup
+- Rewrote `EventsListView.swift` from plain List rows to player-style compact card layout with `CompactGameRow`, sport tabs, inline search, sticky headers with SPREAD/MONEY/TOTAL columns
+- Added Upcoming/Past segmented picker (48h cutoff for recent finals)
+- Added `isViewOnly` flag to `CompactGameRow` — odds buttons render muted/disabled, no bet slip interaction
+- Removed Odds API settings section from `SettingsView` (API key, bookmaker picker, test connection)
+- Removed "Load Sample Data" button and "Sync Now" section from `SettingsView`
+- Files changed: CompactGameRow.swift, EventsListView.swift, SettingsView.swift
+- **Learnings for future iterations:**
+  - `CompactGameRow` uses `.onTapGesture` on the card — use `onTapCard` callback + `@State` navigation binding instead of hidden `NavigationLink`
+  - `isViewOnly` pattern: single flag disables interaction + suppresses selection highlighting without changing visual layout
+  - Reuse player-side UI components (SportTabButton, sportIconName, sticky headers) across bookie views for visual consistency
+---
