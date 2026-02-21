@@ -101,6 +101,14 @@ struct OddsAPIMapper {
                     markets.append(market)
                 }
 
+            case "alternate_spreads":
+                // Alternate spread markets — multiple lines per event
+                markets.append(contentsOf: mapAlternateSpreads(oddsMarket, event: event, oddsEvent: oddsEvent))
+
+            case "alternate_totals":
+                // Alternate total markets — multiple lines per event
+                markets.append(contentsOf: mapAlternateTotals(oddsMarket, event: event))
+
             default:
                 break
             }
@@ -172,6 +180,76 @@ struct OddsAPIMapper {
             oddsB: under.price,
             event: event
         )
+    }
+
+    // MARK: - Alternate Market Mapping
+
+    private static func mapAlternateSpreads(_ oddsMarket: OddsMarket, event: Event, oddsEvent: OddsEvent) -> [Market] {
+        // Group outcomes by |point| into home/away pairs
+        var byPoint: [Double: (away: OddsOutcome?, home: OddsOutcome?)] = [:]
+
+        for outcome in oddsMarket.outcomes {
+            guard let point = outcome.point else { continue }
+            let key = abs(point)
+            var pair = byPoint[key] ?? (nil, nil)
+            if outcome.name == oddsEvent.homeTeam {
+                pair.home = outcome
+            } else {
+                pair.away = outcome
+            }
+            byPoint[key] = pair
+        }
+
+        return byPoint.compactMap { (_, pair) -> Market? in
+            guard let away = pair.away, let home = pair.home else { return nil }
+            let awaySpread = formatSpread(away.point ?? 0)
+            let homeSpread = formatSpread(home.point ?? 0)
+            return Market(
+                type: .alternateSpread,
+                sideA: "\(oddsEvent.awayTeam) \(awaySpread)",
+                sideB: "\(oddsEvent.homeTeam) \(homeSpread)",
+                oddsA: away.price,
+                oddsB: home.price,
+                event: event
+            )
+        }.sorted { extractPointValue($0.sideB) < extractPointValue($1.sideB) }
+    }
+
+    private static func mapAlternateTotals(_ oddsMarket: OddsMarket, event: Event) -> [Market] {
+        // Group outcomes by point into Over/Under pairs
+        var byPoint: [Double: (over: OddsOutcome?, under: OddsOutcome?)] = [:]
+
+        for outcome in oddsMarket.outcomes {
+            guard let point = outcome.point else { continue }
+            var pair = byPoint[point] ?? (nil, nil)
+            if outcome.name == "Over" {
+                pair.over = outcome
+            } else if outcome.name == "Under" {
+                pair.under = outcome
+            }
+            byPoint[point] = pair
+        }
+
+        return byPoint.compactMap { (pointVal, pair) -> Market? in
+            guard let over = pair.over, let under = pair.under else { return nil }
+            return Market(
+                type: .alternateTotal,
+                sideA: "Over \(formatTotal(pointVal))",
+                sideB: "Under \(formatTotal(pointVal))",
+                oddsA: over.price,
+                oddsB: under.price,
+                event: event
+            )
+        }.sorted { extractPointValue($0.sideA) < extractPointValue($1.sideA) }
+    }
+
+    /// Extracts the numeric value from a side string for sorting
+    private static func extractPointValue(_ side: String) -> Double {
+        let pattern = #"-?\d+\.?\d*"#
+        if let range = side.range(of: pattern, options: .regularExpression) {
+            return Double(side[range]) ?? 0
+        }
+        return 0
     }
 
     // MARK: - Formatting Helpers

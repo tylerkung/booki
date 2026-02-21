@@ -7,12 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		50F000012F33000000000001 /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */; };
-		50F000012F33000000000002 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */; };
-		50F000012F33000000000003 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */; };
-		50F000012F33000000000004 /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */; };
-		50F000012F33000000000005 /* IBMPlexSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */; };
-		50F000012F33000000000006 /* IBMPlexSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */; };
 		50C083EF2F25F8B0001A0FE5 /* CompactOddsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */; };
 		50C083F02F25F8B0001A0FE5 /* CompactGameRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */; };
 		50C083F12F25F8B0001A0FE5 /* GameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */; };
@@ -33,6 +27,12 @@
 		50C0840F2F2C0347001A0FE5 /* SyncGamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C0840E2F2C0347001A0FE5 /* SyncGamesView.swift */; };
 		50C084112F2C4DA3001A0FE5 /* BetSlipManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084102F2C4DA3001A0FE5 /* BetSlipManager.swift */; };
 		50C084142F2C5000001A0FE5 /* NumericKeypadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084132F2C5000001A0FE5 /* NumericKeypadView.swift */; };
+		50F000012F33000000000001 /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */; };
+		50F000012F33000000000002 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */; };
+		50F000012F33000000000003 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */; };
+		50F000012F33000000000004 /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */; };
+		50F000012F33000000000005 /* IBMPlexSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */; };
+		50F000012F33000000000006 /* IBMPlexSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */; };
 		8A1234560001 /* BookiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550001 /* BookiApp.swift */; };
 		8A1234560002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550002 /* ContentView.swift */; };
 		8A1234560003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550003 /* Assets.xcassets */; };
@@ -112,15 +112,17 @@
 		8A1234560078 /* TonightsExposureCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550078 /* TonightsExposureCard.swift */; };
 		8A1234560079 /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550079 /* OnboardingManager.swift */; };
 		8A1234560080 /* OnboardingWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550080 /* OnboardingWelcomeView.swift */; };
-		8A1234560081 /* OnboardingConfigureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550081 /* OnboardingConfigureView.swift */; };
-		8A1234560082 /* OnboardingAddPlayersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550082 /* OnboardingAddPlayersView.swift */; };
-		8A1234560083 /* OnboardingImportGamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550083 /* OnboardingImportGamesView.swift */; };
-		8A1234560084 /* OnboardingSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550084 /* OnboardingSuccessView.swift */; };
+		8A1234560081 /* OnboardingProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550081 /* OnboardingProfileView.swift */; };
 		8A1234560085 /* OnboardingContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550085 /* OnboardingContainerView.swift */; };
-		8A1234560086 /* FinishSetupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550086 /* FinishSetupCard.swift */; };
 		8A1234560087 /* AnalyticsDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550087 /* AnalyticsDashboardView.swift */; };
 		8A1234560088 /* PlayerAnalyticsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550088 /* PlayerAnalyticsDetailView.swift */; };
 		8A1234560089 /* PlayerAttentionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550089 /* PlayerAttentionService.swift */; };
+		8A1234560090 /* PickPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550090 /* PickPresenter.swift */; };
+		8A1234560091 /* StatusPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550091 /* StatusPill.swift */; };
+		8A1234560092 /* SelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550092 /* SelectionRow.swift */; };
+		8A1234560093 /* PickCardCompact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550093 /* PickCardCompact.swift */; };
+		8A1234560094 /* PickDetailHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550094 /* PickDetailHeader.swift */; };
+		8A1234560095 /* TeamAbbreviations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550095 /* TeamAbbreviations.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -134,12 +136,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
-		50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
-		50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
-		50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
-		50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Medium.ttf"; sourceTree = "<group>"; };
-		50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Bold.ttf"; sourceTree = "<group>"; };
 		50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactGameRow.swift; sourceTree = "<group>"; };
 		50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactOddsButton.swift; sourceTree = "<group>"; };
 		50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDetailView.swift; sourceTree = "<group>"; };
@@ -160,6 +156,13 @@
 		50C0840E2F2C0347001A0FE5 /* SyncGamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGamesView.swift; sourceTree = "<group>"; };
 		50C084102F2C4DA3001A0FE5 /* BetSlipManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetSlipManager.swift; sourceTree = "<group>"; };
 		50C084132F2C5000001A0FE5 /* NumericKeypadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumericKeypadView.swift; sourceTree = "<group>"; };
+		50C084132F485946001A0FE5 /* Booki.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Booki.entitlements; sourceTree = "<group>"; };
+		50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
+		50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
+		50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
+		50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = text; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
+		50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = text; path = "IBMPlexSans-Medium.ttf"; sourceTree = "<group>"; };
+		50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = text; path = "IBMPlexSans-Bold.ttf"; sourceTree = "<group>"; };
 		8A1234550000 /* Booki.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Booki.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1234550001 /* BookiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookiApp.swift; sourceTree = "<group>"; };
 		8A1234550002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -241,15 +244,17 @@
 		8A1234550078 /* TonightsExposureCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonightsExposureCard.swift; sourceTree = "<group>"; };
 		8A1234550079 /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
 		8A1234550080 /* OnboardingWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWelcomeView.swift; sourceTree = "<group>"; };
-		8A1234550081 /* OnboardingConfigureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingConfigureView.swift; sourceTree = "<group>"; };
-		8A1234550082 /* OnboardingAddPlayersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingAddPlayersView.swift; sourceTree = "<group>"; };
-		8A1234550083 /* OnboardingImportGamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingImportGamesView.swift; sourceTree = "<group>"; };
-		8A1234550084 /* OnboardingSuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSuccessView.swift; sourceTree = "<group>"; };
+		8A1234550081 /* OnboardingProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingProfileView.swift; sourceTree = "<group>"; };
 		8A1234550085 /* OnboardingContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingContainerView.swift; sourceTree = "<group>"; };
-		8A1234550086 /* FinishSetupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinishSetupCard.swift; sourceTree = "<group>"; };
 		8A1234550087 /* AnalyticsDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDashboardView.swift; sourceTree = "<group>"; };
 		8A1234550088 /* PlayerAnalyticsDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAnalyticsDetailView.swift; sourceTree = "<group>"; };
 		8A1234550089 /* PlayerAttentionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAttentionService.swift; sourceTree = "<group>"; };
+		8A1234550090 /* PickPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickPresenter.swift; sourceTree = "<group>"; };
+		8A1234550091 /* StatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPill.swift; sourceTree = "<group>"; };
+		8A1234550092 /* SelectionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionRow.swift; sourceTree = "<group>"; };
+		8A1234550093 /* PickCardCompact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickCardCompact.swift; sourceTree = "<group>"; };
+		8A1234550094 /* PickDetailHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickDetailHeader.swift; sourceTree = "<group>"; };
+		8A1234550095 /* TeamAbbreviations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamAbbreviations.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -271,6 +276,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		50F000032F33000000000000 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */,
+				50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */,
+				50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */,
+				50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */,
+				50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */,
+				50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		8A1234530000 = {
 			isa = PBXGroup;
 			children = (
@@ -283,6 +301,7 @@
 		8A1234530001 /* Booki */ = {
 			isa = PBXGroup;
 			children = (
+				50C084132F485946001A0FE5 /* Booki.entitlements */,
 				8A1234550001 /* BookiApp.swift */,
 				8A1234550002 /* ContentView.swift */,
 				8A1234550042 /* Theme.swift */,
@@ -374,10 +393,10 @@
 				8A1234550076 /* SettlementSnapshotCard.swift */,
 				8A1234550077 /* PlayerRiskWatchlistCard.swift */,
 				8A1234550078 /* TonightsExposureCard.swift */,
-				8A1234550086 /* FinishSetupCard.swift */,
 				8A1234550087 /* AnalyticsDashboardView.swift */,
 				8A1234550088 /* PlayerAnalyticsDetailView.swift */,
 				8A1234530011 /* Onboarding */,
+				8A1234530012 /* Components */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -422,6 +441,8 @@
 				8A1234550074 /* PlayerRiskService.swift */,
 				8A1234550079 /* OnboardingManager.swift */,
 				8A1234550089 /* PlayerAttentionService.swift */,
+				8A1234550090 /* PickPresenter.swift */,
+				8A1234550095 /* TeamAbbreviations.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -452,19 +473,6 @@
 			path = Config;
 			sourceTree = "<group>";
 		};
-		50F000032F33000000000000 /* Fonts */ = {
-			isa = PBXGroup;
-			children = (
-				50F000002F33000000000001 /* SpaceGrotesk-Regular.ttf */,
-				50F000002F33000000000002 /* SpaceGrotesk-Medium.ttf */,
-				50F000002F33000000000003 /* SpaceGrotesk-Bold.ttf */,
-				50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */,
-				50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */,
-				50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */,
-			);
-			path = Fonts;
-			sourceTree = "<group>";
-		};
 		8A1234530010 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
@@ -480,13 +488,21 @@
 			isa = PBXGroup;
 			children = (
 				8A1234550080 /* OnboardingWelcomeView.swift */,
-				8A1234550081 /* OnboardingConfigureView.swift */,
-				8A1234550082 /* OnboardingAddPlayersView.swift */,
-				8A1234550083 /* OnboardingImportGamesView.swift */,
-				8A1234550084 /* OnboardingSuccessView.swift */,
+				8A1234550081 /* OnboardingProfileView.swift */,
 				8A1234550085 /* OnboardingContainerView.swift */,
 			);
 			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		8A1234530012 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				8A1234550091 /* StatusPill.swift */,
+				8A1234550092 /* SelectionRow.swift */,
+				8A1234550093 /* PickCardCompact.swift */,
+				8A1234550094 /* PickDetailHeader.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -682,15 +698,17 @@
 				8A1234560078 /* TonightsExposureCard.swift in Sources */,
 				8A1234560079 /* OnboardingManager.swift in Sources */,
 				8A1234560080 /* OnboardingWelcomeView.swift in Sources */,
-				8A1234560081 /* OnboardingConfigureView.swift in Sources */,
-				8A1234560082 /* OnboardingAddPlayersView.swift in Sources */,
-				8A1234560083 /* OnboardingImportGamesView.swift in Sources */,
-				8A1234560084 /* OnboardingSuccessView.swift in Sources */,
+				8A1234560081 /* OnboardingProfileView.swift in Sources */,
 				8A1234560085 /* OnboardingContainerView.swift in Sources */,
-				8A1234560086 /* FinishSetupCard.swift in Sources */,
 				8A1234560087 /* AnalyticsDashboardView.swift in Sources */,
 				8A1234560088 /* PlayerAnalyticsDetailView.swift in Sources */,
 				8A1234560089 /* PlayerAttentionService.swift in Sources */,
+				8A1234560090 /* PickPresenter.swift in Sources */,
+				8A1234560095 /* TeamAbbreviations.swift in Sources */,
+				8A1234560091 /* StatusPill.swift in Sources */,
+				8A1234560092 /* SelectionRow.swift in Sources */,
+				8A1234560093 /* PickCardCompact.swift in Sources */,
+				8A1234560094 /* PickDetailHeader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -839,24 +857,27 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Booki/Booki.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Booki/Preview Content\"";
+				DEVELOPMENT_TEAM = 2VXWBUS77T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Booki/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.booki.app;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bookiapp.booki;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -868,24 +889,27 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Booki/Booki.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Booki/Preview Content\"";
+				DEVELOPMENT_TEAM = 2VXWBUS77T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Booki/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.booki.app;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bookiapp.booki;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

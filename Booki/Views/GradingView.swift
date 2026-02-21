@@ -449,11 +449,7 @@ struct GradingBetRow: View {
         if let event = event {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
-        return "Event \(bet.eventId.prefix(8))"
-    }
-
-    private var formattedOdds: String {
-        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
+        return bet.eventDescription ?? "Event \(bet.eventId.prefix(8))"
     }
 
     private var formattedStake: String {
@@ -607,22 +603,14 @@ struct GradingBetRow: View {
                 }
             }
 
-            // Middle row: Bet details
+            // Pick info via shared SelectionRow
             HStack {
-                Text(bet.market)
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-
-                Text("•")
-                    .foregroundStyle(Theme.textSecondary)
-
-                Text(bet.side)
-                    .font(Theme.subheadline)
-                    .fontWeight(.medium)
-
-                Text(formattedOdds)
-                    .font(Theme.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
+                SelectionRow(
+                    selectionLabel: bet.side,
+                    odds: bet.odds,
+                    eventName: eventName,
+                    league: event?.league ?? bet.sportLeague
+                )
 
                 Spacer()
 
@@ -973,11 +961,7 @@ struct ParlayLegRow: View {
         if let event = event {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
-        return "Event \(bet.eventId.prefix(8))"
-    }
-
-    private var formattedOdds: String {
-        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
+        return bet.eventDescription ?? "Event \(bet.eventId.prefix(8))"
     }
 
     /// Whether this leg has already been graded
@@ -1000,23 +984,14 @@ struct ParlayLegRow: View {
         }
     }
 
-    /// Status text
-    private var statusText: String {
-        if bet.status == .void {
-            return "Void"
-        }
-        guard let result = bet.gradeResult else {
-            return "Pending"
-        }
-        return result.rawValue.capitalized
-    }
-
     var body: some View {
         HStack(spacing: 12) {
-            // Status indicator dot
-            Circle()
-                .fill(statusColor)
-                .frame(width: 10, height: 10)
+            // Status indicator dot for ungraded legs (SelectionRow handles graded legs)
+            if !isGraded {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 10, height: 10)
+            }
 
             // Multi-select checkbox (only for ungraded legs)
             if isMultiSelectMode && !isGraded {
@@ -1030,41 +1005,22 @@ struct ParlayLegRow: View {
                 .buttonStyle(.plain)
             }
 
-            // Bet info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(eventName)
-                    .font(Theme.subheadline)
-                    .foregroundStyle(isGraded ? Theme.textMuted : Theme.textPrimary)
-
-                HStack(spacing: 4) {
-                    Text(bet.market)
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-
-                    Text("•")
-                        .foregroundStyle(Theme.textMuted)
-
-                    Text(bet.side)
-                        .font(Theme.font(size: 12, weight: .medium))
-                        .foregroundStyle(isGraded ? Theme.textMuted : Theme.textSecondary)
-
-                    Text(formattedOdds)
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                }
-            }
+            // Leg info via shared SelectionRow
+            SelectionRow(
+                selectionLabel: bet.side,
+                odds: bet.odds,
+                eventName: eventName,
+                league: event?.league ?? bet.sportLeague,
+                gradeResult: isGraded ? bet.gradeResult : nil
+            )
+            .opacity(isGraded ? 0.6 : 1.0)
 
             Spacer()
 
             // Status badge or grading buttons
             if isGraded {
-                Text(statusText)
-                    .font(Theme.font(size: 12, weight: .semibold))
-                    .foregroundStyle(Theme.background)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(statusColor)
-                    .clipShape(Capsule())
+                let (settlement, _) = PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
+                StatusPill(settlementStatus: settlement)
             } else if !isMultiSelectMode {
                 // Compact grading buttons
                 HStack(spacing: 8) {

@@ -304,6 +304,9 @@ struct RefreshOddsView: View {
                     localMarket.updatedAt = Date()
                     updatedCount += 1
                 }
+
+            case .alternateSpread, .alternateTotal, .teamTotal:
+                break // Alternate lines refreshed server-side via sync_games
             }
         }
 

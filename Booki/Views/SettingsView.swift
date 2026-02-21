@@ -5,14 +5,9 @@ import UIKit
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var authManager: AuthManager
-    @EnvironmentObject private var syncService: SyncService
     @Query private var bookies: [Bookie]
 
     @State private var showingEditProfile = false
-    @State private var isSyncing = false
-    @State private var showingSeedDataConfirmation = false
-    @State private var showingSeedDataSuccess = false
-    @State private var seededEventCount = 0
     @State private var showingLogoutConfirmation = false
     @State private var showingLogoutError = false
     @State private var logoutErrorMessage = ""
@@ -20,15 +15,6 @@ struct SettingsView: View {
     // Alert Threshold settings
     @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
     @AppStorage("agingThreshold") private var agingThreshold: Int = 7
-
-    // Odds API settings (US-011)
-    @AppStorage("oddsAPIKey") private var oddsAPIKey: String = ""
-    @AppStorage("oddsAPIBookmaker") private var oddsAPIBookmaker: String = "draftkings"
-    @StateObject private var oddsService = OddsAPIService.shared
-    @State private var isTestingAPI = false
-    @State private var showingAPITestResult = false
-    @State private var apiTestSuccess = false
-    @State private var apiTestMessage = ""
 
     // Auto-pilot settings (US-010)
     @State private var manualBetAcceptance = false
@@ -137,57 +123,6 @@ struct SettingsView: View {
                 }
                 .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Odds API Section (US-011)
-                Section {
-                    SecureField("API Key", text: $oddsAPIKey)
-                        .textContentType(.password)
-                        .autocorrectionDisabled()
-
-                    Picker("Bookmaker", selection: $oddsAPIBookmaker) {
-                        Text("DraftKings").tag("draftkings")
-                        Text("FanDuel").tag("fanduel")
-                        Text("BetMGM").tag("betmgm")
-                        Text("Caesars").tag("caesars")
-                    }
-
-                    if let remaining = oddsService.quotaRemaining {
-                        LabeledContent("API Calls Remaining") {
-                            HStack {
-                                Text("\(remaining)")
-                                if remaining < 100 {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .foregroundStyle(Theme.warning)
-                                }
-                            }
-                        }
-                    }
-
-                    Button {
-                        Task {
-                            await testAPIConnection()
-                        }
-                    } label: {
-                        HStack {
-                            Label("Test Connection", systemImage: "antenna.radiowaves.left.and.right")
-                            Spacer()
-                            if isTestingAPI {
-                                ProgressView()
-                            }
-                        }
-                    }
-                    .disabled(oddsAPIKey.isEmpty || isTestingAPI)
-                } header: {
-                    Text("Odds API")
-                } footer: {
-                    if let remaining = oddsService.quotaRemaining, remaining < 100 {
-                        Text("Low API quota. Your quota resets monthly.")
-                            .foregroundStyle(Theme.warning)
-                    } else {
-                        Text("Get your API key from the-odds-api.com")
-                    }
-                }
-                .listRowBackground(Theme.cardBackground)
-
                 // MARK: - Data Management Section
                 Section {
                     NavigationLink {
@@ -195,45 +130,10 @@ struct SettingsView: View {
                     } label: {
                         Label("Export Data", systemImage: "square.and.arrow.up")
                     }
-
-                    Button {
-                        showingSeedDataConfirmation = true
-                    } label: {
-                        Label("Load Sample Data", systemImage: "sportscourt")
-                    }
                 } header: {
                     Text("Data Management")
                 } footer: {
-                    Text("Export your data or load sample events for testing.")
-                }
-                .listRowBackground(Theme.cardBackground)
-
-                // MARK: - Sync Section
-                Section {
-                    Button {
-                        Task {
-                            isSyncing = true
-                            await syncService.sync()
-                            isSyncing = false
-                        }
-                    } label: {
-                        HStack {
-                            Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
-                            Spacer()
-                            if isSyncing {
-                                ProgressView()
-                            }
-                        }
-                    }
-                    .disabled(isSyncing)
-                } header: {
-                    Text("Data")
-                } footer: {
-                    if let lastSync = syncService.lastSyncedAt {
-                        Text("Last synced: \(lastSync.formatted())")
-                    } else {
-                        Text("Not synced yet")
-                    }
+                    Text("Export your data to CSV for external record-keeping.")
                 }
                 .listRowBackground(Theme.cardBackground)
 
@@ -279,19 +179,6 @@ struct SettingsView: View {
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileSheet(existingBookie: currentBookie)
             }
-            .alert("Load Sample Data", isPresented: $showingSeedDataConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Clear & Load", role: .destructive) {
-                    loadSampleData()
-                }
-            } message: {
-                Text("This will delete all existing events and load 12 sample games across NFL, NBA, and MLB with markets.")
-            }
-            .alert("Sample Data Loaded", isPresented: $showingSeedDataSuccess) {
-                Button("OK") { }
-            } message: {
-                Text("Successfully loaded \(seededEventCount) sample events with markets.")
-            }
             .alert("Log Out", isPresented: $showingLogoutConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Log Out", role: .destructive) {
@@ -304,11 +191,6 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(logoutErrorMessage)
-            }
-            .alert(apiTestSuccess ? "Connection Successful" : "Connection Failed", isPresented: $showingAPITestResult) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(apiTestMessage)
             }
             .alert("Settings Error", isPresented: $showingSettingsError) {
                 Button("OK", role: .cancel) { }
@@ -359,52 +241,15 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - US-011: Test API Connection
-
-    private func testAPIConnection() async {
-        isTestingAPI = true
-
-        // Update the service with the current key
-        oddsService.setAPIKey(oddsAPIKey)
-        oddsService.setBookmaker(oddsAPIBookmaker)
-
-        do {
-            let sports = try await oddsService.fetchSports()
-            apiTestSuccess = true
-            apiTestMessage = "Successfully connected! Found \(sports.count) sports available."
-            showingAPITestResult = true
-        } catch let error as OddsAPIError {
-            apiTestSuccess = false
-            apiTestMessage = error.localizedDescription
-            showingAPITestResult = true
-        } catch {
-            apiTestSuccess = false
-            apiTestMessage = error.localizedDescription
-            showingAPITestResult = true
-        }
-
-        isTestingAPI = false
-    }
-
     private func performLogout() {
         Task {
             do {
+                SyncService.clearLocalData(context: modelContext)
                 try await authManager.signOut()
             } catch {
                 logoutErrorMessage = error.localizedDescription
                 showingLogoutError = true
             }
-        }
-    }
-
-    private func loadSampleData() {
-        do {
-            try SeedDataService.clearAllEvents(in: modelContext)
-            let events = SeedDataService.seedMockData(in: modelContext)
-            seededEventCount = events.count
-            showingSeedDataSuccess = true
-        } catch {
-            print("Failed to seed data: \(error)")
         }
     }
 
@@ -422,6 +267,7 @@ struct SettingsView: View {
 struct EditProfileSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var authManager: AuthManager
 
     let existingBookie: Bookie?
 
@@ -500,17 +346,43 @@ struct EditProfileSheet: View {
         let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
 
         if let bookie = existingBookie {
-            // Update existing bookie
+            // Update existing local bookie
             bookie.name = trimmedName
             bookie.email = trimmedEmail
             bookie.updatedAt = Date()
-        } else {
-            // Create new bookie
+
+            // Sync to Supabase
+            Task {
+                do {
+                    try await BookieService.updateProfile(
+                        bookieId: bookie.id,
+                        name: trimmedName,
+                        email: trimmedEmail
+                    )
+                } catch {
+                    print("Failed to sync profile to Supabase: \(error)")
+                }
+            }
+        } else if let bookieId = authManager.currentBookieId {
+            // No local bookie but we have a Supabase record — create local and sync
             let newBookie = Bookie(
+                id: bookieId,
                 email: trimmedEmail,
                 name: trimmedName
             )
             modelContext.insert(newBookie)
+
+            Task {
+                do {
+                    try await BookieService.updateProfile(
+                        bookieId: bookieId,
+                        name: trimmedName,
+                        email: trimmedEmail
+                    )
+                } catch {
+                    print("Failed to sync profile to Supabase: \(error)")
+                }
+            }
         }
 
         dismiss()

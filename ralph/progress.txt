@@ -1,4 +1,77 @@
-# Ralph Progress - Player UX Fixes & Login Branding
-# Branch: ralph/player-ux-fixes
-# Started: 2026-02-17
+# Ralph Progress Log
+Started: Fri Feb 20 02:20:05 PST 2026
 
+## Codebase Patterns
+- SwiftData batch delete: `try context.delete(model: ModelType.self)` — deletes all records of a type
+- Logout call sites: ContentView.swift:250, SettingsView.swift:392, AccountView.swift:590 — all three need to be updated in sync
+- ContentView uses @Query but didn't have @Environment(\.modelContext) — can be added safely
+- SyncService.clearLocalData(context:) is the canonical way to wipe local SwiftData store
+- SyncService.sync() clears local data before downloading — dual protection with logout clear
+- ModelContext access in Task.detached requires `await MainActor.run` since it's main-actor-isolated
+- When deleting Swift files, clean 4 pbxproj sections: PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase
+
+---
+
+## 2026-02-20 - US-001
+- Implemented `SyncService.clearLocalData(context:)` static method that batch-deletes all 11 @Model types
+- Added call to clearLocalData before authManager.signOut() in all 3 logout locations (ContentView, SettingsView, AccountView)
+- Added `@Environment(\.modelContext)` to ContentView (it already had @Query but was missing the context)
+- Files changed: SyncService.swift, ContentView.swift, SettingsView.swift, AccountView.swift
+- **Learnings for future iterations:**
+  - signOut is called from 3 different views, not from AuthGateView — AuthGateView only observes auth state changes
+  - Delete order matters less with batch delete (no cascade issues except Event→Market which is handled)
+  - @AppStorage is device-level and not cleared — intentional per requirements
+---
+
+## 2026-02-20 - US-002
+- Added `SyncService.clearLocalData(context:)` call at the start of `sync()` before `downloadAll()`
+- Runs inside `Task.detached` block via `await MainActor.run` to safely access ModelContext
+- Provides dual protection: logout clears data (US-001), and sync also clears before download (US-002)
+- Even if app crashes before logout clear runs, next login sync starts fresh
+- Files changed: SyncService.swift
+- **Learnings for future iterations:**
+  - ModelContext is main-actor-isolated — must use `await MainActor.run` to access from Task.detached
+  - The `if let context` unwrap is needed since `modelContext` is optional on SyncService
+  - Events (shared, no bookie_id) get re-downloaded by downloadAll after the clear
+---
+
+## 2026-02-20 - US-003
+- Simplified OnboardingContainerView to only show OnboardingWelcomeView
+- Both "Set Up Your Group" and "Skip for now" buttons now call markAllComplete() then dismiss
+- Removed progress header (step dots), multi-step navigation, and references to configure/players/games/success views
+- Kept `startAt:` parameter in init (unused, ignored) so DashboardView caller doesn't break
+- Files changed: OnboardingContainerView.swift
+- **Learnings for future iterations:**
+  - DashboardView has a FinishSetupCard that shows when `!onboardingManager.isOnboardingComplete` — after this change it won't show since markAllComplete() sets all flags
+  - OnboardingStep enum and OnboardingManager per-step tracking still exist — cleanup is US-005
+  - The fullScreenCover mechanism in AuthGateView and DashboardView stays intact
+---
+
+## 2026-02-20 - US-004
+- Verified Bookie model defaults: manualBetAcceptance=false, manualBetGrading=false (auto-pilot ON)
+- Added @AppStorage("default_credit_limit") initialization to BookiApp.init() — sets $500 if not already set
+- Verified settlement frequency defaults to .weekly in OnboardingConfigureView
+- Used UserDefaults.standard.object(forKey:) nil check to avoid overwriting existing user preference
+- Files changed: BookiApp.swift
+- **Learnings for future iterations:**
+  - @AppStorage defaults only take effect when the view using them is rendered — for app-wide defaults, initialize in BookiApp.init() via UserDefaults.standard
+  - Bookie model already has sensible defaults in its initializer — no code changes needed for auto-accept/auto-grade
+  - Settlement frequency is a local UI state in OnboardingConfigureView, not persisted to the Bookie model
+---
+
+## 2026-02-20 - US-005
+- Deleted 5 unused files: OnboardingConfigureView, OnboardingAddPlayersView, OnboardingImportGamesView, OnboardingSuccessView, FinishSetupCard
+- Removed OnboardingStep enum entirely — no longer needed with single-screen onboarding
+- Simplified OnboardingManager to single `isOnboardingComplete` flag (uses existing `onboarding_welcome_complete` @AppStorage key)
+- Removed per-step tracking (configureComplete, playersComplete, gamesComplete), completedStepCount, nextIncompleteStep, markStepComplete, isStepComplete
+- Removed `startAt:` parameter from OnboardingContainerView init
+- Removed FinishSetupCard sections and showOnboardingFromCard state from DashboardView and AnalyticsDashboardView
+- Removed @Environment(OnboardingManager.self) from DashboardView and AnalyticsDashboardView (no longer needed)
+- Cleaned all PBXBuildFile, PBXFileReference, PBXGroup, and Sources entries from project.pbxproj
+- Files changed: OnboardingManager.swift, OnboardingContainerView.swift, DashboardView.swift, AnalyticsDashboardView.swift, project.pbxproj
+- Files deleted: OnboardingConfigureView.swift, OnboardingAddPlayersView.swift, OnboardingImportGamesView.swift, OnboardingSuccessView.swift, FinishSetupCard.swift
+- **Learnings for future iterations:**
+  - When deleting files, must clean 4 sections in project.pbxproj: PBXBuildFile, PBXFileReference, PBXGroup children, and PBXSourcesBuildPhase
+  - FinishSetupCard was effectively dead code after single-screen onboarding — it depended on completedStepCount which was removed
+  - DashboardView and AnalyticsDashboardView both had identical onboarding resume patterns (FinishSetupCard + fullScreenCover)
+---

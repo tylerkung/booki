@@ -1,0 +1,63 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/games-filtering",
+  "description": "Games filtering - show only relevant games in main view while preserving historical data",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Filter GamesView to show upcoming and recent events",
+      "description": "As a bookie, I want to see only upcoming games and recently finished games so I can focus on active betting.",
+      "acceptanceCriteria": [
+        "GamesView shows events where status is NOT 'final' (upcoming/live games), OR status IS 'final' AND finished within last 48 hours",
+        "Events sorted by start_time ascending (soonest first)",
+        "Old finished events are hidden but NOT deleted",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented in GamesView.swift with upcomingEvents computed property"
+    },
+    {
+      "id": "US-002",
+      "title": "Add Past Events toggle to GamesView",
+      "description": "As a bookie, I want to optionally view past events so I can review historical games.",
+      "acceptanceCriteria": [
+        "Add toggle or segmented control: 'Upcoming' | 'Past'",
+        "'Upcoming' (default): Shows events per US-001 filter",
+        "'Past': Shows events that are 'final' and older than 48 hours",
+        "Past events sorted by start_time descending (most recent first)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Implemented GameViewMode enum and Picker in GamesView"
+    },
+    {
+      "id": "US-003",
+      "title": "Ensure event details visible in bet history",
+      "description": "As a user, I want to see event details when viewing a historical bet so I can understand the context.",
+      "acceptanceCriteria": [
+        "BetDetailView or bet rows show event info (teams, final score) even for old events",
+        "No broken UI if event data exists",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Bet rows already show event info via relationship"
+    },
+    {
+      "id": "US-004",
+      "title": "Filter player game browsing to bettable events only",
+      "description": "As a player, I want to see only upcoming games I can bet on.",
+      "acceptanceCriteria": [
+        "Player's game browsing view shows only events where status is 'open' or 'scheduled' (can still bet)",
+        "Start time is in the future",
+        "Finished or locked events hidden from player betting view",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Added bettableEvents filter in GamesView - only shows scheduled + not locked + future events"
+    }
+  ]
+}

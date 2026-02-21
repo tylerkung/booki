@@ -130,6 +130,10 @@ final class SyncService: ObservableObject {
     private weak var authManager: AuthManager?
     private var modelContext: ModelContext?
 
+    /// Tracks whether the first sync after login has completed.
+    /// clearLocalData only runs on the first sync to avoid flickering on pull-to-refresh.
+    private var hasCompletedInitialSync = false
+
     /// Maximum records to fetch per page for pagination
     private let pageLimit = 1000
 
@@ -147,6 +151,65 @@ final class SyncService: ObservableObject {
     func configure(modelContext: ModelContext, authManager: AuthManager) {
         self.modelContext = modelContext
         self.authManager = authManager
+        self.hasCompletedInitialSync = false
+    }
+
+    // MARK: - Data Clearing
+
+    /// Deletes all locally cached SwiftData records.
+    /// Call before logout or before a fresh sync to prevent data leaking between accounts.
+    static func clearLocalData(context: ModelContext) {
+        do {
+            try context.delete(model: Bet.self)
+            try context.delete(model: Player.self)
+            try context.delete(model: Event.self)
+            try context.delete(model: Market.self)
+            try context.delete(model: LedgerEntry.self)
+            try context.delete(model: AcceptancePolicy.self)
+            try context.delete(model: SettlementPeriod.self)
+            try context.delete(model: PlayerSettlement.self)
+            try context.delete(model: UserAgreement.self)
+            try context.delete(model: AuditEvent.self)
+            try context.delete(model: Bookie.self)
+            try context.save()
+        } catch {
+            print("Failed to clear local data: \(error)")
+        }
+    }
+
+    // MARK: - Server-Side Game Sync
+
+    /// Triggers the sync_games Edge Function to fetch fresh odds from the Odds API.
+    /// This is idempotent — the server only fetches from the API once per morning/afternoon window.
+    /// Safe to call on every pull-to-refresh.
+    func triggerServerGameSync() async {
+        let baseURL = SupabaseConfig.url
+        guard let url = URL(string: "\(baseURL.absoluteString)/functions/v1/sync_games") else {
+            print("DEBUG triggerServerGameSync: Invalid URL")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Add auth token if available (sync_games doesn't require it, but good practice)
+        if let session = try? await supabase.auth.session {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse {
+                print("DEBUG triggerServerGameSync: status=\(httpResponse.statusCode)")
+                if httpResponse.statusCode == 200, let body = String(data: data, encoding: .utf8) {
+                    print("DEBUG triggerServerGameSync: \(body.prefix(200))")
+                }
+            }
+        } catch {
+            // Non-fatal — the local sync still works, odds just won't be refreshed
+            print("DEBUG triggerServerGameSync: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Public Sync Methods
@@ -179,6 +242,16 @@ final class SyncService: ObservableObject {
                     return
                 }
                 do {
+                    // Clear stale data only on the first sync after login to prevent
+                    // cross-bookie data leakage. Subsequent refreshes skip the clear
+                    // to avoid UI flickering (empty state flash).
+                    let needsClear = await MainActor.run { !self.hasCompletedInitialSync }
+                    if needsClear, let context = await MainActor.run(body: { self.modelContext }) {
+                        await MainActor.run {
+                            SyncService.clearLocalData(context: context)
+                        }
+                    }
+
                     // Phase 1: Download all data from server
                     try await self.downloadAll(bookieId: bookieId)
 
@@ -187,6 +260,7 @@ final class SyncService: ObservableObject {
 
                     // Update sync state on main actor
                     await MainActor.run {
+                        self.hasCompletedInitialSync = true
                         self.lastSyncedAt = Date()
                         self.syncStatus = .idle
                     }
@@ -289,6 +363,11 @@ final class SyncService: ObservableObject {
     /// Download all data from server for the authenticated bookie
     /// Downloads tables in order: players first (for relationships), then events, bets, etc.
     private func downloadAll(bookieId: UUID) async throws {
+        // For player accounts, fetch the bookie record so player.bookie relationship is populated
+        if authManager?.userRole == .player {
+            try await downloadBookieForPlayer(bookieId: bookieId)
+        }
+
         // Download in dependency order: players before bets/ledger entries
         let orderedTables: [SyncableTable] = [
             .players,
@@ -305,7 +384,63 @@ final class SyncService: ObservableObject {
             try await downloadTable(table, bookieId: bookieId)
         }
 
+        // For player accounts, link the bookie relationship after player is upserted
+        if authManager?.userRole == .player, let playerId = authManager?.currentPlayerId {
+            try await MainActor.run {
+                guard let context = modelContext else { return }
+                let bId = bookieId
+                let bookieDescriptor = FetchDescriptor<Bookie>(predicate: #Predicate { $0.id == bId })
+                let pId = playerId
+                let playerDescriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.id == pId })
+                if let bookie = try context.fetch(bookieDescriptor).first,
+                   let player = try context.fetch(playerDescriptor).first {
+                    player.bookie = bookie
+                    try context.save()
+                }
+            }
+        }
+
         syncProgressDescription = ""
+    }
+
+    /// Fetch the bookie record from Supabase and create/update it locally
+    /// Used by player accounts to populate the player.bookie relationship
+    private func downloadBookieForPlayer(bookieId: UUID) async throws {
+        guard let context = modelContext else { return }
+
+        let response = try await supabase
+            .from("bookies")
+            .select()
+            .eq("id", value: bookieId.uuidString)
+            .limit(1)
+            .execute()
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let records = try? decoder.decode([BookieRecord].self, from: response.data),
+              let record = records.first else {
+            print("DEBUG: No bookie record found for id: \(bookieId)")
+            return
+        }
+
+        try await MainActor.run {
+            let bId = record.id
+            let descriptor = FetchDescriptor<Bookie>(predicate: #Predicate { $0.id == bId })
+            if let existing = try context.fetch(descriptor).first {
+                existing.name = record.name
+                existing.email = record.email ?? existing.email
+            } else {
+                let bookie = Bookie(
+                    id: record.id,
+                    email: record.email ?? "",
+                    name: record.name,
+                    createdAt: record.createdAt,
+                    updatedAt: record.updatedAt
+                )
+                context.insert(bookie)
+            }
+            try context.save()
+        }
     }
 
     /// Download data for a specific table
@@ -486,6 +621,8 @@ final class SyncService: ObservableObject {
         var hasMore = true
 
         while hasMore {
+            // Players can only read their own bets via RLS, but we still filter by bookie_id
+            // to match the query pattern. RLS handles the player_id filtering server-side.
             let records: [BetRecord] = try await supabase
                 .from("bets")
                 .select()
@@ -700,10 +837,13 @@ final class SyncService: ObservableObject {
         let descriptor = FetchDescriptor<Bet>(predicate: #Predicate { $0.id == recordId })
         let existingBets = try context.fetch(descriptor)
 
-        // Find the player for this bet
+        // Find the player for this bet (players must be downloaded first so this lookup succeeds)
         let playerId = record.playerId
         let playerDescriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.id == playerId })
         let player = try context.fetch(playerDescriptor).first
+        if player == nil {
+            print("⚠️ upsertBet: player \(record.playerId) not found for bet \(record.id) — bet will have nil player relationship")
+        }
 
         if let existing = existingBets.first {
             // Update if server is newer
@@ -1377,9 +1517,52 @@ final class SyncService: ObservableObject {
 
         print("DEBUG: Fetched player from Supabase: \(record.name), bookie_id: \(record.bookieId)")
 
-        // Upsert the player record locally
+        // Fetch the bookie record so player.bookie relationship is populated
+        let bookieResponse = try await supabase
+            .from("bookies")
+            .select()
+            .eq("id", value: record.bookieId.uuidString)
+            .limit(1)
+            .execute()
+
+        // Upsert both bookie and player records locally
         try await MainActor.run {
+            // Create or update the Bookie record
+            var localBookie: Bookie?
+            let bookieDecoder = JSONDecoder()
+            bookieDecoder.dateDecodingStrategy = .iso8601
+            if let bookieData = try? bookieDecoder.decode([BookieRecord].self, from: bookieResponse.data),
+               let bookieRecord = bookieData.first {
+                let bookieId = bookieRecord.id
+                let descriptor = FetchDescriptor<Bookie>(predicate: #Predicate { $0.id == bookieId })
+                if let existing = try context.fetch(descriptor).first {
+                    existing.name = bookieRecord.name
+                    existing.email = bookieRecord.email ?? existing.email
+                    localBookie = existing
+                } else {
+                    let bookie = Bookie(
+                        id: bookieRecord.id,
+                        email: bookieRecord.email ?? "",
+                        name: bookieRecord.name,
+                        createdAt: bookieRecord.createdAt,
+                        updatedAt: bookieRecord.updatedAt
+                    )
+                    context.insert(bookie)
+                    localBookie = bookie
+                }
+            }
+
             try upsertPlayer(record, bookieId: record.bookieId, context: context)
+
+            // Link bookie relationship
+            if let localBookie = localBookie {
+                let playerId = record.id
+                let playerDescriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.id == playerId })
+                if let player = try context.fetch(playerDescriptor).first {
+                    player.bookie = localBookie
+                }
+            }
+
             try context.save()
         }
 

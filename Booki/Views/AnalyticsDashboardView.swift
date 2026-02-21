@@ -4,13 +4,11 @@ import Charts
 
 struct AnalyticsDashboardView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(OnboardingManager.self) private var onboardingManager: OnboardingManager?
     @EnvironmentObject private var syncService: SyncService
     @Query private var bets: [Bet]
     @Query private var players: [Player]
     @Query private var ledgerEntries: [LedgerEntry]
 
-    @State private var showOnboardingFromCard = false
     @State private var lastUpdated = Date()
     @State private var searchText = ""
     @State private var activeFilter = "All"
@@ -30,6 +28,12 @@ struct AnalyticsDashboardView: View {
     }
 
     private var periodPL: Decimal {
+        if useMockData {
+            // For mock data, scale lifetime P/L based on selected range
+            if selectedRange == "ALL" { return lifetimePL }
+            let fraction: Decimal = selectedDays == 7 ? 0.08 : selectedDays == 30 ? 0.22 : selectedDays == 90 ? 0.45 : 0.78
+            return lifetimePL * fraction
+        }
         if selectedRange == "ALL" { return lifetimePL }
         let cutoff = Calendar.current.date(byAdding: .day, value: -selectedDays, to: Date())!
         let rangeBets = bets.filter { $0.createdAt >= cutoff }
@@ -48,8 +52,36 @@ struct AnalyticsDashboardView: View {
 
     private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
 
+    private var useMockData: Bool { bets.filter({ $0.gradeResult != nil }).isEmpty }
+
     private var lifetimePL: Decimal {
-        PlayerAttentionService.totalBookiePL(bets: bets)
+        useMockData ? Self.mockLifetimePL : PlayerAttentionService.totalBookiePL(bets: bets)
+    }
+
+    // MARK: - Mock Data for Visualization
+
+    private static let mockLifetimePL: Decimal = 2847.50
+
+    static func generateMockDataPoints(days: Int) -> [DailyPLPoint] {
+        let calendar = Calendar.current
+        let totalDays = days == 0 ? 180 : days
+        let now = Date()
+        var points: [DailyPLPoint] = []
+        var cumulative: Double = 0
+
+        for i in (0..<totalDays).reversed() {
+            guard let date = calendar.date(byAdding: .day, value: -i, to: now) else { continue }
+            // Simulate realistic P/L: slight upward trend with volatility
+            let daily = Double.random(in: -80...95)
+            cumulative += daily
+            points.append(DailyPLPoint(date: date, cumulativePL: Decimal(cumulative)))
+        }
+        // Normalize so final value matches mockLifetimePL
+        if let last = points.last, last.cumulativePL != 0 {
+            let scale = mockLifetimePL / last.cumulativePL
+            points = points.map { DailyPLPoint(date: $0.date, cumulativePL: $0.cumulativePL * scale) }
+        }
+        return points
     }
 
     private var summaries: [PlayerAnalyticsSummary] {
@@ -83,6 +115,22 @@ struct AnalyticsDashboardView: View {
             result = result.filter { $0.sevenDayPL > 0 }  // Bookie P/L positive = player losing
         default:
             break
+        }
+
+        // Sort: open activity (highest first), then 7d performance (highest absolute value first)
+        result.sort { a, b in
+            let aExposure = a.exposure.grossExposure
+            let bExposure = b.exposure.grossExposure
+            // Players with open activity come first
+            if (aExposure > 0) != (bExposure > 0) {
+                return aExposure > 0
+            }
+            // Among players with open activity, sort by exposure descending
+            if aExposure > 0 && bExposure > 0 {
+                return aExposure > bExposure
+            }
+            // Among players without open activity, sort by 7d performance absolute value descending
+            return abs(a.sevenDayPL) > abs(b.sevenDayPL)
         }
 
         return result
@@ -125,22 +173,18 @@ struct AnalyticsDashboardView: View {
                             .padding(.horizontal, 16)
 
                         // Earnings Chart
-                        EarningsChart(bets: bets, days: selectedDays, lineColor: lifetimePL >= 0 ? Theme.accent : Theme.danger)
+                        EarningsChart(
+                            bets: bets,
+                            days: selectedDays,
+                            lineColor: lifetimePL >= 0 ? Theme.accent : Theme.danger,
+                            mockDataPoints: useMockData ? Self.generateMockDataPoints(days: selectedDays) : nil
+                        )
                             .padding(.horizontal, 16)
                             .animation(.easeInOut(duration: 0.3), value: selectedRange)
 
                         // Time Range Tabs
                         timeRangeTabs
                             .padding(.horizontal, 16)
-
-                        // Finish Setup Card
-                        if let manager = onboardingManager, !manager.isOnboardingComplete {
-                            FinishSetupCard(
-                                onboardingManager: manager,
-                                onResume: { showOnboardingFromCard = true }
-                            )
-                            .padding(.horizontal, 16)
-                        }
 
                         if players.filter({ $0.status == .active }).isEmpty {
                             emptyState
@@ -186,18 +230,14 @@ struct AnalyticsDashboardView: View {
             .onAppear { lastUpdated = Date() }
             .onChange(of: bets.count) { lastUpdated = Date() }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Image("BookiWordmark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 20)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     SyncStatusIndicator(syncService: syncService)
-                }
-            }
-            .fullScreenCover(isPresented: $showOnboardingFromCard) {
-                if let manager = onboardingManager {
-                    OnboardingContainerView(
-                        onboardingManager: manager,
-                        startAt: manager.nextIncompleteStep,
-                        onComplete: { showOnboardingFromCard = false },
-                        onSkip: { showOnboardingFromCard = false }
-                    )
                 }
             }
         }
@@ -449,17 +489,57 @@ struct AnalyticsDashboardView: View {
 
 // MARK: - Earnings Chart
 
+/// A normalized chart point with a fixed index for smooth animation between time ranges
+private struct NormalizedChartPoint: Identifiable {
+    let id: Int       // 0..<sampleCount — fixed index for animation interpolation
+    let value: Double // cumulative P/L value
+}
+
 private struct EarningsChart: View {
     let bets: [Bet]
     var days: Int = 0
     let lineColor: Color
+    var mockDataPoints: [DailyPLPoint]? = nil
 
-    private var dataPoints: [DailyPLPoint] {
-        PlayerAttentionService.dailyCumulativePL(bets: bets, days: days)
+    /// Fixed number of data points so Swift Charts can animate between time ranges
+    private static let sampleCount = 30
+
+    private var rawDataPoints: [DailyPLPoint] {
+        if let mock = mockDataPoints, !mock.isEmpty {
+            return mock
+        }
+        return PlayerAttentionService.dailyCumulativePL(bets: bets, days: days)
+    }
+
+    /// Resample raw data to a fixed number of points using linear interpolation
+    private var normalizedPoints: [NormalizedChartPoint] {
+        let raw = rawDataPoints
+        guard raw.count >= 2 else {
+            if let single = raw.first {
+                let val = NSDecimalNumber(decimal: single.cumulativePL).doubleValue
+                return (0..<Self.sampleCount).map { NormalizedChartPoint(id: $0, value: val) }
+            }
+            return []
+        }
+
+        let values = raw.map { NSDecimalNumber(decimal: $0.cumulativePL).doubleValue }
+        let count = Self.sampleCount
+        var result: [NormalizedChartPoint] = []
+
+        for i in 0..<count {
+            let t = Double(i) / Double(count - 1) // 0.0 ... 1.0
+            let srcIndex = t * Double(values.count - 1)
+            let lo = Int(srcIndex)
+            let hi = min(lo + 1, values.count - 1)
+            let frac = srcIndex - Double(lo)
+            let interpolated = values[lo] + frac * (values[hi] - values[lo])
+            result.append(NormalizedChartPoint(id: i, value: interpolated))
+        }
+        return result
     }
 
     var body: some View {
-        if dataPoints.isEmpty {
+        if rawDataPoints.isEmpty {
             Text("No pick history yet")
                 .font(Theme.bodyFont(size: 14))
                 .foregroundStyle(Theme.textMuted)
@@ -467,10 +547,10 @@ private struct EarningsChart: View {
                 .frame(height: 160)
         } else {
             Chart {
-                ForEach(dataPoints, id: \.date) { point in
+                ForEach(normalizedPoints) { point in
                     LineMark(
-                        x: .value("Date", point.date),
-                        y: .value("Performance", NSDecimalNumber(decimal: point.cumulativePL).doubleValue)
+                        x: .value("Index", point.id),
+                        y: .value("Performance", point.value)
                     )
                     .foregroundStyle(lineColor)
                     .interpolationMethod(.catmullRom)

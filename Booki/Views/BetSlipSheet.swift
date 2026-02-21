@@ -219,7 +219,7 @@ struct BetSlipSheet: View {
     /// Player balance summary computed from ledger entries
     private var balanceSummary: PlayerBalanceSummary {
         guard let player = player else {
-            return PlayerBalanceSummary(creditLimit: 0, openLiability: 0, balanceOwed: 0, availableCredit: 0)
+            return PlayerBalanceSummary(creditLimit: 0, openStakes: 0, openLiability: 0, balanceOwed: 0, availableCredit: 0)
         }
         let playerBets = bets.filter { $0.player?.id == player.id }
         let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
@@ -288,14 +288,6 @@ struct BetSlipSheet: View {
                 VStack(spacing: 16) {
                     selectionsHeaderSection
 
-                    // US-008: Player balance display
-                    if player != nil {
-                        balanceDisplayRow
-                    }
-
-                    // US-007: Section header based on bet mode
-                    sectionHeaderLabel
-
                     // Selections (US-053: animated item transitions, US-004: per-item stakes)
                     selectionsCardsSection
 
@@ -331,30 +323,39 @@ struct BetSlipSheet: View {
 
     @ViewBuilder
     private var selectionsHeaderSection: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
-                    .font(Theme.headline)
-                    .foregroundStyle(Theme.textPrimary)
-                Spacer()
-                Text("Max \(betSlipManager.maxSelections)")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textMuted)
-            }
-
+        VStack(spacing: 8) {
+            // Primary: bet mode toggle
             betModeToggle
 
-            // US-003: Show conflict message when parlay is unavailable
+            // Secondary: selection count + balance on one line
+            HStack {
+                Text("\(betSlipManager.count) selection\(betSlipManager.count == 1 ? "" : "s")")
+                    .foregroundStyle(Theme.textSecondary)
+
+                if player != nil {
+                    Text("·")
+                        .foregroundStyle(Theme.textMuted)
+                    Text(formatCurrency(displayBalance))
+                        .foregroundStyle(balanceColor)
+                    Text("/")
+                        .foregroundStyle(Theme.textMuted)
+                    Text("\(formatCurrency(balanceSummary.creditLimit)) limit")
+                        .foregroundStyle(Theme.textMuted)
+                }
+
+                Spacer()
+            }
+            .font(Theme.bodyFont(size: 13))
+
+            // Warnings
             if let conflictMessage = betSlipManager.conflictDescription {
                 warningBanner(icon: "exclamationmark.triangle.fill", text: conflictMessage, color: Theme.warning)
             }
 
-            // US-015: Show same-game parlay warning
             if let sgpWarning = betSlipManager.sameGameParlayWarning {
                 warningBanner(icon: "exclamationmark.triangle.fill", text: sgpWarning, color: Theme.warning)
             }
 
-            // US-005: Show mode switch message when auto-switched from parlay to singles
             if let switchMessage = betSlipManager.modeSwitchMessage {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.triangle.swap")
@@ -384,7 +385,7 @@ struct BetSlipSheet: View {
             }
         }
         .padding(.horizontal)
-        .padding(.top, 16)
+        .padding(.top, 12)
     }
 
     @ViewBuilder
@@ -424,6 +425,27 @@ struct BetSlipSheet: View {
         )
     }
 
+    /// Quick stake addition button — adds amount to current active field
+    private func quickStakeButton(_ amount: Int) -> some View {
+        Button {
+            let current = Decimal(string: activeKeypadBinding.wrappedValue) ?? 0
+            let newValue = current + Decimal(amount)
+            let formatter = NumberFormatter()
+            formatter.minimumFractionDigits = 0
+            formatter.maximumFractionDigits = 2
+            activeKeypadBinding.wrappedValue = formatter.string(from: newValue as NSDecimalNumber) ?? "\(amount)"
+        } label: {
+            Text("+$\(amount)")
+                .font(Theme.font(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Theme.elevatedBackground)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
     private func warningBanner(icon: String, text: String, color: Color) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
@@ -438,21 +460,6 @@ struct BetSlipSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(color.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    @ViewBuilder
-    private var sectionHeaderLabel: some View {
-        HStack {
-            Text(betSlipManager.betMode == .parlay
-                 ? "\(betSlipManager.count)-LEG MULTI-PICK"
-                 : "STRAIGHT PICKS")
-                .font(Theme.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(Theme.textMuted)
-                .tracking(1.5)
-            Spacer()
-        }
-        .padding(.horizontal)
     }
 
     @ViewBuilder
@@ -479,7 +486,7 @@ struct BetSlipSheet: View {
                     betSlipManager: betSlipManager,
                     isLocked: serverLockedEventIds.contains(item.eventId.uuidString.lowercased()),
                     isSubmitting: isSubmitting,
-                    startTime: events.first(where: { $0.id.uuidString.lowercased() == item.eventId.uuidString.lowercased() })?.startTime,
+                    event: events.first(where: { $0.id.uuidString.lowercased() == item.eventId.uuidString.lowercased() }),
                     activeFieldId: $activeFieldId,
                     fieldId: key
                 )
@@ -518,21 +525,24 @@ struct BetSlipSheet: View {
 
                 // Custom numeric keypad (shown when a field is active)
                 if activeFieldId != nil {
-                    VStack(spacing: 0) {
-                        // Dismiss bar
-                        HStack {
+                    VStack(spacing: 4) {
+                        // Quick stakes + Done row
+                        HStack(spacing: 8) {
+                            quickStakeButton(5)
+                            quickStakeButton(25)
+                            quickStakeButton(50)
+                            quickStakeButton(100)
+
                             Spacer()
+
                             Button("Done") {
                                 withAnimation(.easeInOut(duration: 0.2)) {
                                     activeFieldId = nil
                                 }
                             }
-                            .font(Theme.subheadline)
-                            .fontWeight(.semibold)
+                            .font(Theme.font(size: 14, weight: .semibold))
                             .foregroundStyle(Theme.accent)
                         }
-                        .padding(.horizontal)
-                        .padding(.top, 8)
 
                         NumericKeypadView(text: activeKeypadBinding)
                     }
@@ -607,7 +617,7 @@ struct BetSlipSheet: View {
 
                 // Potential payout row - Premium styled with accent highlight
                 HStack {
-                    Text("Potential Return")
+                    Text("Total Return")
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
@@ -924,7 +934,7 @@ struct BetSlipSheet: View {
 
                 // Potential payout row - Premium styled with green accent
                 HStack {
-                    Text("Potential Return")
+                    Text("Total Return")
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
@@ -1566,8 +1576,8 @@ struct PremiumBetSlipItemCard: View {
     /// US-014: Whether submission is in progress (disables inputs)
     var isSubmitting: Bool = false
 
-    /// US-004 (betslip-redesign): Game start time for display on bet card
-    var startTime: Date? = nil
+    /// Event for context line (league, abbreviated teams, start time)
+    var event: Event? = nil
 
     /// US-010: Active field ID for custom keypad integration
     @Binding var activeFieldId: String?
@@ -1614,11 +1624,21 @@ struct PremiumBetSlipItemCard: View {
         return formatter.string(from: value as NSDecimalNumber) ?? "\(value)"
     }
 
-    /// US-004: Format game start time as "Thu 7:10 PM"
+    /// Format game start time as "Fri 5:10 PM"
     private static func formatGameTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE h:mm a"
         return formatter.string(from: date)
+    }
+
+    /// Build context line: "NBA · MIL @ NOP · Fri 5:10 PM"
+    private var contextLine: String {
+        if let event = event {
+            let away = TeamAbbreviations.abbreviation(for: event.awayTeam)
+            let home = TeamAbbreviations.abbreviation(for: event.homeTeam)
+            return "\(event.league) · \(away) @ \(home) · \(Self.formatGameTime(event.startTime))"
+        }
+        return item.eventDescription
     }
 
     var body: some View {
@@ -1638,74 +1658,38 @@ struct PremiumBetSlipItemCard: View {
                 .background(Theme.danger.opacity(0.15))
             }
 
-            // US-005: Redesigned bet card layout with team abbreviation badge
-            HStack(alignment: .top, spacing: 12) {
-                // Team logo placeholder (colored circle)
-                Circle()
-                    .fill(Theme.elevatedBackground)
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Text(String(item.side.prefix(2)).uppercased())
-                            .font(Theme.font(size: 14, weight: .bold))
-                            .foregroundStyle(Theme.textSecondary)
-                    )
-
-                // Left: Selection info stacked vertically
-                VStack(alignment: .leading, spacing: 4) {
-                    // Line 1: Selection name (bold) with odds badge on right
-                    HStack(alignment: .center) {
-                        Text(item.side)
-                            .font(Theme.headline)
-                            .fontWeight(.bold)
-                            .foregroundStyle(Theme.textPrimary)
-
-                        Spacer()
-
-                        // Odds badge
-                        Text(formattedOdds)
-                            .font(Theme.font(size: 16, weight: .bold))
-                            .foregroundStyle(item.odds >= 0 ? Theme.accent : Theme.textPrimary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                item.odds >= 0
-                                    ? Theme.accent.opacity(0.15)
-                                    : Theme.elevatedBackground
-                            )
-                            .clipShape(Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(
-                                        item.odds >= 0 ? Theme.accent.opacity(0.3) : Theme.border,
-                                        lineWidth: 1
-                                    )
-                            )
-                    }
-
-                    // Line 2: Event matchup
-                    Text(item.eventDescription)
-                        .font(Theme.subheadline)
-                        .foregroundStyle(Theme.textSecondary)
+            // Selection info: name + odds on one line, event + time below
+            VStack(alignment: .leading, spacing: 4) {
+                // Line 1: Selection name + odds + remove button
+                HStack(alignment: .center, spacing: 8) {
+                    Text(item.side)
+                        .font(Theme.bodyFont(size: 15, weight: .semibold))
+                        .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
 
-                    // Line 3: Game start time (US-004)
-                    if let startTime = startTime {
-                        Text(Self.formatGameTime(startTime))
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textMuted)
+                    Text(formattedOdds)
+                        .font(Theme.font(size: 14, weight: .bold))
+                        .foregroundStyle(item.odds >= 0 ? Theme.accent : Theme.textPrimary)
+
+                    Spacer()
+
+                    Button(action: onRemove) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(isSubmitting ? Theme.textMuted.opacity(0.3) : Theme.textMuted)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(isSubmitting)
                 }
 
-                // Right: Remove button (X)
-                Button(action: onRemove) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(Theme.title2)
-                        .foregroundStyle(isSubmitting ? Theme.textMuted.opacity(0.3) : Theme.textSecondary)
-                }
-                .buttonStyle(.plain)
-                .disabled(isSubmitting)
+                // Line 2: "NBA · MIL @ NOP · Fri 5:10 PM"
+                Text(contextLine)
+                    .font(Theme.bodyFont(size: 13))
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
             }
-            .padding(16)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
 
             // US-004/US-010: Per-bet bidirectional WAGER/TO WIN in singles mode
             if betMode == .singles {
@@ -1789,23 +1773,11 @@ struct PremiumBetSlipItemCard: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                 }
             }
 
-            // Market type footer
-            HStack {
-                Text(marketTypeLabel)
-                    .font(Theme.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Theme.textMuted)
-                    .tracking(0.5)
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Theme.elevatedBackground.opacity(0.5))
         }
         .background(Theme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))

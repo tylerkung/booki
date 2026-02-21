@@ -61,10 +61,13 @@ struct Ticket: Identifiable {
     }
 
     private func decimalToAmerican(_ decimal: Decimal) -> Int {
-        if decimal >= 2 {
-            return Int(truncating: ((decimal - 1) * 100) as NSDecimalNumber)
+        let d = Double(truncating: decimal as NSDecimalNumber)
+        if d >= 2 {
+            return Int((d - 1) * 100)
+        } else if d > 1 {
+            return Int(-100.0 / (d - 1))
         } else {
-            return Int(truncating: (-100 / (decimal - 1)) as NSDecimalNumber)
+            return 0
         }
     }
 
@@ -140,7 +143,7 @@ struct TrackView: View {
 
     /// All bets for this player, sorted by creation date (newest first)
     private var playerBets: [Bet] {
-        allBets.filter { $0.player?.id == player.id }
+        return allBets.filter { $0.player?.id == player.id }
             .sorted { $0.createdAt > $1.createdAt }
     }
 
@@ -156,61 +159,45 @@ struct TrackView: View {
     // MARK: - Body
 
     var body: some View {
-        List {
-            // Tickets Section
-            ticketsSection
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.background)
-        .navigationBarHidden(true)
-    }
-
-    // MARK: - Section Views
-
-    @ViewBuilder
-    private var ticketsSection: some View {
-        if tickets.isEmpty {
-            Section {
+        ScrollView {
+            if tickets.isEmpty {
                 ContentUnavailableView(
                     "No Picks Yet",
                     systemImage: "list.bullet.clipboard",
                     description: Text("Your pick requests will appear here.")
                 )
-                .listRowBackground(Theme.cardBackground)
-            }
-        } else {
-            ForEach(tickets) { ticket in
-                Section {
-                    // Individual bets within the ticket
-                    ForEach(ticket.bets) { bet in
-                        TicketBetRowView(
-                            bet: bet,
-                            eventName: eventName(for: bet)
-                        )
-                    }
-                } header: {
-                    NavigationLink {
-                        TicketDetailView(ticket: ticket)
-                    } label: {
-                        HStack {
-                            TicketHeaderView(ticket: ticket)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(Theme.caption)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(Theme.textMuted)
+                .padding(.top, 60)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(tickets) { ticket in
+                        NavigationLink {
+                            TicketDetailView(ticket: ticket)
+                        } label: {
+                            TicketCardView(
+                                presenter: buildPresenter(for: ticket),
+                                ticket: ticket,
+                                eventNameProvider: eventName,
+                                leagueProvider: league
+                            )
                         }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding()
             }
         }
+        .background(Theme.background)
+        .navigationBarHidden(true)
     }
 
     // MARK: - Helpers
 
+    private func findEvent(for bet: Bet) -> Event? {
+        events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() })
+    }
+
     private func eventName(for bet: Bet) -> String {
-        if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
+        if let event = findEvent(for: bet) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         if let desc = bet.eventDescription, !desc.isEmpty {
@@ -218,46 +205,35 @@ struct TrackView: View {
         }
         return "Event \(bet.eventId.prefix(8))"
     }
-}
 
-// MARK: - Ticket Header View
+    private func league(for bet: Bet) -> String? {
+        if let event = findEvent(for: bet) {
+            return event.league
+        }
+        return bet.sportLeague
+    }
 
-/// Header view displaying ticket summary information
-struct TicketHeaderView: View {
-    let ticket: Ticket
-
-    private var statusColor: Color {
-        switch ticket.combinedStatus {
-        case .pending: return Theme.warning
-        case .accepted: return Theme.scheduled
-        case .declined: return Theme.danger
-        case .readyToGrade: return Theme.accentSecondary
-        case .graded: return Theme.accentSecondary
-        case .settled: return Theme.accent
-        case .void: return Theme.textMuted
+    private func buildPresenter(for ticket: Ticket) -> PickPresenter {
+        if ticket.isParlay {
+            return PickPresenter.multiPick(bets: ticket.bets, events: Array(events))
+        } else if let bet = ticket.bets.first {
+            return PickPresenter(bet: bet, event: findEvent(for: bet))
+        } else {
+            // Fallback — shouldn't happen
+            return PickPresenter(bet: ticket.bets[0])
         }
     }
+}
 
-    private var statusText: String {
-        ticket.combinedStatus.rawValue.capitalized
-    }
+// MARK: - Ticket Card View
 
-    /// Count of graded legs in a parlay
-    private var gradedLegsCount: Int {
-        ticket.bets.filter { $0.gradeResult != nil }.count
-    }
-
-    /// Whether to show leg grading progress (only for parlays with some graded legs)
-    private var showGradingProgress: Bool {
-        ticket.isParlay && gradedLegsCount > 0 && gradedLegsCount < ticket.bets.count
-    }
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
+/// Unified card that shows the pick header and (for multi-picks) the expanded legs
+/// all within a single continuous card background.
+struct TicketCardView: View {
+    let presenter: PickPresenter
+    let ticket: Ticket
+    let eventNameProvider: (Bet) -> String
+    let leagueProvider: (Bet) -> String?
 
     /// Color for leg status dot
     private func legStatusColor(for bet: Bet) -> Color {
@@ -271,159 +247,101 @@ struct TicketHeaderView: View {
         if bet.status == .void {
             return Theme.textMuted
         }
-        // Pending/not yet graded
         return Theme.textMuted.opacity(0.5)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Row 1: Ticket display name and status
-            HStack {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header section: title, status, stake, profit, chevron
+            HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(ticket.displayName)
-                        .font(Theme.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Theme.textPrimary)
+                    // Title + Status Pill
+                    HStack(alignment: .top) {
+                        Text(presenter.title)
+                            .font(Theme.headline)
+                            .foregroundStyle(Theme.textPrimary)
+                            .lineLimit(2)
+                        Spacer()
+                        StatusPill(
+                            settlementStatus: presenter.settlementStatus,
+                            workflowStatus: presenter.workflowStatus
+                        )
+                    }
 
-                    // Show leg grading progress for parlays
-                    if showGradingProgress {
-                        Text("\(gradedLegsCount)/\(ticket.bets.count) legs graded")
-                            .font(Theme.caption2)
-                            .foregroundStyle(Theme.accentSecondary)
+                    // Context line
+                    if !presenter.contextLine.isEmpty {
+                        Text(presenter.contextLine)
+                            .font(Theme.bodyFont(size: 13))
+                            .foregroundStyle(Theme.textSecondary)
+                            .lineLimit(1)
+                    }
+
+                    // Stake + Profit
+                    HStack(spacing: 8) {
+                        Text(presenter.stakeLine)
+                            .font(Theme.bodyFont(size: 13))
+                            .foregroundStyle(Theme.textSecondary)
+                        Text(presenter.profitLine)
+                            .font(Theme.bodyFont(size: 13, weight: .medium))
+                            .foregroundStyle(presenter.profitColor)
+                    }
+
+                    // Mini status dots for parlay legs
+                    if ticket.isParlay {
+                        HStack(spacing: 4) {
+                            ForEach(ticket.bets) { bet in
+                                Circle()
+                                    .fill(legStatusColor(for: bet))
+                                    .frame(width: 8, height: 8)
+                            }
+                        }
                     }
                 }
 
-                Spacer()
-
-                Text(statusText)
-                    .font(Theme.caption2)
-                    .fontWeight(.medium)
-                    .foregroundStyle(Theme.background)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(statusColor)
-                    .clipShape(Capsule())
-            }
-
-            // Row 2: Mini status dots for parlay legs
-            if ticket.isParlay {
-                HStack(spacing: 4) {
-                    ForEach(ticket.bets) { bet in
-                        Circle()
-                            .fill(legStatusColor(for: bet))
-                            .frame(width: 8, height: 8)
-                    }
-                }
-            }
-
-            // Row 3: Stake and potential payout
-            HStack {
-                Text("Stake: \(formatCurrency(ticket.totalStake))")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-
-                Text("•")
-                    .foregroundStyle(Theme.textMuted)
-
-                Text("Potential Return: \(formatCurrency(ticket.potentialPayout))")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.accent)
-            }
-        }
-        .textCase(nil)  // Prevent uppercase transformation
-        .padding(.vertical, 4)
-    }
-}
-
-// MARK: - Ticket Bet Row View
-
-/// Row view for displaying a single bet within a ticket
-struct TicketBetRowView: View {
-    let bet: Bet
-    let eventName: String
-
-    // MARK: - Computed Properties
-
-    private var formattedOdds: String {
-        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
-    }
-
-    private var formattedStake: String {
-        formatCurrency(bet.stake)
-    }
-
-    // MARK: - Body
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Row 1: Event name
-            Text(eventName)
-                .font(Theme.subheadline)
-                .fontWeight(.medium)
-                .foregroundStyle(Theme.textPrimary)
-                .lineLimit(1)
-
-            // Row 2: Side and odds
-            HStack(spacing: 8) {
-                Text(bet.side)
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-
-                Text(formattedOdds)
+                Image(systemName: "chevron.right")
                     .font(Theme.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(Theme.scheduled)
-
-                Spacer()
-
-                Text(formattedStake)
-                    .font(Theme.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(Theme.textMuted)
+                    .padding(.top, 4)
             }
+            .padding(12)
 
-            // Row 3: Grade status
-            if let result = bet.gradeResult {
-                // Show grade result badge when graded (even before settled)
-                HStack {
-                    Text(result.rawValue.capitalized)
-                        .font(Theme.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Theme.background)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(gradeResultColor(result))
-                        .clipShape(Capsule())
-                }
-            } else if bet.status == .accepted || bet.status == .readyToGrade {
-                // Show pending indicator for legs awaiting result
-                HStack {
-                    Text("Awaiting Result")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                        .italic()
+            // Expanded legs for multi-picks only
+            if ticket.isParlay {
+                ForEach(ticket.bets) { bet in
+                    Divider()
+                        .background(Theme.divider)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        SelectionRow(
+                            selectionLabel: bet.side,
+                            odds: bet.odds,
+                            eventName: eventNameProvider(bet),
+                            league: leagueProvider(bet),
+                            gradeResult: bet.gradeResult
+                        )
+
+                        if bet.gradeResult == nil && (bet.status == .accepted || bet.status == .readyToGrade) {
+                            Text("Awaiting Result")
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.textMuted)
+                                .italic()
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                 }
             }
         }
-        .padding(.vertical, 2)
-        .listRowBackground(Theme.cardBackground)
-    }
-
-    // MARK: - Helpers
-
-    private func gradeResultColor(_ result: GradeResult) -> Color {
-        switch result {
-        case .win: return Theme.accent
-        case .loss: return Theme.danger
-        case .push: return Theme.warning
-        }
-    }
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.cardBackground)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Theme.border, lineWidth: 0.5)
+            }
+        )
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 }
 

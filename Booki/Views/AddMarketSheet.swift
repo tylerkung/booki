@@ -17,10 +17,10 @@ struct AddMarketSheet: View {
 
     private var isFormValid: Bool {
         switch marketType {
-        case .spread:
+        case .spread, .alternateSpread:
             guard let spread = Double(spreadValue), spread != 0 else { return false }
             return validateOdds()
-        case .total:
+        case .total, .alternateTotal, .teamTotal:
             guard let total = Double(totalValue), total > 0 else { return false }
             return validateOdds()
         case .moneyline:
@@ -38,11 +38,11 @@ struct AddMarketSheet: View {
 
     private var sideALabel: String {
         switch marketType {
-        case .spread:
+        case .spread, .alternateSpread:
             let spread = Double(spreadValue) ?? 0
             let sign = spread > 0 ? "+" : ""
             return "\(event.homeTeam) \(sign)\(spreadValue)"
-        case .total:
+        case .total, .alternateTotal, .teamTotal:
             return "Over \(totalValue)"
         case .moneyline:
             return event.homeTeam
@@ -51,12 +51,12 @@ struct AddMarketSheet: View {
 
     private var sideBLabel: String {
         switch marketType {
-        case .spread:
+        case .spread, .alternateSpread:
             let spread = Double(spreadValue) ?? 0
             let oppositeSpread = -spread
             let sign = oppositeSpread > 0 ? "+" : ""
             return "\(event.awayTeam) \(sign)\(String(format: "%.1f", oppositeSpread).replacingOccurrences(of: ".0", with: ""))"
-        case .total:
+        case .total, .alternateTotal, .teamTotal:
             return "Under \(totalValue)"
         case .moneyline:
             return event.awayTeam
@@ -81,9 +81,9 @@ struct AddMarketSheet: View {
                 // MARK: - Market Details Section
                 Section("Market Details") {
                     switch marketType {
-                    case .spread:
+                    case .spread, .alternateSpread:
                         spreadFormFields
-                    case .total:
+                    case .total, .alternateTotal, .teamTotal:
                         totalFormFields
                     case .moneyline:
                         moneylineFormFields

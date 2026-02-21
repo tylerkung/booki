@@ -86,7 +86,10 @@ struct BetsListView: View {
                                     betDisplayName: betDisplayName(for: bet),
                                     sportLeague: sportLeague(for: bet),
                                     policyViolationReason: bet.policyViolationReason,
-                                    parlayInfo: parlayInfo(for: bet)
+                                    parlayInfo: parlayInfo(for: bet),
+                                    event: findEvent(for: bet),
+                                    parlayBets: bet.isParlay ? bets.filter({ $0.ticketId == bet.ticketId }) : [],
+                                    events: Array(events)
                                 )
                             }
                         }
@@ -105,6 +108,10 @@ struct BetsListView: View {
     }
 
     // MARK: - Helper Methods
+
+    private func findEvent(for bet: Bet) -> Event? {
+        events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() })
+    }
 
     private func eventName(for bet: Bet) -> String {
         if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
@@ -198,111 +205,43 @@ struct BetRowView: View {
     var sportLeague: String? = nil
     var policyViolationReason: String? = nil
     var parlayInfo: ParlayPartialInfo? = nil
+    var event: Event? = nil
+    var parlayBets: [Bet] = []
+    var events: [Event] = []
 
-    private var formattedOdds: String {
-        if bet.odds > 0 {
-            return "+\(bet.odds)"
+    /// Build a PickPresenter from the bet data, using multi-pick factory for parlays
+    private var presenter: PickPresenter {
+        if bet.isParlay && parlayBets.count > 1 {
+            return PickPresenter.multiPick(bets: parlayBets, events: events, playerName: bet.player?.name)
         } else {
-            return "\(bet.odds)"
-        }
-    }
-
-    private var formattedStake: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
-    }
-
-    private var potentialPayout: Decimal {
-        LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
-    }
-
-    private var formattedPotentialPayout: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: potentialPayout as NSDecimalNumber) ?? "$\(potentialPayout)"
-    }
-
-    private var statusColor: Color {
-        switch bet.status {
-        case .pending:
-            return Theme.warning
-        case .accepted:
-            return Theme.accent
-        case .declined:
-            return Theme.danger
-        case .readyToGrade:
-            return .purple
-        case .graded:
-            return .indigo
-        case .settled:
-            return Theme.accent
-        case .void:
-            return Theme.textMuted
+            return PickPresenter(bet: bet, event: event, playerName: bet.player?.name)
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Top row: Bet display name and status badge
-            HStack {
-                Text(betDisplayName)
-                    .font(Theme.headline)
-                    .foregroundStyle(Theme.textPrimary)
+        VStack(alignment: .leading, spacing: 4) {
+            // Canonical pick card display
+            PickCardCompact(presenter: presenter)
 
-                Spacer()
-
-                // Show parlay partial badge if applicable
-                if let info = parlayInfo, info.isPartiallyGraded {
-                    Text("Partial (\(info.gradedCount)/\(info.totalLegs))")
-                        .font(Theme.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Theme.background)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Theme.warning)
-                        .clipShape(Capsule())
-                } else {
-                    Text(bet.status.rawValue.capitalized)
-                        .font(Theme.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Theme.background)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(statusColor)
-                        .clipShape(Capsule())
-                }
-            }
-
-            // Second row: Player name
-            Text(bet.player?.name ?? "Unknown Member")
-                .font(Theme.subheadline)
-                .fontWeight(.medium)
-                .foregroundStyle(Theme.textSecondary)
-
-            // Third row: Sport league + Event name
-            HStack(spacing: 4) {
-                if let league = sportLeague, !league.isEmpty {
-                    Text(league)
-                        .font(Theme.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Theme.accent)
-                    Text("|")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                }
-                Text(eventName)
+            // Parlay partial grading badge (bookie-specific overlay)
+            if let info = parlayInfo, info.isPartiallyGraded {
+                Text("Partial (\(info.gradedCount)/\(info.totalLegs))")
                     .font(Theme.caption)
-                    .foregroundStyle(Theme.textMuted)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Theme.background)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Theme.warning)
+                    .clipShape(Capsule())
+                    .padding(.leading, 12)
             }
 
-            // Policy violation reason (only for pending bets with violations)
+            // Policy violation reason (only for pending picks with violations)
             if bet.status == .pending, let reason = policyViolationReason, !reason.isEmpty {
                 Text("Review: \(reason)")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.warning)
+                    .padding(.leading, 12)
             }
 
             // Parlay will lose indicator
@@ -314,23 +253,7 @@ struct BetRowView: View {
                         .font(Theme.caption)
                 }
                 .foregroundStyle(Theme.danger)
-            }
-
-            // Bottom row: Stake and To Win
-            HStack {
-                Spacer()
-
-                Text("Stake: \(formattedStake)")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-
-                Text("•")
-                    .foregroundStyle(Theme.textMuted)
-
-                Text("Potential Return: \(formattedPotentialPayout)")
-                    .font(Theme.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Theme.accent)
+                .padding(.leading, 12)
             }
         }
         .padding(.vertical, 4)
@@ -456,18 +379,6 @@ struct BetDetailView: View {
         formatCurrency(totalReturn)
     }
 
-    private var statusColor: Color {
-        switch bet.status {
-        case .pending: return Theme.warning
-        case .accepted: return Theme.accent
-        case .declined: return Theme.danger
-        case .readyToGrade: return .purple
-        case .graded: return .indigo
-        case .settled: return Theme.accent
-        case .void: return Theme.textMuted
-        }
-    }
-
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -511,13 +422,8 @@ struct BetDetailView: View {
                 HStack {
                     Text("Status")
                     Spacer()
-                    Text(bet.status.rawValue.capitalized)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Theme.background)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(statusColor)
-                        .clipShape(Capsule())
+                    let (settlement, workflow) = PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
+                    StatusPill(settlementStatus: settlement, workflowStatus: workflow)
                 }
 
                 if let gradeResult = bet.gradeResult {
@@ -563,9 +469,9 @@ struct BetDetailView: View {
             }
             .listRowBackground(Theme.cardBackground)
 
-            // MARK: - Payout Section
-            Section("Potential Return") {
-                LabeledContent("Profit if Win", value: formattedPotentialPayout)
+            // MARK: - Financials Section
+            Section("Financials") {
+                LabeledContent("Profit", value: formattedPotentialPayout)
                     .foregroundStyle(Theme.accent)
                 LabeledContent("Total Return", value: formattedTotalReturn)
                     .fontWeight(.semibold)

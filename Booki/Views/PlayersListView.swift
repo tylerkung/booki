@@ -589,7 +589,7 @@ struct PlayerDetailView: View {
                     ForEach(playerBets) { bet in
                         PlayerBetRowView(
                             bet: bet,
-                            eventName: eventName(for: bet)
+                            event: findEvent(for: bet)
                         )
                     }
                 }
@@ -958,8 +958,12 @@ struct PlayerDetailView: View {
 
     // MARK: - Helpers
 
+    private func findEvent(for bet: Bet) -> Event? {
+        events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() })
+    }
+
     private func eventName(for bet: Bet) -> String {
-        if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
+        if let event = findEvent(for: bet) {
             return "\(event.awayTeam) @ \(event.homeTeam)"
         }
         return "Event \(bet.eventId.prefix(8))"
@@ -977,103 +981,10 @@ struct PlayerDetailView: View {
 
 struct PlayerBetRowView: View {
     let bet: Bet
-    let eventName: String
-
-    private var formattedOdds: String {
-        bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)"
-    }
-
-    private var formattedStake: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
-    }
-
-    private var statusColor: Color {
-        switch bet.status {
-        case .pending: return Theme.warning
-        case .accepted: return Theme.accent
-        case .declined: return Theme.danger
-        case .readyToGrade: return .purple
-        case .graded: return .indigo
-        case .settled: return Theme.accent
-        case .void: return Theme.textMuted
-        }
-    }
-
-    private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter.string(from: bet.createdAt)
-    }
+    let event: Event?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Top row: Event name and status
-            HStack {
-                Text(eventName)
-                    .font(Theme.subheadline)
-                    .fontWeight(.medium)
-
-                Spacer()
-
-                Text(bet.status.rawValue.capitalized)
-                    .font(Theme.caption2)
-                    .fontWeight(.medium)
-                    .foregroundStyle(Theme.background)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(statusColor)
-                    .clipShape(Capsule())
-            }
-
-            // Middle row: Side and odds
-            HStack {
-                Text(bet.side)
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-
-                Text("•")
-                    .foregroundStyle(Theme.textSecondary)
-
-                Text(formattedOdds)
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-
-                Spacer()
-
-                Text(formattedStake)
-                    .font(Theme.caption)
-                    .fontWeight(.medium)
-            }
-
-            // Bottom row: Date and result (if any)
-            HStack {
-                Text(formattedDate)
-                    .font(Theme.caption2)
-                    .foregroundStyle(.tertiary)
-
-                Spacer()
-
-                if let result = bet.gradeResult {
-                    Text(result.rawValue.capitalized)
-                        .font(Theme.caption2)
-                        .fontWeight(.medium)
-                        .foregroundStyle(gradeResultColor(result))
-                }
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
-    private func gradeResultColor(_ result: GradeResult) -> Color {
-        switch result {
-        case .win: return Theme.accent
-        case .loss: return Theme.danger
-        case .push: return Theme.warning
-        }
+        PickCardCompact(presenter: PickPresenter(bet: bet, event: event))
     }
 }
 

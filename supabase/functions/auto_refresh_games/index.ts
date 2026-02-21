@@ -616,6 +616,7 @@ Deno.serve(async (req) => {
       let eventsFinalized = 0;
       let betsTransitioned = 0;
       let betsGraded = 0;
+      let betsSettled = 0;
 
       // Group games by sport key for score fetching
       const gamesForScoresBySportKey = new Map<string, SelectedGame[]>();
@@ -767,10 +768,10 @@ Deno.serve(async (req) => {
                     continue;
                   }
 
-                  // Query all bets for this event with status 'accepted', including market/side info
+                  // Query all bets for this event with status 'accepted', including market/side/financial info
                   const { data: acceptedBets, error: betsQueryError } = await client
                     .from('bets')
-                    .select('id, market, side, bookie_id')
+                    .select('id, market, side, bookie_id, player_id, stake, odds')
                     .eq('event_id', game.id)
                     .eq('status', 'accepted');
 
@@ -800,42 +801,78 @@ Deno.serve(async (req) => {
                         // Get grade result from grading logic
                         const gradeOutcome = gradeBet(betInfo, eventScores);
 
-                        // Update bet with grade result
-                        // Status goes to 'graded', grade_result stores outcome ('win'/'loss'/'push')
+                        // Update bet with grade result — go straight to 'settled'
                         const { error: updateError } = await client
                           .from('bets')
                           .update({
-                            status: 'graded',
+                            status: 'settled',
                             grade_result: gradeOutcome.result,
                             updated_at: new Date().toISOString(),
                           })
                           .eq('id', bet.id);
 
                         if (updateError) {
-                          console.error(`Error grading bet ${bet.id}:`, updateError);
+                          console.error(`Error settling bet ${bet.id}:`, updateError);
                           gradingErrors.push(`Bet ${bet.id}: ${updateError.message}`);
                           continue;
                         }
 
-                        // Emit audit event for auto-graded bet
+                        // Create ledger entry for the settlement
+                        const stake = Number(bet.stake);
+                        const odds = Number(bet.odds);
+                        let payoutAmount = 0;
+                        if (gradeOutcome.result === 'win') {
+                          // Player wins: profit is negative (bookie owes player)
+                          const profit = odds > 0
+                            ? stake * (odds / 100)
+                            : stake * (100 / Math.abs(odds));
+                          payoutAmount = -profit;
+                        } else if (gradeOutcome.result === 'loss') {
+                          // Player loses: stake is positive (player owes bookie)
+                          payoutAmount = stake;
+                        }
+                        // push/void = 0, no ledger entry needed
+
+                        if (payoutAmount !== 0) {
+                          const description = gradeOutcome.result === 'win' ? 'Bet won' : 'Bet lost';
+                          const { error: ledgerError } = await client
+                            .from('ledger_entries')
+                            .insert({
+                              bookie_id: bet.bookie_id,
+                              player_id: bet.player_id,
+                              bet_id: bet.id,
+                              amount: payoutAmount,
+                              type: 'settlement',
+                              description: description,
+                            });
+
+                          if (ledgerError) {
+                            console.error(`Error creating ledger entry for bet ${bet.id}:`, ledgerError);
+                            gradingErrors.push(`Bet ${bet.id}: ledger entry failed - ${ledgerError.message}`);
+                          }
+                        }
+
+                        // Emit audit event for auto-graded and settled bet
                         if (game.bookie_auth_user_id) {
                           await emitAuditEvent(client, {
                             bookieId: bet.bookie_id,
                             actorUserId: game.bookie_auth_user_id,
                             entityType: 'bet',
                             entityId: bet.id,
-                            actionType: 'bet_auto_graded',
+                            actionType: 'bet_auto_settled',
                             previousState: { status: 'accepted' },
                             newState: {
-                              status: 'graded',
+                              status: 'settled',
                               grade_result: gradeOutcome.result,
                               grade_details: gradeOutcome.gradeDetails,
+                              payout_amount: payoutAmount,
                             },
                           });
                         }
 
                         gradedCount++;
-                        console.log(`Graded bet ${bet.id}: ${gradeOutcome.result} - ${gradeOutcome.gradeDetails}`);
+                        betsSettled++;
+                        console.log(`Settled bet ${bet.id}: ${gradeOutcome.result} - ${gradeOutcome.gradeDetails}`);
                       } catch (betGradeError) {
                         console.error(`Error grading bet ${bet.id}:`, betGradeError);
                         gradingErrors.push(`Bet ${bet.id}: ${betGradeError instanceof Error ? betGradeError.message : 'Unknown error'}`);
@@ -955,6 +992,7 @@ Deno.serve(async (req) => {
         events_finalized: eventsFinalized,
         bets_transitioned: betsTransitioned,
         bets_graded: betsGraded,
+        bets_settled: betsSettled,
         errors: allErrors,
       };
 

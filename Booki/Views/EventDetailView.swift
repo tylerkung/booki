@@ -401,18 +401,6 @@ struct EventBetRow: View {
         return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
     }
 
-    private var statusColor: Color {
-        switch bet.status {
-        case .pending: return Theme.warning
-        case .accepted: return Theme.accent
-        case .declined: return Theme.danger
-        case .readyToGrade: return .purple
-        case .graded: return .indigo
-        case .settled: return Theme.accent
-        case .void: return Theme.textMuted
-        }
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Top row: Player name and status
@@ -422,14 +410,8 @@ struct EventBetRow: View {
 
                 Spacer()
 
-                Text(bet.status.rawValue.capitalized)
-                    .font(Theme.caption2)
-                    .fontWeight(.medium)
-                    .foregroundStyle(Theme.background)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(statusColor)
-                    .clipShape(Capsule())
+                let (settlement, workflow) = PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
+                StatusPill(settlementStatus: settlement, workflowStatus: workflow)
             }
 
             // Middle row: Side and odds
@@ -508,9 +490,9 @@ struct EventMarketRowView: View {
 
     private var typeColor: Color {
         switch market.type {
-        case .spread:
+        case .spread, .alternateSpread:
             return Theme.accent
-        case .total:
+        case .total, .alternateTotal, .teamTotal:
             return .purple
         case .moneyline:
             return Theme.warning

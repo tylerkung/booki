@@ -131,9 +131,11 @@ struct PlayerClaimView: View {
 
     private var headerView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "ticket.fill")
-                .font(Theme.font(size: 60))
-                .foregroundStyle(Theme.accent)
+            Image("BookiLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 180)
+                .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
 
             Text("Claim Your Account")
                 .font(Theme.largeTitle)
@@ -215,8 +217,16 @@ struct PlayerClaimView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(isValidCodeLength && !isValidating ? Theme.accent : Theme.accent.opacity(0.5))
-                .foregroundStyle(Theme.background)
+                .background(
+                    Group {
+                        if isValidCodeLength && !isValidating {
+                            Theme.buttonGradient
+                        } else {
+                            LinearGradient(colors: [Theme.elevatedBackground], startPoint: .leading, endPoint: .trailing)
+                        }
+                    }
+                )
+                .foregroundStyle(isValidCodeLength && !isValidating ? Theme.background : Theme.textMuted)
                 .cornerRadius(12)
             }
             .disabled(!isValidCodeLength || isValidating)
@@ -252,7 +262,7 @@ struct PlayerClaimView: View {
                     .cornerRadius(12)
 
                 SecureField("Password (min 6 characters)", text: $password)
-                    .textContentType(.newPassword)
+                    .textContentType(.oneTimeCode)
                     .padding()
                     .background(Theme.cardBackground)
                     .cornerRadius(12)
@@ -283,8 +293,16 @@ struct PlayerClaimView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(isValidCredentials && !isCreatingAccount ? Theme.accent : Theme.accent.opacity(0.5))
-                .foregroundStyle(Theme.background)
+                .background(
+                    Group {
+                        if isValidCredentials && !isCreatingAccount {
+                            Theme.buttonGradient
+                        } else {
+                            LinearGradient(colors: [Theme.elevatedBackground], startPoint: .leading, endPoint: .trailing)
+                        }
+                    }
+                )
+                .foregroundStyle(isValidCredentials && !isCreatingAccount ? Theme.background : Theme.textMuted)
                 .cornerRadius(12)
             }
             .disabled(!isValidCredentials || isCreatingAccount)
@@ -327,7 +345,7 @@ struct PlayerClaimView: View {
                     .textCase(.uppercase)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Theme.accent)
+                    .background(Theme.buttonGradient)
                     .foregroundStyle(Theme.background)
                     .cornerRadius(12)
             }
@@ -423,6 +441,12 @@ struct PlayerClaimView: View {
         Task {
             do {
                 print("DEBUG: Starting Supabase signUp...")
+                // Prevent the auth state listener from creating a bookie record
+                // during the signUp → claim_player sequence
+                await MainActor.run {
+                    authManager.isClaimingPlayerAccount = true
+                }
+
                 // Create Supabase auth account for the player
                 let supabase = SupabaseClientManager.shared.client
                 let response = try await supabase.auth.signUp(
@@ -431,19 +455,28 @@ struct PlayerClaimView: View {
                 )
                 print("DEBUG: Supabase signUp succeeded, user ID: \(response.user.id)")
 
-                // Update the player's auth_user_id directly in Supabase
-                // This links the auth credentials to the existing player record
-                print("DEBUG: Updating player record in Supabase with auth_user_id...")
-                try await supabase
-                    .from("players")
-                    .update([
-                        "auth_user_id": response.user.id.uuidString,
-                        "claimed_at": ISO8601DateFormatter().string(from: Date()),
-                        "updated_at": ISO8601DateFormatter().string(from: Date())
-                    ])
-                    .eq("invite_code", value: normalizedCode)
-                    .execute()
-                print("DEBUG: Supabase player record updated successfully")
+                // Call claim_player edge function to link auth account to player record
+                // Uses anon key (not JWT) because signUp with email confirmation doesn't produce a valid session
+                print("DEBUG: Calling claim_player edge function...")
+                let baseURL = SupabaseConfig.url
+                guard let claimURL = URL(string: "\(baseURL.absoluteString)/functions/v1/claim_player") else {
+                    throw NSError(domain: "PlayerClaimView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+                }
+                var claimRequest = URLRequest(url: claimURL)
+                claimRequest.httpMethod = "POST"
+                claimRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                claimRequest.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
+                let claimBody: [String: String] = [
+                    "invite_code": normalizedCode,
+                    "auth_user_id": response.user.id.uuidString
+                ]
+                claimRequest.httpBody = try JSONEncoder().encode(claimBody)
+                let (claimData, claimResponse) = try await URLSession.shared.data(for: claimRequest)
+                if let httpResp = claimResponse as? HTTPURLResponse, !(200...299).contains(httpResp.statusCode) {
+                    let msg = String(data: claimData, encoding: .utf8) ?? "Unknown error"
+                    throw NSError(domain: "PlayerClaimView", code: httpResp.statusCode, userInfo: [NSLocalizedDescriptionKey: "Failed to claim account: \(msg)"])
+                }
+                print("DEBUG: claim_player edge function succeeded")
 
                 // Also update the local SwiftData model
                 let inviteCodeService = InviteCodeService(modelContext: modelContext)
@@ -451,6 +484,7 @@ struct PlayerClaimView: View {
                 print("DEBUG: Local player account claimed")
 
                 // Store the auth user ID and show agreement view
+                // Stay signed in until agreement is submitted (RLS requires auth)
                 await MainActor.run {
                     isCreatingAccount = false
                     createdAuthUserId = response.user.id
@@ -459,6 +493,7 @@ struct PlayerClaimView: View {
             } catch {
                 print("DEBUG: Error creating account: \(error)")
                 await MainActor.run {
+                    authManager.isClaimingPlayerAccount = false
                     isCreatingAccount = false
                     accountCreationError = "Failed to create account: \(error.localizedDescription)"
                 }
@@ -469,9 +504,10 @@ struct PlayerClaimView: View {
     private func submitPlayerAgreement() {
         guard let userId = createdAuthUserId else {
             print("DEBUG: No user ID available for agreement submission")
-            // Fall back to showing success screen anyway
-            showAgreement = false
-            accountCreated = true
+            // Fall back: sign in fresh (will require agreement on next login)
+            Task {
+                await authManager.completePlayerClaimFlow(email: email, password: password)
+            }
             return
         }
 
@@ -486,22 +522,15 @@ struct PlayerClaimView: View {
                     version: AgreementService.currentAgreementVersion
                 )
                 print("DEBUG: Player agreement submitted successfully")
-
-                await MainActor.run {
-                    isSubmittingAgreement = false
-                    showAgreement = false
-                    accountCreated = true
-                }
             } catch {
                 print("DEBUG: Failed to submit agreement: \(error)")
-                // Even on failure, proceed to success screen
                 // Agreement will be required on next login
-                await MainActor.run {
-                    isSubmittingAgreement = false
-                    showAgreement = false
-                    accountCreated = true
-                }
             }
+
+            // Sign out the invalid session and sign in fresh with confirmed credentials.
+            // This produces a valid JWT for edge function calls.
+            await authManager.completePlayerClaimFlow(email: email, password: password)
+            print("DEBUG: Player claim flow complete, session activated")
         }
     }
 }

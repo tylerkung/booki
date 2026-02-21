@@ -41,30 +41,31 @@ struct CompactOddsButton: View {
             action()
         }) {
             VStack(spacing: 2) {
+                let selectedText = Color(hex: 0x0A0A12)
                 if showOddsAsSecondary {
-                    // US-005: Spread/Total style - line value prominent, odds de-emphasized
+                    // Spread/Total style - line value prominent, odds de-emphasized
                     if let text = topText {
                         Text(text)
                             .font(Theme.monoDigits(size: 13, weight: .bold))
-                            .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                            .foregroundStyle(isSelected ? selectedText : Theme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
                     Text(formattedOdds)
                         .font(Theme.monoDigits(size: 10, weight: .medium))
-                        .foregroundColor(isSelected ? Theme.background.opacity(0.7) : Theme.textMuted)
+                        .foregroundStyle(isSelected ? selectedText.opacity(0.7) : Theme.textMuted)
                 } else {
-                    // Original style - used for moneyline (team name secondary, odds primary)
+                    // Moneyline style - team name secondary, odds primary
                     if let text = topText {
                         Text(text)
                             .font(Theme.font(size: 11, weight: .medium))
-                            .foregroundColor(isSelected ? Theme.background : Theme.textSecondary)
+                            .foregroundStyle(isSelected ? selectedText : Theme.textSecondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
                     Text(formattedOdds)
                         .font(Theme.monoDigits(size: 13, weight: .bold))
-                        .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                        .foregroundStyle(isSelected ? selectedText : Theme.textPrimary)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

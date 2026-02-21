@@ -83,11 +83,12 @@ All critical betting operations are server-authoritative via Supabase Edge Funct
 
 - **Location**: `supabase/functions/`
 - **Shared helpers**: `_shared/cors.ts`, `_shared/supabase.ts`, `_shared/idempotency.ts`, `_shared/audit.ts`, `_shared/grading.ts`
-- **Functions**: `submit_bet`, `accept_bet`, `grade_bet`, `settle_bet`, `adjust_balance`, `reverse_settlement`, `override_grade`, `auto_refresh_games`
-- **Deploy**: `supabase functions deploy <function-name>`
+- **Functions**: `submit_bet`, `accept_bet`, `grade_bet`, `settle_bet`, `adjust_balance`, `reverse_settlement`, `override_grade`, `auto_refresh_games`, `claim_player`
+- **Deploy**: `npx supabase functions deploy <function-name> --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+- **JWT note**: All functions deployed with `--no-verify-jwt` (Supabase gateway ES256 incompatibility). Function code still validates auth via `getUserIdFromAuthHeader` → `getUser()`.
 
 All functions:
-1. Validate JWT authorization
+1. Validate JWT authorization (in function code, not gateway)
 2. Check idempotency key (prevent duplicates)
 3. Validate business rules
 4. Emit audit events
@@ -98,7 +99,7 @@ All functions:
 Bets are auto-accepted and auto-graded by default:
 
 - **Auto-accept**: `submit_bet` creates bets with status `'accepted'` immediately
-- **Auto-grade**: `auto_refresh_games` grades bets when events reach `'final'` status
+- **Auto-grade + settle**: `auto_refresh_games` grades bets when events reach `'final'` status and immediately creates ledger entries (accepted → settled in one step)
 - **Grading logic**: Moneyline (winner), Spread (point differential), Totals (over/under)
 - **Opt-in manual modes**: Bookies can enable `manual_bet_acceptance` or `manual_bet_grading` in Settings
 
@@ -155,14 +156,18 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (February 19, 2026)
+## Current State (February 21, 2026)
 
-- **Branch**: `main`
-- **Phases complete**: 1-14 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul)
+- **Branch**: `ralph/onboarding-isolation-polish`
+- **Phases complete**: 1-16 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
-- **Edge Functions**: 10 functions for server-authoritative operations (including `submit_parlay`, `sync_games`)
-- **Odds API key**: Configured in Settings (free tier, 500 calls/month)
-- **Auto-pilot mode**: Picks auto-accepted and auto-graded by default
+- **Edge Functions**: 11 functions for server-authoritative operations (including `submit_parlay`, `sync_games`, `claim_player`)
+- **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
+- **Settings**: Streamlined — removed Odds API config, sample data, and sync button
+- **Auto-pilot mode**: Picks auto-accepted, auto-graded, and auto-settled (ledger entries created automatically)
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
-- **Branding**: App icon and in-app logo (`BookiLogo` image set), branded launch screen (electric cyan), `DESIGN_SYSTEM.md` restored
+- **Branding**: App icon and in-app logo (`BookiLogo` image set), dark launch screen, `DESIGN_SYSTEM.md` restored
+- **Landing page**: `landing/` directory with index.html, styles.css, assets (screenshots + SVG logo)
 - **Compliance**: All user-facing strings use approved vocabulary; disclaimers on auth and pick entry screens
+- **TicketDetailView**: 4-card layout (Hero, Financials, Odds Breakdown, Activity) with odds format preference support
+- **AccountView**: Condensed — Profile+Preferences merged, Performance card (Record + stats + credit bar), no My Picks (Track tab)

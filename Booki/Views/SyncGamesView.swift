@@ -452,6 +452,9 @@ struct SyncGamesView: View {
                         updated = true
                     }
                 }
+
+            case .alternateSpread, .alternateTotal, .teamTotal:
+                break // Alternate lines are handled server-side via sync_games
             }
         }
 

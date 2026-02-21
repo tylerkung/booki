@@ -67,6 +67,11 @@ final class AuthManager: ObservableObject {
     private let supabase: SupabaseClient
     private var authStateTask: Task<Void, Never>?
 
+    /// When true, the auth state listener skips ensureBookieRecord() on .signedIn events.
+    /// Used during the player claim flow to prevent a race condition where signUp() triggers
+    /// ensureBookieRecord() before claim_player has linked the auth account to the player record.
+    var isClaimingPlayerAccount: Bool = false
+
     // MARK: - Initialization
 
     init() {
@@ -193,6 +198,25 @@ final class AuthManager: ObservableObject {
         }
     }
 
+    /// Completes the player claim flow by signing in fresh with confirmed credentials.
+    /// The signUp session JWT is invalid (email was unconfirmed at creation time).
+    /// claim_player auto-confirmed the email, so a fresh signIn produces a valid JWT.
+    func completePlayerClaimFlow(email: String, password: String) async {
+        // Keep flag true during sign-out/sign-in so the auth state listener
+        // doesn't trigger ensureBookieRecord() concurrently
+        do {
+            try? await supabase.auth.signOut()
+            let session = try await supabase.auth.signIn(email: email, password: password)
+            isClaimingPlayerAccount = false
+            updateAuthState(userId: session.user.id.uuidString, isAuthenticated: true)
+            await ensureBookieRecord()
+        } catch {
+            isClaimingPlayerAccount = false
+            print("Failed to complete player claim flow: \(error)")
+            updateAuthState(userId: nil, isAuthenticated: false)
+        }
+    }
+
     /// Sets the current bookie ID directly (used when bookie record is already known)
     func setCurrentBookieId(_ bookieId: UUID) {
         currentBookieId = bookieId
@@ -259,8 +283,14 @@ final class AuthManager: ObservableObject {
                     break
                 case .signedIn:
                     if let session = session {
+                        // During player claim flow, skip ALL auth state updates.
+                        // signUp() fires .signedIn but we must keep isAuthenticated=false
+                        // so AuthGateView keeps showing PlayerClaimView (not the bookie dashboard).
+                        // The claim flow signs out when done; the player logs in fresh afterward.
+                        if isClaimingPlayerAccount {
+                            break
+                        }
                         updateAuthState(userId: session.user.id.uuidString, isAuthenticated: true)
-                        // Fetch or create bookie record after sign in
                         await ensureBookieRecord()
                     }
                 case .signedOut:

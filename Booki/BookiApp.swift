@@ -33,6 +33,11 @@ struct BookiApp: App {
 
     init() {
         configureAppAppearance()
+
+        // Apply sensible defaults for new accounts
+        if UserDefaults.standard.object(forKey: "default_credit_limit") == nil {
+            UserDefaults.standard.set(500.0, forKey: "default_credit_limit")
+        }
     }
 
     var body: some Scene {
