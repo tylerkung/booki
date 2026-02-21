@@ -219,7 +219,7 @@ struct BetSlipSheet: View {
     /// Player balance summary computed from ledger entries
     private var balanceSummary: PlayerBalanceSummary {
         guard let player = player else {
-            return PlayerBalanceSummary(creditLimit: 0, openLiability: 0, balanceOwed: 0, availableCredit: 0)
+            return PlayerBalanceSummary(creditLimit: 0, openStakes: 0, openLiability: 0, balanceOwed: 0, availableCredit: 0)
         }
         let playerBets = bets.filter { $0.player?.id == player.id }
         let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
