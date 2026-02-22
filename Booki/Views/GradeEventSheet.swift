@@ -290,7 +290,7 @@ struct GradeEventSheet: View {
         }
         .padding()
         .background(Theme.cardBackground)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Summary Stats Card
@@ -315,7 +315,7 @@ struct GradeEventSheet: View {
         }
         .padding()
         .background(Theme.cardBackground)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     private func statBadge(value: Int, label: String, color: Color) -> some View {
@@ -367,7 +367,7 @@ struct GradeEventSheet: View {
         }
         .padding()
         .background(Theme.cardBackground)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Success View
@@ -424,7 +424,7 @@ struct GradeEventSheet: View {
             }
             .padding()
             .background(Theme.cardBackground)
-            .cornerRadius(16)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
 
             Spacer()
 
@@ -437,7 +437,7 @@ struct GradeEventSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Theme.accent)
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .padding(.horizontal)
         }
@@ -566,7 +566,7 @@ struct BetGradeRow: View {
         }
         .padding()
         .background(Theme.elevatedBackground)
-        .cornerRadius(12)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func gradeIndicator(grade: GradeResult, isOverride: Bool) -> some View {
@@ -611,7 +611,7 @@ struct BetGradeRow: View {
             .padding(.vertical, 8)
             .background(isSelected ? color : color.opacity(0.15))
             .foregroundStyle(isSelected ? Theme.background : color)
-            .cornerRadius(8)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
     }

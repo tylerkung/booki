@@ -560,7 +560,7 @@ struct SummaryStatView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.elevatedBackground)
-        .cornerRadius(Theme.cornerRadiusSmall)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
     }
 }
 
@@ -909,7 +909,7 @@ struct PlayerSettlementDetailView: View {
                             .foregroundStyle(Theme.textPrimary)
                             .padding(12)
                             .background(Theme.elevatedBackground)
-                            .cornerRadius(Theme.cornerRadiusSmall)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                             .lineLimit(3...6)
 
                         Button {
@@ -924,7 +924,7 @@ struct PlayerSettlementDetailView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(Theme.accent)
-                            .cornerRadius(Theme.cornerRadiusSmall)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                         }
                     }
                     .padding(.vertical, 8)
@@ -1296,7 +1296,7 @@ struct QuickPaymentSheet: View {
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
                                     .background(Theme.accent.opacity(0.15))
-                                    .cornerRadius(Theme.cornerRadiusSmall)
+                                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                             }
                             .buttonStyle(.plain)
 
@@ -1310,7 +1310,7 @@ struct QuickPaymentSheet: View {
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 10)
                                         .background(Theme.warning.opacity(0.15))
-                                        .cornerRadius(Theme.cornerRadiusSmall)
+                                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -1421,7 +1421,7 @@ struct QuickPaymentSheet: View {
         }
         .padding(40)
         .background(Theme.cardBackground)
-        .cornerRadius(Theme.cornerRadius)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
         .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
     }
 

@@ -1038,7 +1038,7 @@ struct BetDetailView: View {
                     .padding()
                     .frame(maxWidth: .infinity)
                     .background(Theme.cardBackground)
-                    .cornerRadius(Theme.cornerRadius)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
 
                     // New Grade Picker
                     VStack(alignment: .leading, spacing: 12) {
@@ -1065,7 +1065,7 @@ struct BetDetailView: View {
                             .textFieldStyle(.plain)
                             .padding()
                             .background(Theme.cardBackground)
-                            .cornerRadius(Theme.cornerRadiusSmall)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                             .lineLimit(3...6)
                     }
 
@@ -1091,7 +1091,7 @@ struct BetDetailView: View {
                         }
                     }
                     .background(isOverrideConfirmDisabled ? Theme.accent.opacity(0.5) : Theme.accent)
-                    .cornerRadius(Theme.cornerRadiusSmall)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                     .disabled(isOverrideConfirmDisabled)
                 }
                 .padding()
@@ -1196,7 +1196,7 @@ struct BetDetailView: View {
                     .padding()
                     .frame(maxWidth: .infinity)
                     .background(Theme.cardBackground)
-                    .cornerRadius(Theme.cornerRadius)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
 
                     // Impact Description
                     VStack(alignment: .leading, spacing: 8) {
@@ -1210,7 +1210,7 @@ struct BetDetailView: View {
                             .padding()
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Theme.cardBackground)
-                            .cornerRadius(Theme.cornerRadiusSmall)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                     }
 
                     // Reason TextField
@@ -1223,7 +1223,7 @@ struct BetDetailView: View {
                             .textFieldStyle(.plain)
                             .padding()
                             .background(Theme.cardBackground)
-                            .cornerRadius(Theme.cornerRadiusSmall)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                             .lineLimit(3...6)
                     }
 
@@ -1249,7 +1249,7 @@ struct BetDetailView: View {
                         }
                     }
                     .background(isReverseConfirmDisabled ? Theme.danger.opacity(0.5) : Theme.danger)
-                    .cornerRadius(Theme.cornerRadiusSmall)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                     .disabled(isReverseConfirmDisabled)
                 }
                 .padding()

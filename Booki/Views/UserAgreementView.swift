@@ -84,7 +84,7 @@ struct UserAgreementView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.warning.opacity(0.1))
-        .cornerRadius(Theme.cornerRadiusSmall)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
     }
 
     private var summaryView: some View {
@@ -97,7 +97,7 @@ struct UserAgreementView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.cardBackground)
-        .cornerRadius(Theme.cornerRadius)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
     }
 
     private var viewFullTermsButton: some View {
@@ -132,7 +132,7 @@ struct UserAgreementView: View {
             }
             .padding()
             .background(Theme.cardBackground)
-            .cornerRadius(Theme.cornerRadiusSmall)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
         }
         .buttonStyle(.plain)
     }
@@ -148,7 +148,7 @@ struct UserAgreementView: View {
                 .padding()
                 .background(hasAgreed ? Theme.accent : Theme.accent.opacity(0.5))
                 .foregroundStyle(hasAgreed ? Theme.background : Theme.background.opacity(0.5))
-                .cornerRadius(Theme.cornerRadiusSmall)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
         }
         .disabled(!hasAgreed)
     }

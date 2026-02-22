@@ -166,7 +166,7 @@ struct PlayerClaimView: View {
                     .textInputAutocapitalization(.characters)
                     .padding()
                     .background(Theme.cardBackground)
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .onChange(of: inviteCode) { _, newValue in
                         // Auto-format: uppercase and remove non-alphanumeric
                         let filtered = newValue
@@ -227,7 +227,7 @@ struct PlayerClaimView: View {
                     }
                 )
                 .foregroundStyle(isValidCodeLength && !isValidating ? Theme.background : Theme.textMuted)
-                .cornerRadius(12)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .disabled(!isValidCodeLength || isValidating)
         }
@@ -259,13 +259,13 @@ struct PlayerClaimView: View {
                     .autocorrectionDisabled()
                     .padding()
                     .background(Theme.cardBackground)
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
 
                 SecureField("Password (min 6 characters)", text: $password)
                     .textContentType(.oneTimeCode)
                     .padding()
                     .background(Theme.cardBackground)
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 
             // Error message
@@ -303,7 +303,7 @@ struct PlayerClaimView: View {
                     }
                 )
                 .foregroundStyle(isValidCredentials && !isCreatingAccount ? Theme.background : Theme.textMuted)
-                .cornerRadius(12)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .disabled(!isValidCredentials || isCreatingAccount)
 
@@ -347,7 +347,7 @@ struct PlayerClaimView: View {
                     .padding()
                     .background(Theme.buttonGradient)
                     .foregroundStyle(Theme.background)
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
     }
