@@ -201,3 +201,19 @@ Started: Thu Feb 19 13:11:23 PST 2026
   - @FocusState + DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) needed to focus TextField after animation starts
   - ScrollView+VStack gives more layout control than List (no default section spacing, no NavigationLink disclosure indicators)
 ---
+
+## 2026-02-21 - Bookie Picks Tab Improvements
+- Added open bet count badge to Picks tab (1-9, "9+" cap) with brand teal background + dark text in SpaceGrotesk-Bold via UITabBarItem appearance
+- Simplified BetFilter from 5 options (Pending/Open/Ready to Grade/Reconciled/All) to 2 (Open/Past)
+- Open = pending, accepted, readyToGrade, graded; Past = settled, declined, void
+- Added player filter chips: horizontal ScrollView of capsule buttons showing players with bets in current filter
+- Redesigned BetDetailView from List/Section to ScrollView + card layout matching TicketDetailView (Hero, Financials, Activity, Actions cards)
+- Action buttons restyled as color-coded filled capsule buttons inside Actions card
+- All existing action logic preserved: accept, decline, void, settle, override grade, reverse settlement
+- Files changed: ContentView.swift, BetsListView.swift, CLAUDE.md, README.md
+- **Learnings for future iterations:**
+  - UITabBarItem.appearance().badgeColor + setBadgeTextAttributes in view init() customizes tab badge globally
+  - SwiftUI .badge() accepts String? — pass nil to hide, string for display
+  - When converting List→ScrollView in detail views, action buttons need explicit styling (List provides default row styling)
+  - Extract sub-views (detailHeroCard, detailFinancialsCard, etc.) to avoid SwiftUI type-checker timeouts on complex bodies
+---

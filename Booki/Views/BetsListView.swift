@@ -15,25 +15,16 @@ struct ParlayPartialInfo {
 
 /// Filter options for bets list
 enum BetFilter: String, CaseIterable {
-    case pending = "Pending"
     case open = "Open"
-    case readyToGrade = "Ready to Grade"
-    case settled = "Reconciled"
-    case all = "All"
+    case past = "Past"
 
     /// Returns the bet statuses that match this filter
     var matchingStatuses: [BetStatus] {
         switch self {
-        case .pending:
-            return [.pending]
         case .open:
-            return [.accepted]
-        case .readyToGrade:
-            return [.readyToGrade]
-        case .settled:
-            return [.settled, .graded, .declined, .void]
-        case .all:
-            return BetStatus.allCases
+            return [.pending, .accepted, .readyToGrade, .graded]
+        case .past:
+            return [.settled, .declined, .void]
         }
     }
 }
@@ -49,12 +40,34 @@ struct BetsListView: View {
     @Query private var bets: [Bet]
     @Query private var events: [Event]
 
-    @State private var selectedFilter: BetFilter = .all
+    @State private var selectedFilter: BetFilter = .open
+    @State private var selectedPlayerId: UUID? = nil
 
-    /// Filtered bets based on selected filter
-    private var filteredBets: [Bet] {
+    /// Bets matching the current status filter (before player filter)
+    private var statusFilteredBets: [Bet] {
         bets.filter { selectedFilter.matchingStatuses.contains($0.status) }
-            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    /// Players who have bets in the current status filter
+    private var availablePlayers: [(id: UUID, name: String)] {
+        var seen = Set<UUID>()
+        var result: [(id: UUID, name: String)] = []
+        for bet in statusFilteredBets {
+            if let player = bet.player, !seen.contains(player.id) {
+                seen.insert(player.id)
+                result.append((id: player.id, name: player.name))
+            }
+        }
+        return result.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Filtered bets based on selected filter + player
+    private var filteredBets: [Bet] {
+        var result = statusFilteredBets
+        if let playerId = selectedPlayerId {
+            result = result.filter { $0.player?.id == playerId }
+        }
+        return result.sorted { $0.createdAt > $1.createdAt }
     }
 
     var body: some View {
@@ -67,37 +80,81 @@ struct BetsListView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .padding()
-
-                // MARK: - Bets List
-                List {
-                    if filteredBets.isEmpty {
-                        ContentUnavailableView(
-                            "No Picks",
-                            systemImage: "list.bullet.rectangle",
-                            description: Text("No picks match the selected filter.")
-                        )
-                    } else {
-                        ForEach(filteredBets) { bet in
-                            NavigationLink(value: bet) {
-                                BetRowView(
-                                    bet: bet,
-                                    eventName: eventName(for: bet),
-                                    betDisplayName: betDisplayName(for: bet),
-                                    sportLeague: sportLeague(for: bet),
-                                    policyViolationReason: bet.policyViolationReason,
-                                    parlayInfo: parlayInfo(for: bet),
-                                    event: findEvent(for: bet),
-                                    parlayBets: bet.isParlay ? bets.filter({ $0.ticketId == bet.ticketId }) : [],
-                                    events: Array(events)
-                                )
-                            }
-                        }
+                .padding(.horizontal)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+                .onChange(of: selectedFilter) { _, _ in
+                    // Reset player filter when switching tabs if selected player has no bets
+                    if let playerId = selectedPlayerId,
+                       !statusFilteredBets.contains(where: { $0.player?.id == playerId }) {
+                        selectedPlayerId = nil
                     }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .background(Theme.background)
+
+                // MARK: - Player Filter Chips
+                if !availablePlayers.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(availablePlayers, id: \.id) { player in
+                                Button {
+                                    if selectedPlayerId == player.id {
+                                        selectedPlayerId = nil
+                                    } else {
+                                        selectedPlayerId = player.id
+                                    }
+                                } label: {
+                                    Text(player.name)
+                                        .font(Theme.bodyFont(size: 13, weight: .medium))
+                                        .foregroundStyle(selectedPlayerId == player.id ? Theme.background : Theme.textSecondary)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Capsule()
+                                                .fill(selectedPlayerId == player.id ? Theme.accent : Theme.cardBackground)
+                                        )
+                                        .overlay(
+                                            Capsule()
+                                                .stroke(selectedPlayerId == player.id ? Theme.accent : Theme.border, lineWidth: 0.5)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 8)
+                    }
+                }
+
+                // MARK: - Bets List
+                if filteredBets.isEmpty {
+                    ContentUnavailableView(
+                        "No Picks",
+                        systemImage: "list.bullet.rectangle",
+                        description: Text("No picks match the selected filter.")
+                    )
+                } else {
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            ForEach(filteredBets) { bet in
+                                NavigationLink(value: bet) {
+                                    BetRowView(
+                                        bet: bet,
+                                        eventName: eventName(for: bet),
+                                        betDisplayName: betDisplayName(for: bet),
+                                        sportLeague: sportLeague(for: bet),
+                                        policyViolationReason: bet.policyViolationReason,
+                                        parlayInfo: parlayInfo(for: bet),
+                                        event: findEvent(for: bet),
+                                        parlayBets: bet.isParlay ? bets.filter({ $0.ticketId == bet.ticketId }) : [],
+                                        events: Array(events)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding()
+                    }
+                }
             }
             .background(Theme.background)
             .navigationTitle("Picks")
@@ -210,18 +267,19 @@ struct BetRowView: View {
     var events: [Event] = []
 
     /// Build a PickPresenter from the bet data, using multi-pick factory for parlays
+    /// Note: playerName is passed separately to PickCardCompact for emphasis styling
     private var presenter: PickPresenter {
         if bet.isParlay && parlayBets.count > 1 {
-            return PickPresenter.multiPick(bets: parlayBets, events: events, playerName: bet.player?.name)
+            return PickPresenter.multiPick(bets: parlayBets, events: events)
         } else {
-            return PickPresenter(bet: bet, event: event, playerName: bet.player?.name)
+            return PickPresenter(bet: bet, event: event)
         }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             // Canonical pick card display
-            PickCardCompact(presenter: presenter)
+            PickCardCompact(presenter: presenter, playerName: bet.player?.name)
 
             // Parlay partial grading badge (bookie-specific overlay)
             if let info = parlayInfo, info.isPartiallyGraded {
@@ -256,7 +314,6 @@ struct BetRowView: View {
                 .padding(.leading, 12)
             }
         }
-        .padding(.vertical, 4)
     }
 }
 
@@ -413,121 +470,76 @@ struct BetDetailView: View {
         return parlayBets.allSatisfy { $0.gradeResult != nil || $0.status == .void }
     }
 
+    // MARK: - Shared Card Components
+
+    private var detailCardBackground: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Theme.cardBackground)
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Theme.border, lineWidth: 0.5)
+        }
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+
+    private func detailSectionHeader(_ title: String) -> some View {
+        HStack {
+            Text(title)
+                .font(Theme.caption)
+                .fontWeight(.semibold)
+                .tracking(1)
+                .foregroundStyle(Theme.textMuted)
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private func detailLabeledRow(label: String, value: String, valueColor: Color = Theme.textPrimary) -> some View {
+        HStack {
+            Text(label)
+                .font(Theme.bodyFont(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+            Spacer()
+            Text(value)
+                .font(Theme.bodyFont(size: 14, weight: .medium))
+                .foregroundStyle(valueColor)
+        }
+    }
+
+    // MARK: - Presenter
+
+    private var presenter: PickPresenter {
+        if bet.isParlay && parlayBets.count > 1 {
+            return PickPresenter.multiPick(bets: parlayBets, events: Array(events))
+        } else {
+            return PickPresenter(bet: bet, event: event)
+        }
+    }
+
+    private var isSettled: Bool {
+        switch presenter.settlementStatus {
+        case .won, .lost, .push, .void, .cancelled: return true
+        case .open: return false
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
-        List {
-            // MARK: - Status Section
-            Section {
-                HStack {
-                    Text("Status")
-                    Spacer()
-                    let (settlement, workflow) = PickPresenter.mapStatus(betStatus: bet.status, gradeResult: bet.gradeResult)
-                    StatusPill(settlementStatus: settlement, workflowStatus: workflow)
-                }
-
-                if let gradeResult = bet.gradeResult {
-                    HStack {
-                        Text("Result")
-                        Spacer()
-                        Text(gradeResult.rawValue.capitalized)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(gradeResultColor(gradeResult))
-                    }
+        ScrollView {
+            VStack(spacing: 16) {
+                detailHeroCard
+                detailFinancialsCard
+                detailActivityCard
+                if shouldShowActions {
+                    detailActionsCard
                 }
             }
-            .listRowBackground(Theme.cardBackground)
-
-            // MARK: - Event Section
-            Section("Event") {
-                LabeledContent("Matchup", value: eventName)
-
-                if let event = event {
-                    LabeledContent("Sport", value: event.sport)
-                    LabeledContent("League", value: event.league)
-
-                    let eventFormatter = DateFormatter()
-                    let _ = eventFormatter.dateStyle = .medium
-                    let _ = eventFormatter.timeStyle = .short
-                    LabeledContent("Start Time", value: eventFormatter.string(from: event.startTime))
-
-                    LabeledContent("Event Status", value: event.status.rawValue.capitalized)
-
-                    if let finalScore = event.finalScore {
-                        LabeledContent("Final Score", value: finalScore)
-                    }
-                }
-            }
-            .listRowBackground(Theme.cardBackground)
-
-            // MARK: - Bet Details Section
-            Section("Pick Details") {
-                LabeledContent("Market", value: MarketType(rawValue: bet.market)?.displayName ?? bet.market)
-                LabeledContent("Side", value: bet.side)
-                LabeledContent("Odds", value: formattedOdds)
-                LabeledContent("Stake", value: formattedStake)
-            }
-            .listRowBackground(Theme.cardBackground)
-
-            // MARK: - Financials Section
-            Section("Financials") {
-                LabeledContent("Profit", value: formattedPotentialPayout)
-                    .foregroundStyle(Theme.accent)
-                LabeledContent("Total Return", value: formattedTotalReturn)
-                    .fontWeight(.semibold)
-            }
-            .listRowBackground(Theme.cardBackground)
-
-            // MARK: - Player Section
-            Section("Member") {
-                if let player = bet.player {
-                    LabeledContent("Name", value: player.name)
-                    if let email = player.email {
-                        LabeledContent("Email", value: email)
-                    }
-                } else {
-                    Text("Unknown Member")
-                        .foregroundStyle(Theme.textSecondary)
-                }
-            }
-            .listRowBackground(Theme.cardBackground)
-
-            // MARK: - Meta Section
-            Section("Details") {
-                LabeledContent("Created", value: formattedDate)
-                LabeledContent("Pick ID", value: bet.id.uuidString.prefix(8) + "...")
-                    .font(Theme.caption)
-            }
-            .listRowBackground(Theme.cardBackground)
-
-            // MARK: - History Section
-            Section("History") {
-                NavigationLink {
-                    BetHistoryView(betId: bet.id)
-                } label: {
-                    HStack {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .foregroundStyle(Theme.accent)
-                        Text("View History")
-                            .foregroundStyle(Theme.textPrimary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textMuted)
-                    }
-                }
-            }
-            .listRowBackground(Theme.cardBackground)
-
-            // MARK: - Actions Section
-            if shouldShowActions {
-                Section("Actions") {
-                    actionButtons
-                }
-                .listRowBackground(Theme.cardBackground)
-            }
+            .padding(16)
         }
-        .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle(betDisplayName)
         .navigationBarTitleDisplayMode(.inline)
@@ -613,31 +625,21 @@ struct BetDetailView: View {
     private var actionButtons: some View {
         switch bet.status {
         case .pending:
-            Button {
+            actionButton("Accept Pick", icon: "checkmark.circle.fill", color: Theme.accent) {
                 acceptBet()
-            } label: {
-                Label("Accept Pick", systemImage: "checkmark.circle.fill")
             }
-            .tint(Theme.accent)
-
-            Button(role: .destructive) {
+            actionButton("Decline Pick", icon: "xmark.circle.fill", color: Theme.danger) {
                 declineBet()
-            } label: {
-                Label("Decline Pick", systemImage: "xmark.circle.fill")
             }
 
         case .accepted:
-            Button(role: .destructive) {
+            actionButton("Void Pick", icon: "trash.circle.fill", color: Theme.danger) {
                 showingVoidConfirmation = true
-            } label: {
-                Label("Void Pick", systemImage: "trash.circle.fill")
             }
 
         case .graded:
-            // For parlays, check if all legs are graded before allowing settlement
             if bet.isParlay {
                 if isParlayPartiallyGraded {
-                    // Show partial status badge
                     HStack {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(Theme.warning)
@@ -651,70 +653,39 @@ struct BetDetailView: View {
                         }
                     }
 
-                    // Show if parlay will lose
                     if parlayWillLose {
-                        HStack {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(Theme.danger)
-                            Text("Multi-pick will lose when reconciled")
-                                .font(Theme.caption)
-                                .foregroundStyle(Theme.danger)
-                        }
+                        parlayWillLoseBanner
                     }
                 } else if isParlayFullyGraded {
-                    // All legs graded, allow settlement
                     if parlayWillLose {
-                        HStack {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(Theme.danger)
-                            Text("Multi-pick will lose when reconciled")
-                                .font(Theme.caption)
-                                .foregroundStyle(Theme.danger)
-                        }
+                        parlayWillLoseBanner
                     }
 
-                    Button {
+                    actionButton("Reconcile Multi-Pick", icon: "dollarsign.circle.fill", color: Theme.accent) {
                         showingSettleConfirmation = true
-                    } label: {
-                        Label("Reconcile Multi-Pick", systemImage: "dollarsign.circle.fill")
                     }
-                    .tint(Theme.accent)
                 }
             } else {
-                // Single bet - allow settlement
-                Button {
+                actionButton("Reconcile Pick", icon: "dollarsign.circle.fill", color: Theme.accent) {
                     showingSettleConfirmation = true
-                } label: {
-                    Label("Reconcile Pick", systemImage: "dollarsign.circle.fill")
                 }
-                .tint(Theme.accent)
             }
 
-            // Override Grade button for graded bets (requires a grade to have been set)
             if bet.gradeResult != nil {
-                Button {
+                actionButton("Override Grade", icon: "pencil.circle.fill", color: Theme.warning) {
                     prepareOverrideGradeSheet()
-                } label: {
-                    Label("Override Grade", systemImage: "pencil.circle.fill")
                 }
-                .tint(Theme.warning)
             }
 
         case .settled:
-            Button(role: .destructive) {
+            actionButton("Reverse Reconciliation", icon: "arrow.uturn.backward.circle.fill", color: Theme.danger) {
                 prepareReverseSettlementSheet()
-            } label: {
-                Label("Reverse Reconciliation", systemImage: "arrow.uturn.backward.circle.fill")
             }
 
-            // Override Grade button for settled bets (will reverse settlement first)
             if bet.gradeResult != nil {
-                Button {
+                actionButton("Override Grade", icon: "pencil.circle.fill", color: Theme.warning) {
                     prepareOverrideGradeSheet()
-                } label: {
-                    Label("Override Grade", systemImage: "pencil.circle.fill")
                 }
-                .tint(Theme.warning)
             }
 
         default:
@@ -722,67 +693,271 @@ struct BetDetailView: View {
         }
     }
 
+    private var parlayWillLoseBanner: some View {
+        HStack {
+            Image(systemName: "xmark.circle.fill")
+                .foregroundStyle(Theme.danger)
+            Text("Multi-pick will lose when reconciled")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.danger)
+        }
+    }
+
+    private func actionButton(_ title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: icon)
+                Text(title)
+                    .fontWeight(.medium)
+            }
+            .font(Theme.bodyFont(size: 14))
+            .foregroundStyle(color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(color.opacity(0.12))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Hero Card
+
+    private var detailHeroCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            detailHeroHeader
+                .padding(12)
+
+            if bet.isParlay && parlayBets.count > 1 {
+                ForEach(parlayBets) { leg in
+                    Divider().background(Theme.divider)
+                    detailHeroLegRow(bet: leg)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                }
+            }
+        }
+        .background(detailCardBackground)
+    }
+
+    private var detailHeroHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top) {
+                Text(presenter.title)
+                    .font(Theme.headline)
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(2)
+                Spacer()
+                StatusPill(
+                    settlementStatus: presenter.settlementStatus,
+                    workflowStatus: presenter.workflowStatus
+                )
+            }
+
+            if let player = bet.player {
+                Text(player.name)
+                    .font(Theme.bodyFont(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+            }
+
+            if !presenter.contextLine.isEmpty {
+                Text(presenter.contextLine)
+                    .font(Theme.bodyFont(size: 13))
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+            }
+
+            HStack(spacing: 8) {
+                Text(presenter.stakeLine)
+                    .font(Theme.bodyFont(size: 13))
+                    .foregroundStyle(Theme.textSecondary)
+                Text(presenter.profitLine)
+                    .font(Theme.bodyFont(size: 13, weight: .medium))
+                    .foregroundStyle(presenter.profitColor)
+            }
+
+            if bet.isParlay && parlayBets.count > 1 {
+                HStack(spacing: 4) {
+                    ForEach(parlayBets) { leg in
+                        Circle()
+                            .fill(legStatusColor(for: leg))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+            }
+        }
+    }
+
+    private func detailHeroLegRow(bet leg: Bet) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            SelectionRow(
+                selectionLabel: leg.side,
+                odds: leg.odds,
+                eventName: detailEventName(for: leg),
+                league: detailEventLeague(for: leg),
+                gradeResult: leg.gradeResult
+            )
+
+            if leg.gradeResult == nil && (leg.status == .accepted || leg.status == .readyToGrade) {
+                Text("Awaiting Result")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                    .italic()
+            }
+        }
+    }
+
+    private func legStatusColor(for bet: Bet) -> Color {
+        if let result = bet.gradeResult {
+            switch result {
+            case .win: return Theme.accent
+            case .loss: return Theme.danger
+            case .push: return Theme.warning
+            }
+        }
+        if bet.status == .void { return Theme.textMuted }
+        return Theme.textMuted.opacity(0.5)
+    }
+
+    private func detailEventName(for bet: Bet) -> String {
+        if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
+            return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        if let desc = bet.eventDescription, !desc.isEmpty { return desc }
+        return "Event \(bet.eventId.prefix(8))"
+    }
+
+    private func detailEventLeague(for bet: Bet) -> String? {
+        if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
+            return event.league
+        }
+        return bet.sportLeague
+    }
+
+    // MARK: - Financials Card
+
+    private var detailFinancialsCard: some View {
+        VStack(spacing: 0) {
+            detailSectionHeader("FINANCIALS")
+
+            VStack(spacing: 10) {
+                detailLabeledRow(label: "Stake", value: formattedStake)
+                detailLabeledRow(label: "Odds", value: formattedOdds, valueColor: Theme.gold)
+
+                Divider().background(Theme.divider)
+
+                if isSettled {
+                    let profitStr = potentialPayout > 0 ? "+\(formattedPotentialPayout)" : formattedPotentialPayout
+                    detailLabeledRow(label: "Profit", value: profitStr, valueColor: presenter.profitColor)
+                    detailLabeledRow(label: "Total Return", value: formattedTotalReturn)
+                } else {
+                    detailLabeledRow(label: "Potential", value: "+\(formattedPotentialPayout)", valueColor: Theme.accent)
+                    detailLabeledRow(label: "Total Return", value: formattedTotalReturn)
+                }
+            }
+            .padding(12)
+        }
+        .background(detailCardBackground)
+    }
+
+    // MARK: - Activity Card
+
+    private var detailActivityCard: some View {
+        VStack(spacing: 0) {
+            detailSectionHeader("ACTIVITY")
+
+            VStack(spacing: 10) {
+                detailLabeledRow(label: "Placed", value: formattedDate, valueColor: Theme.textSecondary)
+
+                detailLabeledRow(
+                    label: "Pick ID",
+                    value: String(bet.id.uuidString.prefix(8)) + "...",
+                    valueColor: Theme.textMuted
+                )
+
+                if let player = bet.player {
+                    detailLabeledRow(label: "Member", value: player.name)
+                }
+
+                NavigationLink {
+                    BetHistoryView(betId: bet.id)
+                } label: {
+                    HStack {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .foregroundStyle(Theme.accent)
+                        Text("View History")
+                            .font(Theme.bodyFont(size: 14))
+                            .foregroundStyle(Theme.textPrimary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                }
+            }
+            .padding(12)
+        }
+        .background(detailCardBackground)
+    }
+
+    // MARK: - Actions Card
+
+    private var detailActionsCard: some View {
+        VStack(spacing: 0) {
+            detailSectionHeader("ACTIONS")
+
+            VStack(spacing: 10) {
+                actionButtons
+            }
+            .padding(12)
+        }
+        .background(detailCardBackground)
+    }
+
     // MARK: - Actions
 
     private func acceptBet() {
-        let result = BetService.acceptBet(bet)
-        switch result {
-        case .success:
-            break
-        case .failure(let error):
-            print("Failed to accept bet: \(error)")
+        Task {
+            do {
+                try await BetService.acceptBet(bet)
+            } catch {
+                print("Failed to accept bet: \(error)")
+            }
         }
     }
 
     private func declineBet() {
-        let result = BetService.declineBet(bet)
-        switch result {
-        case .success:
-            break
-        case .failure(let error):
-            print("Failed to decline bet: \(error)")
+        Task {
+            do {
+                try await BetService.declineBet(bet)
+            } catch {
+                print("Failed to decline bet: \(error)")
+            }
         }
     }
 
     private func voidBet() {
-        let result = BetService.voidBet(bet)
-        switch result {
-        case .success:
-            break
-        case .failure(let error):
-            print("Failed to void bet: \(error)")
+        Task {
+            do {
+                try await BetService.voidBet(bet)
+            } catch {
+                print("Failed to void bet: \(error)")
+            }
         }
     }
 
     private func settleBet() {
-        // Handle parlay bets using group settlement
-        if bet.isParlay {
-            let result = GradingService.settleParlayBets(parlayBets, policy: parlayPolicy)
-            switch result {
-            case .success(let ledgerEntry):
-                modelContext.insert(ledgerEntry)
-            case .failure(let error):
-                print("Failed to settle parlay: \(error)")
-            }
-        } else {
-            // Handle single bets
-            let result = GradingService.settleBet(bet)
-            switch result {
-            case .success(let ledgerEntry):
-                modelContext.insert(ledgerEntry)
-            case .failure(let error):
+        Task {
+            do {
+                if bet.isParlay {
+                    try await GradingService.settleParlayBets(parlayBets, policy: parlayPolicy, in: modelContext)
+                } else {
+                    try await GradingService.settleBet(bet, in: modelContext)
+                }
+            } catch {
                 print("Failed to settle bet: \(error)")
             }
-        }
-    }
-
-    private func reverseBet() {
-        let result = GradingService.reverseBet(bet, ledgerEntries: ledgerEntries)
-        switch result {
-        case .success(let reversalEntry):
-            modelContext.insert(reversalEntry)
-        case .failure(let error):
-            print("Failed to reverse bet: \(error)")
         }
     }
 

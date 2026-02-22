@@ -447,30 +447,35 @@ struct GradeEventSheet: View {
     // MARK: - Actions
 
     private func applyAllGrades() {
-        var wins = 0
-        var losses = 0
-        var pushes = 0
-
-        for bet in betsToGrade {
-            guard let grade = effectiveGrade(for: bet) else { continue }
-
-            // Directly update bet status and grade result
-            // Note: GradingService.gradeBet expects .accepted, but we have .readyToGrade
-            // So we set properties directly for bulk grading
-            bet.status = .graded
-            bet.gradeResult = grade
-
-            switch grade {
-            case .win: wins += 1
-            case .loss: losses += 1
-            case .push: pushes += 1
-            }
+        let betsAndGrades: [(Bet, GradeResult)] = betsToGrade.compactMap { bet in
+            guard let grade = effectiveGrade(for: bet) else { return nil }
+            return (bet, grade)
         }
 
-        gradeSummary = GradeSummary(wins: wins, losses: losses, pushes: pushes)
+        Task {
+            var wins = 0
+            var losses = 0
+            var pushes = 0
 
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            showingSuccess = true
+            for (bet, grade) in betsAndGrades {
+                do {
+                    try await GradingService.gradeBet(bet, result: grade)
+
+                    switch grade {
+                    case .win: wins += 1
+                    case .loss: losses += 1
+                    case .push: pushes += 1
+                    }
+                } catch {
+                    print("Failed to grade bet \(bet.id): \(error)")
+                }
+            }
+
+            gradeSummary = GradeSummary(wins: wins, losses: losses, pushes: pushes)
+
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                showingSuccess = true
+            }
         }
     }
 }

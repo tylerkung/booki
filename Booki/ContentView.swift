@@ -28,12 +28,23 @@ struct ContentView: View {
     @AppStorage("agingThreshold") private var agingThreshold: Int = 7
 
     @Query private var players: [Player]
+    @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
 
     // MARK: - Environment Objects
 
     @EnvironmentObject private var networkMonitor: NetworkMonitor
     @EnvironmentObject private var syncService: SyncService
+
+    init() {
+        // Brand-teal badge with dark text in Space Grotesk
+        let badgeBg = UIColor(Theme.accent)
+        let badgeFg = UIColor(Theme.background)
+        let badgeFont = UIFont(name: "SpaceGrotesk-Bold", size: 11) ?? .boldSystemFont(ofSize: 11)
+        let attrs: [NSAttributedString.Key: Any] = [.font: badgeFont, .foregroundColor: badgeFg]
+        UITabBarItem.appearance().badgeColor = badgeBg
+        UITabBarItem.appearance().setBadgeTextAttributes(attrs, for: .normal)
+    }
 
     // MARK: - Conflict Alert State
 
@@ -45,6 +56,11 @@ struct ContentView: View {
 
     /// Navigation to view the conflicting record
     @State private var navigateToConflictRecord: Bool = false
+
+    /// Count of open (non-terminal) bets for Picks tab badge
+    private var openBetsCount: Int {
+        bets.filter { [.pending, .accepted, .readyToGrade, .graded].contains($0.status) }.count
+    }
 
     /// Count of flagged players based on alert thresholds (for badge)
     private var flaggedPlayersCount: Int {
@@ -153,6 +169,7 @@ struct ContentView: View {
                 .tabItem {
                     Label("Picks", systemImage: "list.bullet.rectangle")
                 }
+                .badge(openBetsCount > 9 ? "9+" : (openBetsCount > 0 ? "\(openBetsCount)" : nil))
 
             PlayersListView()
                 .tabItem {
@@ -271,7 +288,7 @@ struct PlayerSettingsContent: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: [Player.self, Bet.self, LedgerEntry.self, Event.self], inMemory: true)
+        .modelContainer(for: [Player.self, Bet.self, LedgerEntry.self, Event.self, AcceptancePolicy.self], inMemory: true)
         .environmentObject(NetworkMonitor())
         .environmentObject(SyncService())
 }

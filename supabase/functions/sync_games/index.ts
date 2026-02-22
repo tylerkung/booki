@@ -145,7 +145,7 @@ async function fetchOddsFromApi(
   const url = new URL(`https://api.the-odds-api.com/v4/sports/${sportKey}/odds/`);
   url.searchParams.set('apiKey', apiKey);
   url.searchParams.set('regions', 'us');
-  url.searchParams.set('markets', 'h2h,spreads,totals,alternate_spreads,alternate_totals');
+  url.searchParams.set('markets', 'h2h,spreads,totals');
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());
@@ -417,17 +417,29 @@ Deno.serve(async (req) => {
     // Similar to auto_refresh_games which also has no auth requirement
     const client = createServiceClient();
 
-    // Idempotency check
+    // Parse request body for force flag
+    let force = false;
+    try {
+      const body = await req.json();
+      force = body?.force === true;
+    } catch {
+      // No body or invalid JSON — that's fine
+    }
+
+    // Idempotency check (skip if force=true)
     const idempotencyKey = generateIdempotencyKey();
     const operation = 'sync_games';
 
-    // Check if odds sync already ran this window (idempotency)
-    // But still allow score fetching to run
-    const cachedResponse = await checkIdempotency(client, idempotencyKey, operation);
-    const skipOddsSync = !!cachedResponse;
+    let skipOddsSync = false;
+    if (!force) {
+      const cachedResponse = await checkIdempotency(client, idempotencyKey, operation);
+      skipOddsSync = !!cachedResponse;
+    }
 
     if (skipOddsSync) {
       console.log(`Idempotency key ${idempotencyKey} exists, skipping odds sync but will still fetch scores`);
+    } else if (force) {
+      console.log('Force mode: bypassing idempotency check');
     }
 
     // Check for ODDS_API_KEY

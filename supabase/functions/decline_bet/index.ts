@@ -3,30 +3,10 @@ import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabas
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 
-interface GradeBetRequest {
+interface DeclineBetRequest {
   bet_id: string;
-  outcome: 'win' | 'loss' | 'push' | 'void';
   idempotency_key: string;
 }
-
-interface BetRecord {
-  id: string;
-  bookie_id: string;
-  player_id: string;
-  event_id: string;
-  ticket_id: string;
-  market: string;
-  side: string;
-  odds: number;
-  stake: number;
-  status: string;
-  grade_result: string | null;
-  accepted_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-const VALID_OUTCOMES = ['win', 'loss', 'push', 'void'];
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -47,26 +27,12 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const body: GradeBetRequest = await req.json();
+    const body: DeclineBetRequest = await req.json();
 
     // Validate required fields
     if (!body.bet_id) {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing required field: bet_id' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!body.outcome) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Missing required field: outcome' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!VALID_OUTCOMES.includes(body.outcome)) {
-      return new Response(
-        JSON.stringify({ success: false, error: `Invalid outcome. Must be one of: ${VALID_OUTCOMES.join(', ')}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -81,7 +47,7 @@ Deno.serve(async (req) => {
     const client = createServiceClient();
 
     // Check idempotency - if key exists, return cached response
-    const cachedResponse = await checkIdempotency(client, body.idempotency_key, 'grade_bet');
+    const cachedResponse = await checkIdempotency(client, body.idempotency_key, 'decline_bet');
     if (cachedResponse) {
       return new Response(
         cachedResponse,
@@ -92,7 +58,7 @@ Deno.serve(async (req) => {
     // Fetch the bet
     const { data: bet, error: betError } = await client
       .from('bets')
-      .select('id, bookie_id, player_id, event_id, ticket_id, market, side, odds, stake, status, grade_result, accepted_at, created_at, updated_at')
+      .select('id, bookie_id, player_id, event_id, ticket_id, market, side, odds, stake, status, created_at, updated_at')
       .eq('id', body.bet_id)
       .single();
 
@@ -125,15 +91,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate: bet status must be 'accepted' (not already graded or settled)
-    if (bet.status !== 'accepted') {
+    // Validate: bet status must be 'pending'
+    if (bet.status !== 'pending') {
       const statusErrors: Record<string, string> = {
-        'pending': 'Bet must be accepted before grading',
-        'declined': 'Bet has been declined and cannot be graded',
+        'accepted': 'Bet has already been accepted',
+        'declined': 'Bet has already been declined',
         'graded': 'Bet has already been graded',
         'settled': 'Bet has already been settled',
       };
-      const errorMessage = statusErrors[bet.status] || `Bet cannot be graded (current status: ${bet.status})`;
+      const errorMessage = statusErrors[bet.status] || `Bet cannot be declined (current status: ${bet.status})`;
 
       return new Response(
         JSON.stringify({ success: false, error: errorMessage }),
@@ -141,15 +107,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Update bet with outcome (stored in grade_result column)
-    // Void is a terminal status (not graded) - no grade_result, just status change
+    // Update bet status to 'declined'
     const now = new Date().toISOString();
-    const isVoid = body.outcome === 'void';
     const { data: updatedBet, error: updateError } = await client
       .from('bets')
       .update({
-        grade_result: isVoid ? null : body.outcome,
-        status: isVoid ? 'void' : 'graded',
+        status: 'declined',
         updated_at: now,
       })
       .eq('id', body.bet_id)
@@ -159,34 +122,34 @@ Deno.serve(async (req) => {
     if (updateError || !updatedBet) {
       console.error('Error updating bet:', updateError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to grade bet' }),
+        JSON.stringify({ success: false, error: 'Failed to decline bet' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Emit audit event for bet grading
+    // Emit audit event for bet decline
     await emitAuditEvent(client, {
       bookieId: bet.bookie_id,
       actorUserId: userId,
       entityType: 'bet',
       entityId: bet.id,
-      actionType: 'grade',
-      previousState: { status: 'accepted', grade_result: null },
-      newState: { status: isVoid ? 'void' : 'graded', grade_result: isVoid ? null : body.outcome },
+      actionType: 'decline',
+      previousState: { status: 'pending' },
+      newState: { status: 'declined' },
     });
 
     // Prepare success response
     const response = JSON.stringify({ success: true, bet: updatedBet });
 
     // Store idempotency key with response
-    await storeIdempotency(client, body.idempotency_key, 'grade_bet', userId, response);
+    await storeIdempotency(client, body.idempotency_key, 'decline_bet', userId, response);
 
     return new Response(
       response,
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error in grade_bet:', error);
+    console.error('Error in decline_bet:', error);
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

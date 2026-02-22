@@ -65,8 +65,13 @@ struct GamesView: View {
 
     // MARK: - Computed Properties
 
+    /// 14-day horizon — hide events further out than this
+    private var upcomingHorizon: Date {
+        Date().addingTimeInterval(14 * 24 * 3600)
+    }
+
     /// US-004: Bettable events - only shows events the player can actually bet on
-    /// Filters to: status is scheduled, not locked, and start time is in the future
+    /// Filters to: status is scheduled, not locked, start time in the future, within 14 days
     private var bettableEvents: [Event] {
         let now = Date()
         return events.filter { event in
@@ -74,6 +79,8 @@ struct GamesView: View {
             guard event.status == .scheduled else { return false }
             // Only show events that haven't started yet
             guard event.startTime > now else { return false }
+            // Hide events more than 14 days out
+            guard event.startTime <= upcomingHorizon else { return false }
             // Only show events that aren't locked for betting
             guard !event.isLocked(offsetMinutes: lockOffsetMinutes) else { return false }
             return true

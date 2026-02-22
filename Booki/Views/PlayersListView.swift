@@ -984,7 +984,7 @@ struct PlayerBetRowView: View {
     let event: Event?
 
     var body: some View {
-        PickCardCompact(presenter: PickPresenter(bet: bet, event: event))
+        PickCardCompact(presenter: PickPresenter(bet: bet, event: event), showChevron: false)
     }
 }
 

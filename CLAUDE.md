@@ -158,7 +158,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 
 ## Current State (February 21, 2026)
 
-- **Branch**: `ralph/onboarding-isolation-polish`
+- **Branch**: `main`
 - **Phases complete**: 1-16 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
 - **Edge Functions**: 11 functions for server-authoritative operations (including `submit_parlay`, `sync_games`, `claim_player`)
@@ -171,3 +171,4 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Compliance**: All user-facing strings use approved vocabulary; disclaimers on auth and pick entry screens
 - **TicketDetailView**: 4-card layout (Hero, Financials, Odds Breakdown, Activity) with odds format preference support
 - **AccountView**: Condensed — Profile+Preferences merged, Performance card (Record + stats + credit bar), no My Picks (Track tab)
+- **Bookie Picks tab**: Badge showing open bet count (1-9+) in brand teal, Open/Past filter with player chips, card-based BetDetailView matching TicketDetailView

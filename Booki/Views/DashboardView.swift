@@ -407,22 +407,24 @@ struct DashboardView: View {
     }
 
     private func acceptBet(_ bet: Bet) {
-        let result = BetService.acceptBet(bet)
-        switch result {
-        case .success:
-            viewModel.refresh(bets: bets, events: events)
-        case .failure:
-            break
+        Task {
+            do {
+                try await BetService.acceptBet(bet)
+                viewModel.refresh(bets: bets, events: events)
+            } catch {
+                print("Failed to accept bet: \(error)")
+            }
         }
     }
 
     private func declineBet(_ bet: Bet) {
-        let result = BetService.declineBet(bet)
-        switch result {
-        case .success:
-            viewModel.refresh(bets: bets, events: events)
-        case .failure:
-            break
+        Task {
+            do {
+                try await BetService.declineBet(bet)
+                viewModel.refresh(bets: bets, events: events)
+            } catch {
+                print("Failed to decline bet: \(error)")
+            }
         }
     }
 

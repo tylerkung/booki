@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// Errors that can occur during grading operations
 enum GradingServiceError: Error, Equatable {
@@ -11,187 +12,247 @@ enum GradingServiceError: Error, Equatable {
     case parlayRequiresGroupSettlement
     case parlayNotFullyGraded(gradedCount: Int, totalCount: Int)
     case parlayLegsNotFound
+    case edgeFunctionError(String)
+
+    static func == (lhs: GradingServiceError, rhs: GradingServiceError) -> Bool {
+        switch (lhs, rhs) {
+        case (.invalidBetStatus(let c1, let e1), .invalidBetStatus(let c2, let e2)):
+            return c1 == c2 && e1 == e2
+        case (.betNotGraded, .betNotGraded): return true
+        case (.playerRequired, .playerRequired): return true
+        case (.alreadySettled, .alreadySettled): return true
+        case (.notSettled, .notSettled): return true
+        case (.noSettlementEntryFound, .noSettlementEntryFound): return true
+        case (.parlayRequiresGroupSettlement, .parlayRequiresGroupSettlement): return true
+        case (.parlayNotFullyGraded(let g1, let t1), .parlayNotFullyGraded(let g2, let t2)):
+            return g1 == g2 && t1 == t2
+        case (.parlayLegsNotFound, .parlayLegsNotFound): return true
+        case (.edgeFunctionError(let m1), .edgeFunctionError(let m2)):
+            return m1 == m2
+        default: return false
+        }
+    }
 }
 
-/// Service for grading and settling bets
+// MARK: - Edge Function Request/Response Types
+
+/// Request body for grade_bet Edge Function
+private struct GradeBetRequest: Encodable {
+    let bet_id: String
+    let outcome: String
+    let idempotency_key: String
+}
+
+/// Request body for settle_bet Edge Function
+private struct SettleBetRequest: Encodable {
+    let bet_id: String
+    let idempotency_key: String
+}
+
+/// Generic success response from grade_bet / settle_bet
+private struct EdgeFunctionBetResponse: Decodable {
+    let success: Bool
+    let bet: EdgeBetData?
+    let error: String?
+}
+
+/// Response from settle_bet that includes ledger_entry
+private struct SettleBetResponse: Decodable {
+    let success: Bool
+    let bet: EdgeBetData?
+    let ledgerEntry: EdgeLedgerData?
+    let error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case bet
+        case ledgerEntry = "ledger_entry"
+        case error
+    }
+}
+
+/// Bet data returned from edge functions
+private struct EdgeBetData: Decodable {
+    let id: String
+    let status: String
+    let gradeResult: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case status
+        case gradeResult = "grade_result"
+    }
+}
+
+/// Ledger entry data returned from settle_bet
+private struct EdgeLedgerData: Decodable {
+    let id: String
+    let amount: Double
+    let type: String
+    let description: String
+    let playerId: String
+    let betId: String
+    let bookieId: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case amount
+        case type
+        case description
+        case playerId = "player_id"
+        case betId = "bet_id"
+        case bookieId = "bookie_id"
+    }
+}
+
+/// Service for grading and settling bets via server-authoritative edge functions
 enum GradingService {
 
     // MARK: - Grading
 
-    /// Grades a bet, transitioning from accepted to graded status
+    /// Grades a bet via the grade_bet edge function, then updates local model
     /// - Parameters:
     ///   - bet: The bet to grade
     ///   - result: The outcome of the bet (win, loss, or push)
-    /// - Returns: Result with success or GradingServiceError
-    static func gradeBet(_ bet: Bet, result: GradeResult) -> Result<Void, GradingServiceError> {
-        guard bet.status == .accepted else {
-            return .failure(.invalidBetStatus(current: bet.status, expected: .accepted))
+    static func gradeBet(_ bet: Bet, result: GradeResult) async throws {
+        let request = GradeBetRequest(
+            bet_id: bet.id.uuidString.lowercased(),
+            outcome: result.rawValue,
+            idempotency_key: "grade_\(bet.id.uuidString.lowercased())_\(Int(Date().timeIntervalSince1970))"
+        )
+
+        let response: EdgeFunctionBetResponse = try await EdgeFunctionService.shared.callFunction(
+            name: "grade_bet",
+            body: request
+        )
+
+        guard response.success else {
+            throw GradingServiceError.edgeFunctionError(response.error ?? "Unknown error")
         }
 
-        bet.status = .graded
-        bet.gradeResult = result
-        return .success(())
+        // Server accepted — update local model
+        await MainActor.run {
+            bet.status = .graded
+            bet.gradeResult = result
+        }
     }
 
-    /// Voids a bet, transitioning from accepted to void status
-    /// Voided bets are excluded from parlay calculations based on policy
+    /// Voids a bet via the grade_bet edge function with outcome='void'
     /// - Parameter bet: The bet to void
-    /// - Returns: Result with success or GradingServiceError
-    static func voidBet(_ bet: Bet) -> Result<Void, GradingServiceError> {
-        guard bet.status == .accepted else {
-            return .failure(.invalidBetStatus(current: bet.status, expected: .accepted))
+    static func voidBet(_ bet: Bet) async throws {
+        let request = GradeBetRequest(
+            bet_id: bet.id.uuidString.lowercased(),
+            outcome: "void",
+            idempotency_key: "void_\(bet.id.uuidString.lowercased())_\(Int(Date().timeIntervalSince1970))"
+        )
+
+        let response: EdgeFunctionBetResponse = try await EdgeFunctionService.shared.callFunction(
+            name: "grade_bet",
+            body: request
+        )
+
+        guard response.success else {
+            throw GradingServiceError.edgeFunctionError(response.error ?? "Unknown error")
         }
 
-        bet.status = .void
-        // Note: gradeResult remains nil for voided bets - void is a status, not a grade
-        return .success(())
+        // Server accepted — update local model
+        await MainActor.run {
+            bet.status = .void
+        }
     }
 
     // MARK: - Settlement
 
-    /// Settles a graded bet by creating the appropriate ledger entry
-    /// - Parameter bet: The bet to settle (must be graded with a result)
-    /// - Returns: Result with the created LedgerEntry on success, or GradingServiceError on failure
-    /// - Note: For parlay bets, use `settleParlayBets` instead which handles all legs together
-    static func settleBet(_ bet: Bet) -> Result<LedgerEntry, GradingServiceError> {
-        // For parlay bets, require group settlement
-        if bet.isParlay {
-            return .failure(.parlayRequiresGroupSettlement)
-        }
-
-        guard bet.status == .graded else {
-            if bet.status == .settled {
-                return .failure(.alreadySettled)
-            }
-            return .failure(.invalidBetStatus(current: bet.status, expected: .graded))
-        }
-
-        guard let gradeResult = bet.gradeResult else {
-            return .failure(.betNotGraded)
-        }
-
-        guard let player = bet.player else {
-            return .failure(.playerRequired)
-        }
-
-        // Calculate settlement amount based on outcome
-        let (amount, description) = calculateSettlement(bet: bet, result: gradeResult)
-
-        // Create ledger entry
-        let ledgerEntry = LedgerEntry(
-            amount: amount,
-            type: .settlement,
-            entryDescription: description,
-            player: player,
-            bet: bet
-        )
-
-        // Update bet status to settled
-        bet.status = .settled
-
-        return .success(ledgerEntry)
-    }
-
-    /// Settles a parlay bet by creating a single ledger entry for the combined outcome
+    /// Settles a graded bet via the settle_bet edge function
     /// - Parameters:
-    ///   - parlayBets: All bets (legs) in the parlay (must share the same ticketId)
-    ///   - policy: The parlay push/void policy to apply
-    /// - Returns: Result with the created LedgerEntry on success, or GradingServiceError on failure
-    static func settleParlayBets(_ parlayBets: [Bet], policy: ParlayPushVoidPolicy) -> Result<LedgerEntry, GradingServiceError> {
-        guard !parlayBets.isEmpty else {
-            return .failure(.parlayLegsNotFound)
-        }
-
-        guard let firstBet = parlayBets.first,
-              let player = firstBet.player else {
-            return .failure(.playerRequired)
-        }
-
-        let totalLegs = parlayBets.count
-
-        // Check if already settled
-        if parlayBets.allSatisfy({ $0.status == .settled }) {
-            return .failure(.alreadySettled)
-        }
-
-        // Check if all legs are graded (gradeResult != nil or status == .void)
-        let ungradedLegs = parlayBets.filter { bet in
-            bet.gradeResult == nil && bet.status != .void
-        }
-
-        if !ungradedLegs.isEmpty {
-            let gradedCount = totalLegs - ungradedLegs.count
-            return .failure(.parlayNotFullyGraded(gradedCount: gradedCount, totalCount: totalLegs))
-        }
-
-        // Calculate parlay outcome using ParlayGradingService
-        let outcome = ParlayGradingService.calculateParlayOutcome(bets: parlayBets, policy: policy)
-
-        // Calculate settlement amount and description based on outcome
-        let (amount, description) = calculateParlaySettlement(
-            stake: firstBet.stake,
-            outcome: outcome,
-            totalLegs: totalLegs
+    ///   - bet: The bet to settle (must be graded with a result)
+    ///   - context: The model context to insert the ledger entry into
+    static func settleBet(_ bet: Bet, in context: ModelContext) async throws {
+        let request = SettleBetRequest(
+            bet_id: bet.id.uuidString.lowercased(),
+            idempotency_key: "settle_\(bet.id.uuidString.lowercased())_\(Int(Date().timeIntervalSince1970))"
         )
 
-        // Create single ledger entry for the parlay
-        // Link to first bet as representative (for display/tracking purposes)
-        let ledgerEntry = LedgerEntry(
-            amount: amount,
-            type: .settlement,
-            entryDescription: description,
-            player: player,
-            bet: firstBet
+        let response: SettleBetResponse = try await EdgeFunctionService.shared.callFunction(
+            name: "settle_bet",
+            body: request
         )
 
-        // Mark all parlay legs as settled
-        for bet in parlayBets {
+        guard response.success else {
+            throw GradingServiceError.edgeFunctionError(response.error ?? "Unknown error")
+        }
+
+        // Server accepted — update local model
+        await MainActor.run {
             bet.status = .settled
-        }
 
-        return .success(ledgerEntry)
+            // Create local LedgerEntry from response data
+            if let ledgerData = response.ledgerEntry, let player = bet.player {
+                let ledgerEntry = LedgerEntry(
+                    amount: Decimal(ledgerData.amount),
+                    type: .settlement,
+                    entryDescription: ledgerData.description,
+                    player: player,
+                    bet: bet
+                )
+                context.insert(ledgerEntry)
+            }
+        }
     }
 
-    // MARK: - Reversal
-
-    /// Reverses a settled bet by creating a reversal ledger entry
-    /// The bet status changes back to 'graded' so it can be re-settled if needed
+    /// Settles parlay bets by calling settle_bet for each leg sequentially
     /// - Parameters:
-    ///   - bet: The bet to reverse (must be settled)
-    ///   - ledgerEntries: All ledger entries to find the original settlement
-    /// - Returns: Result with the created reversal LedgerEntry on success, or GradingServiceError on failure
-    static func reverseBet(_ bet: Bet, ledgerEntries: [LedgerEntry]) -> Result<LedgerEntry, GradingServiceError> {
-        guard bet.status == .settled else {
-            return .failure(.notSettled)
+    ///   - parlayBets: All bets (legs) in the parlay
+    ///   - policy: The parlay push/void policy to apply
+    ///   - context: The model context to insert the ledger entry into
+    static func settleParlayBets(_ parlayBets: [Bet], policy: ParlayPushVoidPolicy, in context: ModelContext) async throws {
+        guard !parlayBets.isEmpty else {
+            throw GradingServiceError.parlayLegsNotFound
         }
 
-        guard let player = bet.player else {
-            return .failure(.playerRequired)
+        guard let firstBet = parlayBets.first, let player = firstBet.player else {
+            throw GradingServiceError.playerRequired
         }
 
-        // Find the original settlement entry for this bet
-        guard let settlementEntry = ledgerEntries.first(where: { entry in
-            entry.bet?.id == bet.id && entry.type == .settlement
-        }) else {
-            return .failure(.noSettlementEntryFound)
+        // Settle each leg via edge function; the first leg creates the ledger entry
+        var ledgerEntryCreated = false
+        for bet in parlayBets {
+            // Skip already-settled legs
+            guard bet.status != .settled else { continue }
+            // Skip void legs (no settlement needed)
+            guard bet.status != .void else { continue }
+
+            let request = SettleBetRequest(
+                bet_id: bet.id.uuidString.lowercased(),
+                idempotency_key: "settle_\(bet.id.uuidString.lowercased())_\(Int(Date().timeIntervalSince1970))"
+            )
+
+            let response: SettleBetResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "settle_bet",
+                body: request
+            )
+
+            guard response.success else {
+                throw GradingServiceError.edgeFunctionError(response.error ?? "Unknown error")
+            }
+
+            await MainActor.run {
+                bet.status = .settled
+
+                // Create local LedgerEntry from first leg's response only
+                if !ledgerEntryCreated, let ledgerData = response.ledgerEntry {
+                    let ledgerEntry = LedgerEntry(
+                        amount: Decimal(ledgerData.amount),
+                        type: .settlement,
+                        entryDescription: ledgerData.description,
+                        player: player,
+                        bet: bet
+                    )
+                    context.insert(ledgerEntry)
+                    ledgerEntryCreated = true
+                }
+            }
         }
-
-        // Create reversal entry that negates the original settlement
-        let reversalAmount = -settlementEntry.amount
-        let description = "Reversal of: \(settlementEntry.entryDescription)"
-
-        let reversalEntry = LedgerEntry(
-            amount: reversalAmount,
-            type: .reversal,
-            entryDescription: description,
-            player: player,
-            bet: bet
-        )
-
-        // Transition bet back to graded status (can be re-settled)
-        bet.status = .graded
-
-        return .success(reversalEntry)
     }
 
     // MARK: - Private Helpers

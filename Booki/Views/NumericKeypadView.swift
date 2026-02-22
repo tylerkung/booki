@@ -75,6 +75,7 @@ struct NumericKeypadView: View {
             // If empty, start with "0."
             if text.isEmpty {
                 text = "0."
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 onValueChanged?(text)
                 return
             }
@@ -92,12 +93,14 @@ struct NumericKeypadView: View {
         } else {
             text.append(digit)
         }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         onValueChanged?(text)
     }
 
     private func deleteLast() {
         guard !text.isEmpty else { return }
         text.removeLast()
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         onValueChanged?(text)
     }
 }

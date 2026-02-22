@@ -187,6 +187,28 @@ struct BetSlipSheet: View {
             .onChange(of: betSlipManager.betMode) { _, _ in
                 activeFieldId = nil
             }
+            // Pad decimal places when switching away from a field
+            .onChange(of: activeFieldId) { oldFieldId, _ in
+                guard let oldId = oldFieldId else { return }
+                if oldId == "parlay_stake" {
+                    stakeText = Self.padDecimalPlaces(stakeText)
+                } else if oldId == "parlay_towin" {
+                    toWinText = Self.padDecimalPlaces(toWinText)
+                } else if oldId.hasSuffix("_towin") {
+                    let itemKey = String(oldId.dropLast(6))
+                    if let text = itemToWinTexts[itemKey] {
+                        itemToWinTexts[itemKey] = Self.padDecimalPlaces(text)
+                    }
+                } else {
+                    if let text = itemStakeTexts[oldId] {
+                        itemStakeTexts[oldId] = Self.padDecimalPlaces(text)
+                    }
+                    // Also pad the corresponding to-win text
+                    if let toWin = itemToWinTexts[oldId] {
+                        itemToWinTexts[oldId] = Self.padDecimalPlaces(toWin)
+                    }
+                }
+            }
         }
     }
 
@@ -729,7 +751,8 @@ struct BetSlipSheet: View {
                     HStack(spacing: 4) {
                         Text("$")
                             .font(Theme.font(size: 18, weight: .bold))
-                            .foregroundStyle(Theme.gold)
+                            .foregroundStyle(isWagerActive ? Theme.gold : (stakeText.isEmpty ? Theme.textMuted : Theme.gold))
+                            .animation(.easeInOut(duration: 0.15), value: isWagerActive)
 
                         Text(stakeText.isEmpty ? "0" : stakeText)
                             .font(Theme.font(size: 22, weight: .bold))
@@ -1356,6 +1379,9 @@ struct BetSlipSheet: View {
                     stakeText = ""
                     activeFieldId = nil
 
+                    // Haptic feedback for successful submission
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+
                     // Show success animation
                     withAnimation(.easeInOut(duration: 0.3)) {
                         submissionComplete = true
@@ -1363,9 +1389,11 @@ struct BetSlipSheet: View {
                 }
 
                 if !errors.isEmpty && successCount == 0 {
+                    UINotificationFeedbackGenerator().notificationOccurred(.error)
                     submissionError = errors.joined(separator: "\n")
                 } else if !errors.isEmpty {
                     // Partial success - some bets failed
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
                     submissionError = "\(successCount) picks submitted. Some failed:\n" + errors.joined(separator: "\n")
                 }
             }
@@ -1540,13 +1568,25 @@ struct BetSlipSheet: View {
         if value == Decimal(intPart) {
             return "\(intPart)"
         } else {
-            // Has decimal component — format with up to 2 decimal places
+            // Has decimal component — always show 2 decimal places
             let formatter = NumberFormatter()
-            formatter.minimumFractionDigits = 0
+            formatter.minimumFractionDigits = 2
             formatter.maximumFractionDigits = 2
             formatter.groupingSeparator = ""
             return formatter.string(from: number) ?? "\(value)"
         }
+    }
+
+    /// Pad a raw text string to 2 decimal places if it contains a decimal point
+    /// e.g. "12.5" → "12.50", "12" → "12", "0." → "0.00"
+    private static func padDecimalPlaces(_ text: String) -> String {
+        guard !text.isEmpty else { return text }
+        guard text.contains(".") else { return text }
+        let parts = text.split(separator: ".", omittingEmptySubsequences: false)
+        let intPart = parts[0]
+        let fracPart = parts.count > 1 ? String(parts[1]) : ""
+        let padded = fracPart.padding(toLength: 2, withPad: "0", startingAt: 0)
+        return "\(intPart).\(padded)"
     }
 }
 
@@ -1714,7 +1754,7 @@ struct PremiumBetSlipItemCard: View {
                             HStack(spacing: 4) {
                                 Text("$")
                                     .font(Theme.font(size: 14, weight: .semibold))
-                                    .foregroundStyle(Theme.gold)
+                                    .foregroundStyle(isWagerActive ? Theme.gold : (stakeText.isEmpty ? Theme.textMuted : Theme.gold))
 
                                 Text(stakeText.isEmpty ? "0" : stakeText)
                                     .font(Theme.font(size: 16, weight: .bold))

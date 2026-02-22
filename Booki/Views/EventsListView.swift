@@ -32,14 +32,20 @@ struct EventsListView: View {
         Date().addingTimeInterval(-48 * 3600)
     }
 
-    /// Upcoming: non-final/non-canceled + finals from last 48h. Sorted startTime ascending.
+    /// 14-day horizon — hide events further out than this
+    private var upcomingHorizon: Date {
+        Date().addingTimeInterval(14 * 24 * 3600)
+    }
+
+    /// Upcoming: non-final/non-canceled + finals from last 48h, within 14-day horizon. Sorted startTime ascending.
     private var upcomingEvents: [Event] {
         events.filter { event in
             if event.status == .canceled { return false }
             if event.status == .final {
                 return event.startTime >= recentFinalsCutoff
             }
-            return true
+            // Hide events more than 14 days out
+            return event.startTime <= upcomingHorizon
         }
         .sorted { $0.startTime < $1.startTime }
     }

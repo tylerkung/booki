@@ -496,40 +496,96 @@ enum BetService {
 
     // MARK: - Bet Status Transitions
 
-    /// Accepts a pending bet, transitioning it to accepted status
+    /// Accepts a pending bet via the accept_bet edge function, then updates local model
     /// - Parameter bet: The bet to accept
-    /// - Returns: Result with success or BetServiceError
-    static func acceptBet(_ bet: Bet) -> Result<Void, BetServiceError> {
-        guard bet.status == .pending else {
-            return .failure(.invalidBetStatus(current: bet.status, expected: .pending))
+    /// - Throws: On network or server error
+    static func acceptBet(_ bet: Bet) async throws {
+        guard bet.status == .pending else { return }
+
+        struct AcceptRequest: Codable {
+            let bet_id: String
+            let idempotency_key: String
+        }
+        struct AcceptResponse: Codable {
+            let success: Bool
         }
 
-        bet.status = .accepted
-        return .success(())
+        let request = AcceptRequest(
+            bet_id: bet.id.uuidString.lowercased(),
+            idempotency_key: "accept_\(bet.id.uuidString.lowercased())_\(Int(Date().timeIntervalSince1970))"
+        )
+
+        let _: AcceptResponse = try await EdgeFunctionService.shared.callFunction(
+            name: "accept_bet",
+            body: request
+        )
+
+        // Server accepted — update local model
+        await MainActor.run {
+            bet.status = .accepted
+        }
     }
 
-    /// Declines a pending bet, transitioning it to declined status
+    /// Declines a pending bet via the decline_bet edge function, then updates local model
     /// - Parameter bet: The bet to decline
-    /// - Returns: Result with success or BetServiceError
-    static func declineBet(_ bet: Bet) -> Result<Void, BetServiceError> {
-        guard bet.status == .pending else {
-            return .failure(.invalidBetStatus(current: bet.status, expected: .pending))
+    /// - Throws: On network or server error
+    static func declineBet(_ bet: Bet) async throws {
+        guard bet.status == .pending else { return }
+
+        struct DeclineRequest: Codable {
+            let bet_id: String
+            let idempotency_key: String
+        }
+        struct DeclineResponse: Codable {
+            let success: Bool
         }
 
-        bet.status = .declined
-        return .success(())
+        let request = DeclineRequest(
+            bet_id: bet.id.uuidString.lowercased(),
+            idempotency_key: "decline_\(bet.id.uuidString.lowercased())_\(Int(Date().timeIntervalSince1970))"
+        )
+
+        let _: DeclineResponse = try await EdgeFunctionService.shared.callFunction(
+            name: "decline_bet",
+            body: request
+        )
+
+        // Server accepted — update local model
+        await MainActor.run {
+            bet.status = .declined
+        }
     }
 
-    /// Voids an accepted bet, transitioning it to void status
+    /// Voids an accepted bet via the grade_bet edge function with outcome='void'
     /// - Parameter bet: The bet to void
-    /// - Returns: Result with success or BetServiceError
-    static func voidBet(_ bet: Bet) -> Result<Void, BetServiceError> {
-        guard bet.status == .accepted else {
-            return .failure(.invalidBetStatus(current: bet.status, expected: .accepted))
+    /// - Throws: On network or server error
+    static func voidBet(_ bet: Bet) async throws {
+        guard bet.status == .accepted else { return }
+
+        struct VoidRequest: Codable {
+            let bet_id: String
+            let outcome: String
+            let idempotency_key: String
+        }
+        struct VoidResponse: Codable {
+            let success: Bool
         }
 
-        bet.status = .void
-        return .success(())
+        let request = VoidRequest(
+            bet_id: bet.id.uuidString.lowercased(),
+            outcome: "void",
+            idempotency_key: "void_\(bet.id.uuidString.lowercased())_\(Int(Date().timeIntervalSince1970))"
+        )
+
+        let _: VoidResponse = try await EdgeFunctionService.shared.callFunction(
+            name: "grade_bet",
+            body: request
+        )
+
+        // Server accepted — update local model
+        await MainActor.run {
+            bet.status = .void
+        }
     }
 
     // MARK: - Validation Helpers
@@ -579,22 +635,44 @@ enum BetService {
 
     // MARK: - Bulk Operations
 
-    /// Voids all pending or accepted bets for a specific event
+    /// Voids all pending or accepted bets for a specific event via edge functions
     /// Used when an event is canceled to void all outstanding bets
     /// - Parameters:
     ///   - eventId: The event ID to void bets for
     ///   - bets: All bets to filter from
     /// - Returns: Number of bets voided
     @discardableResult
-    static func voidBetsForEvent(eventId: String, bets: [Bet]) -> Int {
+    static func voidBetsForEvent(eventId: String, bets: [Bet]) async throws -> Int {
         var voidedCount = 0
+
+        struct VoidRequest: Codable {
+            let bet_id: String
+            let outcome: String
+            let idempotency_key: String
+        }
+        struct VoidResponse: Codable {
+            let success: Bool
+        }
 
         for bet in bets {
             // Only void bets for this event that are pending or accepted
             guard bet.eventId == eventId else { continue }
             guard bet.status == .pending || bet.status == .accepted else { continue }
 
-            bet.status = .void
+            let request = VoidRequest(
+                bet_id: bet.id.uuidString.lowercased(),
+                outcome: "void",
+                idempotency_key: "void_\(bet.id.uuidString.lowercased())_\(Int(Date().timeIntervalSince1970))"
+            )
+
+            let _: VoidResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "grade_bet",
+                body: request
+            )
+
+            await MainActor.run {
+                bet.status = .void
+            }
             voidedCount += 1
         }
 

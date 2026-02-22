@@ -370,6 +370,7 @@ class BetSlipManager: ObservableObject {
         guard !items.contains(where: { $0.asSelection == item.asSelection }) else { return }
         items.append(item)
         saveItems()
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         // US-003/US-005: If adding this item creates a conflict while in parlay mode, switch to singles
         if betMode == .parlay && hasConflictingSelections {
@@ -426,6 +427,7 @@ class BetSlipManager: ObservableObject {
         items.removeAll { $0.asSelection == selection }
         saveItems()
         saveItemStakes()
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     /// Remove item at index

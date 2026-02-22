@@ -368,6 +368,11 @@ final class SyncService: ObservableObject {
             try await downloadBookieForPlayer(bookieId: bookieId)
         }
 
+        // For bookie accounts, refresh settings from server to catch silent RLS failures
+        if authManager?.userRole == .bookie {
+            try await refreshBookieSettings(bookieId: bookieId)
+        }
+
         // Download in dependency order: players before bets/ledger entries
         let orderedTables: [SyncableTable] = [
             .players,
@@ -429,6 +434,8 @@ final class SyncService: ObservableObject {
             if let existing = try context.fetch(descriptor).first {
                 existing.name = record.name
                 existing.email = record.email ?? existing.email
+                existing.manualBetAcceptance = record.manualBetAcceptance ?? false
+                existing.manualBetGrading = record.manualBetGrading ?? false
             } else {
                 let bookie = Bookie(
                     id: record.id,
@@ -440,6 +447,28 @@ final class SyncService: ObservableObject {
                 context.insert(bookie)
             }
             try context.save()
+        }
+    }
+
+    /// Refresh bookie settings (manualBetAcceptance/Grading) from server
+    /// Ensures local SwiftData matches server state (catches silent RLS update failures)
+    private func refreshBookieSettings(bookieId: UUID) async throws {
+        guard let context = modelContext else { return }
+
+        do {
+            let record = try await BookieService.fetchCurrentBookie()
+
+            try await MainActor.run {
+                let bId = bookieId
+                let descriptor = FetchDescriptor<Bookie>(predicate: #Predicate { $0.id == bId })
+                if let existing = try context.fetch(descriptor).first {
+                    existing.manualBetAcceptance = record.manualBetAcceptance ?? false
+                    existing.manualBetGrading = record.manualBetGrading ?? false
+                    try context.save()
+                }
+            }
+        } catch {
+            print("DEBUG: Failed to refresh bookie settings: \(error)")
         }
     }
 

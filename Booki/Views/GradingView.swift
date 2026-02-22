@@ -301,113 +301,122 @@ struct GradingView: View {
     }
 
     private func gradeBet(_ bet: Bet, result: GradeResult) {
-        let gradeResult = GradingService.gradeBet(bet, result: result)
-        switch gradeResult {
-        case .success:
-            // Remove from selection if was selected
-            selectedBets.remove(bet.id)
-        case .failure(let error):
-            print("Failed to grade bet: \(error)")
+        Task {
+            do {
+                try await GradingService.gradeBet(bet, result: result)
+                selectedBets.remove(bet.id)
+            } catch {
+                print("Failed to grade bet: \(error)")
+            }
         }
     }
 
     private func voidBet(_ bet: Bet) {
-        let voidResult = GradingService.voidBet(bet)
-        switch voidResult {
-        case .success:
-            // Remove from selection if was selected
-            selectedBets.remove(bet.id)
-        case .failure(let error):
-            print("Failed to void bet: \(error)")
+        Task {
+            do {
+                try await GradingService.voidBet(bet)
+                selectedBets.remove(bet.id)
+            } catch {
+                print("Failed to void bet: \(error)")
+            }
         }
     }
 
     private func bulkGrade(_ result: GradeResult) {
-        // Grade all selected bets
-        for betId in selectedBets {
-            if let bet = readyToGradeBets.first(where: { $0.id == betId }) {
-                let _ = GradingService.gradeBet(bet, result: result)
-            }
+        let betsToGrade = selectedBets.compactMap { betId in
+            readyToGradeBets.first(where: { $0.id == betId })
         }
         selectedBets.removeAll()
         isMultiSelectMode = false
+        Task {
+            for bet in betsToGrade {
+                do {
+                    try await GradingService.gradeBet(bet, result: result)
+                } catch {
+                    print("Failed to grade bet \(bet.id): \(error)")
+                }
+            }
+        }
     }
 
     // MARK: - Bulk Settlement
 
     private func performBulkSettlement() {
-        var winCount = 0
-        var lossCount = 0
-        var pushCount = 0
-        var settledCount = 0
+        let betsToSettle = gradedBets
+        let allBetsSnapshot = bets
+        let policy = parlayPolicy
+        let context = modelContext
 
-        // Track which parlay ticketIds we've already settled
-        var settledParlayTicketIds: Set<UUID> = []
+        Task {
+            var winCount = 0
+            var lossCount = 0
+            var pushCount = 0
+            var settledCount = 0
 
-        for bet in gradedBets {
-            // Handle parlay bets as groups
-            if bet.isParlay {
-                // Skip if we've already settled this parlay's ticketId
-                if settledParlayTicketIds.contains(bet.ticketId) {
-                    continue
-                }
+            // Track which parlay ticketIds we've already settled
+            var settledParlayTicketIds: Set<UUID> = []
 
-                // Get all bets for this parlay (including already graded ones)
-                let parlayBets = bets.filter { $0.ticketId == bet.ticketId }
-
-                // Check if all legs are graded
-                let allGraded = parlayBets.allSatisfy { parlayBet in
-                    parlayBet.gradeResult != nil || parlayBet.status == .void
-                }
-
-                if allGraded {
-                    let result = GradingService.settleParlayBets(parlayBets, policy: parlayPolicy)
-                    switch result {
-                    case .success(let ledgerEntry):
-                        modelContext.insert(ledgerEntry)
-                        settledCount += 1 // Count as 1 parlay settled
-                        settledParlayTicketIds.insert(bet.ticketId)
-
-                        // Determine the outcome for counting
-                        let outcome = ParlayGradingService.calculateParlayOutcome(bets: parlayBets, policy: parlayPolicy)
-                        switch outcome {
-                        case .win: winCount += 1
-                        case .loss: lossCount += 1
-                        case .push: pushCount += 1
-                        case .pending, .partiallyGraded: break
-                        }
-                    case .failure(let error):
-                        print("Failed to settle parlay \(bet.ticketId): \(error)")
+            for bet in betsToSettle {
+                // Handle parlay bets as groups
+                if bet.isParlay {
+                    // Skip if we've already settled this parlay's ticketId
+                    if settledParlayTicketIds.contains(bet.ticketId) {
+                        continue
                     }
-                }
-            } else {
-                // Handle single bets
-                let result = GradingService.settleBet(bet)
-                switch result {
-                case .success(let ledgerEntry):
-                    modelContext.insert(ledgerEntry)
-                    settledCount += 1
 
-                    if let gradeResult = bet.gradeResult {
-                        switch gradeResult {
-                        case .win: winCount += 1
-                        case .loss: lossCount += 1
-                        case .push: pushCount += 1
+                    // Get all bets for this parlay (including already graded ones)
+                    let parlayBets = allBetsSnapshot.filter { $0.ticketId == bet.ticketId }
+
+                    // Check if all legs are graded
+                    let allGraded = parlayBets.allSatisfy { parlayBet in
+                        parlayBet.gradeResult != nil || parlayBet.status == .void
+                    }
+
+                    if allGraded {
+                        do {
+                            try await GradingService.settleParlayBets(parlayBets, policy: policy, in: context)
+                            settledCount += 1
+                            settledParlayTicketIds.insert(bet.ticketId)
+
+                            // Determine the outcome for counting
+                            let outcome = ParlayGradingService.calculateParlayOutcome(bets: parlayBets, policy: policy)
+                            switch outcome {
+                            case .win: winCount += 1
+                            case .loss: lossCount += 1
+                            case .push: pushCount += 1
+                            case .pending, .partiallyGraded: break
+                            }
+                        } catch {
+                            print("Failed to settle parlay \(bet.ticketId): \(error)")
                         }
                     }
-                case .failure(let error):
-                    print("Failed to settle bet \(bet.id): \(error)")
+                } else {
+                    // Handle single bets
+                    do {
+                        try await GradingService.settleBet(bet, in: context)
+                        settledCount += 1
+
+                        if let gradeResult = bet.gradeResult {
+                            switch gradeResult {
+                            case .win: winCount += 1
+                            case .loss: lossCount += 1
+                            case .push: pushCount += 1
+                            }
+                        }
+                    } catch {
+                        print("Failed to settle bet \(bet.id): \(error)")
+                    }
                 }
             }
-        }
 
-        settlementSummary = BulkSettlementSummary(
-            settledCount: settledCount,
-            winCount: winCount,
-            lossCount: lossCount,
-            pushCount: pushCount
-        )
-        showingBulkSettlementSuccess = true
+            settlementSummary = BulkSettlementSummary(
+                settledCount: settledCount,
+                winCount: winCount,
+                lossCount: lossCount,
+                pushCount: pushCount
+            )
+            showingBulkSettlementSuccess = true
+        }
     }
 
     private func formatCurrency(_ value: Decimal) -> String {

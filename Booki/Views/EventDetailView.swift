@@ -295,9 +295,14 @@ struct EventDetailView: View {
     }
 
     private func voidAllBetsForCanceledEvent() {
-        // Void all pending and accepted bets for this canceled event
-        let voidedCount = BetService.voidBetsForEvent(eventId: event.id.uuidString, bets: allBets)
-        print("Voided \(voidedCount) bets for canceled event: \(displayName)")
+        Task {
+            do {
+                let voidedCount = try await BetService.voidBetsForEvent(eventId: event.id.uuidString, bets: allBets)
+                print("Voided \(voidedCount) bets for canceled event: \(displayName)")
+            } catch {
+                print("Failed to void bets for canceled event: \(error)")
+            }
+        }
     }
 
     // MARK: - Market Actions
