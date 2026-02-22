@@ -102,3 +102,20 @@ Started: Sat Feb 21 17:41:31 PST 2026
   - Same migration pattern as US-008: class declaration, property wrappers, BookiApp injection, and all consumer views
   - `replace_all` in Edit tool efficiently handles files with single occurrences; PlayersListView had 2 occurrences handled in one call
 ---
+
+## 2026-02-21 - US-010
+- Migrated NetworkMonitor from ObservableObject to @Observable macro
+- Removed @Published from 3 properties (isConnected, connectionStatus, connectionType)
+- Removed unused `import Combine`
+- Updated BookiApp.swift: @StateObject → @State, .environmentObject() → .environment()
+- Updated 6 views across 4 files: @EnvironmentObject → @Environment(NetworkMonitor.self)
+  - NetworkMonitor.swift: OfflineBannerView, OfflineDisabledModifier, OfflineAlertModifier (+ preview)
+  - ContentView.swift (+ preview)
+  - PlayerMainView.swift (+ preview)
+  - AuthGateView.swift (+ 2 previews)
+- Files changed: NetworkMonitor.swift, BookiApp.swift, ContentView.swift, PlayerMainView.swift, AuthGateView.swift
+- **Learnings for future iterations:**
+  - NetworkMonitor.swift contains 3 sub-views (OfflineBannerView, OfflineDisabledModifier, OfflineAlertModifier) that also use @EnvironmentObject — don't forget these
+  - AuthGateView has 2 preview providers that both need updating
+  - NWPathMonitor callback with `Task { @MainActor }` dispatch works fine with @Observable — no changes needed to the monitoring logic
+---

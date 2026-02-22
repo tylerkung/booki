@@ -160,7 +160,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "NetworkMonitor uses NWPathMonitor with a callback that updates @Published properties. With @Observable, the callback still works — just remove @Published and the property mutations will be tracked automatically. Check that the NWPathMonitor callback dispatches to MainActor correctly."
     },
     {
