@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Supabase
 
 /// Represents the user's role in the application
@@ -23,42 +24,43 @@ private struct PlayerAuthRecord: Codable {
 /// Centralized auth state manager that tracks login status and current user
 /// Provides a single source of truth for authentication state throughout the app
 @MainActor
-final class AuthManager: ObservableObject {
+@Observable
+final class AuthManager {
 
     // MARK: - Published Properties
 
     /// Whether the user is currently authenticated
-    @Published private(set) var isAuthenticated: Bool = false
+    private(set) var isAuthenticated: Bool = false
 
     /// Whether auth state is being loaded/checked
-    @Published private(set) var isLoading: Bool = true
+    private(set) var isLoading: Bool = true
 
     /// The current user's ID (nil if not authenticated)
-    @Published private(set) var currentUserId: String?
+    private(set) var currentUserId: String?
 
     /// The current user's role (nil if not authenticated or role not set)
-    @Published private(set) var userRole: UserRole?
+    private(set) var userRole: UserRole?
 
     /// The current bookie's ID from Supabase (nil if not authenticated as bookie)
     /// This is set after login/signup when the bookie record is fetched/created
-    @Published private(set) var currentBookieId: UUID?
+    private(set) var currentBookieId: UUID?
 
     /// The current player's ID from Supabase players table (nil if not authenticated as player)
     /// This is the player.id, not the auth_user_id
-    @Published private(set) var currentPlayerId: UUID?
+    private(set) var currentPlayerId: UUID?
 
     /// Error message from bookie record operations (nil if no error)
-    @Published private(set) var bookieError: String?
+    private(set) var bookieError: String?
 
     /// Whether bookie record is being loaded
-    @Published private(set) var isLoadingBookie: Bool = false
+    private(set) var isLoadingBookie: Bool = false
 
     /// Whether user agreement is required before accessing the app
-    @Published var agreementRequired: Bool = false
+    var agreementRequired: Bool = false
 
     /// Whether the agreement is outdated (true) vs never accepted (false)
     /// Used to display appropriate message to user
-    @Published private(set) var agreementIsOutdated: Bool = false
+    private(set) var agreementIsOutdated: Bool = false
 
     // MARK: - Private Properties
 

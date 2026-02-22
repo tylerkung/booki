@@ -6,7 +6,7 @@ struct LoginView: View {
 
     // MARK: - Environment
 
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager
 
     // MARK: - State
 

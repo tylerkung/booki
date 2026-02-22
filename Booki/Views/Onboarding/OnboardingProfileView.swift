@@ -3,7 +3,7 @@ import SwiftUI
 /// Onboarding step for setting up the organizer profile (name + email)
 struct OnboardingProfileView: View {
 
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager
 
     @State private var name: String = ""
     @State private var email: String = ""

@@ -33,7 +33,7 @@ enum OddsFormat: String, CaseIterable, Identifiable {
 /// Enhanced account summary view for players showing balance, credit utilization, and quick stats
 struct AccountView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager
     @Query private var allBets: [Bet]
     @Query private var allLedgerEntries: [LedgerEntry]
     let player: Player

@@ -9,7 +9,7 @@ import SwiftData
 /// US-051: Style Bet Slip with Premium Feel
 struct BetSlipSheet: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager
     @ObservedObject private var betSlipManager = BetSlipManager.shared
     @Environment(\.dismiss) private var dismiss
     @Query private var bets: [Bet]

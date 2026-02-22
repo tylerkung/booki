@@ -8,7 +8,7 @@ struct PlayerMainView: View {
     // MARK: - Environment
 
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager
     @EnvironmentObject private var networkMonitor: NetworkMonitor
     @Query private var players: [Player]
     @Query private var ledgerEntries: [LedgerEntry]

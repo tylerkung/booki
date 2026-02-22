@@ -42,7 +42,7 @@ struct PlayerClaimView: View {
     // MARK: - Environment
 
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager
 
     // MARK: - State
 

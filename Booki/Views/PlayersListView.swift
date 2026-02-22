@@ -1092,7 +1092,7 @@ struct AddPlayerSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var syncService: SyncService
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager
 
     @State private var name: String = ""
     @State private var email: String = ""

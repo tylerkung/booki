@@ -7,7 +7,7 @@ struct OnboardingContainerView: View {
     // MARK: - Environment
 
     @Bindable var onboardingManager: OnboardingManager
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager
 
     // MARK: - Properties
 

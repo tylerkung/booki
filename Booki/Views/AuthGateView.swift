@@ -6,7 +6,7 @@ struct AuthGateView: View {
 
     // MARK: - Environment
 
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager
     @EnvironmentObject private var syncService: SyncService
     @EnvironmentObject private var realtimeService: RealtimeService
     @EnvironmentObject private var networkMonitor: NetworkMonitor
