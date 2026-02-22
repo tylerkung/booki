@@ -127,7 +127,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "AuthManager is used in ~15 files via @EnvironmentObject. The migration pattern:\n1. AuthManager.swift: Replace `class AuthManager: ObservableObject` with `@Observable class AuthManager`. Remove all `@Published` from properties.\n2. BookiApp.swift: `@StateObject private var authManager` → `@State private var authManager`. `.environmentObject(authManager)` → `.environment(authManager)`.\n3. Every view with `@EnvironmentObject private var authManager: AuthManager` → `@Environment(AuthManager.self) private var authManager`.\nFiles with @EnvironmentObject authManager: ContentView, AuthGateView, SettingsView, DashboardView, PlayersListView, PlayerMainView, AccountView, LoginView, SignUpView, ForgotPasswordView, OnboardingContainerView, OnboardingProfileView, PlayerClaimView, AnalyticsDashboardView, and PlayerSettingsContent in ContentView."
     },
     {

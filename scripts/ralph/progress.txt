@@ -1,5 +1,5 @@
 # Ralph Progress Log
-Started: Thu Feb 19 13:11:23 PST 2026
+Started: Fri Feb 21 2026
 ---
 
 ## Codebase Patterns
@@ -8,212 +8,26 @@ Started: Thu Feb 19 13:11:23 PST 2026
 - Theme.font() = Space Grotesk (titles), Theme.bodyFont() = IBM Plex Sans (body text)
 - Status colors: Theme.accent (won/open), Theme.danger (lost), Theme.warning (pending), Theme.textMuted (void)
 - Event display format: "league · awayTeam @ homeTeam"
-- americanToDecimal/decimalToAmerican helpers exist inline in BetsListView/TicketDetailView — now centralized in PickPresenter
+- americanToDecimal/decimalToAmerican helpers centralized in PickPresenter
 - Bet.eventDescription and Bet.sportLeague provide offline fallbacks when Event is nil
-- Always use StatusPill + PickPresenter.mapStatus for pick status display — never use bet.status.rawValue inline
+- Always use StatusPill + PickPresenter.mapStatus for pick status display
+- UUID case sensitivity: iOS uppercase, PostgreSQL lowercase — always .lowercased() for comparison
+- Xcode IDE required for full builds — command-line swiftc can't resolve SwiftData macros
+- Complex @ViewBuilder bodies cause type-checker timeouts — extract sub-views proactively
+- @Observable migration pattern: remove ObservableObject + @Published, add @Observable macro, change @StateObject → @State, @EnvironmentObject → @Environment(Type.self), .environmentObject() → .environment()
+- #unavailable(iOS 26) guard pattern for backward-compatible appearance code
 
 ---
 
-## 2026-02-19 - US-001
-- Created Booki/Services/PickPresenter.swift (150 lines)
-- Struct with init(bet:event:playerName:) for single picks
-- Properties: title, contextLine, stakeLine, profitLine, profitColor, settlementStatus, workflowStatus, isMultiPick, selections, stake, profit
-- SettlementStatus enum: open, won, lost, push, void, cancelled
-- WorkflowStatus enum: pending, approved, rejected
-- Static mapStatus(betStatus:gradeResult:) maps BetStatus+GradeResult to two-axis system
-- Centralized americanToDecimal/decimalToAmerican and formatOdds/formatDecimal helpers
-- Files changed: Booki/Services/PickPresenter.swift (new)
+## 2026-02-21 - US-008
+- Migrated AuthManager from ObservableObject to @Observable macro
+- Removed all 10 @Published property wrappers, added `import Observation` and `@Observable`
+- Changed BookiApp.swift: @StateObject → @State, .environmentObject() → .environment()
+- Updated 15 @EnvironmentObject references across 14 view files to @Environment(AuthManager.self)
+- Files changed: AuthManager.swift, BookiApp.swift, ContentView.swift, AuthGateView.swift, SettingsView.swift (2 structs), AccountView.swift, PlayerMainView.swift, PlayersListView.swift, BetSlipSheet.swift, SyncGamesView.swift, PlayerClaimView.swift, OnboardingContainerView.swift, OnboardingProfileView.swift, LoginView.swift, SignUpView.swift, ForgotPasswordView.swift
 - **Learnings for future iterations:**
-  - Bet has offline fallbacks: eventDescription and sportLeague — use these when Event is nil
-  - LiabilityService.calculatePayout returns profit only, not stake+profit
-  - BetStatus has 7 cases: pending, accepted, declined, readyToGrade, graded, settled, void
+  - SettingsView.swift has TWO structs with authManager (SettingsView and EditBookieProfileSheet) — need replace_all
+  - DashboardView and AnalyticsDashboardView do NOT use authManager (PRD notes were slightly outdated)
+  - BetSlipSheet uses @ObservedObject for BetSlipManager.shared — this is different from @EnvironmentObject pattern
 ---
 
-## 2026-02-19 - US-002
-- Created Booki/Views/Components/StatusPill.swift (46 lines)
-- Reusable pill view taking SettlementStatus and optional WorkflowStatus
-- Settlement status drives pill color: open→scheduled, won→accent, lost→danger, push/void/cancelled→textMuted
-- Rejected workflow overrides settlement display with red "Rejected" pill
-- Pending workflow shows small "Pending" text below pill in warning color
-- Uses capsule shape, Theme.font(size:12, weight:.semibold), opacity(0.15) background
-- Files changed: Booki/Views/Components/StatusPill.swift (new)
-- **Learnings for future iterations:**
-  - Components directory created at Booki/Views/Components/ — use for all shared UI components
-  - Pill pattern: foreground color + same color at 0.15 opacity for background
----
-
-## 2026-02-19 - US-003
-- Created Booki/Views/Components/SelectionRow.swift (52 lines)
-- Reusable row view for displaying a single selection/bet leg
-- Line 1: selection label + formatted odds using PickPresenter.formatOdds
-- Line 2: league · eventName context line
-- Optional grade result indicator (colored dot: green/red/gray)
-- Uses Theme.bodyFont(size: 15) for primary, Theme.bodyFont(size: 13) for secondary
-- Files changed: Booki/Views/Components/SelectionRow.swift (new)
-- **Learnings for future iterations:**
-  - SelectionRow uses default params (league: nil, gradeResult: nil) for flexibility
-  - Grade dots use same color mapping as StatusPill: accent=win, danger=loss, textMuted=push
----
-
-## 2026-02-19 - US-004
-- Created Booki/Views/Components/PickCardCompact.swift (47 lines)
-- Reusable compact card for pick list views using PickPresenter
-- Layout: VStack with title+StatusPill HStack, contextLine, stakeLine+profitLine
-- Uses Theme.cardBackground with 12pt padding and 10pt corner radius
-- Fonts: bodyFont(size:15, weight:.semibold) title, bodyFont(size:13) secondary lines
-- Profit text colored via presenter.profitColor (green/red)
-- Files changed: Booki/Views/Components/PickCardCompact.swift (new)
-- **Learnings for future iterations:**
-  - PickCardCompact is pure display — no interaction, wrapping views handle NavigationLink
-  - Card pattern: VStack(alignment:.leading, spacing:6) + 12pt padding + cardBackground + cornerRadius(10)
----
-
-## 2026-02-19 - US-005
-- Created Booki/Views/Components/PickDetailHeader.swift (111 lines)
-- Two-section layout: Pick Summary (type, stake, odds, StatusPill) + Financials
-- Financials toggle between open (Potential Profit + Total Return) and settled (Final Profit + Final Payout)
-- Total return logic: won=stake+profit, lost=0, push/void/cancelled=stake, open=stake+profit
-- Profit coloring via presenter.profitColor; formatted with +/- prefix
-- LabeledContent-style rows using private labeledRow helper
-- Uses same card pattern: 12pt padding + cardBackground + cornerRadius(10)
-- Files changed: Booki/Views/Components/PickDetailHeader.swift (new)
-- **Learnings for future iterations:**
-  - PickPresenter.title for singles has format "Selection (odds)" — can extract odds via string parsing
-  - For multi-picks, combined odds is the last component after " · " in title
-  - isSettled computed from settlementStatus: won/lost/push/void/cancelled = settled, open = not
----
-
-## 2026-02-19 - US-006
-- Added static factory `PickPresenter.multiPick(bets:events:playerName:)` for parlay/multi-pick tickets
-- Added private memberwise init to support factory pattern alongside existing single-pick init
-- Combined odds: multiply all legs' decimal odds, convert back to American
-- Settlement derivation: any lost → lost, all won → won, all push → push, mix → open
-- Selections array built from bets with event lookup via lowercased UUID map
-- Stake from first bet (parlay stake is identical across legs)
-- Files changed: Booki/Services/PickPresenter.swift (+127 lines, now 277 total)
-- **Learnings for future iterations:**
-  - Event IDs must be lowercased for dictionary lookup (iOS uppercase vs PostgreSQL lowercase)
-  - Parlay settlement logic priority order: rejected > lost > all-won > all-push/void > pending > open
-  - Private memberwise init pattern allows factory methods while keeping single-pick init public
----
-
-## 2026-02-19 - US-007
-- Refactored BetRowView body to delegate to PickCardCompact with PickPresenter
-- Added `event`, `parlayBets`, `events` params to BetRowView for presenter construction
-- Singles use PickPresenter(bet:event:playerName:), parlays use PickPresenter.multiPick()
-- Preserved bookie-specific overlays: parlay partial grading badge, policy violation reason, will-lose indicator
-- Added `findEvent(for:)` helper to BetsListView; updated call site to pass event + parlayBets + events
-- Removed unused BetRowView computed properties (formattedOdds, formattedStake, potentialPayout, statusColor)
-- BetDetailView completely untouched
-- Files changed: Booki/Views/BetsListView.swift (33 insertions, 110 deletions → 1271 lines)
-- **Learnings for future iterations:**
-  - BetRowView is used inside NavigationLink in a .plain list — PickCardCompact with its own card background works fine here
-  - When refactoring row views to use shared components, keep bookie-specific overlays (parlay partial info, policy violations) as additional elements below the card
-  - BetsListView shows every bet individually (including each parlay leg) — each row constructs its own presenter
----
-
-## 2026-02-19 - US-008
-- Refactored TicketHeaderView to accept PickPresenter and use PickCardCompact for display
-- Refactored TicketBetRowView to use SelectionRow for bet leg display
-- Added findEvent, league, and buildPresenter helpers to TrackView
-- Preserved parlay mini status dots and grading progress as TrackView-specific additions on top of shared components
-- Preserved "Awaiting Result" indicator for ungraded legs
-- Files changed: Booki/Views/TrackView.swift (54 insertions, 145 deletions → 349 lines)
-- **Learnings for future iterations:**
-  - TicketHeaderView is used as a section header, not a list row — PickCardCompact's card styling works well there
-  - TrackView groups bets into Ticket structs — buildPresenter dispatches between single PickPresenter and multiPick factory based on ticket.isParlay
-  - SelectionRow's built-in grade dot replaces the explicit grade badge capsule from old TicketBetRowView
-  - Removing redundant helpers (formatCurrency, statusColor, gradeResultColor) that now live in shared components reduces ~90 lines — this is expected when consolidating to shared components
----
-
-## 2026-02-19 - US-009
-- Refactored PlayerBetRowView to use PickCardCompact with PickPresenter(bet:event:)
-- Refactored GradingBetRow middle row to use SelectionRow for pick info, keeping player name, final score, suggested outcome, and grading buttons
-- Refactored ParlayLegRow to use SelectionRow for leg display, keeping status dot (ungraded only), multi-select checkbox, and grading buttons
-- Added findEvent(for:) helper to PlayerDetailView for Event? lookup
-- Removed formattedOdds from GradingBetRow and ParlayLegRow (now handled by SelectionRow via PickPresenter.formatOdds)
-- Used bet.eventDescription fallback in event name lookups for offline resilience
-- Files changed: Booki/Views/PlayersListView.swift (32 insertions, 149 deletions → 1409 lines), Booki/Views/GradingView.swift (32 insertions, 76 deletions → 1091 lines)
-- **Learnings for future iterations:**
-  - PlayerBetRowView was the simplest refactor — fully replaced by PickCardCompact since it has no unique interactive elements
-  - GradingBetRow and ParlayLegRow have unique grading UI (Win/Loss/Push/Void buttons) — use SelectionRow for info portion only
-  - ParlayLegRow: SelectionRow's built-in grade dot handles graded legs; keep standalone dot only for ungraded legs to avoid duplication
-  - bet.eventDescription and bet.sportLeague provide offline fallbacks when Event is nil — always use these as fallbacks
----
-
-## 2026-02-19 - US-010
-- Refactored TicketDetailView to use shared components
-- ticketSummarySection: replaced inline status color/text logic with StatusPill(settlementStatus:workflowStatus:)
-- payoutSection: replaced custom financial rows with PickDetailHeader(presenter:), kept unique "Actual Result" badge for settled tickets
-- TicketDetailBetRowView: replaced Row 1 (event+status) with SelectionRow + StatusPill, replaced Row 5 grade result text with StatusPill
-- Standardized labels: "Stake" (was "Total Stake"), "Profit" (was "Result"/"Potential Return"), "Total Return" (was "Total Return if Win")
-- Added PickPresenter computed property to TicketDetailView for shared component consumption
-- Removed statusColor, statusText computed properties (replaced by StatusPill); removed inline odds formatting (uses PickPresenter.formatOdds)
-- Files changed: Booki/Views/TicketDetailView.swift (101 insertions, 180 deletions → 1076 lines, within ±80 of original 1156)
-- **Learnings for future iterations:**
-  - PickDetailHeader works well as a drop-in replacement for financial summary sections — just pass a PickPresenter
-  - When refactoring detail views (high line count), keep unique sections (parlay outcome, odds breakdown) as-is and only replace standard sections (summary, status, financials) with shared components
-  - StatusPill replaces ~30 lines of inline status color/text logic per view — significant DRY improvement
-  - TicketDetailBetRowView has unique event details (time, score, status) and timestamps that should stay — only replace pick info + status display with shared components
----
-
-## 2026-02-19 - US-011
-- Standardized financial labels and status language across all remaining views
-- "Potential Return" → "Total Return" in BetSlipSheet (2 places), BetConfirmationSheet, SubmitBetView
-- "Profit if Win" → "Profit" in BetsListView (BetDetailView), AccountView
-- "Potential Profit" → "Profit" in SubmitBetView, PickDetailHeader
-- "Final Payout" → "Total Return" in PickDetailHeader
-- Section headers "Potential Return" → "Financials" in BetsListView, SubmitBetView, AccountView
-- Verified no "Accepted" used as primary status display (already handled by StatusPill)
-- Files changed: BetsListView.swift, AccountView.swift, BetSlipSheet.swift, SubmitBetView.swift, BetConfirmationSheet.swift, PickDetailHeader.swift (15 insertions, 15 deletions total)
-- **Learnings for future iterations:**
-  - Approved financial vocabulary: "Stake", "Profit", "Total Return" — no other terms
-  - "Final Profit" and "Final" prefix acceptable for settled state distinction
-  - BetSlipSheet had two separate summary sections (singles mode + parlay mode) that both needed updating
----
-
-## 2026-02-19 - US-012
-- Final consistency audit: verified all pick-displaying views use shared components
-- Replaced inline status pills with StatusPill in: BetDetailView (BetsListView.swift), AccountBetRowView (AccountView.swift), AccountBetDetailView (AccountView.swift), EventDetailBetRowView (EventDetailView.swift), ParlayLegRow (GradingView.swift)
-- Removed ~137 lines of inline statusColor/statusText computed properties now handled by StatusPill
-- Fixed AccountBetRowView glow dot: push color changed from Theme.warning to Theme.textMuted (canonical mapping)
-- Verified: no "Potential Return", "To Win", "Payout" string literals remain; no "Accepted" as primary status
-- Verified: PickCardCompact in BetsListView, TrackView, PlayersListView; SelectionRow in TrackView, GradingView, TicketDetailView; StatusPill in all status views; PickDetailHeader in TicketDetailView
-- Verified: Multi-pick titles follow "Multi-Pick · {N} Selections · {odds}" format consistently
-- Files changed: BetsListView.swift (-21), AccountView.swift (-96), GradingView.swift (-20), EventDetailView.swift (-22)
-- **Learnings for future iterations:**
-  - bet.status.rawValue.capitalized generates "Accepted" at runtime — always use StatusPill + PickPresenter.mapStatus instead
-  - EventDetailView has a bet row (EventDetailBetRowView) that also needs shared component treatment
-  - CSV export in SettingsView uses raw status values intentionally — data export is exempt from display vocabulary rules
----
-
-## 2026-02-19 - Post-Ralph Polish (Manual)
-- Unified TrackView layout: replaced List with ScrollView+VStack, created TicketCardView combining header+legs in single card
-- Fixed multi-pick combined odds (guard against zero odds), parenthesized title format, Theme.headline font
-- Standardized financial labels to "Label: $value" format (Stake:, Profit:, Loss:, Returned:, Potential:)
-- GamesView: moved search into expandable icon inline with sport filter tabs, removed filter CTA button
-- GamesView: sticky section headers with sport title on left + SPREAD/MONEY/TOTAL on right (each league is its own Section)
-- Added 16pt spacing between sections via Color.clear spacer
-- Files changed: GamesView.swift, TrackView.swift, PickPresenter.swift, project.pbxproj
-- **Learnings for future iterations:**
-  - LazyVStack(pinnedViews: [.sectionHeaders]) handles sticky sport+column headers natively — each league as its own Section
-  - Color.clear.frame(height:) as last section item adds inter-section spacing without affecting pinned header height
-  - @FocusState + DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) needed to focus TextField after animation starts
-  - ScrollView+VStack gives more layout control than List (no default section spacing, no NavigationLink disclosure indicators)
----
-
-## 2026-02-21 - Bookie Picks Tab Improvements
-- Added open bet count badge to Picks tab (1-9, "9+" cap) with brand teal background + dark text in SpaceGrotesk-Bold via UITabBarItem appearance
-- Simplified BetFilter from 5 options (Pending/Open/Ready to Grade/Reconciled/All) to 2 (Open/Past)
-- Open = pending, accepted, readyToGrade, graded; Past = settled, declined, void
-- Added player filter chips: horizontal ScrollView of capsule buttons showing players with bets in current filter
-- Redesigned BetDetailView from List/Section to ScrollView + card layout matching TicketDetailView (Hero, Financials, Activity, Actions cards)
-- Action buttons restyled as color-coded filled capsule buttons inside Actions card
-- All existing action logic preserved: accept, decline, void, settle, override grade, reverse settlement
-- Files changed: ContentView.swift, BetsListView.swift, CLAUDE.md, README.md
-- **Learnings for future iterations:**
-  - UITabBarItem.appearance().badgeColor + setBadgeTextAttributes in view init() customizes tab badge globally
-  - SwiftUI .badge() accepts String? — pass nil to hide, string for display
-  - When converting List→ScrollView in detail views, action buttons need explicit styling (List provides default row styling)
-  - Extract sub-views (detailHeroCard, detailFinancialsCard, etc.) to avoid SwiftUI type-checker timeouts on complex bodies
----

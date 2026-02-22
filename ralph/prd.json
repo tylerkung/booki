@@ -15,7 +15,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "This is the foundation — all other stories depend on this. Search project.pbxproj for IPHONEOS_DEPLOYMENT_TARGET and SWIFT_VERSION to find exact locations. The Swift 6 language mode will surface many concurrency warnings but the goal here is just to get it building. If Swift 6 causes too many errors to build, use SWIFT_UPCOMING_FEATURE_FLAGS or keep Swift 5 mode temporarily and note it."
     },
     {
@@ -63,7 +63,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Simple find-and-replace — .foregroundColor(X) becomes .foregroundStyle(X). The APIs are signature-compatible for single Color values. Use replace_all in the Edit tool for efficiency. Files: GameCardView.swift (18), GameDetailView.swift (16), CompactGameRow.swift (12), GamesView.swift (3), EventsListView.swift (3), CompactOddsButton.swift (3), PickCardCompact.swift (2), Theme.swift (2). Total: 59 occurrences across 8 files."
     },
     {
@@ -94,7 +94,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "40 occurrences across 18 files. Same pattern as US-005: .cornerRadius(X) → .clipShape(RoundedRectangle(cornerRadius: X)). Many of these are 1-2 per file so it's quick. Read each file, make the replacement, move on."
     },
     {
@@ -127,7 +127,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "AuthManager is used in ~15 files via @EnvironmentObject. The migration pattern:\n1. AuthManager.swift: Replace `class AuthManager: ObservableObject` with `@Observable class AuthManager`. Remove all `@Published` from properties.\n2. BookiApp.swift: `@StateObject private var authManager` → `@State private var authManager`. `.environmentObject(authManager)` → `.environment(authManager)`.\n3. Every view with `@EnvironmentObject private var authManager: AuthManager` → `@Environment(AuthManager.self) private var authManager`.\nFiles with @EnvironmentObject authManager: ContentView, AuthGateView, SettingsView, DashboardView, PlayersListView, PlayerMainView, AccountView, LoginView, SignUpView, ForgotPasswordView, OnboardingContainerView, OnboardingProfileView, PlayerClaimView, AnalyticsDashboardView, and PlayerSettingsContent in ContentView."
     },
     {
