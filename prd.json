@@ -110,7 +110,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "iOS 18+ Tab API pattern:\n```swift\nTabView {\n    Tab(\"Dashboard\", systemImage: \"chart.bar.fill\") {\n        AnalyticsDashboardView()\n    }\n    Tab(\"Picks\", systemImage: \"list.bullet.rectangle\") {\n        BetsListView()\n    }\n    .badge(openBetsCount > 9 ? \"9+\" : (openBetsCount > 0 ? \"\\(openBetsCount)\" : nil))\n}\n```\nCheck ContentView.swift (line ~162, 6 tabs) and PlayerMainView.swift (line ~47, 3 tabs)."
     },
     {

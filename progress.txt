@@ -5,6 +5,7 @@ Started: Sat Feb 21 17:41:31 PST 2026
 - project.pbxproj has 4 build configuration sections: Debug (project), Release (project), Debug (target), Release (target). Each has its own IPHONEOS_DEPLOYMENT_TARGET and SWIFT_VERSION.
 - supabase-swift package uses `upToNextMajorVersion: 2.0.0` — no change needed for iOS 26 migration
 - Xcode IDE required for full builds — command-line can't verify typecheck (per CLAUDE.md)
+- Tab API: Use `Tab("Title", systemImage: "icon") { content }` (no selection) or `Tab("Title", systemImage: "icon", value: N) { content }` (with selection binding). `.badge()` goes on the Tab.
 
 ---
 
@@ -74,4 +75,18 @@ Started: Sat Feb 21 17:41:31 PST 2026
   - Special case: `LoginView.swift` had `.background(Theme.danger.cornerRadius(...))` — calling `.clipShape()` on a Color (which is a View) works fine
   - The Edit tool requires a full `Read` of the file before editing — partial reads (limit/offset) don't count for some files
   - With US-005 + US-006 combined, all `.cornerRadius()` deprecation warnings are eliminated
+---
+
+## 2026-02-21 - US-007
+- Migrated TabView from `.tabItem { Label() }` to `Tab(title:systemImage:) { content }` API
+- ContentView.swift: 6 bookie tabs migrated (Dashboard, Picks, Members, Events, Grading, Settings)
+- PlayerMainView.swift: 3 player tabs migrated with `value:` parameter for selection binding (Games, Track, Account)
+- `.badge()` modifiers preserved on Picks and Members tabs
+- Zero occurrences of `.tabItem` remain in codebase
+- Files changed: Booki/ContentView.swift, Booki/Views/PlayerMainView.swift
+- **Learnings for future iterations:**
+  - Tab API with selection binding uses `Tab("Title", systemImage: "icon", value: 0) { content }` — the `value:` parameter replaces `.tag()`
+  - Tab API without selection binding (bookie mode) uses simpler `Tab("Title", systemImage: "icon") { content }`
+  - `.badge()` modifier goes on the `Tab` directly, same as before
+  - Content goes inside the Tab closure instead of before `.tabItem`
 ---
