@@ -3,7 +3,7 @@ import Supabase
 
 /// Singleton wrapper for Supabase client access
 /// Provides centralized access to Supabase auth and database services
-final class SupabaseClientManager {
+final class SupabaseClientManager: @unchecked Sendable {
 
     /// Shared singleton instance
     static let shared = SupabaseClientManager()

@@ -74,6 +74,7 @@ struct BetSlipItem: Equatable, Hashable, Codable {
 /// US-040: Build Persistent Bet Slip
 /// US-041: Support Multi-Bet (Parlay) Selections
 /// US-042: Improved Stake Entry
+@MainActor
 @Observable
 class BetSlipManager {
     static let shared = BetSlipManager()

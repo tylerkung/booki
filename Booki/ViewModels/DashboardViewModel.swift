@@ -3,6 +3,7 @@ import SwiftData
 
 /// View model for the Dashboard view
 /// Manages loading and calculating dashboard metrics
+@MainActor
 @Observable
 class DashboardViewModel {
 

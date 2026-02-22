@@ -4,7 +4,7 @@ import SwiftUI
 // MARK: - US-001, US-003, US-004, US-008, US-012: Odds API Service
 
 /// Errors that can occur when communicating with The Odds API
-enum OddsAPIError: Error, LocalizedError {
+enum OddsAPIError: Error, LocalizedError, @unchecked Sendable {
     case invalidAPIKey
     case rateLimitExceeded
     case serverError(Int)

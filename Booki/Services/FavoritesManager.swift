@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 /// Manager for storing and retrieving favorite teams using UserDefaults
 /// US-039: Add Favorites System
+@MainActor
 @Observable
 class FavoritesManager {
     static let shared = FavoritesManager()

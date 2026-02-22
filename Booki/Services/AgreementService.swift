@@ -9,7 +9,7 @@ enum AgreementStatus: Equatable {
 }
 
 /// Error types for agreement operations
-enum AgreementServiceError: Error, LocalizedError {
+enum AgreementServiceError: Error, LocalizedError, @unchecked Sendable {
     case notAuthenticated
     case networkError(Error)
     case databaseError(String)
@@ -28,7 +28,7 @@ enum AgreementServiceError: Error, LocalizedError {
 
 /// Service for checking and submitting user agreement acceptances to Supabase
 /// This service communicates with the user_agreements table to track legal acknowledgments
-final class AgreementService {
+final class AgreementService: @unchecked Sendable {
 
     // MARK: - Constants
 

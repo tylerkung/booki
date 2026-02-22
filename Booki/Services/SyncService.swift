@@ -82,7 +82,7 @@ enum SyncableTable: String, CaseIterable {
 }
 
 /// Error types for sync operations
-enum SyncServiceError: Error, LocalizedError {
+enum SyncServiceError: Error, LocalizedError, @unchecked Sendable {
     case notAuthenticated
     case noBookieId
     case networkError(Error)

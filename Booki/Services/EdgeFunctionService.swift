@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 /// Error types for Edge Function calls
-enum EdgeFunctionError: Error, LocalizedError {
+enum EdgeFunctionError: Error, LocalizedError, @unchecked Sendable {
     case notAuthenticated
     case invalidURL
     case networkError(Error)
@@ -33,7 +33,7 @@ enum EdgeFunctionError: Error, LocalizedError {
 
 /// Service for calling Supabase Edge Functions from the iOS app
 /// Handles authentication, JSON encoding/decoding, and error handling
-final class EdgeFunctionService {
+final class EdgeFunctionService: @unchecked Sendable {
 
     // MARK: - Singleton
 
@@ -58,7 +58,7 @@ final class EdgeFunctionService {
     ///   - body: The request body to encode as JSON
     /// - Returns: The decoded response of type T
     /// - Throws: EdgeFunctionError on failure
-    func callFunction<T: Decodable>(name: String, body: Encodable) async throws -> T {
+    func callFunction<T: Decodable>(name: String, body: some Encodable & Sendable) async throws -> T {
         // Get the current session to obtain the access token
         let session: Session
         do {
@@ -129,7 +129,7 @@ final class EdgeFunctionService {
     private func retryWithBackoff<T>(
         attempt: Int,
         maxAttempts: Int,
-        operation: () async throws -> T
+        operation: @Sendable () async throws -> T
     ) async throws -> T {
         do {
             return try await operation()
@@ -159,7 +159,7 @@ final class EdgeFunctionService {
 // MARK: - Type Erasure Helper
 
 /// Type-erased Encodable wrapper to allow generic encoding
-private struct AnyEncodable: Encodable {
+private struct AnyEncodable: Encodable, @unchecked Sendable {
     private let _encode: (Encoder) throws -> Void
 
     init<T: Encodable>(_ wrapped: T) {

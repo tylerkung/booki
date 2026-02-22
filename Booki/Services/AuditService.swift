@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 /// Error types for audit service operations
-enum AuditServiceError: Error, LocalizedError {
+enum AuditServiceError: Error, LocalizedError, @unchecked Sendable {
     case notAuthenticated
     case networkError(Error)
     case databaseError(String)
@@ -21,7 +21,7 @@ enum AuditServiceError: Error, LocalizedError {
 
 /// Service for fetching audit history from Supabase
 /// This service communicates with the audit_events table to retrieve state change history
-final class AuditService {
+final class AuditService: @unchecked Sendable {
 
     // MARK: - Private Properties
 

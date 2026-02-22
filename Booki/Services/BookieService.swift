@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 /// Error types for bookie service operations
-enum BookieServiceError: Error, LocalizedError {
+enum BookieServiceError: Error, LocalizedError, @unchecked Sendable {
     case notAuthenticated
     case networkError(Error)
     case bookieNotFound
