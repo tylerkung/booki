@@ -33,7 +33,7 @@ struct ContentView: View {
 
     // MARK: - Environment Objects
 
-    @EnvironmentObject private var networkMonitor: NetworkMonitor
+    @Environment(NetworkMonitor.self) private var networkMonitor
     @Environment(SyncService.self) private var syncService
 
     init() {
@@ -286,6 +286,6 @@ struct PlayerSettingsContent: View {
 #Preview {
     ContentView()
         .modelContainer(for: [Player.self, Bet.self, LedgerEntry.self, Event.self, AcceptancePolicy.self], inMemory: true)
-        .environmentObject(NetworkMonitor())
+        .environment(NetworkMonitor())
         .environmentObject(SyncService())
 }

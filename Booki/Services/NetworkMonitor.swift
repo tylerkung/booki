@@ -1,23 +1,22 @@
 import Foundation
 import Network
 import SwiftUI
-import Combine
-
 /// Monitors network connectivity using NWPathMonitor
 /// Publishes isConnected state for the app to observe
 @MainActor
-final class NetworkMonitor: ObservableObject {
+@Observable
+final class NetworkMonitor {
 
     // MARK: - Published Properties
 
     /// Whether the device has network connectivity
-    @Published private(set) var isConnected: Bool = true
+    private(set) var isConnected: Bool = true
 
     /// Human-readable description of the connection status
-    @Published private(set) var connectionStatus: String = "Connected"
+    private(set) var connectionStatus: String = "Connected"
 
     /// The type of network connection (wifi, cellular, etc.)
-    @Published private(set) var connectionType: ConnectionType = .unknown
+    private(set) var connectionType: ConnectionType = .unknown
 
     // MARK: - Private Properties
 
@@ -190,7 +189,7 @@ extension Notification.Name {
 
 /// A banner view displayed when the device is offline
 struct OfflineBannerView: View {
-    @EnvironmentObject private var networkMonitor: NetworkMonitor
+    @Environment(NetworkMonitor.self) private var networkMonitor
 
     /// Whether to show an expanded message
     var showExpandedMessage: Bool = false
@@ -226,7 +225,7 @@ struct OfflineBannerView: View {
 
 /// A view modifier that disables interactions and shows a message when offline
 struct OfflineDisabledModifier: ViewModifier {
-    @EnvironmentObject private var networkMonitor: NetworkMonitor
+    @Environment(NetworkMonitor.self) private var networkMonitor
 
     /// Custom message to show when offline (nil uses default)
     var message: String?
@@ -252,7 +251,7 @@ extension View {
 
 /// A view modifier that shows an alert when attempting an action while offline
 struct OfflineAlertModifier: ViewModifier {
-    @EnvironmentObject private var networkMonitor: NetworkMonitor
+    @Environment(NetworkMonitor.self) private var networkMonitor
     @Binding var showAlert: Bool
 
     var message: String
@@ -284,5 +283,5 @@ extension View {
     }
     .frame(maxWidth: .infinity)
     .background(Theme.background)
-    .environmentObject(NetworkMonitor())
+    .environment(NetworkMonitor())
 }

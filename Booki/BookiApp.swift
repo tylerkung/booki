@@ -6,7 +6,7 @@ struct BookiApp: App {
     @State private var authManager = AuthManager()
     @State private var syncService = SyncService()
     @StateObject private var realtimeService = RealtimeService()
-    @StateObject private var networkMonitor = NetworkMonitor()
+    @State private var networkMonitor = NetworkMonitor()
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -47,7 +47,7 @@ struct BookiApp: App {
                 .environment(authManager)
                 .environment(syncService)
                 .environmentObject(realtimeService)
-                .environmentObject(networkMonitor)
+                .environment(networkMonitor)
                 .onAppear {
                     // Configure sync service with model context
                     let context = sharedModelContainer.mainContext

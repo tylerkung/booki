@@ -9,7 +9,7 @@ struct PlayerMainView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(AuthManager.self) private var authManager
-    @EnvironmentObject private var networkMonitor: NetworkMonitor
+    @Environment(NetworkMonitor.self) private var networkMonitor
     @Query private var players: [Player]
     @Query private var ledgerEntries: [LedgerEntry]
 
@@ -83,5 +83,5 @@ struct PlayerMainView: View {
     PlayerMainView()
         .modelContainer(for: [Player.self, Bet.self, LedgerEntry.self, Event.self], inMemory: true)
         .environmentObject(AuthManager())
-        .environmentObject(NetworkMonitor())
+        .environment(NetworkMonitor())
 }
