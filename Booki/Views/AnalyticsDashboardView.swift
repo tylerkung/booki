@@ -4,7 +4,7 @@ import Charts
 
 struct AnalyticsDashboardView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var syncService: SyncService
+    @Environment(SyncService.self) private var syncService
     @Query private var bets: [Bet]
     @Query private var players: [Player]
     @Query private var ledgerEntries: [LedgerEntry]

@@ -19,7 +19,7 @@ struct FlaggedPlayer: Identifiable {
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var syncService: SyncService
+    @Environment(SyncService.self) private var syncService
     @Query private var bets: [Bet]
     @Query private var events: [Event]
     @Query private var players: [Player]

@@ -108,21 +108,22 @@ enum SyncServiceError: Error, LocalizedError {
 /// Central coordinator for all sync operations between SwiftData and Supabase
 /// Manages bidirectional sync, tracks sync state, and coordinates download/upload cycles
 @MainActor
-final class SyncService: ObservableObject {
+@Observable
+final class SyncService {
 
     // MARK: - Published Properties
 
     /// Current sync status
-    @Published private(set) var syncStatus: SyncStatus = .idle
+    private(set) var syncStatus: SyncStatus = .idle
 
     /// When sync was last completed successfully
-    @Published private(set) var lastSyncedAt: Date?
+    private(set) var lastSyncedAt: Date?
 
     /// Number of local records waiting to be uploaded
-    @Published private(set) var pendingChangesCount: Int = 0
+    private(set) var pendingChangesCount: Int = 0
 
     /// Current sync progress description (e.g., "Downloading Players...")
-    @Published private(set) var syncProgressDescription: String = ""
+    private(set) var syncProgressDescription: String = ""
 
     // MARK: - Private Properties
 
@@ -233,7 +234,7 @@ final class SyncService: ObservableObject {
         syncStatus = .syncing
 
         // Run sync in a detached task so SwiftUI view redraws
-        // (triggered by @Published changes) don't cancel the network requests.
+        // (triggered by @Observable changes) don't cancel the network requests.
         // .refreshable cancels its task on re-render, causing NSURLError -999.
         await withCheckedContinuation { continuation in
             Task.detached { [weak self] in

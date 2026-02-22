@@ -307,7 +307,7 @@ struct PlayerRowView: View {
 struct PlayerDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var syncService: SyncService
+    @Environment(SyncService.self) private var syncService
     @Query private var allBets: [Bet]
     @Query private var allLedgerEntries: [LedgerEntry]
     @Query private var events: [Event]
@@ -1091,7 +1091,7 @@ struct BalanceAdjustmentSheet: View {
 struct AddPlayerSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var syncService: SyncService
+    @Environment(SyncService.self) private var syncService
     @Environment(AuthManager.self) private var authManager
 
     @State private var name: String = ""

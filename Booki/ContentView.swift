@@ -34,7 +34,7 @@ struct ContentView: View {
     // MARK: - Environment Objects
 
     @EnvironmentObject private var networkMonitor: NetworkMonitor
-    @EnvironmentObject private var syncService: SyncService
+    @Environment(SyncService.self) private var syncService
 
     init() {
         // Brand-teal badge with dark text in Space Grotesk (iOS 18-25 only)

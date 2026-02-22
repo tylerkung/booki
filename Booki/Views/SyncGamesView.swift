@@ -7,7 +7,7 @@ struct SyncGamesView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(AuthManager.self) private var authManager
-    @EnvironmentObject private var syncService: SyncService
+    @Environment(SyncService.self) private var syncService
     @Query private var events: [Event]
 
     @StateObject private var oddsService = OddsAPIService.shared

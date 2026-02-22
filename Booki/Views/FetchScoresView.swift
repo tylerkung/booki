@@ -6,7 +6,7 @@ import SwiftData
 struct FetchScoresView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var syncService: SyncService
+    @Environment(SyncService.self) private var syncService
     @Query private var events: [Event]
 
     @StateObject private var oddsService = OddsAPIService.shared

@@ -19,7 +19,7 @@ enum TimeFilter: String, CaseIterable, Identifiable {
 /// US-039: Favorites system with filter and section
 struct GamesView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var syncService: SyncService
+    @Environment(SyncService.self) private var syncService
     @Query(sort: \Event.startTime) private var events: [Event]
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]

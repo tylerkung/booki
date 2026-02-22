@@ -4,7 +4,7 @@ import SwiftData
 @main
 struct BookiApp: App {
     @State private var authManager = AuthManager()
-    @StateObject private var syncService = SyncService()
+    @State private var syncService = SyncService()
     @StateObject private var realtimeService = RealtimeService()
     @StateObject private var networkMonitor = NetworkMonitor()
 
@@ -45,7 +45,7 @@ struct BookiApp: App {
             AuthGateView()
                 .preferredColorScheme(.dark)
                 .environment(authManager)
-                .environmentObject(syncService)
+                .environment(syncService)
                 .environmentObject(realtimeService)
                 .environmentObject(networkMonitor)
                 .onAppear {
