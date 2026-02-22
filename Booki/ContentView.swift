@@ -37,13 +37,16 @@ struct ContentView: View {
     @EnvironmentObject private var syncService: SyncService
 
     init() {
-        // Brand-teal badge with dark text in Space Grotesk
-        let badgeBg = UIColor(Theme.accent)
-        let badgeFg = UIColor(Theme.background)
-        let badgeFont = UIFont(name: "SpaceGrotesk-Bold", size: 11) ?? .boldSystemFont(ofSize: 11)
-        let attrs: [NSAttributedString.Key: Any] = [.font: badgeFont, .foregroundColor: badgeFg]
-        UITabBarItem.appearance().badgeColor = badgeBg
-        UITabBarItem.appearance().setBadgeTextAttributes(attrs, for: .normal)
+        // Brand-teal badge with dark text in Space Grotesk (iOS 18-25 only)
+        // On iOS 26, use system default badge styling for Liquid Glass compatibility
+        if #unavailable(iOS 26) {
+            let badgeBg = UIColor(Theme.accent)
+            let badgeFg = UIColor(Theme.background)
+            let badgeFont = UIFont(name: "SpaceGrotesk-Bold", size: 11) ?? .boldSystemFont(ofSize: 11)
+            let attrs: [NSAttributedString.Key: Any] = [.font: badgeFont, .foregroundColor: badgeFg]
+            UITabBarItem.appearance().badgeColor = badgeBg
+            UITabBarItem.appearance().setBadgeTextAttributes(attrs, for: .normal)
+        }
     }
 
     // MARK: - Conflict Alert State
