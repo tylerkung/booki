@@ -21,7 +21,7 @@ struct GameDetailView: View {
     let event: Event
 
     /// Bet slip manager for persistent selections
-    @ObservedObject private var betSlipManager = BetSlipManager.shared
+    private var betSlipManager = BetSlipManager.shared
 
     /// Show bet slip sheet
     @State private var showingBetSlipSheet: Bool = false

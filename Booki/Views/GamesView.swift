@@ -37,7 +37,7 @@ struct GamesView: View {
     @State private var selectedSport: String? = nil
 
     /// Bet slip manager for persistent selections (US-040)
-    @ObservedObject private var betSlipManager = BetSlipManager.shared
+    private var betSlipManager = BetSlipManager.shared
 
     /// Show bet slip sheet (US-040)
     @State private var showingBetSlipSheet: Bool = false
@@ -61,7 +61,7 @@ struct GamesView: View {
     @State private var showingFilterSheet: Bool = false
 
     /// Favorites manager (US-039)
-    @ObservedObject private var favoritesManager = FavoritesManager.shared
+    private var favoritesManager = FavoritesManager.shared
 
     // MARK: - Computed Properties
 

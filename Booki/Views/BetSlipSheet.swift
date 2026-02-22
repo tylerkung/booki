@@ -10,7 +10,7 @@ import SwiftData
 struct BetSlipSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AuthManager.self) private var authManager
-    @ObservedObject private var betSlipManager = BetSlipManager.shared
+    private var betSlipManager = BetSlipManager.shared
     @Environment(\.dismiss) private var dismiss
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
@@ -1608,7 +1608,7 @@ struct PremiumBetSlipItemCard: View {
     @Binding var toWinText: String
 
     /// BetSlipManager for stake calculations (US-004)
-    @ObservedObject var betSlipManager: BetSlipManager
+    var betSlipManager: BetSlipManager
 
     /// US-013: Whether this item's event is locked (server-reported)
     var isLocked: Bool = false

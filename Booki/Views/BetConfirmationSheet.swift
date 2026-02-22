@@ -9,7 +9,7 @@ struct BetConfirmationSheet: View {
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
 
-    @ObservedObject private var betSlipManager = BetSlipManager.shared
+    private var betSlipManager = BetSlipManager.shared
 
     let player: Player
 

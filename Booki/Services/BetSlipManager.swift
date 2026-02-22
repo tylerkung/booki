@@ -1,7 +1,5 @@
 import Foundation
 import SwiftUI
-import Combine
-
 /// Bet mode for the slip - Singles (individual bets) or Parlay (combined)
 /// US-041: Support Multi-Bet (Parlay) Selections
 enum BetMode: String, Codable, CaseIterable {
@@ -76,7 +74,8 @@ struct BetSlipItem: Equatable, Hashable, Codable {
 /// US-040: Build Persistent Bet Slip
 /// US-041: Support Multi-Bet (Parlay) Selections
 /// US-042: Improved Stake Entry
-class BetSlipManager: ObservableObject {
+@Observable
+class BetSlipManager {
     static let shared = BetSlipManager()
 
     private let userDefaultsKey = "betSlipItems"
@@ -84,31 +83,31 @@ class BetSlipManager: ObservableObject {
     private let stakeKey = "betSlipStake"
     private let itemStakesKey = "betSlipItemStakes"
 
-    /// Published array of bet slip items (order preserved)
-    @Published private(set) var items: [BetSlipItem] = []
+    /// Array of bet slip items (order preserved)
+    private(set) var items: [BetSlipItem] = []
 
     /// Per-item stakes for singles mode (US-003)
     /// Key is "\(marketId)_\(sideIndicator)" to uniquely identify each selection
-    @Published private(set) var itemStakes: [String: Decimal] = [:]
+    private(set) var itemStakes: [String: Decimal] = [:]
 
     /// Generate unique key for item stakes (marketId + sideIndicator)
     func itemStakeKey(marketId: UUID, sideIndicator: String) -> String {
         return "\(marketId.uuidString)_\(sideIndicator)"
     }
 
-    /// Published bet mode (singles or parlay)
+    /// Bet mode (singles or parlay)
     /// US-041: Support Multi-Bet (Parlay) Selections
-    @Published var betMode: BetMode = .singles {
+    var betMode: BetMode = .singles {
         didSet {
             saveBetMode()
         }
     }
 
     /// US-005: Message shown when mode auto-switches (e.g., from parlay to singles due to conflicts)
-    @Published var modeSwitchMessage: String?
+    var modeSwitchMessage: String?
 
-    /// Published stake amount (US-042)
-    @Published var stake: Decimal = 0 {
+    /// Stake amount (US-042)
+    var stake: Decimal = 0 {
         didSet {
             saveStake()
         }

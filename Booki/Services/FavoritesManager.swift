@@ -1,16 +1,15 @@
 import Foundation
 import SwiftUI
-import Combine
-
 /// Manager for storing and retrieving favorite teams using UserDefaults
 /// US-039: Add Favorites System
-class FavoritesManager: ObservableObject {
+@Observable
+class FavoritesManager {
     static let shared = FavoritesManager()
 
     private let userDefaultsKey = "favoriteTeams"
 
-    /// Published set of favorite team names
-    @Published private(set) var favoriteTeams: Set<String> = []
+    /// Set of favorite team names
+    private(set) var favoriteTeams: Set<String> = []
 
     private init() {
         loadFavorites()
