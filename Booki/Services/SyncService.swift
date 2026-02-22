@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
-import Supabase
+@preconcurrency import Supabase
 
 /// Represents the current sync status
 enum SyncStatus: Equatable {

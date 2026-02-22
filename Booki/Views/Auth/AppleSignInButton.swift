@@ -1,6 +1,6 @@
 import SwiftUI
 import AuthenticationServices
-import Supabase
+@preconcurrency import Supabase
 
 /// A Sign in with Apple button that integrates with Supabase authentication
 /// Note: Requires "Sign in with Apple" capability to be added in Xcode project settings

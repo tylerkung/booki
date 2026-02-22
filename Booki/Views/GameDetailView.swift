@@ -23,6 +23,11 @@ struct GameDetailView: View {
     /// Bet slip manager for persistent selections
     private var betSlipManager = BetSlipManager.shared
 
+    init(player: Player, event: Event) {
+        self.player = player
+        self.event = event
+    }
+
     /// Show bet slip sheet
     @State private var showingBetSlipSheet: Bool = false
 
@@ -707,46 +712,44 @@ struct GameDetailView: View {
 // MARK: - Preview
 
 #Preview {
-    let event = Event(
-        sport: "NBA",
-        league: "NBA",
-        homeTeam: "Lakers",
-        awayTeam: "Celtics",
-        startTime: Date(),
-        status: .live
-    )
+    let event: Event = {
+        let e = Event(
+            sport: "NBA",
+            league: "NBA",
+            homeTeam: "Lakers",
+            awayTeam: "Celtics",
+            startTime: Date(),
+            status: .live
+        )
+        let spread = Market(
+            type: .spread,
+            sideA: "Celtics +3.5",
+            sideB: "Lakers -3.5",
+            oddsA: -110,
+            oddsB: -110,
+            event: e
+        )
+        let ml = Market(
+            type: .moneyline,
+            sideA: "Celtics",
+            sideB: "Lakers",
+            oddsA: 150,
+            oddsB: -170,
+            event: e
+        )
+        let total = Market(
+            type: .total,
+            sideA: "Over 220.5",
+            sideB: "Under 220.5",
+            oddsA: -110,
+            oddsB: -110,
+            event: e
+        )
+        e.markets = [spread, ml, total]
+        return e
+    }()
 
-    // Add sample markets for preview
-    let spread = Market(
-        type: .spread,
-        sideA: "Celtics +3.5",
-        sideB: "Lakers -3.5",
-        oddsA: -110,
-        oddsB: -110,
-        event: event
-    )
-
-    let ml = Market(
-        type: .moneyline,
-        sideA: "Celtics",
-        sideB: "Lakers",
-        oddsA: 150,
-        oddsB: -170,
-        event: event
-    )
-
-    let total = Market(
-        type: .total,
-        sideA: "Over 220.5",
-        sideB: "Under 220.5",
-        oddsA: -110,
-        oddsB: -110,
-        event: event
-    )
-
-    event.markets = [spread, ml, total]
-
-    return NavigationStack {
+    NavigationStack {
         GameDetailView(
             player: Player(name: "Test", email: "test@test.com", creditLimit: 1000),
             event: event

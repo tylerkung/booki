@@ -1,5 +1,5 @@
 import SwiftUI
-import Supabase
+@preconcurrency import Supabase
 
 /// Sign up view for new bookies to create an account
 struct SignUpView: View {
@@ -322,5 +322,5 @@ struct DestructiveButtonStyle: ButtonStyle {
 
 #Preview {
     SignUpView()
-        .environmentObject(AuthManager())
+        .environment(AuthManager())
 }

@@ -959,5 +959,5 @@ struct FlaggedPlayerRow: View {
 #Preview {
     DashboardView()
         .modelContainer(for: [Bet.self, Event.self, Player.self, LedgerEntry.self], inMemory: true)
-        .environmentObject(SyncService())
+        .environment(SyncService())
 }

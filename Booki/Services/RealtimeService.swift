@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
-import Supabase
+@preconcurrency import Supabase
 import Realtime
 
 /// Manages Supabase Realtime subscriptions for live data sync

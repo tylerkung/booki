@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+@preconcurrency import Supabase
 
 /// Record type for validating invite codes from Supabase
 private struct PlayerClaimRecord: Codable {
@@ -538,5 +539,5 @@ struct PlayerClaimView: View {
 #Preview {
     PlayerClaimView(onNavigateToLogin: {})
         .modelContainer(for: Player.self, inMemory: true)
-        .environmentObject(AuthManager())
+        .environment(AuthManager())
 }

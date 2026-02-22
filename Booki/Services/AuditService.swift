@@ -1,5 +1,5 @@
 import Foundation
-import Supabase
+@preconcurrency import Supabase
 
 /// Error types for audit service operations
 enum AuditServiceError: Error, LocalizedError, @unchecked Sendable {

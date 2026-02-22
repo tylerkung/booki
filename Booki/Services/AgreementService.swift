@@ -1,5 +1,5 @@
 import Foundation
-import Supabase
+@preconcurrency import Supabase
 
 /// Status of user agreement acceptance
 enum AgreementStatus: Equatable {

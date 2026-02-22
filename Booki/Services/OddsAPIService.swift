@@ -47,12 +47,32 @@ final class OddsAPIService {
     var quotaRemaining: Int?
     var quotaUsed: Int?
 
-    // MARK: - Stored Settings
+    // MARK: - Stored Settings (use functions to avoid @Observable synthesis conflicts)
 
-    @AppStorage("oddsAPIKey") private var apiKey: String = ""
-    @AppStorage("oddsAPIBookmaker") private var preferredBookmaker: String = "draftkings"
-    @AppStorage("oddsAPIQuotaRemaining") private var storedQuotaRemaining: Int = -1
-    @AppStorage("oddsAPIQuotaUsed") private var storedQuotaUsed: Int = -1
+    private func getAPIKey() -> String {
+        UserDefaults.standard.string(forKey: "oddsAPIKey") ?? ""
+    }
+    private func setAPIKey(_ value: String) {
+        UserDefaults.standard.set(value, forKey: "oddsAPIKey")
+    }
+    private func getPreferredBookmaker() -> String {
+        UserDefaults.standard.string(forKey: "oddsAPIBookmaker") ?? "draftkings"
+    }
+    private func setPreferredBookmaker(_ value: String) {
+        UserDefaults.standard.set(value, forKey: "oddsAPIBookmaker")
+    }
+    private func getStoredQuotaRemaining() -> Int {
+        UserDefaults.standard.object(forKey: "oddsAPIQuotaRemaining") == nil ? -1 : UserDefaults.standard.integer(forKey: "oddsAPIQuotaRemaining")
+    }
+    private func setStoredQuotaRemaining(_ value: Int) {
+        UserDefaults.standard.set(value, forKey: "oddsAPIQuotaRemaining")
+    }
+    private func getStoredQuotaUsed() -> Int {
+        UserDefaults.standard.object(forKey: "oddsAPIQuotaUsed") == nil ? -1 : UserDefaults.standard.integer(forKey: "oddsAPIQuotaUsed")
+    }
+    private func setStoredQuotaUsed(_ value: Int) {
+        UserDefaults.standard.set(value, forKey: "oddsAPIQuotaUsed")
+    }
 
     // MARK: - Sport Availability Cache (US-002)
 
@@ -66,30 +86,32 @@ final class OddsAPIService {
 
     private init() {
         // Load persisted quota values
-        if storedQuotaRemaining >= 0 {
-            quotaRemaining = storedQuotaRemaining
+        let remaining = getStoredQuotaRemaining()
+        if remaining >= 0 {
+            quotaRemaining = remaining
         }
-        if storedQuotaUsed >= 0 {
-            quotaUsed = storedQuotaUsed
+        let used = getStoredQuotaUsed()
+        if used >= 0 {
+            quotaUsed = used
         }
     }
 
     // MARK: - Configuration
 
     var hasAPIKey: Bool {
-        !apiKey.isEmpty
+        !getAPIKey().isEmpty
     }
 
     var currentBookmaker: String {
-        preferredBookmaker
+        getPreferredBookmaker()
     }
 
-    func setAPIKey(_ key: String) {
-        apiKey = key
+    func updateAPIKey(_ key: String) {
+        setAPIKey(key)
     }
 
-    func setBookmaker(_ bookmaker: String) {
-        preferredBookmaker = bookmaker
+    func updateBookmaker(_ bookmaker: String) {
+        setPreferredBookmaker(bookmaker)
     }
 
     // MARK: - US-003: Fetch Available Sports
@@ -101,7 +123,7 @@ final class OddsAPIService {
             throw OddsAPIError.noAPIKey
         }
 
-        let url = URL(string: "\(Self.baseURL)/v4/sports/?apiKey=\(apiKey)")!
+        let url = URL(string: "\(Self.baseURL)/v4/sports/?apiKey=\(getAPIKey())")!
         let (data, response) = try await performRequest(url: url)
 
         // Parse quota headers (even though this endpoint is free)
@@ -155,7 +177,7 @@ final class OddsAPIService {
 
         var components = URLComponents(string: "\(Self.baseURL)/v4/sports/\(sport)/odds/")!
         components.queryItems = [
-            URLQueryItem(name: "apiKey", value: apiKey),
+            URLQueryItem(name: "apiKey", value: getAPIKey()),
             URLQueryItem(name: "regions", value: "us"),
             URLQueryItem(name: "markets", value: "h2h,spreads,totals,alternate_spreads,alternate_totals"),
             URLQueryItem(name: "oddsFormat", value: "american")
@@ -194,7 +216,7 @@ final class OddsAPIService {
 
         var components = URLComponents(string: "\(Self.baseURL)/v4/sports/\(sport)/scores/")!
         components.queryItems = [
-            URLQueryItem(name: "apiKey", value: apiKey),
+            URLQueryItem(name: "apiKey", value: getAPIKey()),
             URLQueryItem(name: "daysFrom", value: String(clampedDays))
         ]
 
@@ -248,13 +270,13 @@ final class OddsAPIService {
         if let remainingString = response.value(forHTTPHeaderField: "x-requests-remaining"),
            let remaining = Int(remainingString) {
             quotaRemaining = remaining
-            storedQuotaRemaining = remaining
+            setStoredQuotaRemaining(remaining)
         }
 
         if let usedString = response.value(forHTTPHeaderField: "x-requests-used"),
            let used = Int(usedString) {
             quotaUsed = used
-            storedQuotaUsed = used
+            setStoredQuotaUsed(used)
         }
     }
 }

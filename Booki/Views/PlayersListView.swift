@@ -1,6 +1,6 @@
 import SwiftUI
 import SwiftData
-import Supabase
+@preconcurrency import Supabase
 
 /// Filter options for collection status
 enum CollectionFilter: String, CaseIterable, Identifiable {

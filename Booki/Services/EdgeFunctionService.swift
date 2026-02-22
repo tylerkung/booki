@@ -1,5 +1,5 @@
 import Foundation
-import Supabase
+@preconcurrency import Supabase
 
 /// Error types for Edge Function calls
 enum EdgeFunctionError: Error, LocalizedError, @unchecked Sendable {
@@ -94,8 +94,9 @@ final class EdgeFunctionService: @unchecked Sendable {
         // Make the request with retry logic for network errors
         let data: Data
         let response: URLResponse
+        let finalRequest = request
         (data, response) = try await retryWithBackoff(attempt: 1, maxAttempts: 3) {
-            try await URLSession.shared.data(for: request)
+            try await URLSession.shared.data(for: finalRequest)
         }
 
         // Check HTTP status code

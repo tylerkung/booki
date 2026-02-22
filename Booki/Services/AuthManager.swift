@@ -1,6 +1,6 @@
 import Foundation
 import Observation
-import Supabase
+@preconcurrency import Supabase
 
 /// Represents the user's role in the application
 enum UserRole: String, Codable {
@@ -67,7 +67,7 @@ final class AuthManager {
     private let agreementService: AgreementService
 
     private let supabase: SupabaseClient
-    private var authStateTask: Task<Void, Never>?
+    nonisolated(unsafe) private var authStateTask: Task<Void, Never>?
 
     /// When true, the auth state listener skips ensureBookieRecord() on .signedIn events.
     /// Used during the player claim flow to prevent a race condition where signUp() triggers
@@ -88,7 +88,8 @@ final class AuthManager {
     }
 
     deinit {
-        authStateTask?.cancel()
+        let task = authStateTask
+        task?.cancel()
     }
 
     // MARK: - Public Methods

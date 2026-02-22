@@ -82,6 +82,6 @@ struct PlayerMainView: View {
 #Preview {
     PlayerMainView()
         .modelContainer(for: [Player.self, Bet.self, LedgerEntry.self, Event.self], inMemory: true)
-        .environmentObject(AuthManager())
+        .environment(AuthManager())
         .environment(NetworkMonitor())
 }

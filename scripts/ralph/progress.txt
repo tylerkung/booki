@@ -31,3 +31,19 @@ Started: Fri Feb 21 2026
   - BetSlipSheet uses @ObservedObject for BetSlipManager.shared — this is different from @EnvironmentObject pattern
 ---
 
+## 2026-02-21 - Post-Ralph Build Fixes (Manual)
+- Fixed Swift 6 strict concurrency build errors across 25 files after Ralph's automated migration
+- `@preconcurrency import Supabase` added to 12 files (PostgrestResponse not Sendable)
+- OddsAPIService: replaced computed `var` properties with `func` getters/setters to avoid `@Observable` macro synthesis conflicts
+- BetService: added `@MainActor` to acceptBet/declineBet/voidBet/voidBetsForEvent, removed `await MainActor.run` wrappers
+- AuthManager: `nonisolated(unsafe)` for authStateTask deinit access
+- EdgeFunctionService: captured `var request` to `let finalRequest` for concurrent closure
+- GameDetailView/GamesView/BetConfirmationSheet: explicit `init()` (private vars made synthesized init inaccessible)
+- GameDetailView: wrapped Preview setup assignments in closure to satisfy ViewBuilder
+- 10+ Preview blocks: `.environmentObject()` → `.environment()`
+- **Learnings:**
+  - `@AppStorage` is fundamentally incompatible with `@Observable` — even `@ObservationIgnored` doesn't work, must use UserDefaults functions
+  - `@Observable` synthesizes `_propertyName` for ALL var properties including computed ones — use functions instead
+  - Clean Build Folder (Cmd+Shift+K) required when changing property→function to clear stale macro cache
+---
+

@@ -1,0 +1,235 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/ios26-migration",
+  "description": "Migrate Booki from iOS 18.5 SDK to iOS 26 SDK — Liquid Glass adaptation, deprecated API cleanup, @Observable migration, Swift 6 concurrency compliance",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Update project settings for iOS 26 SDK",
+      "description": "As a developer, I need the project configured for Xcode 26 so the app compiles with the iOS 26 SDK.",
+      "acceptanceCriteria": [
+        "Update IPHONEOS_DEPLOYMENT_TARGET from 17.0 to 18.0 in all 4 places in project.pbxproj (lines 788, 845, 926, 944)",
+        "Update SWIFT_VERSION from 5.0 to 6.0 in all 4 places in project.pbxproj (lines 882, 914, 931, 949)",
+        "Verify supabase-swift package resolves and compiles — update version constraint if needed",
+        "App builds (warnings acceptable at this stage, errors must be zero)",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "This is the foundation — all other stories depend on this. Search project.pbxproj for IPHONEOS_DEPLOYMENT_TARGET and SWIFT_VERSION to find exact locations. The Swift 6 language mode will surface many concurrency warnings but the goal here is just to get it building. If Swift 6 causes too many errors to build, use SWIFT_UPCOMING_FEATURE_FLAGS or keep Swift 5 mode temporarily and note it."
+    },
+    {
+      "id": "US-002",
+      "title": "Remove UIKit appearance proxies for Liquid Glass",
+      "description": "As a user, I want the app to use iOS 26 Liquid Glass design on tab bars and navigation bars.",
+      "acceptanceCriteria": [
+        "Wrap the entire body of configureAppAppearance() in BookiApp.swift (lines 62-90) with `if #unavailable(iOS 26) { ... }` so it only runs on iOS 18-25",
+        "On iOS 26, tab bar renders with system Liquid Glass translucency (no opaque override)",
+        "On iOS 26, navigation bar renders with system Liquid Glass translucency",
+        "Tab bar tint color still uses Theme.accent via SwiftUI .tint() modifier on TabView",
+        "On iOS 18, the existing opaque dark appearance is preserved (guard ensures old code runs)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "BookiApp.swift has configureAppAppearance() called in init(). The method sets UITabBar.appearance() and UINavigationBar.appearance() with opaque backgrounds. Wrapping in #unavailable(iOS 26) means the opaque overrides only apply on older iOS. On iOS 26, the system Liquid Glass applies automatically. The .tint(Theme.accent) on TabView in ContentView.swift handles selected tab color natively."
+    },
+    {
+      "id": "US-003",
+      "title": "Update tab badge styling for Liquid Glass",
+      "description": "As a user, I want tab badges to remain legible on the Liquid Glass tab bar.",
+      "acceptanceCriteria": [
+        "Wrap the UITabBarItem badge appearance code in ContentView.init() with `if #unavailable(iOS 26) { ... }`",
+        "On iOS 26, badges use system default styling (which works with Liquid Glass)",
+        "On iOS 18, badges still use brand teal (Theme.accent) background with dark text in SpaceGrotesk-Bold",
+        "Picks tab badge still shows open bet count (1-9+)",
+        "Members tab badge still shows flagged player count",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "ContentView.init() has UITabBarItem.appearance().badgeColor and setBadgeTextAttributes calls. These UIKit overrides may conflict with Liquid Glass. Guard them with #unavailable(iOS 26). The .badge() SwiftUI modifier on the tab items works independently of the UIKit appearance."
+    },
+    {
+      "id": "US-004",
+      "title": "Replace .foregroundColor() with .foregroundStyle()",
+      "description": "As a developer, I want to eliminate deprecation warnings from .foregroundColor().",
+      "acceptanceCriteria": [
+        "Replace all .foregroundColor( occurrences with .foregroundStyle( in GameCardView.swift (18 occurrences)",
+        "Replace all .foregroundColor( occurrences with .foregroundStyle( in GameDetailView.swift (16 occurrences)",
+        "Replace all .foregroundColor( occurrences with .foregroundStyle( in CompactGameRow.swift (12 occurrences)",
+        "Replace all .foregroundColor( occurrences with .foregroundStyle( in GamesView.swift (3), EventsListView.swift (3), CompactOddsButton.swift (3), PickCardCompact.swift (2), Theme.swift (2)",
+        "Zero occurrences of .foregroundColor( remain in the codebase",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Simple find-and-replace — .foregroundColor(X) becomes .foregroundStyle(X). The APIs are signature-compatible for single Color values. Use replace_all in the Edit tool for efficiency. Files: GameCardView.swift (18), GameDetailView.swift (16), CompactGameRow.swift (12), GamesView.swift (3), EventsListView.swift (3), CompactOddsButton.swift (3), PickCardCompact.swift (2), Theme.swift (2). Total: 59 occurrences across 8 files."
+    },
+    {
+      "id": "US-005",
+      "title": "Replace .cornerRadius() with .clipShape() — batch 1 (high-count files)",
+      "description": "As a developer, I want to eliminate deprecation warnings from .cornerRadius() in the most affected files.",
+      "acceptanceCriteria": [
+        "Replace .cornerRadius(X) with .clipShape(RoundedRectangle(cornerRadius: X)) in GradeEventSheet.swift (7 occurrences)",
+        "Replace .cornerRadius(X) with .clipShape(RoundedRectangle(cornerRadius: X)) in BetsListView.swift (7 occurrences)",
+        "Replace .cornerRadius(X) with .clipShape(RoundedRectangle(cornerRadius: X)) in WeeklySettlementView.swift (6 occurrences)",
+        "Replace .cornerRadius(X) with .clipShape(RoundedRectangle(cornerRadius: X)) in PlayerClaimView.swift (6 occurrences)",
+        "Replace .cornerRadius(X) with .clipShape(RoundedRectangle(cornerRadius: X)) in UserAgreementView.swift (4 occurrences)",
+        "No visual regressions — corner radii render identically",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Replace .cornerRadius(X) with .clipShape(RoundedRectangle(cornerRadius: X)). For Theme.cornerRadius and Theme.cornerRadiusSmall references, preserve the Theme constant: .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius)). Read each file first to understand the exact patterns. 30 occurrences across 5 files."
+    },
+    {
+      "id": "US-006",
+      "title": "Replace .cornerRadius() with .clipShape() — batch 2 (remaining files)",
+      "description": "As a developer, I want to eliminate all remaining .cornerRadius() deprecation warnings.",
+      "acceptanceCriteria": [
+        "Replace .cornerRadius(X) with .clipShape(RoundedRectangle(cornerRadius: X)) in all remaining files: SettlementSnapshotCard.swift (3), PlayerLoginView.swift (3), SignUpView.swift (3), LoginView.swift (3), PlayersListView.swift (2), OnboardingProfileView.swift (2), NumericKeypadView.swift (2), GameDetailView.swift (2), EventDetailView.swift (2), PickDetailHeader.swift (2), AppleSignInButton.swift (2), Theme.swift (2), TonightsExposureCard.swift (1), SyncGamesView.swift (1), GradingView.swift (1), CompactOddsButton.swift (1), CompactGameRow.swift (1), SyncService.swift (1)",
+        "Zero occurrences of .cornerRadius( remain in the entire codebase",
+        "No visual regressions",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "40 occurrences across 18 files. Same pattern as US-005: .cornerRadius(X) → .clipShape(RoundedRectangle(cornerRadius: X)). Many of these are 1-2 per file so it's quick. Read each file, make the replacement, move on."
+    },
+    {
+      "id": "US-007",
+      "title": "Migrate TabView to Tab API",
+      "description": "As a developer, I want to use the modern Tab API for better Liquid Glass compatibility.",
+      "acceptanceCriteria": [
+        "ContentView.swift bookieModeView uses Tab(title:systemImage:) { content } for all 6 tabs instead of .tabItem { Label() }",
+        "PlayerMainView.swift uses Tab(title:systemImage:) { content } for all 3 tabs instead of .tabItem { Label() }",
+        ".badge() modifiers still work on Picks and Members tabs",
+        "Tab selection and navigation function correctly",
+        "Zero occurrences of .tabItem in the codebase",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "iOS 18+ Tab API pattern:\n```swift\nTabView {\n    Tab(\"Dashboard\", systemImage: \"chart.bar.fill\") {\n        AnalyticsDashboardView()\n    }\n    Tab(\"Picks\", systemImage: \"list.bullet.rectangle\") {\n        BetsListView()\n    }\n    .badge(openBetsCount > 9 ? \"9+\" : (openBetsCount > 0 ? \"\\(openBetsCount)\" : nil))\n}\n```\nCheck ContentView.swift (line ~162, 6 tabs) and PlayerMainView.swift (line ~47, 3 tabs)."
+    },
+    {
+      "id": "US-008",
+      "title": "Migrate AuthManager to @Observable",
+      "description": "As a developer, I want AuthManager to use @Observable for better performance and modern patterns.",
+      "acceptanceCriteria": [
+        "AuthManager class uses @Observable macro instead of ObservableObject protocol",
+        "All 10 @Published properties become plain var properties (remove @Published)",
+        "BookiApp.swift changes @StateObject var authManager to @State var authManager",
+        "BookiApp.swift changes .environmentObject(authManager) to .environment(authManager)",
+        "All views using @EnvironmentObject var authManager updated to @Environment(AuthManager.self) var authManager",
+        "Auth flow works: login, logout, role detection, bookie/player routing",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "AuthManager is used in ~15 files via @EnvironmentObject. The migration pattern:\n1. AuthManager.swift: Replace `class AuthManager: ObservableObject` with `@Observable class AuthManager`. Remove all `@Published` from properties.\n2. BookiApp.swift: `@StateObject private var authManager` → `@State private var authManager`. `.environmentObject(authManager)` → `.environment(authManager)`.\n3. Every view with `@EnvironmentObject private var authManager: AuthManager` → `@Environment(AuthManager.self) private var authManager`.\nFiles with @EnvironmentObject authManager: ContentView, AuthGateView, SettingsView, DashboardView, PlayersListView, PlayerMainView, AccountView, LoginView, SignUpView, ForgotPasswordView, OnboardingContainerView, OnboardingProfileView, PlayerClaimView, AnalyticsDashboardView, and PlayerSettingsContent in ContentView."
+    },
+    {
+      "id": "US-009",
+      "title": "Migrate SyncService to @Observable",
+      "description": "As a developer, I want SyncService to use @Observable.",
+      "acceptanceCriteria": [
+        "SyncService class uses @Observable macro instead of ObservableObject protocol",
+        "All 5 @Published properties become plain var properties",
+        "BookiApp.swift changes @StateObject var syncService to @State var syncService",
+        "BookiApp.swift changes .environmentObject(syncService) to .environment(syncService)",
+        "All views using @EnvironmentObject var syncService updated to @Environment(SyncService.self) var syncService",
+        "Sync status, progress, and pull-to-refresh still work correctly",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Same pattern as US-008. SyncService is used via @EnvironmentObject in ContentView, SyncGamesView, and potentially other views. Check for all @EnvironmentObject var syncService occurrences."
+    },
+    {
+      "id": "US-010",
+      "title": "Migrate NetworkMonitor to @Observable",
+      "description": "As a developer, I want NetworkMonitor to use @Observable.",
+      "acceptanceCriteria": [
+        "NetworkMonitor class uses @Observable macro instead of ObservableObject protocol",
+        "All 3 @Published properties become plain var properties",
+        "BookiApp.swift changes @StateObject var networkMonitor to @State var networkMonitor",
+        "All views using @EnvironmentObject var networkMonitor updated to @Environment(NetworkMonitor.self) var networkMonitor",
+        "Offline banner appears/disappears correctly when connectivity changes",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "NetworkMonitor uses NWPathMonitor with a callback that updates @Published properties. With @Observable, the callback still works — just remove @Published and the property mutations will be tracked automatically. Check that the NWPathMonitor callback dispatches to MainActor correctly."
+    },
+    {
+      "id": "US-011",
+      "title": "Migrate BetSlipManager and FavoritesManager to @Observable",
+      "description": "As a developer, I want BetSlipManager and FavoritesManager to use @Observable.",
+      "acceptanceCriteria": [
+        "BetSlipManager class uses @Observable macro (5 @Published properties → plain var)",
+        "FavoritesManager class uses @Observable macro (1 @Published property → plain var)",
+        "All @StateObject and @EnvironmentObject references to these classes updated",
+        "Bet slip functionality works: add/remove items, change stakes, place bets",
+        "Favorites functionality works: add/remove favorite teams",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "BetSlipManager has 5 @Published properties (items, itemStakes, betMode, modeSwitchMessage, stake). FavoritesManager has 1 @Published property (favoriteTeams). Check BetSlipSheet.swift and GamesView.swift for @EnvironmentObject usage of these."
+    },
+    {
+      "id": "US-012",
+      "title": "Migrate OddsAPIService and RealtimeService to @Observable",
+      "description": "As a developer, I want all remaining ObservableObject classes migrated to @Observable.",
+      "acceptanceCriteria": [
+        "OddsAPIService class uses @Observable macro (2 @Published properties → plain var)",
+        "RealtimeService class uses @Observable macro (2 @Published properties → plain var)",
+        "All @StateObject and @EnvironmentObject references updated",
+        "Zero ObservableObject conformances remain in the codebase",
+        "Zero @Published properties remain in the codebase",
+        "Zero @StateObject usages remain in the codebase",
+        "Zero @EnvironmentObject usages remain in the codebase",
+        "OddsAPIService quota display and RealtimeService connection status still work",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "OddsAPIService is a singleton (.shared) with 2 @Published properties (quotaRemaining, quotaUsed). RealtimeService has 2 @Published properties (isConnected, connectionStatus). OddsAPIService may be accessed via .shared rather than @EnvironmentObject — check usage pattern. After this story, grep the codebase to confirm zero ObservableObject, @Published, @StateObject, @EnvironmentObject remain."
+    },
+    {
+      "id": "US-013",
+      "title": "Enable strict concurrency and fix warnings",
+      "description": "As a developer, I want strict concurrency checking enabled so the app is safe under Swift 6.",
+      "acceptanceCriteria": [
+        "Add SWIFT_STRICT_CONCURRENCY = complete to build settings in project.pbxproj",
+        "All @Observable service classes have @MainActor annotation where appropriate",
+        "Fix Sendable conformance warnings on types passed across isolation boundaries",
+        "Fix any nonisolated async function warnings (Swift 6.2 changed behavior — they now inherit caller's isolation)",
+        "Edge function calls, sync operations, and bet submission still work correctly",
+        "Zero concurrency warnings in build output",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "This is the hardest story. Swift 6 enforces strict data isolation. Key areas to check:\n- BetSlipManager and FavoritesManager need @MainActor (they access UI state)\n- EdgeFunctionService.callFunction() is async — in Swift 6.2, nonisolated async functions run on caller's actor. If called from @MainActor view, network calls could block main thread. May need @concurrent annotation.\n- SyncService async methods may need similar treatment.\n- UserDefaults access must happen on MainActor.\n- Combine usage patterns with sink/assign may need Sendable closures.\nStart by adding the build setting, then fix warnings file by file."
+    },
+    {
+      "id": "US-014",
+      "title": "Final build verification and cleanup",
+      "description": "As a developer, I want to verify the app builds cleanly with zero errors and zero warnings under Xcode 26.",
+      "acceptanceCriteria": [
+        "App builds with zero errors under Xcode 26",
+        "App builds with zero warnings under Xcode 26",
+        "All bookie tabs load without crashes",
+        "All player tabs load without crashes",
+        "No runtime concurrency assertion failures",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "This is the final verification story. Build the app, check for any remaining warnings or errors, and fix them. Run through basic navigation of all tabs to verify no runtime crashes. If any warnings remain from earlier stories, fix them here."
+    }
+  ]
+}

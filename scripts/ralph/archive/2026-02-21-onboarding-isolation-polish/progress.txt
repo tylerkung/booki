@@ -1,0 +1,186 @@
+# Ralph Progress Log
+Started: Fri Feb 20 02:20:05 PST 2026
+
+## Codebase Patterns
+- SwiftData batch delete: `try context.delete(model: ModelType.self)` — deletes all records of a type
+- Logout call sites: ContentView.swift:250, SettingsView.swift:392, AccountView.swift:590 — all three need to be updated in sync
+- ContentView uses @Query but didn't have @Environment(\.modelContext) — can be added safely
+- SyncService.clearLocalData(context:) is the canonical way to wipe local SwiftData store
+- SyncService.sync() clears local data before downloading — dual protection with logout clear
+- ModelContext access in Task.detached requires `await MainActor.run` since it's main-actor-isolated
+- When deleting Swift files, clean 4 pbxproj sections: PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase
+
+---
+
+## 2026-02-20 - US-001
+- Implemented `SyncService.clearLocalData(context:)` static method that batch-deletes all 11 @Model types
+- Added call to clearLocalData before authManager.signOut() in all 3 logout locations (ContentView, SettingsView, AccountView)
+- Added `@Environment(\.modelContext)` to ContentView (it already had @Query but was missing the context)
+- Files changed: SyncService.swift, ContentView.swift, SettingsView.swift, AccountView.swift
+- **Learnings for future iterations:**
+  - signOut is called from 3 different views, not from AuthGateView — AuthGateView only observes auth state changes
+  - Delete order matters less with batch delete (no cascade issues except Event→Market which is handled)
+  - @AppStorage is device-level and not cleared — intentional per requirements
+---
+
+## 2026-02-20 - US-002
+- Added `SyncService.clearLocalData(context:)` call at the start of `sync()` before `downloadAll()`
+- Runs inside `Task.detached` block via `await MainActor.run` to safely access ModelContext
+- Provides dual protection: logout clears data (US-001), and sync also clears before download (US-002)
+- Even if app crashes before logout clear runs, next login sync starts fresh
+- Files changed: SyncService.swift
+- **Learnings for future iterations:**
+  - ModelContext is main-actor-isolated — must use `await MainActor.run` to access from Task.detached
+  - The `if let context` unwrap is needed since `modelContext` is optional on SyncService
+  - Events (shared, no bookie_id) get re-downloaded by downloadAll after the clear
+---
+
+## 2026-02-20 - US-003
+- Simplified OnboardingContainerView to only show OnboardingWelcomeView
+- Both "Set Up Your Group" and "Skip for now" buttons now call markAllComplete() then dismiss
+- Removed progress header (step dots), multi-step navigation, and references to configure/players/games/success views
+- Kept `startAt:` parameter in init (unused, ignored) so DashboardView caller doesn't break
+- Files changed: OnboardingContainerView.swift
+- **Learnings for future iterations:**
+  - DashboardView has a FinishSetupCard that shows when `!onboardingManager.isOnboardingComplete` — after this change it won't show since markAllComplete() sets all flags
+  - OnboardingStep enum and OnboardingManager per-step tracking still exist — cleanup is US-005
+  - The fullScreenCover mechanism in AuthGateView and DashboardView stays intact
+---
+
+## 2026-02-20 - US-004
+- Verified Bookie model defaults: manualBetAcceptance=false, manualBetGrading=false (auto-pilot ON)
+- Added @AppStorage("default_credit_limit") initialization to BookiApp.init() — sets $500 if not already set
+- Verified settlement frequency defaults to .weekly in OnboardingConfigureView
+- Used UserDefaults.standard.object(forKey:) nil check to avoid overwriting existing user preference
+- Files changed: BookiApp.swift
+- **Learnings for future iterations:**
+  - @AppStorage defaults only take effect when the view using them is rendered — for app-wide defaults, initialize in BookiApp.init() via UserDefaults.standard
+  - Bookie model already has sensible defaults in its initializer — no code changes needed for auto-accept/auto-grade
+  - Settlement frequency is a local UI state in OnboardingConfigureView, not persisted to the Bookie model
+---
+
+## 2026-02-20 - US-005
+- Deleted 5 unused files: OnboardingConfigureView, OnboardingAddPlayersView, OnboardingImportGamesView, OnboardingSuccessView, FinishSetupCard
+- Removed OnboardingStep enum entirely — no longer needed with single-screen onboarding
+- Simplified OnboardingManager to single `isOnboardingComplete` flag (uses existing `onboarding_welcome_complete` @AppStorage key)
+- Removed per-step tracking (configureComplete, playersComplete, gamesComplete), completedStepCount, nextIncompleteStep, markStepComplete, isStepComplete
+- Removed `startAt:` parameter from OnboardingContainerView init
+- Removed FinishSetupCard sections and showOnboardingFromCard state from DashboardView and AnalyticsDashboardView
+- Removed @Environment(OnboardingManager.self) from DashboardView and AnalyticsDashboardView (no longer needed)
+- Cleaned all PBXBuildFile, PBXFileReference, PBXGroup, and Sources entries from project.pbxproj
+- Files changed: OnboardingManager.swift, OnboardingContainerView.swift, DashboardView.swift, AnalyticsDashboardView.swift, project.pbxproj
+- Files deleted: OnboardingConfigureView.swift, OnboardingAddPlayersView.swift, OnboardingImportGamesView.swift, OnboardingSuccessView.swift, FinishSetupCard.swift
+- **Learnings for future iterations:**
+  - When deleting files, must clean 4 sections in project.pbxproj: PBXBuildFile, PBXFileReference, PBXGroup children, and PBXSourcesBuildPhase
+  - FinishSetupCard was effectively dead code after single-screen onboarding — it depended on completedStepCount which was removed
+  - DashboardView and AnalyticsDashboardView both had identical onboarding resume patterns (FinishSetupCard + fullScreenCover)
+---
+
+## 2026-02-20 - US-006
+- Verified player bet visibility after sync — code audit confirmed correct behavior
+- Sync order: players download+save before bets, so upsertBet finds players in local SwiftData
+- upsertBet correctly fetches Player by UUID and sets bet.player relationship (lines 734-736, 752, 768)
+- TrackView filters only by `$0.player?.id == player.id` — no status filtering, ALL bets shown
+- StatusPill handles all states: open, won, lost, push, void, cancelled + pending/rejected workflow
+- UUID types used throughout (not strings), so case sensitivity is not an issue for player lookup
+- Added warning log in upsertBet when player is nil — helps debug if bets ever appear orphaned
+- Files changed: SyncService.swift
+- **Learnings for future iterations:**
+  - downloadAll order is critical: players → events → policies → bets → ledger entries (dependency order)
+  - context.save() runs after each downloadX method, ensuring relationships are available for subsequent downloads
+  - TrackView uses @Query for allBets (SwiftData live query) then filters in computed property — no predicate filtering by status
+  - upsertLedgerEntry has a guard+skip for missing players, but upsertBet intentionally allows nil player (now with warning log)
+---
+
+## 2026-02-20 - US-007
+- Added NormalizedChartPoint struct with fixed id (0-29) for animation interpolation
+- EarningsChart now resamples raw data to exactly 30 points using linear interpolation
+- Chart uses integer index as x-axis instead of Date — allows Swift Charts to animate smoothly between matching x-positions
+- Preserved .catmullRom interpolation and .animation(.easeInOut) modifier
+- Files changed: AnalyticsDashboardView.swift
+- **Learnings for future iterations:**
+  - Swift Charts can only animate between datasets with matching x-values — different counts cause jump cuts
+  - Fix: resample to fixed count, use normalized index (0..N-1) as x-value
+  - Linear interpolation for resampling: `t * (count-1)` maps normalized position to source index, then lerp between adjacent values
+  - DailyPLPoint uses Date as id — not suitable for animation since dates change between ranges
+---
+
+## 2026-02-20 - US-008
+- Standardized BookiLogo to 180pt width across all auth screens (was 220/160/200)
+- Added BookiLogo with accent glow to SignUpView, ForgotPasswordView, and PlayerClaimView (replaced system icons)
+- Consistent glow: `shadow(color: Theme.accent.opacity(0.3), radius: 40)`
+- Changed AuthGateView auth flow transition from `.move(edge: .bottom).combined(with: .opacity)` to `.opacity`
+- AppleSignInButton loading state uses `Theme.cardBackground` instead of `Color.black`
+- Files changed: LoginView.swift, SignUpView.swift, ForgotPasswordView.swift, PlayerClaimView.swift, AuthGateView.swift, AppleSignInButton.swift
+- **Learnings for future iterations:**
+  - Auth views are split: LoginView and SignUpView/ForgotPasswordView in Views/Auth/, PlayerClaimView in Views/, AuthGateView in Views/
+  - LoginView has two states (welcome + sign-in) with separate logo instances — both need updating
+  - `.move` transitions cause visual jumping between auth states; `.opacity` is smoother
+  - PlayerClaimView headerView is a separate computed property from the body
+---
+
+## 2026-02-20 - Player RLS fixes, grading/settlement bugfixes
+- **RLS player claim fix**: PlayerClaimView's direct Supabase update to set `auth_user_id` was silently blocked by RLS (`players_update` requires `is_bookie()`). Created `claim_player` edge function using service role to bypass RLS.
+- **Spurious bookie record**: When player claim failed, AuthManager fell through and created a bookie record for the player. `get_user_bookie_id()` COALESCE checked bookies first, returning wrong bookie ID. Fix: delete spurious bookie record from DB.
+- **submit_bet/submit_parlay stored "a"/"b" as side**: Edge functions now look up the market table to resolve full side labels (e.g., "Lakers -3.5") and market type (e.g., "moneyline") before storing.
+- **Grading was broken**: `bet.market` stored UUID (not type), `bet.side` stored "a"/"b" (not label). Grading logic couldn't parse either → defaulted all bets to "push". Fixed at source in edge functions.
+- **Combined odds returning 0**: `Int(truncating: NSDecimalNumber)` silently returns 0 when Decimal has 38+ significant digits. Fixed `decimalToAmerican` in PickPresenter and Ticket to convert through Double first.
+- **Auto-settlement**: `auto_refresh_games` now goes accepted → settled in one step, creating ledger entries automatically. No more manual settle step needed.
+- **Pull-to-refresh flicker**: `clearLocalData` was running on every sync. Added `hasCompletedInitialSync` flag to only clear on first sync after login.
+- **Sync_games on refresh**: Added fire-and-forget `triggerServerGameSync()` to pull-to-refresh so odds update automatically.
+- **Anon key**: Updated Info.plist with real Supabase JWT anon key.
+- **Debug cleanup**: Removed debug prints from TrackView, SyncService, TicketDetailView.
+- Files changed: SyncService.swift, PlayerClaimView.swift, PickPresenter.swift, TrackView.swift, TicketDetailView.swift, GamesView.swift, Info.plist, auto_refresh_games/index.ts, submit_bet/index.ts, submit_parlay/index.ts, claim_player/index.ts (new)
+- **Learnings for future iterations:**
+  - RLS `players_update` requires `is_bookie()` — newly signed-up players can't update their own record. Always use edge functions with service role for cross-role mutations.
+  - `Int(truncating: NSDecimalNumber)` fails silently with high-precision Decimals — always convert through Double for final Int conversion.
+  - Supabase `.update().execute()` returns success even when RLS blocks all rows (0 rows affected, no error).
+  - Auto-grading only fires when events transition to `final` — if bets are reset after events are already final, must re-grade manually or re-trigger the transition.
+  - Store resolved human-readable data (team names, market types) in bets, not raw indicators ("a"/"b") or UUIDs — downstream consumers (grading, display) need readable data.
+---
+
+## 2026-02-20 - Alternate Lines & Alternate Totals
+- Added `alternateSpread`, `alternateTotal`, `teamTotal` cases to `MarketType` enum with helper properties (`gradesAsSpread`, `gradesAsTotal`, `isAlternate`, `isMainLine`)
+- Updated `sync_games` edge function: API query now fetches `alternate_spreads,alternate_totals`, parses outcomes into paired markets, fixed composite upsert key from `event_id_type` to `event_id_type_lineValue` to support multiple markets per type
+- Updated `grading.ts`: `alternate_spread` → `gradeSpreadBet()`, `alternate_total` → `gradeTotalBet()`, new `gradeTeamTotalBet()` for future team totals
+- Updated `OddsAPIMapper.swift`: new `mapAlternateSpreads()` and `mapAlternateTotals()` methods that group outcomes by point value
+- Updated `OddsAPIService.swift`: markets query param includes alternate markets
+- Wired up GameDetailView "Alternate Lines" tab: `hasMarketsForCategory` and `marketsForSelectedCategory` now filter by `isAlternate`/`isMainLine`, added sorted `alternateSpreadMarkets`/`alternateTotalMarkets` computed properties
+- Files changed: Market.swift, sync_games/index.ts, grading.ts, OddsAPIMapper.swift, OddsAPIService.swift, GameDetailView.swift
+- **Learnings for future iterations:**
+  - The Odds API alternate markets come back with many outcomes per market key — must group by point value into pairs before storing
+  - The `markets` table `type` column is `TEXT` (not a PostgreSQL enum) — no migration needed for new market types
+  - Market upsert composite key must include line value to avoid overwriting alternates with each other
+  - `event.markets` filtering by `.isMainLine` keeps "All Markets" tab clean; alternates go to dedicated tab
+---
+
+## 2026-02-20 - Player Claim Flow & Edge Function Fixes
+- Fixed player claim race condition: `isClaimingPlayerAccount` flag in AuthManager prevents `ensureBookieRecord()` from creating spurious bookie record during signUp
+- Fixed Invalid JWT from signUp: `claim_player` edge function now auto-confirms email via admin API; `completePlayerClaimFlow` signs out and signs back in for a valid JWT
+- Seamless claim flow: player goes straight to player view after claiming invite + agreement (no re-login)
+- Fixed Supabase gateway JWT rejection (HS256→ES256 migration): deployed all edge functions with `--no-verify-jwt`
+- Fixed `submit_bet` shared events check: allows `bookie_id = NULL` events (API-imported)
+- Applied missing `accepted_at` column migration to bets table
+- Fixed Strong Password prompt: changed `.textContentType` to `.oneTimeCode` on password fields
+- Added `openStakes` to `PlayerBalanceSummary` (BetSlipSheet default value fix)
+- Files changed: AuthManager.swift, PlayerClaimView.swift, EdgeFunctionService.swift, claim_player/index.ts, submit_bet/index.ts, SignUpView.swift, BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - Supabase signUp with email confirmation enabled does NOT produce a valid session JWT — must confirm email then sign in fresh
+  - `--no-verify-jwt` on edge function deploy bypasses gateway JWT check; function code still validates via `getUser()`
+  - Supabase migrated JWT signing from HS256 to ES256 — edge function gateway may not handle this; `--no-verify-jwt` is the workaround
+  - Shared events (`bookie_id = NULL`) need explicit null checks in all edge function validation
+  - Always verify migration files have been applied to live database, not just checked into repo
+---
+
+## 2026-02-21 - Bookie Events Tab Redesign & Settings Cleanup
+- Rewrote `EventsListView.swift` from plain List rows to player-style compact card layout with `CompactGameRow`, sport tabs, inline search, sticky headers with SPREAD/MONEY/TOTAL columns
+- Added Upcoming/Past segmented picker (48h cutoff for recent finals)
+- Added `isViewOnly` flag to `CompactGameRow` — odds buttons render muted/disabled, no bet slip interaction
+- Removed Odds API settings section from `SettingsView` (API key, bookmaker picker, test connection)
+- Removed "Load Sample Data" button and "Sync Now" section from `SettingsView`
+- Files changed: CompactGameRow.swift, EventsListView.swift, SettingsView.swift
+- **Learnings for future iterations:**
+  - `CompactGameRow` uses `.onTapGesture` on the card — use `onTapCard` callback + `@State` navigation binding instead of hidden `NavigationLink`
+  - `isViewOnly` pattern: single flag disables interaction + suppresses selection highlighting without changing visual layout
+  - Reuse player-side UI components (SportTabButton, sportIconName, sticky headers) across bookie views for visual consistency
+---

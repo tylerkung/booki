@@ -146,5 +146,5 @@ struct OnboardingProfileView: View {
         onSkip: { print("Skip") }
     )
     .background(Theme.backgroundGradient)
-    .environmentObject(AuthManager())
+    .environment(AuthManager())
 }

@@ -1,5 +1,5 @@
 import Foundation
-import Supabase
+@preconcurrency import Supabase
 
 /// Error types for bookie service operations
 enum BookieServiceError: Error, LocalizedError, @unchecked Sendable {

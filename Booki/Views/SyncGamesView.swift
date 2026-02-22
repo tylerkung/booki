@@ -518,6 +518,6 @@ private struct SportToggleButton: View {
 
 #Preview {
     SyncGamesView()
-        .environmentObject(AuthManager())
+        .environment(AuthManager())
         .modelContainer(for: [Event.self, Market.self], inMemory: true)
 }

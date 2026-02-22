@@ -170,7 +170,7 @@ struct ContentView: View {
             Tab("Picks", systemImage: "list.bullet.rectangle") {
                 BetsListView()
             }
-            .badge(openBetsCount > 9 ? "9+" : (openBetsCount > 0 ? "\(openBetsCount)" : nil))
+            .badge(openBetsCount > 9 ? "9+" : (openBetsCount > 0 ? "\(openBetsCount)" : ""))
 
             Tab("Members", systemImage: "person.2.fill") {
                 PlayersListView()
@@ -287,5 +287,5 @@ struct PlayerSettingsContent: View {
     ContentView()
         .modelContainer(for: [Player.self, Bet.self, LedgerEntry.self, Event.self, AcceptancePolicy.self], inMemory: true)
         .environment(NetworkMonitor())
-        .environmentObject(SyncService())
+        .environment(SyncService())
 }

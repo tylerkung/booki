@@ -499,6 +499,7 @@ enum BetService {
     /// Accepts a pending bet via the accept_bet edge function, then updates local model
     /// - Parameter bet: The bet to accept
     /// - Throws: On network or server error
+    @MainActor
     static func acceptBet(_ bet: Bet) async throws {
         guard bet.status == .pending else { return }
 
@@ -520,15 +521,13 @@ enum BetService {
             body: request
         )
 
-        // Server accepted — update local model
-        await MainActor.run {
-            bet.status = .accepted
-        }
+        bet.status = .accepted
     }
 
     /// Declines a pending bet via the decline_bet edge function, then updates local model
     /// - Parameter bet: The bet to decline
     /// - Throws: On network or server error
+    @MainActor
     static func declineBet(_ bet: Bet) async throws {
         guard bet.status == .pending else { return }
 
@@ -550,15 +549,13 @@ enum BetService {
             body: request
         )
 
-        // Server accepted — update local model
-        await MainActor.run {
-            bet.status = .declined
-        }
+        bet.status = .declined
     }
 
     /// Voids an accepted bet via the grade_bet edge function with outcome='void'
     /// - Parameter bet: The bet to void
     /// - Throws: On network or server error
+    @MainActor
     static func voidBet(_ bet: Bet) async throws {
         guard bet.status == .accepted else { return }
 
@@ -582,10 +579,7 @@ enum BetService {
             body: request
         )
 
-        // Server accepted — update local model
-        await MainActor.run {
-            bet.status = .void
-        }
+        bet.status = .void
     }
 
     // MARK: - Validation Helpers
@@ -641,6 +635,7 @@ enum BetService {
     ///   - eventId: The event ID to void bets for
     ///   - bets: All bets to filter from
     /// - Returns: Number of bets voided
+    @MainActor
     @discardableResult
     static func voidBetsForEvent(eventId: String, bets: [Bet]) async throws -> Int {
         var voidedCount = 0
@@ -670,9 +665,7 @@ enum BetService {
                 body: request
             )
 
-            await MainActor.run {
-                bet.status = .void
-            }
+            bet.status = .void
             voidedCount += 1
         }
 

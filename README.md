@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 21, 2026 - Bookie Picks tab: badge with open bet count, simplified Open/Past filters with player chips, card-based detail view matching player-side TicketDetailView*
+*Last updated: February 21, 2026 - iOS 26 SDK migration: Swift 6 strict concurrency, @Observable migration, iOS 18+ deployment target*

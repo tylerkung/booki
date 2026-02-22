@@ -158,8 +158,10 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 
 ## Current State (February 21, 2026)
 
-- **Branch**: `main`
-- **Phases complete**: 1-16 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines)
+- **Branch**: `ralph/ios26-migration`
+- **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
+- **Deployment target**: iOS 18.0
+- **Phases complete**: 1-17 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
 - **Edge Functions**: 11 functions for server-authoritative operations (including `submit_parlay`, `sync_games`, `claim_player`)
 - **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)

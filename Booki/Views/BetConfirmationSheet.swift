@@ -13,6 +13,10 @@ struct BetConfirmationSheet: View {
 
     let player: Player
 
+    init(player: Player) {
+        self.player = player
+    }
+
     /// State for submission process
     @State private var isSubmitting: Bool = false
     @State private var submissionComplete: Bool = false

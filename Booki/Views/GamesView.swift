@@ -28,6 +28,10 @@ struct GamesView: View {
 
     let player: Player
 
+    init(player: Player) {
+        self.player = player
+    }
+
     /// US-008: Get lock offset from policy (default 0 if no policy)
     private var lockOffsetMinutes: Int {
         acceptancePolicies.first?.eventLockOffsetMinutes ?? 0

@@ -1,5 +1,5 @@
 import SwiftUI
-import Supabase
+@preconcurrency import Supabase
 
 /// Welcome landing screen — the first thing users see
 struct LoginView: View {
@@ -380,5 +380,5 @@ struct LoginView: View {
 
 #Preview {
     LoginView()
-        .environmentObject(AuthManager())
+        .environment(AuthManager())
 }

@@ -1,5 +1,5 @@
 import SwiftUI
-import Supabase
+@preconcurrency import Supabase
 
 /// Forgot password view for users to reset their password via email
 struct ForgotPasswordView: View {
@@ -190,5 +190,5 @@ struct ForgotPasswordView: View {
 
 #Preview {
     ForgotPasswordView()
-        .environmentObject(AuthManager())
+        .environment(AuthManager())
 }

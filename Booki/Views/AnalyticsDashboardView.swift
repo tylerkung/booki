@@ -732,5 +732,5 @@ private struct PlayerAnalyticsRow: View {
 #Preview {
     AnalyticsDashboardView()
         .modelContainer(for: [Bet.self, Event.self, Player.self, LedgerEntry.self], inMemory: true)
-        .environmentObject(SyncService())
+        .environment(SyncService())
 }
