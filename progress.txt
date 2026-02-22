@@ -140,3 +140,22 @@ Started: Sat Feb 21 17:41:31 PST 2026
   - BetSlipSheet.swift has a sub-view (PremiumBetSlipItemCard) that takes BetSlipManager as a parameter via @ObservedObject — also needs updating
   - `didSet` observers on properties (betMode, stake) still work fine with @Observable — no changes needed
 ---
+
+## 2026-02-21 - US-012
+- Migrated OddsAPIService from ObservableObject to @Observable macro
+- Removed @Published from 2 properties (quotaRemaining, quotaUsed)
+- Migrated RealtimeService from ObservableObject to @Observable macro
+- Removed @Published from 2 properties (isConnected, connectionStatus)
+- Updated BookiApp.swift: @StateObject → @State for realtimeService, .environmentObject() → .environment()
+- Updated AuthGateView.swift: @EnvironmentObject → @Environment(RealtimeService.self), fixed preview providers
+- Updated 4 views with OddsAPIService.shared singleton: @StateObject → plain var (ImportEventsView, RefreshOddsView, SyncGamesView, FetchScoresView)
+- Fixed 2 @ObservedObject remnants in SyncService.swift (SyncStatusIndicator, SyncProgressView) → plain var
+- **Verified zero ObservableObject, @Published, @StateObject, @EnvironmentObject, @ObservedObject remain in codebase**
+- Files changed: OddsAPIService.swift, RealtimeService.swift, BookiApp.swift, AuthGateView.swift, ImportEventsView.swift, RefreshOddsView.swift, SyncGamesView.swift, FetchScoresView.swift, SyncService.swift
+- **Learnings for future iterations:**
+  - OddsAPIService is a @MainActor singleton (.shared) — views used @StateObject to observe it, which becomes plain `var` with @Observable
+  - RealtimeService was injected via .environmentObject in BookiApp — same migration pattern as other services
+  - SyncService.swift had 2 sub-views (SyncStatusIndicator, SyncProgressView) that used @ObservedObject for passed-in SyncService — easy to miss
+  - AuthGateView preview providers used .environmentObject for already-migrated services (AuthManager, SyncService) — these needed updating to .environment() too
+  - After this story, the entire codebase uses @Observable exclusively — no Combine observation patterns remain
+---

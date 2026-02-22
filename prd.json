@@ -195,7 +195,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "OddsAPIService is a singleton (.shared) with 2 @Published properties (quotaRemaining, quotaUsed). RealtimeService has 2 @Published properties (isConnected, connectionStatus). OddsAPIService may be accessed via .shared rather than @EnvironmentObject — check usage pattern. After this story, grep the codebase to confirm zero ObservableObject, @Published, @StateObject, @EnvironmentObject remain."
     },
     {
