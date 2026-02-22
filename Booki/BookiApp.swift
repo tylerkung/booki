@@ -60,32 +60,35 @@ struct BookiApp: App {
 
     /// Configure global UIKit appearances for dark theme
     private func configureAppAppearance() {
-        // Tab bar appearance
-        let tabBarAppearance = UITabBarAppearance()
-        tabBarAppearance.configureWithOpaqueBackground()
-        tabBarAppearance.backgroundColor = UIColor(Theme.background)
+        if #unavailable(iOS 26) {
+            // Tab bar appearance — opaque dark background for iOS 18-25
+            let tabBarAppearance = UITabBarAppearance()
+            tabBarAppearance.configureWithOpaqueBackground()
+            tabBarAppearance.backgroundColor = UIColor(Theme.background)
 
-        // Selected tab color
-        tabBarAppearance.stackedLayoutAppearance.selected.iconColor = UIColor(Theme.accent)
-        tabBarAppearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(Theme.accent)]
+            // Selected tab color
+            tabBarAppearance.stackedLayoutAppearance.selected.iconColor = UIColor(Theme.accent)
+            tabBarAppearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(Theme.accent)]
 
-        // Unselected tab color
-        tabBarAppearance.stackedLayoutAppearance.normal.iconColor = UIColor(Theme.textSecondary)
-        tabBarAppearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor(Theme.textSecondary)]
+            // Unselected tab color
+            tabBarAppearance.stackedLayoutAppearance.normal.iconColor = UIColor(Theme.textSecondary)
+            tabBarAppearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor(Theme.textSecondary)]
 
-        UITabBar.appearance().standardAppearance = tabBarAppearance
-        UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
+            UITabBar.appearance().standardAppearance = tabBarAppearance
+            UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
 
-        // Navigation bar appearance
-        let navBarAppearance = UINavigationBarAppearance()
-        navBarAppearance.configureWithOpaqueBackground()
-        navBarAppearance.backgroundColor = UIColor(Theme.background)
-        navBarAppearance.titleTextAttributes = [.foregroundColor: UIColor(Theme.textPrimary)]
-        navBarAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor(Theme.textPrimary)]
+            // Navigation bar appearance — opaque dark background for iOS 18-25
+            let navBarAppearance = UINavigationBarAppearance()
+            navBarAppearance.configureWithOpaqueBackground()
+            navBarAppearance.backgroundColor = UIColor(Theme.background)
+            navBarAppearance.titleTextAttributes = [.foregroundColor: UIColor(Theme.textPrimary)]
+            navBarAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor(Theme.textPrimary)]
 
-        UINavigationBar.appearance().standardAppearance = navBarAppearance
-        UINavigationBar.appearance().scrollEdgeAppearance = navBarAppearance
-        UINavigationBar.appearance().compactAppearance = navBarAppearance
-        UINavigationBar.appearance().tintColor = UIColor(Theme.accent)
+            UINavigationBar.appearance().standardAppearance = navBarAppearance
+            UINavigationBar.appearance().scrollEdgeAppearance = navBarAppearance
+            UINavigationBar.appearance().compactAppearance = navBarAppearance
+            UINavigationBar.appearance().tintColor = UIColor(Theme.accent)
+        }
+        // On iOS 26+, system Liquid Glass translucency applies automatically
     }
 }
