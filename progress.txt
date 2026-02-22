@@ -7,6 +7,8 @@ Started: Sat Feb 21 17:41:31 PST 2026
 - Xcode IDE required for full builds — command-line can't verify typecheck (per CLAUDE.md)
 - Tab API: Use `Tab("Title", systemImage: "icon") { content }` (no selection) or `Tab("Title", systemImage: "icon", value: N) { content }` (with selection binding). `.badge()` goes on the Tab.
 - @Observable singletons (.shared): Replace `@ObservedObject private var x = X.shared` with `private var x = X.shared` — SwiftUI tracks access automatically.
+- Swift 6 strict concurrency: All @Observable classes need @MainActor. Non-actor service singletons with only `let` properties use `@unchecked Sendable`. Error enums with `Error` associated values need `@unchecked Sendable`. Closure params crossing isolation boundaries need `@Sendable`.
+- `callFunction(body: Encodable)` changed to `body: some Encodable & Sendable` — all request types are structs with value-type properties (auto-Sendable).
 
 ---
 
@@ -158,4 +160,23 @@ Started: Sat Feb 21 17:41:31 PST 2026
   - SyncService.swift had 2 sub-views (SyncStatusIndicator, SyncProgressView) that used @ObservedObject for passed-in SyncService — easy to miss
   - AuthGateView preview providers used .environmentObject for already-migrated services (AuthManager, SyncService) — these needed updating to .environment() too
   - After this story, the entire codebase uses @Observable exclusively — no Combine observation patterns remain
+---
+
+## 2026-02-21 - US-013
+- Added SWIFT_STRICT_CONCURRENCY = complete to all 4 build configurations in project.pbxproj
+- Added @MainActor to 3 @Observable classes missing it: BetSlipManager, FavoritesManager, DashboardViewModel
+- Made 4 service/singleton classes @unchecked Sendable: EdgeFunctionService, SupabaseClientManager, AuditService, AgreementService
+- Made 6 error enums @unchecked Sendable (those with non-Sendable `Error` associated values): EdgeFunctionError, AuditServiceError, AgreementServiceError, BookieServiceError, OddsAPIError, SyncServiceError
+- Added @Sendable to retryWithBackoff operation closure parameter in EdgeFunctionService
+- Changed callFunction body parameter from `Encodable` to `some Encodable & Sendable` for actor boundary safety
+- Made AnyEncodable struct @unchecked Sendable (stores non-Sendable closure)
+- Files changed: project.pbxproj, BetSlipManager.swift, FavoritesManager.swift, DashboardViewModel.swift, EdgeFunctionService.swift, SupabaseClient.swift, AuditService.swift, AgreementService.swift, BookieService.swift, OddsAPIService.swift, SyncService.swift
+- **Learnings for future iterations:**
+  - In Swift 6, `SWIFT_STRICT_CONCURRENCY = complete` is redundant with `SWIFT_VERSION = 6.0` (strict concurrency is the default in Swift 6), but adding it explicitly documents intent
+  - All @Observable classes MUST have @MainActor since they hold UI state — without it, property access from SwiftUI views has no isolation guarantee
+  - Final classes with only `let` properties are effectively immutable and safe to mark `@unchecked Sendable`
+  - Error enums with `Error` (non-Sendable protocol) associated values need `@unchecked Sendable` — the concrete error types (URLError, DecodingError) ARE Sendable but the existential isn't
+  - Existential `Encodable` parameter crossing actor boundaries is non-Sendable; use `some Encodable & Sendable` for opaque type
+  - `Task.detached { [weak self] in }` where self is @MainActor: Swift 6 region-based isolation (SE-0414) allows this because all access goes through actor-hopping
+  - Xcode IDE required for build verification — command-line xcodebuild needs `sudo xcode-select -s` to switch developer directory
 ---

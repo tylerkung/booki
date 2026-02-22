@@ -212,7 +212,7 @@
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "This is the hardest story. Swift 6 enforces strict data isolation. Key areas to check:\n- BetSlipManager and FavoritesManager need @MainActor (they access UI state)\n- EdgeFunctionService.callFunction() is async — in Swift 6.2, nonisolated async functions run on caller's actor. If called from @MainActor view, network calls could block main thread. May need @concurrent annotation.\n- SyncService async methods may need similar treatment.\n- UserDefaults access must happen on MainActor.\n- Combine usage patterns with sink/assign may need Sendable closures.\nStart by adding the build setting, then fix warnings file by file."
     },
     {

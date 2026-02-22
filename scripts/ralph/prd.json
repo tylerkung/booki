@@ -144,7 +144,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Same pattern as US-008. SyncService is used via @EnvironmentObject in ContentView, SyncGamesView, and potentially other views. Check for all @EnvironmentObject var syncService occurrences."
     },
     {
@@ -160,7 +160,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "NetworkMonitor uses NWPathMonitor with a callback that updates @Published properties. With @Observable, the callback still works — just remove @Published and the property mutations will be tracked automatically. Check that the NWPathMonitor callback dispatches to MainActor correctly."
     },
     {
@@ -176,7 +176,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "BetSlipManager has 5 @Published properties (items, itemStakes, betMode, modeSwitchMessage, stake). FavoritesManager has 1 @Published property (favoriteTeams). Check BetSlipSheet.swift and GamesView.swift for @EnvironmentObject usage of these."
     },
     {
@@ -195,7 +195,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "OddsAPIService is a singleton (.shared) with 2 @Published properties (quotaRemaining, quotaUsed). RealtimeService has 2 @Published properties (isConnected, connectionStatus). OddsAPIService may be accessed via .shared rather than @EnvironmentObject — check usage pattern. After this story, grep the codebase to confirm zero ObservableObject, @Published, @StateObject, @EnvironmentObject remain."
     },
     {
@@ -212,7 +212,7 @@
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "This is the hardest story. Swift 6 enforces strict data isolation. Key areas to check:\n- BetSlipManager and FavoritesManager need @MainActor (they access UI state)\n- EdgeFunctionService.callFunction() is async — in Swift 6.2, nonisolated async functions run on caller's actor. If called from @MainActor view, network calls could block main thread. May need @concurrent annotation.\n- SyncService async methods may need similar treatment.\n- UserDefaults access must happen on MainActor.\n- Combine usage patterns with sink/assign may need Sendable closures.\nStart by adding the build setting, then fix warnings file by file."
     },
     {
