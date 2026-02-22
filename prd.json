@@ -176,7 +176,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "BetSlipManager has 5 @Published properties (items, itemStakes, betMode, modeSwitchMessage, stake). FavoritesManager has 1 @Published property (favoriteTeams). Check BetSlipSheet.swift and GamesView.swift for @EnvironmentObject usage of these."
     },
     {

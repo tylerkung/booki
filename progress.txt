@@ -6,6 +6,7 @@ Started: Sat Feb 21 17:41:31 PST 2026
 - supabase-swift package uses `upToNextMajorVersion: 2.0.0` — no change needed for iOS 26 migration
 - Xcode IDE required for full builds — command-line can't verify typecheck (per CLAUDE.md)
 - Tab API: Use `Tab("Title", systemImage: "icon") { content }` (no selection) or `Tab("Title", systemImage: "icon", value: N) { content }` (with selection binding). `.badge()` goes on the Tab.
+- @Observable singletons (.shared): Replace `@ObservedObject private var x = X.shared` with `private var x = X.shared` — SwiftUI tracks access automatically.
 
 ---
 
@@ -118,4 +119,24 @@ Started: Sat Feb 21 17:41:31 PST 2026
   - NetworkMonitor.swift contains 3 sub-views (OfflineBannerView, OfflineDisabledModifier, OfflineAlertModifier) that also use @EnvironmentObject — don't forget these
   - AuthGateView has 2 preview providers that both need updating
   - NWPathMonitor callback with `Task { @MainActor }` dispatch works fine with @Observable — no changes needed to the monitoring logic
+---
+
+## 2026-02-21 - US-011
+- Migrated BetSlipManager from ObservableObject to @Observable macro
+- Removed @Published from 5 properties (items, itemStakes, betMode, modeSwitchMessage, stake)
+- Removed `import Combine` from BetSlipManager.swift
+- Migrated FavoritesManager from ObservableObject to @Observable macro
+- Removed @Published from 1 property (favoriteTeams)
+- Removed `import Combine` from FavoritesManager.swift
+- Updated 6 views across 4 files: @ObservedObject → plain var (singletons accessed via .shared)
+  - GamesView.swift (betSlipManager + favoritesManager)
+  - GameDetailView.swift (betSlipManager)
+  - BetConfirmationSheet.swift (betSlipManager)
+  - BetSlipSheet.swift (betSlipManager — 2 occurrences: main view + PremiumBetSlipItemCard sub-view)
+- Files changed: BetSlipManager.swift, FavoritesManager.swift, GamesView.swift, GameDetailView.swift, BetConfirmationSheet.swift, BetSlipSheet.swift
+- **Learnings for future iterations:**
+  - BetSlipManager and FavoritesManager are singletons (.shared) — they use @ObservedObject, not @EnvironmentObject/@StateObject
+  - For @Observable singletons, @ObservedObject becomes a plain `var` or `let` — SwiftUI tracks property access automatically
+  - BetSlipSheet.swift has a sub-view (PremiumBetSlipItemCard) that takes BetSlipManager as a parameter via @ObservedObject — also needs updating
+  - `didSet` observers on properties (betMode, stake) still work fine with @Observable — no changes needed
 ---
