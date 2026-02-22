@@ -35,7 +35,8 @@ enum OddsAPIError: Error, LocalizedError {
 
 /// Service for communicating with The Odds API
 @MainActor
-final class OddsAPIService: ObservableObject {
+@Observable
+final class OddsAPIService {
 
     // MARK: - Constants
 
@@ -43,8 +44,8 @@ final class OddsAPIService: ObservableObject {
 
     // MARK: - Published Properties (US-012: Quota Tracking)
 
-    @Published var quotaRemaining: Int?
-    @Published var quotaUsed: Int?
+    var quotaRemaining: Int?
+    var quotaUsed: Int?
 
     // MARK: - Stored Settings
 

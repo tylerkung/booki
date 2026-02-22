@@ -1649,7 +1649,7 @@ extension Notification.Name {
 
 /// A compact sync status indicator for display in the toolbar
 struct SyncStatusIndicator: View {
-    @ObservedObject var syncService: SyncService
+    var syncService: SyncService
 
     /// Whether to show the expanded progress view (default: false for compact toolbar display)
     var showProgress: Bool = false
@@ -1683,7 +1683,7 @@ struct SyncStatusIndicator: View {
 
 /// A larger sync progress view for display during initial sync
 struct SyncProgressView: View {
-    @ObservedObject var syncService: SyncService
+    var syncService: SyncService
 
     var body: some View {
         VStack(spacing: 12) {

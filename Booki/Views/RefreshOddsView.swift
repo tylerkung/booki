@@ -9,7 +9,7 @@ struct RefreshOddsView: View {
     @Environment(SyncService.self) private var syncService
     @Query private var events: [Event]
 
-    @StateObject private var oddsService = OddsAPIService.shared
+    private var oddsService = OddsAPIService.shared
 
     @State private var isRefreshing = false
     @State private var errorMessage: String?

@@ -9,7 +9,7 @@ struct ImportEventsView: View {
     @Query private var bookies: [Bookie]
     @Query private var existingEvents: [Event]
 
-    @StateObject private var oddsService = OddsAPIService.shared
+    private var oddsService = OddsAPIService.shared
 
     @State private var sports: [OddsSport] = []
     @State private var selectedSportKey: String?

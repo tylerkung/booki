@@ -10,7 +10,7 @@ struct SyncGamesView: View {
     @Environment(SyncService.self) private var syncService
     @Query private var events: [Event]
 
-    @StateObject private var oddsService = OddsAPIService.shared
+    private var oddsService = OddsAPIService.shared
 
     @State private var isSyncing = false
     @State private var isLoadingSports = true

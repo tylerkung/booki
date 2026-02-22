@@ -7,15 +7,16 @@ import Realtime
 /// Manages Supabase Realtime subscriptions for live data sync
 /// Subscribes to database changes and updates local SwiftData models
 @MainActor
-final class RealtimeService: ObservableObject {
+@Observable
+final class RealtimeService {
 
     // MARK: - Published Properties
 
     /// Whether realtime subscriptions are active
-    @Published private(set) var isConnected: Bool = false
+    private(set) var isConnected: Bool = false
 
     /// Current connection status message
-    @Published private(set) var connectionStatus: String = "Disconnected"
+    private(set) var connectionStatus: String = "Disconnected"
 
     // MARK: - Private Properties
 

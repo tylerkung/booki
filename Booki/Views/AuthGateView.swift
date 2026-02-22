@@ -8,7 +8,7 @@ struct AuthGateView: View {
 
     @Environment(AuthManager.self) private var authManager
     @Environment(SyncService.self) private var syncService
-    @EnvironmentObject private var realtimeService: RealtimeService
+    @Environment(RealtimeService.self) private var realtimeService
     @Environment(NetworkMonitor.self) private var networkMonitor
 
     // MARK: - State
@@ -282,16 +282,16 @@ private enum AuthViewType {
 
 #Preview("Loading") {
     AuthGateView()
-        .environmentObject(AuthManager())
-        .environmentObject(SyncService())
-        .environmentObject(RealtimeService())
+        .environment(AuthManager())
+        .environment(SyncService())
+        .environment(RealtimeService())
         .environment(NetworkMonitor())
 }
 
 #Preview("Login") {
     AuthGateView()
-        .environmentObject(AuthManager())
-        .environmentObject(SyncService())
-        .environmentObject(RealtimeService())
+        .environment(AuthManager())
+        .environment(SyncService())
+        .environment(RealtimeService())
         .environment(NetworkMonitor())
 }
