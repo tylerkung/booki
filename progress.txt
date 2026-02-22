@@ -90,3 +90,15 @@ Started: Sat Feb 21 17:41:31 PST 2026
   - `.badge()` modifier goes on the `Tab` directly, same as before
   - Content goes inside the Tab closure instead of before `.tabItem`
 ---
+
+## 2026-02-21 - US-009
+- Migrated SyncService from ObservableObject to @Observable macro
+- Removed @Published from 4 properties (syncStatus, lastSyncedAt, pendingChangesCount, syncProgressDescription)
+- Updated BookiApp.swift: @StateObject → @State, .environmentObject() → .environment()
+- Updated 10 views across 9 files: @EnvironmentObject → @Environment(SyncService.self)
+- Files changed: SyncService.swift, BookiApp.swift, ContentView.swift, AnalyticsDashboardView.swift, AuthGateView.swift, DashboardView.swift, FetchScoresView.swift, GamesView.swift, PlayersListView.swift (2 sub-views), RefreshOddsView.swift, SyncGamesView.swift
+- **Learnings for future iterations:**
+  - SyncService is used in 10 views (2 sub-views in PlayersListView: PlayerDetailView and AddPlayerSheet)
+  - Same migration pattern as US-008: class declaration, property wrappers, BookiApp injection, and all consumer views
+  - `replace_all` in Edit tool efficiently handles files with single occurrences; PlayersListView had 2 occurrences handled in one call
+---

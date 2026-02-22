@@ -144,7 +144,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Same pattern as US-008. SyncService is used via @EnvironmentObject in ContentView, SyncGamesView, and potentially other views. Check for all @EnvironmentObject var syncService occurrences."
     },
     {
