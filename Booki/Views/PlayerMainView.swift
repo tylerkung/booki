@@ -45,29 +45,23 @@ struct PlayerMainView: View {
             // Main Content
             if let player = currentPlayer {
                 TabView(selection: $selectedTab) {
-                    PlayerTabView(player: player, balance: playerBalance, onLogoTap: { selectedTab = 0 }) {
-                        GamesView(player: player)
+                    Tab("Games", systemImage: "house.fill", value: 0) {
+                        PlayerTabView(player: player, balance: playerBalance, onLogoTap: { selectedTab = 0 }) {
+                            GamesView(player: player)
+                        }
                     }
-                    .tabItem {
-                        Label("Games", systemImage: "house.fill")
-                    }
-                    .tag(0)
 
-                    PlayerTabView(player: player, balance: playerBalance, onLogoTap: { selectedTab = 0 }) {
-                        TrackView(player: player)
+                    Tab("Track", systemImage: "list.bullet.rectangle", value: 1) {
+                        PlayerTabView(player: player, balance: playerBalance, onLogoTap: { selectedTab = 0 }) {
+                            TrackView(player: player)
+                        }
                     }
-                    .tabItem {
-                        Label("Track", systemImage: "list.bullet.rectangle")
-                    }
-                    .tag(1)
 
-                    NavigationStack {
-                        AccountView(player: player)
+                    Tab("Account", systemImage: "person.circle", value: 2) {
+                        NavigationStack {
+                            AccountView(player: player)
+                        }
                     }
-                    .tabItem {
-                        Label("Account", systemImage: "person.circle")
-                    }
-                    .tag(2)
                 }
                 .tint(Theme.accent)
             } else {

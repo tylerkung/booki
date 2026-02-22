@@ -163,37 +163,31 @@ struct ContentView: View {
 
     private var bookieModeView: some View {
         TabView {
-            AnalyticsDashboardView()
-                .tabItem {
-                    Label("Dashboard", systemImage: "chart.bar.fill")
-                }
+            Tab("Dashboard", systemImage: "chart.bar.fill") {
+                AnalyticsDashboardView()
+            }
 
-            BetsListView()
-                .tabItem {
-                    Label("Picks", systemImage: "list.bullet.rectangle")
-                }
-                .badge(openBetsCount > 9 ? "9+" : (openBetsCount > 0 ? "\(openBetsCount)" : nil))
+            Tab("Picks", systemImage: "list.bullet.rectangle") {
+                BetsListView()
+            }
+            .badge(openBetsCount > 9 ? "9+" : (openBetsCount > 0 ? "\(openBetsCount)" : nil))
 
-            PlayersListView()
-                .tabItem {
-                    Label("Members", systemImage: "person.2.fill")
-                }
-                .badge(flaggedPlayersCount > 0 ? flaggedPlayersCount : 0)
+            Tab("Members", systemImage: "person.2.fill") {
+                PlayersListView()
+            }
+            .badge(flaggedPlayersCount > 0 ? flaggedPlayersCount : 0)
 
-            EventsListView()
-                .tabItem {
-                    Label("Events", systemImage: "sportscourt.fill")
-                }
+            Tab("Events", systemImage: "sportscourt.fill") {
+                EventsListView()
+            }
 
-            GradingView()
-                .tabItem {
-                    Label("Grading", systemImage: "checkmark.circle.fill")
-                }
+            Tab("Grading", systemImage: "checkmark.circle.fill") {
+                GradingView()
+            }
 
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
-                }
+            Tab("Settings", systemImage: "gearshape.fill") {
+                SettingsView()
+            }
         }
         .tint(Theme.accent)
     }
