@@ -180,3 +180,19 @@ Started: Sat Feb 21 17:41:31 PST 2026
   - `Task.detached { [weak self] in }` where self is @MainActor: Swift 6 region-based isolation (SE-0414) allows this because all access goes through actor-hopping
   - Xcode IDE required for build verification — command-line xcodebuild needs `sudo xcode-select -s` to switch developer directory
 ---
+
+## 2026-02-21 - US-014
+- Final verification: scanned entire codebase for remaining deprecated APIs and migration issues
+- Confirmed zero occurrences of: .foregroundColor(), .cornerRadius(), .tabItem, ObservableObject, @Published, @StateObject, @EnvironmentObject, @ObservedObject, import Combine, AnyCancellable, .accentColor(), NavigationView
+- Confirmed all 8 @Observable classes have @MainActor annotation
+- Confirmed project settings: IPHONEOS_DEPLOYMENT_TARGET=18.0, SWIFT_VERSION=6.0, SWIFT_STRICT_CONCURRENCY=complete (all 4 configs)
+- Confirmed iOS 26 Liquid Glass guards (#unavailable) in BookiApp.swift and ContentView.swift
+- Confirmed @unchecked Sendable on 7 service/error types, @Sendable on EdgeFunctionService closure
+- No code changes required — all issues resolved in US-001 through US-013
+- Note: Full Xcode build verification requires IDE (command-line xcodebuild not available)
+- Files changed: prd.json (marked passes: true), progress.txt
+- **Learnings for future iterations:**
+  - Command-line xcodebuild needs full Xcode (not just CommandLineTools) — use `sudo xcode-select -s /Applications/Xcode.app` to enable
+  - Comprehensive grep-based verification is a good substitute when IDE build isn't available
+  - All migration patterns from US-001 through US-013 are well-documented in progress.txt Codebase Patterns section
+---

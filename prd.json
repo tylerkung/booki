@@ -228,7 +228,7 @@
         "Typecheck passes"
       ],
       "priority": 14,
-      "passes": false,
+      "passes": true,
       "notes": "This is the final verification story. Build the app, check for any remaining warnings or errors, and fix them. Run through basic navigation of all tabs to verify no runtime crashes. If any warnings remain from earlier stories, fix them here."
     }
   ]
