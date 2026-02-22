@@ -187,7 +187,7 @@ struct TonightsExposureCard: View {
                     .padding(.vertical, 10)
                     .padding(.horizontal, 14)
                     .background(Theme.accent.opacity(0.1))
-                    .cornerRadius(Theme.cornerRadiusSmall)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                 }
             }
         }

@@ -942,7 +942,7 @@ struct ParlayGradingGroupView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(Theme.elevatedBackground.opacity(0.5))
-        .cornerRadius(8)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 

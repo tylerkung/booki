@@ -70,7 +70,7 @@ struct CompactOddsButton: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(isSelected ? Theme.accent : Theme.elevatedBackground)
-            .cornerRadius(6)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(isSelected ? Theme.accent : Theme.border, lineWidth: 1)

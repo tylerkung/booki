@@ -1676,7 +1676,7 @@ struct SyncStatusIndicator: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Theme.cardBackground.opacity(0.8))
-        .cornerRadius(Theme.cornerRadiusSmall)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
     }
 }
 

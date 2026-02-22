@@ -35,7 +35,7 @@ struct PickDetailHeader: View {
         }
         .padding(12)
         .background(Theme.cardBackground)
-        .cornerRadius(10)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Financials
@@ -52,7 +52,7 @@ struct PickDetailHeader: View {
         }
         .padding(12)
         .background(Theme.cardBackground)
-        .cornerRadius(10)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Helpers

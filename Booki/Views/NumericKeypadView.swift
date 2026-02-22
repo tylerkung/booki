@@ -45,7 +45,7 @@ struct NumericKeypadView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 42)
                 .background(Theme.elevatedBackground)
-                .cornerRadius(Theme.cornerRadiusSmall)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
         }
         .buttonStyle(KeypadButtonStyle())
     }
@@ -61,7 +61,7 @@ struct NumericKeypadView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 42)
                 .background(Theme.elevatedBackground)
-                .cornerRadius(Theme.cornerRadiusSmall)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
         }
         .buttonStyle(KeypadButtonStyle())
     }

@@ -27,7 +27,7 @@ struct AppleSignInButton: View {
                     .frame(height: 50)
                     .frame(maxWidth: .infinity)
                     .background(Theme.cardBackground)
-                    .cornerRadius(Theme.cornerRadiusSmall)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
             } else {
                 SignInWithAppleButton(.signIn) { request in
                     configureRequest(request)
@@ -36,7 +36,7 @@ struct AppleSignInButton: View {
                 }
                 .signInWithAppleButtonStyle(.white)
                 .frame(height: 50)
-                .cornerRadius(Theme.cornerRadiusSmall)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
             }
 
             if let errorMessage = errorMessage {

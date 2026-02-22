@@ -49,7 +49,7 @@ struct OnboardingProfileView: View {
                     .autocorrectionDisabled()
                     .padding()
                     .background(Theme.cardBackground)
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .placeholder(when: name.isEmpty) {
                         Text("Your name")
                             .foregroundStyle(Theme.textMuted)
@@ -63,7 +63,7 @@ struct OnboardingProfileView: View {
                     .autocorrectionDisabled()
                     .padding()
                     .background(Theme.cardBackground)
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .placeholder(when: email.isEmpty) {
                         Text("Email address")
                             .foregroundStyle(Theme.textMuted)

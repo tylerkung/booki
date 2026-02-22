@@ -270,7 +270,7 @@ struct AuthTextFieldStyle: TextFieldStyle {
             .padding(.vertical, 14)
             .background(Theme.cardBackground)
             .foregroundStyle(Theme.textPrimary)
-            .cornerRadius(Theme.cornerRadiusSmall)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
                     .stroke(Theme.border, lineWidth: 1)
@@ -295,7 +295,7 @@ struct PrimaryButtonStyle: ButtonStyle {
                     }
                 }
             )
-            .cornerRadius(Theme.cornerRadiusSmall)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
             .opacity(configuration.isPressed ? 0.8 : 1.0)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
@@ -311,7 +311,7 @@ struct DestructiveButtonStyle: ButtonStyle {
         configuration.label
             .foregroundStyle(isEnabled ? .white : Theme.textMuted)
             .background(isEnabled ? Theme.danger : Theme.elevatedBackground)
-            .cornerRadius(Theme.cornerRadiusSmall)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
             .opacity(configuration.isPressed ? 0.8 : 1.0)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)

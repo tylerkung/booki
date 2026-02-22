@@ -316,7 +316,7 @@ struct CompactGameRow: View {
         }
         .frame(width: oddsButtonWidth, height: oddsButtonHeight)
         .background(isSelected ? Theme.accent : Theme.elevatedBackground)
-        .cornerRadius(6)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(isSelected ? Theme.accent : Theme.border, lineWidth: 1)

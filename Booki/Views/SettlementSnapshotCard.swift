@@ -269,7 +269,7 @@ struct SettlementSnapshotCard: View {
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 6)
                                         .background(Theme.accent)
-                                        .cornerRadius(8)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }
                                 .buttonStyle(.plain)
                                 .transition(.scale.combined(with: .opacity))
@@ -281,7 +281,7 @@ struct SettlementSnapshotCard: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(Theme.elevatedBackground.opacity(0.5))
-                .cornerRadius(Theme.cornerRadiusSmall)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
             }
 
             // Next settlement or View Settlements button
@@ -312,7 +312,7 @@ struct SettlementSnapshotCard: View {
                     .padding(.vertical, 10)
                     .padding(.horizontal, 14)
                     .background(Theme.accent.opacity(0.1))
-                    .cornerRadius(Theme.cornerRadiusSmall)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                 }
             }
         }

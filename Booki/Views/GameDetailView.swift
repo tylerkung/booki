@@ -409,7 +409,7 @@ struct GameDetailView: View {
         }
         .padding(12)
         .background(Theme.cardBackground)
-        .cornerRadius(8)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     // MARK: - Market Category Tabs (US-012)
@@ -531,7 +531,7 @@ struct GameDetailView: View {
                 }
             }
             .background(Theme.cardBackground)
-            .cornerRadius(8)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
 

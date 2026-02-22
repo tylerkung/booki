@@ -592,7 +592,7 @@ struct FinalScoreSheet: View {
                                 .frame(width: 80)
                                 .padding(8)
                                 .background(Theme.cardBackground)
-                                .cornerRadius(8)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
 
                         Text("-")
@@ -609,7 +609,7 @@ struct FinalScoreSheet: View {
                                 .frame(width: 80)
                                 .padding(8)
                                 .background(Theme.cardBackground)
-                                .cornerRadius(8)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .center)

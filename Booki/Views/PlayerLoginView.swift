@@ -95,7 +95,7 @@ struct PlayerLoginView: View {
                                 }
                                 .padding()
                                 .background(Theme.cardBackground)
-                                .cornerRadius(12)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(Theme.border, lineWidth: 1)
@@ -125,7 +125,7 @@ struct PlayerLoginView: View {
                                 }
                                 .padding()
                                 .background(Theme.cardBackground)
-                                .cornerRadius(12)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(Theme.border, lineWidth: 1)
@@ -170,7 +170,7 @@ struct PlayerLoginView: View {
                                     ? Theme.buttonGradient
                                     : LinearGradient(colors: [Theme.textMuted, Theme.textMuted], startPoint: .top, endPoint: .bottom)
                             )
-                            .cornerRadius(12)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                             .shadow(color: isFormValid ? Theme.accent.opacity(0.3) : .clear, radius: 8, y: 4)
                         }
                         .disabled(!isFormValid || isLoggingIn)

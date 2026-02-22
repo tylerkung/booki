@@ -1288,7 +1288,7 @@ struct AddPlayerInterstitialSheet: View {
                         }
                         .padding()
                         .background(Theme.cardBackground)
-                        .cornerRadius(Theme.cornerRadius)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
                         .overlay(
                             RoundedRectangle(cornerRadius: Theme.cornerRadius)
                                 .stroke(Theme.border, lineWidth: 1)
@@ -1325,7 +1325,7 @@ struct AddPlayerInterstitialSheet: View {
                         }
                         .padding()
                         .background(Theme.cardBackground)
-                        .cornerRadius(Theme.cornerRadius)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
                         .overlay(
                             RoundedRectangle(cornerRadius: Theme.cornerRadius)
                                 .stroke(Theme.border, lineWidth: 1)

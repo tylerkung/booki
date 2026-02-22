@@ -105,7 +105,7 @@ struct LoginView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(Theme.buttonGradient)
-                        .cornerRadius(Theme.cornerRadiusSmall)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                 }
                 .padding(.horizontal, 24)
 
@@ -284,7 +284,7 @@ struct LoginView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(Theme.danger.cornerRadius(Theme.cornerRadiusSmall))
+                    .background(Theme.danger.clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)))
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
             }
@@ -314,7 +314,7 @@ struct LoginView: View {
                         }
                     }
                 )
-                .cornerRadius(Theme.cornerRadiusSmall)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
             }
             .disabled(!isFormValid || isLoading)
             .padding(.horizontal, 24)

@@ -506,7 +506,7 @@ private struct SportToggleButton: View {
             .padding(.vertical, 12)
             .background(isSelected ? Theme.accent.opacity(0.15) : Theme.cardBackground)
             .foregroundStyle(isSelected ? Theme.accent : Theme.textPrimary)
-            .cornerRadius(10)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(isSelected ? Theme.accent : Theme.border, lineWidth: 1)

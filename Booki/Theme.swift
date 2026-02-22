@@ -205,7 +205,7 @@ extension View {
     func cardStyle() -> some View {
         self
             .background(Theme.cardGradient)
-            .cornerRadius(Theme.cornerRadius)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadius)
                     .stroke(
@@ -223,7 +223,7 @@ extension View {
     func elevatedCardStyle() -> some View {
         self
             .background(Theme.cardGradient)
-            .cornerRadius(Theme.cornerRadius)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadius)
                     .stroke(
