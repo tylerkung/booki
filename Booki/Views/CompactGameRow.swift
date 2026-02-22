@@ -131,20 +131,20 @@ struct CompactGameRow: View {
             // Start time
             Text(formattedStartTime)
                 .font(Theme.caption2)
-                .foregroundColor(Theme.textSecondary)
+                .foregroundStyle(Theme.textSecondary)
 
             // Lock indicator when event is locked
             if isEventLocked {
                 Image(systemName: "lock.fill")
                     .font(Theme.caption2)
-                    .foregroundColor(Theme.warning)
+                    .foregroundStyle(Theme.warning)
             }
 
             // Live indicator
             if event.status == .live {
                 Text("LIVE")
                     .font(Theme.font(size: 10, weight: .bold))
-                    .foregroundColor(Theme.live)
+                    .foregroundStyle(Theme.live)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(
@@ -157,14 +157,14 @@ struct CompactGameRow: View {
             if event.status == .postponed {
                 Text("PPD")
                     .font(Theme.font(size: 10, weight: .bold))
-                    .foregroundColor(Theme.warning)
+                    .foregroundStyle(Theme.warning)
             }
 
             // Canceled indicator
             if event.status == .canceled {
                 Text("CANCELED")
                     .font(Theme.font(size: 10, weight: .bold))
-                    .foregroundColor(Theme.danger)
+                    .foregroundStyle(Theme.danger)
             }
 
             Spacer()
@@ -174,11 +174,11 @@ struct CompactGameRow: View {
                 HStack(spacing: 2) {
                     Text("+\(additionalMarketsCount)")
                         .font(Theme.caption2)
-                        .foregroundColor(Theme.textMuted)
+                        .foregroundStyle(Theme.textMuted)
 
                     Image(systemName: "chevron.right")
                         .font(Theme.font(size: 9, weight: .medium))
-                        .foregroundColor(Theme.textMuted)
+                        .foregroundStyle(Theme.textMuted)
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
@@ -209,7 +209,7 @@ struct CompactGameRow: View {
 
             Text(teamName)
                 .font(Theme.font(size: 13, weight: .semibold))
-                .foregroundColor(Theme.textPrimary)
+                .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -299,19 +299,19 @@ struct CompactGameRow: View {
                     if let text = topText {
                         Text(text)
                             .font(Theme.font(size: 11, weight: .bold))
-                            .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                            .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
                     Text(formatOdds(odds))
                         .font(Theme.font(size: 9, weight: .medium))
-                        .foregroundColor(isSelected ? Theme.background.opacity(0.7) : Theme.textMuted)
+                        .foregroundStyle(isSelected ? Theme.background.opacity(0.7) : Theme.textMuted)
                 }
             } else {
                 // Moneyline - just show odds prominently
                 Text(formatOdds(odds))
                     .font(Theme.font(size: 12, weight: .semibold))
-                    .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                    .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
             }
         }
         .frame(width: oddsButtonWidth, height: oddsButtonHeight)
@@ -338,7 +338,7 @@ struct CompactGameRow: View {
     private func teamBadge(_ teamName: String) -> some View {
         Text(teamAbbreviation(teamName))
             .font(Theme.font(size: 9, weight: .bold))
-            .foregroundColor(Theme.textSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .frame(width: 24, height: 24)
             .background(Theme.elevatedBackground)
             .clipShape(Circle())

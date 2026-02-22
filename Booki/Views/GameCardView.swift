@@ -159,16 +159,16 @@ struct GameCardView: View {
             HStack(spacing: 4) {
                 Image(systemName: "clock")
                     .font(Theme.caption)
-                    .foregroundColor(Theme.textSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                 Text(formattedStartTime)
                     .font(Theme.caption)
-                    .foregroundColor(Theme.textSecondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 // US-008: Lock indicator when event is locked
                 if isEventLocked {
                     Image(systemName: "lock.fill")
                         .font(Theme.caption)
-                        .foregroundColor(Theme.warning)
+                        .foregroundStyle(Theme.warning)
                 }
             }
 
@@ -192,7 +192,7 @@ struct GameCardView: View {
             // Sport badge with gradient accent
             Text(event.sport)
                 .font(Theme.font(size: 10, weight: .bold))
-                .foregroundColor(Theme.textPrimary)
+                .foregroundStyle(Theme.textPrimary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(
@@ -245,7 +245,7 @@ struct GameCardView: View {
             }
             Text("LIVE")
                 .font(Theme.font(size: 10, weight: .black))
-                .foregroundColor(Theme.live)
+                .foregroundStyle(Theme.live)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -289,7 +289,7 @@ struct GameCardView: View {
     private var postponedBadge: some View {
         Text("POSTPONED")
             .font(Theme.font(size: 10, weight: .black))
-            .foregroundColor(Theme.warning)
+            .foregroundStyle(Theme.warning)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
@@ -308,7 +308,7 @@ struct GameCardView: View {
     private var canceledBadge: some View {
         Text("CANCELED")
             .font(Theme.font(size: 10, weight: .black))
-            .foregroundColor(Theme.danger)
+            .foregroundStyle(Theme.danger)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
@@ -339,7 +339,7 @@ struct GameCardView: View {
                     if spreadMarket != nil {
                         Text("SPREAD")
                             .font(Theme.font(size: 10, weight: .bold))
-                            .foregroundColor(Theme.textMuted)
+                            .foregroundStyle(Theme.textMuted)
                             .tracking(0.8)
                             .frame(width: oddsButtonSize)
                     }
@@ -347,7 +347,7 @@ struct GameCardView: View {
                     if moneylineMarket != nil {
                         Text("ML")
                             .font(Theme.font(size: 10, weight: .bold))
-                            .foregroundColor(Theme.textMuted)
+                            .foregroundStyle(Theme.textMuted)
                             .tracking(0.8)
                             .frame(width: oddsButtonSize)
                     }
@@ -355,7 +355,7 @@ struct GameCardView: View {
                     if totalMarket != nil {
                         Text("TOTAL")
                             .font(Theme.font(size: 10, weight: .bold))
-                            .foregroundColor(Theme.textMuted)
+                            .foregroundStyle(Theme.textMuted)
                             .tracking(0.8)
                             .frame(width: oddsButtonSize)
                     }
@@ -396,7 +396,7 @@ struct GameCardView: View {
             // Team name
             Text(teamName)
                 .font(Theme.font(size: 14, weight: .bold))
-                .foregroundColor(Theme.textPrimary)
+                .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -525,11 +525,11 @@ struct SpreadButton: View {
                 // Spread value as main text
                 Text(spreadValue)
                     .font(Theme.font(size: 14, weight: .black))
-                    .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                    .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
                 // Odds as smaller secondary text
                 Text(formattedOdds)
                     .font(Theme.font(size: 10, weight: .semibold))
-                    .foregroundColor(isSelected ? Theme.background.opacity(0.8) : Theme.textSecondary)
+                    .foregroundStyle(isSelected ? Theme.background.opacity(0.8) : Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
@@ -633,7 +633,7 @@ struct MLButton: View {
         }) {
             Text(formattedOdds)
                 .font(Theme.font(size: 14, weight: .black))
-                .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(
                     Group {
@@ -739,11 +739,11 @@ struct TotalButton: View {
                 // Total value as main text
                 Text(totalValue)
                     .font(Theme.font(size: 14, weight: .black))
-                    .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                    .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
                 // Odds as smaller secondary text
                 Text(formattedOdds)
                     .font(Theme.font(size: 10, weight: .semibold))
-                    .foregroundColor(isSelected ? Theme.background.opacity(0.8) : Theme.textSecondary)
+                    .foregroundStyle(isSelected ? Theme.background.opacity(0.8) : Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
@@ -846,13 +846,13 @@ struct OddsButton: View {
                 if let label = topLabel {
                     Text(label)
                         .font(Theme.font(size: 10, weight: .semibold))
-                        .foregroundColor(isSelected ? Theme.background : Theme.textSecondary)
+                        .foregroundStyle(isSelected ? Theme.background : Theme.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
                 Text(formattedOdds)
                     .font(Theme.font(size: 14, weight: .bold))
-                    .foregroundColor(isSelected ? Theme.background : Theme.textPrimary)
+                    .foregroundStyle(isSelected ? Theme.background : Theme.textPrimary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)

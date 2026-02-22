@@ -77,10 +77,10 @@ struct PickCardCompact: View {
             } else {
                 (Text(name)
                     .font(Theme.bodyFont(size: 13, weight: .semibold))
-                    .foregroundColor(Theme.textPrimary)
+                    .foregroundStyle(Theme.textPrimary)
                  + Text(" · \(context)")
                     .font(Theme.bodyFont(size: 13))
-                    .foregroundColor(Theme.textSecondary))
+                    .foregroundStyle(Theme.textSecondary))
                 .lineLimit(1)
             }
         } else {

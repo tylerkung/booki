@@ -236,7 +236,7 @@ struct GameDetailView: View {
             HStack {
                 Text(formattedStartTime)
                     .font(Theme.caption)
-                    .foregroundColor(Theme.textSecondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Spacer()
 
@@ -244,7 +244,7 @@ struct GameDetailView: View {
                 if event.status == .live {
                     Text("LIVE")
                         .font(Theme.font(size: 10, weight: .bold))
-                        .foregroundColor(Theme.live)
+                        .foregroundStyle(Theme.live)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(
@@ -257,14 +257,14 @@ struct GameDetailView: View {
                 if event.status == .postponed {
                     Text("PPD")
                         .font(Theme.font(size: 10, weight: .bold))
-                        .foregroundColor(Theme.warning)
+                        .foregroundStyle(Theme.warning)
                 }
 
                 // Canceled indicator
                 if event.status == .canceled {
                     Text("CANCELED")
                         .font(Theme.font(size: 10, weight: .bold))
-                        .foregroundColor(Theme.danger)
+                        .foregroundStyle(Theme.danger)
                 }
             }
 
@@ -273,29 +273,29 @@ struct GameDetailView: View {
                 Text(event.awayTeam)
                     .font(Theme.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(Theme.textPrimary)
+                    .foregroundStyle(Theme.textPrimary)
 
                 Text("vs")
                     .font(Theme.subheadline)
-                    .foregroundColor(Theme.textSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .padding(.horizontal, 8)
 
                 Text(event.homeTeam)
                     .font(Theme.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(Theme.textPrimary)
+                    .foregroundStyle(Theme.textPrimary)
             }
 
             // Sport and league
             HStack {
                 Text(event.sport)
                 Text("•")
-                    .foregroundColor(Theme.textSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                 Text(event.league)
-                    .foregroundColor(Theme.textSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
             .font(Theme.caption)
-            .foregroundColor(Theme.textSecondary)
+            .foregroundStyle(Theme.textSecondary)
         }
         .padding(16)
         .background(Theme.cardBackground)
@@ -313,7 +313,7 @@ struct GameDetailView: View {
             // Section header
             Text("Main Lines")
                 .font(Theme.font(size: 14, weight: .semibold))
-                .foregroundColor(Theme.textPrimary)
+                .foregroundStyle(Theme.textPrimary)
                 .padding(.horizontal, 16)
 
             // Market rows
@@ -370,7 +370,7 @@ struct GameDetailView: View {
             HStack {
                 Text(label)
                     .font(Theme.font(size: 12, weight: .medium))
-                    .foregroundColor(Theme.textSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                 Spacer()
             }
 
@@ -508,7 +508,7 @@ struct GameDetailView: View {
             // Section header
             Text(title)
                 .font(Theme.font(size: 12, weight: .semibold))
-                .foregroundColor(Theme.textSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .textCase(.uppercase)
 
             // Market rows
@@ -555,7 +555,7 @@ struct GameDetailView: View {
                 HStack {
                     Text("Alt \(marketTypeLabel) \(extractLineValue(from: market))")
                         .font(Theme.font(size: 11, weight: .medium))
-                        .foregroundColor(Theme.textMuted)
+                        .foregroundStyle(Theme.textMuted)
                     Spacer()
                 }
             }
@@ -627,11 +627,11 @@ struct GameDetailView: View {
         VStack(spacing: 12) {
             Image(systemName: "doc.text.magnifyingglass")
                 .font(Theme.font(size: 40))
-                .foregroundColor(Theme.textMuted)
+                .foregroundStyle(Theme.textMuted)
 
             Text(emptyStateDescription)
                 .font(Theme.subheadline)
-                .foregroundColor(Theme.textSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)

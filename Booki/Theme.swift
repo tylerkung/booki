@@ -360,7 +360,7 @@ extension View {
                             Text("Button")
                                 .font(Theme.caption)
                                 .fontWeight(.bold)
-                                .foregroundColor(Theme.background)
+                                .foregroundStyle(Theme.background)
                         )
 
                     RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
@@ -370,7 +370,7 @@ extension View {
                             Text("Rainbow")
                                 .font(Theme.caption)
                                 .fontWeight(.bold)
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                         )
                 }
             }

@@ -469,17 +469,17 @@ struct GamesView: View {
 
                 Text("SPREAD")
                     .font(Theme.font(size: 10, weight: .semibold))
-                    .foregroundColor(Theme.textMuted)
+                    .foregroundStyle(Theme.textMuted)
                     .frame(width: 65)
 
                 Text("MONEY")
                     .font(Theme.font(size: 10, weight: .semibold))
-                    .foregroundColor(Theme.textMuted)
+                    .foregroundStyle(Theme.textMuted)
                     .frame(width: 65)
 
                 Text("TOTAL")
                     .font(Theme.font(size: 10, weight: .semibold))
-                    .foregroundColor(Theme.textMuted)
+                    .foregroundStyle(Theme.textMuted)
                     .frame(width: 65)
             }
             .padding(.horizontal, 12)
