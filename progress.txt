@@ -208,3 +208,23 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - Agreement flow pattern: show UserAgreementView → onAccept calls submitAgreement → then completePlayerClaimFlow (sign out + fresh sign in)
   - Don't need local SwiftData operations — claim_invite creates the player server-side, SyncService will pull it down on next sync
 ---
+
+## 2026-02-23 - US-013
+- Implemented existing user login path in InviteClaimView — "Already have an account?" CTA now navigates to full login flow
+- Login form: email + password fields, dark themed matching existing auth screens
+- Three-step flow: login → confirmation screen ("Join [Bookie Name]'s group?") → claim_invite call
+- On login success: stores session token/userId, navigates to `confirmJoin` step with Confirm/Cancel buttons
+- On Confirm: calls `claim_invite` edge function with session access token (valid JWT, unlike signup path which uses anon key)
+- If claim returns 409 `already_in_group`: shows error screen with "Unable to Join" header, explanation text, and Back button
+- On cancel: signs out, returns to landing screen
+- After successful claim: calls `completePlayerClaimFlow` to properly set up auth state
+- Added ViewStep cases: `.confirmJoin` for confirmation screen, reused `.existingUserLogin` for `alreadyInGroupError` state
+- Added state properties: `loginEmail`, `loginPassword`, `isLoggingIn`, `loginError`, `showAlreadyInGroupError`, `loginSessionAccessToken`, `loginSessionUserId`, `isClaimingInvite`
+- Files changed: Booki/Views/InviteClaimView.swift
+- **Learnings for future iterations:**
+  - Existing user login path uses session access token (valid JWT) for claim_invite — unlike signup path which uses anon key (email unconfirmed)
+  - Confirmation screen pattern: login first → show confirmation → call edge function on confirm. This allows Cancel to sign out cleanly before any server-side changes
+  - `showAlreadyInGroupError` bool within `.existingUserLogin` step avoids needing another ViewStep case
+  - Sign out on 409 error and on Cancel to prevent orphaned sessions
+  - `Theme.buttonGradient` type differs from `LinearGradient` — use `Group { if ... }` pattern, not ternary
+---

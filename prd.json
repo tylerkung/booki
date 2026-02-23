@@ -239,7 +239,7 @@
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "The 409 error case is the key differentiator from the new user path. claim_invite handles the check server-side."
     },
     {
