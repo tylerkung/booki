@@ -21,6 +21,7 @@ struct BookiApp: App {
             PlayerSettlement.self,
             UserAgreement.self,
             AuditEvent.self,
+            Invite.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

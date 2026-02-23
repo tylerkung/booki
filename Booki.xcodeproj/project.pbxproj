@@ -18,6 +18,7 @@
 		50C083FD2F26174D001A0FE5 /* ImportEventsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083F92F26174D001A0FE5 /* ImportEventsView.swift */; };
 		50C084002F2BF471001A0FE5 /* UserAgreement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083FF2F2BF471001A0FE5 /* UserAgreement.swift */; };
 		50C084012F2BF471001A0FE5 /* AuditEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083FE2F2BF471001A0FE5 /* AuditEvent.swift */; };
+		8934000FC867475AB8F4B89B /* Invite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552BD08F02464792BE765DE5 /* Invite.swift */; };
 		50C084052F2BF49A001A0FE5 /* AgreementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084022F2BF49A001A0FE5 /* AgreementService.swift */; };
 		50C084062F2BF49A001A0FE5 /* AuditService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084032F2BF49A001A0FE5 /* AuditService.swift */; };
 		50C084072F2BF49A001A0FE5 /* EdgeFunctionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084042F2BF49A001A0FE5 /* EdgeFunctionService.swift */; };
@@ -149,6 +150,7 @@
 		50C083F92F26174D001A0FE5 /* ImportEventsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportEventsView.swift; sourceTree = "<group>"; };
 		50C083FA2F26174D001A0FE5 /* RefreshOddsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshOddsView.swift; sourceTree = "<group>"; };
 		50C083FE2F2BF471001A0FE5 /* AuditEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditEvent.swift; sourceTree = "<group>"; };
+		552BD08F02464792BE765DE5 /* Invite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Invite.swift; sourceTree = "<group>"; };
 		50C083FF2F2BF471001A0FE5 /* UserAgreement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAgreement.swift; sourceTree = "<group>"; };
 		50C084022F2BF49A001A0FE5 /* AgreementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgreementService.swift; sourceTree = "<group>"; };
 		50C084032F2BF49A001A0FE5 /* AuditService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditService.swift; sourceTree = "<group>"; };
@@ -337,6 +339,7 @@
 			isa = PBXGroup;
 			children = (
 				50C083FE2F2BF471001A0FE5 /* AuditEvent.swift */,
+				552BD08F02464792BE765DE5 /* Invite.swift */,
 				50C083FF2F2BF471001A0FE5 /* UserAgreement.swift */,
 				50C083F62F2616D4001A0FE5 /* OddsAPIModels.swift */,
 				8A1234550005 /* Bookie.swift */,
@@ -661,6 +664,7 @@
 				8A1234560043 /* GradeEventSheet.swift in Sources */,
 				50C084002F2BF471001A0FE5 /* UserAgreement.swift in Sources */,
 				50C084012F2BF471001A0FE5 /* AuditEvent.swift in Sources */,
+				8934000FC867475AB8F4B89B /* Invite.swift in Sources */,
 				8A1234560044 /* PaymentSheet.swift in Sources */,
 				8A1234560045 /* WeeklySettlementView.swift in Sources */,
 				8A1234560046 /* AppHeaderView.swift in Sources */,
