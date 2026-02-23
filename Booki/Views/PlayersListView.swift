@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import MessageUI
 @preconcurrency import Supabase
 
 struct PlayersListView: View {
@@ -1435,11 +1436,18 @@ struct InviteMemberSheet: View {
         case idle
         case loading
         case generated(code: String, expiresAt: String)
+        case emailSent
         case error(String)
     }
 
+    @Query private var bookies: [Bookie]
+
     @State private var inviteState: InviteState = .idle
     @State private var codeCopied = false
+    @State private var emailAddress: String = ""
+    @State private var emailInviteCode: String? = nil
+    @State private var showingMailCompose = false
+    @State private var showingMailFallbackAlert = false
 
     private var inviteURL: String? {
         if case .generated(let code, _) = inviteState {
@@ -1461,6 +1469,8 @@ struct InviteMemberSheet: View {
                     loadingContent
                 case .generated(let code, _):
                     generatedContent(code: code)
+                case .emailSent:
+                    emailSentContent
                 case .error(let message):
                     errorContent(message: message)
                 }
@@ -1477,6 +1487,26 @@ struct InviteMemberSheet: View {
                     }
                     .foregroundStyle(Theme.accent)
                 }
+            }
+            .sheet(isPresented: $showingMailCompose) {
+                if let code = emailInviteCode {
+                    MailComposeView(
+                        recipients: [emailAddress],
+                        subject: "You've been invited to join Booki",
+                        body: mailBody(code: code),
+                        onDismiss: { _ in
+                            inviteState = .emailSent
+                        }
+                    )
+                    .ignoresSafeArea()
+                }
+            }
+            .alert("Link Copied!", isPresented: $showingMailFallbackAlert) {
+                Button("OK", role: .cancel) {
+                    inviteState = .emailSent
+                }
+            } message: {
+                Text("Mail is not configured — share the link manually.")
             }
         }
     }
@@ -1514,6 +1544,46 @@ struct InviteMemberSheet: View {
             .buttonStyle(.plain)
             .padding(.horizontal, 32)
             .padding(.top, 8)
+
+            // MARK: - Send via Email Section
+            VStack(spacing: 12) {
+                Rectangle()
+                    .fill(Theme.border)
+                    .frame(height: 1)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
+
+                Text("Send via Email")
+                    .font(Theme.headline)
+                    .foregroundStyle(Theme.textPrimary)
+
+                TextField("Enter email address", text: $emailAddress)
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .autocapitalization(.none)
+                    .autocorrectionDisabled()
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.textPrimary)
+                    .padding()
+                    .background(Theme.elevatedBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .padding(.horizontal, 32)
+
+                Button {
+                    generateEmailInvite()
+                } label: {
+                    Text("Send Invite")
+                        .font(Theme.headline)
+                        .foregroundStyle(Theme.background)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(emailAddress.trimmingCharacters(in: .whitespaces).isEmpty ? Theme.accent.opacity(0.4) : Theme.accent)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                }
+                .buttonStyle(.plain)
+                .disabled(emailAddress.trimmingCharacters(in: .whitespaces).isEmpty)
+                .padding(.horizontal, 32)
+            }
         }
     }
 
@@ -1633,7 +1703,66 @@ struct InviteMemberSheet: View {
         }
     }
 
+    @ViewBuilder
+    private var emailSentContent: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(Theme.accent)
+
+            Text("Invite sent!")
+                .font(Theme.title2)
+                .foregroundStyle(Theme.textPrimary)
+
+            Text("An invite has been sent to \(emailAddress)")
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+    }
+
     // MARK: - Actions
+
+    private func generateEmailInvite() {
+        let trimmedEmail = emailAddress.trimmingCharacters(in: .whitespaces)
+        guard !trimmedEmail.isEmpty else { return }
+
+        inviteState = .loading
+
+        Task {
+            do {
+                let idempotencyKey = UUID().uuidString.lowercased()
+                let body: [String: String] = [
+                    "idempotency_key": idempotencyKey,
+                    "email": trimmedEmail
+                ]
+
+                let response: CreateInviteResponse = try await EdgeFunctionService.shared.callFunction(
+                    name: "create_invite",
+                    body: body
+                )
+
+                await MainActor.run {
+                    emailInviteCode = response.inviteCode
+
+                    if MFMailComposeViewController.canSendMail() {
+                        showingMailCompose = true
+                    } else {
+                        // Copy link to clipboard as fallback
+                        UIPasteboard.general.string = "booki://invite/\(response.inviteCode)"
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                        impactFeedback.impactOccurred()
+                        showingMailFallbackAlert = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    inviteState = .error(error.localizedDescription)
+                }
+            }
+        }
+    }
 
     private func generateInvite() {
         inviteState = .loading
@@ -1667,6 +1796,48 @@ struct InviteMemberSheet: View {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             codeCopied = false
+        }
+    }
+
+    private func mailBody(code: String) -> String {
+        let bookieName = bookies.first?.name ?? "a group"
+        return "You've been invited to join \(bookieName)'s group on Booki.\n\nOpen this link to get started: booki://invite/\(code)\n\nThis invite expires in 24 hours."
+    }
+}
+
+// MARK: - Mail Compose View
+
+struct MailComposeView: UIViewControllerRepresentable {
+    let recipients: [String]
+    let subject: String
+    let body: String
+    let onDismiss: (MFMailComposeResult) -> Void
+
+    func makeUIViewController(context: Context) -> MFMailComposeViewController {
+        let vc = MFMailComposeViewController()
+        vc.setToRecipients(recipients)
+        vc.setSubject(subject)
+        vc.setMessageBody(body, isHTML: false)
+        vc.mailComposeDelegate = context.coordinator
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onDismiss: onDismiss)
+    }
+
+    class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
+        let onDismiss: (MFMailComposeResult) -> Void
+
+        init(onDismiss: @escaping (MFMailComposeResult) -> Void) {
+            self.onDismiss = onDismiss
+        }
+
+        func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
+            controller.dismiss(animated: true)
+            onDismiss(result)
         }
     }
 }
