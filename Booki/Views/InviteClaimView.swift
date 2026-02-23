@@ -55,10 +55,13 @@ struct InviteClaimView: View {
         case validating
         case landing(bookieName: String, inviteCode: String)
         case error(message: String)
-        // Placeholder steps for US-012 and US-013
         case newUserSignup(bookieName: String, inviteCode: String)
         case existingUserLogin(bookieName: String, inviteCode: String)
     }
+
+    // MARK: - Environment
+
+    @Environment(AuthManager.self) private var authManager
 
     // MARK: - Properties
 
@@ -76,6 +79,19 @@ struct InviteClaimView: View {
     @State private var step: ViewStep = .codeEntry
     @State private var inviteCode: String = ""
 
+    // Signup form state
+    @State private var signupEmail: String = ""
+    @State private var signupPassword: String = ""
+    @State private var signupConfirmPassword: String = ""
+    @State private var isSigningUp: Bool = false
+    @State private var signupError: String?
+
+    // Agreement state
+    @State private var showAgreement: Bool = false
+    @State private var createdAuthUserId: UUID?
+    @State private var signupEmailForLogin: String = ""
+    @State private var signupPasswordForLogin: String = ""
+
     // MARK: - Computed
 
     private var normalizedCode: String {
@@ -91,6 +107,18 @@ struct InviteClaimView: View {
     // MARK: - Body
 
     var body: some View {
+        if showAgreement {
+            UserAgreementView(
+                onAccept: {
+                    submitPlayerAgreement()
+                }
+            )
+        } else {
+            mainContent
+        }
+    }
+
+    private var mainContent: some View {
         ZStack {
             Theme.backgroundGradient
                 .ignoresSafeArea()
@@ -106,10 +134,8 @@ struct InviteClaimView: View {
                         landingContent(bookieName: bookieName, inviteCode: code)
                     case .error(let message):
                         errorContent(message: message)
-                    case .newUserSignup:
-                        // Placeholder — US-012 will implement
-                        Text("New user signup")
-                            .foregroundStyle(Theme.textPrimary)
+                    case .newUserSignup(let bookieName, let code):
+                        newUserSignupContent(bookieName: bookieName, inviteCode: code)
                     case .existingUserLogin:
                         // Placeholder — US-013 will implement
                         Text("Existing user login")
@@ -350,6 +376,234 @@ struct InviteClaimView: View {
         .padding(.top, 16)
     }
 
+    // MARK: - New User Signup
+
+    private func newUserSignupContent(bookieName: String, inviteCode: String) -> some View {
+        VStack(spacing: 32) {
+            headerView(
+                title: "Create Account",
+                subtitle: "Sign up to join \(bookieName)'s group"
+            )
+
+            VStack(spacing: 16) {
+                // Email field
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Email")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    TextField("you@example.com", text: $signupEmail)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .padding()
+                        .background(Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(Theme.textPrimary)
+                }
+
+                // Password field
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Password")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    SecureField("Min 6 characters", text: $signupPassword)
+                        .textContentType(.newPassword)
+                        .padding()
+                        .background(Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(Theme.textPrimary)
+                }
+
+                // Confirm password field
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Confirm Password")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    SecureField("Re-enter password", text: $signupConfirmPassword)
+                        .textContentType(.newPassword)
+                        .padding()
+                        .background(Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(Theme.textPrimary)
+                }
+
+                // Error message
+                if let error = signupError {
+                    Text(error)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.danger)
+                        .multilineTextAlignment(.center)
+                }
+            }
+
+            // Submit button
+            Button {
+                createAccount(bookieName: bookieName, inviteCode: inviteCode)
+            } label: {
+                HStack(spacing: 8) {
+                    if isSigningUp {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
+                            .scaleEffect(0.8)
+                    }
+                    Text(isSigningUp ? "Creating Account..." : "Create Account")
+                        .font(Theme.headline)
+                        .fontWeight(.bold)
+                        .textCase(.uppercase)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(
+                    Group {
+                        if isSignupFormValid && !isSigningUp {
+                            Theme.buttonGradient
+                        } else {
+                            LinearGradient(colors: [Theme.elevatedBackground], startPoint: .leading, endPoint: .trailing)
+                        }
+                    }
+                )
+                .foregroundStyle(isSignupFormValid && !isSigningUp ? Theme.background : Theme.textMuted)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .disabled(!isSignupFormValid || isSigningUp)
+
+            // Back to landing
+            Button {
+                signupError = nil
+                step = .landing(bookieName: bookieName, inviteCode: inviteCode)
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.left")
+                    Text("Back")
+                }
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.accent)
+            }
+        }
+    }
+
+    private var isSignupFormValid: Bool {
+        let trimmedEmail = signupEmail.trimmingCharacters(in: .whitespaces)
+        return !trimmedEmail.isEmpty
+            && trimmedEmail.contains("@")
+            && signupPassword.count >= 6
+            && signupPassword == signupConfirmPassword
+    }
+
+    // MARK: - Account Creation Flow
+
+    private func createAccount(bookieName: String, inviteCode: String) {
+        signupError = nil
+        isSigningUp = true
+
+        // Store credentials for later fresh sign-in
+        signupEmailForLogin = signupEmail.trimmingCharacters(in: .whitespaces)
+        signupPasswordForLogin = signupPassword
+
+        // Validate passwords match
+        guard signupPassword == signupConfirmPassword else {
+            signupError = "Passwords do not match."
+            isSigningUp = false
+            return
+        }
+
+        guard signupPassword.count >= 6 else {
+            signupError = "Password must be at least 6 characters."
+            isSigningUp = false
+            return
+        }
+
+        Task {
+            do {
+                // Prevent auth state listener from creating a bookie record
+                // during the signUp → claim_invite sequence
+                await MainActor.run {
+                    authManager.isClaimingPlayerAccount = true
+                }
+
+                let supabase = SupabaseClientManager.shared.client
+                let response = try await supabase.auth.signUp(
+                    email: signupEmailForLogin,
+                    password: signupPasswordForLogin
+                )
+
+                // Call claim_invite edge function with anon key
+                // (signUp JWT is invalid — email unconfirmed)
+                let baseURL = SupabaseConfig.url
+                guard let claimURL = URL(string: "\(baseURL.absoluteString)/functions/v1/claim_invite") else {
+                    throw NSError(domain: "InviteClaimView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+                }
+                var claimRequest = URLRequest(url: claimURL)
+                claimRequest.httpMethod = "POST"
+                claimRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                claimRequest.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
+                let claimBody: [String: String] = [
+                    "invite_code": inviteCode,
+                    "auth_user_id": response.user.id.uuidString.lowercased()
+                ]
+                claimRequest.httpBody = try JSONEncoder().encode(claimBody)
+                let (claimData, claimResponse) = try await URLSession.shared.data(for: claimRequest)
+
+                if let httpResp = claimResponse as? HTTPURLResponse, !(200...299).contains(httpResp.statusCode) {
+                    let msg = String(data: claimData, encoding: .utf8) ?? "Unknown error"
+                    throw NSError(domain: "InviteClaimView", code: httpResp.statusCode, userInfo: [NSLocalizedDescriptionKey: "Failed to claim invite: \(msg)"])
+                }
+
+                // Show agreement view
+                await MainActor.run {
+                    isSigningUp = false
+                    createdAuthUserId = response.user.id
+                    showAgreement = true
+                }
+            } catch {
+                print("DEBUG: Error creating account via invite: \(error)")
+                await MainActor.run {
+                    authManager.isClaimingPlayerAccount = false
+                    isSigningUp = false
+                    let errorMessage = error.localizedDescription
+                    if errorMessage.lowercased().contains("already registered") || errorMessage.lowercased().contains("already been registered") {
+                        signupError = "This email is already registered. Try signing in instead."
+                    } else if errorMessage.lowercased().contains("password") {
+                        signupError = "Password is too weak. Use at least 6 characters."
+                    } else {
+                        signupError = "Something went wrong. Please check your connection and try again."
+                    }
+                }
+            }
+        }
+    }
+
+    private func submitPlayerAgreement() {
+        guard let userId = createdAuthUserId else {
+            // Fallback: sign in fresh (will require agreement on next login)
+            Task {
+                await authManager.completePlayerClaimFlow(email: signupEmailForLogin, password: signupPasswordForLogin)
+            }
+            return
+        }
+
+        Task {
+            do {
+                let agreementService = AgreementService()
+                try await agreementService.submitAgreement(
+                    userId: userId,
+                    role: "player",
+                    version: AgreementService.currentAgreementVersion
+                )
+            } catch {
+                print("DEBUG: Failed to submit agreement: \(error)")
+                // Agreement will be required on next login
+            }
+
+            // Sign out invalid session and sign in fresh with confirmed credentials
+            await authManager.completePlayerClaimFlow(email: signupEmailForLogin, password: signupPasswordForLogin)
+        }
+    }
+
     // MARK: - Validation
 
     private func validateCode(_ code: String) {
@@ -406,4 +660,5 @@ struct InviteClaimView: View {
         onNavigateToLogin: {},
         onClaimComplete: {}
     )
+    .environment(AuthManager())
 }
