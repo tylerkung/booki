@@ -222,7 +222,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "Follow existing PlayerClaimView step 2 pattern for signup + claim sequence. Use AuthManager for session management."
     },
     {
