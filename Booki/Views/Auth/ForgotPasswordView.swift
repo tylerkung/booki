@@ -101,35 +101,38 @@ struct ForgotPasswordView: View {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
                         } else {
-                            Text("Send Reset Link")
-                                .fontWeight(.semibold)
+                            Text("Submit")
+                                .font(Theme.headline)
+                                .fontWeight(.bold)
+                                .textCase(.uppercase)
+                                .tracking(1)
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 50)
+                    .frame(height: 56)
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(!isFormValid || isLoading)
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
 
-                Spacer(minLength: 40)
-
-                // Navigate back to Login
-                Button(action: onNavigateToLogin) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                        Text("Back to Login")
-                    }
-                    .font(Theme.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Theme.accent)
-                }
-                .padding(.bottom, 24)
             }
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Theme.backgroundGradient)
+        .overlay(alignment: .topLeading) {
+            Button(action: onNavigateToLogin) {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                    Text("Back")
+                }
+                .font(Theme.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(Theme.textSecondary)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+        }
         .alert("Check Your Email", isPresented: $showSuccessAlert) {
             Button("OK", role: .cancel) {
                 onNavigateToLogin()

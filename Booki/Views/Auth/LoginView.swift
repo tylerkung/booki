@@ -21,7 +21,6 @@ struct LoginView: View {
     @State private var logoScale: CGFloat = 0.85
     @State private var headlineOpacity: Double = 0
     @State private var headlineOffset: CGFloat = 12
-    @State private var featuresOpacity: Double = 0
     @State private var ctaOpacity: Double = 0
     @State private var ctaOffset: CGFloat = 20
 
@@ -59,8 +58,8 @@ struct LoginView: View {
                 Image("BookiLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 180)
-                    .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
+                    .frame(width: 240)
+                    .shadow(color: Theme.accent.opacity(0.4), radius: 60, x: 0, y: 0)
                     .opacity(logoOpacity)
                     .scaleEffect(logoScale)
 
@@ -78,17 +77,6 @@ struct LoginView: View {
                 .opacity(headlineOpacity)
                 .offset(y: headlineOffset)
             }
-
-            Spacer()
-                .frame(height: 48)
-
-            // Feature pills
-            VStack(spacing: 12) {
-                featurePill(icon: "person.3.fill", text: "Manage your group")
-                featurePill(icon: "chart.bar.fill", text: "Track every pick")
-                featurePill(icon: "arrow.triangle.2.circlepath", text: "Reconcile weekly")
-            }
-            .opacity(featuresOpacity)
 
             Spacer()
 
@@ -151,27 +139,6 @@ struct LoginView: View {
         .onAppear { runEntrance() }
     }
 
-    // MARK: - Feature Pill
-
-    private func featurePill(icon: String, text: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(Theme.bodyFont(size: 14))
-                .foregroundStyle(Theme.accent)
-                .frame(width: 20)
-            Text(text)
-                .font(Theme.bodyFont(size: 14, weight: .medium))
-                .foregroundStyle(Theme.textSecondary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(
-            Capsule()
-                .fill(Theme.cardBackground)
-                .overlay(Capsule().stroke(Theme.border, lineWidth: 0.5))
-        )
-    }
-
     // MARK: - Entrance Animation
 
     private func runEntrance() {
@@ -183,10 +150,7 @@ struct LoginView: View {
             headlineOpacity = 1
             headlineOffset = 0
         }
-        withAnimation(.easeOut(duration: 0.4).delay(0.4)) {
-            featuresOpacity = 1
-        }
-        withAnimation(.easeOut(duration: 0.5).delay(0.5)) {
+        withAnimation(.easeOut(duration: 0.5).delay(0.4)) {
             ctaOpacity = 1
             ctaOffset = 0
         }
@@ -300,11 +264,12 @@ struct LoginView: View {
                             .font(Theme.headline)
                             .fontWeight(.bold)
                             .textCase(.uppercase)
+                            .tracking(1)
                     }
                 }
-                .foregroundStyle(Theme.background)
+                .foregroundStyle(isFormValid && !isLoading ? Theme.background : Theme.textMuted)
                 .frame(maxWidth: .infinity)
-                .frame(height: 50)
+                .frame(height: 56)
                 .background(
                     Group {
                         if isFormValid && !isLoading {

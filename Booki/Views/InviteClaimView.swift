@@ -153,12 +153,15 @@ struct InviteClaimView: View {
                         confirmJoinContent(bookieName: bookieName, inviteCode: code)
                     }
 
-                    // Back to login link (always visible)
-                    backToLoginLink
                 }
                 .padding(.horizontal, 32)
                 .padding(.top, 60)
             }
+        }
+        .overlay(alignment: .topLeading) {
+            backToLoginLink
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
         }
         .onAppear {
             if let code = initialCode, !code.isEmpty {
@@ -375,16 +378,25 @@ struct InviteClaimView: View {
 
     private var backToLoginLink: some View {
         Button {
-            onNavigateToLogin()
+            switch step {
+            case .newUserSignup(let name, let code):
+                signupError = nil
+                step = .landing(bookieName: name, inviteCode: code)
+            case .existingUserLogin(let name, let code):
+                loginError = nil
+                step = .landing(bookieName: name, inviteCode: code)
+            default:
+                onNavigateToLogin()
+            }
         } label: {
-            HStack {
-                Image(systemName: "arrow.left")
-                Text("Back to Organizer Login")
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.left")
+                Text("Back")
             }
             .font(Theme.subheadline)
-            .foregroundStyle(Theme.accent)
+            .fontWeight(.medium)
+            .foregroundStyle(Theme.textSecondary)
         }
-        .padding(.top, 16)
     }
 
     // MARK: - New User Signup
@@ -482,18 +494,6 @@ struct InviteClaimView: View {
             }
             .disabled(!isSignupFormValid || isSigningUp)
 
-            // Back to landing
-            Button {
-                signupError = nil
-                step = .landing(bookieName: bookieName, inviteCode: inviteCode)
-            } label: {
-                HStack {
-                    Image(systemName: "arrow.left")
-                    Text("Back")
-                }
-                .font(Theme.subheadline)
-                .foregroundStyle(Theme.accent)
-            }
         }
     }
 
@@ -588,18 +588,6 @@ struct InviteClaimView: View {
             }
             .disabled(!isLoginFormValid || isLoggingIn)
 
-            // Back to landing
-            Button {
-                loginError = nil
-                step = .landing(bookieName: bookieName, inviteCode: inviteCode)
-            } label: {
-                HStack {
-                    Image(systemName: "arrow.left")
-                    Text("Back")
-                }
-                .font(Theme.subheadline)
-                .foregroundStyle(Theme.accent)
-            }
         }
     }
 

@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 23, 2026 - Tab bar styling polish, OG meta tags for landing page*
+*Last updated: February 23, 2026 - Auth UI polish, standardized back buttons and CTAs*

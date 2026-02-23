@@ -288,3 +288,17 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - iOS overflows tabs into "More" menu — Tab() label strings appear in both tab bar and More list, can't differentiate casing
   - Set badge on all 3 layouts: stackedLayoutAppearance, inlineLayoutAppearance, compactInlineLayoutAppearance
 ---
+
+## 2026-02-23 - Auth/Onboarding UI Polish
+- Standardized all back buttons across auth flow: top-left overlay, chevron.left + "Back", Theme.textSecondary, medium weight
+- Removed feature pills ("Manage your group", "Track every pick", "Reconcile weekly") from login landing
+- Standardized all CTA buttons: height 56, Theme.headline bold uppercase, tracking(1), PrimaryButtonStyle
+- InviteClaimView back button now context-aware (goes to previous step on sub-screens, organizer login otherwise)
+- Increased login landing logo from 180→240 width, glow from 0.3/40 → 0.4/60
+- Increased SignUpView header top padding from 40→56 to clear back button overlay
+- Files changed: LoginView.swift, SignUpView.swift, ForgotPasswordView.swift, InviteClaimView.swift
+- **Learnings for future iterations:**
+  - Use `.overlay(alignment: .topLeading)` for consistent back button placement across scroll/non-scroll views
+  - When removing inline navigation from sub-views, parent back button needs context-aware logic (switch on step)
+  - PrimaryButtonStyle defined in SignUpView.swift, reused across auth views
+---
