@@ -114,7 +114,7 @@ enum GradingService {
     /// - Parameters:
     ///   - bet: The bet to grade
     ///   - result: The outcome of the bet (win, loss, or push)
-    static func gradeBet(_ bet: Bet, result: GradeResult) async throws {
+    @MainActor static func gradeBet(_ bet: Bet, result: GradeResult) async throws {
         let request = GradeBetRequest(
             bet_id: bet.id.uuidString.lowercased(),
             outcome: result.rawValue,
@@ -131,15 +131,13 @@ enum GradingService {
         }
 
         // Server accepted — update local model
-        await MainActor.run {
-            bet.status = .graded
-            bet.gradeResult = result
-        }
+        bet.status = .graded
+        bet.gradeResult = result
     }
 
     /// Voids a bet via the grade_bet edge function with outcome='void'
     /// - Parameter bet: The bet to void
-    static func voidBet(_ bet: Bet) async throws {
+    @MainActor static func voidBet(_ bet: Bet) async throws {
         let request = GradeBetRequest(
             bet_id: bet.id.uuidString.lowercased(),
             outcome: "void",
@@ -156,9 +154,7 @@ enum GradingService {
         }
 
         // Server accepted — update local model
-        await MainActor.run {
-            bet.status = .void
-        }
+        bet.status = .void
     }
 
     // MARK: - Settlement
@@ -167,7 +163,7 @@ enum GradingService {
     /// - Parameters:
     ///   - bet: The bet to settle (must be graded with a result)
     ///   - context: The model context to insert the ledger entry into
-    static func settleBet(_ bet: Bet, in context: ModelContext) async throws {
+    @MainActor static func settleBet(_ bet: Bet, in context: ModelContext) async throws {
         let request = SettleBetRequest(
             bet_id: bet.id.uuidString.lowercased(),
             idempotency_key: "settle_\(bet.id.uuidString.lowercased())_\(Int(Date().timeIntervalSince1970))"
@@ -183,20 +179,18 @@ enum GradingService {
         }
 
         // Server accepted — update local model
-        await MainActor.run {
-            bet.status = .settled
+        bet.status = .settled
 
-            // Create local LedgerEntry from response data
-            if let ledgerData = response.ledgerEntry, let player = bet.player {
-                let ledgerEntry = LedgerEntry(
-                    amount: Decimal(ledgerData.amount),
-                    type: .settlement,
-                    entryDescription: ledgerData.description,
-                    player: player,
-                    bet: bet
-                )
-                context.insert(ledgerEntry)
-            }
+        // Create local LedgerEntry from response data
+        if let ledgerData = response.ledgerEntry, let player = bet.player {
+            let ledgerEntry = LedgerEntry(
+                amount: Decimal(ledgerData.amount),
+                type: .settlement,
+                entryDescription: ledgerData.description,
+                player: player,
+                bet: bet
+            )
+            context.insert(ledgerEntry)
         }
     }
 
@@ -205,7 +199,7 @@ enum GradingService {
     ///   - parlayBets: All bets (legs) in the parlay
     ///   - policy: The parlay push/void policy to apply
     ///   - context: The model context to insert the ledger entry into
-    static func settleParlayBets(_ parlayBets: [Bet], policy: ParlayPushVoidPolicy, in context: ModelContext) async throws {
+    @MainActor static func settleParlayBets(_ parlayBets: [Bet], policy: ParlayPushVoidPolicy, in context: ModelContext) async throws {
         guard !parlayBets.isEmpty else {
             throw GradingServiceError.parlayLegsNotFound
         }
@@ -236,21 +230,19 @@ enum GradingService {
                 throw GradingServiceError.edgeFunctionError(response.error ?? "Unknown error")
             }
 
-            await MainActor.run {
-                bet.status = .settled
+            bet.status = .settled
 
-                // Create local LedgerEntry from first leg's response only
-                if !ledgerEntryCreated, let ledgerData = response.ledgerEntry {
-                    let ledgerEntry = LedgerEntry(
-                        amount: Decimal(ledgerData.amount),
-                        type: .settlement,
-                        entryDescription: ledgerData.description,
-                        player: player,
-                        bet: bet
-                    )
-                    context.insert(ledgerEntry)
-                    ledgerEntryCreated = true
-                }
+            // Create local LedgerEntry from first leg's response only
+            if !ledgerEntryCreated, let ledgerData = response.ledgerEntry {
+                let ledgerEntry = LedgerEntry(
+                    amount: Decimal(ledgerData.amount),
+                    type: .settlement,
+                    entryDescription: ledgerData.description,
+                    player: player,
+                    bet: bet
+                )
+                context.insert(ledgerEntry)
+                ledgerEntryCreated = true
             }
         }
     }

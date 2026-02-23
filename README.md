@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 21, 2026 - iOS 26 SDK migration: Swift 6 strict concurrency, @Observable migration, iOS 18+ deployment target*
+*Last updated: February 22, 2026 - BetSlip UX improvements (numpad scroll, auto-remove locked events), auto-grading fixes (shared events, catch-up grading, auto-void pending bets)*

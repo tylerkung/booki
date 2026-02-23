@@ -233,9 +233,8 @@ final class BalanceServiceTests: XCTestCase {
 
     func testAvailableCreditCanBeNegative() {
         let player = createPlayer(creditLimit: 500)
-        // Large bet: $500 at +200 odds = $1000 payout
-        let bet = createBet(stake: 500, odds: 200, status: .accepted, player: player)
-        // Player also owes $200
+        // Large bet: $800 at +200 odds, player also owes $200
+        let bet = createBet(stake: 800, odds: 200, status: .accepted, player: player)
         let entry = createLedgerEntry(amount: 200, player: player)
 
         let available = BalanceService.availableCredit(
@@ -243,8 +242,8 @@ final class BalanceServiceTests: XCTestCase {
             bets: [bet],
             ledgerEntries: [entry]
         )
-        // 500 - 1000 (liability) - 200 (owed) = -700
-        XCTAssertEqual(available, -700)
+        // 500 - 800 (stakes) - 200 (owed) = -500
+        XCTAssertEqual(available, -500)
     }
 
     // MARK: - availableCredit for Player Tests
@@ -304,8 +303,8 @@ final class BalanceServiceTests: XCTestCase {
         XCTAssertEqual(summary.openLiability, 250)
         // 500 - 100 = 400
         XCTAssertEqual(summary.balanceOwed, 400)
-        // 2000 - 250 - 400 = 1350
-        XCTAssertEqual(summary.availableCredit, 1350)
+        // availableCredit uses openStakes (not liability): 2000 - 300 (stakes: 200+100) - 400 = 1300
+        XCTAssertEqual(summary.availableCredit, 1300)
     }
 
     func testPlayerSummaryAllFieldsConsistent() {

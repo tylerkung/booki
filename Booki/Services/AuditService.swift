@@ -41,7 +41,7 @@ final class AuditService: @unchecked Sendable {
     ///   - entityId: The UUID of the entity
     /// - Returns: Array of AuditEvent records ordered by created_at descending (most recent first)
     /// - Throws: AuditServiceError on failure
-    func fetchAuditHistory(entityType: String, entityId: UUID) async throws -> [AuditEvent] {
+    @MainActor func fetchAuditHistory(entityType: String, entityId: UUID) async throws -> [AuditEvent] {
         do {
             let records: [AuditEventRecord] = try await supabase
                 .from("audit_events")
@@ -64,7 +64,7 @@ final class AuditService: @unchecked Sendable {
     ///   - limit: Maximum number of events to return (default 50)
     /// - Returns: Array of AuditEvent records ordered by created_at descending (most recent first)
     /// - Throws: AuditServiceError on failure
-    func fetchRecentAuditEvents(bookieId: UUID, limit: Int = 50) async throws -> [AuditEvent] {
+    @MainActor func fetchRecentAuditEvents(bookieId: UUID, limit: Int = 50) async throws -> [AuditEvent] {
         do {
             let records: [AuditEventRecord] = try await supabase
                 .from("audit_events")

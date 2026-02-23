@@ -391,7 +391,10 @@ struct BetConfirmationSheet: View {
                         response,
                         player: player,
                         localSide: item.side,
-                        localMarket: item.marketType.rawValue
+                        localMarket: item.marketType.rawValue,
+                        eventDescription: item.eventDescription,
+                        sideIndicator: item.sideIndicator,
+                        marketId: item.marketId
                     ) {
                         await MainActor.run {
                             modelContext.insert(bet)

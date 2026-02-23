@@ -246,9 +246,8 @@ final class SyncService {
                     // Clear stale data only on the first sync after login to prevent
                     // cross-bookie data leakage. Subsequent refreshes skip the clear
                     // to avoid UI flickering (empty state flash).
-                    let needsClear = await MainActor.run { !self.hasCompletedInitialSync }
-                    if needsClear, let context = await MainActor.run(body: { self.modelContext }) {
-                        await MainActor.run {
+                    await MainActor.run {
+                        if !self.hasCompletedInitialSync, let context = self.modelContext {
                             SyncService.clearLocalData(context: context)
                         }
                     }
@@ -875,6 +874,14 @@ final class SyncService {
             print("⚠️ upsertBet: player \(record.playerId) not found for bet \(record.id) — bet will have nil player relationship")
         }
 
+        // Look up event for description
+        let event: Event? = {
+            guard let eventUUID = UUID(uuidString: record.eventId) else { return nil }
+            let descriptor = FetchDescriptor<Event>(predicate: #Predicate { $0.id == eventUUID })
+            return try? context.fetch(descriptor).first
+        }()
+        let eventDescription = event.map { "\($0.awayTeam) @ \($0.homeTeam)" }
+
         if let existing = existingBets.first {
             // Update if server is newer
             if record.updatedAt > (existing.lastSyncedAt ?? .distantPast) {
@@ -893,6 +900,12 @@ final class SyncService {
                 existing.bookieId = bookieId
                 existing.needsSync = false
                 existing.lastSyncedAt = Date()
+                if existing.eventDescription == nil {
+                    existing.eventDescription = eventDescription
+                }
+                if existing.sportLeague == nil {
+                    existing.sportLeague = event?.league
+                }
             }
         } else {
             // Insert new record
@@ -911,6 +924,8 @@ final class SyncService {
                 policyViolationReason: record.policyViolationReason,
                 isParlay: record.isParlay,
                 parlayLegs: record.parlayLegs,
+                eventDescription: eventDescription,
+                sportLeague: event?.league,
                 bookieId: bookieId,
                 needsSync: false,
                 lastSyncedAt: Date()

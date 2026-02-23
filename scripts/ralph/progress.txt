@@ -47,3 +47,23 @@ Started: Fri Feb 21 2026
   - Clean Build Folder (Cmd+Shift+K) required when changing property→function to clear stale macro cache
 ---
 
+## 2026-02-22 - BetSlip UX + Auto-Grading Fixes
+- **BetSlip numpad UX**: "Done" → "DONE" (`.textCase(.uppercase)`), auto-scroll to active field via `ScrollViewReader` + `.id()` anchors on cards, 200pt bottom padding when keypad active to ensure scrollability with 2-3 selections
+- **Unknown Event fix**: `PlayerAnalyticsDetailView.RecentActivitySection` now queries events via `@Query` and resolves event names at display time; `SyncService.upsertBet` populates `eventDescription`/`sportLeague` from local Event; `BetConfirmationSheet` and `SubmitBetView` now pass `eventDescription` to `createLocalBetFromResponse`
+- **BetSlip auto-remove locked events**: `.onAppear` checks all selections against event lock status, removes started/locked events, dismisses sheet if empty
+- **Auto-grading overhaul** (`auto_refresh_games`):
+  - Fixed shared events architecture bug: events have `bookie_id=NULL`, `bookies!inner()` joins returned 0 rows — now looks up bookie from bets instead
+  - Increased game limit 2→10 per cron run
+  - Added `force` flag to bypass idempotency for manual triggers
+  - Included `pending` bets in game selection (not just `accepted`)
+  - Added catch-up grading: grades accepted bets on already-final events (zero API calls)
+  - Added auto-void: voids pending bets on final/started events
+  - Debug output in response for troubleshooting
+- Files changed: BetSlipSheet.swift, PlayerAnalyticsDetailView.swift, SyncService.swift, BetConfirmationSheet.swift, SubmitBetView.swift, auto_refresh_games/index.ts
+- **Learnings:**
+  - Events are shared (`bookie_id=NULL`) — never use `bookies!inner()` joins on events table, get bookie info from bets
+  - `Bet.eventId` is `String` not `UUID` — don't call `.uuidString` on it
+  - ScrollViewReader scroll timing: when keypad first opens, need 250ms delay for layout to settle before `scrollTo` works
+  - Idempotency keys block re-runs in same window — `force` flag essential for manual debugging
+---
+

@@ -183,6 +183,29 @@ struct BetSlipSheet: View {
                     }
                 }
             }
+            // Auto-remove selections whose events have started or locked
+            .onAppear {
+                let lockOffset = acceptancePolicies.first?.eventLockOffsetMinutes ?? 0
+                let lockedIndices = betSlipManager.items.enumerated().compactMap { index, item -> Int? in
+                    guard let event = events.first(where: { $0.id.uuidString.lowercased() == item.eventId.uuidString.lowercased() }) else {
+                        return nil
+                    }
+                    return event.isLocked(offsetMinutes: lockOffset) ? index : nil
+                }
+                if !lockedIndices.isEmpty {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        for index in lockedIndices.reversed() {
+                            let key = betSlipManager.itemStakeKey(marketId: betSlipManager.items[index].marketId, sideIndicator: betSlipManager.items[index].sideIndicator)
+                            betSlipManager.remove(at: index)
+                            itemStakeTexts.removeValue(forKey: key)
+                            itemToWinTexts.removeValue(forKey: key)
+                        }
+                    }
+                    if betSlipManager.isEmpty {
+                        dismiss()
+                    }
+                }
+            }
             // US-010: Dismiss keypad when switching bet modes
             .onChange(of: betSlipManager.betMode) { _, _ in
                 activeFieldId = nil
@@ -306,33 +329,53 @@ struct BetSlipSheet: View {
     private var selectionsList: some View {
         VStack(spacing: 0) {
             // Scrollable content area
-            ScrollView {
-                VStack(spacing: 16) {
-                    selectionsHeaderSection
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        selectionsHeaderSection
 
-                    // Selections (US-053: animated item transitions, US-004: per-item stakes)
-                    selectionsCardsSection
+                        // Selections (US-053: animated item transitions, US-004: per-item stakes)
+                        selectionsCardsSection
 
-                    // Combined Parlay Odds + Wager/To Win (US-041, US-008)
-                    if betSlipManager.betMode == .parlay && betSlipManager.count > 1 {
-                        parlayOddsCard
-                            .padding(.horizontal)
+                        // Combined Parlay Odds + Wager/To Win (US-041, US-008)
+                        if betSlipManager.betMode == .parlay && betSlipManager.count > 1 {
+                            parlayOddsCard
+                                .padding(.horizontal)
 
-                        // US-008: Parlay stake entry directly below odds card
-                        parlayStakeEntrySection
-                            .padding(.horizontal)
+                            // US-008: Parlay stake entry directly below odds card
+                            parlayStakeEntrySection
+                                .padding(.horizontal)
+                                .id("parlay_stake")
+                        }
+
+                        // Bet summary (scrollable, above sticky bottom)
+                        if betSlipManager.betMode == .parlay && betSlipManager.stake > 0 {
+                            payoutSummarySection
+                                .padding(.horizontal)
+                        } else if betSlipManager.betMode == .singles && betSlipManager.individualTotalStake > 0 {
+                            singlesSummarySection
+                                .padding(.horizontal)
+                        }
                     }
-
-                    // Bet summary (scrollable, above sticky bottom)
-                    if betSlipManager.betMode == .parlay && betSlipManager.stake > 0 {
-                        payoutSummarySection
-                            .padding(.horizontal)
-                    } else if betSlipManager.betMode == .singles && betSlipManager.individualTotalStake > 0 {
-                        singlesSummarySection
-                            .padding(.horizontal)
+                    .padding(.bottom, activeFieldId != nil ? 200 : 16)
+                }
+                .onChange(of: activeFieldId) { oldFieldId, newFieldId in
+                    if let fieldId = newFieldId {
+                        let scrollTarget: String
+                        if fieldId == "parlay_stake" || fieldId == "parlay_towin" {
+                            scrollTarget = "parlay_stake"
+                        } else {
+                            scrollTarget = fieldId.replacingOccurrences(of: "_towin", with: "")
+                        }
+                        // Longer delay when keypad is first opening (layout needs to settle)
+                        let delay: Double = oldFieldId == nil ? 0.25 : 0.05
+                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                scrollProxy.scrollTo(scrollTarget, anchor: .bottom)
+                            }
+                        }
                     }
                 }
-                .padding(.bottom, 16)
             }
             .background(Theme.background)
 
@@ -512,6 +555,7 @@ struct BetSlipSheet: View {
                     activeFieldId: $activeFieldId,
                     fieldId: key
                 )
+                .id(key)
                 .transition(.asymmetric(
                     insertion: .scale(scale: 0.9).combined(with: .opacity),
                     removal: .scale(scale: 0.9).combined(with: .opacity).combined(with: .move(edge: .trailing))
@@ -563,6 +607,7 @@ struct BetSlipSheet: View {
                                 }
                             }
                             .font(Theme.font(size: 14, weight: .semibold))
+                            .textCase(.uppercase)
                             .foregroundStyle(Theme.accent)
                         }
 

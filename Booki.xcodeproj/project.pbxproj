@@ -123,6 +123,9 @@
 		8A1234560093 /* PickCardCompact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550093 /* PickCardCompact.swift */; };
 		8A1234560094 /* PickDetailHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550094 /* PickDetailHeader.swift */; };
 		8A1234560095 /* TeamAbbreviations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550095 /* TeamAbbreviations.swift */; };
+		8A1234560096 /* ParlayGradingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550096 /* ParlayGradingServiceTests.swift */; };
+		8A1234560097 /* AcceptancePolicyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550097 /* AcceptancePolicyServiceTests.swift */; };
+		8A1234560098 /* PickPresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550098 /* PickPresenterTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -181,6 +184,9 @@
 		8A1234550015 /* ExposureServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExposureServiceTests.swift; sourceTree = "<group>"; };
 		8A1234550016 /* BalanceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceService.swift; sourceTree = "<group>"; };
 		8A1234550017 /* BalanceServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceServiceTests.swift; sourceTree = "<group>"; };
+		8A1234550096 /* ParlayGradingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParlayGradingServiceTests.swift; sourceTree = "<group>"; };
+		8A1234550097 /* AcceptancePolicyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcceptancePolicyServiceTests.swift; sourceTree = "<group>"; };
+		8A1234550098 /* PickPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickPresenterTests.swift; sourceTree = "<group>"; };
 		8A1234550018 /* BetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetService.swift; sourceTree = "<group>"; };
 		8A1234550019 /* GradingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradingService.swift; sourceTree = "<group>"; };
 		8A1234550020 /* PlayerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerService.swift; sourceTree = "<group>"; };
@@ -461,6 +467,9 @@
 				8A1234550012 /* LiabilityServiceTests.swift */,
 				8A1234550015 /* ExposureServiceTests.swift */,
 				8A1234550017 /* BalanceServiceTests.swift */,
+				8A1234550096 /* ParlayGradingServiceTests.swift */,
+				8A1234550097 /* AcceptancePolicyServiceTests.swift */,
+				8A1234550098 /* PickPresenterTests.swift */,
 			);
 			path = BookiTests;
 			sourceTree = "<group>";
@@ -719,6 +728,9 @@
 				8A1234560012 /* LiabilityServiceTests.swift in Sources */,
 				8A1234560014 /* ExposureServiceTests.swift in Sources */,
 				8A1234560016 /* BalanceServiceTests.swift in Sources */,
+				8A1234560096 /* ParlayGradingServiceTests.swift in Sources */,
+				8A1234560097 /* AcceptancePolicyServiceTests.swift in Sources */,
+				8A1234560098 /* PickPresenterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

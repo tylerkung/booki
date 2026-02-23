@@ -423,6 +423,7 @@ private struct MarketMixBar: View {
 
 private struct RecentActivitySection: View {
     let playerBets: [Bet]
+    @Query private var events: [Event]
 
     private var sortedBets: [Bet] {
         playerBets.sorted { $0.createdAt > $1.createdAt }
@@ -430,6 +431,14 @@ private struct RecentActivitySection: View {
 
     private var displayBets: [Bet] {
         Array(sortedBets.prefix(10))
+    }
+
+    private func eventName(for bet: Bet) -> String {
+        if let desc = bet.eventDescription { return desc }
+        if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
+            return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        return "Unknown Event"
     }
 
     var body: some View {
@@ -447,7 +456,7 @@ private struct RecentActivitySection: View {
                     .padding(.vertical, 20)
             } else {
                 ForEach(displayBets, id: \.id) { bet in
-                    BetHistoryRow(bet: bet)
+                    BetHistoryRow(bet: bet, eventName: eventName(for: bet))
                     if bet.id != displayBets.last?.id {
                         Divider().overlay(Theme.elevatedBackground)
                     }
@@ -474,6 +483,7 @@ private struct RecentActivitySection: View {
 
 private struct BetHistoryRow: View {
     let bet: Bet
+    let eventName: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -485,7 +495,7 @@ private struct BetHistoryRow: View {
                 resultBadge
             }
 
-            Text(bet.eventDescription ?? "Unknown Event")
+            Text(eventName)
                 .font(Theme.bodyFont(size: 14, weight: .medium))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)

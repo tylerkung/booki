@@ -156,7 +156,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (February 21, 2026)
+## Current State (February 22, 2026)
 
 - **Branch**: `ralph/ios26-migration`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
@@ -167,6 +167,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
 - **Settings**: Streamlined — removed Odds API config, sample data, and sync button
 - **Auto-pilot mode**: Picks auto-accepted, auto-graded, and auto-settled (ledger entries created automatically)
+- **Auto-refresh**: Processes up to 10 games per run, catch-up grading for missed events, auto-void for stale pending bets, `force` flag for manual triggers
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
 - **Branding**: App icon and in-app logo (`BookiLogo` image set), dark launch screen, `DESIGN_SYSTEM.md` restored
 - **Landing page**: `landing/` directory with index.html, styles.css, assets (screenshots + SVG logo)

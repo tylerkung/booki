@@ -120,21 +120,18 @@ struct BetHistoryView: View {
 
     // MARK: - Data Fetching
 
+    @MainActor
     private func fetchAuditHistory() async {
         isLoading = true
         errorMessage = nil
 
         do {
             let events = try await auditService.fetchAuditHistory(entityType: "bet", entityId: betId)
-            await MainActor.run {
-                self.auditEvents = events
-                self.isLoading = false
-            }
+            self.auditEvents = events
+            self.isLoading = false
         } catch {
-            await MainActor.run {
-                self.errorMessage = error.localizedDescription
-                self.isLoading = false
-            }
+            self.errorMessage = error.localizedDescription
+            self.isLoading = false
         }
     }
 }

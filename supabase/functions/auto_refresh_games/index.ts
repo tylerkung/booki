@@ -22,7 +22,7 @@ function generateIdempotencyKey(): string {
 /**
  * auto_refresh_games Edge Function
  *
- * Automatically refreshes odds and scores for up to 2 games with accepted bets.
+ * Automatically refreshes odds and scores for up to 10 games with accepted bets.
  * Called twice daily via cron (morning and afternoon).
  *
  * Game selection criteria:
@@ -30,7 +30,10 @@ function generateIdempotencyKey(): string {
  * - Status is not 'final' (not completed)
  * - Not locked (status not in ['live', 'canceled'])
  * - Ordered by start_time ASC, then by total wagered amount DESC
- * - Limited to 2 games maximum
+ * - Limited to 10 games maximum
+ *
+ * Also includes catch-up grading: grades any accepted bets on events that are
+ * already 'final' with scores (handles cases where events finalized between runs).
  */
 
 interface SelectedGame {
@@ -269,6 +272,239 @@ function extractMarketsFromOddsEvent(
   return markets;
 }
 
+/**
+ * Catch-up grading: finds accepted bets on already-final events and grades+settles them.
+ * Also voids pending bets on final events (never accepted before game ended).
+ * No API calls needed — purely database work.
+ */
+async function runCatchupGrading(client: ReturnType<typeof createServiceClient>): Promise<{
+  catchupBetsSettled: number;
+  catchupEventsProcessed: number;
+  catchupBetsVoided: number;
+  debug: Record<string, unknown>;
+}> {
+  let catchupBetsSettled = 0;
+  let catchupEventsProcessed = 0;
+  let catchupBetsVoided = 0;
+  const debug: Record<string, unknown> = {};
+
+  // 1. Grade accepted bets on final events
+  try {
+    const { data: strandedBets, error: strandedError } = await client
+      .from('bets')
+      .select('id, event_id, market, side, bookie_id, player_id, stake, odds')
+      .eq('status', 'accepted');
+
+    debug.acceptedBetsFound = strandedBets?.length ?? 0;
+
+    if (!strandedError && strandedBets && strandedBets.length > 0) {
+      const strandedEventIds = [...new Set(strandedBets.map((b) => b.event_id))];
+
+      const { data: finalEvents, error: finalEventsError } = await client
+        .from('events')
+        .select('id, home_team, away_team, home_score, away_score')
+        .in('id', strandedEventIds)
+        .eq('status', 'final')
+        .not('home_score', 'is', null)
+        .not('away_score', 'is', null);
+
+      debug.finalEventsWithScores = finalEvents?.length ?? 0;
+
+      if (!finalEventsError && finalEvents && finalEvents.length > 0) {
+        for (const event of finalEvents) {
+          const eventBets = strandedBets.filter((b) => b.event_id === event.id);
+          if (eventBets.length === 0) continue;
+
+          const bookieId = eventBets[0].bookie_id;
+          const { data: bookie } = await client
+            .from('bookies')
+            .select('auth_user_id, manual_bet_grading')
+            .eq('id', bookieId)
+            .single();
+
+          if (bookie?.manual_bet_grading) {
+            console.log(`Catch-up: skipping event ${event.id} - manual grading enabled`);
+            continue;
+          }
+
+          const eventScores: EventScores = {
+            homeScore: event.home_score!,
+            awayScore: event.away_score!,
+            homeTeam: event.home_team,
+            awayTeam: event.away_team,
+          };
+
+          for (const bet of eventBets) {
+            try {
+              const betInfo: BetInfo = { id: bet.id, market: bet.market, side: bet.side };
+              const gradeOutcome = gradeBet(betInfo, eventScores);
+
+              const { error: updateError } = await client
+                .from('bets')
+                .update({
+                  status: 'settled',
+                  grade_result: gradeOutcome.result,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', bet.id);
+
+              if (updateError) {
+                console.error(`Catch-up: error settling bet ${bet.id}:`, updateError);
+                continue;
+              }
+
+              const stake = Number(bet.stake);
+              const odds = Number(bet.odds);
+              let payoutAmount = 0;
+              if (gradeOutcome.result === 'win') {
+                const profit = odds > 0
+                  ? stake * (odds / 100)
+                  : stake * (100 / Math.abs(odds));
+                payoutAmount = -profit;
+              } else if (gradeOutcome.result === 'loss') {
+                payoutAmount = stake;
+              }
+
+              if (payoutAmount !== 0) {
+                const description = gradeOutcome.result === 'win' ? 'Bet won' : 'Bet lost';
+                await client
+                  .from('ledger_entries')
+                  .insert({
+                    bookie_id: bet.bookie_id,
+                    player_id: bet.player_id,
+                    bet_id: bet.id,
+                    amount: payoutAmount,
+                    type: 'settlement',
+                    description: description,
+                  });
+              }
+
+              if (bookie?.auth_user_id) {
+                await emitAuditEvent(client, {
+                  bookieId: bet.bookie_id,
+                  actorUserId: bookie.auth_user_id,
+                  entityType: 'bet',
+                  entityId: bet.id,
+                  actionType: 'bet_auto_settled',
+                  previousState: { status: 'accepted' },
+                  newState: {
+                    status: 'settled',
+                    grade_result: gradeOutcome.result,
+                    grade_details: gradeOutcome.gradeDetails,
+                    payout_amount: payoutAmount,
+                    catchup: true,
+                  },
+                });
+              }
+
+              catchupBetsSettled++;
+              console.log(`Catch-up: settled bet ${bet.id}: ${gradeOutcome.result}`);
+            } catch (betError) {
+              console.error(`Catch-up: error grading bet ${bet.id}:`, betError);
+            }
+          }
+          catchupEventsProcessed++;
+        }
+      }
+    }
+  } catch (catchupError) {
+    console.error('Catch-up grading error:', catchupError);
+    debug.gradingError = catchupError instanceof Error ? catchupError.message : 'Unknown';
+  }
+
+  // 2. Void pending bets on final events
+  try {
+    const { data: pendingBets, error: pendingError } = await client
+      .from('bets')
+      .select('id, event_id, bookie_id')
+      .eq('status', 'pending');
+
+    debug.pendingBetsFound = pendingBets?.length ?? 0;
+
+    if (!pendingError && pendingBets && pendingBets.length > 0) {
+      const pendingEventIds = [...new Set(pendingBets.map((b) => b.event_id))];
+
+      // Check for final events OR events that started more than 6 hours ago (likely finished)
+      const { data: finalEvents, error: finalError } = await client
+        .from('events')
+        .select('id, status, start_time')
+        .in('id', pendingEventIds)
+        .eq('status', 'final');
+
+      debug.pendingBetsFinalEvents = finalEvents?.length ?? 0;
+
+      // Also check for events that started long ago but aren't marked final (no scores fetched)
+      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+      const { data: startedEvents } = await client
+        .from('events')
+        .select('id')
+        .in('id', pendingEventIds)
+        .neq('status', 'final')
+        .neq('status', 'canceled')
+        .lt('start_time', sixHoursAgo);
+
+      debug.pendingBetsStartedEvents = startedEvents?.length ?? 0;
+
+      const voidableEventIds = new Set([
+        ...(finalEvents?.map((e) => e.id) ?? []),
+        ...(startedEvents?.map((e) => e.id) ?? []),
+      ]);
+
+      const betsToVoid = pendingBets.filter((b) => voidableEventIds.has(b.event_id));
+      debug.betsToVoid = betsToVoid.length;
+
+      for (const bet of betsToVoid) {
+        try {
+          const { error: voidError } = await client
+            .from('bets')
+            .update({
+              status: 'void',
+              grade_result: 'void',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', bet.id);
+
+          if (voidError) {
+            console.error(`Catch-up: error voiding bet ${bet.id}:`, voidError);
+            continue;
+          }
+
+          const { data: bookie } = await client
+            .from('bookies')
+            .select('auth_user_id')
+            .eq('id', bet.bookie_id)
+            .single();
+
+          if (bookie?.auth_user_id) {
+            await emitAuditEvent(client, {
+              bookieId: bet.bookie_id,
+              actorUserId: bookie.auth_user_id,
+              entityType: 'bet',
+              entityId: bet.id,
+              actionType: 'bet_auto_voided',
+              previousState: { status: 'pending' },
+              newState: {
+                status: 'void',
+                reason: 'Event finalized or started while bet was still pending',
+              },
+            });
+          }
+
+          catchupBetsVoided++;
+          console.log(`Catch-up: voided pending bet ${bet.id}`);
+        } catch (voidBetError) {
+          console.error(`Catch-up: error voiding bet ${bet.id}:`, voidBetError);
+        }
+      }
+    }
+  } catch (voidError) {
+    console.error('Catch-up void error:', voidError);
+    debug.voidError = voidError instanceof Error ? voidError.message : 'Unknown';
+  }
+
+  return { catchupBetsSettled, catchupEventsProcessed, catchupBetsVoided, debug };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -276,6 +512,15 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Parse request body for force flag
+    let force = false;
+    try {
+      const body = await req.json();
+      force = body?.force === true;
+    } catch {
+      // No body or invalid JSON — that's fine
+    }
+
     // Read ODDS_API_KEY from environment
     const oddsApiKey = Deno.env.get('ODDS_API_KEY');
 
@@ -295,41 +540,45 @@ Deno.serve(async (req) => {
     const client = createServiceClient();
 
     // ========================================
-    // US-007: Idempotency Check
+    // US-007: Idempotency Check (skip if force=true)
     // ========================================
     const idempotencyKey = generateIdempotencyKey();
     const operation = 'auto_refresh_games';
 
-    // Check if this refresh window has already been processed
-    const cachedResponse = await checkIdempotency(client, idempotencyKey, operation);
-    if (cachedResponse) {
-      console.log(`Idempotency key ${idempotencyKey} already exists, returning cached response`);
-      return new Response(cachedResponse, {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (!force) {
+      // Check if this refresh window has already been processed
+      const cachedResponse = await checkIdempotency(client, idempotencyKey, operation);
+      if (cachedResponse) {
+        console.log(`Idempotency key ${idempotencyKey} already exists, returning cached response`);
+        return new Response(cachedResponse, {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      console.log('Force mode: skipping idempotency check');
     }
 
     // Query games that meet the selection criteria:
     // 1. Has at least one accepted bet
     // 2. Status is not 'final', 'live', or 'canceled' (i.e., still eligible for refresh)
     // 3. Order by start_time ASC, then total wagered DESC
-    // 4. Limit to 2 games
+    // 4. Limit to 10 games
     //
     // We use a raw query to aggregate bet data and filter properly
     const { data: selectedGames, error: queryError } = await client.rpc(
       'select_games_for_auto_refresh',
-      { max_games: 2 }
+      { max_games: 10 }
     );
 
     // If RPC doesn't exist yet, fall back to a manual query approach
     if (queryError?.code === 'PGRST202') {
       // RPC function not found, use alternative query approach
-      // First, get events with accepted bets
+      // First, get events with accepted or pending bets (pending need score refresh for void logic)
       const { data: eventsWithBets, error: eventsError } = await client
         .from('bets')
-        .select('event_id, stake')
-        .eq('status', 'accepted');
+        .select('event_id, stake, bookie_id')
+        .in('status', ['accepted', 'pending']);
 
       if (eventsError) {
         console.error('Error fetching bets:', eventsError);
@@ -343,15 +592,22 @@ Deno.serve(async (req) => {
       }
 
       if (!eventsWithBets || eventsWithBets.length === 0) {
+        // Still run catch-up grading for already-final events
+        const catchup = await runCatchupGrading(client);
         const responseBody = {
           success: true,
-          message: 'No games with accepted bets found',
+          message: 'No games with open bets found',
           games_selected: 0,
           odds_refreshed: 0,
           scores_refreshed: 0,
           events_finalized: 0,
           bets_transitioned: 0,
           bets_graded: 0,
+          bets_settled: catchup.catchupBetsSettled,
+          catchup_bets_settled: catchup.catchupBetsSettled,
+          catchup_bets_voided: catchup.catchupBetsVoided,
+          catchup_events_processed: catchup.catchupEventsProcessed,
+          catchup_debug: catchup.debug,
           errors: [],
         };
         const responseString = JSON.stringify(responseBody);
@@ -366,13 +622,14 @@ Deno.serve(async (req) => {
       // Aggregate bet data by event_id
       const eventAggregates = new Map<
         string,
-        { totalWagered: number; betCount: number }
+        { totalWagered: number; betCount: number; bookieId: string }
       >();
       for (const bet of eventsWithBets) {
         const eventId = bet.event_id;
         const existing = eventAggregates.get(eventId) || {
           totalWagered: 0,
           betCount: 0,
+          bookieId: bet.bookie_id,
         };
         existing.totalWagered += parseFloat(bet.stake) || 0;
         existing.betCount += 1;
@@ -381,10 +638,10 @@ Deno.serve(async (req) => {
 
       const eventIds = Array.from(eventAggregates.keys());
 
-      // Fetch events that are not final/live/canceled, with bookie auth_user_id
+      // Fetch events that are not final/live/canceled (no bookie join — events are shared with bookie_id=NULL)
       const { data: events, error: eventsQueryError } = await client
         .from('events')
-        .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id, bookies!inner(auth_user_id)')
+        .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id')
         .in('id', eventIds)
         .not('status', 'in', '("final","live","canceled")')
         .order('start_time', { ascending: true });
@@ -401,6 +658,8 @@ Deno.serve(async (req) => {
       }
 
       if (!events || events.length === 0) {
+        // Still run catch-up grading for already-final events
+        const catchup = await runCatchupGrading(client);
         const responseBody = {
           success: true,
           message: 'No eligible games found for refresh',
@@ -410,6 +669,11 @@ Deno.serve(async (req) => {
           events_finalized: 0,
           bets_transitioned: 0,
           bets_graded: 0,
+          bets_settled: catchup.catchupBetsSettled,
+          catchup_bets_settled: catchup.catchupBetsSettled,
+          catchup_bets_voided: catchup.catchupBetsVoided,
+          catchup_events_processed: catchup.catchupEventsProcessed,
+          catchup_debug: catchup.debug,
           errors: [],
         };
         const responseString = JSON.stringify(responseBody);
@@ -422,13 +686,20 @@ Deno.serve(async (req) => {
       }
 
       // Combine event data with aggregate bet data
+      // Look up bookie auth_user_ids from the bets' bookie_ids
+      const uniqueBookieIds = [...new Set(Array.from(eventAggregates.values()).map((a) => a.bookieId))];
+      const { data: bookies } = await client
+        .from('bookies')
+        .select('id, auth_user_id')
+        .in('id', uniqueBookieIds);
+      const bookieAuthMap = new Map((bookies ?? []).map((b) => [b.id, b.auth_user_id]));
+
       const gamesWithStats: SelectedGame[] = events.map((event) => {
         const agg = eventAggregates.get(event.id) || {
           totalWagered: 0,
           betCount: 0,
+          bookieId: '',
         };
-        // Extract bookie auth_user_id from joined data
-        const bookieData = event.bookies as { auth_user_id: string } | null;
         return {
           id: event.id,
           external_id: event.external_id,
@@ -438,8 +709,8 @@ Deno.serve(async (req) => {
           away_team: event.away_team,
           start_time: event.start_time,
           status: event.status,
-          bookie_id: event.bookie_id,
-          bookie_auth_user_id: bookieData?.auth_user_id || null,
+          bookie_id: agg.bookieId || event.bookie_id,
+          bookie_auth_user_id: bookieAuthMap.get(agg.bookieId) || null,
           total_wagered: agg.totalWagered,
           accepted_bet_count: agg.betCount,
         };
@@ -456,8 +727,8 @@ Deno.serve(async (req) => {
         return b.total_wagered - a.total_wagered;
       });
 
-      // Limit to 2 games
-      const finalSelection = gamesWithStats.slice(0, 2);
+      // Limit to 10 games
+      const finalSelection = gamesWithStats.slice(0, 10);
 
       // ========================================
       // US-004: Odds Refresh Logic
@@ -983,6 +1254,9 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Run catch-up grading for any accepted bets on already-final events
+      const catchup = await runCatchupGrading(client);
+
       // Build response object
       const responseBody = {
         success: true,
@@ -992,7 +1266,11 @@ Deno.serve(async (req) => {
         events_finalized: eventsFinalized,
         bets_transitioned: betsTransitioned,
         bets_graded: betsGraded,
-        bets_settled: betsSettled,
+        bets_settled: betsSettled + catchup.catchupBetsSettled,
+        catchup_bets_settled: catchup.catchupBetsSettled,
+        catchup_bets_voided: catchup.catchupBetsVoided,
+        catchup_events_processed: catchup.catchupEventsProcessed,
+        catchup_debug: catchup.debug,
         errors: allErrors,
       };
 

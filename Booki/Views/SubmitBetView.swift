@@ -820,7 +820,9 @@ struct StakeEntryView: View {
                         response,
                         player: player,
                         localSide: selection.side,
-                        localMarket: selection.market.type.rawValue
+                        localMarket: selection.market.type.rawValue,
+                        eventDescription: "\(event.awayTeam) @ \(event.homeTeam)",
+                        sportLeague: event.league
                     ) {
                         modelContext.insert(bet)
                         showingSuccess = true
