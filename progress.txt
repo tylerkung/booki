@@ -1,198 +1,30 @@
 # Ralph Progress Log
-Started: Sat Feb 21 17:41:31 PST 2026
-
-## Codebase Patterns
-- project.pbxproj has 4 build configuration sections: Debug (project), Release (project), Debug (target), Release (target). Each has its own IPHONEOS_DEPLOYMENT_TARGET and SWIFT_VERSION.
-- supabase-swift package uses `upToNextMajorVersion: 2.0.0` — no change needed for iOS 26 migration
-- Xcode IDE required for full builds — command-line can't verify typecheck (per CLAUDE.md)
-- Tab API: Use `Tab("Title", systemImage: "icon") { content }` (no selection) or `Tab("Title", systemImage: "icon", value: N) { content }` (with selection binding). `.badge()` goes on the Tab.
-- @Observable singletons (.shared): Replace `@ObservedObject private var x = X.shared` with `private var x = X.shared` — SwiftUI tracks access automatically.
-- Swift 6 strict concurrency: All @Observable classes need @MainActor. Non-actor service singletons with only `let` properties use `@unchecked Sendable`. Error enums with `Error` associated values need `@unchecked Sendable`. Closure params crossing isolation boundaries need `@Sendable`.
-- `callFunction(body: Encodable)` changed to `body: some Encodable & Sendable` — all request types are structs with value-type properties (auto-Sendable).
-
+Started: Mon Feb 23 00:39:19 PST 2026
 ---
 
-## 2026-02-21 - US-001
-- Updated IPHONEOS_DEPLOYMENT_TARGET from 17.0 → 18.0 in all 4 places in project.pbxproj
-- Updated SWIFT_VERSION from 5.0 → 6.0 in all 4 places in project.pbxproj
-- supabase-swift 2.x constraint compatible — no change needed
-- Files changed: Booki.xcodeproj/project.pbxproj
+## 2026-02-23 - US-001
+- Created `Booki/Models/Invite.swift` — SwiftData `@Model` with all required fields
+- Fields: id (UUID), bookieId (UUID), inviteCode (String), email (String?), createdAt (Date), expiresAt (Date), claimedAt (Date?), claimedByPlayerId (UUID?), needsSync (Bool), version (Int)
+- Computed properties: `isExpired` (expiresAt < Date()), `isPending` (claimedAt == nil && !isExpired)
+- Explicit `init()` with all parameters and sensible defaults
+- Added `Invite.self` to ModelContainer schema in BookiApp.swift
+- Added file to Xcode project (pbxproj)
+- Files changed: Booki/Models/Invite.swift (new), Booki/BookiApp.swift, Booki.xcodeproj/project.pbxproj
 - **Learnings for future iterations:**
-  - project.pbxproj has exactly 4 instances each of IPHONEOS_DEPLOYMENT_TARGET and SWIFT_VERSION (2 project-level configs + 2 target-level configs)
-  - `replace_all` in Edit tool is efficient for these uniform replacements
-  - Can't verify typecheck from command line — must rely on Xcode IDE
+  - Xcode project uses pbxproj — new Swift files must be added to 4 sections: PBXBuildFile, PBXFileReference, group children, and Sources build phase
+  - Model doesn't conform to Syncable yet (needs lastSyncedAt) — will be added in US-005 when sync support is implemented
+  - SwiftData schema change requires deleting app from Simulator
 ---
 
-## 2026-02-21 - US-002
-- Wrapped entire body of `configureAppAppearance()` in `if #unavailable(iOS 26) { ... }`
-- On iOS 26, tab bar and nav bar get system Liquid Glass translucency (no opaque override)
-- On iOS 18-25, existing opaque dark appearance is preserved
-- `.tint(Theme.accent)` already on TabView in ContentView.swift handles tab color natively
-- Files changed: Booki/BookiApp.swift
+## 2026-02-23 - US-002
+- Created `supabase/migrations/009_invites.sql` — invites table with full schema
+- Table columns: id (uuid PK), bookie_id (uuid FK), invite_code (text UNIQUE), email (text), created_at, expires_at, claimed_at, claimed_by_player_id (uuid FK), version (int)
+- RLS: bookies can SELECT and INSERT own invites; UPDATE/DELETE via service role only (for edge functions)
+- Indexes: invite_code (fast lookups during claim), bookie_id (bookie's invite list)
+- Documented migration in SUPABASE_MIGRATIONS.md
+- Files changed: supabase/migrations/009_invites.sql (new), SUPABASE_MIGRATIONS.md
 - **Learnings for future iterations:**
-  - `if #unavailable(iOS 26)` is the correct guard to run code only on older OS versions
-  - ContentView.swift line 195 already has `.tint(Theme.accent)` on the TabView — no additional work needed for tab tint
-  - UIKit appearance proxies are the main thing to guard; SwiftUI modifiers work across OS versions
----
-
-## 2026-02-21 - US-003
-- Wrapped UITabBarItem badge appearance code in ContentView.init() with `if #unavailable(iOS 26) { ... }`
-- On iOS 26, badges use system default styling (Liquid Glass compatible)
-- On iOS 18-25, badges still use brand teal background with dark text in SpaceGrotesk-Bold
-- SwiftUI `.badge()` modifiers on Picks and Members tabs remain unchanged (work independently)
-- Files changed: Booki/ContentView.swift
-- **Learnings for future iterations:**
-  - Badge appearance code (UITabBarItem.appearance().badgeColor, setBadgeTextAttributes) is in ContentView.init(), not in BookiApp
-  - SwiftUI `.badge()` modifier works independently of UIKit badge appearance — no need to guard those
-  - Same `if #unavailable(iOS 26)` pattern used for both configureAppAppearance() and badge styling
----
-
-## 2026-02-21 - US-004
-- Replaced all `.foregroundColor(` with `.foregroundStyle(` across 8 Swift files
-- 59 occurrences replaced total: GameCardView (18), GameDetailView (16), CompactGameRow (12), GamesView (3), EventsListView (3), CompactOddsButton (3), PickCardCompact (2), Theme.swift (2)
-- Zero occurrences of `.foregroundColor(` remain in Booki source
-- Files changed: GameCardView.swift, GameDetailView.swift, CompactGameRow.swift, GamesView.swift, EventsListView.swift, CompactOddsButton.swift, PickCardCompact.swift, Theme.swift
-- **Learnings for future iterations:**
-  - `.foregroundColor()` and `.foregroundStyle()` are signature-compatible for single Color values — pure find-and-replace
-  - `replace_all` in Edit tool handles all occurrences in a file efficiently
-  - Note: PickCardCompact.swift uses `.foregroundColor()` inside Text concatenation (`+` operator) — `.foregroundStyle()` works the same way there
----
-
-## 2026-02-21 - US-005
-- Replaced all `.cornerRadius(X)` with `.clipShape(RoundedRectangle(cornerRadius: X))` in 5 high-count files
-- 30 occurrences replaced total: GradeEventSheet (7: values 16/12/8), BetsListView (7: Theme.cornerRadius/Theme.cornerRadiusSmall), WeeklySettlementView (6: Theme.cornerRadiusSmall/Theme.cornerRadius), PlayerClaimView (6: value 12), UserAgreementView (4: Theme.cornerRadiusSmall/Theme.cornerRadius)
-- Files changed: GradeEventSheet.swift, BetsListView.swift, WeeklySettlementView.swift, PlayerClaimView.swift, UserAgreementView.swift
-- **Learnings for future iterations:**
-  - `.cornerRadius(X)` → `.clipShape(RoundedRectangle(cornerRadius: X))` is a straightforward replacement
-  - Files use mix of literal values (8, 12, 16) and Theme constants (Theme.cornerRadius, Theme.cornerRadiusSmall)
-  - `replace_all` in Edit tool works per-file per-pattern — need separate calls for each distinct cornerRadius value
-  - All 5 files are in Booki/Views/ directory
----
-
-## 2026-02-21 - US-006
-- Replaced all remaining `.cornerRadius(X)` with `.clipShape(RoundedRectangle(cornerRadius: X))` across 18 files
-- 34 occurrences replaced total: SettlementSnapshotCard (3), PlayerLoginView (3), SignUpView (3), LoginView (3), PlayersListView (2), OnboardingProfileView (2), NumericKeypadView (2), GameDetailView (2), EventDetailView (2), PickDetailHeader (2), AppleSignInButton (2), Theme.swift (2), TonightsExposureCard (1), SyncGamesView (1), GradingView (1), CompactOddsButton (1), CompactGameRow (1), SyncService (1)
-- Zero occurrences of `.cornerRadius(` remain in the entire Booki codebase
-- Files changed: SettlementSnapshotCard.swift, PlayerLoginView.swift, SignUpView.swift, LoginView.swift, PlayersListView.swift, OnboardingProfileView.swift, NumericKeypadView.swift, GameDetailView.swift, EventDetailView.swift, PickDetailHeader.swift, AppleSignInButton.swift, Theme.swift, TonightsExposureCard.swift, SyncGamesView.swift, GradingView.swift, CompactOddsButton.swift, CompactGameRow.swift, SyncService.swift
-- **Learnings for future iterations:**
-  - Special case: `LoginView.swift` had `.background(Theme.danger.cornerRadius(...))` — calling `.clipShape()` on a Color (which is a View) works fine
-  - The Edit tool requires a full `Read` of the file before editing — partial reads (limit/offset) don't count for some files
-  - With US-005 + US-006 combined, all `.cornerRadius()` deprecation warnings are eliminated
----
-
-## 2026-02-21 - US-007
-- Migrated TabView from `.tabItem { Label() }` to `Tab(title:systemImage:) { content }` API
-- ContentView.swift: 6 bookie tabs migrated (Dashboard, Picks, Members, Events, Grading, Settings)
-- PlayerMainView.swift: 3 player tabs migrated with `value:` parameter for selection binding (Games, Track, Account)
-- `.badge()` modifiers preserved on Picks and Members tabs
-- Zero occurrences of `.tabItem` remain in codebase
-- Files changed: Booki/ContentView.swift, Booki/Views/PlayerMainView.swift
-- **Learnings for future iterations:**
-  - Tab API with selection binding uses `Tab("Title", systemImage: "icon", value: 0) { content }` — the `value:` parameter replaces `.tag()`
-  - Tab API without selection binding (bookie mode) uses simpler `Tab("Title", systemImage: "icon") { content }`
-  - `.badge()` modifier goes on the `Tab` directly, same as before
-  - Content goes inside the Tab closure instead of before `.tabItem`
----
-
-## 2026-02-21 - US-009
-- Migrated SyncService from ObservableObject to @Observable macro
-- Removed @Published from 4 properties (syncStatus, lastSyncedAt, pendingChangesCount, syncProgressDescription)
-- Updated BookiApp.swift: @StateObject → @State, .environmentObject() → .environment()
-- Updated 10 views across 9 files: @EnvironmentObject → @Environment(SyncService.self)
-- Files changed: SyncService.swift, BookiApp.swift, ContentView.swift, AnalyticsDashboardView.swift, AuthGateView.swift, DashboardView.swift, FetchScoresView.swift, GamesView.swift, PlayersListView.swift (2 sub-views), RefreshOddsView.swift, SyncGamesView.swift
-- **Learnings for future iterations:**
-  - SyncService is used in 10 views (2 sub-views in PlayersListView: PlayerDetailView and AddPlayerSheet)
-  - Same migration pattern as US-008: class declaration, property wrappers, BookiApp injection, and all consumer views
-  - `replace_all` in Edit tool efficiently handles files with single occurrences; PlayersListView had 2 occurrences handled in one call
----
-
-## 2026-02-21 - US-010
-- Migrated NetworkMonitor from ObservableObject to @Observable macro
-- Removed @Published from 3 properties (isConnected, connectionStatus, connectionType)
-- Removed unused `import Combine`
-- Updated BookiApp.swift: @StateObject → @State, .environmentObject() → .environment()
-- Updated 6 views across 4 files: @EnvironmentObject → @Environment(NetworkMonitor.self)
-  - NetworkMonitor.swift: OfflineBannerView, OfflineDisabledModifier, OfflineAlertModifier (+ preview)
-  - ContentView.swift (+ preview)
-  - PlayerMainView.swift (+ preview)
-  - AuthGateView.swift (+ 2 previews)
-- Files changed: NetworkMonitor.swift, BookiApp.swift, ContentView.swift, PlayerMainView.swift, AuthGateView.swift
-- **Learnings for future iterations:**
-  - NetworkMonitor.swift contains 3 sub-views (OfflineBannerView, OfflineDisabledModifier, OfflineAlertModifier) that also use @EnvironmentObject — don't forget these
-  - AuthGateView has 2 preview providers that both need updating
-  - NWPathMonitor callback with `Task { @MainActor }` dispatch works fine with @Observable — no changes needed to the monitoring logic
----
-
-## 2026-02-21 - US-011
-- Migrated BetSlipManager from ObservableObject to @Observable macro
-- Removed @Published from 5 properties (items, itemStakes, betMode, modeSwitchMessage, stake)
-- Removed `import Combine` from BetSlipManager.swift
-- Migrated FavoritesManager from ObservableObject to @Observable macro
-- Removed @Published from 1 property (favoriteTeams)
-- Removed `import Combine` from FavoritesManager.swift
-- Updated 6 views across 4 files: @ObservedObject → plain var (singletons accessed via .shared)
-  - GamesView.swift (betSlipManager + favoritesManager)
-  - GameDetailView.swift (betSlipManager)
-  - BetConfirmationSheet.swift (betSlipManager)
-  - BetSlipSheet.swift (betSlipManager — 2 occurrences: main view + PremiumBetSlipItemCard sub-view)
-- Files changed: BetSlipManager.swift, FavoritesManager.swift, GamesView.swift, GameDetailView.swift, BetConfirmationSheet.swift, BetSlipSheet.swift
-- **Learnings for future iterations:**
-  - BetSlipManager and FavoritesManager are singletons (.shared) — they use @ObservedObject, not @EnvironmentObject/@StateObject
-  - For @Observable singletons, @ObservedObject becomes a plain `var` or `let` — SwiftUI tracks property access automatically
-  - BetSlipSheet.swift has a sub-view (PremiumBetSlipItemCard) that takes BetSlipManager as a parameter via @ObservedObject — also needs updating
-  - `didSet` observers on properties (betMode, stake) still work fine with @Observable — no changes needed
----
-
-## 2026-02-21 - US-012
-- Migrated OddsAPIService from ObservableObject to @Observable macro
-- Removed @Published from 2 properties (quotaRemaining, quotaUsed)
-- Migrated RealtimeService from ObservableObject to @Observable macro
-- Removed @Published from 2 properties (isConnected, connectionStatus)
-- Updated BookiApp.swift: @StateObject → @State for realtimeService, .environmentObject() → .environment()
-- Updated AuthGateView.swift: @EnvironmentObject → @Environment(RealtimeService.self), fixed preview providers
-- Updated 4 views with OddsAPIService.shared singleton: @StateObject → plain var (ImportEventsView, RefreshOddsView, SyncGamesView, FetchScoresView)
-- Fixed 2 @ObservedObject remnants in SyncService.swift (SyncStatusIndicator, SyncProgressView) → plain var
-- **Verified zero ObservableObject, @Published, @StateObject, @EnvironmentObject, @ObservedObject remain in codebase**
-- Files changed: OddsAPIService.swift, RealtimeService.swift, BookiApp.swift, AuthGateView.swift, ImportEventsView.swift, RefreshOddsView.swift, SyncGamesView.swift, FetchScoresView.swift, SyncService.swift
-- **Learnings for future iterations:**
-  - OddsAPIService is a @MainActor singleton (.shared) — views used @StateObject to observe it, which becomes plain `var` with @Observable
-  - RealtimeService was injected via .environmentObject in BookiApp — same migration pattern as other services
-  - SyncService.swift had 2 sub-views (SyncStatusIndicator, SyncProgressView) that used @ObservedObject for passed-in SyncService — easy to miss
-  - AuthGateView preview providers used .environmentObject for already-migrated services (AuthManager, SyncService) — these needed updating to .environment() too
-  - After this story, the entire codebase uses @Observable exclusively — no Combine observation patterns remain
----
-
-## 2026-02-21 - US-013
-- Added SWIFT_STRICT_CONCURRENCY = complete to all 4 build configurations in project.pbxproj
-- Added @MainActor to 3 @Observable classes missing it: BetSlipManager, FavoritesManager, DashboardViewModel
-- Made 4 service/singleton classes @unchecked Sendable: EdgeFunctionService, SupabaseClientManager, AuditService, AgreementService
-- Made 6 error enums @unchecked Sendable (those with non-Sendable `Error` associated values): EdgeFunctionError, AuditServiceError, AgreementServiceError, BookieServiceError, OddsAPIError, SyncServiceError
-- Added @Sendable to retryWithBackoff operation closure parameter in EdgeFunctionService
-- Changed callFunction body parameter from `Encodable` to `some Encodable & Sendable` for actor boundary safety
-- Made AnyEncodable struct @unchecked Sendable (stores non-Sendable closure)
-- Files changed: project.pbxproj, BetSlipManager.swift, FavoritesManager.swift, DashboardViewModel.swift, EdgeFunctionService.swift, SupabaseClient.swift, AuditService.swift, AgreementService.swift, BookieService.swift, OddsAPIService.swift, SyncService.swift
-- **Learnings for future iterations:**
-  - In Swift 6, `SWIFT_STRICT_CONCURRENCY = complete` is redundant with `SWIFT_VERSION = 6.0` (strict concurrency is the default in Swift 6), but adding it explicitly documents intent
-  - All @Observable classes MUST have @MainActor since they hold UI state — without it, property access from SwiftUI views has no isolation guarantee
-  - Final classes with only `let` properties are effectively immutable and safe to mark `@unchecked Sendable`
-  - Error enums with `Error` (non-Sendable protocol) associated values need `@unchecked Sendable` — the concrete error types (URLError, DecodingError) ARE Sendable but the existential isn't
-  - Existential `Encodable` parameter crossing actor boundaries is non-Sendable; use `some Encodable & Sendable` for opaque type
-  - `Task.detached { [weak self] in }` where self is @MainActor: Swift 6 region-based isolation (SE-0414) allows this because all access goes through actor-hopping
-  - Xcode IDE required for build verification — command-line xcodebuild needs `sudo xcode-select -s` to switch developer directory
----
-
-## 2026-02-21 - US-014
-- Final verification: scanned entire codebase for remaining deprecated APIs and migration issues
-- Confirmed zero occurrences of: .foregroundColor(), .cornerRadius(), .tabItem, ObservableObject, @Published, @StateObject, @EnvironmentObject, @ObservedObject, import Combine, AnyCancellable, .accentColor(), NavigationView
-- Confirmed all 8 @Observable classes have @MainActor annotation
-- Confirmed project settings: IPHONEOS_DEPLOYMENT_TARGET=18.0, SWIFT_VERSION=6.0, SWIFT_STRICT_CONCURRENCY=complete (all 4 configs)
-- Confirmed iOS 26 Liquid Glass guards (#unavailable) in BookiApp.swift and ContentView.swift
-- Confirmed @unchecked Sendable on 7 service/error types, @Sendable on EdgeFunctionService closure
-- No code changes required — all issues resolved in US-001 through US-013
-- Note: Full Xcode build verification requires IDE (command-line xcodebuild not available)
-- Files changed: prd.json (marked passes: true), progress.txt
-- **Learnings for future iterations:**
-  - Command-line xcodebuild needs full Xcode (not just CommandLineTools) — use `sudo xcode-select -s /Applications/Xcode.app` to enable
-  - Comprehensive grep-based verification is a good substitute when IDE build isn't available
-  - All migration patterns from US-001 through US-013 are well-documented in progress.txt Codebase Patterns section
+  - RLS pattern for bookie-owned tables: `bookie_id IN (SELECT id FROM bookies WHERE auth_user_id = auth.uid())`
+  - Edge functions that modify records on behalf of users (like claiming) need service role — don't add UPDATE RLS policies for those
+  - Migration numbering is sequential: check last file number before creating new one
 ---

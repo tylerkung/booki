@@ -35,6 +35,46 @@ CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 
 ## Completed Migrations
 
+### 2026-02-23: Invites Table
+
+**Required for:** Member Invite Redesign (invite lifecycle tracking)
+
+```sql
+-- Create invites table for bookie-to-player invite flow
+CREATE TABLE IF NOT EXISTS invites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    bookie_id UUID NOT NULL REFERENCES bookies(id) ON DELETE CASCADE,
+    invite_code TEXT UNIQUE NOT NULL,
+    email TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    claimed_at TIMESTAMPTZ,
+    claimed_by_player_id UUID REFERENCES players(id) ON DELETE SET NULL,
+    version INT NOT NULL DEFAULT 0
+);
+
+-- Index on invite_code for fast lookups
+CREATE INDEX IF NOT EXISTS idx_invites_invite_code ON invites(invite_code);
+
+-- Index for bookie's invite list
+CREATE INDEX IF NOT EXISTS idx_invites_bookie_id ON invites(bookie_id);
+
+-- Enable RLS
+ALTER TABLE invites ENABLE ROW LEVEL SECURITY;
+
+-- RLS: Bookies can SELECT own invites
+CREATE POLICY invites_select_own ON invites
+    FOR SELECT
+    USING (bookie_id IN (SELECT id FROM bookies WHERE auth_user_id = auth.uid()));
+
+-- RLS: Bookies can INSERT own invites
+CREATE POLICY invites_insert_own ON invites
+    FOR INSERT
+    WITH CHECK (bookie_id IN (SELECT id FROM bookies WHERE auth_user_id = auth.uid()));
+
+-- No UPDATE/DELETE policies — Edge Functions use service role for claiming
+```
+
 ### 2026-01-29: Cron Jobs for Auto Refresh
 
 **Required for:** PRD - Automatic Server-Side Odds & Score Refresh (scheduled triggers)
