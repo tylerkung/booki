@@ -169,3 +169,22 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - When creating a view that will be fleshed out later, define the full interface (init params) now so dependent code compiles
   - AuthGateView needed @Binding for pendingInviteCode (not @State) since it's owned by BookiApp
 ---
+
+## 2026-02-23 - US-011
+- Fleshed out `InviteClaimView.swift` from stub to full invite claim landing screen
+- State machine with `ViewStep` enum: `.codeEntry`, `.validating`, `.landing`, `.error`, `.newUserSignup`, `.existingUserLogin`
+- Manual code entry: 8-char limit, auto-uppercase, filters non-alphanumeric (same pattern as PlayerClaimView)
+- On code submit or deep link: validates against Supabase `invites` table with bookie name join
+- Valid invite shows: BookiLogo, "You've been invited to join [Bookie Name]'s group", Get Started + Already have an account? CTAs
+- Invalid/expired/claimed codes show error state in Theme.danger with Try Again button
+- Deep link codes auto-validate on `.onAppear`
+- Added `010_invites_public_validate.sql` migration — public SELECT policy on invites table (needed for unauthenticated code validation)
+- Updated SUPABASE_MIGRATIONS.md with new migration
+- Files changed: Booki/Views/InviteClaimView.swift, supabase/migrations/010_invites_public_validate.sql (new), SUPABASE_MIGRATIONS.md
+- **Learnings for future iterations:**
+  - RLS on invites only allows bookie SELECT — unauthenticated users validating invite codes need a public SELECT policy
+  - PostgREST join syntax: `bookies(name)` works because invites.bookie_id references bookies.id
+  - `Theme.bodyFont` is a function, not a property — use `Theme.body` for the static font preset
+  - Conditional gradient backgrounds: use `Group { if ... { Theme.buttonGradient } else { LinearGradient(colors: [...]) } }` pattern (not AnyShapeStyle)
+  - newUserSignup/existingUserLogin steps are placeholders for US-012/US-013 — keeps CTA buttons functional now
+---
