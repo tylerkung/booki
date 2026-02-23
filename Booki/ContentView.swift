@@ -36,18 +36,7 @@ struct ContentView: View {
     @Environment(NetworkMonitor.self) private var networkMonitor
     @Environment(SyncService.self) private var syncService
 
-    init() {
-        // Brand-teal badge with dark text in Space Grotesk (iOS 18-25 only)
-        // On iOS 26, use system default badge styling for Liquid Glass compatibility
-        if #unavailable(iOS 26) {
-            let badgeBg = UIColor(Theme.accent)
-            let badgeFg = UIColor(Theme.background)
-            let badgeFont = UIFont(name: "SpaceGrotesk-Bold", size: 11) ?? .boldSystemFont(ofSize: 11)
-            let attrs: [NSAttributedString.Key: Any] = [.font: badgeFont, .foregroundColor: badgeFg]
-            UITabBarItem.appearance().badgeColor = badgeBg
-            UITabBarItem.appearance().setBadgeTextAttributes(attrs, for: .normal)
-        }
-    }
+    // Badge styling moved to BookiApp.configureAppAppearance() alongside tab bar appearance
 
     // MARK: - Conflict Alert State
 
@@ -163,21 +152,21 @@ struct ContentView: View {
 
     private var bookieModeView: some View {
         TabView {
-            Tab("Dashboard", systemImage: "chart.bar.fill") {
+            Tab("DASHBOARD", systemImage: "chart.bar.fill") {
                 AnalyticsDashboardView()
             }
 
-            Tab("Picks", systemImage: "list.bullet.rectangle") {
+            Tab("PICKS", systemImage: "list.bullet.rectangle") {
                 BetsListView()
             }
             .badge(openBetsCount > 9 ? "9+" : (openBetsCount > 0 ? "\(openBetsCount)" : ""))
 
-            Tab("Members", systemImage: "person.2.fill") {
+            Tab("MEMBERS", systemImage: "person.2.fill") {
                 PlayersListView()
             }
             .badge(flaggedPlayersCount > 0 ? flaggedPlayersCount : 0)
 
-            Tab("Events", systemImage: "sportscourt.fill") {
+            Tab("EVENTS", systemImage: "sportscourt.fill") {
                 EventsListView()
             }
 

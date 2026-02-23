@@ -180,3 +180,4 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Invite management**: Create/copy/delete invites from Members tab, permanent delete with `@AppStorage` fallback
 - **Nav bar standardization**: All bookie tabs use centered inline title with wordmark on Dashboard/Members
 - **Dashboard skeleton**: Shimmer placeholders during initial sync, dismissed on @Query data arrival, skipped when SwiftData has cache
+- **Tab bar styling**: Teal badge (Space Grotesk), all-caps labels for main tabs, badge set on UITabBarAppearance layouts

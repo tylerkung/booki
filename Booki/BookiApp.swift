@@ -101,6 +101,18 @@ struct BookiApp: App {
             tabBarAppearance.stackedLayoutAppearance.normal.iconColor = UIColor(Theme.textSecondary)
             tabBarAppearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor(Theme.textSecondary)]
 
+            // Badge styling — teal background, dark text, Space Grotesk font
+            let badgeBg = UIColor(Theme.accent)
+            let badgeFg = UIColor(Theme.background)
+            let badgeFont = UIFont(name: "SpaceGrotesk-Bold", size: 11) ?? .boldSystemFont(ofSize: 11)
+            let badgeAttrs: [NSAttributedString.Key: Any] = [.font: badgeFont, .foregroundColor: badgeFg]
+            for layout in [tabBarAppearance.stackedLayoutAppearance, tabBarAppearance.inlineLayoutAppearance, tabBarAppearance.compactInlineLayoutAppearance] {
+                layout.normal.badgeBackgroundColor = badgeBg
+                layout.normal.badgeTextAttributes = badgeAttrs
+                layout.selected.badgeBackgroundColor = badgeBg
+                layout.selected.badgeTextAttributes = badgeAttrs
+            }
+
             UITabBar.appearance().standardAppearance = tabBarAppearance
             UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
 

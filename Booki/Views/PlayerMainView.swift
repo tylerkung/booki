@@ -45,19 +45,19 @@ struct PlayerMainView: View {
             // Main Content
             if let player = currentPlayer {
                 TabView(selection: $selectedTab) {
-                    Tab("Games", systemImage: "house.fill", value: 0) {
+                    Tab("GAMES", systemImage: "house.fill", value: 0) {
                         PlayerTabView(player: player, balance: playerBalance, onLogoTap: { selectedTab = 0 }) {
                             GamesView(player: player)
                         }
                     }
 
-                    Tab("Track", systemImage: "list.bullet.rectangle", value: 1) {
+                    Tab("TRACK", systemImage: "list.bullet.rectangle", value: 1) {
                         PlayerTabView(player: player, balance: playerBalance, onLogoTap: { selectedTab = 0 }) {
                             TrackView(player: player)
                         }
                     }
 
-                    Tab("Account", systemImage: "person.circle", value: 2) {
+                    Tab("ACCOUNT", systemImage: "person.circle", value: 2) {
                         NavigationStack {
                             AccountView(player: player)
                         }

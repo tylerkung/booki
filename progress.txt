@@ -276,3 +276,15 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - `if/else` swapping ScrollView content causes scroll reset loops — use `Group` with stable view identity
   - Skeleton dismiss must key off actual data arrival (`onChange(of: bets.count)`), not sync completion
 ---
+
+## 2026-02-23 - Tab Bar Styling Polish
+- Teal badge with Space Grotesk font: moved badge styling into `UITabBarAppearance` in `BookiApp.configureAppAppearance()` (was being overridden by appearance proxy in ContentView)
+- All-caps tab bar labels: DASHBOARD, PICKS, MEMBERS, EVENTS (bookie), GAMES, TRACK, ACCOUNT (player)
+- Grading/Settings kept normal case since they overflow to "More" menu
+- OG meta tags + preview image added to landing page for link unfurling
+- Files changed: Booki/BookiApp.swift, Booki/ContentView.swift, Booki/Views/PlayerMainView.swift, landing/index.html, landing/assets/og-image.png
+- **Learnings for future iterations:**
+  - `UITabBarItem.appearance()` badge styling is overridden when `UITabBar.appearance().standardAppearance` is set — must set badge properties on the `UITabBarAppearance` object's layout appearances directly
+  - iOS overflows tabs into "More" menu — Tab() label strings appear in both tab bar and More list, can't differentiate casing
+  - Set badge on all 3 layouts: stackedLayoutAppearance, inlineLayoutAppearance, compactInlineLayoutAppearance
+---
