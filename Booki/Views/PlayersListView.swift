@@ -2,37 +2,15 @@ import SwiftUI
 import SwiftData
 @preconcurrency import Supabase
 
-/// Filter options for collection status
-enum CollectionFilter: String, CaseIterable, Identifiable {
-    case all
-    case reminded
-    case promised
-    case overdue
-    case anyStatus
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .all: return "All"
-        case .reminded: return "Reminded"
-        case .promised: return "Promised"
-        case .overdue: return "Overdue"
-        case .anyStatus: return "Any Status"
-        }
-    }
-}
-
 struct PlayersListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Player.name) private var players: [Player]
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
 
+    @Environment(SyncService.self) private var syncService
+
     @State private var showArchived = false
-    @State private var showingAddPlayer = false
-    @State private var showingAddPlayerInterstitial = false
-    @State private var collectionFilter: CollectionFilter = .all
 
     private var filteredPlayers: [Player] {
         var result = players
@@ -42,114 +20,55 @@ struct PlayersListView: View {
             result = result.filter { $0.status != .archived }
         }
 
-        // Filter by collection status
-        switch collectionFilter {
-        case .all:
-            break // No additional filtering
-        case .reminded:
-            result = result.filter { $0.collectionStatus == .reminded }
-        case .promised:
-            result = result.filter { $0.collectionStatus == .promised }
-        case .overdue:
-            result = result.filter { $0.collectionStatus == .overdue }
-        case .anyStatus:
-            result = result.filter {
-                $0.collectionStatus != nil && $0.collectionStatus != .noStatus
-            }
-        }
-
         return result
-    }
-
-    /// Count of players with any collection status (for badge)
-    private var playersWithCollectionStatus: Int {
-        players.filter {
-            $0.collectionStatus != nil && $0.collectionStatus != .noStatus && balanceForPlayer($0) > 0
-        }.count
     }
 
     var body: some View {
         NavigationStack {
-            List {
+            ScrollView {
                 if filteredPlayers.isEmpty {
                     ContentUnavailableView(
                         "No Members",
                         systemImage: "person.2.slash",
                         description: Text("Add members to start managing your group.")
                     )
+                    .padding(.top, 60)
                 } else {
-                    ForEach(filteredPlayers) { player in
-                        NavigationLink(value: player) {
-                            PlayerRowView(
-                                player: player,
-                                balance: balanceForPlayer(player),
-                                utilization: utilizationForPlayer(player)
-                            )
+                    VStack(spacing: 12) {
+                        ForEach(filteredPlayers) { player in
+                            NavigationLink(value: player) {
+                                PlayerRowView(
+                                    player: player,
+                                    balance: balanceForPlayer(player),
+                                    utilization: utilizationForPlayer(player)
+                                )
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Theme.cardBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .listRowBackground(Theme.cardBackground)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
                 }
             }
-            .scrollContentBackground(.hidden)
             .background(Theme.background)
-            .navigationTitle("Members")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 8) {
-                        Toggle(isOn: $showArchived) {
-                            Label("Show Archived", systemImage: "archivebox")
-                        }
-                        .toggleStyle(.button)
-                        .tint(showArchived ? Theme.accent : Theme.textSecondary)
-
-                        Menu {
-                            ForEach(CollectionFilter.allCases) { filter in
-                                Button {
-                                    collectionFilter = filter
-                                } label: {
-                                    HStack {
-                                        Text(filter.displayName)
-                                        if collectionFilter == filter {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            }
-                        } label: {
-                            Label("Collection Filter", systemImage: "line.3.horizontal.decrease.circle")
-                                .foregroundStyle(collectionFilter != .all ? Theme.accent : Theme.textSecondary)
-                        }
-                        .overlay(alignment: .topTrailing) {
-                            if playersWithCollectionStatus > 0 && collectionFilter == .all {
-                                Text("\(playersWithCollectionStatus)")
-                                    .font(Theme.caption2)
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(Theme.background)
-                                    .padding(4)
-                                    .background(Theme.danger)
-                                    .clipShape(Circle())
-                                    .offset(x: 8, y: -8)
-                            }
-                        }
-                    }
+                    Image("BookiWordmark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 20)
                 }
-
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingAddPlayerInterstitial = true
-                    } label: {
-                        Label("Add Member", systemImage: "plus")
-                    }
+                ToolbarItem(placement: .topBarTrailing) {
+                    SyncStatusIndicator(syncService: syncService)
                 }
             }
             .navigationDestination(for: Player.self) { player in
                 PlayerDetailView(player: player)
-            }
-            .sheet(isPresented: $showingAddPlayer) {
-                AddPlayerSheet()
-            }
-            .sheet(isPresented: $showingAddPlayerInterstitial) {
-                AddPlayerInterstitialSheet(showingAddPlayer: $showingAddPlayer)
             }
         }
     }
