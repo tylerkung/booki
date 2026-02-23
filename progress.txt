@@ -151,3 +151,21 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - Email section in idle state uses separate state tracking (`emailInviteCode`, `showingMailCompose`) rather than mixing with the link generation state machine
   - `create_invite` edge function accepts optional `email` param in the request body
 ---
+
+## 2026-02-23 - US-010
+- Registered `booki` URL scheme in Info.plist under `CFBundleURLTypes`
+- Added `.onOpenURL` modifier in BookiApp.swift with `handleIncomingURL()` parsing logic
+- URL parsing: scheme == "booki", host == "invite", first path component = invite code
+- Added `pendingInviteCode` @State in BookiApp, passed as @Binding to AuthGateView
+- AuthGateView routes based on auth state: unauthenticated → `.inviteClaim`, player → `.inviteClaim`, bookie → alert
+- Added `.inviteClaim` case to AuthViewType enum
+- Created minimal `InviteClaimView.swift` stub (US-011 will flesh it out) with `initialCode`, `onNavigateToLogin`, `onClaimComplete` interface
+- Added InviteClaimView.swift to Xcode pbxproj
+- Files changed: Booki/Info.plist, Booki/BookiApp.swift, Booki/Views/AuthGateView.swift, Booki/Views/InviteClaimView.swift (new), Booki.xcodeproj/project.pbxproj
+- **Learnings for future iterations:**
+  - URL scheme registration: add `CFBundleURLTypes` → `CFBundleURLSchemes` array in Info.plist
+  - `.onOpenURL` should go on root view in WindowGroup, not on AuthGateView — keeps URL handling at app level
+  - `url.host` returns "invite" for `booki://invite/CODE`, `url.pathComponents` returns ["/", "CODE"]
+  - When creating a view that will be fleshed out later, define the full interface (init params) now so dependent code compiles
+  - AuthGateView needed @Binding for pendingInviteCode (not @State) since it's owned by BookiApp
+---

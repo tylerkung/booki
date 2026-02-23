@@ -183,7 +183,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "URL format: booki://invite/{CODE}. Use URLComponents to parse."
     },
     {
