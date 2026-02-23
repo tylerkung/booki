@@ -105,7 +105,6 @@
 		8A1234560069 /* Syncable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550069 /* Syncable.swift */; };
 		8A1234560070 /* SyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550070 /* SyncModels.swift */; };
 		8A1234560071 /* InviteCodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550071 /* InviteCodeService.swift */; };
-		8A1234560072 /* PlayerClaimView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550072 /* PlayerClaimView.swift */; };
 		8A1234560073 /* PlayerMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550073 /* PlayerMainView.swift */; };
 		8A1234560074 /* PlayerRiskService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550074 /* PlayerRiskService.swift */; };
 		8A1234560075 /* AttentionFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550075 /* AttentionFeedView.swift */; };
@@ -244,7 +243,6 @@
 		8A1234550069 /* Syncable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Syncable.swift; sourceTree = "<group>"; };
 		8A1234550070 /* SyncModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncModels.swift; sourceTree = "<group>"; };
 		8A1234550071 /* InviteCodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteCodeService.swift; sourceTree = "<group>"; };
-		8A1234550072 /* PlayerClaimView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerClaimView.swift; sourceTree = "<group>"; };
 		8A1234550099 /* InviteClaimView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteClaimView.swift; sourceTree = "<group>"; };
 		8A1234550073 /* PlayerMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMainView.swift; sourceTree = "<group>"; };
 		8A1234550074 /* PlayerRiskService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerRiskService.swift; sourceTree = "<group>"; };
@@ -397,7 +395,6 @@
 				8A1234550047 /* AppHeaderView.swift */,
 				8A1234550048 /* TicketDetailView.swift */,
 				8A1234550051 /* AcceptancePolicySettingsView.swift */,
-				8A1234550072 /* PlayerClaimView.swift */,
 				8A1234550099 /* InviteClaimView.swift */,
 				8A1234550073 /* PlayerMainView.swift */,
 				50C084132F2C5000001A0FE5 /* NumericKeypadView.swift */,
@@ -704,7 +701,6 @@
 				50C084072F2BF49A001A0FE5 /* EdgeFunctionService.swift in Sources */,
 				8A1234560070 /* SyncModels.swift in Sources */,
 				8A1234560071 /* InviteCodeService.swift in Sources */,
-				8A1234560072 /* PlayerClaimView.swift in Sources */,
 				8A1234560099 /* InviteClaimView.swift in Sources */,
 				8A1234560073 /* PlayerMainView.swift in Sources */,
 				50C084142F2C5000001A0FE5 /* NumericKeypadView.swift in Sources */,

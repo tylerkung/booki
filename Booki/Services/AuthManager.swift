@@ -288,7 +288,7 @@ final class AuthManager {
                     if let session = session {
                         // During player claim flow, skip ALL auth state updates.
                         // signUp() fires .signedIn but we must keep isAuthenticated=false
-                        // so AuthGateView keeps showing PlayerClaimView (not the bookie dashboard).
+                        // so AuthGateView keeps showing InviteClaimView (not the bookie dashboard).
                         // The claim flow signs out when done; the player logs in fresh afterward.
                         if isClaimingPlayerAccount {
                             break

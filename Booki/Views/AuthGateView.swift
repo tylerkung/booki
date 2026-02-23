@@ -287,8 +287,10 @@ struct AuthGateView: View {
                     onNavigateToLogin: { currentAuthView = .login }
                 )
             case .playerClaim:
-                PlayerClaimView(
-                    onNavigateToLogin: { currentAuthView = .login }
+                InviteClaimView(
+                    initialCode: nil,
+                    onNavigateToLogin: { currentAuthView = .login },
+                    onClaimComplete: { }
                 )
             case .inviteClaim:
                 InviteClaimView(
