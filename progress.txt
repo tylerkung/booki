@@ -244,3 +244,18 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - `AuthManager` import was only needed by `AddPlayerSheet` in PlayersListView — verify imports are still needed after removing structs
   - `.playerClaim` route in AuthGateView serves as fallback for "Join as Member" from login screen — redirect to InviteClaimView with nil code
 ---
+
+## 2026-02-23 - Batch Singles & Invite Polish
+- **Batch singles submission**: New `submit_bets` edge function batches all singles into one network call (5 sequential calls → 1 batch call, ~65 DB queries → ~14). Partial success model — locked events fail individually, remaining bets still submit.
+- **Invite flow fixes**: InviteClaimView email placeholder color matched to password fields, removed strong password suggestion, logout now clears pending invite code and resets to login screen.
+- **Invite management**: PendingInviteRow now has copy (teal) and delete (red) icons, copied-to-clipboard toast, deleted toast, permanent delete via Supabase + `@AppStorage` deleted IDs fallback to survive sync re-downloads.
+- **Invite persistence**: `InviteMemberSheet` now saves created invites to local SwiftData so they appear immediately in pending invites section.
+- **Nav bar standardization**: All 6 bookie tabs use `.navigationTitle` + `.navigationBarTitleDisplayMode(.inline)` with centered tab name, Booki wordmark on leading side for Dashboard and Members.
+- Files changed: supabase/functions/submit_bets/index.ts (new), Booki/Services/BetService.swift, Booki/Views/BetSlipSheet.swift, Booki/Views/PlayersListView.swift, Booki/Views/InviteClaimView.swift, Booki/Views/AuthGateView.swift, Booki/Views/AnalyticsDashboardView.swift, Booki/Views/BetsListView.swift, Booki/Views/EventsListView.swift, Booki/Views/GradingView.swift, Booki/Views/SettingsView.swift
+- **Learnings for future iterations:**
+  - Supabase `.delete().execute()` can silently succeed with 0 rows affected due to RLS — use `@AppStorage` deleted IDs as fallback filter
+  - `.foregroundStyle()` on TextField overrides prompt color — use `.foregroundColor()` on the prompt Text instead
+  - Complex `@ViewBuilder` bodies cause "Ambiguous use of init" — extract sub-views proactively (scrollContent, membersSection, etc.)
+  - `.textContentType(.newPassword)` triggers strong password suggestion — use `.oneTimeCode` to suppress
+  - Logout must clear deep link state (`pendingInviteCode`, `currentAuthView`) or stale invite views persist
+---

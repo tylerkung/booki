@@ -403,7 +403,7 @@ struct InviteClaimView: View {
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
 
-                    TextField("you@example.com", text: $signupEmail)
+                    TextField("", text: $signupEmail, prompt: Text("you@example.com").foregroundColor(Color(white: 0.45)))
                         .keyboardType(.emailAddress)
                         .textContentType(.emailAddress)
                         .textInputAutocapitalization(.never)
@@ -421,7 +421,7 @@ struct InviteClaimView: View {
                         .foregroundStyle(Theme.textSecondary)
 
                     SecureField("Min 6 characters", text: $signupPassword)
-                        .textContentType(.newPassword)
+                        .textContentType(.oneTimeCode)
                         .padding()
                         .background(Theme.cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -435,7 +435,7 @@ struct InviteClaimView: View {
                         .foregroundStyle(Theme.textSecondary)
 
                     SecureField("Re-enter password", text: $signupConfirmPassword)
-                        .textContentType(.newPassword)
+                        .textContentType(.oneTimeCode)
                         .padding()
                         .background(Theme.cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -523,7 +523,7 @@ struct InviteClaimView: View {
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
 
-                    TextField("you@example.com", text: $loginEmail)
+                    TextField("", text: $loginEmail, prompt: Text("you@example.com").foregroundColor(Color(white: 0.45)))
                         .keyboardType(.emailAddress)
                         .textContentType(.emailAddress)
                         .textInputAutocapitalization(.never)
@@ -783,7 +783,8 @@ struct InviteClaimView: View {
                 claimRequest.setValue("Bearer \(loginSessionAccessToken)", forHTTPHeaderField: "Authorization")
                 let claimBody: [String: String] = [
                     "invite_code": inviteCode,
-                    "auth_user_id": loginSessionUserId
+                    "auth_user_id": loginSessionUserId,
+                    "idempotency_key": UUID().uuidString.lowercased()
                 ]
                 claimRequest.httpBody = try JSONEncoder().encode(claimBody)
                 let (claimData, claimResponse) = try await URLSession.shared.data(for: claimRequest)
@@ -885,7 +886,8 @@ struct InviteClaimView: View {
                 claimRequest.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
                 let claimBody: [String: String] = [
                     "invite_code": inviteCode,
-                    "auth_user_id": response.user.id.uuidString.lowercased()
+                    "auth_user_id": response.user.id.uuidString.lowercased(),
+                    "idempotency_key": UUID().uuidString.lowercased()
                 ]
                 claimRequest.httpBody = try JSONEncoder().encode(claimBody)
                 let (claimData, claimResponse) = try await URLSession.shared.data(for: claimRequest)

@@ -120,6 +120,7 @@ struct EventsListView: View {
             }
             .background(Theme.background)
             .navigationTitle("Events")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(item: $selectedEvent) { event in
                 EventDetailView(event: event)
             }

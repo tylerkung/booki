@@ -176,6 +176,7 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileSheet(existingBookie: currentBookie)
             }

@@ -132,6 +132,8 @@ struct AuthGateView: View {
             // Reset sync flag and unsubscribe from realtime when user logs out
             if !isAuthenticated {
                 hasTriggeredInitialSync = false
+                pendingInviteCode = nil
+                currentAuthView = .login
                 Task {
                     await realtimeService.unsubscribe()
                 }

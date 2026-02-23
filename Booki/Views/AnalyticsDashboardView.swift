@@ -8,6 +8,7 @@ struct AnalyticsDashboardView: View {
     @Query private var bets: [Bet]
     @Query private var players: [Player]
     @Query private var ledgerEntries: [LedgerEntry]
+    @Query private var bookies: [Bookie]
 
     @State private var lastUpdated = Date()
     @State private var searchText = ""
@@ -27,13 +28,11 @@ struct AnalyticsDashboardView: View {
         }
     }
 
+    private var bookieTier: BookieTier {
+        bookies.first?.tier ?? .default
+    }
+
     private var periodPL: Decimal {
-        if useMockData {
-            // For mock data, scale lifetime P/L based on selected range
-            if selectedRange == "ALL" { return lifetimePL }
-            let fraction: Decimal = selectedDays == 7 ? 0.08 : selectedDays == 30 ? 0.22 : selectedDays == 90 ? 0.45 : 0.78
-            return lifetimePL * fraction
-        }
         if selectedRange == "ALL" { return lifetimePL }
         let cutoff = Calendar.current.date(byAdding: .day, value: -selectedDays, to: Date())!
         let rangeBets = bets.filter { $0.createdAt >= cutoff }
@@ -52,36 +51,8 @@ struct AnalyticsDashboardView: View {
 
     private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
 
-    private var useMockData: Bool { bets.filter({ $0.gradeResult != nil }).isEmpty }
-
     private var lifetimePL: Decimal {
-        useMockData ? Self.mockLifetimePL : PlayerAttentionService.totalBookiePL(bets: bets)
-    }
-
-    // MARK: - Mock Data for Visualization
-
-    private static let mockLifetimePL: Decimal = 2847.50
-
-    static func generateMockDataPoints(days: Int) -> [DailyPLPoint] {
-        let calendar = Calendar.current
-        let totalDays = days == 0 ? 180 : days
-        let now = Date()
-        var points: [DailyPLPoint] = []
-        var cumulative: Double = 0
-
-        for i in (0..<totalDays).reversed() {
-            guard let date = calendar.date(byAdding: .day, value: -i, to: now) else { continue }
-            // Simulate realistic P/L: slight upward trend with volatility
-            let daily = Double.random(in: -80...95)
-            cumulative += daily
-            points.append(DailyPLPoint(date: date, cumulativePL: Decimal(cumulative)))
-        }
-        // Normalize so final value matches mockLifetimePL
-        if let last = points.last, last.cumulativePL != 0 {
-            let scale = mockLifetimePL / last.cumulativePL
-            points = points.map { DailyPLPoint(date: $0.date, cumulativePL: $0.cumulativePL * scale) }
-        }
-        return points
+        PlayerAttentionService.totalBookiePL(bets: bets)
     }
 
     private var summaries: [PlayerAnalyticsSummary] {
@@ -168,23 +139,26 @@ struct AnalyticsDashboardView: View {
             ScrollViewReader { scrollProxy in
                 ScrollView {
                     VStack(spacing: 16) {
-                        // Earnings Hero Number
-                        earningsHeader
-                            .padding(.horizontal, 16)
+                        if bookieTier == .chart {
+                            // Chart tier: full earnings header + chart + time tabs
+                            earningsHeader
+                                .padding(.horizontal, 16)
 
-                        // Earnings Chart
-                        EarningsChart(
-                            bets: bets,
-                            days: selectedDays,
-                            lineColor: lifetimePL >= 0 ? Theme.accent : Theme.danger,
-                            mockDataPoints: useMockData ? Self.generateMockDataPoints(days: selectedDays) : nil
-                        )
-                            .padding(.horizontal, 16)
-                            .animation(.easeInOut(duration: 0.3), value: selectedRange)
+                            EarningsChart(
+                                bets: bets,
+                                days: selectedDays,
+                                lineColor: lifetimePL >= 0 ? Theme.accent : Theme.danger
+                            )
+                                .padding(.horizontal, 16)
+                                .animation(.easeInOut(duration: 0.3), value: selectedRange)
 
-                        // Time Range Tabs
-                        timeRangeTabs
-                            .padding(.horizontal, 16)
+                            timeRangeTabs
+                                .padding(.horizontal, 16)
+                        } else {
+                            // Default tier: full-width TOTAL PNL card
+                            totalPNLCard
+                                .padding(.horizontal, 16)
+                        }
 
                         if players.filter({ $0.status == .active }).isEmpty {
                             emptyState
@@ -219,6 +193,7 @@ struct AnalyticsDashboardView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
+            .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: PlayerAnalyticsSummary.self) { summary in
                 PlayerAnalyticsDetailView(
@@ -275,6 +250,16 @@ struct AnalyticsDashboardView: View {
         if value > 0 { return "+\(formatted)" }
         if value < 0 { return "-\(formatted)" }
         return formatted
+    }
+
+    // MARK: - Total PNL Card (Default Tier)
+
+    private var totalPNLCard: some View {
+        SummaryCard(
+            label: "TOTAL PNL",
+            value: formatSignedCurrency(lifetimePL),
+            valueColor: lifetimePL > 0 ? Theme.accent : lifetimePL < 0 ? Theme.danger : Theme.textPrimary
+        )
     }
 
     // MARK: - Time Range Tabs
@@ -499,16 +484,12 @@ private struct EarningsChart: View {
     let bets: [Bet]
     var days: Int = 0
     let lineColor: Color
-    var mockDataPoints: [DailyPLPoint]? = nil
 
     /// Fixed number of data points so Swift Charts can animate between time ranges
     private static let sampleCount = 30
 
     private var rawDataPoints: [DailyPLPoint] {
-        if let mock = mockDataPoints, !mock.isEmpty {
-            return mock
-        }
-        return PlayerAttentionService.dailyCumulativePL(bets: bets, days: days)
+        PlayerAttentionService.dailyCumulativePL(bets: bets, days: days)
     }
 
     /// Resample raw data to a fixed number of points using linear interpolation
@@ -731,6 +712,6 @@ private struct PlayerAnalyticsRow: View {
 
 #Preview {
     AnalyticsDashboardView()
-        .modelContainer(for: [Bet.self, Event.self, Player.self, LedgerEntry.self], inMemory: true)
+        .modelContainer(for: [Bet.self, Event.self, Player.self, LedgerEntry.self, Bookie.self], inMemory: true)
         .environment(SyncService())
 }

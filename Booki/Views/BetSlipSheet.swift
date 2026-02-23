@@ -49,10 +49,6 @@ struct BetSlipSheet: View {
     @State private var submissionError: String?
     @State private var submittedCount: Int = 0
 
-    /// US-014: Track singles submission progress (1 of N)
-    @State private var singlesSubmissionIndex: Int = 0
-    @State private var singlesSubmissionTotal: Int = 0
-
     /// US-005: Store submitted items for re-use
     @State private var lastSubmittedItems: [BetSlipItem] = []
 
@@ -357,7 +353,7 @@ struct BetSlipSheet: View {
                                 .padding(.horizontal)
                         }
                     }
-                    .padding(.bottom, activeFieldId != nil ? 200 : 16)
+                    .padding(.bottom, 16)
                 }
                 .onChange(of: activeFieldId) { oldFieldId, newFieldId in
                     if let fieldId = newFieldId {
@@ -906,9 +902,6 @@ struct BetSlipSheet: View {
         case .parlay:
             return "Submitting multi-pick..."
         case .singles:
-            if singlesSubmissionTotal > 1 {
-                return "Submitting \(singlesSubmissionIndex) of \(singlesSubmissionTotal)..."
-            }
             return "Submitting..."
         }
     }
@@ -1322,69 +1315,65 @@ struct BetSlipSheet: View {
                     }
                 }
             } else {
-                // Singles mode: existing per-bet loop calling submitBetToServer()
-                // US-014: Track submission progress
-                let validItems = itemsToSubmit.filter { item in
-                    let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
-                    return (itemStakesSnapshot[key] ?? 0) > 0
-                }
-                await MainActor.run {
-                    singlesSubmissionTotal = validItems.count
-                    singlesSubmissionIndex = 1
-                }
-
-                for item in itemsToSubmit {
+                // Singles mode: batch submission via submit_bets Edge Function
+                let validEntries: [(item: BetSlipItem, stake: Decimal)] = itemsToSubmit.compactMap { item in
                     let key = betSlipManager.itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
                     let betStake = itemStakesSnapshot[key] ?? 0
+                    guard betStake > 0 else { return nil }
+                    return (item: item, stake: betStake)
+                }
 
-                    // Skip items with zero stake
-                    guard betStake > 0 else {
-                        errors.append("No stake set for \(item.side)")
-                        continue
-                    }
-
-                    // Call submit_bet Edge Function
-                    // Use sideIndicator ('a' or 'b') for the server, not the display name
-                    let result = await BetService.submitBetToServer(
-                        eventId: item.eventId,
-                        marketId: item.marketId,
-                        side: item.sideIndicator,
-                        odds: item.odds,
-                        stake: betStake,
+                if validEntries.isEmpty {
+                    errors.append("No stakes set")
+                } else {
+                    let batchResult = await BetService.submitBetsToServer(
+                        items: validEntries,
                         playerId: player.id,
                         bookieId: bookieId
                     )
 
-                    switch result {
+                    switch batchResult {
                     case .success(let response):
-                        // Create local Bet from server response
-                        let matchedEvent = events.first(where: { $0.id.uuidString.lowercased() == item.eventId.uuidString.lowercased() })
-                        if let bet = BetService.createLocalBetFromResponse(
+                        let localBets = BetService.createLocalBetsFromBatchResponse(
                             response,
                             player: player,
-                            localSide: item.side,
-                            localMarket: item.marketType.rawValue,
-                            eventDescription: item.eventDescription,
-                            sportLeague: matchedEvent?.league,
-                            sideIndicator: item.sideIndicator,
-                            marketId: item.marketId
-                        ) {
-                            await MainActor.run {
+                            items: validEntries,
+                            events: events
+                        )
+                        await MainActor.run {
+                            for bet in localBets {
                                 modelContext.insert(bet)
                             }
-                            successCount += 1
-                        } else {
-                            errors.append("Failed to process server response for \(item.side)")
+                        }
+                        successCount += localBets.count
+
+                        // Handle partial failures (e.g., locked events)
+                        if let failedBets = response.failed, !failedBets.isEmpty {
+                            let lockedFailures = failedBets.filter { $0.error.contains("locked") }
+                            if !lockedFailures.isEmpty {
+                                let failedNames = lockedFailures.compactMap { failure in
+                                    if failure.index < validEntries.count {
+                                        return validEntries[failure.index].item.eventDescription
+                                    }
+                                    return "Event \(failure.eventId.prefix(8))"
+                                }
+                                await MainActor.run {
+                                    lockedEventNames = failedNames
+                                    showLockedEventsAlert = true
+                                }
+                            }
+                            for failure in failedBets where !failure.error.contains("locked") {
+                                errors.append(failure.error)
+                            }
                         }
 
                     case .failure(let error):
-                        // Handle different error types
                         if let edgeFunctionError = error as? EdgeFunctionError {
                             switch edgeFunctionError {
                             case .notAuthenticated:
                                 errors.append("Not authenticated - please sign in again")
                             case .serverError(_, let message):
-                                errors.append(message ?? "Server error for \(item.side)")
+                                errors.append(message ?? "Server error")
                             default:
                                 errors.append(edgeFunctionError.localizedDescription)
                             }
@@ -1393,16 +1382,11 @@ struct BetSlipSheet: View {
                             case .edgeFunctionError(let message):
                                 errors.append(message)
                             default:
-                                errors.append("Failed to submit \(item.side)")
+                                errors.append("Failed to submit picks")
                             }
                         } else {
-                            errors.append("Failed to submit \(item.side): \(error.localizedDescription)")
+                            errors.append("Failed to submit picks: \(error.localizedDescription)")
                         }
-                    }
-
-                    // US-014: Increment singles progress counter
-                    await MainActor.run {
-                        singlesSubmissionIndex += 1
                     }
                 }
             }

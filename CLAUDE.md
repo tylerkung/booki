@@ -158,12 +158,12 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 
 ## Current State (February 23, 2026)
 
-- **Branch**: `ralph/ios26-migration`
+- **Branch**: `ralph/member-invite-redesign`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
 - **Phases complete**: 1-17 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration)
 - **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
-- **Edge Functions**: 11 functions for server-authoritative operations (including `submit_parlay`, `sync_games`, `claim_player`)
+- **Edge Functions**: 12 functions for server-authoritative operations (including `submit_bets`, `submit_parlay`, `sync_games`, `claim_player`, `create_invite`, `claim_invite`)
 - **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
 - **Settings**: Streamlined — removed Odds API config, sample data, and sync button
 - **Auto-pilot mode**: Picks auto-accepted, auto-graded, and auto-settled (ledger entries created automatically)
@@ -176,3 +176,6 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **AccountView**: Condensed — Profile+Preferences merged, Performance card (Record + stats + credit bar), no My Picks (Track tab), History with enriched descriptions and player-facing amounts
 - **Branding**: Slogan "Be The House." on login and landing page
 - **Bookie Picks tab**: Badge showing open bet count (1-9+) in brand teal, Open/Past filter with player chips, card-based BetDetailView matching TicketDetailView
+- **Batch singles**: `submit_bets` edge function batches all singles into one network call with partial success model
+- **Invite management**: Create/copy/delete invites from Members tab, permanent delete with `@AppStorage` fallback
+- **Nav bar standardization**: All bookie tabs use centered inline title with wordmark on Dashboard/Members

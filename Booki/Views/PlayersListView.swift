@@ -14,9 +14,16 @@ struct PlayersListView: View {
 
     @State private var showArchived = false
     @State private var showingInviteSheet = false
+    @State private var showCopiedToast = false
+    @State private var showDeletedToast = false
+    @AppStorage("deletedInviteIds") private var deletedInviteIdsString: String = ""
+
+    private var deletedInviteIds: Set<String> {
+        Set(deletedInviteIdsString.split(separator: ",").map(String.init))
+    }
 
     private var pendingInvites: [Invite] {
-        invites.filter { $0.claimedAt == nil }
+        invites.filter { $0.claimedAt == nil && !deletedInviteIds.contains($0.id.uuidString.lowercased()) }
     }
 
     private var filteredPlayers: [Player] {
@@ -32,94 +39,195 @@ struct PlayersListView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // MARK: - Pending Invites Section
-                    if !pendingInvites.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("PENDING INVITES")
-                                .font(Theme.caption)
-                                .foregroundStyle(Theme.textSecondary)
-                                .tracking(1.0)
-                                .padding(.horizontal)
-
-                            ForEach(pendingInvites) { invite in
-                                PendingInviteRow(invite: invite) {
-                                    modelContext.delete(invite)
-                                }
-                            }
-                            .padding(.horizontal)
-                        }
-                        .padding(.top, 8)
-                        .padding(.bottom, 16)
+            scrollContent
+                .background(Theme.background)
+                .navigationTitle("Members")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Image("BookiWordmark")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 20)
                     }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        SyncStatusIndicator(syncService: syncService)
+                    }
+                }
+                .navigationDestination(for: Player.self) { player in
+                    PlayerDetailView(player: player)
+                }
+                .sheet(isPresented: $showingInviteSheet) {
+                    InviteMemberSheet()
+                        .presentationBackground(Theme.background)
+                }
+        }
+        .overlay(alignment: .bottom) {
+            if showCopiedToast {
+                copiedToast
+            } else if showDeletedToast {
+                deletedToast
+            }
+        }
+    }
 
-                    // MARK: - Members Section
-                    if filteredPlayers.isEmpty && pendingInvites.isEmpty {
-                        ContentUnavailableView(
-                            "No Members",
-                            systemImage: "person.2.slash",
-                            description: Text("Add members to start managing your group.")
+    private var scrollContent: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                pendingInvitesSection
+                membersSection
+                inviteButton
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var membersSection: some View {
+        if filteredPlayers.isEmpty && pendingInvites.isEmpty {
+            ContentUnavailableView(
+                "No Members",
+                systemImage: "person.2.slash",
+                description: Text("Add members to start managing your group.")
+            )
+            .padding(.top, 60)
+        } else if !filteredPlayers.isEmpty {
+            VStack(spacing: 12) {
+                ForEach(filteredPlayers) { player in
+                    NavigationLink(value: player) {
+                        PlayerRowView(
+                            player: player,
+                            balance: balanceForPlayer(player),
+                            utilization: utilizationForPlayer(player)
                         )
-                        .padding(.top, 60)
-                    } else if !filteredPlayers.isEmpty {
-                        VStack(spacing: 12) {
-                            ForEach(filteredPlayers) { player in
-                                NavigationLink(value: player) {
-                                    PlayerRowView(
-                                        player: player,
-                                        balance: balanceForPlayer(player),
-                                        utilization: utilizationForPlayer(player)
-                                    )
-                                    .padding()
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Theme.cardBackground)
-                                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, pendingInvites.isEmpty ? 8 : 0)
-                    }
-
-                    // MARK: - Invite Member Button
-                    Button {
-                        showingInviteSheet = true
-                    } label: {
-                        Text("Invite Member")
-                            .font(Theme.headline)
-                            .foregroundStyle(Theme.background)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Theme.accent)
-                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                     }
                     .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, pendingInvites.isEmpty ? 8 : 0)
+        }
+    }
+
+    private var inviteButton: some View {
+        Button {
+            showingInviteSheet = true
+        } label: {
+            Text("Invite Member")
+                .font(Theme.headline)
+                .foregroundStyle(Theme.background)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Theme.accent)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal)
+        .padding(.top, 16)
+        .padding(.bottom, 24)
+    }
+
+    private var copiedToast: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(Theme.accent)
+            Text("Link copied to clipboard")
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(Theme.cardBackground)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+        .padding(.bottom, 32)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private var deletedToast: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "trash.fill")
+                .foregroundStyle(Theme.danger)
+            Text("Invite deleted")
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(Theme.cardBackground)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+        .padding(.bottom, 32)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    // MARK: - Pending Invites Section
+
+    @ViewBuilder
+    private var pendingInvitesSection: some View {
+        if !pendingInvites.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("PENDING INVITES")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .tracking(1.0)
                     .padding(.horizontal)
-                    .padding(.top, 16)
-                    .padding(.bottom, 24)
+
+                ForEach(pendingInvites) { invite in
+                    PendingInviteRow(invite: invite, onCopy: {
+                        UIPasteboard.general.string = "booki://invite/\(invite.inviteCode)"
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        withAnimation {
+                            showCopiedToast = true
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            withAnimation {
+                                showCopiedToast = false
+                            }
+                        }
+                    }, onDelete: {
+                        deleteInvite(invite)
+                    })
                 }
+                .padding(.horizontal)
             }
-            .background(Theme.background)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Image("BookiWordmark")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 20)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    SyncStatusIndicator(syncService: syncService)
-                }
+            .padding(.top, 8)
+            .padding(.bottom, 16)
+        }
+    }
+
+    private func deleteInvite(_ invite: Invite) {
+        let inviteId = invite.id.uuidString.lowercased()
+        // Persist deleted ID so sync can't resurrect it
+        if deletedInviteIdsString.isEmpty {
+            deletedInviteIdsString = inviteId
+        } else {
+            deletedInviteIdsString += ",\(inviteId)"
+        }
+        withAnimation {
+            modelContext.delete(invite)
+        }
+        Task {
+            do {
+                let supabase = SupabaseClientManager.shared.client
+                try await supabase
+                    .from("invites")
+                    .delete()
+                    .eq("id", value: inviteId)
+                    .execute()
+            } catch {
+                print("Failed to delete invite from server: \(error)")
             }
-            .navigationDestination(for: Player.self) { player in
-                PlayerDetailView(player: player)
-            }
-            .sheet(isPresented: $showingInviteSheet) {
-                InviteMemberSheet()
-                    .presentationBackground(Theme.background)
+        }
+        withAnimation {
+            showDeletedToast = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation {
+                showDeletedToast = false
             }
         }
     }
@@ -154,6 +262,7 @@ struct PlayersListView: View {
 
 struct PendingInviteRow: View {
     let invite: Invite
+    let onCopy: () -> Void
     let onDelete: () -> Void
 
     private var expirationText: String {
@@ -187,20 +296,31 @@ struct PendingInviteRow: View {
             }
 
             Spacer()
+
+            Button {
+                onCopy()
+            } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 36, height: 44)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                onDelete()
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Theme.danger)
+                    .frame(width: 36, height: 44)
+            }
+            .buttonStyle(.plain)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.elevatedBackground)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
-        .contextMenu {
-            Button(role: .destructive) {
-                withAnimation {
-                    onDelete()
-                }
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
     }
 }
 
@@ -1162,6 +1282,7 @@ struct PromisedDateSheet: View {
 
 struct InviteMemberSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     enum InviteState {
         case idle
@@ -1475,6 +1596,7 @@ struct InviteMemberSheet: View {
                 )
 
                 await MainActor.run {
+                    saveInviteLocally(response: response, email: trimmedEmail)
                     emailInviteCode = response.inviteCode
 
                     if MFMailComposeViewController.canSendMail() {
@@ -1509,6 +1631,7 @@ struct InviteMemberSheet: View {
                 )
 
                 await MainActor.run {
+                    saveInviteLocally(response: response)
                     inviteState = .generated(code: response.inviteCode, expiresAt: response.expiresAt)
                 }
             } catch {
@@ -1517,6 +1640,24 @@ struct InviteMemberSheet: View {
                 }
             }
         }
+    }
+
+    private func saveInviteLocally(response: CreateInviteResponse, email: String? = nil) {
+        guard let inviteId = UUID(uuidString: response.inviteId),
+              let bookieId = bookies.first?.id else { return }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let expiresAt = formatter.date(from: response.expiresAt) ?? Date().addingTimeInterval(24 * 3600)
+
+        let invite = Invite(
+            id: inviteId,
+            bookieId: bookieId,
+            inviteCode: response.inviteCode,
+            email: email,
+            expiresAt: expiresAt
+        )
+        modelContext.insert(invite)
     }
 
     private func copyInviteLink(code: String) {
@@ -1567,7 +1708,9 @@ struct MailComposeView: UIViewControllerRepresentable {
         }
 
         func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
-            controller.dismiss(animated: true)
+            DispatchQueue.main.async {
+                controller.dismiss(animated: true)
+            }
             onDismiss(result)
         }
     }

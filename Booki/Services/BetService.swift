@@ -160,6 +160,62 @@ struct SubmitParlayDebug: Decodable {
     let code: String?
 }
 
+// MARK: - Batch Singles Edge Function Types
+
+/// A single bet in a batch submission
+struct BatchBetInput: Encodable {
+    let eventId: String
+    let marketId: String
+    let side: String
+    let odds: Int
+    let stake: String
+
+    enum CodingKeys: String, CodingKey {
+        case eventId = "event_id"
+        case marketId = "market_id"
+        case side
+        case odds
+        case stake
+    }
+}
+
+/// Request body for submit_bets Edge Function (batch singles)
+struct SubmitBetsRequest: Encodable {
+    let bets: [BatchBetInput]
+    let playerId: String
+    let bookieId: String
+    let idempotencyKey: String
+
+    enum CodingKeys: String, CodingKey {
+        case bets
+        case playerId = "player_id"
+        case bookieId = "bookie_id"
+        case idempotencyKey = "idempotency_key"
+    }
+}
+
+/// Info about a bet that failed validation in batch submission
+struct FailedBetInfo: Decodable {
+    let index: Int
+    let eventId: String
+    let error: String
+
+    enum CodingKeys: String, CodingKey {
+        case index
+        case eventId = "event_id"
+        case error
+    }
+}
+
+/// Response from submit_bets Edge Function
+struct SubmitBetsResponse: Decodable {
+    let success: Bool
+    let bets: [SubmitBetResponseBet]?
+    let failed: [FailedBetInfo]?
+    let error: String?
+    let debug: SubmitParlayDebug?
+}
+
 /// Service for bet operations including submission and status transitions
 enum BetService {
 
@@ -262,6 +318,122 @@ enum BetService {
             }
         } catch {
             return .failure(error)
+        }
+    }
+
+    // MARK: - Server-Side Batch Singles Submission (Edge Function)
+
+    /// Submits multiple singles bets in a single batch call via submit_bets Edge Function
+    /// - Parameters:
+    ///   - items: The BetSlipItems to submit
+    ///   - stakes: Map of item key to stake amount
+    ///   - playerId: The player's UUID
+    ///   - bookieId: The bookie's UUID
+    /// - Returns: Result with SubmitBetsResponse on success, or Error on failure
+    static func submitBetsToServer(
+        items: [(item: BetSlipItem, stake: Decimal)],
+        playerId: UUID,
+        bookieId: UUID
+    ) async -> Result<SubmitBetsResponse, Error> {
+        let idempotencyKey = UUID().uuidString
+
+        let batchInputs = items.map { entry in
+            BatchBetInput(
+                eventId: entry.item.eventId.uuidString,
+                marketId: entry.item.marketId.uuidString,
+                side: entry.item.sideIndicator,
+                odds: entry.item.odds,
+                stake: "\(entry.stake)"
+            )
+        }
+
+        let request = SubmitBetsRequest(
+            bets: batchInputs,
+            playerId: playerId.uuidString,
+            bookieId: bookieId.uuidString,
+            idempotencyKey: idempotencyKey
+        )
+
+        do {
+            let response: SubmitBetsResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "submit_bets",
+                body: request
+            )
+
+            if response.success {
+                return .success(response)
+            } else {
+                var errorMessage = response.error ?? "Unknown error"
+                if let debug = response.debug {
+                    let debugParts = [debug.message, debug.details, debug.hint, debug.code].compactMap { $0 }
+                    if !debugParts.isEmpty {
+                        errorMessage += " | Debug: \(debugParts.joined(separator: ", "))"
+                    }
+                }
+                return .failure(BetServiceError.edgeFunctionError(errorMessage))
+            }
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    /// Creates local Bet models from a SubmitBetsResponse (batch singles)
+    static func createLocalBetsFromBatchResponse(
+        _ response: SubmitBetsResponse,
+        player: Player,
+        items: [(item: BetSlipItem, stake: Decimal)],
+        events: [Event]
+    ) -> [Bet] {
+        guard let bets = response.bets else { return [] }
+
+        return bets.compactMap { betResponse in
+            guard let betId = UUID(uuidString: betResponse.id),
+                  let ticketId = UUID(uuidString: betResponse.ticketId),
+                  let bookieId = UUID(uuidString: betResponse.bookieId) else {
+                return nil
+            }
+
+            // Match server bet to local item by eventId + market type
+            let matchingEntry = items.first { entry in
+                entry.item.eventId.uuidString.lowercased() == betResponse.eventId.lowercased()
+                    && entry.item.marketType.rawValue == betResponse.market
+            } ?? items.first { entry in
+                entry.item.eventId.uuidString.lowercased() == betResponse.eventId.lowercased()
+            }
+
+            let localSide = matchingEntry?.item.side ?? betResponse.side
+            let localMarket = matchingEntry?.item.marketType.rawValue ?? betResponse.market
+            let status = BetStatus(rawValue: betResponse.status) ?? .pending
+
+            let eventDesc = matchingEntry?.item.eventDescription
+            let league = events.first(where: {
+                $0.id.uuidString.lowercased() == betResponse.eventId.lowercased()
+            })?.league
+
+            return Bet(
+                id: betId,
+                eventId: betResponse.eventId,
+                market: localMarket,
+                side: localSide,
+                odds: betResponse.odds,
+                stake: Decimal(betResponse.stake),
+                status: status,
+                gradeResult: nil,
+                player: player,
+                createdAt: Date(),
+                ticketId: ticketId,
+                policyViolationReason: nil,
+                isParlay: false,
+                parlayLegs: 1,
+                eventDescription: eventDesc,
+                sportLeague: league,
+                sideIndicator: matchingEntry?.item.sideIndicator,
+                marketId: matchingEntry?.item.marketId,
+                bookieId: bookieId,
+                needsSync: false,
+                lastSyncedAt: Date(),
+                version: 1
+            )
         }
     }
 

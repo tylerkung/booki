@@ -175,6 +175,7 @@ struct GradingView: View {
             }
             .background(Theme.background)
             .navigationTitle("Grading")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     if !readyToGradeBets.isEmpty {

@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 23, 2026 - Account page history redesign, "Be The House" branding, odds format picker removal*
+*Last updated: February 23, 2026 - Batch singles submission, invite flow polish, nav bar standardization*

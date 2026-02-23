@@ -158,6 +158,7 @@ struct BetsListView: View {
             }
             .background(Theme.background)
             .navigationTitle("Picks")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: Bet.self) { bet in
                 BetDetailView(bet: bet)
             }
