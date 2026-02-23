@@ -28,3 +28,41 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - Edge functions that modify records on behalf of users (like claiming) need service role — don't add UPDATE RLS policies for those
   - Migration numbering is sequential: check last file number before creating new one
 ---
+
+## 2026-02-23 - US-003
+- Created `supabase/functions/create_invite/index.ts` — server-authoritative invite creation
+- Validates JWT, confirms caller is a bookie (queries bookies table for auth_user_id)
+- Generates unique 8-char invite code (charset: A-Z excluding O/I/L + 2-9 excluding 0/1) with collision retry (up to 5 attempts)
+- Sets expiry to 24 hours from creation
+- Inserts invite into `invites` table with bookie_id from authenticated user
+- Returns `{ success, invite_id, invite_code, invite_url: 'booki://invite/{code}', expires_at }`
+- Full idempotency support, CORS, audit event emission
+- Updated `_shared/audit.ts` — added `'invite'` to EntityType, `'invite_created'` and `'invite_claimed'` to ActionType
+- Files changed: supabase/functions/create_invite/index.ts (new), supabase/functions/_shared/audit.ts
+- **Learnings for future iterations:**
+  - Edge function pattern: validate JWT → check idempotency → validate caller role → business logic → insert → audit → store idempotency → return
+  - `crypto.getRandomValues()` available in Deno for secure random bytes
+  - Invite code charset excludes ambiguous chars (0/O/1/I/L) for readability
+  - Added `invite_claimed` ActionType proactively for US-004
+---
+
+## 2026-02-23 - US-004
+- Created `supabase/functions/claim_invite/index.ts` — server-authoritative invite claiming
+- Request body: `{ invite_code, auth_user_id, idempotency_key? }`
+- Validates invite exists, is not expired (`expires_at > now()`), and is not already claimed (`claimed_at IS NULL`)
+- Verifies auth user exists via `admin.getUserById()`
+- Checks auth user isn't already linked to any bookie: queries players for `auth_user_id` WHERE `claimed_at IS NOT NULL` — returns 409 `already_in_group` if found
+- Creates new Player record: name = email prefix, status = 'active', credit_limit = 10000, claimed_at = now()
+- Updates invite record: claimed_at = now(), claimed_by_player_id = new player ID
+- Auto-confirms email via `admin.updateUserById(auth_user_id, { email_confirm: true })`
+- Returns `{ success, player_id, bookie_id, player_name }`
+- Full idempotency support (optional key), CORS, audit event emission
+- Uses service role client to bypass RLS (same pattern as claim_player)
+- Files changed: supabase/functions/claim_invite/index.ts (new)
+- **Learnings for future iterations:**
+  - claim_invite differs from claim_player: creates a NEW player record instead of updating an existing one
+  - The `already_in_group` check prevents users from joining multiple bookies — important business rule
+  - Idempotency key is optional in claim flows (unlike create flows) since user may retry after failures
+  - Player name derivation: split email at '@' and use prefix — fallback to 'Member' if no email
+  - invite version increment on claim helps with sync conflict resolution
+---

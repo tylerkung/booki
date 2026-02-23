@@ -52,7 +52,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Deploy: npx supabase functions deploy create_invite --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz"
     },
     {
@@ -74,7 +74,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Uses service role client to bypass RLS (same pattern as claim_player). Deploy: npx supabase functions deploy claim_invite --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz"
     },
     {
