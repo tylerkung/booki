@@ -8,6 +8,9 @@ struct BookiApp: App {
     @State private var realtimeService = RealtimeService()
     @State private var networkMonitor = NetworkMonitor()
 
+    /// Pending invite code from booki://invite/{code} deep link
+    @State private var pendingInviteCode: String?
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Bookie.self,
@@ -43,7 +46,7 @@ struct BookiApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AuthGateView()
+            AuthGateView(pendingInviteCode: $pendingInviteCode)
                 .preferredColorScheme(.dark)
                 .environment(authManager)
                 .environment(syncService)
@@ -55,8 +58,31 @@ struct BookiApp: App {
                     syncService.configure(modelContext: context, authManager: authManager)
                     realtimeService.configure(modelContext: context, authManager: authManager)
                 }
+                .onOpenURL { url in
+                    handleIncomingURL(url)
+                }
         }
         .modelContainer(sharedModelContainer)
+    }
+
+    /// Parse booki://invite/{code} deep links
+    private func handleIncomingURL(_ url: URL) {
+        guard url.scheme == "booki",
+              url.host == "invite" else {
+            return
+        }
+
+        // Extract invite code from path: booki://invite/{CODE}
+        let code = url.pathComponents.first { $0 != "/" }
+        guard let code, !code.isEmpty else { return }
+
+        if authManager.isAuthenticated && authManager.userRole == .bookie {
+            // Bookies can't accept invites — show alert handled in AuthGateView
+            pendingInviteCode = nil
+        } else {
+            // Unauthenticated or player — route to InviteClaimView
+            pendingInviteCode = code
+        }
     }
 
     /// Configure global UIKit appearances for dark theme

@@ -11,6 +11,11 @@ struct AuthGateView: View {
     @Environment(RealtimeService.self) private var realtimeService
     @Environment(NetworkMonitor.self) private var networkMonitor
 
+    // MARK: - Bindings
+
+    /// Pending invite code from deep link (booki://invite/{code})
+    @Binding var pendingInviteCode: String?
+
     // MARK: - State
 
     /// Tracks which auth view is currently displayed
@@ -27,6 +32,9 @@ struct AuthGateView: View {
 
     /// Onboarding manager for tracking setup progress
     @State private var onboardingManager = OnboardingManager()
+
+    /// Whether to show the bookie invite alert (bookies can't accept invites)
+    @State private var showBookieInviteAlert: Bool = false
 
     /// Scene phase for detecting app foreground/background
     @Environment(\.scenePhase) private var scenePhase
@@ -162,6 +170,27 @@ struct AuthGateView: View {
                 }
             }
         }
+        // MARK: - Deep Link Invite Handler
+        .onChange(of: pendingInviteCode) { _, newCode in
+            guard let newCode, !newCode.isEmpty else { return }
+
+            if authManager.isAuthenticated && authManager.userRole == .bookie {
+                // Bookies can't accept invites
+                showBookieInviteAlert = true
+                pendingInviteCode = nil
+            } else if !authManager.isAuthenticated {
+                // Not logged in — show invite claim flow
+                currentAuthView = .inviteClaim
+            } else if authManager.userRole == .player {
+                // Already a player — route to invite claim existing-user path
+                currentAuthView = .inviteClaim
+            }
+        }
+        .alert("Cannot Accept Invite", isPresented: $showBookieInviteAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Switch to a member account to accept invites.")
+        }
     }
 
     // MARK: - Agreement View
@@ -261,6 +290,17 @@ struct AuthGateView: View {
                 PlayerClaimView(
                     onNavigateToLogin: { currentAuthView = .login }
                 )
+            case .inviteClaim:
+                InviteClaimView(
+                    initialCode: pendingInviteCode,
+                    onNavigateToLogin: {
+                        pendingInviteCode = nil
+                        currentAuthView = .login
+                    },
+                    onClaimComplete: {
+                        pendingInviteCode = nil
+                    }
+                )
             }
         }
         .transition(.opacity)
@@ -276,12 +316,13 @@ private enum AuthViewType {
     case signUp
     case forgotPassword
     case playerClaim
+    case inviteClaim
 }
 
 // MARK: - Preview
 
 #Preview("Loading") {
-    AuthGateView()
+    AuthGateView(pendingInviteCode: .constant(nil))
         .environment(AuthManager())
         .environment(SyncService())
         .environment(RealtimeService())
@@ -289,7 +330,7 @@ private enum AuthViewType {
 }
 
 #Preview("Login") {
-    AuthGateView()
+    AuthGateView(pendingInviteCode: .constant(nil))
         .environment(AuthManager())
         .environment(SyncService())
         .environment(RealtimeService())
