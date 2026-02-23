@@ -12,6 +12,7 @@ struct PlayersListView: View {
     @Environment(SyncService.self) private var syncService
 
     @State private var showArchived = false
+    @State private var showingInviteSheet = false
 
     private var pendingInvites: [Invite] {
         invites.filter { $0.claimedAt == nil }
@@ -80,6 +81,23 @@ struct PlayersListView: View {
                         .padding(.horizontal)
                         .padding(.top, pendingInvites.isEmpty ? 8 : 0)
                     }
+
+                    // MARK: - Invite Member Button
+                    Button {
+                        showingInviteSheet = true
+                    } label: {
+                        Text("Invite Member")
+                            .font(Theme.headline)
+                            .foregroundStyle(Theme.background)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Theme.accent)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal)
+                    .padding(.top, 16)
+                    .padding(.bottom, 24)
                 }
             }
             .background(Theme.background)
@@ -97,6 +115,10 @@ struct PlayersListView: View {
             }
             .navigationDestination(for: Player.self) { player in
                 PlayerDetailView(player: player)
+            }
+            .sheet(isPresented: $showingInviteSheet) {
+                InviteMemberSheet()
+                    .presentationBackground(Theme.background)
             }
         }
     }
@@ -1401,6 +1423,269 @@ struct PromisedDateSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Invite Member Sheet
+
+struct InviteMemberSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    enum InviteState {
+        case idle
+        case loading
+        case generated(code: String, expiresAt: String)
+        case error(String)
+    }
+
+    @State private var inviteState: InviteState = .idle
+    @State private var codeCopied = false
+
+    private var inviteURL: String? {
+        if case .generated(let code, _) = inviteState {
+            return "booki://invite/\(code)"
+        }
+        return nil
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Spacer()
+
+                // Content based on state
+                switch inviteState {
+                case .idle:
+                    idleContent
+                case .loading:
+                    loadingContent
+                case .generated(let code, _):
+                    generatedContent(code: code)
+                case .error(let message):
+                    errorContent(message: message)
+                }
+
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .background(Theme.background)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundStyle(Theme.accent)
+                }
+            }
+        }
+    }
+
+    // MARK: - State Views
+
+    @ViewBuilder
+    private var idleContent: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "link.badge.plus")
+                .font(.system(size: 48))
+                .foregroundStyle(Theme.accent)
+
+            Text("Invite a Member")
+                .font(Theme.title2)
+                .foregroundStyle(Theme.textPrimary)
+
+            Text("Generate a link to invite someone to your group")
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Button {
+                generateInvite()
+            } label: {
+                Text("Generate Link")
+                    .font(Theme.headline)
+                    .foregroundStyle(Theme.background)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Theme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 32)
+            .padding(.top, 8)
+        }
+    }
+
+    @ViewBuilder
+    private var loadingContent: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .tint(Theme.accent)
+                .scaleEffect(1.5)
+
+            Text("Generating invite...")
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+        }
+    }
+
+    @ViewBuilder
+    private func generatedContent(code: String) -> some View {
+        VStack(spacing: 20) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(Theme.accent)
+
+            Text("Invite Created")
+                .font(Theme.title2)
+                .foregroundStyle(Theme.textPrimary)
+
+            // Invite code display
+            Text(code)
+                .font(.system(size: 28, weight: .bold, design: .monospaced))
+                .kerning(3)
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.vertical, 16)
+                .padding(.horizontal, 24)
+                .background(Theme.elevatedBackground)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+
+            Text("Expires in 24 hours")
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+
+            // Action buttons
+            VStack(spacing: 12) {
+                // Copy button
+                Button {
+                    copyInviteLink(code: code)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: codeCopied ? "checkmark" : "doc.on.doc")
+                        Text(codeCopied ? "Copied!" : "Copy Link")
+                    }
+                    .font(Theme.headline)
+                    .foregroundStyle(Theme.background)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Theme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                }
+                .buttonStyle(.plain)
+
+                // Share button
+                if let url = inviteURL {
+                    ShareLink(item: url) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "square.and.arrow.up")
+                            Text("Share")
+                        }
+                        .font(Theme.headline)
+                        .foregroundStyle(Theme.accent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Theme.elevatedBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                                .stroke(Theme.border, lineWidth: 1)
+                        )
+                    }
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 4)
+        }
+    }
+
+    @ViewBuilder
+    private func errorContent(message: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(Theme.danger)
+
+            Text("Failed to Create Invite")
+                .font(Theme.title2)
+                .foregroundStyle(Theme.textPrimary)
+
+            Text(message)
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.danger)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Button {
+                generateInvite()
+            } label: {
+                Text("Try Again")
+                    .font(Theme.headline)
+                    .foregroundStyle(Theme.background)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Theme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 32)
+            .padding(.top, 8)
+        }
+    }
+
+    // MARK: - Actions
+
+    private func generateInvite() {
+        inviteState = .loading
+
+        Task {
+            do {
+                let idempotencyKey = UUID().uuidString.lowercased()
+                let body: [String: String] = ["idempotency_key": idempotencyKey]
+
+                let response: CreateInviteResponse = try await EdgeFunctionService.shared.callFunction(
+                    name: "create_invite",
+                    body: body
+                )
+
+                await MainActor.run {
+                    inviteState = .generated(code: response.inviteCode, expiresAt: response.expiresAt)
+                }
+            } catch {
+                await MainActor.run {
+                    inviteState = .error(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func copyInviteLink(code: String) {
+        UIPasteboard.general.string = "booki://invite/\(code)"
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        codeCopied = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            codeCopied = false
+        }
+    }
+}
+
+// MARK: - Create Invite Response
+
+private struct CreateInviteResponse: Decodable {
+    let success: Bool
+    let inviteId: String
+    let inviteCode: String
+    let inviteUrl: String
+    let expiresAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case inviteId = "invite_id"
+        case inviteCode = "invite_code"
+        case inviteUrl = "invite_url"
+        case expiresAt = "expires_at"
     }
 }
 
