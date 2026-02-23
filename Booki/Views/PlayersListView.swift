@@ -7,10 +7,15 @@ struct PlayersListView: View {
     @Query(sort: \Player.name) private var players: [Player]
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
+    @Query private var invites: [Invite]
 
     @Environment(SyncService.self) private var syncService
 
     @State private var showArchived = false
+
+    private var pendingInvites: [Invite] {
+        invites.filter { $0.claimedAt == nil }
+    }
 
     private var filteredPlayers: [Player] {
         var result = players
@@ -26,32 +31,55 @@ struct PlayersListView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if filteredPlayers.isEmpty {
-                    ContentUnavailableView(
-                        "No Members",
-                        systemImage: "person.2.slash",
-                        description: Text("Add members to start managing your group.")
-                    )
-                    .padding(.top, 60)
-                } else {
-                    VStack(spacing: 12) {
-                        ForEach(filteredPlayers) { player in
-                            NavigationLink(value: player) {
-                                PlayerRowView(
-                                    player: player,
-                                    balance: balanceForPlayer(player),
-                                    utilization: utilizationForPlayer(player)
-                                )
-                                .padding()
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Theme.cardBackground)
-                                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                VStack(spacing: 0) {
+                    // MARK: - Pending Invites Section
+                    if !pendingInvites.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("PENDING INVITES")
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.textSecondary)
+                                .tracking(1.0)
+                                .padding(.horizontal)
+
+                            ForEach(pendingInvites) { invite in
+                                PendingInviteRow(invite: invite) {
+                                    modelContext.delete(invite)
+                                }
                             }
-                            .buttonStyle(.plain)
+                            .padding(.horizontal)
                         }
+                        .padding(.top, 8)
+                        .padding(.bottom, 16)
                     }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+
+                    // MARK: - Members Section
+                    if filteredPlayers.isEmpty && pendingInvites.isEmpty {
+                        ContentUnavailableView(
+                            "No Members",
+                            systemImage: "person.2.slash",
+                            description: Text("Add members to start managing your group.")
+                        )
+                        .padding(.top, 60)
+                    } else if !filteredPlayers.isEmpty {
+                        VStack(spacing: 12) {
+                            ForEach(filteredPlayers) { player in
+                                NavigationLink(value: player) {
+                                    PlayerRowView(
+                                        player: player,
+                                        balance: balanceForPlayer(player),
+                                        utilization: utilizationForPlayer(player)
+                                    )
+                                    .padding()
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Theme.cardBackground)
+                                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, pendingInvites.isEmpty ? 8 : 0)
+                    }
                 }
             }
             .background(Theme.background)
@@ -96,6 +124,60 @@ struct PlayersListView: View {
         let used = player.creditLimit - summary.availableCredit
         let utilization = (used as NSDecimalNumber).doubleValue / (player.creditLimit as NSDecimalNumber).doubleValue
         return max(0, min(1, utilization)) * 100
+    }
+}
+
+// MARK: - Pending Invite Row
+
+struct PendingInviteRow: View {
+    let invite: Invite
+    let onDelete: () -> Void
+
+    private var expirationText: String {
+        if invite.isExpired {
+            return "Expired"
+        }
+        let remaining = invite.expiresAt.timeIntervalSince(Date())
+        let hours = Int(remaining) / 3600
+        let minutes = (Int(remaining) % 3600) / 60
+        if hours > 0 {
+            return "Expires in \(hours)h \(minutes)m"
+        } else {
+            return "Expires in \(minutes)m"
+        }
+    }
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(invite.email ?? "Link invite")
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+
+                Text(invite.inviteCode)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(Theme.textSecondary)
+
+                Text(expirationText)
+                    .font(Theme.caption)
+                    .foregroundStyle(invite.isExpired ? Theme.danger : Theme.textSecondary)
+            }
+
+            Spacer()
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.elevatedBackground)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+        .contextMenu {
+            Button(role: .destructive) {
+                withAnimation {
+                    onDelete()
+                }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 }
 
@@ -1324,5 +1406,5 @@ struct PromisedDateSheet: View {
 
 #Preview {
     PlayersListView()
-        .modelContainer(for: [Player.self, Bet.self, LedgerEntry.self], inMemory: true)
+        .modelContainer(for: [Player.self, Bet.self, LedgerEntry.self, Invite.self], inMemory: true)
 }
