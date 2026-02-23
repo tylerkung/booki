@@ -75,6 +75,17 @@ CREATE POLICY invites_insert_own ON invites
 -- No UPDATE/DELETE policies — Edge Functions use service role for claiming
 ```
 
+### Invites Public Validation Policy
+
+**Required for:** Member Invite Redesign (invite code validation by unauthenticated users)
+
+```sql
+-- Allow anyone to look up invites by code (for InviteClaimView validation)
+CREATE POLICY invites_select_by_code ON invites
+    FOR SELECT
+    USING (true);
+```
+
 ### 2026-01-29: Cron Jobs for Auto Refresh
 
 **Required for:** PRD - Automatic Server-Side Odds & Score Refresh (scheduled triggers)
