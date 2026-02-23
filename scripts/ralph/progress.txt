@@ -67,3 +67,14 @@ Started: Fri Feb 21 2026
   - Idempotency keys block re-runs in same window — `force` flag essential for manual debugging
 ---
 
+## 2026-02-23 - Account Page & Branding Polish
+- **Account History redesign**: Negated amounts for player display (wins show +green, losses -red), enriched descriptions with bet details ("Won · Lakers ML — Lakers @ Celtics"), removed redundant icon circles, restructured layout (description+tag left, amount+date right), renamed labels (Settlement→"Graded", Payment→"Reconciled")
+- **Removed Odds Format picker**: Hardcoded to American until multi-format support is ready
+- **Branding**: Updated slogan to "Be The House." on LoginView and landing page (title, meta, hero h1)
+- Files changed: AccountView.swift, LoginView.swift, landing/index.html
+- **Learnings:**
+  - LedgerEntry amounts use internal convention (negative = bookie owes player) — must negate for player-facing display, same as displayBalance
+  - `player.bookie` SwiftData relationship not populated during sync — only `bookieId` UUID is set
+  - `entry.bet` relationship provides rich context (side, eventDescription) for better ledger descriptions
+---
+

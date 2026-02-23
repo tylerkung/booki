@@ -4,9 +4,9 @@ import SwiftData
 /// Filter options for transaction history
 enum TransactionFilter: String, CaseIterable, Identifiable {
     case all = "All"
-    case settlements = "Reconciliations"
+    case settlements = "Graded"
     case adjustments = "Adjustments"
-    case payments = "Payments"
+    case payments = "Reconciled"
 
     var id: String { rawValue }
 
@@ -122,13 +122,6 @@ struct AccountView: View {
 
     private var balanceColor: Color {
         displayBalance > 0 ? .green : (displayBalance < 0 ? .red : .primary)
-    }
-
-    private var oddsFormatBinding: Binding<OddsFormat> {
-        Binding(
-            get: { OddsFormat(rawValue: oddsFormat) ?? .american },
-            set: { oddsFormat = $0.rawValue }
-        )
     }
 
     private var memberSinceDate: String {
@@ -250,31 +243,6 @@ struct AccountView: View {
             profileRow(icon: "calendar", label: "Member Since", value: memberSinceDate)
 
             Divider().background(Theme.divider).padding(.vertical, 4)
-
-            // Odds Format
-            HStack(spacing: 12) {
-                Image(systemName: "number.circle")
-                    .font(.body)
-                    .foregroundStyle(Theme.textMuted)
-                    .frame(width: 24)
-
-                Text("Odds Format")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
-
-                Spacer()
-
-                Picker("Odds Format", selection: oddsFormatBinding) {
-                    ForEach(OddsFormat.allCases) { format in
-                        Text(format.rawValue).tag(format)
-                    }
-                }
-                .pickerStyle(.menu)
-                .tint(Theme.accent)
-            }
-            .padding(.vertical, 12)
-
-            Divider().background(Theme.divider)
 
             // Notifications
             HStack(spacing: 12) {
@@ -494,7 +462,7 @@ struct AccountView: View {
                     ForEach(filteredLedgerEntries) { entry in
                         TransactionRowView(entry: entry)
                         if entry.id != filteredLedgerEntries.last?.id {
-                            Divider().background(Theme.divider).padding(.leading, 52)
+                            Divider().background(Theme.divider)
                         }
                     }
                 }
@@ -618,16 +586,7 @@ struct AccountView: View {
 struct TransactionRowView: View {
     let entry: LedgerEntry
 
-    private var iconName: String {
-        switch entry.type {
-        case .settlement: return "checkmark.circle.fill"
-        case .adjustment: return "slider.horizontal.3"
-        case .paymentLogged: return "dollarsign.circle.fill"
-        case .reversal: return "arrow.uturn.backward.circle.fill"
-        }
-    }
-
-    private var iconColor: Color {
+    private var tagColor: Color {
         switch entry.type {
         case .settlement: return Theme.scheduled
         case .adjustment: return Theme.warning
@@ -638,24 +597,47 @@ struct TransactionRowView: View {
 
     private var typeLabel: String {
         switch entry.type {
-        case .settlement: return "Reconciliation"
+        case .settlement: return "Graded"
         case .adjustment: return "Adjustment"
-        case .paymentLogged: return "Payment"
+        case .paymentLogged: return "Reconciled"
         case .reversal: return "Reversal"
         }
     }
 
+    /// Player-facing: negate internal convention so wins show positive
+    private var displayAmount: Decimal { -entry.amount }
+
     private var amountColor: Color {
-        entry.amount >= 0 ? Theme.accent : Theme.danger
+        displayAmount >= 0 ? Theme.accent : Theme.danger
     }
 
     private var formattedAmount: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
-        let absAmount = abs(entry.amount)
+        let absAmount = abs(displayAmount)
         let formatted = formatter.string(from: absAmount as NSDecimalNumber) ?? "$\(absAmount)"
-        return entry.amount >= 0 ? "+\(formatted)" : "-\(formatted)"
+        return displayAmount >= 0 ? "+\(formatted)" : "-\(formatted)"
+    }
+
+    /// Enriched description using linked bet data when available
+    private var displayDescription: String {
+        if let bet = entry.bet {
+            let outcome: String
+            switch entry.entryDescription.lowercased() {
+            case let d where d.contains("won"): outcome = "Won"
+            case let d where d.contains("lost"): outcome = "Lost"
+            case let d where d.contains("push"): outcome = "Push"
+            case let d where d.contains("void"): outcome = "Voided"
+            default: return entry.entryDescription
+            }
+            let side = bet.side
+            if let event = bet.eventDescription {
+                return "\(outcome) · \(side) — \(event)"
+            }
+            return "\(outcome) · \(side)"
+        }
+        return entry.entryDescription
     }
 
     private var formattedDate: String {
@@ -666,47 +648,41 @@ struct TransactionRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(iconColor.opacity(0.15))
-                    .frame(width: 40, height: 40)
-                Image(systemName: iconName)
-                    .font(Theme.body)
-                    .foregroundStyle(iconColor)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(entry.entryDescription)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 12) {
+                Text(displayDescription)
                     .font(Theme.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
 
-                HStack(spacing: 6) {
-                    Text(typeLabel)
-                        .font(Theme.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(iconColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Capsule().fill(iconColor.opacity(0.1)))
+                Spacer()
 
-                    Text(formattedDate)
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                }
+                Text(formattedAmount)
+                    .font(Theme.subheadline)
+                    .fontWeight(.bold)
+                    .foregroundStyle(amountColor)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(amountColor.opacity(0.1)))
             }
 
-            Spacer()
+            HStack {
+                Text(typeLabel)
+                    .font(Theme.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(tagColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(tagColor.opacity(0.1)))
+                    .lineLimit(1)
 
-            Text(formattedAmount)
-                .font(Theme.subheadline)
-                .fontWeight(.bold)
-                .foregroundStyle(amountColor)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(RoundedRectangle(cornerRadius: 8).fill(amountColor.opacity(0.1)))
+                Spacer()
+
+                Text(formattedDate)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+            }
         }
         .padding(.vertical, 12)
     }

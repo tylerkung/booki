@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 22, 2026 - BetSlip UX improvements (numpad scroll, auto-remove locked events), auto-grading fixes (shared events, catch-up grading, auto-void pending bets)*
+*Last updated: February 23, 2026 - Account page history redesign, "Be The House" branding, odds format picker removal*

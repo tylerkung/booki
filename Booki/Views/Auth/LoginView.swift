@@ -66,7 +66,7 @@ struct LoginView: View {
 
                 // Headline
                 VStack(spacing: 8) {
-                    Text("Your edge starts here.")
+                    Text("Be The House.")
                         .font(Theme.font(size: 30, weight: .bold))
                         .foregroundStyle(Theme.textPrimary)
 

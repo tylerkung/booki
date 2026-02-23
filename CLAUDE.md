@@ -156,7 +156,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (February 22, 2026)
+## Current State (February 23, 2026)
 
 - **Branch**: `ralph/ios26-migration`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
@@ -173,5 +173,6 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Landing page**: `landing/` directory with index.html, styles.css, assets (screenshots + SVG logo)
 - **Compliance**: All user-facing strings use approved vocabulary; disclaimers on auth and pick entry screens
 - **TicketDetailView**: 4-card layout (Hero, Financials, Odds Breakdown, Activity) with odds format preference support
-- **AccountView**: Condensed — Profile+Preferences merged, Performance card (Record + stats + credit bar), no My Picks (Track tab)
+- **AccountView**: Condensed — Profile+Preferences merged, Performance card (Record + stats + credit bar), no My Picks (Track tab), History with enriched descriptions and player-facing amounts
+- **Branding**: Slogan "Be The House." on login and landing page
 - **Bookie Picks tab**: Badge showing open bet count (1-9+) in brand teal, Open/Past filter with player chips, card-based BetDetailView matching TicketDetailView
