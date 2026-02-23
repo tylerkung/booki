@@ -162,7 +162,8 @@ struct SettingsView: View {
                         Text("Signed in as \(userId)")
                     }
                 }
-                .listRowBackground(Theme.cardBackground)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
 
                 // MARK: - About Section
                 Section {

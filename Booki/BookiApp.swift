@@ -106,11 +106,14 @@ struct BookiApp: App {
             let badgeFg = UIColor(Theme.background)
             let badgeFont = UIFont(name: "SpaceGrotesk-Bold", size: 11) ?? .boldSystemFont(ofSize: 11)
             let badgeAttrs: [NSAttributedString.Key: Any] = [.font: badgeFont, .foregroundColor: badgeFg]
+            let badgeOffset = UIOffset(horizontal: -8, vertical: 0)
             for layout in [tabBarAppearance.stackedLayoutAppearance, tabBarAppearance.inlineLayoutAppearance, tabBarAppearance.compactInlineLayoutAppearance] {
                 layout.normal.badgeBackgroundColor = badgeBg
                 layout.normal.badgeTextAttributes = badgeAttrs
+                layout.normal.badgePositionAdjustment = badgeOffset
                 layout.selected.badgeBackgroundColor = badgeBg
                 layout.selected.badgeTextAttributes = badgeAttrs
+                layout.selected.badgePositionAdjustment = badgeOffset
             }
 
             UITabBar.appearance().standardAppearance = tabBarAppearance

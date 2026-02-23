@@ -177,6 +177,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Branding**: Slogan "Be The House." on login and landing page
 - **Bookie Picks tab**: Badge showing open bet count (1-9+) in brand teal, Open/Past filter with player chips, card-based BetDetailView matching TicketDetailView
 - **Batch singles**: `submit_bets` edge function batches all singles into one network call with partial success model
+- **Member management**: Overflow menu on player detail with Archive/Remove; Remove severs bookie link (NULLs bookie_id + auth_user_id) preserving history
+- **Members list**: Navigates to `PlayerAnalyticsDetailView` (same as dashboard), not old `PlayerDetailView`
 - **Invite management**: Create/copy/delete invites from Members tab, permanent delete with `@AppStorage` fallback
 - **Nav bar standardization**: All bookie tabs use centered inline title with wordmark on Dashboard/Members
 - **Dashboard skeleton**: Shimmer placeholders during initial sync, dismissed on @Query data arrival, skipped when SwiftData has cache

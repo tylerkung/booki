@@ -226,9 +226,9 @@ struct BetsListView: View {
 
     private func decimalToAmerican(_ decimal: Decimal) -> Int {
         if decimal >= 2 {
-            return Int(truncating: ((decimal - 1) * 100) as NSDecimalNumber)
+            return Int(Double(truncating: ((decimal - 1) * 100) as NSDecimalNumber))
         } else {
-            return Int(truncating: (-100 / (decimal - 1)) as NSDecimalNumber)
+            return Int(Double(truncating: (-100 / (decimal - 1)) as NSDecimalNumber))
         }
     }
 
@@ -357,6 +357,9 @@ struct BetDetailView: View {
     @State private var showingReverseError = false
     @State private var showingReverseSuccess = false
 
+    // Accept/Decline loading state
+    @State private var actionInFlight: String? = nil
+
     // MARK: - Computed Properties
 
     private var event: Event? {
@@ -407,9 +410,9 @@ struct BetDetailView: View {
 
     private func decimalToAmerican(_ decimal: Decimal) -> Int {
         if decimal >= 2 {
-            return Int(truncating: ((decimal - 1) * 100) as NSDecimalNumber)
+            return Int(Double(truncating: ((decimal - 1) * 100) as NSDecimalNumber))
         } else {
-            return Int(truncating: (-100 / (decimal - 1)) as NSDecimalNumber)
+            return Int(Double(truncating: (-100 / (decimal - 1)) as NSDecimalNumber))
         }
     }
 
@@ -626,12 +629,14 @@ struct BetDetailView: View {
     private var actionButtons: some View {
         switch bet.status {
         case .pending:
-            actionButton("Accept Pick", icon: "checkmark.circle.fill", color: Theme.accent) {
+            actionButton("Accept Pick", icon: "checkmark.circle.fill", color: Theme.accent, isLoading: actionInFlight == "accept") {
                 acceptBet()
             }
-            actionButton("Decline Pick", icon: "xmark.circle.fill", color: Theme.danger) {
+            .disabled(actionInFlight != nil)
+            actionButton("Decline Pick", icon: "xmark.circle.fill", color: Theme.danger, isLoading: actionInFlight == "decline") {
                 declineBet()
             }
+            .disabled(actionInFlight != nil)
 
         case .accepted:
             actionButton("Void Pick", icon: "trash.circle.fill", color: Theme.danger) {
@@ -704,10 +709,15 @@ struct BetDetailView: View {
         }
     }
 
-    private func actionButton(_ title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
+    private func actionButton(_ title: String, icon: String, color: Color, isLoading: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
-                Image(systemName: icon)
+                if isLoading {
+                    ProgressView()
+                        .tint(color)
+                } else {
+                    Image(systemName: icon)
+                }
                 Text(title)
                     .fontWeight(.medium)
             }
@@ -719,6 +729,7 @@ struct BetDetailView: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(color.opacity(0.12))
             )
+            .opacity(isLoading ? 0.7 : 1.0)
         }
         .buttonStyle(.plain)
     }
@@ -919,22 +930,26 @@ struct BetDetailView: View {
     // MARK: - Actions
 
     private func acceptBet() {
+        actionInFlight = "accept"
         Task {
             do {
                 try await BetService.acceptBet(bet)
             } catch {
                 print("Failed to accept bet: \(error)")
             }
+            actionInFlight = nil
         }
     }
 
     private func declineBet() {
+        actionInFlight = "decline"
         Task {
             do {
                 try await BetService.declineBet(bet)
             } catch {
                 print("Failed to decline bet: \(error)")
             }
+            actionInFlight = nil
         }
     }
 

@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
       max_stake: policy?.max_stake ?? 100,
       require_approval_above: policy?.require_approval_above ?? null,
       auto_accept_enabled: policy?.auto_accept_enabled ?? true,
-      auto_accept_new_players: policy?.auto_accept_new_players ?? false,
+      auto_accept_new_players: policy?.auto_accept_new_players ?? true,
       new_player_bet_threshold: policy?.new_player_bet_threshold ?? 5,
       auto_accept_parlays: policy?.auto_accept_parlays ?? false,
       parlay_max_legs: policy?.parlay_max_legs ?? 4,

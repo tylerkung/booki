@@ -1071,12 +1071,12 @@ struct BetSlipSheet: View {
             }
 
             VStack(spacing: 8) {
-                Text("Request Submitted!")
+                Text("You're in!")
                     .font(Theme.title2)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.textPrimary)
 
-                Text("\(submittedCount) pick\(submittedCount == 1 ? "" : "s") recorded and pending review")
+                Text("\(submittedCount) pick\(submittedCount == 1 ? "" : "s") recorded.")
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -1110,6 +1110,7 @@ struct BetSlipSheet: View {
                             .foregroundStyle(Theme.accent)
                     }
                     .buttonStyle(.plain)
+                    .padding(.bottom, 8)
                 }
 
                 // Done button

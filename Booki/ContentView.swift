@@ -172,10 +172,12 @@ struct ContentView: View {
 
             Tab("Grading", systemImage: "checkmark.circle.fill") {
                 GradingView()
+                    .navigationBarHidden(true)
             }
 
             Tab("Settings", systemImage: "gearshape.fill") {
                 SettingsView()
+                    .navigationBarHidden(true)
             }
         }
         .tint(Theme.accent)

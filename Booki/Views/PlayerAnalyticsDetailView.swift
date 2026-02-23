@@ -1,10 +1,25 @@
 import SwiftUI
 import SwiftData
+@preconcurrency import Supabase
 
 struct PlayerAnalyticsDetailView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
     let summary: PlayerAnalyticsSummary
     let playerBets: [Bet]
     let playerLedgerEntries: [LedgerEntry]
+
+    @State private var showingArchiveConfirmation = false
+    @State private var showingDeleteConfirmation = false
+    @State private var isDeleting = false
+    @State private var deleteError: String?
+
+    private var player: Player { summary.player }
+
+    private var playerHasHistory: Bool {
+        !playerBets.isEmpty || !playerLedgerEntries.isEmpty
+    }
 
     var body: some View {
         ScrollView {
@@ -23,6 +38,106 @@ struct PlayerAnalyticsDetailView: View {
         .background(Theme.background)
         .navigationTitle(summary.player.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button(role: .destructive) {
+                        showingArchiveConfirmation = true
+                    } label: {
+                        Label("Archive Member", systemImage: "archivebox")
+                    }
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Remove Member", systemImage: "person.badge.minus")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(Theme.bodyFont(size: 16, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+        }
+        .confirmationDialog(
+            "Archive this member?",
+            isPresented: $showingArchiveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Archive Member") {
+                archivePlayer()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Archived members retain their history but are hidden from the active members list.")
+        }
+        .confirmationDialog(
+            "Remove \(player.name)?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Remove Member", role: .destructive) {
+                deletePlayer()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will remove the member from your group. Their pick and ledger history will be preserved. They will be able to join another group.")
+        }
+        .alert("Delete Error", isPresented: .init(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            if let error = deleteError {
+                Text(error)
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func archivePlayer() {
+        let result = PlayerService.archivePlayer(player)
+        switch result {
+        case .success:
+            dismiss()
+        case .failure(let error):
+            print("Failed to archive player: \(error)")
+        }
+    }
+
+    private func deletePlayer() {
+        isDeleting = true
+        Task {
+            do {
+                // Sever the relationship: NULL out bookie_id and auth_user_id
+                // The player record stays for bet/ledger history, but the user
+                // is freed to join another group via a new invite
+                let supabase = SupabaseClientManager.shared.client
+                let nullValue: String? = nil
+                try await supabase
+                    .from("players")
+                    .update([
+                        "bookie_id": nullValue,
+                        "auth_user_id": nullValue,
+                    ])
+                    .eq("id", value: player.id.uuidString.lowercased())
+                    .execute()
+
+                // Remove from local SwiftData so bookie's list updates immediately
+                // Bets and ledger entries stay locally for historical views
+                await MainActor.run {
+                    modelContext.delete(player)
+                    isDeleting = false
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    isDeleting = false
+                    deleteError = "Failed to remove member: \(error.localizedDescription)"
+                }
+            }
+        }
     }
 
     // MARK: - Header

@@ -308,11 +308,11 @@ struct BetConfirmationSheet: View {
             }
 
             VStack(spacing: 8) {
-                Text("Request Submitted!")
+                Text("You're in!")
                     .font(Theme.title2)
                     .fontWeight(.bold)
 
-                Text("\(submittedCount) pick\(submittedCount == 1 ? "" : "s") recorded and pending review")
+                Text("\(submittedCount) pick\(submittedCount == 1 ? "" : "s") recorded.")
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)

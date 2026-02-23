@@ -8,6 +8,12 @@ enum SubscriptionStatus: String, Codable {
     case trial
 }
 
+/// Tier level controlling feature access
+enum BookieTier: String, Codable {
+    case `default`
+    case chart
+}
+
 /// Bookie model representing a bookie account
 @Model
 final class Bookie {
@@ -23,6 +29,9 @@ final class Bookie {
     var manualBetAcceptance: Bool
     var manualBetGrading: Bool
 
+    // Feature tier
+    var tier: BookieTier
+
     init(
         id: UUID = UUID(),
         email: String,
@@ -31,7 +40,8 @@ final class Bookie {
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         manualBetAcceptance: Bool = false,
-        manualBetGrading: Bool = false
+        manualBetGrading: Bool = false,
+        tier: BookieTier = .default
     ) {
         self.id = id
         self.email = email
@@ -41,5 +51,6 @@ final class Bookie {
         self.updatedAt = updatedAt
         self.manualBetAcceptance = manualBetAcceptance
         self.manualBetGrading = manualBetGrading
+        self.tier = tier
     }
 }

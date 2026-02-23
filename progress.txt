@@ -302,3 +302,22 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - When removing inline navigation from sub-views, parent back button needs context-aware logic (switch on step)
   - PrimaryButtonStyle defined in SignUpView.swift, reused across auth views
 ---
+
+## 2026-02-23 - Bookie UX Polish Pass
+- **Accept/Decline loading feedback**: Added spinner + disabled state to Accept Pick / Decline Pick buttons while edge function is in-flight (BetsListView)
+- **Bet confirmation copy**: Changed "Request Submitted!" → "You're in!", subtitle "X picks recorded and pending review" → "X picks recorded." (BetSlipSheet, BetConfirmationSheet)
+- **Parlay odds fix**: `Int(truncating: NSDecimalNumber)` silently returned 0 for high-precision Decimals — converted through `Double` first. Fixed nav title showing "2-leg multi-pick 0" (BetsListView)
+- **Badge overlap**: Shifted tab badge 8px left via `badgePositionAdjustment` for tighter overlap with icon (BookiApp)
+- **Invite delete persistence**: SyncService now skips deleted invite IDs (reads `@AppStorage` deletedInviteIds) during download to prevent sync from re-creating deleted invites
+- **Members → PlayerAnalyticsDetailView**: Members list now navigates to the same analytics detail page as the dashboard (was using old PlayerDetailView)
+- **Player overflow menu**: Added ellipsis toolbar menu on PlayerAnalyticsDetailView with Archive Member and Remove Member actions
+- **Remove Member (sever relationship)**: Instead of hard deleting, NULLs `bookie_id` and `auth_user_id` on the player record — preserves bet/ledger history, frees user to join another group
+- **Auto-accept new players**: Changed `auto_accept_new_players` default from `false` to `true` in submit_bet, submit_bets, submit_parlay edge functions
+- **Settings log out button**: Removed double container (listRowBackground → Color.clear)
+- Files changed: BetsListView.swift, BetSlipSheet.swift, BetConfirmationSheet.swift, BookiApp.swift, SyncService.swift, PlayersListView.swift, PlayerAnalyticsDetailView.swift, SettingsView.swift, submit_bet/index.ts, submit_bets/index.ts, submit_parlay/index.ts
+- **Learnings for future iterations:**
+  - `Int(truncating: NSDecimalNumber)` silently returns 0 for high-precision Decimals — always convert through `Double` first
+  - SyncService re-downloads all records on each sync — locally-deleted records get re-created unless filtered during download
+  - Severing player-bookie relationship (NULL bookie_id + auth_user_id) is safer than hard delete — preserves financial history
+  - `badgePositionAdjustment` on `UITabBarItemStateAppearance` controls badge offset from default position
+---

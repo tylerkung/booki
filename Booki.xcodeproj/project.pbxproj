@@ -18,8 +18,6 @@
 		50C083FD2F26174D001A0FE5 /* ImportEventsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083F92F26174D001A0FE5 /* ImportEventsView.swift */; };
 		50C084002F2BF471001A0FE5 /* UserAgreement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083FF2F2BF471001A0FE5 /* UserAgreement.swift */; };
 		50C084012F2BF471001A0FE5 /* AuditEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083FE2F2BF471001A0FE5 /* AuditEvent.swift */; };
-		8934000FC867475AB8F4B89B /* Invite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552BD08F02464792BE765DE5 /* Invite.swift */; };
-		8A1234560099 /* InviteClaimView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550099 /* InviteClaimView.swift */; };
 		50C084052F2BF49A001A0FE5 /* AgreementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084022F2BF49A001A0FE5 /* AgreementService.swift */; };
 		50C084062F2BF49A001A0FE5 /* AuditService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084032F2BF49A001A0FE5 /* AuditService.swift */; };
 		50C084072F2BF49A001A0FE5 /* EdgeFunctionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C084042F2BF49A001A0FE5 /* EdgeFunctionService.swift */; };
@@ -35,6 +33,7 @@
 		50F000012F33000000000004 /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */; };
 		50F000012F33000000000005 /* IBMPlexSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */; };
 		50F000012F33000000000006 /* IBMPlexSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */; };
+		8934000FC867475AB8F4B89B /* Invite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552BD08F02464792BE765DE5 /* Invite.swift */; };
 		8A1234560001 /* BookiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550001 /* BookiApp.swift */; };
 		8A1234560002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550002 /* ContentView.swift */; };
 		8A1234560003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1234550003 /* Assets.xcassets */; };
@@ -123,11 +122,12 @@
 		8A1234560092 /* SelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550092 /* SelectionRow.swift */; };
 		8A1234560093 /* PickCardCompact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550093 /* PickCardCompact.swift */; };
 		8A1234560094 /* PickDetailHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550094 /* PickDetailHeader.swift */; };
-		8A12345600A0 /* ShimmerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A0 /* ShimmerView.swift */; };
 		8A1234560095 /* TeamAbbreviations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550095 /* TeamAbbreviations.swift */; };
 		8A1234560096 /* ParlayGradingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550096 /* ParlayGradingServiceTests.swift */; };
 		8A1234560097 /* AcceptancePolicyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550097 /* AcceptancePolicyServiceTests.swift */; };
 		8A1234560098 /* PickPresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550098 /* PickPresenterTests.swift */; };
+		8A1234560099 /* InviteClaimView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550099 /* InviteClaimView.swift */; };
+		8A12345600A0 /* ShimmerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A0 /* ShimmerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -151,7 +151,6 @@
 		50C083F92F26174D001A0FE5 /* ImportEventsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportEventsView.swift; sourceTree = "<group>"; };
 		50C083FA2F26174D001A0FE5 /* RefreshOddsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshOddsView.swift; sourceTree = "<group>"; };
 		50C083FE2F2BF471001A0FE5 /* AuditEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditEvent.swift; sourceTree = "<group>"; };
-		552BD08F02464792BE765DE5 /* Invite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Invite.swift; sourceTree = "<group>"; };
 		50C083FF2F2BF471001A0FE5 /* UserAgreement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAgreement.swift; sourceTree = "<group>"; };
 		50C084022F2BF49A001A0FE5 /* AgreementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgreementService.swift; sourceTree = "<group>"; };
 		50C084032F2BF49A001A0FE5 /* AuditService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditService.swift; sourceTree = "<group>"; };
@@ -169,6 +168,7 @@
 		50F000002F33000000000004 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = text; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
 		50F000002F33000000000005 /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = text; path = "IBMPlexSans-Medium.ttf"; sourceTree = "<group>"; };
 		50F000002F33000000000006 /* IBMPlexSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = text; path = "IBMPlexSans-Bold.ttf"; sourceTree = "<group>"; };
+		552BD08F02464792BE765DE5 /* Invite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Invite.swift; sourceTree = "<group>"; };
 		8A1234550000 /* Booki.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Booki.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1234550001 /* BookiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookiApp.swift; sourceTree = "<group>"; };
 		8A1234550002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -187,9 +187,6 @@
 		8A1234550015 /* ExposureServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExposureServiceTests.swift; sourceTree = "<group>"; };
 		8A1234550016 /* BalanceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceService.swift; sourceTree = "<group>"; };
 		8A1234550017 /* BalanceServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceServiceTests.swift; sourceTree = "<group>"; };
-		8A1234550096 /* ParlayGradingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParlayGradingServiceTests.swift; sourceTree = "<group>"; };
-		8A1234550097 /* AcceptancePolicyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcceptancePolicyServiceTests.swift; sourceTree = "<group>"; };
-		8A1234550098 /* PickPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickPresenterTests.swift; sourceTree = "<group>"; };
 		8A1234550018 /* BetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetService.swift; sourceTree = "<group>"; };
 		8A1234550019 /* GradingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradingService.swift; sourceTree = "<group>"; };
 		8A1234550020 /* PlayerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerService.swift; sourceTree = "<group>"; };
@@ -244,7 +241,6 @@
 		8A1234550069 /* Syncable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Syncable.swift; sourceTree = "<group>"; };
 		8A1234550070 /* SyncModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncModels.swift; sourceTree = "<group>"; };
 		8A1234550071 /* InviteCodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteCodeService.swift; sourceTree = "<group>"; };
-		8A1234550099 /* InviteClaimView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteClaimView.swift; sourceTree = "<group>"; };
 		8A1234550073 /* PlayerMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMainView.swift; sourceTree = "<group>"; };
 		8A1234550074 /* PlayerRiskService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerRiskService.swift; sourceTree = "<group>"; };
 		8A1234550075 /* AttentionFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttentionFeedView.swift; sourceTree = "<group>"; };
@@ -264,6 +260,10 @@
 		8A1234550093 /* PickCardCompact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickCardCompact.swift; sourceTree = "<group>"; };
 		8A1234550094 /* PickDetailHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickDetailHeader.swift; sourceTree = "<group>"; };
 		8A1234550095 /* TeamAbbreviations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamAbbreviations.swift; sourceTree = "<group>"; };
+		8A1234550096 /* ParlayGradingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParlayGradingServiceTests.swift; sourceTree = "<group>"; };
+		8A1234550097 /* AcceptancePolicyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcceptancePolicyServiceTests.swift; sourceTree = "<group>"; };
+		8A1234550098 /* PickPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickPresenterTests.swift; sourceTree = "<group>"; };
+		8A1234550099 /* InviteClaimView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteClaimView.swift; sourceTree = "<group>"; };
 		8A12345500A0 /* ShimmerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShimmerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -880,7 +880,7 @@
 				CODE_SIGN_ENTITLEMENTS = Booki/Booki.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "\"Booki/Preview Content\"";
 				DEVELOPMENT_TEAM = 2VXWBUS77T;
 				ENABLE_PREVIEWS = YES;
@@ -888,8 +888,8 @@
 				INFOPLIST_FILE = Booki/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -913,7 +913,7 @@
 				CODE_SIGN_ENTITLEMENTS = Booki/Booki.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "\"Booki/Preview Content\"";
 				DEVELOPMENT_TEAM = 2VXWBUS77T;
 				ENABLE_PREVIEWS = YES;
@@ -921,8 +921,8 @@
 				INFOPLIST_FILE = Booki/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

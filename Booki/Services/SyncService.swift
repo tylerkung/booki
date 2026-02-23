@@ -732,7 +732,14 @@ final class SyncService {
             .execute()
             .value
 
+        // Skip invites the user has locally deleted
+        let deletedIds = Set(
+            (UserDefaults.standard.string(forKey: "deletedInviteIds") ?? "")
+                .split(separator: ",").map(String.init)
+        )
+
         for record in records {
+            guard !deletedIds.contains(record.id.uuidString.lowercased()) else { continue }
             try upsertInvite(record, context: context)
         }
 

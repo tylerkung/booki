@@ -2,6 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.booki.invite</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>booki</string>
+			</array>
+		</dict>
+	</array>
 	<key>SUPABASE_ANON_KEY</key>
 	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdGZhdXF1ZndwZHl0bXZqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMjcwNjcsImV4cCI6MjA4NDgwMzA2N30.uwimFkR3pN8BODjjM5KnusptdZz_vcrxKnK_2LKfZHI</string>
 	<key>SUPABASE_URL</key>
@@ -14,17 +25,6 @@
 		<string>IBMPlexSans-Regular.ttf</string>
 		<string>IBMPlexSans-Medium.ttf</string>
 		<string>IBMPlexSans-Bold.ttf</string>
-	</array>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>com.booki.invite</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>booki</string>
-			</array>
-		</dict>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict>

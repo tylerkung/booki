@@ -26,6 +26,18 @@ struct PlayersListView: View {
         invites.filter { $0.claimedAt == nil && !deletedInviteIds.contains($0.id.uuidString.lowercased()) }
     }
 
+    private var playerSummaries: [PlayerAnalyticsSummary] {
+        PlayerAttentionService.generateSummaries(
+            players: players,
+            bets: bets,
+            ledgerEntries: ledgerEntries
+        )
+    }
+
+    private func summaryForPlayer(_ player: Player) -> PlayerAnalyticsSummary? {
+        playerSummaries.first { $0.player.id == player.id }
+    }
+
     private var filteredPlayers: [Player] {
         var result = players
 
@@ -54,8 +66,12 @@ struct PlayersListView: View {
                         SyncStatusIndicator(syncService: syncService)
                     }
                 }
-                .navigationDestination(for: Player.self) { player in
-                    PlayerDetailView(player: player)
+                .navigationDestination(for: PlayerAnalyticsSummary.self) { summary in
+                    PlayerAnalyticsDetailView(
+                        summary: summary,
+                        playerBets: bets.filter { $0.player?.id == summary.player.id },
+                        playerLedgerEntries: ledgerEntries.filter { $0.player?.id == summary.player.id }
+                    )
                 }
                 .sheet(isPresented: $showingInviteSheet) {
                     InviteMemberSheet()
@@ -93,7 +109,20 @@ struct PlayersListView: View {
         } else if !filteredPlayers.isEmpty {
             VStack(spacing: 12) {
                 ForEach(filteredPlayers) { player in
-                    NavigationLink(value: player) {
+                    if let summary = summaryForPlayer(player) {
+                        NavigationLink(value: summary) {
+                            PlayerRowView(
+                                player: player,
+                                balance: balanceForPlayer(player),
+                                utilization: utilizationForPlayer(player)
+                            )
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.cardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                        }
+                        .buttonStyle(.plain)
+                    } else {
                         PlayerRowView(
                             player: player,
                             balance: balanceForPlayer(player),
@@ -104,7 +133,6 @@ struct PlayersListView: View {
                         .background(Theme.cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal)

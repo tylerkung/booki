@@ -207,8 +207,8 @@ final class RealtimeService {
                 if let record: AcceptancePolicyRecord = decodeRecord(from: action.record) {
                     try upsertAcceptancePolicy(record, bookieId: bookieId, context: context)
                 }
-            case .settlementPeriods, .playerSettlements:
-                // Not yet implemented in DB schema
+            case .settlementPeriods, .playerSettlements, .invites:
+                // Not yet implemented in realtime
                 break
             }
 
@@ -243,8 +243,8 @@ final class RealtimeService {
                 if let record: AcceptancePolicyRecord = decodeRecord(from: action.record) {
                     try upsertAcceptancePolicy(record, bookieId: bookieId, context: context)
                 }
-            case .settlementPeriods, .playerSettlements:
-                // Not yet implemented in DB schema
+            case .settlementPeriods, .playerSettlements, .invites:
+                // Not yet implemented in realtime
                 break
             }
 
@@ -277,8 +277,8 @@ final class RealtimeService {
                 try deleteLedgerEntry(id: recordId, context: context)
             case .acceptancePolicies:
                 try deleteAcceptancePolicy(id: recordId, context: context)
-            case .settlementPeriods, .playerSettlements:
-                // Not yet implemented in DB schema
+            case .settlementPeriods, .playerSettlements, .invites:
+                // Not yet implemented in realtime
                 break
             }
 
