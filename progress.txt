@@ -228,3 +228,19 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - Sign out on 409 error and on Cancel to prevent orphaned sessions
   - `Theme.buttonGradient` type differs from `LinearGradient` — use `Group { if ... }` pattern, not ternary
 ---
+
+## 2026-02-23 - US-014
+- Removed `AddPlayerSheet` struct (manual name/email/username/limit form) from PlayersListView.swift
+- Removed `AddPlayerInterstitialSheet` struct (Add Member / Purchase Seats choice sheet) from PlayersListView.swift
+- Deleted `PlayerClaimView.swift` entirely (replaced by InviteClaimView)
+- Removed PlayerClaimView.swift from Xcode pbxproj (4 references: PBXBuildFile, PBXFileReference, group children, Sources)
+- Updated AuthGateView.swift: `.playerClaim` case now presents `InviteClaimView(initialCode: nil, ...)` instead of `PlayerClaimView`
+- Updated comment in AuthManager.swift referencing PlayerClaimView → InviteClaimView
+- Kept `PlayerService.addPlayer()` (used programmatically), `InviteCodeService` (used by PlayerDetailView for invite codes on existing players)
+- Kept `@preconcurrency import Supabase` in PlayersListView (still needed by PlayerDetailView delete function)
+- Files changed: Booki/Views/PlayersListView.swift, Booki/Views/PlayerClaimView.swift (deleted), Booki/Views/AuthGateView.swift, Booki/Services/AuthManager.swift, Booki.xcodeproj/project.pbxproj
+- **Learnings for future iterations:**
+  - When deleting a Swift file, must remove 4 pbxproj references: PBXBuildFile, PBXFileReference, group children, Sources build phase
+  - `AuthManager` import was only needed by `AddPlayerSheet` in PlayersListView — verify imports are still needed after removing structs
+  - `.playerClaim` route in AuthGateView serves as fallback for "Join as Member" from login screen — redirect to InviteClaimView with nil code
+---

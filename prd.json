@@ -258,7 +258,7 @@
         "Typecheck passes"
       ],
       "priority": 14,
-      "passes": false,
+      "passes": true,
       "notes": "Be careful not to remove PlayerService.addPlayer() — only the UI sheets are removed. The claim flow creates players server-side."
     }
   ]

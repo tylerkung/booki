@@ -1,7 +1,7 @@
 {
   "project": "Booki",
   "branchName": "ralph/member-invite-redesign",
-  "description": "Redesign the member invite flow \u2014 lightweight Invite model, server-side invite creation/claiming, restyled Members list, simplified bookie invite sheet, and 3-path player claim flow with deep linking",
+  "description": "Redesign the member invite flow — lightweight Invite model, server-side invite creation/claiming, restyled Members list, simplified bookie invite sheet, and 3-path player claim flow with deep linking",
   "userStories": [
     {
       "id": "US-001",
@@ -16,7 +16,7 @@
       ],
       "priority": 1,
       "passes": true,
-      "notes": "SwiftData schema change \u2014 requires deleting app from Simulator"
+      "notes": "SwiftData schema change — requires deleting app from Simulator"
     },
     {
       "id": "US-002",
@@ -41,7 +41,7 @@
       "acceptanceCriteria": [
         "New edge function at `supabase/functions/create_invite/index.ts`",
         "Request body: `{ email?: string }` (email is optional)",
-        "Validates JWT in code \u2014 caller must be a bookie (query bookies table for auth user id)",
+        "Validates JWT in code — caller must be a bookie (query bookies table for auth user id)",
         "Generates unique 8-char invite code (charset: A-Z, 2-9, excluding 0/O/1/I/L) with collision retry",
         "Sets `expires_at` to 24 hours from now",
         "Inserts invite record into `invites` table with `bookie_id` from authenticated user",
@@ -52,7 +52,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Deploy: npx supabase functions deploy create_invite --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz"
     },
     {
@@ -64,7 +64,7 @@
         "Request body: `{ invite_code: string, auth_user_id: string }`",
         "Validates invite code exists in `invites` table, is not expired (`expires_at > now()`), and is not already claimed (`claimed_at IS NULL`)",
         "Verifies auth user exists via `supabase.auth.admin.getUserById()`",
-        "Checks auth user is not already linked to any bookie: query `players` table for `auth_user_id` WHERE `claimed_at IS NOT NULL` \u2014 if found, return 409 `{ error: 'already_in_group', message: \"You're already a member of another organizer's group.\" }`",
+        "Checks auth user is not already linked to any bookie: query `players` table for `auth_user_id` WHERE `claimed_at IS NOT NULL` — if found, return 409 `{ error: 'already_in_group', message: \"You're already a member of another organizer's group.\" }`",
         "Creates new Player record in `players` table: `name` = email prefix (before @), `status` = 'active', `auth_user_id`, `bookie_id` from invite record, `claimed_at` = now(), `credit_limit` = 10000",
         "Updates invite record: `claimed_at` = now(), `claimed_by_player_id` = new player ID",
         "Auto-confirms email on auth user via `admin.updateUserById(auth_user_id, { email_confirm: true })`",
@@ -74,7 +74,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Uses service role client to bypass RLS (same pattern as claim_player). Deploy: npx supabase functions deploy claim_invite --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz"
     },
     {
@@ -91,26 +91,26 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Follow existing SyncService patterns for Player/Bet/LedgerEntry downloads"
     },
     {
       "id": "US-006",
-      "title": "Restyle Members list \u2014 remove iOS List, use card rows",
+      "title": "Restyle Members list — remove iOS List, use card rows",
       "description": "As a bookie, I want the Members tab to use the same dark card-based styling as the rest of the app.",
       "acceptanceCriteria": [
         "In `PlayersListView.swift`: replace `List { Section { ... } }` with `ScrollView { VStack(spacing: 12) }` layout on `Theme.background`",
-        "Each member row uses `Theme.cardBackground` with rounded corners (`Theme.cornerRadiusSmall`) \u2014 full-width card style",
+        "Each member row uses `Theme.cardBackground` with rounded corners (`Theme.cornerRadiusSmall`) — full-width card style",
         "Row shows: player name (bold, `Theme.textPrimary`), status badge (teal capsule, existing style), balance (green if positive/red if negative), credit limit, utilization percentage",
         "Remove the grouped container/section chrome (no more iOS List insets)",
         "Remove `.listRowBackground` and `.scrollContentBackground(.hidden)` modifiers (no longer using List)",
         "Remove the `+` nav bar button from toolbar",
         "Remove the filter toggle and layout toggle icons from the top bar",
-        "Replace NavigationStack toolbar header with custom inline header: `BookiWordmark` image (leading, height 20) + `SyncStatusIndicator` (trailing) \u2014 matching AnalyticsDashboardView toolbar pattern",
+        "Replace NavigationStack toolbar header with custom inline header: `BookiWordmark` image (leading, height 20) + `SyncStatusIndicator` (trailing) — matching AnalyticsDashboardView toolbar pattern",
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Reference AnalyticsDashboardView.swift for the inline header toolbar pattern"
     },
     {
@@ -128,15 +128,15 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Use TimeInterval math for countdown: (expiresAt.timeIntervalSince(Date())) / 3600 for hours, remainder for minutes"
     },
     {
       "id": "US-008",
-      "title": "Invite Member sheet \u2014 Generate Link section",
+      "title": "Invite Member sheet — Generate Link section",
       "description": "As a bookie, I want to generate an invite link with one tap so I can share it however I want.",
       "acceptanceCriteria": [
-        "Add 'Invite Member' button at the bottom of the member list in PlayersListView \u2014 full-width, `Theme.accent` background, white/black text, rounded corners",
+        "Add 'Invite Member' button at the bottom of the member list in PlayersListView — full-width, `Theme.accent` background, white/black text, rounded corners",
         "Tapping opens a `.sheet` with `presentationBackground(Theme.background)`",
         "Sheet has a 'Generate Link' button that calls `create_invite` edge function via `EdgeFunctionService`",
         "After generation: displays invite code (large, 28pt monospaced font), 'Expires in 24 hours' subtitle (Theme.textSecondary)",
@@ -148,24 +148,24 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Use EdgeFunctionService for the API call. The invite URL format is booki://invite/{code}"
     },
     {
       "id": "US-009",
-      "title": "Invite Member sheet \u2014 Email option",
+      "title": "Invite Member sheet — Email option",
       "description": "As a bookie, I want to send an invite to a specific email so the member gets it directly.",
       "acceptanceCriteria": [
         "Add 'Send via Email' section below the Generate Link section in the invite sheet",
         "Single email text field: `Theme.elevatedBackground` background, placeholder 'Enter email address', `keyboardType(.emailAddress)`, `textContentType(.emailAddress)`",
         "'Send Invite' button: calls `create_invite` with the email, then opens iOS Mail compose sheet",
-        "Mail compose uses `MFMailComposeViewController` wrapped in `UIViewControllerRepresentable` \u2014 pre-filled with: To (entered email), Subject ('You've been invited to join Booki'), Body ('You've been invited to join [bookie name]'s group on Booki.\\n\\nOpen this link to get started: booki://invite/{code}\\n\\nThis invite expires in 24 hours.')",
-        "If `MFMailComposeViewController.canSendMail()` is false: copy link to clipboard + show alert 'Link copied! Mail is not configured \u2014 share the link manually.'",
+        "Mail compose uses `MFMailComposeViewController` wrapped in `UIViewControllerRepresentable` — pre-filled with: To (entered email), Subject ('You've been invited to join Booki'), Body ('You've been invited to join [bookie name]'s group on Booki.\\n\\nOpen this link to get started: booki://invite/{code}\\n\\nThis invite expires in 24 hours.')",
+        "If `MFMailComposeViewController.canSendMail()` is false: copy link to clipboard + show alert 'Link copied! Mail is not configured — share the link manually.'",
         "After sending or copying: show confirmation text 'Invite sent!' with checkmark icon",
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Import MessageUI for MFMailComposeViewController. Bookie name from @Query bookies.first?.name"
     },
     {
@@ -173,7 +173,7 @@
       "title": "Register booki:// URL scheme for deep linking",
       "description": "As a developer, I need the app to handle booki://invite/{code} URLs so invite links open directly in the app.",
       "acceptanceCriteria": [
-        "Register `booki` URL scheme in Info.plist under CFBundleURLTypes \u2192 CFBundleURLSchemes",
+        "Register `booki` URL scheme in Info.plist under CFBundleURLTypes → CFBundleURLSchemes",
         "Add `.onOpenURL` modifier on root view in app entry point (BookiApp.swift or ContentView.swift)",
         "Parse invite code from URL: check scheme is 'booki', host is 'invite', extract first path component as code",
         "Store parsed invite code in a published/state property that triggers navigation to InviteClaimView",
@@ -183,7 +183,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "URL format: booki://invite/{CODE}. Use URLComponents to parse."
     },
     {
@@ -194,7 +194,7 @@
         "New `InviteClaimView.swift` in `Booki/Views/`",
         "Accepts optional `initialCode: String?` parameter (from deep link) or allows manual code entry",
         "Manual code entry: text field with 8-char limit, auto-uppercase, filters non-alphanumeric (same pattern as existing PlayerClaimView)",
-        "On code submit/deep link: validates code against Supabase `invites` table (query where invite_code matches, not expired, not claimed) \u2014 fetches bookie name via bookie_id join",
+        "On code submit/deep link: validates code against Supabase `invites` table (query where invite_code matches, not expired, not claimed) — fetches bookie name via bookie_id join",
         "Valid code shows: Booki logo (BookiLogo image), 'You've been invited to join **[Bookie Name]**'s group' text, two CTAs",
         "Primary CTA: 'Get Started' button (Theme.accent background, full-width)",
         "Secondary CTA: 'Already have an account?' text link (Theme.accent foreground)",
@@ -203,12 +203,12 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "Reference existing PlayerClaimView for code entry formatting patterns and Supabase validation approach"
     },
     {
       "id": "US-012",
-      "title": "Invite claim \u2014 new user signup path",
+      "title": "Invite claim — new user signup path",
       "description": "As a new user accepting an invite, I want to create an account and join the bookie's group.",
       "acceptanceCriteria": [
         "'Get Started' from InviteClaimView navigates to account creation screen within same view (step-based navigation)",
@@ -216,18 +216,18 @@
         "On submit: calls `supabase.auth.signUp(email: email, password: password)`",
         "On signup success: calls `claim_invite` edge function via EdgeFunctionService with invite_code + auth_user_id from signup response",
         "On claim success: triggers agreement acceptance flow (existing `submitPlayerAgreement()` / AgreementService pattern)",
-        "After agreement: calls `completePlayerClaimFlow` pattern \u2014 signs in fresh, app routes to player main view via AuthManager",
-        "Error handling: duplicate email, weak password, network failure \u2014 shown as inline error text below form (Theme.danger)",
+        "After agreement: calls `completePlayerClaimFlow` pattern — signs in fresh, app routes to player main view via AuthManager",
+        "Error handling: duplicate email, weak password, network failure — shown as inline error text below form (Theme.danger)",
         "Loading state on submit button while API calls are in-flight",
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "Follow existing PlayerClaimView step 2 pattern for signup + claim sequence. Use AuthManager for session management."
     },
     {
       "id": "US-013",
-      "title": "Invite claim \u2014 existing user login path",
+      "title": "Invite claim — existing user login path",
       "description": "As an existing user, I want to log in and join a bookie's group using my invite.",
       "acceptanceCriteria": [
         "'Already have an account?' from InviteClaimView navigates to login screen (email + password fields, dark themed)",
@@ -239,7 +239,7 @@
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "The 409 error case is the key differentiator from the new user path. claim_invite handles the check server-side."
     },
     {
@@ -252,14 +252,14 @@
         "Remove all `@State` properties and `.sheet` modifiers that triggered the old add player sheets",
         "Remove old `PlayerClaimView.swift` file entirely (replaced by InviteClaimView)",
         "Update `AuthGateView.swift`: change `.playerClaim` case to present `InviteClaimView` instead of `PlayerClaimView`",
-        "Keep `PlayerService.addPlayer()` method \u2014 it's used programmatically by claim_invite flow",
+        "Keep `PlayerService.addPlayer()` method — it's used programmatically by claim_invite flow",
         "Keep `InviteCodeService` methods that are still referenced elsewhere",
         "No dead code or unused imports remaining in modified files",
         "Typecheck passes"
       ],
       "priority": 14,
-      "passes": false,
-      "notes": "Be careful not to remove PlayerService.addPlayer() \u2014 only the UI sheets are removed. The claim flow creates players server-side."
+      "passes": true,
+      "notes": "Be careful not to remove PlayerService.addPlayer() — only the UI sheets are removed. The claim flow creates players server-side."
     }
   ]
 }
