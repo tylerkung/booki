@@ -10,7 +10,7 @@ import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 /**
  * Valid entity types for audit events.
  */
-export type EntityType = 'bet' | 'ledger_entry' | 'player' | 'event';
+export type EntityType = 'bet' | 'ledger_entry' | 'player' | 'event' | 'invite';
 
 /**
  * Valid action types for audit events.
@@ -29,7 +29,9 @@ export type ActionType =
   | 'odds_refreshed_auto'
   | 'score_refreshed_auto'
   | 'event_finalized_auto'
-  | 'auto_refresh_failed';
+  | 'auto_refresh_failed'
+  | 'invite_created'
+  | 'invite_claimed';
 
 /**
  * Parameters for emitting an audit event.
