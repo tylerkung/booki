@@ -131,3 +131,23 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - SwiftUI `ShareLink` is simpler than wrapping `UIActivityViewController` — use it when sharing a plain string
   - Sheet state machines (enum with associated values) keep view logic clean vs. multiple @State booleans
 ---
+
+## 2026-02-23 - US-009
+- Added "Send via Email" section below Generate Link in InviteMemberSheet
+- Email text field with `.keyboardType(.emailAddress)`, `.textContentType(.emailAddress)`
+- "Send Invite" button calls `create_invite` edge function with email parameter
+- After generation: opens `MFMailComposeViewController` via `MailComposeView` (UIViewControllerRepresentable wrapper)
+- Mail pre-filled with: recipient (entered email), subject, body including bookie name and invite link
+- If `canSendMail()` is false: copies link to clipboard with haptic + shows fallback alert
+- After mail dismiss or fallback: shows "Invite sent!" confirmation state (`emailSent` enum case)
+- Created `MailComposeView` struct wrapping `MFMailComposeViewController` with Coordinator pattern
+- Added `@Query private var bookies: [Bookie]` for bookie name in email body
+- Bookie name fetched via `bookies.first?.name ?? "a group"` in `mailBody(code:)` helper
+- Files changed: Booki/Views/PlayersListView.swift
+- **Learnings for future iterations:**
+  - `MFMailComposeViewController` requires `import MessageUI` — wrap in UIViewControllerRepresentable with Coordinator as delegate
+  - `MFMailComposeViewController.canSendMail()` is a static check — always check before presenting, provide clipboard fallback
+  - Don't use `let` assignments inside `@ViewBuilder` closures — extract to helper functions instead
+  - Email section in idle state uses separate state tracking (`emailInviteCode`, `showingMailCompose`) rather than mixing with the link generation state machine
+  - `create_invite` edge function accepts optional `email` param in the request body
+---

@@ -165,7 +165,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Import MessageUI for MFMailComposeViewController. Bookie name from @Query bookies.first?.name"
     },
     {
