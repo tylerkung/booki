@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 23, 2026 - Batch singles submission, invite flow polish, nav bar standardization*
+*Last updated: February 23, 2026 - Dashboard skeleton loader during initial sync*

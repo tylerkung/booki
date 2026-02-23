@@ -15,6 +15,7 @@ struct AnalyticsDashboardView: View {
     @State private var activeFilter = "All"
     @State private var scrollToPlayers = false
     @State private var selectedRange: String = "ALL"
+    @State private var showSkeleton = true
 
     private static let timeRanges = ["1W", "1M", "3M", "1Y", "ALL"]
 
@@ -136,86 +137,177 @@ struct AnalyticsDashboardView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollViewReader { scrollProxy in
-                ScrollView {
-                    VStack(spacing: 16) {
-                        if bookieTier == .chart {
-                            // Chart tier: full earnings header + chart + time tabs
-                            earningsHeader
-                                .padding(.horizontal, 16)
-
-                            EarningsChart(
-                                bets: bets,
-                                days: selectedDays,
-                                lineColor: lifetimePL >= 0 ? Theme.accent : Theme.danger
-                            )
-                                .padding(.horizontal, 16)
-                                .animation(.easeInOut(duration: 0.3), value: selectedRange)
-
-                            timeRangeTabs
-                                .padding(.horizontal, 16)
-                        } else {
-                            // Default tier: full-width TOTAL PNL card
-                            totalPNLCard
-                                .padding(.horizontal, 16)
-                        }
-
-                        if players.filter({ $0.status == .active }).isEmpty {
-                            emptyState
-                        } else {
-                            // Summary Cards 2x2
-                            summaryCardsGrid
-                                .padding(.horizontal, 16)
-
-                            // Last updated
-                            Text("Last updated \(lastUpdated.formatted(date: .omitted, time: .shortened))")
-                                .font(Theme.caption)
-                                .foregroundStyle(Theme.textMuted)
-                                .frame(maxWidth: .infinity, alignment: .trailing)
-                                .padding(.horizontal, 16)
-
-                            // MARK: - Player List
-                            playerListSection
-                                .padding(.horizontal, 16)
-                                .id("playerList")
-                        }
-                    }
-                    .padding(.vertical, 16)
-                }
-                .onChange(of: scrollToPlayers) {
-                    if scrollToPlayers {
-                        withAnimation {
-                            scrollProxy.scrollTo("playerList", anchor: .top)
-                        }
-                        scrollToPlayers = false
-                    }
-                }
-            }
-            .scrollContentBackground(.hidden)
-            .background(Theme.background)
-            .navigationTitle("Dashboard")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: PlayerAnalyticsSummary.self) { summary in
-                PlayerAnalyticsDetailView(
-                    summary: summary,
-                    playerBets: bets.filter { $0.player?.id == summary.player.id },
-                    playerLedgerEntries: ledgerEntries.filter { $0.player?.id == summary.player.id }
+            mainBody
+                .skeletonObservers(
+                    showSkeleton: $showSkeleton,
+                    betsCount: bets.count,
+                    onDataChanged: { lastUpdated = Date() }
                 )
-            }
-            .onAppear { lastUpdated = Date() }
-            .onChange(of: bets.count) { lastUpdated = Date() }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Image("BookiWordmark")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 20)
+        }
+    }
+
+    private var mainBody: some View {
+        Group {
+            if showSkeleton {
+                ScrollView {
+                    skeletonContent
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    SyncStatusIndicator(syncService: syncService)
+            } else {
+                dashboardContent
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
+        .navigationTitle("Dashboard")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Image("BookiWordmark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 20)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                SyncStatusIndicator(syncService: syncService)
+            }
+        }
+        .navigationDestination(for: PlayerAnalyticsSummary.self) { summary in
+            PlayerAnalyticsDetailView(
+                summary: summary,
+                playerBets: bets.filter { $0.player?.id == summary.player.id },
+                playerLedgerEntries: ledgerEntries.filter { $0.player?.id == summary.player.id }
+            )
+        }
+    }
+
+    // MARK: - Dashboard Content
+
+    private var dashboardContent: some View {
+        ScrollViewReader { scrollProxy in
+            ScrollView {
+                VStack(spacing: 16) {
+                    if bookieTier == .chart {
+                        earningsHeader
+                            .padding(.horizontal, 16)
+
+                        EarningsChart(
+                            bets: bets,
+                            days: selectedDays,
+                            lineColor: lifetimePL >= 0 ? Theme.accent : Theme.danger
+                        )
+                            .padding(.horizontal, 16)
+                            .animation(.easeInOut(duration: 0.3), value: selectedRange)
+
+                        timeRangeTabs
+                            .padding(.horizontal, 16)
+                    } else {
+                        totalPNLCard
+                            .padding(.horizontal, 16)
+                    }
+
+                    if players.filter({ $0.status == .active }).isEmpty {
+                        emptyState
+                    } else {
+                        summaryCardsGrid
+                            .padding(.horizontal, 16)
+
+                        Text("Last updated \(lastUpdated.formatted(date: .omitted, time: .shortened))")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textMuted)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .padding(.horizontal, 16)
+
+                        playerListSection
+                            .padding(.horizontal, 16)
+                            .id("playerList")
+                    }
+                }
+                .padding(.vertical, 16)
+            }
+            .onChange(of: scrollToPlayers) {
+                if scrollToPlayers {
+                    withAnimation {
+                        scrollProxy.scrollTo("playerList", anchor: .top)
+                    }
+                    scrollToPlayers = false
                 }
             }
         }
+        .onAppear { lastUpdated = Date() }
+    }
+
+    // MARK: - Skeleton Content
+
+    private var skeletonContent: some View {
+        VStack(spacing: 16) {
+            // PNL area
+            VStack(alignment: .leading, spacing: 8) {
+                SkeletonBlock(width: 180, height: 34)
+                SkeletonBlock(width: 120, height: 14)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+
+            // Summary cards 2x2
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12)
+            ], spacing: 12) {
+                ForEach(["NET EXPOSURE", "PENDING PICKS", "TOP RISK", "OUTSTANDING"], id: \.self) { label in
+                    skeletonSummaryCard(label: label)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            // Members section
+            VStack(alignment: .leading, spacing: 12) {
+                Text("MEMBERS")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .tracking(1.0)
+                    .padding(.leading, 4)
+
+                ForEach(0..<3, id: \.self) { _ in
+                    skeletonPlayerRow
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .padding(.vertical, 16)
+    }
+
+    private func skeletonSummaryCard(label: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .tracking(0.5)
+
+            SkeletonBlock(width: 80, height: 22)
+
+            SkeletonBlock(width: 60, height: 12)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(14)
+        .cardStyle()
+    }
+
+    private var skeletonPlayerRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                SkeletonBlock(width: 120, height: 18)
+                Spacer()
+                SkeletonBlock(width: 56, height: 22, cornerRadius: 11)
+            }
+            SkeletonBlock(width: 160, height: 14)
+            HStack(spacing: 16) {
+                SkeletonBlock(width: 90, height: 12)
+                SkeletonBlock(width: 80, height: 12)
+            }
+        }
+        .padding(14)
+        .background(Theme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
     }
 
     // MARK: - Earnings Header
@@ -707,6 +799,53 @@ private struct PlayerAnalyticsRow: View {
 
     private func abs(_ value: Decimal) -> Decimal {
         value < 0 ? -value : value
+    }
+}
+
+// MARK: - Skeleton Observers Modifier
+
+private struct SkeletonObserversModifier: ViewModifier {
+    @Binding var showSkeleton: Bool
+    let betsCount: Int
+    let onDataChanged: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .task {
+                // SwiftData already has cached data — skip skeleton
+                if betsCount > 0 {
+                    showSkeleton = false
+                    return
+                }
+                // Max skeleton duration: 8 seconds then give up
+                try? await Task.sleep(for: .seconds(8))
+                if showSkeleton {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showSkeleton = false
+                    }
+                }
+            }
+            .onChange(of: betsCount) {
+                onDataChanged()
+                guard showSkeleton, betsCount > 0 else { return }
+                withAnimation(.easeOut(duration: 0.3)) {
+                    showSkeleton = false
+                }
+            }
+    }
+}
+
+extension View {
+    func skeletonObservers(
+        showSkeleton: Binding<Bool>,
+        betsCount: Int,
+        onDataChanged: @escaping () -> Void
+    ) -> some View {
+        modifier(SkeletonObserversModifier(
+            showSkeleton: showSkeleton,
+            betsCount: betsCount,
+            onDataChanged: onDataChanged
+        ))
     }
 }
 
