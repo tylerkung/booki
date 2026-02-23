@@ -66,3 +66,68 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - Player name derivation: split email at '@' and use prefix — fallback to 'Member' if no email
   - invite version increment on claim helps with sync conflict resolution
 ---
+
+## 2026-02-23 - US-005
+- Added invite sync to SyncService — download invites from Supabase and upsert into local SwiftData
+- Added `InviteRecord` Codable struct to SyncModels.swift for decoding Supabase responses
+- Added `invites` case to `SyncableTable` enum with display name
+- Added `downloadInvites()` method — fetches invites where `bookie_id` matches current bookie
+- Added `upsertInvite()` method — matches on `id`, uses `version` for conflict resolution (invites table has no `updated_at` column)
+- Added `Invite.self` to `clearLocalData()` to prevent cross-account data leakage
+- Added `invites` to both download and upload ordered tables arrays (upload is a no-op since invites are created server-side via edge function)
+- Files changed: Booki/Services/SyncService.swift, Booki/Services/SyncModels.swift
+- **Learnings for future iterations:**
+  - Invites table has no `updated_at` column — use `version` field for conflict resolution instead of `updatedAt > lastSyncedAt` pattern
+  - Invites are server-authoritative (created via `create_invite` edge function) — no client upload needed, just download
+  - No pagination needed for invites (unlikely to exceed page limit per bookie)
+  - When adding new models to sync: update SyncableTable enum, clearLocalData, downloadAll ordered tables, downloadTable switch, uploadTableChanges switch, uploadPendingChanges ordered tables
+---
+
+## 2026-02-23 - US-006
+- Restyled PlayersListView: replaced `List { Section { ... } }` with `ScrollView { VStack(spacing: 12) }` layout
+- Each member row now uses `Theme.cardBackground` with `Theme.cornerRadiusSmall` rounded corners, full-width card style
+- Removed `CollectionFilter` enum, filter toggle, layout toggle icons, and `+` nav bar button from toolbar
+- Replaced toolbar with custom inline header: `BookiWordmark` image (leading, height 20) + `SyncStatusIndicator` (trailing) — matching AnalyticsDashboardView toolbar pattern
+- Removed `.listRowBackground`, `.scrollContentBackground(.hidden)`, `.navigationTitle("Members")` modifiers (no longer using List)
+- Added `@Environment(SyncService.self)` for SyncStatusIndicator
+- Kept `AddPlayerSheet` and `AddPlayerInterstitialSheet` structs in file (US-014 will clean those up)
+- Files changed: Booki/Views/PlayersListView.swift
+- **Learnings for future iterations:**
+  - AnalyticsDashboardView toolbar pattern: `ToolbarItem(.topBarLeading)` with `Image("BookiWordmark")` height 20, `ToolbarItem(.topBarTrailing)` with `SyncStatusIndicator`
+  - When converting List to ScrollView: remove `.scrollContentBackground(.hidden)`, `.listRowBackground`, use `.background(Theme.background)` directly on ScrollView
+  - `NavigationLink` inside ScrollView/VStack needs `.buttonStyle(.plain)` to avoid default highlight styling
+  - Unreferenced structs in the same file still compile fine — safe to leave for later cleanup stories
+---
+
+## 2026-02-23 - US-007
+- Added Pending Invites section to PlayersListView above the members list
+- Added `@Query private var invites: [Invite]` and computed `pendingInvites` (where `claimedAt == nil`)
+- Created `PendingInviteRow` struct: shows email or "Link invite" label, monospaced invite code, expiration countdown ("Expires in Xh Ym" or "Expired" in Theme.danger)
+- Muted visual treatment: `Theme.elevatedBackground` background, `Theme.textSecondary` text
+- Context menu delete gesture (`.contextMenu` with destructive delete button) since `.swipeActions` only works in `List`
+- "PENDING INVITES" section header with `Theme.caption`, `Theme.textSecondary`, `tracking(1.0)`
+- Updated empty state to show "No Members" only when both members AND invites are empty
+- Updated Preview model container to include `Invite.self`
+- Files changed: Booki/Views/PlayersListView.swift
+- **Learnings for future iterations:**
+  - `.swipeActions` modifier only works inside `List` — for ScrollView/VStack layouts, use `.contextMenu` with destructive button as alternative
+  - Expiration countdown: use `expiresAt.timeIntervalSince(Date())` then divide by 3600 for hours, mod 3600/60 for minutes
+  - Pending invites include both active and expired (UI shows "Expired" label), only exclude claimed invites
+---
+
+## 2026-02-23 - US-008
+- Added "Invite Member" button at the bottom of PlayersListView — full-width, Theme.accent background, dark text, rounded corners
+- Created `InviteMemberSheet` with state machine (idle → loading → generated → error)
+- "Generate Link" button calls `create_invite` edge function via `EdgeFunctionService.shared.callFunction`
+- After generation: displays invite code in large 28pt monospaced font, "Expires in 24 hours" subtitle
+- Copy button: copies `booki://invite/{code}` to `UIPasteboard.general.string` with haptic feedback
+- Share button: uses SwiftUI `ShareLink` with the invite URL string
+- "Done" button to dismiss, loading spinner while in-flight, error state with "Try Again" button
+- Created `CreateInviteResponse` Decodable struct with snake_case CodingKeys for edge function response
+- Files changed: Booki/Views/PlayersListView.swift
+- **Learnings for future iterations:**
+  - `EdgeFunctionService.callFunction` is generic — define a Decodable response struct with snake_case CodingKeys for each edge function
+  - `create_invite` requires `idempotency_key` in the request body — generate with `UUID().uuidString.lowercased()`
+  - SwiftUI `ShareLink` is simpler than wrapping `UIActivityViewController` — use it when sharing a plain string
+  - Sheet state machines (enum with associated values) keep view logic clean vs. multiple @State booleans
+---

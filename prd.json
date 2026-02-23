@@ -91,7 +91,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Follow existing SyncService patterns for Player/Bet/LedgerEntry downloads"
     },
     {
@@ -110,7 +110,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Reference AnalyticsDashboardView.swift for the inline header toolbar pattern"
     },
     {
@@ -128,7 +128,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Use TimeInterval math for countdown: (expiresAt.timeIntervalSince(Date())) / 3600 for hours, remainder for minutes"
     },
     {
@@ -148,7 +148,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Use EdgeFunctionService for the API call. The invite URL format is booki://invite/{code}"
     },
     {
