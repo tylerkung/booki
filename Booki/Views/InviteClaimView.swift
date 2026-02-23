@@ -57,6 +57,7 @@ struct InviteClaimView: View {
         case error(message: String)
         case newUserSignup(bookieName: String, inviteCode: String)
         case existingUserLogin(bookieName: String, inviteCode: String)
+        case confirmJoin(bookieName: String, inviteCode: String)
     }
 
     // MARK: - Environment
@@ -85,6 +86,16 @@ struct InviteClaimView: View {
     @State private var signupConfirmPassword: String = ""
     @State private var isSigningUp: Bool = false
     @State private var signupError: String?
+
+    // Login form state (existing user path)
+    @State private var loginEmail: String = ""
+    @State private var loginPassword: String = ""
+    @State private var isLoggingIn: Bool = false
+    @State private var loginError: String?
+    @State private var showAlreadyInGroupError: Bool = false
+    @State private var loginSessionAccessToken: String = ""
+    @State private var loginSessionUserId: String = ""
+    @State private var isClaimingInvite: Bool = false
 
     // Agreement state
     @State private var showAgreement: Bool = false
@@ -136,10 +147,10 @@ struct InviteClaimView: View {
                         errorContent(message: message)
                     case .newUserSignup(let bookieName, let code):
                         newUserSignupContent(bookieName: bookieName, inviteCode: code)
-                    case .existingUserLogin:
-                        // Placeholder — US-013 will implement
-                        Text("Existing user login")
-                            .foregroundStyle(Theme.textPrimary)
+                    case .existingUserLogin(let bookieName, let code):
+                        existingUserLoginContent(bookieName: bookieName, inviteCode: code)
+                    case .confirmJoin(let bookieName, let code):
+                        confirmJoinContent(bookieName: bookieName, inviteCode: code)
                     }
 
                     // Back to login link (always visible)
@@ -482,6 +493,337 @@ struct InviteClaimView: View {
                 }
                 .font(Theme.subheadline)
                 .foregroundStyle(Theme.accent)
+            }
+        }
+    }
+
+    // MARK: - Existing User Login
+
+    private func existingUserLoginContent(bookieName: String, inviteCode: String) -> some View {
+        VStack(spacing: 32) {
+            if showAlreadyInGroupError {
+                alreadyInGroupContent(bookieName: bookieName, inviteCode: inviteCode)
+            } else {
+                loginFormContent(bookieName: bookieName, inviteCode: inviteCode)
+            }
+        }
+    }
+
+    private func loginFormContent(bookieName: String, inviteCode: String) -> some View {
+        VStack(spacing: 32) {
+            headerView(
+                title: "Sign In",
+                subtitle: "Log in to join \(bookieName)'s group"
+            )
+
+            VStack(spacing: 16) {
+                // Email field
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Email")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    TextField("you@example.com", text: $loginEmail)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .padding()
+                        .background(Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(Theme.textPrimary)
+                }
+
+                // Password field
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Password")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    SecureField("Enter password", text: $loginPassword)
+                        .textContentType(.password)
+                        .padding()
+                        .background(Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(Theme.textPrimary)
+                }
+
+                // Error message
+                if let error = loginError {
+                    Text(error)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.danger)
+                        .multilineTextAlignment(.center)
+                }
+            }
+
+            // Submit button
+            Button {
+                loginAndClaimInvite(bookieName: bookieName, inviteCode: inviteCode)
+            } label: {
+                HStack(spacing: 8) {
+                    if isLoggingIn {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
+                            .scaleEffect(0.8)
+                    }
+                    Text(isLoggingIn ? "Signing In..." : "Sign In")
+                        .font(Theme.headline)
+                        .fontWeight(.bold)
+                        .textCase(.uppercase)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(
+                    Group {
+                        if isLoginFormValid && !isLoggingIn {
+                            Theme.buttonGradient
+                        } else {
+                            LinearGradient(colors: [Theme.elevatedBackground], startPoint: .leading, endPoint: .trailing)
+                        }
+                    }
+                )
+                .foregroundStyle(isLoginFormValid && !isLoggingIn ? Theme.background : Theme.textMuted)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .disabled(!isLoginFormValid || isLoggingIn)
+
+            // Back to landing
+            Button {
+                loginError = nil
+                step = .landing(bookieName: bookieName, inviteCode: inviteCode)
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.left")
+                    Text("Back")
+                }
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.accent)
+            }
+        }
+    }
+
+    private func alreadyInGroupContent(bookieName: String, inviteCode: String) -> some View {
+        VStack(spacing: 32) {
+            headerView(
+                title: "Unable to Join",
+                subtitle: nil
+            )
+
+            VStack(spacing: 16) {
+                Image(systemName: "person.2.slash")
+                    .font(Theme.font(size: 40))
+                    .foregroundStyle(Theme.danger)
+
+                Text("You're already a member of another organizer's group. You cannot join multiple groups.")
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            // Back button
+            Button {
+                showAlreadyInGroupError = false
+                loginError = nil
+                loginEmail = ""
+                loginPassword = ""
+                step = .landing(bookieName: bookieName, inviteCode: inviteCode)
+            } label: {
+                Text("Back")
+                    .font(Theme.headline)
+                    .fontWeight(.bold)
+                    .textCase(.uppercase)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Theme.buttonGradient)
+                    .foregroundStyle(Theme.background)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        }
+    }
+
+    private func confirmJoinContent(bookieName: String, inviteCode: String) -> some View {
+        VStack(spacing: 32) {
+            // Logo
+            Image("BookiLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 180)
+                .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
+
+            VStack(spacing: 12) {
+                Text("Join \(bookieName)'s group?")
+                    .font(Theme.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Theme.textPrimary)
+                    .multilineTextAlignment(.center)
+
+                Text("You'll be added as a member of this organizer's group.")
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(spacing: 16) {
+                // Confirm button
+                Button {
+                    claimInviteAfterLogin(bookieName: bookieName, inviteCode: inviteCode)
+                } label: {
+                    HStack(spacing: 8) {
+                        if isClaimingInvite {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
+                                .scaleEffect(0.8)
+                        }
+                        Text(isClaimingInvite ? "Joining..." : "Confirm")
+                            .font(Theme.headline)
+                            .fontWeight(.bold)
+                            .textCase(.uppercase)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(
+                        Group {
+                            if isClaimingInvite {
+                                LinearGradient(colors: [Theme.elevatedBackground], startPoint: .leading, endPoint: .trailing)
+                            } else {
+                                Theme.buttonGradient
+                            }
+                        }
+                    )
+                    .foregroundStyle(isClaimingInvite ? Theme.textMuted : Theme.background)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(isClaimingInvite)
+
+                // Cancel button
+                Button {
+                    // Sign out and return to landing
+                    Task {
+                        let supabase = SupabaseClientManager.shared.client
+                        try? await supabase.auth.signOut()
+                        await MainActor.run {
+                            authManager.isClaimingPlayerAccount = false
+                            loginEmail = ""
+                            loginPassword = ""
+                            loginSessionAccessToken = ""
+                            loginSessionUserId = ""
+                            step = .landing(bookieName: bookieName, inviteCode: inviteCode)
+                        }
+                    }
+                } label: {
+                    Text("Cancel")
+                        .font(Theme.subheadline)
+                        .foregroundStyle(Theme.accent)
+                }
+                .disabled(isClaimingInvite)
+            }
+        }
+    }
+
+    private var isLoginFormValid: Bool {
+        let trimmedEmail = loginEmail.trimmingCharacters(in: .whitespaces)
+        return !trimmedEmail.isEmpty
+            && trimmedEmail.contains("@")
+            && !loginPassword.isEmpty
+    }
+
+    private func loginAndClaimInvite(bookieName: String, inviteCode: String) {
+        loginError = nil
+        isLoggingIn = true
+
+        Task {
+            do {
+                // Prevent auth state listener from creating a bookie record
+                await MainActor.run {
+                    authManager.isClaimingPlayerAccount = true
+                }
+
+                let supabase = SupabaseClientManager.shared.client
+                let session = try await supabase.auth.signIn(
+                    email: loginEmail.trimmingCharacters(in: .whitespaces),
+                    password: loginPassword
+                )
+
+                // Store session info for claim step
+                await MainActor.run {
+                    loginSessionAccessToken = session.accessToken
+                    loginSessionUserId = session.user.id.uuidString.lowercased()
+                    isLoggingIn = false
+                    step = .confirmJoin(bookieName: bookieName, inviteCode: inviteCode)
+                }
+            } catch {
+                print("DEBUG: Error logging in for invite claim: \(error)")
+                await MainActor.run {
+                    authManager.isClaimingPlayerAccount = false
+                    isLoggingIn = false
+                    let errorMessage = error.localizedDescription
+                    if errorMessage.lowercased().contains("invalid login") || errorMessage.lowercased().contains("invalid credentials") {
+                        loginError = "Invalid email or password. Please try again."
+                    } else {
+                        loginError = "Something went wrong. Please check your connection and try again."
+                    }
+                }
+            }
+        }
+    }
+
+    private func claimInviteAfterLogin(bookieName: String, inviteCode: String) {
+        isClaimingInvite = true
+
+        Task {
+            do {
+                let baseURL = SupabaseConfig.url
+                guard let claimURL = URL(string: "\(baseURL.absoluteString)/functions/v1/claim_invite") else {
+                    throw NSError(domain: "InviteClaimView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+                }
+                var claimRequest = URLRequest(url: claimURL)
+                claimRequest.httpMethod = "POST"
+                claimRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                claimRequest.setValue("Bearer \(loginSessionAccessToken)", forHTTPHeaderField: "Authorization")
+                let claimBody: [String: String] = [
+                    "invite_code": inviteCode,
+                    "auth_user_id": loginSessionUserId
+                ]
+                claimRequest.httpBody = try JSONEncoder().encode(claimBody)
+                let (claimData, claimResponse) = try await URLSession.shared.data(for: claimRequest)
+
+                if let httpResp = claimResponse as? HTTPURLResponse {
+                    if httpResp.statusCode == 409 {
+                        // Already in another group — sign out and show error
+                        let supabase = SupabaseClientManager.shared.client
+                        try? await supabase.auth.signOut()
+                        await MainActor.run {
+                            authManager.isClaimingPlayerAccount = false
+                            isClaimingInvite = false
+                            showAlreadyInGroupError = true
+                            step = .existingUserLogin(bookieName: bookieName, inviteCode: inviteCode)
+                        }
+                        return
+                    } else if !(200...299).contains(httpResp.statusCode) {
+                        let msg = String(data: claimData, encoding: .utf8) ?? "Unknown error"
+                        throw NSError(domain: "InviteClaimView", code: httpResp.statusCode, userInfo: [NSLocalizedDescriptionKey: "Failed to claim invite: \(msg)"])
+                    }
+                }
+
+                // Claim succeeded — use completePlayerClaimFlow to set up auth state
+                await MainActor.run {
+                    isClaimingInvite = false
+                }
+                await authManager.completePlayerClaimFlow(
+                    email: loginEmail.trimmingCharacters(in: .whitespaces),
+                    password: loginPassword
+                )
+            } catch {
+                print("DEBUG: Error claiming invite after login: \(error)")
+                let supabase = SupabaseClientManager.shared.client
+                try? await supabase.auth.signOut()
+                await MainActor.run {
+                    authManager.isClaimingPlayerAccount = false
+                    isClaimingInvite = false
+                    loginError = "Something went wrong. Please check your connection and try again."
+                    step = .existingUserLogin(bookieName: bookieName, inviteCode: inviteCode)
+                }
             }
         }
     }
