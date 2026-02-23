@@ -491,6 +491,33 @@ struct AcceptancePolicyUpsert: Codable {
     }
 }
 
+// MARK: - Invite Sync Models
+
+/// Response type for invite records from Supabase
+struct InviteRecord: Codable, Identifiable {
+    let id: UUID
+    let bookieId: UUID
+    let inviteCode: String
+    let email: String?
+    let createdAt: Date
+    let expiresAt: Date
+    let claimedAt: Date?
+    let claimedByPlayerId: UUID?
+    let version: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case bookieId = "bookie_id"
+        case inviteCode = "invite_code"
+        case email
+        case createdAt = "created_at"
+        case expiresAt = "expires_at"
+        case claimedAt = "claimed_at"
+        case claimedByPlayerId = "claimed_by_player_id"
+        case version
+    }
+}
+
 // MARK: - Settlement Period Sync Models (not in DB schema yet, placeholder)
 
 /// Response type for settlement period records from Supabase

@@ -59,6 +59,7 @@ enum SyncableTable: String, CaseIterable {
     case acceptancePolicies = "acceptance_policies"
     case settlementPeriods = "settlement_periods"
     case playerSettlements = "player_settlements"
+    case invites
 
     /// Display name for the table
     var displayName: String {
@@ -77,6 +78,8 @@ enum SyncableTable: String, CaseIterable {
             return "Settlement Periods"
         case .playerSettlements:
             return "Player Settlements"
+        case .invites:
+            return "Invites"
         }
     }
 }
@@ -171,6 +174,7 @@ final class SyncService {
             try context.delete(model: PlayerSettlement.self)
             try context.delete(model: UserAgreement.self)
             try context.delete(model: AuditEvent.self)
+            try context.delete(model: Invite.self)
             try context.delete(model: Bookie.self)
             try context.save()
         } catch {
@@ -376,6 +380,7 @@ final class SyncService {
         // Download in dependency order: players before bets/ledger entries
         let orderedTables: [SyncableTable] = [
             .players,
+            .invites,
             .events,
             .acceptancePolicies,
             .bets,
@@ -482,6 +487,8 @@ final class SyncService {
         switch table {
         case .players:
             try await downloadPlayers(bookieId: bookieId, context: context)
+        case .invites:
+            try await downloadInvites(bookieId: bookieId, context: context)
         case .events:
             try await downloadEvents(bookieId: bookieId, context: context)
             // Also download markets (they depend on events)
@@ -710,6 +717,23 @@ final class SyncService {
 
         for record in records {
             try upsertAcceptancePolicy(record, bookieId: bookieId, context: context)
+        }
+
+        try context.save()
+    }
+
+    /// Download invites from Supabase and upsert into SwiftData
+    private func downloadInvites(bookieId: UUID, context: ModelContext) async throws {
+        let records: [InviteRecord] = try await supabase
+            .from("invites")
+            .select()
+            .eq("bookie_id", value: bookieId.uuidString)
+            .order("created_at")
+            .execute()
+            .value
+
+        for record in records {
+            try upsertInvite(record, context: context)
         }
 
         try context.save()
@@ -1022,6 +1046,41 @@ final class SyncService {
         }
     }
 
+    /// Upsert an invite record from server into local SwiftData
+    private func upsertInvite(_ record: InviteRecord, context: ModelContext) throws {
+        let recordId = record.id
+        let descriptor = FetchDescriptor<Invite>(predicate: #Predicate { $0.id == recordId })
+        let existingInvites = try context.fetch(descriptor)
+
+        if let existing = existingInvites.first {
+            // Update if server version is newer
+            if record.version >= existing.version {
+                existing.inviteCode = record.inviteCode
+                existing.email = record.email
+                existing.expiresAt = record.expiresAt
+                existing.claimedAt = record.claimedAt
+                existing.claimedByPlayerId = record.claimedByPlayerId
+                existing.version = record.version
+                existing.needsSync = false
+            }
+        } else {
+            // Insert new record
+            let invite = Invite(
+                id: record.id,
+                bookieId: record.bookieId,
+                inviteCode: record.inviteCode,
+                email: record.email,
+                createdAt: record.createdAt,
+                expiresAt: record.expiresAt,
+                claimedAt: record.claimedAt,
+                claimedByPlayerId: record.claimedByPlayerId,
+                needsSync: false,
+                version: record.version
+            )
+            context.insert(invite)
+        }
+    }
+
     // MARK: - Private Upload Methods
 
     /// Upload all pending local changes to the server
@@ -1030,6 +1089,7 @@ final class SyncService {
         // Upload in dependency order: players before bets/ledger entries
         let orderedTables: [SyncableTable] = [
             .players,
+            .invites,
             .events,
             .acceptancePolicies,
             .bets,
@@ -1066,6 +1126,9 @@ final class SyncService {
             try await uploadLedgerEntries(bookieId: bookieId, context: context)
         case .acceptancePolicies:
             try await uploadAcceptancePolicies(bookieId: bookieId, context: context)
+        case .invites:
+            // Invites are created server-side via create_invite edge function — no client upload needed
+            break
         case .settlementPeriods:
             // Settlement tables not yet in DB schema - skip for now
             print("Skipping settlement_periods upload - table not yet in database schema")
