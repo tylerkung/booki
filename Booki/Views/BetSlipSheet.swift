@@ -891,21 +891,14 @@ struct BetSlipSheet: View {
     /// Whether the bet slip is ready to submit
     /// Whether the bookie allows outright/futures in multi-picks
     private var bookieAllowsFuturesParlays: Bool {
-        // Player's bookie — direct fetch from modelContext (more reliable than @Query in sheets)
         if let bookieId = player?.bookieId {
-            let allBookies = (try? modelContext.fetch(FetchDescriptor<Bookie>())) ?? []
-            print("DEBUG futuresParlays: playerBookieId=\(bookieId), allBookiesInContext=\(allBookies.map { "\($0.id) allowFutures=\($0.allowFuturesParlays)" })")
             let predicate = #Predicate<Bookie> { $0.id == bookieId }
             let descriptor = FetchDescriptor<Bookie>(predicate: predicate)
             if let bookie = try? modelContext.fetch(descriptor).first {
-                print("DEBUG futuresParlays: found bookie, allowFuturesParlays=\(bookie.allowFuturesParlays)")
                 return bookie.allowFuturesParlays
             }
-            print("DEBUG futuresParlays: NO bookie found matching bookieId")
-        } else {
-            print("DEBUG futuresParlays: player has no bookieId")
         }
-        return true // default allow
+        return true
     }
 
     /// Whether the parlay is blocked because it contains futures and the bookie disallows it
@@ -1249,13 +1242,6 @@ struct BetSlipSheet: View {
             submissionError = "Member is not associated with an organizer"
             return
         }
-
-        // DEBUG: Log IDs being sent
-        print("DEBUG submitBets: player.id = \(player.id)")
-        print("DEBUG submitBets: bookieId = \(bookieId)")
-        print("DEBUG submitBets: player.bookieId = \(player.bookieId?.uuidString ?? "nil")")
-        print("DEBUG submitBets: authManager.currentBookieId = \(authManager.currentBookieId?.uuidString ?? "nil")")
-        print("DEBUG submitBets: player.name = \(player.name)")
 
         // Capture items to submit before async call
         let itemsToSubmit = betSlipManager.items

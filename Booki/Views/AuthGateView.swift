@@ -167,7 +167,6 @@ struct AuthGateView: View {
                 // Only sync if authenticated and has bookie ID
                 if authManager.currentBookieId != nil {
                     Task {
-                        print("DEBUG: App became active - triggering sync")
                         await syncService.sync()
                     }
                 }

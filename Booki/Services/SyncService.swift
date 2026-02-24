@@ -195,7 +195,6 @@ final class SyncService {
     func triggerServerGameSync() async {
         let baseURL = SupabaseConfig.url
         guard let url = URL(string: "\(baseURL.absoluteString)/functions/v1/sync_games") else {
-            print("DEBUG triggerServerGameSync: Invalid URL")
             return
         }
 
@@ -211,14 +210,12 @@ final class SyncService {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             if let httpResponse = response as? HTTPURLResponse {
-                print("DEBUG triggerServerGameSync: status=\(httpResponse.statusCode)")
-                if httpResponse.statusCode == 200, let body = String(data: data, encoding: .utf8) {
-                    print("DEBUG triggerServerGameSync: \(body.prefix(200))")
+                if httpResponse.statusCode == 200 {
+                    // Server game sync succeeded
                 }
             }
         } catch {
             // Non-fatal — the local sync still works, odds just won't be refreshed
-            print("DEBUG triggerServerGameSync: \(error.localizedDescription)")
         }
     }
 
@@ -423,14 +420,12 @@ final class SyncService {
     private func downloadBookieForPlayer(bookieId: UUID) async throws {
         guard let context = modelContext else { return }
 
-        print("DEBUG downloadBookieForPlayer: fetching bookie \(bookieId.uuidString.lowercased())")
         let response = try await supabase
             .from("bookies")
             .select()
             .eq("id", value: bookieId.uuidString.lowercased())
             .limit(1)
             .execute()
-        print("DEBUG downloadBookieForPlayer: response = \(String(data: response.data, encoding: .utf8) ?? "nil")")
 
         let decoder = JSONDecoder()
         let iso = ISO8601DateFormatter()
@@ -446,10 +441,8 @@ final class SyncService {
         }
         guard let records = try? decoder.decode([BookieRecord].self, from: response.data),
               let record = records.first else {
-            print("DEBUG downloadBookieForPlayer: failed to decode BookieRecord")
             return
         }
-        print("DEBUG downloadBookieForPlayer: decoded record id=\(record.id), allowFuturesParlays=\(String(describing: record.allowFuturesParlays))")
 
         try await MainActor.run {
             let bId = record.id
@@ -460,7 +453,6 @@ final class SyncService {
                 existing.manualBetAcceptance = record.manualBetAcceptance ?? false
                 existing.manualBetGrading = record.manualBetGrading ?? false
                 existing.allowFuturesParlays = record.allowFuturesParlays ?? true
-                print("DEBUG downloadBookieForPlayer: UPDATED existing bookie, allowFuturesParlays=\(existing.allowFuturesParlays)")
             } else {
                 let bookie = Bookie(
                     id: record.id,
@@ -473,7 +465,6 @@ final class SyncService {
                     allowFuturesParlays: record.allowFuturesParlays ?? true
                 )
                 context.insert(bookie)
-                print("DEBUG downloadBookieForPlayer: INSERTED new bookie, allowFuturesParlays=\(bookie.allowFuturesParlays)")
             }
             try context.save()
         }
@@ -606,7 +597,6 @@ final class SyncService {
         offset = 0
         hasMore = true
 
-        print("DEBUG downloadEvents: Fetching shared events (bookie_id is NULL)")
         while hasMore {
             do {
                 let records: [EventRecord] = try await supabase
@@ -618,7 +608,6 @@ final class SyncService {
                     .execute()
                     .value
 
-                print("DEBUG downloadEvents: Got \(records.count) shared events")
                 for record in records {
                     try upsertEvent(record, bookieId: bookieId, context: context)
                 }
@@ -626,7 +615,6 @@ final class SyncService {
                 hasMore = records.count == pageLimit
                 offset += pageLimit
             } catch {
-                print("DEBUG downloadEvents: Error fetching shared events: \(error)")
                 throw error
             }
         }
@@ -663,7 +651,6 @@ final class SyncService {
         offset = 0
         hasMore = true
 
-        print("DEBUG downloadMarkets: Fetching shared markets (bookie_id is NULL)")
         while hasMore {
             do {
                 let records: [MarketRecord] = try await supabase
@@ -675,7 +662,6 @@ final class SyncService {
                     .execute()
                     .value
 
-                print("DEBUG downloadMarkets: Got \(records.count) shared markets")
                 for record in records {
                     try upsertMarket(record, context: context)
                 }
@@ -683,7 +669,6 @@ final class SyncService {
                 hasMore = records.count == pageLimit
                 offset += pageLimit
             } catch {
-                print("DEBUG downloadMarkets: Error fetching shared markets: \(error)")
                 throw error
             }
         }
@@ -900,7 +885,6 @@ final class SyncService {
 
         guard let event = event else {
             // Event not found - skip this market
-            print("DEBUG upsertMarket: Event \(record.eventId) not found for market \(record.id)")
             return
         }
 
@@ -1158,15 +1142,11 @@ final class SyncService {
             throw SyncServiceError.databaseError("Model context not configured")
         }
 
-        print("DEBUG uploadTableChanges: Processing table \(table.displayName)")
-
         switch table {
         case .players:
             try await uploadPlayers(bookieId: bookieId, context: context)
         case .events:
-            print("DEBUG uploadTableChanges: About to call uploadEvents")
             try await uploadEvents(bookieId: bookieId, context: context)
-            print("DEBUG uploadTableChanges: Finished uploadEvents")
         case .bets:
             try await uploadBets(bookieId: bookieId, context: context)
         case .ledgerEntries:
@@ -1189,20 +1169,10 @@ final class SyncService {
 
     /// Upload pending players to Supabase
     private func uploadPlayers(bookieId: UUID, context: ModelContext) async throws {
-        // Debug: Check all players first
-        let allPlayersDescriptor = FetchDescriptor<Player>()
-        let allPlayers = try context.fetch(allPlayersDescriptor)
-        print("DEBUG uploadPlayers: Total players in database: \(allPlayers.count)")
-        for p in allPlayers {
-            print("DEBUG: Player '\(p.name)' needsSync=\(p.needsSync), inviteCode=\(p.inviteCode ?? "nil")")
-        }
-
         let descriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.needsSync == true })
         let pendingPlayers = try context.fetch(descriptor)
-        print("DEBUG uploadPlayers: Players needing sync: \(pendingPlayers.count)")
 
         guard !pendingPlayers.isEmpty else {
-            print("DEBUG uploadPlayers: No players to upload")
             return
         }
 
@@ -1246,20 +1216,14 @@ final class SyncService {
         let descriptor = FetchDescriptor<Event>(predicate: #Predicate { $0.needsSync == true })
         let pendingEvents = try context.fetch(descriptor)
 
-        print("DEBUG uploadEvents: Found \(pendingEvents.count) events with needsSync=true")
-
         guard !pendingEvents.isEmpty else {
-            print("DEBUG uploadEvents: No pending events to upload")
             return
         }
 
         for event in pendingEvents {
             do {
-                print("DEBUG uploadEvents: Uploading event \(event.id) - \(event.awayTeam) @ \(event.homeTeam)")
-
                 // Check for version conflict
                 if try await hasConflict(table: "events", id: event.id, localVersion: event.version) {
-                    print("DEBUG uploadEvents: Version conflict for event \(event.id), resolving...")
                     try await resolveEventConflict(event, bookieId: bookieId, context: context)
                     continue
                 }
@@ -1271,14 +1235,13 @@ final class SyncService {
                     .upsert(upsert, onConflict: "id")
                     .execute()
 
-                print("DEBUG uploadEvents: Successfully uploaded event \(event.id)")
                 event.needsSync = false
                 event.lastSyncedAt = Date()
                 event.version += 1
                 event.bookieId = bookieId
 
             } catch {
-                print("DEBUG uploadEvents: Failed to upload event \(event.id): \(error)")
+                print("Failed to upload event \(event.id): \(error)")
             }
         }
 
@@ -1650,8 +1613,6 @@ final class SyncService {
             throw SyncServiceError.databaseError("No model context available")
         }
 
-        print("DEBUG: Syncing player data for auth_user_id: \(authUserId)")
-
         // Fetch player record from Supabase using auth_user_id
         // Use maybeSingle() instead of single() to handle case where player doesn't exist
         let response = try await supabase
@@ -1666,11 +1627,8 @@ final class SyncService {
         let records = try decoder.decode([PlayerRecord].self, from: response.data)
 
         guard let record = records.first else {
-            print("DEBUG: No player found for auth_user_id: \(authUserId)")
             return
         }
-
-        print("DEBUG: Fetched player from Supabase: \(record.name), bookie_id: \(record.bookieId)")
 
         // Fetch the bookie record so player.bookie relationship is populated
         let bookieResponse = try await supabase
@@ -1721,7 +1679,6 @@ final class SyncService {
             try context.save()
         }
 
-        print("DEBUG: Player data synced successfully")
     }
 
     // MARK: - Public Upload Trigger
@@ -1729,27 +1686,21 @@ final class SyncService {
     /// Trigger upload for pending changes after a local write
     /// Call this after creating/updating/deleting local records
     func triggerUpload() async {
-        print("DEBUG triggerUpload: Starting upload...")
         guard let bookieId = authManager?.currentBookieId else {
-            print("DEBUG triggerUpload: Cannot trigger upload - no bookie ID (authManager: \(String(describing: authManager)))")
             return
         }
-        print("DEBUG triggerUpload: bookie ID = \(bookieId)")
 
         // Don't trigger if already syncing
         guard syncStatus != .syncing else {
-            print("DEBUG triggerUpload: Already syncing, skipping")
             return
         }
 
         do {
             syncStatus = .syncing
             try await uploadPendingChanges(bookieId: bookieId)
-            print("DEBUG triggerUpload: Upload completed successfully")
             syncStatus = .idle
             await updatePendingChangesCount()
         } catch {
-            print("DEBUG triggerUpload: Upload failed: \(error)")
             syncStatus = .error(error.localizedDescription)
         }
     }

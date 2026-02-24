@@ -46,8 +46,6 @@ final class InviteCodeService {
         let code = generateCode()
         let now = Date()
 
-        print("DEBUG: Generating invite code '\(code)' for player '\(player.name)'")
-
         player.inviteCode = code
         player.inviteCodeGeneratedAt = now
 
@@ -63,9 +61,7 @@ final class InviteCodeService {
         // Explicitly save to ensure persistence
         do {
             try modelContext.save()
-            print("DEBUG: Saved invite code to player, inviteCode=\(player.inviteCode ?? "nil")")
         } catch {
-            print("DEBUG: Failed to save invite code: \(error)")
         }
     }
 

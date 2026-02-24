@@ -741,7 +741,6 @@ struct InviteClaimView: View {
                     step = .confirmJoin(bookieName: bookieName, inviteCode: inviteCode)
                 }
             } catch {
-                print("DEBUG: Error logging in for invite claim: \(error)")
                 await MainActor.run {
                     authManager.isClaimingPlayerAccount = false
                     isLoggingIn = false
@@ -804,7 +803,6 @@ struct InviteClaimView: View {
                     password: loginPassword
                 )
             } catch {
-                print("DEBUG: Error claiming invite after login: \(error)")
                 let supabase = SupabaseClientManager.shared.client
                 try? await supabase.auth.signOut()
                 await MainActor.run {
@@ -892,7 +890,6 @@ struct InviteClaimView: View {
                     showAgreement = true
                 }
             } catch {
-                print("DEBUG: Error creating account via invite: \(error)")
                 await MainActor.run {
                     authManager.isClaimingPlayerAccount = false
                     isSigningUp = false
@@ -927,7 +924,6 @@ struct InviteClaimView: View {
                     version: AgreementService.currentAgreementVersion
                 )
             } catch {
-                print("DEBUG: Failed to submit agreement: \(error)")
                 // Agreement will be required on next login
             }
 
@@ -979,7 +975,6 @@ struct InviteClaimView: View {
             } catch {
                 await MainActor.run {
                     step = .error(message: "Failed to validate invite code. Please check your connection and try again.")
-                    print("DEBUG: Error validating invite code: \(error)")
                 }
             }
         }

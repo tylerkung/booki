@@ -63,10 +63,7 @@ final class EdgeFunctionService: @unchecked Sendable {
         let session: Session
         do {
             session = try await supabase.auth.session
-            print("DEBUG EdgeFunction: Got session, token expires at: \(session.expiresAt)")
-            print("DEBUG EdgeFunction: Access token prefix: \(String(session.accessToken.prefix(20)))...")
         } catch {
-            print("DEBUG EdgeFunction: No session found, error: \(error)")
             throw EdgeFunctionError.notAuthenticated
         }
 
