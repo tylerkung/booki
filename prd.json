@@ -92,7 +92,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "GamesView is in Booki/Views/GamesView.swift. Headers are rendered in LazyVStack with pinned section headers. The view is inside a NavigationStack. The outer grouping is by sport — tapping 'Basketball' header navigates to the Basketball sport page."
     },
     {

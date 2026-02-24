@@ -63,3 +63,17 @@ Started: Mon Feb 23 17:56:56 PST 2026
   - Place `.navigationDestination` modifiers on the body-level VStack, not inside sub-views, for reliable navigation
   - SearchView already has `player` property, so passing it to SportPageView is straightforward
 ---
+
+## 2026-02-23 - US-005
+- Made sport+league sticky headers in GamesView tappable with NavigationLink to SportPageView
+- Added `trailingNavigation: SportCategory?` parameter to `stickyHeader()` function
+- When a SportCategory match exists, header shows chevron.right and navigates to SportPageView on tap
+- When no match (e.g. unknown sport), header remains static (no chevron, no navigation)
+- Added `.navigationDestination(for: SportCategory.self)` to GamesView body
+- Favorites header unaffected (uses default nil parameter)
+- Files changed: Booki/Views/GamesView.swift
+- **Learnings for future iterations:**
+  - `stickyHeader` is a generic function — adding optional parameters with defaults preserves backward compatibility
+  - `SportCategory.allCases.first { $0.displayName == sport }` is the pattern for matching sport strings to categories
+  - NavigationLink inside a sticky header works well — use `.buttonStyle(.plain)` to prevent default button styling
+---
