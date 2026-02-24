@@ -210,7 +210,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "The hash chain is scoped per (bookie_id, player_id) — each player under each bookie has their own independent chain. The trigger must use FOR UPDATE locking on the previous entry lookup to prevent race conditions with concurrent inserts. Use: SELECT entry_hash FROM ledger_entries WHERE bookie_id = NEW.bookie_id AND player_id = NEW.player_id ORDER BY created_at DESC LIMIT 1 FOR UPDATE. For the backfill, iterate with a cursor or nested loop: FOR each distinct (bookie_id, player_id), FOR each entry ordered by created_at ASC, compute and UPDATE. This is the one time we update ledger_entries — the immutability trigger from US-001 must be temporarily disabled during backfill (use ALTER TABLE ... DISABLE TRIGGER prevent_mutation_ledger_entries, then re-enable)."
     },
     {
