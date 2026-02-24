@@ -52,3 +52,19 @@ Started: Mon Feb 24 2026
 - Parlay legs must be graded to `'graded'` not `'settled'` — individual settlement creates per-leg ledger entries instead of one combined entry
 - iOS app icon must be exactly 1024x1024 — `@2x` exports from Icon Composer are 2048x2048 and need resizing
 - Asset catalog `minimum-system-version` key allows iOS 26 liquid glass icon with legacy fallback
+
+---
+## Mon Feb 24 2026 - UI polish: tap targets, encryption, golf tab ordering
+
+### What was implemented
+- **Futures row tap target fix**: Added `.contentShape(Rectangle())` to outright market rows so tapping empty space between player name and odds button registers
+- **App Store encryption compliance**: Added `ITSAppUsesNonExemptEncryption = NO` to Info.plist to skip encryption questionnaire
+- **Golf league tab sorting**: Outright-only sports (golf) sort league tabs by earliest event start date; other sports keep hardcoded popularity order
+
+### Key files changed
+- `Booki/Views/SportPageView.swift` — `.contentShape(Rectangle())` on futures rows, `orderedLeagues` computed property
+- `Booki/Info.plist` — `ITSAppUsesNonExemptEncryption` key
+
+### Learnings
+- SwiftUI `Spacer()` inside a `Button` with `.buttonStyle(.plain)` doesn't register taps — need `.contentShape(Rectangle())`
+- `ITSAppUsesNonExemptEncryption = NO` in Info.plist skips App Store encryption compliance dialog on every upload

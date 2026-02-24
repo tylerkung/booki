@@ -26,6 +26,8 @@
 		<string>IBMPlexSans-Medium.ttf</string>
 		<string>IBMPlexSans-Bold.ttf</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

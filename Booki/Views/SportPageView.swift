@@ -56,6 +56,16 @@ struct SportPageView: View {
         )
     }
 
+    /// League tab order: outright-only sports (golf) sort by earliest event date, others keep hardcoded popularity order
+    private var orderedLeagues: [LeagueInfo] {
+        guard isOutrightOnlySport else { return category.leagues }
+        return category.leagues.sorted { a, b in
+            let aDate = events.first(where: { a.matchesEvent($0) })?.startTime ?? .distantFuture
+            let bDate = events.first(where: { b.matchesEvent($0) })?.startTime ?? .distantFuture
+            return aDate < bDate
+        }
+    }
+
     /// The currently selected league info (nil if Futures tab selected)
     private var selectedLeague: LeagueInfo? {
         category.leagues.first { $0.id == selectedLeagueId }
@@ -167,7 +177,7 @@ struct SportPageView: View {
     private var leaguePicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 24) {
-                ForEach(category.leagues) { league in
+                ForEach(orderedLeagues) { league in
                     leagueTab(id: league.id, title: league.displayName)
                 }
                 // Don't show separate Futures tab for sports where every league tab is already futures
@@ -505,6 +515,7 @@ struct SportPageView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
+            .contentShape(Rectangle())
             .background(isAlternate ? Theme.cardBackground.opacity(0.5) : Color.clear)
         }
         .buttonStyle(.plain)

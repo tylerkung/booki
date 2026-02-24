@@ -892,7 +892,7 @@
 				CODE_SIGN_ENTITLEMENTS = Booki/Booki.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_ASSET_PATHS = "\"Booki/Preview Content\"";
 				DEVELOPMENT_TEAM = 2VXWBUS77T;
 				ENABLE_PREVIEWS = YES;
@@ -925,7 +925,7 @@
 				CODE_SIGN_ENTITLEMENTS = Booki/Booki.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_ASSET_PATHS = "\"Booki/Preview Content\"";
 				DEVELOPMENT_TEAM = 2VXWBUS77T;
 				ENABLE_PREVIEWS = YES;
