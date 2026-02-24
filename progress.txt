@@ -179,3 +179,18 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - This is read-only — no locking needed, safe to call concurrently
   - Can be called via `client.rpc('validate_ledger_chain', { p_bookie_id, p_player_id })`
 ---
+
+## 2026-02-24 - US-012
+- Created `supabase/migrations/019_ledger_v2_canonical_balances.sql` with canonical server-side balances
+- `player_balances_view`: security_barrier view aggregating `SUM(amount)` from ledger_entries per (bookie_id, player_id)
+- `get_player_balance(p_bookie_id, p_player_id)`: SECURITY DEFINER RPC returning JSONB with balance_owed, open_stakes, credit_limit, available_credit
+- balance_owed = SUM of ledger entries, open_stakes = SUM of stake for pending+accepted bets, available_credit = credit_limit - open_stakes - balance_owed
+- Player not found returns `{ success: false, error: '...' }` — same error pattern as other RPCs
+- Files changed: `supabase/migrations/019_ledger_v2_canonical_balances.sql` (new)
+- **Learnings for future iterations:**
+  - Views don't support `ENABLE ROW LEVEL SECURITY` directly — use `security_barrier = true` and rely on RLS of underlying tables
+  - `NOT FOUND` is the correct way to check if a SELECT INTO returned no rows in plpgsql (not checking for NULL after COALESCE)
+  - players.credit_limit has `NOT NULL DEFAULT 0` so COALESCE is technically redundant, but good defensive practice
+  - Can be called via `client.rpc('get_player_balance', { p_bookie_id, p_player_id })`
+  - The view provides dashboard/report convenience; the RPC is the canonical balance endpoint for reconciliation
+---

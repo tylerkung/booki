@@ -249,7 +249,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "The view is a convenience for dashboards and reports. The RPC function is the canonical balance endpoint. The balance formula mirrors BalanceService.swift exactly: availableCredit = creditLimit - openStakes - balanceOwed. Internal convention: positive balance_owed = player owes bookie. The players table has a credit_limit column. Open stakes only include pending + accepted bets (not graded, settled, void, declined). This provides the 'server says' value that the iOS client can reconcile against."
     }
   ]
