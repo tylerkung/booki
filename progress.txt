@@ -321,3 +321,18 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - Severing player-bookie relationship (NULL bookie_id + auth_user_id) is safer than hard delete — preserves financial history
   - `badgePositionAdjustment` on `UITabBarItemStateAppearance` controls badge offset from default position
 ---
+
+## 2026-02-23 - Player Games Skeleton + Polish
+- **Player games skeleton**: Added shimmer skeleton to GamesView while events + markets sync. Skeleton stays up until sync completes (`.idle`), not just when events arrive — prevents "No Games" flash and teams-without-odds intermediate state
+- **Shimmer rewrite**: Replaced per-instance `ShimmerModifier` with inline GeometryReader approach in `SkeletonBlock`. Gradient band sweeps left-to-right via offset toggle, clipped to `RoundedRectangle` for proper corner radius. Only odds buttons shimmer, rest is static
+- **Loading splash**: Replaced "Loading your account..." text+spinner in PlayerMainView with branded Booki logo + spinner matching the launch screen
+- **Team badge overflow**: Added `.lineLimit(1)` + `.minimumScaleFactor(0.6)` to CompactGameRow team badge so long abbreviations like "WASH" shrink to fit instead of wrapping
+- **Badge overlap**: Increased tab badge horizontal offset to -24 for more dramatic overlap with icon
+- Files changed: GamesView.swift, ShimmerView.swift, PlayerMainView.swift, CompactGameRow.swift, BookiApp.swift
+- **Learnings for future iterations:**
+  - Skeleton must cover ALL intermediate sync states (events without markets, empty filtered list) — key off sync completion, not data count
+  - `onChange(of: events.count)` won't re-fire when child relationships (markets) load on existing events — use syncStatus instead
+  - `LinearGradient` stops are clamped to 0…1 — can't animate phase outside that range. Use `offset` on a fixed gradient band instead
+  - `.clipped()` only clips to frame rect, not corner radius — use `.clipShape(RoundedRectangle(...))` for proper rounded clipping
+  - `autoreverses: true` creates a rocking/pulsing effect — use `autoreverses: false` for a clean left-to-right sweep
+---

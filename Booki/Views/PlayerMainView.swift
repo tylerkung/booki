@@ -65,12 +65,16 @@ struct PlayerMainView: View {
                 }
                 .tint(Theme.accent)
             } else {
-                // Loading state while player data loads
-                VStack(spacing: 16) {
+                // Branded splash while player data loads
+                VStack(spacing: 20) {
+                    Image("BookiLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 200)
+                        .shadow(color: Theme.accent.opacity(0.4), radius: 40)
+
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: Theme.accent))
-                    Text("Loading your account...")
-                        .foregroundStyle(Theme.textSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Theme.background)

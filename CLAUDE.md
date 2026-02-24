@@ -182,5 +182,6 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Invite management**: Create/copy/delete invites from Members tab, permanent delete with `@AppStorage` fallback
 - **Nav bar standardization**: All bookie tabs use centered inline title with wordmark on Dashboard/Members
 - **Dashboard skeleton**: Shimmer placeholders during initial sync, dismissed on @Query data arrival, skipped when SwiftData has cache
+- **Player games skeleton**: Shimmer on odds buttons while events+markets sync, dismissed on sync completion, branded splash replaces "Loading your account"
 - **Tab bar styling**: Teal badge (Space Grotesk), all-caps labels for main tabs, badge set on UITabBarAppearance layouts
 - **Auth UI polish**: Standardized back buttons (top-left gray overlay), unified CTA styling, removed feature pills, larger logo with glow

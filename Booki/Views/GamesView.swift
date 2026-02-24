@@ -64,6 +64,14 @@ struct GamesView: View {
     /// Show filter options sheet (US-038)
     @State private var showingFilterSheet: Bool = false
 
+    /// Skeleton loading state — shown until events with markets arrive from sync
+    @State private var showSkeleton: Bool = true
+
+    /// Events are fully loaded when bettable events with markets exist
+    private var hasEventsWithMarkets: Bool {
+        bettableEvents.contains { ($0.markets?.count ?? 0) > 0 }
+    }
+
     /// Favorites manager (US-039)
     private var favoritesManager = FavoritesManager.shared
 
@@ -224,7 +232,9 @@ struct GamesView: View {
                 .background(Theme.background)
 
             // Games list
-            if filteredEvents.isEmpty {
+            if showSkeleton {
+                skeletonGamesList
+            } else if filteredEvents.isEmpty {
                 emptyStateView
             } else {
                 gamesList
@@ -253,6 +263,23 @@ struct GamesView: View {
         .sheet(isPresented: $showingBetSlipSheet) {
             BetSlipSheet(availableCredit: balanceSummary.availableCredit, player: player)
                 .presentationDetents([.large])
+        }
+        .task {
+            // If cached data exists, skip skeleton immediately
+            if hasEventsWithMarkets { showSkeleton = false; return }
+            // Fallback timeout
+            try? await Task.sleep(for: .seconds(10))
+            if showSkeleton { withAnimation(.easeOut(duration: 0.3)) { showSkeleton = false } }
+        }
+        .onChange(of: syncService.syncStatus) {
+            // Dismiss skeleton when sync completes (idle means done)
+            guard showSkeleton, syncService.syncStatus == .idle else { return }
+            // Small delay to let @Query catch up with SwiftData writes
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(300))
+                guard showSkeleton else { return }
+                withAnimation(.easeOut(duration: 0.3)) { showSkeleton = false }
+            }
         }
     }
 
@@ -456,6 +483,95 @@ struct GamesView: View {
             await syncService.sync()
         }
         .background(Theme.background)
+    }
+
+    // MARK: - Skeleton Games List
+
+    private var skeletonGamesList: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                // Skeleton sticky header
+                skeletonStickyHeader
+
+                // 5 skeleton game cards
+                ForEach(0..<5, id: \.self) { _ in
+                    skeletonGameCard
+                }
+            }
+        }
+        .background(Theme.background)
+    }
+
+    /// Static placeholder — no shimmer
+    private func staticBlock(width: CGFloat? = nil, height: CGFloat = 20, cornerRadius: CGFloat = 6) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .fill(Theme.elevatedBackground)
+            .frame(width: width, height: height)
+    }
+
+    private var skeletonStickyHeader: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                staticBlock(width: 80, height: 12, cornerRadius: 4)
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        staticBlock(width: 45, height: 10, cornerRadius: 3)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Theme.background)
+
+            Rectangle()
+                .fill(Theme.border)
+                .frame(height: 0.5)
+        }
+    }
+
+    private var skeletonGameCard: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 4) {
+                // Time header
+                HStack {
+                    staticBlock(width: 60, height: 10, cornerRadius: 3)
+                    Spacer()
+                }
+
+                // Away team row
+                skeletonTeamRow
+
+                // Home team row
+                skeletonTeamRow
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.cardBackground)
+
+            Rectangle()
+                .fill(Theme.border)
+                .frame(height: 0.5)
+        }
+    }
+
+    private var skeletonTeamRow: some View {
+        HStack(spacing: 4) {
+            // Team badge — static
+            staticBlock(width: 24, height: 24, cornerRadius: 12)
+
+            // Team name — static
+            staticBlock(height: 14, cornerRadius: 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            // 3 odds buttons — shimmer only here
+            ForEach(0..<3, id: \.self) { _ in
+                SkeletonBlock(width: 65, height: 44, cornerRadius: 8)
+            }
+        }
+        .frame(height: 44)
     }
 
     // MARK: - Sticky Section Header

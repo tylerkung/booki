@@ -339,6 +339,8 @@ struct CompactGameRow: View {
         Text(teamAbbreviation(teamName))
             .font(Theme.font(size: 9, weight: .bold))
             .foregroundStyle(Theme.textSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
             .frame(width: 24, height: 24)
             .background(Theme.elevatedBackground)
             .clipShape(Circle())
