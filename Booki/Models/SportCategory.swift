@@ -78,4 +78,9 @@ enum SportCategory: String, CaseIterable, Identifiable {
     static var popular: [SportCategory] {
         [.basketball, .football, .baseball, .hockey]
     }
+
+    /// Look up the SF Symbol icon name for a sport string, falling back to "sportscourt"
+    static func iconName(for sport: String) -> String {
+        allCases.first { $0.displayName == sport }?.iconName ?? "sportscourt"
+    }
 }

@@ -311,7 +311,7 @@ struct GamesView: View {
                 ForEach(availableSports, id: \.self) { sport in
                     SportTabButton(
                         title: sport,
-                        iconName: sportIconName(for: sport),
+                        iconName: SportCategory.iconName(for: sport),
                         isSelected: selectedSport == sport,
                         action: { selectedSport = sport }
                     )
@@ -631,34 +631,6 @@ struct GamesView: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
-}
-
-// MARK: - Sport Icon Mapping (US-006)
-
-/// Maps sport names to SF Symbol icon names
-func sportIconName(for sport: String) -> String? {
-    switch sport.lowercased() {
-    case "basketball":
-        return "basketball.fill"
-    case "football":
-        return "football.fill"
-    case "soccer":
-        return "soccerball"
-    case "baseball":
-        return "baseball.diamond.bases"
-    case "hockey":
-        return "hockey.puck.fill"
-    case "mma":
-        return "figure.martial.arts"
-    case "boxing":
-        return "figure.boxing"
-    case "tennis":
-        return "tennisball.fill"
-    case "golf":
-        return "figure.golf"
-    default:
-        return "sportscourt"
     }
 }
 

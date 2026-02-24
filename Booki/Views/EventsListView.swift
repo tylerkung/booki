@@ -284,7 +284,7 @@ struct EventsListView: View {
                 ForEach(availableSports, id: \.self) { sport in
                     SportTabButton(
                         title: sport,
-                        iconName: sportIconName(for: sport),
+                        iconName: SportCategory.iconName(for: sport),
                         isSelected: selectedSport == sport,
                         action: { selectedSport = sport }
                     )
