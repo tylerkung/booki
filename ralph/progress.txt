@@ -1,3 +1,32 @@
 # Ralph Progress Log
-Started: Sun Feb 23 2026
+Started: Mon Feb 24 2026
+
+## Codebase Patterns
+- `.refreshable` cancels its task on view re-render — always use `Task.detached` + `withCheckedContinuation` pattern
+- SyncService is available via `@Environment(SyncService.self)` in player views
+- TrackView groups bets into Ticket structs by ticketId — work with tickets not raw bets for display
+- Bet.gradeResult is `GradeResult?` enum (.win/.loss/.push), not a String — use enum comparison
+- LiabilityService.calculatePayout(stake:odds:) returns profit only (not stake + profit)
+
+---
+
+## 2026-02-24 - US-002
+- Added pull-to-refresh to TrackView with `@Environment(SyncService.self)` and `.refreshable`
+- Updated GamesView's two existing `.refreshable` blocks to use cancellation-safe `Task.detached` + `withCheckedContinuation` pattern
+- Files changed: Booki/Views/TrackView.swift, Booki/Views/GamesView.swift
+- **Learnings for future iterations:**
+  - GamesView already had `.refreshable` but used the naive `await syncService.sync()` form — upgraded to safe pattern
+  - TrackView didn't have SyncService in environment — needed to add `@Environment(SyncService.self)`
+  - GamesView has two ScrollViews with `.refreshable` (main games list + empty state) — both need the pattern
+---
+
+## 2026-02-24 - US-003
+- Added TrackSummaryCard showing W-L-P record, total staked, and net performance
+- Card placed at top of ticket list in TrackView, extracted as private struct to avoid type-checker timeouts
+- Net performance calculated from settled bets: wins add payout (via LiabilityService.calculatePayout), losses subtract stake, pushes are neutral
+- Files changed: Booki/Views/TrackView.swift
+- **Learnings for future iterations:**
+  - Bet model uses `gradeResult: GradeResult?` (enum .win/.loss/.push), not `result: String?` as PRD suggested
+  - LiabilityService.calculatePayout(stake:odds:) returns profit (not total return), so it's the right amount for net performance wins
+  - Stats computed properties (settledBets, wins, losses, etc.) live on TrackView struct, card is a separate private struct taking values as parameters
 ---

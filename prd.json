@@ -34,7 +34,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "IMPORTANT: .refreshable cancels its task on view re-render. Use this pattern: .refreshable { await withCheckedContinuation { continuation in Task.detached { await syncService.sync(); continuation.resume() } } }. SyncService is available via @Environment(SyncService.self). The player Games view may be inside GamesView.swift with a player-specific code path, or a separate PlayerGamesView — check AuthGateView routing."
     },
     {
@@ -53,7 +53,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "TrackView is in Booki/Views/TrackView.swift. Use @Query for Bet model. Filter bets by player ID. The Bet model has properties: status (BetStatus enum), result (String?), stake (Decimal). Settled bets have status == .settled. Use Theme.swift for all colors. Extract the card as a separate private view to avoid type-checker timeouts."
     },
     {

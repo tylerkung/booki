@@ -157,6 +157,42 @@ struct TrackView: View {
         .sorted { $0.createdAt > $1.createdAt }
     }
 
+    // MARK: - Stats
+
+    private var settledBets: [Bet] {
+        playerBets.filter { $0.status == .settled }
+    }
+
+    private var wins: Int {
+        settledBets.filter { $0.gradeResult == .win }.count
+    }
+
+    private var losses: Int {
+        settledBets.filter { $0.gradeResult == .loss }.count
+    }
+
+    private var pushes: Int {
+        settledBets.filter { $0.gradeResult == .push }.count
+    }
+
+    private var totalStaked: Decimal {
+        playerBets.reduce(Decimal.zero) { $0 + $1.stake }
+    }
+
+    private var netPerformance: Decimal {
+        settledBets.reduce(Decimal.zero) { total, bet in
+            guard let result = bet.gradeResult else { return total }
+            switch result {
+            case .win:
+                return total + LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
+            case .loss:
+                return total - bet.stake
+            case .push:
+                return total
+            }
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -170,6 +206,14 @@ struct TrackView: View {
                 .padding(.top, 60)
             } else {
                 VStack(spacing: 12) {
+                    TrackSummaryCard(
+                        wins: wins,
+                        losses: losses,
+                        pushes: pushes,
+                        totalStaked: totalStaked,
+                        netPerformance: netPerformance
+                    )
+
                     ForEach(tickets) { ticket in
                         NavigationLink {
                             TicketDetailView(ticket: ticket)
@@ -361,6 +405,76 @@ struct TicketCardView: View {
             }
         )
         .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+}
+
+// MARK: - Track Summary Card
+
+private struct TrackSummaryCard: View {
+    let wins: Int
+    let losses: Int
+    let pushes: Int
+    let totalStaked: Decimal
+    let netPerformance: Decimal
+
+    private var performanceColor: Color {
+        if netPerformance > 0 { return Theme.accent }
+        if netPerformance < 0 { return Theme.danger }
+        return Theme.textSecondary
+    }
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: value as NSDecimalNumber) ?? "$0.00"
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Record
+            HStack {
+                Text("Record")
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Text("\(wins)-\(losses)-\(pushes)")
+                    .font(Theme.headline)
+                    .foregroundStyle(Theme.textPrimary)
+            }
+
+            Divider().background(Theme.divider)
+
+            // Total Staked
+            HStack {
+                Text("Total Staked")
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Text(formatCurrency(totalStaked))
+                    .font(Theme.headline)
+                    .foregroundStyle(Theme.textPrimary)
+            }
+
+            Divider().background(Theme.divider)
+
+            // Net Performance
+            HStack {
+                Text("Net Performance")
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Text(formatCurrency(netPerformance))
+                    .font(Theme.headline)
+                    .foregroundStyle(performanceColor)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Theme.cardBackground)
+        )
     }
 }
 
