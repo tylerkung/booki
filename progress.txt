@@ -77,3 +77,16 @@ Started: Mon Feb 23 17:56:56 PST 2026
   - `SportCategory.allCases.first { $0.displayName == sport }` is the pattern for matching sport strings to categories
   - NavigationLink inside a sticky header works well — use `.buttonStyle(.plain)` to prevent default button styling
 ---
+
+## 2026-02-23 - US-006
+- Made sport+league sticky headers in EventsListView tappable with NavigationLink to SportPageView (isViewOnly: true)
+- Added `trailingNavigation: SportCategory?` parameter to `stickyHeader()` function (same pattern as GamesView)
+- Added `.navigationDestination(for: SportCategory.self)` navigating to SportPageView with `isViewOnly: true`
+- Sport category lookup via `SportCategory.allCases.first { $0.displayName == sport }`
+- Headers without a matching SportCategory remain non-tappable (no chevron)
+- Files changed: Booki/Views/EventsListView.swift
+- **Learnings for future iterations:**
+  - EventsListView stickyHeader now matches GamesView pattern exactly — both accept optional `trailingNavigation`
+  - Bookie views pass `isViewOnly: true` to SportPageView (muted odds, no bet slip interaction)
+  - The `let sportCategory = ...` declaration inside ForEach body works fine for computed values used in nested closures
+---
