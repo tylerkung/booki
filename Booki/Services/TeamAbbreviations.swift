@@ -6,8 +6,8 @@ enum TeamAbbreviations {
 
     /// Look up abbreviation for a team name like "Milwaukee Bucks" → "MIL"
     /// 1. Exact match on full name (handles college teams)
-    /// 2. Suffix match on school name ("Boston College Eagles" → "Boston College" → "BC")
-    /// 3. Mascot match on last word(s) (handles pro teams)
+    /// 2. Pro mascot match on last word(s) (handles pro teams — checked before college prefix strip)
+    /// 3. Suffix match on school name ("Boston College Eagles" → "Boston College" → "BC")
     /// 4. Fallback: first 3 chars uppercased
     static func abbreviation(for teamName: String) -> String {
         let normalized = teamName.trimmingCharacters(in: .whitespaces)
@@ -17,25 +17,10 @@ enum TeamAbbreviations {
             return abbr
         }
 
-        // 2. Check if name ends with a known mascot — try the prefix as college name
-        //    e.g. "Boston College Eagles" → try "Boston College"
         let words = normalized.split(separator: " ").map(String.init)
-        if words.count >= 2 {
-            // Try dropping last word
-            let prefix1 = words.dropLast().joined(separator: " ")
-            if let abbr = collegeMap[prefix1] {
-                return abbr
-            }
-            // Try dropping last two words (e.g. "North Carolina Tar Heels")
-            if words.count >= 3 {
-                let prefix2 = words.dropLast(2).joined(separator: " ")
-                if let abbr = collegeMap[prefix2] {
-                    return abbr
-                }
-            }
-        }
 
-        // 3. Pro mascot matching (last two words, then last word)
+        // 2. Pro mascot matching (last two words, then last word)
+        //    Checked before college prefix-strip to avoid "Oklahoma City Thunder" → "Oklahoma" → "OU"
         if words.count >= 2 {
             let lastTwo = "\(words[words.count - 2]) \(words[words.count - 1])"
             if let abbr = mascotMap[lastTwo] {
@@ -44,6 +29,20 @@ enum TeamAbbreviations {
         }
         if let last = words.last, let abbr = mascotMap[last] {
             return abbr
+        }
+
+        // 3. College prefix-strip ("Boston College Eagles" → "Boston College" → "BC")
+        if words.count >= 2 {
+            let prefix1 = words.dropLast().joined(separator: " ")
+            if let abbr = collegeMap[prefix1] {
+                return abbr
+            }
+            if words.count >= 3 {
+                let prefix2 = words.dropLast(2).joined(separator: " ")
+                if let abbr = collegeMap[prefix2] {
+                    return abbr
+                }
+            }
         }
 
         // 4. Fallback

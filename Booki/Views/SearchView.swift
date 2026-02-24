@@ -276,18 +276,38 @@ struct SearchView: View {
 
     @ViewBuilder
     private func stickyHeader(sport: String, league: String) -> some View {
+        let sportCategory = SportCategory.allCases.first { $0.displayName == sport }
         VStack(spacing: 0) {
             HStack(spacing: 4) {
-                HStack(spacing: 4) {
-                    Text(sport)
-                        .fontWeight(.medium)
-                    Text("·")
-                        .foregroundStyle(Theme.textMuted)
-                    Text(league)
-                        .foregroundStyle(Theme.textMuted)
+                if let category = sportCategory {
+                    NavigationLink(value: category) {
+                        HStack(spacing: 4) {
+                            Text(sport)
+                                .fontWeight(.medium)
+                            Text("·")
+                                .foregroundStyle(Theme.textMuted)
+                            Text(league)
+                                .foregroundStyle(Theme.textMuted)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .font(Theme.font(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+                } else {
+                    HStack(spacing: 4) {
+                        Text(sport)
+                            .fontWeight(.medium)
+                        Text("·")
+                            .foregroundStyle(Theme.textMuted)
+                        Text(league)
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                    .font(Theme.font(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
                 }
-                .font(Theme.font(size: 12, weight: .medium))
-                .foregroundStyle(Theme.textSecondary)
 
                 Spacer()
 

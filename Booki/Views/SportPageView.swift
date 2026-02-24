@@ -61,7 +61,6 @@ struct SportPageView: View {
 
     /// Events grouped by date for section headers
     private var eventsByDate: [(date: String, events: [Event])] {
-        let calendar = Calendar.current
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMM d"
 
@@ -69,14 +68,7 @@ struct SportPageView: View {
         var dateOrder: [String] = []
 
         for event in leagueEvents {
-            let dateKey: String
-            if calendar.isDateInToday(event.startTime) {
-                dateKey = "Today"
-            } else if calendar.isDateInTomorrow(event.startTime) {
-                dateKey = "Tomorrow"
-            } else {
-                dateKey = formatter.string(from: event.startTime)
-            }
+            let dateKey = formatter.string(from: event.startTime)
 
             if groups[dateKey] == nil {
                 dateOrder.append(dateKey)
@@ -118,15 +110,15 @@ struct SportPageView: View {
     @ViewBuilder
     private var leaguePicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 24) {
                 ForEach(category.leagues) { league in
                     leagueTab(id: league.id, title: league.displayName)
                 }
                 leagueTab(id: "futures", title: "Futures")
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
         }
+        .padding(.top, 14)
         .background(Theme.background)
         .overlay(
             Rectangle()
@@ -138,22 +130,24 @@ struct SportPageView: View {
 
     @ViewBuilder
     private func leagueTab(id: String, title: String) -> some View {
+        let isSelected = selectedLeagueId == id
         Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 selectedLeagueId = id
             }
         }) {
-            Text(title)
-                .font(Theme.subheadline)
-                .fontWeight(selectedLeagueId == id ? .semibold : .medium)
-                .foregroundStyle(selectedLeagueId == id ? Theme.background : Theme.textPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(selectedLeagueId == id ? Theme.accent : Theme.cardBackground)
-                .clipShape(Capsule())
+            VStack(spacing: 10) {
+                Text(title.uppercased())
+                    .font(Theme.font(size: 13, weight: isSelected ? .bold : .medium))
+                    .tracking(1.2)
+                    .foregroundStyle(isSelected ? Theme.textPrimary : Theme.textMuted)
+
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(isSelected ? Theme.accent : Color.clear)
+                    .frame(height: 3)
+            }
         }
         .buttonStyle(.plain)
-        .animation(.spring(response: 0.25, dampingFraction: 0.8), value: selectedLeagueId)
     }
 
     // MARK: - League Games List
@@ -194,14 +188,14 @@ struct SportPageView: View {
     @ViewBuilder
     private func dateStickyHeader(_ dateString: String) -> some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: 4) {
                 Text(dateString.uppercased())
                     .font(Theme.font(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.textSecondary)
                     .tracking(0.5)
                 Spacer()
 
-                // Column headers for odds
+                // Column headers for odds — spacing matches CompactGameRow HStack(spacing: 4)
                 Text("SPREAD")
                     .font(Theme.font(size: 10, weight: .semibold))
                     .foregroundStyle(Theme.textMuted)

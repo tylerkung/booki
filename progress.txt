@@ -102,3 +102,16 @@ Started: Mon Feb 23 17:56:56 PST 2026
   - The old `sportIconName` function supported extra sports (MMA, Boxing, Tennis, Golf) not in SportCategory — if those sports are added later, add cases to SportCategory enum
   - Refactors that remove free functions should verify no other files reference them via `Grep` before committing
 ---
+
+## 2026-02-23 - Sport Page Polish (post-Ralph)
+- **League tab restyling**: Replaced capsule buttons with text-only + accent underline bar, all-caps Space Grotesk (13pt), `.tracking(1.2)`, reduced padding so underline sits on divider
+- **Search results tappable headers**: Sport+league headers in SearchView search results now have NavigationLink to SportPageView (chevron.right indicator), matching GamesView pattern
+- **Date section headers**: SportPageView `eventsByDate` now always uses actual dates (e.g. "Monday, Feb 24") instead of "Today"/"Tomorrow" — individual game rows still show relative time
+- **Sticky header alignment fix**: SportPageView `dateStickyHeader` HStack changed from default spacing to `spacing: 4` to match CompactGameRow odds button spacing
+- **Team abbreviation fix**: Reordered `TeamAbbreviations.abbreviation(for:)` to check pro mascot map before college prefix-strip — fixes "Oklahoma City Thunder" → "OKC" instead of "OU" (Oklahoma University)
+- Files changed: Booki/Views/SportPageView.swift, Booki/Views/SearchView.swift, Booki/Services/TeamAbbreviations.swift
+- **Learnings for future iterations:**
+  - TeamAbbreviations lookup order matters: pro mascot must be checked before college prefix-strip to avoid "Oklahoma" matching college map
+  - Sticky header HStack spacing must match CompactGameRow's `HStack(spacing: 4)` for column alignment
+  - SportPageView league tabs use VStack with RoundedRectangle underline indicator — not capsules
+---
