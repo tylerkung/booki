@@ -214,6 +214,9 @@ struct AnalyticsDashboardView: View {
                         SportPerformanceSection(bets: bets)
                             .padding(.horizontal, 16)
 
+                        RecentActivitySection(bets: bets, ledgerEntries: ledgerEntries)
+                            .padding(.horizontal, 16)
+
                         Text("Last updated \(lastUpdated.formatted(date: .omitted, time: .shortened))")
                             .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
@@ -781,6 +784,153 @@ private struct SportPerformanceSection: View {
         .padding(14)
         .background(Theme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+    }
+
+    private func formatSignedCurrency(_ value: Decimal) -> String {
+        let formatted = formatCurrency(value < 0 ? -value : value)
+        if value > 0 { return "+\(formatted)" }
+        if value < 0 { return "-\(formatted)" }
+        return formatted
+    }
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+}
+
+// MARK: - Recent Activity Section
+
+private struct RecentActivitySection: View {
+    let bets: [Bet]
+    let ledgerEntries: [LedgerEntry]
+
+    private enum ActivityItem: Identifiable {
+        case pickPlaced(Bet)
+        case pickGraded(Bet)
+        case reconciliation(LedgerEntry)
+
+        var id: String {
+            switch self {
+            case .pickPlaced(let bet): return "placed-\(bet.id)"
+            case .pickGraded(let bet): return "graded-\(bet.id)"
+            case .reconciliation(let entry): return "recon-\(entry.id)"
+            }
+        }
+
+        var date: Date {
+            switch self {
+            case .pickPlaced(let bet): return bet.createdAt
+            case .pickGraded(let bet): return bet.createdAt
+            case .reconciliation(let entry): return entry.createdAt
+            }
+        }
+
+        var iconName: String {
+            switch self {
+            case .pickPlaced: return "ticket.fill"
+            case .pickGraded: return "checkmark.circle"
+            case .reconciliation: return "banknote"
+            }
+        }
+    }
+
+    private var activities: [ActivityItem] {
+        var items: [ActivityItem] = []
+
+        for bet in bets {
+            items.append(.pickPlaced(bet))
+            if bet.status == .settled, bet.gradeResult != nil {
+                items.append(.pickGraded(bet))
+            }
+        }
+
+        for entry in ledgerEntries {
+            items.append(.reconciliation(entry))
+        }
+
+        return Array(items.sorted { $0.date > $1.date }.prefix(10))
+    }
+
+    var body: some View {
+        let items = activities
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("RECENT ACTIVITY")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .tracking(1.0)
+                    .padding(.leading, 4)
+
+                VStack(spacing: 0) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        activityRow(item)
+                        if index < items.count - 1 {
+                            Divider()
+                                .background(Theme.elevatedBackground)
+                        }
+                    }
+                }
+                .background(Theme.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            }
+        }
+    }
+
+    private func activityRow(_ item: ActivityItem) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: item.iconName)
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(activityDescription(item))
+                    .font(Theme.bodyFont(size: 13))
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(2)
+
+                Text(relativeTime(item.date))
+                    .font(Theme.bodyFont(size: 11))
+                    .foregroundStyle(Theme.textMuted)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    private func activityDescription(_ item: ActivityItem) -> String {
+        switch item {
+        case .pickPlaced(let bet):
+            let playerName = bet.player?.name ?? "Unknown"
+            let eventDesc = bet.eventDescription ?? "an event"
+            return "\(playerName) placed a pick on \(eventDesc)"
+        case .pickGraded(let bet):
+            let playerName = bet.player?.name ?? "Unknown"
+            let eventDesc = bet.eventDescription ?? "an event"
+            let resultText: String
+            switch bet.gradeResult {
+            case .win: resultText = "Win"
+            case .loss: resultText = "Loss"
+            case .push: resultText = "Push"
+            case .none: resultText = ""
+            }
+            return "\(playerName)'s pick on \(eventDesc) — \(resultText)"
+        case .reconciliation(let entry):
+            let playerName = entry.player?.name ?? "Unknown"
+            let amount = formatSignedCurrency(entry.amount)
+            return "Reconciliation for \(playerName) — \(amount)"
+        }
+    }
+
+    private func relativeTime(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 
     private func formatSignedCurrency(_ value: Decimal) -> String {
