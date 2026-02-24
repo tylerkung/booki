@@ -134,7 +134,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Combine Bet and LedgerEntry into a unified activity list. Bet has player relationship (bet.player?.name), event relationship (bet.event), createdAt, status, result. LedgerEntry has player relationship, amount, createdAt, type. Use RelativeDateTimeFormatter for timestamps. Extract as private struct RecentActivitySection. Limit to 10 items total across all types."
     },
     {
@@ -153,7 +153,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Filter bets where bet.marketType == 'outright' (the MarketType enum has a case .outright). The bet's side/selection name is stored in bet.side (String). Open statuses: [.pending, .accepted, .readyToGrade, .graded]. Extract as private struct FuturesTrackingCard. Place this card after the main stats cards but before sport breakdown."
     }
   ]

@@ -211,6 +211,9 @@ struct AnalyticsDashboardView: View {
                         summaryCardsGrid
                             .padding(.horizontal, 16)
 
+                        FuturesTrackingCard(bets: bets)
+                            .padding(.horizontal, 16)
+
                         SportPerformanceSection(bets: bets)
                             .padding(.horizontal, 16)
 
@@ -673,6 +676,124 @@ private struct SummaryCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(14)
         .cardStyle()
+    }
+}
+
+// MARK: - Futures Tracking Card
+
+private struct FuturesTrackingCard: View {
+    let bets: [Bet]
+
+    private static let openStatuses: Set<String> = [
+        BetStatus.pending.rawValue,
+        BetStatus.accepted.rawValue,
+        BetStatus.readyToGrade.rawValue,
+        BetStatus.graded.rawValue
+    ]
+
+    private var openFuturesBets: [Bet] {
+        bets.filter { $0.market == MarketType.outright.rawValue && Self.openStatuses.contains($0.status.rawValue) }
+    }
+
+    private var totalStaked: Decimal {
+        openFuturesBets.reduce(.zero) { $0 + $1.stake }
+    }
+
+    private struct PopularSelection: Identifiable {
+        let id: String // side name
+        let count: Int
+    }
+
+    private var topSelections: [PopularSelection] {
+        var counts: [String: Int] = [:]
+        for bet in openFuturesBets {
+            counts[bet.side, default: 0] += 1
+        }
+        return counts
+            .map { PopularSelection(id: $0.key, count: $0.value) }
+            .sorted { $0.count > $1.count }
+            .prefix(3)
+            .map { $0 }
+    }
+
+    var body: some View {
+        let futures = openFuturesBets
+        VStack(alignment: .leading, spacing: 12) {
+            Text("FUTURES ACTIVITY")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .tracking(1.0)
+                .padding(.leading, 4)
+
+            if futures.isEmpty {
+                Text("No futures picks yet")
+                    .font(Theme.bodyFont(size: 14))
+                    .foregroundStyle(Theme.textMuted)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Theme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 16) {
+                        statColumn(label: "Open Picks", value: "\(futures.count)")
+                        statColumn(label: "Open Activity", value: formatCurrency(totalStaked))
+                    }
+
+                    let selections = topSelections
+                    if !selections.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("POPULAR SELECTIONS")
+                                .font(Theme.bodyFont(size: 10, weight: .medium))
+                                .foregroundStyle(Theme.textMuted)
+                                .tracking(0.5)
+
+                            ForEach(selections) { selection in
+                                HStack {
+                                    Text(selection.id)
+                                        .font(Theme.bodyFont(size: 13))
+                                        .foregroundStyle(Theme.textPrimary)
+                                        .lineLimit(1)
+
+                                    Spacer()
+
+                                    Text("\(selection.count)")
+                                        .font(Theme.bodyFont(size: 13, weight: .bold))
+                                        .foregroundStyle(.black)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(Theme.accent)
+                                        .clipShape(Capsule())
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(14)
+                .background(Theme.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            }
+        }
+    }
+
+    private func statColumn(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label.uppercased())
+                .font(Theme.bodyFont(size: 10, weight: .medium))
+                .foregroundStyle(Theme.textMuted)
+                .tracking(0.5)
+
+            Text(value)
+                .font(Theme.font(size: 20, weight: .bold))
+                .foregroundStyle(Theme.textPrimary)
+        }
+    }
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 }
 

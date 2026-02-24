@@ -62,3 +62,33 @@ Started: Tue Feb 24 03:52:41 PST 2026
   - `PlayerAttentionService.totalBookiePL(bets:)` can be reused for any bet subset (per-sport, per-player, etc.)
   - AnalyticsDashboardView is already large (~980 lines) — always extract new sections as separate structs
 ---
+
+## 2026-02-24 - US-007
+- Added "Recent Activity" section to AnalyticsDashboardView between Sport Performance and "Last updated"
+- Combines Bet events (pick placed, pick graded) and LedgerEntry events (reconciliation) into unified feed
+- Shows last 10 activities sorted by date descending with relative timestamps
+- Icons: ticket.fill (pick placed), checkmark.circle (graded), banknote (reconciliation)
+- Compliance: uses "Pick" not "Bet", "Reconciliation" not "Settlement"
+- Extracted as private struct RecentActivitySection to avoid type-checker timeouts
+- Files changed: Booki/Views/AnalyticsDashboardView.swift (+150 lines)
+- **Learnings for future iterations:**
+  - Bet.eventDescription stores human-readable event name — use it for activity descriptions
+  - LedgerEntry.amount is the balance change — use formatSignedCurrency for display
+  - RelativeDateTimeFormatter with .abbreviated gives "2h ago" style timestamps
+  - Use `Array(items.enumerated())` with `id: \.element.id` for indexed ForEach with identifiable items
+  - Dashboard sections: PNL → Summary Cards → Futures Tracking → Sport Performance → Recent Activity → Last Updated → Members
+---
+
+## 2026-02-24 - US-008
+- Added "Futures Activity" card to AnalyticsDashboardView between summary cards and sport performance
+- Shows count of open futures picks and total open activity (staked amount)
+- Shows top 3 most popular selections with count badges in Theme.accent
+- Muted "No futures picks yet" message when no outright bets exist
+- Extracted as private struct FuturesTrackingCard to avoid type-checker timeouts
+- Files changed: Booki/Views/AnalyticsDashboardView.swift (+121 lines)
+- **Learnings for future iterations:**
+  - Bet.market stores the MarketType raw value as String — compare with `MarketType.outright.rawValue` (i.e. `"outright"`)
+  - Bet.side stores the human-readable selection name (team/player name) — can be used directly for display
+  - Open statuses: pending, accepted, readyToGrade, graded — use Set<String> for efficient lookup
+  - Dashboard section order: PNL → Summary Cards → Futures Tracking → Sport Performance → Recent Activity → Last Updated → Members
+---
