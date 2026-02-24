@@ -49,6 +49,32 @@ private struct SettleBetRequest: Encodable {
     let idempotency_key: String
 }
 
+/// Request body for settle_parlay Edge Function
+private struct SettleParlayRequest: Encodable {
+    let ticket_id: String
+    let parlay_policy: String
+    let idempotency_key: String
+}
+
+/// Response from settle_parlay edge function
+private struct SettleParlayResponse: Decodable {
+    let success: Bool
+    let outcome: String?
+    let payout: Double?
+    let ledgerEntry: EdgeLedgerData?
+    let legsSettled: Int?
+    let error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case outcome
+        case payout
+        case ledgerEntry = "ledger_entry"
+        case legsSettled = "legs_settled"
+        case error
+    }
+}
+
 /// Generic success response from grade_bet / settle_bet
 private struct EdgeFunctionBetResponse: Decodable {
     let success: Bool
@@ -194,7 +220,7 @@ enum GradingService {
         }
     }
 
-    /// Settles parlay bets by calling settle_bet for each leg sequentially
+    /// Settles parlay bets by calling the settle_parlay edge function
     /// - Parameters:
     ///   - parlayBets: All bets (legs) in the parlay
     ///   - policy: The parlay push/void policy to apply
@@ -208,42 +234,42 @@ enum GradingService {
             throw GradingServiceError.playerRequired
         }
 
-        // Settle each leg via edge function; the first leg creates the ledger entry
-        var ledgerEntryCreated = false
+        let ticketId = firstBet.ticketId.uuidString.lowercased()
+        let policyString: String = switch policy {
+        case .treatAsPush: "treatAsPush"
+        case .reduceLegReprice: "reduceLegReprice"
+        }
+
+        let request = SettleParlayRequest(
+            ticket_id: ticketId,
+            parlay_policy: policyString,
+            idempotency_key: "settle_parlay_\(ticketId)_\(Int(Date().timeIntervalSince1970))"
+        )
+
+        let response: SettleParlayResponse = try await EdgeFunctionService.shared.callFunction(
+            name: "settle_parlay",
+            body: request
+        )
+
+        guard response.success else {
+            throw GradingServiceError.edgeFunctionError(response.error ?? "Unknown error")
+        }
+
+        // Update all parlay bet statuses locally
         for bet in parlayBets {
-            // Skip already-settled legs
-            guard bet.status != .settled else { continue }
-            // Skip void legs (no settlement needed)
-            guard bet.status != .void else { continue }
-
-            let request = SettleBetRequest(
-                bet_id: bet.id.uuidString.lowercased(),
-                idempotency_key: "settle_\(bet.id.uuidString.lowercased())_\(Int(Date().timeIntervalSince1970))"
-            )
-
-            let response: SettleBetResponse = try await EdgeFunctionService.shared.callFunction(
-                name: "settle_bet",
-                body: request
-            )
-
-            guard response.success else {
-                throw GradingServiceError.edgeFunctionError(response.error ?? "Unknown error")
-            }
-
             bet.status = .settled
+        }
 
-            // Create local LedgerEntry from first leg's response only
-            if !ledgerEntryCreated, let ledgerData = response.ledgerEntry {
-                let ledgerEntry = LedgerEntry(
-                    amount: Decimal(ledgerData.amount),
-                    type: .settlement,
-                    entryDescription: ledgerData.description,
-                    player: player,
-                    bet: bet
-                )
-                context.insert(ledgerEntry)
-                ledgerEntryCreated = true
-            }
+        // Create single local LedgerEntry from response
+        if let ledgerData = response.ledgerEntry {
+            let ledgerEntry = LedgerEntry(
+                amount: Decimal(ledgerData.amount),
+                type: .settlement,
+                entryDescription: ledgerData.description,
+                player: player,
+                bet: firstBet
+            )
+            context.insert(ledgerEntry)
         }
     }
 
