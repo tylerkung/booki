@@ -60,6 +60,7 @@ struct BetSlipSheet: View {
 
     /// US-009: State for locked events error alert (client-side pre-check)
     @State private var showLockedEventsAlert: Bool = false
+    @State private var showFuturesParlayAlert: Bool = false
     @State private var lockedEventNames: [String] = []
 
     /// US-010: Track which stake field is active for the custom keypad
@@ -153,6 +154,11 @@ struct BetSlipSheet: View {
                 }
             }
             // US-009/US-013: Alert for locked events (client-side or server-reported)
+            .alert("Multi-Pick Unavailable", isPresented: $showFuturesParlayAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Your organizer does not allow futures in multi-picks. Place futures as singles.")
+            }
             .alert("Events Locked", isPresented: $showLockedEventsAlert) {
                 // US-013: Offer to remove locked events
                 Button("Remove Locked Events", role: .destructive) {
@@ -417,6 +423,10 @@ struct BetSlipSheet: View {
                 warningBanner(icon: "exclamationmark.triangle.fill", text: sgpWarning, color: Theme.warning)
             }
 
+            if isFuturesParlayBlocked {
+                warningBanner(icon: "nosign", text: "Your organizer does not allow futures in multi-picks. Place futures as singles.", color: Theme.danger)
+            }
+
             if let switchMessage = betSlipManager.modeSwitchMessage {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.triangle.swap")
@@ -453,10 +463,15 @@ struct BetSlipSheet: View {
     private var betModeToggle: some View {
         HStack(spacing: 0) {
             ForEach(BetMode.allCases, id: \.self) { mode in
-                let isDisabled = isSubmitting || (mode == .parlay && betSlipManager.hasConflictingSelections)
+                let isFuturesBlocked = mode == .parlay && betSlipManager.containsOutrightSelection && !bookieAllowsFuturesParlays
+                let isDisabled = isSubmitting || (mode == .parlay && betSlipManager.hasConflictingSelections) || isFuturesBlocked
                 Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        betSlipManager.betMode = mode
+                    if isFuturesBlocked {
+                        showFuturesParlayAlert = true
+                    } else {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            betSlipManager.betMode = mode
+                        }
                     }
                 }) {
                     Text(mode.rawValue)
@@ -475,7 +490,7 @@ struct BetSlipSheet: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(isDisabled)
+                .disabled(isDisabled && !isFuturesBlocked)
             }
         }
         .background(Theme.elevatedBackground)
@@ -874,6 +889,32 @@ struct BetSlipSheet: View {
     // MARK: - Can Submit Check (US-043, US-006)
 
     /// Whether the bet slip is ready to submit
+    /// Whether the bookie allows outright/futures in multi-picks
+    private var bookieAllowsFuturesParlays: Bool {
+        // Player's bookie — direct fetch from modelContext (more reliable than @Query in sheets)
+        if let bookieId = player?.bookieId {
+            let allBookies = (try? modelContext.fetch(FetchDescriptor<Bookie>())) ?? []
+            print("DEBUG futuresParlays: playerBookieId=\(bookieId), allBookiesInContext=\(allBookies.map { "\($0.id) allowFutures=\($0.allowFuturesParlays)" })")
+            let predicate = #Predicate<Bookie> { $0.id == bookieId }
+            let descriptor = FetchDescriptor<Bookie>(predicate: predicate)
+            if let bookie = try? modelContext.fetch(descriptor).first {
+                print("DEBUG futuresParlays: found bookie, allowFuturesParlays=\(bookie.allowFuturesParlays)")
+                return bookie.allowFuturesParlays
+            }
+            print("DEBUG futuresParlays: NO bookie found matching bookieId")
+        } else {
+            print("DEBUG futuresParlays: player has no bookieId")
+        }
+        return true // default allow
+    }
+
+    /// Whether the parlay is blocked because it contains futures and the bookie disallows it
+    private var isFuturesParlayBlocked: Bool {
+        betSlipManager.betMode == .parlay
+            && betSlipManager.containsOutrightSelection
+            && !bookieAllowsFuturesParlays
+    }
+
     private var canSubmit: Bool {
         guard !betSlipManager.isEmpty else { return false }
         guard player != nil else { return false }
@@ -881,6 +922,7 @@ struct BetSlipSheet: View {
         // US-006: Different validation based on bet mode
         switch betSlipManager.betMode {
         case .parlay:
+            guard !isFuturesParlayBlocked else { return false }
             guard betSlipManager.stake > 0 else { return false }
             return betSlipManager.isStakeValid(availableCredit: availableCredit)
         case .singles:

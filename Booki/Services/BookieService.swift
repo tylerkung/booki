@@ -37,6 +37,7 @@ struct BookieRecord: Codable {
     // Auto-pilot settings (US-008, US-009, US-010)
     let manualBetAcceptance: Bool?
     let manualBetGrading: Bool?
+    let allowFuturesParlays: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -48,6 +49,7 @@ struct BookieRecord: Codable {
         case updatedAt = "updated_at"
         case manualBetAcceptance = "manual_bet_acceptance"
         case manualBetGrading = "manual_bet_grading"
+        case allowFuturesParlays = "allow_futures_parlays"
     }
 }
 
@@ -55,11 +57,13 @@ struct BookieRecord: Codable {
 struct BookieSettingsUpdate: Codable {
     let manualBetAcceptance: Bool?
     let manualBetGrading: Bool?
+    let allowFuturesParlays: Bool?
     let updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
         case manualBetAcceptance = "manual_bet_acceptance"
         case manualBetGrading = "manual_bet_grading"
+        case allowFuturesParlays = "allow_futures_parlays"
         case updatedAt = "updated_at"
     }
 }
@@ -210,11 +214,13 @@ enum BookieService {
     static func updateSettings(
         bookieId: UUID,
         manualBetAcceptance: Bool? = nil,
-        manualBetGrading: Bool? = nil
+        manualBetGrading: Bool? = nil,
+        allowFuturesParlays: Bool? = nil
     ) async throws {
         let update = BookieSettingsUpdate(
             manualBetAcceptance: manualBetAcceptance,
             manualBetGrading: manualBetGrading,
+            allowFuturesParlays: allowFuturesParlays,
             updatedAt: Date()
         )
 
@@ -222,7 +228,7 @@ enum BookieService {
             try await supabase
                 .from("bookies")
                 .update(update)
-                .eq("id", value: bookieId.uuidString)
+                .eq("id", value: bookieId.uuidString.lowercased())
                 .execute()
         } catch {
             throw BookieServiceError.networkError(error)
@@ -245,7 +251,7 @@ enum BookieService {
                     "email": email,
                     "updated_at": ISO8601DateFormatter().string(from: Date())
                 ])
-                .eq("id", value: bookieId.uuidString)
+                .eq("id", value: bookieId.uuidString.lowercased())
                 .execute()
         } catch {
             throw BookieServiceError.networkError(error)

@@ -115,7 +115,7 @@ struct SearchView: View {
             }
         }
         .background(Theme.background)
-        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Event.self) { event in
             GameDetailView(player: player, event: event)
         }
@@ -371,7 +371,7 @@ struct SearchView: View {
     // MARK: - Selection Handling
 
     private func handleOddsSelection(_ selection: BetSlipSelection, event: Event) {
-        let eventDescription = "\(event.awayTeam) @ \(event.homeTeam)"
+        let eventDescription = event.awayTeam == "Outright" ? event.homeTeam : "\(event.awayTeam) @ \(event.homeTeam)"
         let marketDescription = buildMarketDescription(selection: selection, event: event)
 
         withAnimation(.easeInOut(duration: 0.15)) {
@@ -396,6 +396,8 @@ struct SearchView: View {
             return "Total"
         case .moneyline:
             return "Moneyline"
+        case .outright:
+            return "Outright"
         }
     }
 }

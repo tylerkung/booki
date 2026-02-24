@@ -25,8 +25,32 @@ struct OddsAPIMapper {
         "soccer_france_ligue_one": ("Soccer", "Ligue 1"),
         "mma_mixed_martial_arts": ("MMA", "UFC"),
         "boxing_boxing": ("Boxing", "Boxing"),
+        // Golf tournaments
         "golf_pga_championship": ("Golf", "PGA"),
+        "golf_masters_tournament": ("Golf", "Masters"),
+        "golf_the_open_championship": ("Golf", "The Open"),
+        "golf_us_open": ("Golf", "US Open"),
+        // Futures / Championship winners
+        "basketball_nba_championship_winner": ("Basketball", "NBA"),
+        "basketball_ncaab_championship_winner": ("Basketball", "NCAAB"),
+        "americanfootball_nfl_super_bowl_winner": ("Football", "NFL"),
+        "americanfootball_ncaaf_championship_winner": ("Football", "NCAAF"),
+        "baseball_mlb_world_series_winner": ("Baseball", "MLB"),
+        "icehockey_nhl_championship_winner": ("Hockey", "NHL"),
+        "golf_masters_tournament_winner": ("Golf", "Masters"),
+        "golf_pga_championship_winner": ("Golf", "PGA"),
+        "golf_the_open_championship_winner": ("Golf", "The Open"),
+        "golf_us_open_winner": ("Golf", "US Open"),
+        // Tennis - ATP tournaments
         "tennis_atp_australian_open": ("Tennis", "ATP"),
+        "tennis_atp_french_open": ("Tennis", "ATP"),
+        "tennis_atp_us_open": ("Tennis", "ATP"),
+        "tennis_atp_wimbledon": ("Tennis", "ATP"),
+        // Tennis - WTA tournaments
+        "tennis_wta_australian_open": ("Tennis", "WTA"),
+        "tennis_wta_french_open": ("Tennis", "WTA"),
+        "tennis_wta_us_open": ("Tennis", "WTA"),
+        "tennis_wta_wimbledon": ("Tennis", "WTA"),
     ]
 
     // MARK: - Event Mapping
@@ -39,11 +63,15 @@ struct OddsAPIMapper {
     static func mapToEvent(from oddsEvent: OddsEvent, bookieId: UUID?) -> Event {
         let (sport, league) = sportKeyMapping[oddsEvent.sportKey] ?? parseSportKey(oddsEvent.sportKey)
 
+        // Outrights have null home/away teams — use sportTitle as homeTeam, "Outright" as sentinel
+        let homeTeam = oddsEvent.homeTeam ?? oddsEvent.sportTitle
+        let awayTeam = oddsEvent.awayTeam ?? "Outright"
+
         return Event(
             sport: sport,
             league: league,
-            homeTeam: oddsEvent.homeTeam,
-            awayTeam: oddsEvent.awayTeam,
+            homeTeam: homeTeam,
+            awayTeam: awayTeam,
             startTime: oddsEvent.commenceTime,
             status: .scheduled,
             bookieId: bookieId,
@@ -109,6 +137,10 @@ struct OddsAPIMapper {
                 // Alternate total markets — multiple lines per event
                 markets.append(contentsOf: mapAlternateTotals(oddsMarket, event: event))
 
+            case "outrights":
+                // Outright/futures markets — one Market row per outcome
+                markets.append(contentsOf: mapOutrightMarket(oddsMarket, event: event, oddsEvent: oddsEvent))
+
             default:
                 break
             }
@@ -120,18 +152,20 @@ struct OddsAPIMapper {
     // MARK: - Individual Market Mapping
 
     private static func mapMoneylineMarket(_ oddsMarket: OddsMarket, event: Event, oddsEvent: OddsEvent) -> Market? {
-        guard oddsMarket.outcomes.count >= 2 else { return nil }
+        guard oddsMarket.outcomes.count >= 2,
+              let homeTeam = oddsEvent.homeTeam,
+              let awayTeam = oddsEvent.awayTeam else { return nil }
 
         // Find home and away team outcomes
-        let homeOutcome = oddsMarket.outcomes.first { $0.name == oddsEvent.homeTeam }
-        let awayOutcome = oddsMarket.outcomes.first { $0.name == oddsEvent.awayTeam }
+        let homeOutcome = oddsMarket.outcomes.first { $0.name == homeTeam }
+        let awayOutcome = oddsMarket.outcomes.first { $0.name == awayTeam }
 
         guard let home = homeOutcome, let away = awayOutcome else { return nil }
 
         return Market(
             type: .moneyline,
-            sideA: oddsEvent.awayTeam,
-            sideB: oddsEvent.homeTeam,
+            sideA: awayTeam,
+            sideB: homeTeam,
             oddsA: away.price,
             oddsB: home.price,
             event: event
@@ -139,11 +173,13 @@ struct OddsAPIMapper {
     }
 
     private static func mapSpreadMarket(_ oddsMarket: OddsMarket, event: Event, oddsEvent: OddsEvent) -> Market? {
-        guard oddsMarket.outcomes.count >= 2 else { return nil }
+        guard oddsMarket.outcomes.count >= 2,
+              let homeTeam = oddsEvent.homeTeam,
+              let awayTeam = oddsEvent.awayTeam else { return nil }
 
         // Find home and away team outcomes
-        let homeOutcome = oddsMarket.outcomes.first { $0.name == oddsEvent.homeTeam }
-        let awayOutcome = oddsMarket.outcomes.first { $0.name == oddsEvent.awayTeam }
+        let homeOutcome = oddsMarket.outcomes.first { $0.name == homeTeam }
+        let awayOutcome = oddsMarket.outcomes.first { $0.name == awayTeam }
 
         guard let home = homeOutcome, let away = awayOutcome else { return nil }
 
@@ -153,8 +189,8 @@ struct OddsAPIMapper {
 
         return Market(
             type: .spread,
-            sideA: "\(oddsEvent.awayTeam) \(awaySpread)",
-            sideB: "\(oddsEvent.homeTeam) \(homeSpread)",
+            sideA: "\(awayTeam) \(awaySpread)",
+            sideB: "\(homeTeam) \(homeSpread)",
             oddsA: away.price,
             oddsB: home.price,
             event: event
@@ -185,6 +221,8 @@ struct OddsAPIMapper {
     // MARK: - Alternate Market Mapping
 
     private static func mapAlternateSpreads(_ oddsMarket: OddsMarket, event: Event, oddsEvent: OddsEvent) -> [Market] {
+        guard let homeTeam = oddsEvent.homeTeam, let awayTeam = oddsEvent.awayTeam else { return [] }
+
         // Group outcomes by |point| into home/away pairs
         var byPoint: [Double: (away: OddsOutcome?, home: OddsOutcome?)] = [:]
 
@@ -192,7 +230,7 @@ struct OddsAPIMapper {
             guard let point = outcome.point else { continue }
             let key = abs(point)
             var pair = byPoint[key] ?? (nil, nil)
-            if outcome.name == oddsEvent.homeTeam {
+            if outcome.name == homeTeam {
                 pair.home = outcome
             } else {
                 pair.away = outcome
@@ -206,8 +244,8 @@ struct OddsAPIMapper {
             let homeSpread = formatSpread(home.point ?? 0)
             return Market(
                 type: .alternateSpread,
-                sideA: "\(oddsEvent.awayTeam) \(awaySpread)",
-                sideB: "\(oddsEvent.homeTeam) \(homeSpread)",
+                sideA: "\(awayTeam) \(awaySpread)",
+                sideB: "\(homeTeam) \(homeSpread)",
                 oddsA: away.price,
                 oddsB: home.price,
                 event: event
@@ -241,6 +279,22 @@ struct OddsAPIMapper {
                 event: event
             )
         }.sorted { extractPointValue($0.sideA) < extractPointValue($1.sideA) }
+    }
+
+    // MARK: - Outright Market Mapping
+
+    private static func mapOutrightMarket(_ oddsMarket: OddsMarket, event: Event, oddsEvent: OddsEvent) -> [Market] {
+        let futuresTitle = oddsEvent.sportTitle
+        return oddsMarket.outcomes.map { outcome in
+            Market(
+                type: .outright,
+                sideA: outcome.name,
+                sideB: futuresTitle,
+                oddsA: outcome.price,
+                oddsB: 0,
+                event: event
+            )
+        }.sorted { $0.oddsA < $1.oddsA }
     }
 
     /// Extracts the numeric value from a side string for sorting

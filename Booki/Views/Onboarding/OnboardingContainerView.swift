@@ -44,7 +44,7 @@ struct OnboardingContainerView: View {
                 }
             )
             .background(Theme.backgroundGradient)
-            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
         case .profile:
             OnboardingProfileView(
                 onComplete: {
@@ -57,7 +57,7 @@ struct OnboardingContainerView: View {
                 }
             )
             .background(Theme.backgroundGradient)
-            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 }

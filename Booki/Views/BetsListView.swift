@@ -173,7 +173,7 @@ struct BetsListView: View {
 
     private func eventName(for bet: Bet) -> String {
         if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
-            return "\(event.awayTeam) @ \(event.homeTeam)"
+            return event.awayTeam == "Outright" ? event.homeTeam : "\(event.awayTeam) @ \(event.homeTeam)"
         }
         if let desc = bet.eventDescription, !desc.isEmpty {
             return desc
@@ -849,7 +849,7 @@ struct BetDetailView: View {
 
     private func detailEventName(for bet: Bet) -> String {
         if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
-            return "\(event.awayTeam) @ \(event.homeTeam)"
+            return event.awayTeam == "Outright" ? event.homeTeam : "\(event.awayTeam) @ \(event.homeTeam)"
         }
         if let desc = bet.eventDescription, !desc.isEmpty { return desc }
         return "Event \(bet.eventId.prefix(8))"

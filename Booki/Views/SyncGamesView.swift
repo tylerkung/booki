@@ -406,8 +406,10 @@ struct SyncGamesView: View {
 
             switch type {
             case .moneyline:
-                if let homeOutcome = oddsMarket.outcomes.first(where: { $0.name == oddsEvent.homeTeam }),
-                   let awayOutcome = oddsMarket.outcomes.first(where: { $0.name == oddsEvent.awayTeam }) {
+                if let homeTeam = oddsEvent.homeTeam,
+                   let awayTeam = oddsEvent.awayTeam,
+                   let homeOutcome = oddsMarket.outcomes.first(where: { $0.name == homeTeam }),
+                   let awayOutcome = oddsMarket.outcomes.first(where: { $0.name == awayTeam }) {
                     if localMarket.oddsA != awayOutcome.price || localMarket.oddsB != homeOutcome.price {
                         localMarket.oddsA = awayOutcome.price
                         localMarket.oddsB = homeOutcome.price
@@ -417,12 +419,14 @@ struct SyncGamesView: View {
                 }
 
             case .spread:
-                if let homeOutcome = oddsMarket.outcomes.first(where: { $0.name == oddsEvent.homeTeam }),
-                   let awayOutcome = oddsMarket.outcomes.first(where: { $0.name == oddsEvent.awayTeam }) {
+                if let homeTeam = oddsEvent.homeTeam,
+                   let awayTeam = oddsEvent.awayTeam,
+                   let homeOutcome = oddsMarket.outcomes.first(where: { $0.name == homeTeam }),
+                   let awayOutcome = oddsMarket.outcomes.first(where: { $0.name == awayTeam }) {
                     let awaySpread = formatSpread(awayOutcome.point ?? 0)
                     let homeSpread = formatSpread(homeOutcome.point ?? 0)
-                    let newSideA = "\(oddsEvent.awayTeam) \(awaySpread)"
-                    let newSideB = "\(oddsEvent.homeTeam) \(homeSpread)"
+                    let newSideA = "\(awayTeam) \(awaySpread)"
+                    let newSideB = "\(homeTeam) \(homeSpread)"
 
                     if localMarket.sideA != newSideA || localMarket.sideB != newSideB ||
                        localMarket.oddsA != awayOutcome.price || localMarket.oddsB != homeOutcome.price {
@@ -453,8 +457,8 @@ struct SyncGamesView: View {
                     }
                 }
 
-            case .alternateSpread, .alternateTotal, .teamTotal:
-                break // Alternate lines are handled server-side via sync_games
+            case .alternateSpread, .alternateTotal, .teamTotal, .outright:
+                break // Handled server-side via sync_games
             }
         }
 

@@ -158,6 +158,13 @@ class BetSlipManager {
         return "Multi-Pick unavailable: conflicting selections on same game"
     }
 
+    // MARK: - Futures Parlay Detection
+
+    /// Whether any selection in the slip is an outright/futures market
+    var containsOutrightSelection: Bool {
+        items.contains { $0.marketType == .outright }
+    }
+
     // MARK: - Same-Game Parlay Warning (US-015)
 
     /// Detect when multiple items have the same eventId and warn the user
@@ -448,6 +455,20 @@ class BetSlipManager {
         } else {
             add(selection: selection, eventDescription: eventDescription, marketDescription: marketDescription)
         }
+    }
+
+    /// Remove selections for events that are no longer bettable (started, locked, canceled, etc.)
+    /// Call this with the set of currently bettable event IDs to purge stale picks
+    func purgeExpiredSelections(bettableEventIds: Set<UUID>) {
+        let staleItems = items.filter { !bettableEventIds.contains($0.eventId) }
+        guard !staleItems.isEmpty else { return }
+        for item in staleItems {
+            let key = itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
+            itemStakes.removeValue(forKey: key)
+        }
+        items.removeAll { !bettableEventIds.contains($0.eventId) }
+        saveItems()
+        saveItemStakes()
     }
 
     /// Clear all selections

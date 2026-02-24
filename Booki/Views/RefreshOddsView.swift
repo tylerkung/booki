@@ -272,8 +272,10 @@ struct RefreshOddsView: View {
             // Update odds based on market type
             switch type {
             case .moneyline:
-                if let homeOutcome = oddsMarket.outcomes.first(where: { $0.name == oddsEvent.homeTeam }),
-                   let awayOutcome = oddsMarket.outcomes.first(where: { $0.name == oddsEvent.awayTeam }) {
+                if let homeTeam = oddsEvent.homeTeam,
+                   let awayTeam = oddsEvent.awayTeam,
+                   let homeOutcome = oddsMarket.outcomes.first(where: { $0.name == homeTeam }),
+                   let awayOutcome = oddsMarket.outcomes.first(where: { $0.name == awayTeam }) {
                     localMarket.oddsA = awayOutcome.price
                     localMarket.oddsB = homeOutcome.price
                     localMarket.updatedAt = Date()
@@ -281,12 +283,14 @@ struct RefreshOddsView: View {
                 }
 
             case .spread:
-                if let homeOutcome = oddsMarket.outcomes.first(where: { $0.name == oddsEvent.homeTeam }),
-                   let awayOutcome = oddsMarket.outcomes.first(where: { $0.name == oddsEvent.awayTeam }) {
+                if let homeTeam = oddsEvent.homeTeam,
+                   let awayTeam = oddsEvent.awayTeam,
+                   let homeOutcome = oddsMarket.outcomes.first(where: { $0.name == homeTeam }),
+                   let awayOutcome = oddsMarket.outcomes.first(where: { $0.name == awayTeam }) {
                     let awaySpread = formatSpread(awayOutcome.point ?? 0)
                     let homeSpread = formatSpread(homeOutcome.point ?? 0)
-                    localMarket.sideA = "\(oddsEvent.awayTeam) \(awaySpread)"
-                    localMarket.sideB = "\(oddsEvent.homeTeam) \(homeSpread)"
+                    localMarket.sideA = "\(awayTeam) \(awaySpread)"
+                    localMarket.sideB = "\(homeTeam) \(homeSpread)"
                     localMarket.oddsA = awayOutcome.price
                     localMarket.oddsB = homeOutcome.price
                     localMarket.updatedAt = Date()
@@ -305,8 +309,8 @@ struct RefreshOddsView: View {
                     updatedCount += 1
                 }
 
-            case .alternateSpread, .alternateTotal, .teamTotal:
-                break // Alternate lines refreshed server-side via sync_games
+            case .alternateSpread, .alternateTotal, .teamTotal, .outright:
+                break // Handled server-side via sync_games
             }
         }
 

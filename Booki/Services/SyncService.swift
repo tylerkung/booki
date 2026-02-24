@@ -158,6 +158,11 @@ final class SyncService {
         self.hasCompletedInitialSync = false
     }
 
+    /// Reset sync state on logout so next login triggers a fresh clear + sync
+    func resetForLogout() {
+        hasCompletedInitialSync = false
+    }
+
     // MARK: - Data Clearing
 
     /// Deletes all locally cached SwiftData records.
@@ -418,20 +423,33 @@ final class SyncService {
     private func downloadBookieForPlayer(bookieId: UUID) async throws {
         guard let context = modelContext else { return }
 
+        print("DEBUG downloadBookieForPlayer: fetching bookie \(bookieId.uuidString.lowercased())")
         let response = try await supabase
             .from("bookies")
             .select()
-            .eq("id", value: bookieId.uuidString)
+            .eq("id", value: bookieId.uuidString.lowercased())
             .limit(1)
             .execute()
+        print("DEBUG downloadBookieForPlayer: response = \(String(data: response.data, encoding: .utf8) ?? "nil")")
 
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        decoder.dateDecodingStrategy = .custom { dec in
+            let str = try dec.singleValueContainer().decode(String.self)
+            if let d = iso.date(from: str) { return d }
+            // Fallback for dates without fractional seconds
+            let basic = ISO8601DateFormatter()
+            basic.formatOptions = [.withInternetDateTime]
+            if let d = basic.date(from: str) { return d }
+            throw DecodingError.dataCorruptedError(in: try dec.singleValueContainer(), debugDescription: "Bad date: \(str)")
+        }
         guard let records = try? decoder.decode([BookieRecord].self, from: response.data),
               let record = records.first else {
-            print("DEBUG: No bookie record found for id: \(bookieId)")
+            print("DEBUG downloadBookieForPlayer: failed to decode BookieRecord")
             return
         }
+        print("DEBUG downloadBookieForPlayer: decoded record id=\(record.id), allowFuturesParlays=\(String(describing: record.allowFuturesParlays))")
 
         try await MainActor.run {
             let bId = record.id
@@ -441,15 +459,21 @@ final class SyncService {
                 existing.email = record.email ?? existing.email
                 existing.manualBetAcceptance = record.manualBetAcceptance ?? false
                 existing.manualBetGrading = record.manualBetGrading ?? false
+                existing.allowFuturesParlays = record.allowFuturesParlays ?? true
+                print("DEBUG downloadBookieForPlayer: UPDATED existing bookie, allowFuturesParlays=\(existing.allowFuturesParlays)")
             } else {
                 let bookie = Bookie(
                     id: record.id,
                     email: record.email ?? "",
                     name: record.name,
                     createdAt: record.createdAt,
-                    updatedAt: record.updatedAt
+                    updatedAt: record.updatedAt,
+                    manualBetAcceptance: record.manualBetAcceptance ?? false,
+                    manualBetGrading: record.manualBetGrading ?? false,
+                    allowFuturesParlays: record.allowFuturesParlays ?? true
                 )
                 context.insert(bookie)
+                print("DEBUG downloadBookieForPlayer: INSERTED new bookie, allowFuturesParlays=\(bookie.allowFuturesParlays)")
             }
             try context.save()
         }
@@ -467,13 +491,29 @@ final class SyncService {
                 let bId = bookieId
                 let descriptor = FetchDescriptor<Bookie>(predicate: #Predicate { $0.id == bId })
                 if let existing = try context.fetch(descriptor).first {
+                    existing.name = record.name
+                    existing.email = record.email ?? existing.email
                     existing.manualBetAcceptance = record.manualBetAcceptance ?? false
                     existing.manualBetGrading = record.manualBetGrading ?? false
+                    existing.allowFuturesParlays = record.allowFuturesParlays ?? true
+                    try context.save()
+                } else {
+                    let bookie = Bookie(
+                        id: record.id,
+                        email: record.email ?? "",
+                        name: record.name,
+                        createdAt: record.createdAt,
+                        updatedAt: record.updatedAt,
+                        manualBetAcceptance: record.manualBetAcceptance ?? false,
+                        manualBetGrading: record.manualBetGrading ?? false,
+                        allowFuturesParlays: record.allowFuturesParlays ?? true
+                    )
+                    context.insert(bookie)
                     try context.save()
                 }
             }
         } catch {
-            print("DEBUG: Failed to refresh bookie settings: \(error)")
+            // Settings refresh is best-effort; don't block sync
         }
     }
 

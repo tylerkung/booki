@@ -170,14 +170,9 @@ struct ContentView: View {
                 EventsListView()
             }
 
-            Tab("Grading", systemImage: "checkmark.circle.fill") {
-                GradingView()
-                    .navigationBarHidden(true)
-            }
-
-            Tab("Settings", systemImage: "gearshape.fill") {
+            Tab("SETTINGS", systemImage: "gearshape.fill") {
                 SettingsView()
-                    .navigationBarHidden(true)
+                    .toolbar(.hidden, for: .navigationBar)
             }
         }
         .tint(Theme.accent)
@@ -255,7 +250,6 @@ struct PlayerSettingsContent: View {
             Button("Log Out", role: .destructive) {
                 Task {
                     do {
-                        SyncService.clearLocalData(context: modelContext)
                         try await authManager.signOut()
                     } catch {
                         logoutErrorMessage = error.localizedDescription

@@ -501,6 +501,8 @@ struct EventMarketRowView: View {
             return .purple
         case .moneyline:
             return Theme.warning
+        case .outright:
+            return Theme.accent
         }
     }
 

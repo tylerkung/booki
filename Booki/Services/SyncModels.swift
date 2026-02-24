@@ -182,7 +182,7 @@ struct EventUpsert: Codable {
     init(from event: Event, bookieId: UUID) {
         self.id = event.id
         self.bookieId = bookieId
-        self.name = "\(event.awayTeam) @ \(event.homeTeam)"
+        self.name = event.awayTeam == "Outright" ? event.homeTeam : "\(event.awayTeam) @ \(event.homeTeam)"
         self.sport = event.sport
         self.league = event.league.isEmpty ? nil : event.league
         self.startTime = event.startTime

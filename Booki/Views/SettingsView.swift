@@ -19,6 +19,7 @@ struct SettingsView: View {
     // Auto-pilot settings (US-010)
     @State private var manualBetAcceptance = false
     @State private var manualBetGrading = false
+    @State private var allowFuturesParlays = true
     @State private var isSavingSettings = false
     @State private var showingSettingsError = false
     @State private var settingsErrorMessage = ""
@@ -104,6 +105,15 @@ struct SettingsView: View {
                     .onChange(of: manualBetGrading) { _, newValue in
                         Task {
                             await saveAutoPilotSettings(manualBetAcceptance: nil, manualBetGrading: newValue)
+                        }
+                    }
+
+                    Toggle(isOn: $allowFuturesParlays) {
+                        Label("Allow Futures in Multi-Picks", systemImage: "chart.line.uptrend.xyaxis")
+                    }
+                    .onChange(of: allowFuturesParlays) { _, newValue in
+                        Task {
+                            await saveFuturesParlaysSetting(newValue)
                         }
                     }
 
@@ -202,6 +212,9 @@ struct SettingsView: View {
             .onAppear {
                 loadAutoPilotSettings()
             }
+            .onChange(of: bookies.count) { _, _ in
+                loadAutoPilotSettings()
+            }
         }
     }
 
@@ -212,6 +225,7 @@ struct SettingsView: View {
         if let bookie = currentBookie {
             manualBetAcceptance = bookie.manualBetAcceptance
             manualBetGrading = bookie.manualBetGrading
+            allowFuturesParlays = bookie.allowFuturesParlays
         }
     }
 
@@ -243,10 +257,29 @@ struct SettingsView: View {
         }
     }
 
+    private func saveFuturesParlaysSetting(_ allow: Bool) async {
+        guard let bookie = currentBookie else { return }
+
+        isSavingSettings = true
+        defer { isSavingSettings = false }
+
+        bookie.allowFuturesParlays = allow
+        bookie.updatedAt = Date()
+
+        do {
+            try await BookieService.updateSettings(
+                bookieId: bookie.id,
+                allowFuturesParlays: allow
+            )
+        } catch {
+            settingsErrorMessage = error.localizedDescription
+            showingSettingsError = true
+        }
+    }
+
     private func performLogout() {
         Task {
             do {
-                SyncService.clearLocalData(context: modelContext)
                 try await authManager.signOut()
             } catch {
                 logoutErrorMessage = error.localizedDescription
@@ -353,11 +386,12 @@ struct EditProfileSheet: View {
             bookie.email = trimmedEmail
             bookie.updatedAt = Date()
 
-            // Sync to Supabase
-            Task {
+            // Sync to Supabase — use detached task so dismiss() doesn't cancel it
+            let bookieId = bookie.id
+            Task.detached {
                 do {
                     try await BookieService.updateProfile(
-                        bookieId: bookie.id,
+                        bookieId: bookieId,
                         name: trimmedName,
                         email: trimmedEmail
                     )
@@ -374,7 +408,7 @@ struct EditProfileSheet: View {
             )
             modelContext.insert(newBookie)
 
-            Task {
+            Task.detached {
                 do {
                     try await BookieService.updateProfile(
                         bookieId: bookieId,

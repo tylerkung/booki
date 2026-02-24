@@ -331,6 +331,12 @@ export function gradeBet(bet: BetInfo, scores: EventScores): GradeOutcome {
     case 'team_total':
       return gradeTeamTotalBet(bet, scores);
 
+    case 'outright':
+      return {
+        result: 'push',
+        gradeDetails: 'Outright/futures market: manual grading required.',
+      };
+
     default:
       // Unknown market type - cannot grade automatically
       return {

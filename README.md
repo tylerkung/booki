@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 23, 2026 - Wave background on bet cards and detail screens*
+*Last updated: February 24, 2026 - Futures/outright market support across all sports with bookie parlay controls*

@@ -71,8 +71,32 @@ const sportLeagueToApiKey: Record<string, string> = {
   'Soccer_Ligue 1': 'soccer_france_ligue_one',
   'MMA_UFC': 'mma_mixed_martial_arts',
   'Boxing_Boxing': 'boxing_boxing',
+  // Golf tournaments
   'Golf_PGA': 'golf_pga_championship',
+  'Golf_Masters': 'golf_masters_tournament',
+  'Golf_The Open': 'golf_the_open_championship',
+  'Golf_US Open': 'golf_us_open',
+  // Tennis - ATP tournaments (use first available key for score lookups)
   'Tennis_ATP': 'tennis_atp_australian_open',
+  // Tennis - WTA tournaments
+  'Tennis_WTA': 'tennis_wta_australian_open',
+};
+
+/**
+ * Maps sport/league to futures API keys for outright events.
+ * Used when event.away_team === 'Outright'.
+ */
+const sportLeagueToFuturesKey: Record<string, string> = {
+  'Basketball_NBA': 'basketball_nba_championship_winner',
+  'Basketball_NCAAB': 'basketball_ncaab_championship_winner',
+  'Football_NFL': 'americanfootball_nfl_super_bowl_winner',
+  'Football_NCAAF': 'americanfootball_ncaaf_championship_winner',
+  'Baseball_MLB': 'baseball_mlb_world_series_winner',
+  'Hockey_NHL': 'icehockey_nhl_championship_winner',
+  'Golf_Masters': 'golf_masters_tournament_winner',
+  'Golf_PGA': 'golf_pga_championship_winner',
+  'Golf_The Open': 'golf_the_open_championship_winner',
+  'Golf_US Open': 'golf_us_open_winner',
 };
 
 /**
@@ -110,8 +134,8 @@ interface OddsEvent {
   sport_key: string;
   sport_title: string;
   commence_time: string;
-  home_team: string;
-  away_team: string;
+  home_team: string | null;
+  away_team: string | null;
   bookmakers?: OddsBookmaker[];
 }
 
@@ -176,6 +200,57 @@ async function fetchScoresFromApi(
   }
 
   return await response.json();
+}
+
+/**
+ * Fetches outright/futures odds from The Odds API.
+ */
+async function fetchOutrightsFromApi(
+  apiKey: string,
+  sportKey: string
+): Promise<OddsEvent[]> {
+  const url = new URL(`https://api.the-odds-api.com/v4/sports/${sportKey}/odds/`);
+  url.searchParams.set('apiKey', apiKey);
+  url.searchParams.set('regions', 'us');
+  url.searchParams.set('markets', 'outrights');
+  url.searchParams.set('oddsFormat', 'american');
+
+  const response = await fetch(url.toString());
+
+  if (!response.ok) {
+    throw new Error(`Outrights API error: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Extracts outright markets from an Odds API event.
+ */
+function extractOutrightMarkets(
+  oddsEvent: OddsEvent,
+  preferredBookmaker: string = 'draftkings'
+): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number }[] {
+  const bookmakers = oddsEvent.bookmakers;
+  if (!bookmakers || bookmakers.length === 0) {
+    return [];
+  }
+
+  const selectedBookmaker =
+    bookmakers.find((b) => b.key === preferredBookmaker) || bookmakers[0];
+
+  const outrightMarket = selectedBookmaker.markets.find((m) => m.key === 'outrights');
+  if (!outrightMarket) {
+    return [];
+  }
+
+  return outrightMarket.outcomes.map((outcome) => ({
+    type: 'outright',
+    side_a: outcome.name,
+    side_b: oddsEvent.sport_title,
+    odds_a: outcome.price,
+    odds_b: 0,
+  }));
 }
 
 /**
@@ -738,29 +813,50 @@ Deno.serve(async (req) => {
       const oddsErrors: { eventId: string; error: string }[] = [];
 
       // Group games by sport key for efficient API calls
+      // Outright events use separate futures API keys
       const gamesBySportKey = new Map<string, SelectedGame[]>();
+      const gamesByFuturesKey = new Map<string, SelectedGame[]>();
       for (const game of finalSelection) {
-        // Skip odds refresh if event has already started
-        const startTime = new Date(game.start_time);
-        if (startTime <= now) {
-          console.log(`Skipping odds refresh for ${game.id} - event has started`);
-          continue;
+        // Skip odds refresh if event has already started (but not outrights — they have distant future dates)
+        const isOutright = game.away_team === 'Outright';
+        if (!isOutright) {
+          const startTime = new Date(game.start_time);
+          if (startTime <= now) {
+            console.log(`Skipping odds refresh for ${game.id} - event has started`);
+            continue;
+          }
         }
 
-        // Get the sport API key
-        const sportKey = getSportApiKey(game.sport, game.league);
-        if (!sportKey) {
-          console.log(`Unknown sport/league mapping for ${game.sport}/${game.league}`);
-          oddsErrors.push({
-            eventId: game.id,
-            error: `Unknown sport/league mapping: ${game.sport}/${game.league}`,
-          });
-          continue;
-        }
+        if (isOutright) {
+          // Use futures API key for outright events
+          const futuresKey = sportLeagueToFuturesKey[`${game.sport}_${game.league}`];
+          if (!futuresKey) {
+            console.log(`Unknown futures mapping for ${game.sport}/${game.league}`);
+            oddsErrors.push({
+              eventId: game.id,
+              error: `Unknown futures mapping: ${game.sport}/${game.league}`,
+            });
+            continue;
+          }
+          const existing = gamesByFuturesKey.get(futuresKey) || [];
+          existing.push(game);
+          gamesByFuturesKey.set(futuresKey, existing);
+        } else {
+          // Get the sport API key
+          const sportKey = getSportApiKey(game.sport, game.league);
+          if (!sportKey) {
+            console.log(`Unknown sport/league mapping for ${game.sport}/${game.league}`);
+            oddsErrors.push({
+              eventId: game.id,
+              error: `Unknown sport/league mapping: ${game.sport}/${game.league}`,
+            });
+            continue;
+          }
 
-        const existing = gamesBySportKey.get(sportKey) || [];
-        existing.push(game);
-        gamesBySportKey.set(sportKey, existing);
+          const existing = gamesBySportKey.get(sportKey) || [];
+          existing.push(game);
+          gamesBySportKey.set(sportKey, existing);
+        }
       }
 
       // Fetch odds for each sport and update markets
@@ -876,6 +972,91 @@ Deno.serve(async (req) => {
       }
 
       // ========================================
+      // Futures Odds Refresh (outright events)
+      // ========================================
+      for (const [futuresKey, games] of gamesByFuturesKey) {
+        try {
+          console.log(`Fetching outright odds for: ${futuresKey}`);
+          const oddsEvents = await fetchOutrightsFromApi(oddsApiKey, futuresKey);
+
+          for (const game of games) {
+            try {
+              const oddsEvent = oddsEvents.find((e) => e.id === game.external_id);
+              if (!oddsEvent) {
+                console.log(`No outright odds found for event ${game.id}`);
+                continue;
+              }
+
+              const newMarkets = extractOutrightMarkets(oddsEvent);
+              if (newMarkets.length === 0) continue;
+
+              // For outrights, update existing markets by side_a (outcome name)
+              const { data: existingMarkets } = await client
+                .from('markets')
+                .select('id, side_a')
+                .eq('event_id', game.id)
+                .eq('type', 'outright');
+
+              const existingMap = new Map<string, string>();
+              if (existingMarkets) {
+                for (const m of existingMarkets) {
+                  existingMap.set(m.side_a, m.id);
+                }
+              }
+
+              for (const market of newMarkets) {
+                const existingId = existingMap.get(market.side_a);
+                if (existingId) {
+                  await client
+                    .from('markets')
+                    .update({ odds_a: market.odds_a })
+                    .eq('id', existingId);
+                } else {
+                  await client
+                    .from('markets')
+                    .insert({
+                      event_id: game.id,
+                      bookie_id: null,
+                      type: 'outright',
+                      side_a: market.side_a,
+                      side_b: market.side_b,
+                      odds_a: market.odds_a,
+                      odds_b: 0,
+                    });
+                }
+              }
+
+              // Update refresh timestamp
+              await client
+                .from('events')
+                .update({
+                  last_auto_odds_refresh: now.toISOString(),
+                  last_odds_update: now.toISOString(),
+                })
+                .eq('id', game.id);
+
+              oddsRefreshed++;
+              console.log(`Refreshed outright odds for event ${game.id} (${newMarkets.length} outcomes)`);
+            } catch (gameError) {
+              console.error(`Error refreshing outright odds for ${game.id}:`, gameError);
+              oddsErrors.push({
+                eventId: game.id,
+                error: gameError instanceof Error ? gameError.message : 'Unknown error',
+              });
+            }
+          }
+        } catch (sportError) {
+          console.error(`Error fetching outright odds for ${futuresKey}:`, sportError);
+          for (const game of games) {
+            oddsErrors.push({
+              eventId: game.id,
+              error: `Outrights API error for ${futuresKey}: ${sportError instanceof Error ? sportError.message : 'Unknown error'}`,
+            });
+          }
+        }
+      }
+
+      // ========================================
       // US-005: Score Refresh Logic
       // ========================================
       let scoresRefreshed = 0;
@@ -892,6 +1073,12 @@ Deno.serve(async (req) => {
       // Group games by sport key for score fetching
       const gamesForScoresBySportKey = new Map<string, SelectedGame[]>();
       for (const game of finalSelection) {
+        // Skip score refresh for outright events (no scores)
+        if (game.away_team === 'Outright') {
+          console.log(`Skipping score refresh for ${game.id} - outright/futures event`);
+          continue;
+        }
+
         // Only fetch scores for games that have an external_id (imported from API)
         if (!game.external_id) {
           console.log(`Skipping score refresh for ${game.id} - no external_id`);

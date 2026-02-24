@@ -29,6 +29,9 @@ final class Bookie {
     var manualBetAcceptance: Bool
     var manualBetGrading: Bool
 
+    // When false, players cannot include outright/futures picks in multi-picks
+    var allowFuturesParlays: Bool
+
     // Feature tier
     var tier: BookieTier
 
@@ -41,6 +44,7 @@ final class Bookie {
         updatedAt: Date = Date(),
         manualBetAcceptance: Bool = false,
         manualBetGrading: Bool = false,
+        allowFuturesParlays: Bool = true,
         tier: BookieTier = .default
     ) {
         self.id = id
@@ -51,6 +55,7 @@ final class Bookie {
         self.updatedAt = updatedAt
         self.manualBetAcceptance = manualBetAcceptance
         self.manualBetGrading = manualBetGrading
+        self.allowFuturesParlays = allowFuturesParlays
         self.tier = tier
     }
 }

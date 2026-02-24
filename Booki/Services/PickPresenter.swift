@@ -72,7 +72,7 @@ struct PickPresenter {
         var context = ""
         if let event = event {
             let league = event.league
-            let matchup = "\(event.awayTeam) @ \(event.homeTeam)"
+            let matchup = event.awayTeam == "Outright" ? event.homeTeam : "\(event.awayTeam) @ \(event.homeTeam)"
             context = "\(league) · \(matchup)"
         } else if let desc = bet.eventDescription {
             if let league = bet.sportLeague {
@@ -191,7 +191,7 @@ struct PickPresenter {
             let eventName: String
             let league: String?
             if let event = event {
-                eventName = "\(event.awayTeam) @ \(event.homeTeam)"
+                eventName = event.awayTeam == "Outright" ? event.homeTeam : "\(event.awayTeam) @ \(event.homeTeam)"
                 league = event.league
             } else {
                 eventName = bet.eventDescription ?? "Unknown"

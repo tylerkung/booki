@@ -11,6 +11,31 @@ const SPORTS_TO_SYNC = [
   'americanfootball_nfl',
   'baseball_mlb',
   'icehockey_nhl',
+  'mma_mixed_martial_arts',
+  'tennis_atp_australian_open',
+  'tennis_atp_french_open',
+  'tennis_atp_us_open',
+  'tennis_atp_wimbledon',
+  'tennis_wta_australian_open',
+  'tennis_wta_french_open',
+  'tennis_wta_us_open',
+  'tennis_wta_wimbledon',
+];
+
+/**
+ * Futures/championship markets to sync from the Odds API.
+ */
+const FUTURES_TO_SYNC = [
+  'basketball_nba_championship_winner',
+  'basketball_ncaab_championship_winner',
+  'americanfootball_nfl_super_bowl_winner',
+  'americanfootball_ncaaf_championship_winner',
+  'baseball_mlb_world_series_winner',
+  'icehockey_nhl_championship_winner',
+  'golf_masters_tournament_winner',
+  'golf_pga_championship_winner',
+  'golf_the_open_championship_winner',
+  'golf_us_open_winner',
 ];
 
 /**
@@ -33,8 +58,32 @@ const SPORT_KEY_MAPPING: Record<string, { sport: string; league: string }> = {
   'soccer_france_ligue_one': { sport: 'Soccer', league: 'Ligue 1' },
   'mma_mixed_martial_arts': { sport: 'MMA', league: 'UFC' },
   'boxing_boxing': { sport: 'Boxing', league: 'Boxing' },
+  // Golf tournaments
   'golf_pga_championship': { sport: 'Golf', league: 'PGA' },
+  'golf_masters_tournament': { sport: 'Golf', league: 'Masters' },
+  'golf_the_open_championship': { sport: 'Golf', league: 'The Open' },
+  'golf_us_open': { sport: 'Golf', league: 'US Open' },
+  // Tennis - ATP tournaments
   'tennis_atp_australian_open': { sport: 'Tennis', league: 'ATP' },
+  'tennis_atp_french_open': { sport: 'Tennis', league: 'ATP' },
+  'tennis_atp_us_open': { sport: 'Tennis', league: 'ATP' },
+  'tennis_atp_wimbledon': { sport: 'Tennis', league: 'ATP' },
+  // Tennis - WTA tournaments
+  'tennis_wta_australian_open': { sport: 'Tennis', league: 'WTA' },
+  'tennis_wta_french_open': { sport: 'Tennis', league: 'WTA' },
+  'tennis_wta_us_open': { sport: 'Tennis', league: 'WTA' },
+  'tennis_wta_wimbledon': { sport: 'Tennis', league: 'WTA' },
+  // Futures / Championship winners
+  'basketball_nba_championship_winner': { sport: 'Basketball', league: 'NBA' },
+  'basketball_ncaab_championship_winner': { sport: 'Basketball', league: 'NCAAB' },
+  'americanfootball_nfl_super_bowl_winner': { sport: 'Football', league: 'NFL' },
+  'americanfootball_ncaaf_championship_winner': { sport: 'Football', league: 'NCAAF' },
+  'baseball_mlb_world_series_winner': { sport: 'Baseball', league: 'MLB' },
+  'icehockey_nhl_championship_winner': { sport: 'Hockey', league: 'NHL' },
+  'golf_masters_tournament_winner': { sport: 'Golf', league: 'Masters' },
+  'golf_pga_championship_winner': { sport: 'Golf', league: 'PGA' },
+  'golf_the_open_championship_winner': { sport: 'Golf', league: 'The Open' },
+  'golf_us_open_winner': { sport: 'Golf', league: 'US Open' },
 };
 
 /**
@@ -85,8 +134,8 @@ interface OddsEvent {
   sport_key: string;
   sport_title: string;
   commence_time: string;
-  home_team: string;
-  away_team: string;
+  home_team: string | null;
+  away_team: string | null;
   bookmakers?: OddsBookmaker[];
 }
 
@@ -155,6 +204,59 @@ async function fetchOddsFromApi(
   }
 
   return await response.json();
+}
+
+/**
+ * Fetches outright/futures odds from The Odds API for a given sport.
+ * Uses markets=outrights instead of h2h,spreads,totals.
+ */
+async function fetchOutrightsFromApi(
+  apiKey: string,
+  sportKey: string
+): Promise<OddsEvent[]> {
+  const url = new URL(`https://api.the-odds-api.com/v4/sports/${sportKey}/odds/`);
+  url.searchParams.set('apiKey', apiKey);
+  url.searchParams.set('regions', 'us');
+  url.searchParams.set('markets', 'outrights');
+  url.searchParams.set('oddsFormat', 'american');
+
+  const response = await fetch(url.toString());
+
+  if (!response.ok) {
+    throw new Error(`Outrights API error: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Extracts outright markets from an Odds API event.
+ * Each outcome becomes a separate market row.
+ */
+function extractOutrightMarkets(
+  oddsEvent: OddsEvent,
+  preferredBookmaker: string = 'draftkings'
+): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number }[] {
+  const bookmakers = oddsEvent.bookmakers;
+  if (!bookmakers || bookmakers.length === 0) {
+    return [];
+  }
+
+  const selectedBookmaker =
+    bookmakers.find((b) => b.key === preferredBookmaker) || bookmakers[0];
+
+  const outrightMarket = selectedBookmaker.markets.find((m) => m.key === 'outrights');
+  if (!outrightMarket) {
+    return [];
+  }
+
+  return outrightMarket.outcomes.map((outcome) => ({
+    type: 'outright',
+    side_a: outcome.name,
+    side_b: oddsEvent.sport_title,
+    odds_a: outcome.price,
+    odds_b: 0,
+  }));
 }
 
 /**
@@ -353,7 +455,11 @@ function extractMarketsFromOddsEvent(
  */
 function mapOddsEventToRecord(oddsEvent: OddsEvent): EventRecord {
   const { sport, league } = getSportAndLeague(oddsEvent.sport_key);
-  const name = `${oddsEvent.away_team} @ ${oddsEvent.home_team}`;
+
+  // Outrights have null home/away — use sport_title as home_team, "Outright" as sentinel
+  const homeTeam = oddsEvent.home_team ?? oddsEvent.sport_title;
+  const awayTeam = oddsEvent.away_team ?? 'Outright';
+  const name = awayTeam === 'Outright' ? homeTeam : `${awayTeam} @ ${homeTeam}`;
 
   return {
     external_id: oddsEvent.id,
@@ -362,8 +468,8 @@ function mapOddsEventToRecord(oddsEvent: OddsEvent): EventRecord {
     name,
     sport,
     league,
-    home_team: oddsEvent.home_team,
-    away_team: oddsEvent.away_team,
+    home_team: homeTeam,
+    away_team: awayTeam,
     start_time: oddsEvent.commence_time,
     status: 'scheduled',
     last_odds_update: new Date().toISOString(),
@@ -700,6 +806,127 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Markets: ${stats.markets_inserted} inserted, ${stats.markets_updated} updated`);
+
+    // ========================================
+    // Futures / Outright Markets Sync
+    // ========================================
+    console.log('Starting futures sync...');
+    let futuresEventsInserted = 0;
+    let futuresMarketsInserted = 0;
+
+    for (const futuresKey of FUTURES_TO_SYNC) {
+      try {
+        console.log(`Fetching outrights for: ${futuresKey}`);
+        const futuresEvents = await fetchOutrightsFromApi(oddsApiKey, futuresKey);
+        console.log(`Fetched ${futuresEvents.length} futures events for ${futuresKey}`);
+
+        for (const oddsEvent of futuresEvents) {
+          const eventRecord = mapOddsEventToRecord(oddsEvent);
+
+          // Check if event already exists
+          const { data: existingFuturesEvent } = await client
+            .from('events')
+            .select('id')
+            .eq('external_id', oddsEvent.id)
+            .maybeSingle();
+
+          let eventDbId: string;
+
+          if (existingFuturesEvent) {
+            eventDbId = existingFuturesEvent.id;
+            // Update the event record
+            await client
+              .from('events')
+              .update({
+                name: eventRecord.name,
+                sport: eventRecord.sport,
+                league: eventRecord.league,
+                home_team: eventRecord.home_team,
+                away_team: eventRecord.away_team,
+                start_time: eventRecord.start_time,
+                last_odds_update: eventRecord.last_odds_update,
+              })
+              .eq('id', eventDbId)
+              .neq('status', 'final');
+          } else {
+            const { data: inserted, error: insertErr } = await client
+              .from('events')
+              .insert(eventRecord)
+              .select('id')
+              .single();
+
+            if (insertErr || !inserted) {
+              console.error(`Error inserting futures event ${oddsEvent.id}:`, insertErr);
+              continue;
+            }
+            eventDbId = inserted.id;
+            futuresEventsInserted++;
+          }
+
+          // Extract outright markets
+          const outrightMarkets = extractOutrightMarkets(oddsEvent);
+          if (outrightMarkets.length === 0) continue;
+
+          // Get existing outright markets for this event
+          const { data: existingOutrightMarkets } = await client
+            .from('markets')
+            .select('id, side_a')
+            .eq('event_id', eventDbId)
+            .eq('type', 'outright');
+
+          const existingOutrightMap = new Map<string, string>();
+          if (existingOutrightMarkets) {
+            for (const m of existingOutrightMarkets) {
+              existingOutrightMap.set(m.side_a, m.id);
+            }
+          }
+
+          const outrightToInsert: MarketRecord[] = [];
+
+          for (const market of outrightMarkets) {
+            const existingId = existingOutrightMap.get(market.side_a);
+            if (existingId) {
+              // Update existing market odds
+              await client
+                .from('markets')
+                .update({ odds_a: market.odds_a })
+                .eq('id', existingId);
+            } else {
+              outrightToInsert.push({
+                event_id: eventDbId,
+                bookie_id: null,
+                type: 'outright',
+                side_a: market.side_a,
+                side_b: market.side_b,
+                odds_a: market.odds_a,
+                odds_b: 0,
+              });
+            }
+          }
+
+          if (outrightToInsert.length > 0) {
+            const { error: insertOutrightErr } = await client
+              .from('markets')
+              .insert(outrightToInsert);
+
+            if (insertOutrightErr) {
+              console.error(`Error inserting outright markets for ${oddsEvent.id}:`, insertOutrightErr);
+            } else {
+              futuresMarketsInserted += outrightToInsert.length;
+            }
+          }
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Error fetching futures ${futuresKey}: ${errorMessage}`);
+        stats.errors.push(`futures_${futuresKey}: ${errorMessage}`);
+      }
+    }
+
+    console.log(`Futures: ${futuresEventsInserted} events inserted, ${futuresMarketsInserted} markets inserted`);
+    (stats as any).futures_events_inserted = futuresEventsInserted;
+    (stats as any).futures_markets_inserted = futuresMarketsInserted;
+
     } // End of !skipOddsSync block
 
     // US-005: Mark past events as final

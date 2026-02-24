@@ -555,8 +555,10 @@ struct AccountView: View {
     private func performLogout() {
         Task {
             do {
-                SyncService.clearLocalData(context: modelContext)
                 try await authManager.signOut()
+                BetSlipManager.shared.clearAll()
+                // Data clearing happens on next login via SyncService.sync()
+                // (hasCompletedInitialSync resets on new session)
             } catch {
                 logoutErrorMessage = error.localizedDescription
                 showingLogoutError = true

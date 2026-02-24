@@ -25,6 +25,8 @@ struct AddMarketSheet: View {
             return validateOdds()
         case .moneyline:
             return validateOdds()
+        case .outright:
+            return false // Outrights are synced server-side, not manually created
         }
     }
 
@@ -46,6 +48,8 @@ struct AddMarketSheet: View {
             return "Over \(totalValue)"
         case .moneyline:
             return event.homeTeam
+        case .outright:
+            return ""
         }
     }
 
@@ -60,6 +64,8 @@ struct AddMarketSheet: View {
             return "Under \(totalValue)"
         case .moneyline:
             return event.awayTeam
+        case .outright:
+            return ""
         }
     }
 
@@ -87,6 +93,9 @@ struct AddMarketSheet: View {
                         totalFormFields
                     case .moneyline:
                         moneylineFormFields
+                    case .outright:
+                        Text("Outright markets are synced automatically.")
+                            .foregroundStyle(Theme.textSecondary)
                     }
                 }
 

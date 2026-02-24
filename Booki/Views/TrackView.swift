@@ -187,7 +187,7 @@ struct TrackView: View {
             }
         }
         .background(Theme.background)
-        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     // MARK: - Helpers

@@ -25,8 +25,8 @@ struct OddsEvent: Codable, Identifiable {
     let sportKey: String
     let sportTitle: String
     let commenceTime: Date
-    let homeTeam: String
-    let awayTeam: String
+    let homeTeam: String?
+    let awayTeam: String?
     let bookmakers: [OddsBookmaker]?
 
     enum CodingKeys: String, CodingKey {

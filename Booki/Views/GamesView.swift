@@ -223,7 +223,12 @@ struct GamesView: View {
             }
         }
         .background(Theme.background)
-        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            // Purge bet slip selections for events that are no longer bettable
+            let bettableIds = Set(bettableEvents.map(\.id))
+            betSlipManager.purgeExpiredSelections(bettableEventIds: bettableIds)
+        }
         // US-010: Navigate to GameDetailView instead of MarketSelectionView
         .navigationDestination(for: Event.self) { event in
             GameDetailView(player: player, event: event)
@@ -554,7 +559,7 @@ struct GamesView: View {
     /// Handle odds button tap - toggle selection in bet slip using manager
     private func handleOddsSelection(_ selection: BetSlipSelection, event: Event) {
         // Build descriptions for the bet slip item
-        let eventDescription = "\(event.awayTeam) @ \(event.homeTeam)"
+        let eventDescription = event.awayTeam == "Outright" ? event.homeTeam : "\(event.awayTeam) @ \(event.homeTeam)"
         let marketDescription = buildMarketDescription(selection: selection, event: event)
 
         withAnimation(.easeInOut(duration: 0.15)) {
@@ -580,6 +585,8 @@ struct GamesView: View {
             return "Total"
         case .moneyline:
             return "Moneyline"
+        case .outright:
+            return "Outright"
         }
     }
 

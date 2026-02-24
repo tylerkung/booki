@@ -115,3 +115,31 @@ Started: Mon Feb 23 17:56:56 PST 2026
   - Sticky header HStack spacing must match CompactGameRow's `HStack(spacing: 4)` for column alignment
   - SportPageView league tabs use VStack with RoundedRectangle underline indicator — not capsules
 ---
+
+## 2026-02-24 - Futures/Outright Market Support
+- **Market.swift**: Added `.outright` MarketType case with displayName, grading flags
+- **OddsAPIModels.swift**: Made `homeTeam`/`awayTeam` optional for futures events (null from API)
+- **OddsAPIMapper.swift**: Added futures sport key mappings, `mapOutrightMarkets()`, handle optional home/away teams
+- **SportCategory.swift**: Added futures API key mappings for all sports
+- **BetSlipManager.swift**: Added `containsOutrightSelection` check for futures parlay blocking
+- **BetSlipSheet.swift**: Futures parlay enforcement — disabled Multi-Pick toggle with alert when organizer disallows; uses `modelContext.fetch()` instead of `@Query` for bookie lookup in sheets
+- **SettingsView.swift**: "Allow futures in multi-picks" toggle for bookies, persists to Supabase
+- **Bookie.swift**: Added `allowFuturesParlays` property
+- **SyncService.swift**: `downloadBookieForPlayer()` fetches bookie record for player accounts; custom ISO8601 date decoder with fractional seconds; `resetForLogout()` method
+- **BookieService.swift**: `updateSettings()` supports `allowFuturesParlays` param, UUID lowercased for Postgres
+- **SportPageView.swift**: Full futures tab with outright markets display, expandable sections, odds buttons
+- **sync_games/index.ts**: Fetches outrights from Odds API for all major sports, upserts as outright markets
+- **auto_refresh_games/index.ts**: Handles outright events for odds refresh (detects via `away_team === 'Outright'`)
+- **grading.ts**: Outright case returns push (manual grading required)
+- **AccountView/ContentView**: Removed `clearLocalData` from logout to prevent SwiftData crashes
+- **AuthGateView.swift**: Added `syncService.resetForLogout()` on sign-out
+- **Migration 012**: `allow_futures_parlays` boolean column on bookies table
+- **Migration 013**: RLS policy + `get_player_bookie_id()` SECURITY DEFINER function — players can read their bookie's record
+- Files changed: 32 files, +1034 -118 lines
+- **Learnings for future iterations:**
+  - `@Query` in `.sheet` contexts may not reflect parent's model context — use `modelContext.fetch(FetchDescriptor)` directly
+  - RLS policies that subquery tables with their own RLS → infinite recursion. Use `SECURITY DEFINER` functions to bypass.
+  - Swift `.iso8601` date decoding does NOT handle fractional seconds — use custom decoder with `ISO8601DateFormatter(.withFractionalSeconds)`
+  - Removing `clearLocalData` from logout and deferring to next sync's `hasCompletedInitialSync` check prevents SwiftData crash from invalidated model instances
+  - Futures events from Odds API have `home_team: null, away_team: null` — use sentinel `awayTeam = "Outright"` to identify them in display logic
+---

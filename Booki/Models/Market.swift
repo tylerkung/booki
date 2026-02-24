@@ -9,6 +9,7 @@ enum MarketType: String, Codable {
     case alternateSpread = "alternate_spread"
     case alternateTotal = "alternate_total"
     case teamTotal = "team_total"
+    case outright
 
     var displayName: String {
         switch self {
@@ -18,6 +19,7 @@ enum MarketType: String, Codable {
         case .alternateSpread: return "Alt Spread"
         case .alternateTotal: return "Alt Total"
         case .teamTotal: return "Team Total"
+        case .outright: return "Outright"
         }
     }
 
@@ -39,6 +41,11 @@ enum MarketType: String, Codable {
     /// Whether this is a main line (spread, total, moneyline)
     var isMainLine: Bool {
         self == .spread || self == .total || self == .moneyline
+    }
+
+    /// Whether this is an outright/futures market
+    var isOutright: Bool {
+        self == .outright
     }
 }
 

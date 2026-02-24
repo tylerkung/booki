@@ -10,6 +10,8 @@ struct SportPageView: View {
 
     @Query(sort: \Event.startTime) private var events: [Event]
     @Query private var acceptancePolicies: [AcceptancePolicy]
+    @Query private var bets: [Bet]
+    @Query private var ledgerEntries: [LedgerEntry]
 
     /// Bet slip manager for persistent selections
     private var betSlipManager = BetSlipManager.shared
@@ -17,8 +19,14 @@ struct SportPageView: View {
     /// Selected league tab ID (or "futures" for the futures placeholder)
     @State private var selectedLeagueId: String
 
+    /// Show bet slip sheet
+    @State private var showingBetSlipSheet: Bool = false
+
     /// Event to navigate to for full market view
     @State private var selectedEventForNavigation: Event? = nil
+
+    /// Futures sections that have been expanded to show all outcomes
+    @State private var expandedFuturesSections: Set<String> = []
 
     init(category: SportCategory, isViewOnly: Bool = false, player: Player? = nil) {
         self.category = category
@@ -32,6 +40,20 @@ struct SportPageView: View {
     /// Lock offset from acceptance policy
     private var lockOffsetMinutes: Int {
         acceptancePolicies.first?.eventLockOffsetMinutes ?? 0
+    }
+
+    /// Player balance summary for bet slip
+    private var balanceSummary: PlayerBalanceSummary {
+        guard let player = player else {
+            return PlayerBalanceSummary(creditLimit: 0, openStakes: 0, openLiability: 0, balanceOwed: 0, availableCredit: 0)
+        }
+        let playerBets = bets.filter { $0.player?.id == player.id }
+        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+        return BalanceService.playerSummary(
+            for: player,
+            bets: playerBets,
+            ledgerEntries: playerLedgerEntries
+        )
     }
 
     /// The currently selected league info (nil if Futures tab selected)
@@ -82,17 +104,25 @@ struct SportPageView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            // League sub-tabs
-            leaguePicker
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                // League sub-tabs
+                leaguePicker
 
-            // Content
-            if selectedLeagueId == "futures" {
-                futuresPlaceholder
-            } else if leagueEvents.isEmpty {
-                emptyLeagueState
-            } else {
-                leagueGamesList
+                // Content
+                if selectedLeagueId == "futures" {
+                    futuresContent
+                } else if leagueEvents.isEmpty {
+                    emptyLeagueState
+                } else {
+                    leagueGamesList
+                }
+            }
+
+            // Floating bet slip indicator (player mode only)
+            if !isViewOnly && !betSlipManager.isEmpty {
+                betSlipIndicator
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .background(Theme.background)
@@ -101,6 +131,12 @@ struct SportPageView: View {
         .navigationDestination(item: $selectedEventForNavigation) { event in
             if let player = player {
                 GameDetailView(player: player, event: event)
+            }
+        }
+        .sheet(isPresented: $showingBetSlipSheet) {
+            if let player = player {
+                BetSlipSheet(availableCredit: balanceSummary.availableCredit, player: player)
+                    .presentationDetents([.large])
             }
         }
     }
@@ -221,27 +257,191 @@ struct SportPageView: View {
         }
     }
 
-    // MARK: - Futures Placeholder (US-003)
+    // MARK: - Futures View
+
+    /// Events that are outright/futures for this sport category
+    private var futuresEvents: [Event] {
+        events.filter { event in
+            event.awayTeam == "Outright" && category.displayName == event.sport
+        }
+    }
+
+    /// Outright markets grouped by event (tournament name)
+    private var futuresGrouped: [(eventName: String, event: Event, markets: [Market])] {
+        futuresEvents.compactMap { event in
+            let outrightMarkets = (event.markets ?? []).filter { $0.type == .outright }
+            guard !outrightMarkets.isEmpty else { return nil }
+            let name = event.homeTeam // e.g., "NBA Championship Winner"
+            return (eventName: name, event: event, markets: outrightMarkets.sorted { $0.oddsA < $1.oddsA })
+        }
+    }
 
     @ViewBuilder
-    private var futuresPlaceholder: some View {
+    private var futuresContent: some View {
+        if futuresGrouped.isEmpty {
+            futuresEmptyState
+        } else {
+            futuresList
+        }
+    }
+
+    @ViewBuilder
+    private var futuresEmptyState: some View {
         Spacer()
         VStack(spacing: 16) {
             Image(systemName: "chart.line.uptrend.xyaxis")
                 .font(.system(size: 48))
                 .foregroundStyle(Theme.textMuted)
 
-            Text("Futures Coming Soon")
+            Text("No Futures Available")
                 .font(Theme.headline)
                 .foregroundStyle(Theme.textPrimary)
 
-            Text("Season-long and tournament markets will appear here.")
+            Text("Championship and tournament futures will appear here once synced.")
                 .font(Theme.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
         }
         Spacer()
+    }
+
+    private let futuresPreviewLimit = 8
+
+    @ViewBuilder
+    private var futuresList: some View {
+        ScrollView {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                ForEach(futuresGrouped, id: \.eventName) { group in
+                    let isExpanded = expandedFuturesSections.contains(group.eventName)
+                    let visibleMarkets = isExpanded ? group.markets : Array(group.markets.prefix(futuresPreviewLimit))
+
+                    Section(header: futuresSectionHeader(group.eventName)) {
+                        ForEach(Array(visibleMarkets.enumerated()), id: \.element.id) { index, market in
+                            futuresRow(market: market, event: group.event, isAlternate: index.isMultiple(of: 2))
+                        }
+
+                        if group.markets.count > futuresPreviewLimit {
+                            futuresShowMoreButton(
+                                eventName: group.eventName,
+                                isExpanded: isExpanded,
+                                remainingCount: group.markets.count - futuresPreviewLimit
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .background(Theme.background)
+    }
+
+    @ViewBuilder
+    private func futuresShowMoreButton(eventName: String, isExpanded: Bool, remainingCount: Int) -> some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                if isExpanded {
+                    expandedFuturesSections.remove(eventName)
+                } else {
+                    expandedFuturesSections.insert(eventName)
+                }
+            }
+        }) {
+            HStack(spacing: 6) {
+                Text(isExpanded ? "Show Less" : "Show More (\(remainingCount))")
+                    .font(Theme.font(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Theme.accent.opacity(0.06))
+        }
+        .buttonStyle(.plain)
+        .padding(.bottom, 16)
+    }
+
+    @ViewBuilder
+    private func futuresSectionHeader(_ title: String) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(title.uppercased())
+                    .font(Theme.font(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.background)
+
+            Rectangle()
+                .fill(Theme.divider)
+                .frame(height: 0.5)
+        }
+    }
+
+    @ViewBuilder
+    private func futuresRow(market: Market, event: Event, isAlternate: Bool) -> some View {
+        let isSelected = betSlipManager.selectionsSet.contains(
+            BetSlipSelection(
+                eventId: event.id,
+                marketId: market.id,
+                side: market.sideA,
+                odds: market.oddsA,
+                marketType: .outright,
+                sideIndicator: "a"
+            )
+        )
+
+        Button(action: {
+            guard !isViewOnly else { return }
+            let selection = BetSlipSelection(
+                eventId: event.id,
+                marketId: market.id,
+                side: market.sideA,
+                odds: market.oddsA,
+                marketType: .outright,
+                sideIndicator: "a"
+            )
+            let eventDescription = event.homeTeam // e.g. "NBA Championship Winner"
+            let marketDescription = "Outright"
+            withAnimation(.easeInOut(duration: 0.15)) {
+                betSlipManager.toggle(
+                    selection,
+                    eventDescription: eventDescription,
+                    marketDescription: marketDescription
+                )
+            }
+        }) {
+            HStack(spacing: 12) {
+                Text(market.sideA)
+                    .font(Theme.font(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text(formatFuturesOdds(market.oddsA))
+                    .font(Theme.font(size: 13, weight: .bold))
+                    .foregroundStyle(isSelected ? Theme.background : Theme.accent)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(isSelected ? Theme.accent : Theme.accent.opacity(0.12))
+                    )
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(isAlternate ? Theme.cardBackground.opacity(0.5) : Color.clear)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func formatFuturesOdds(_ odds: Int) -> String {
+        odds >= 0 ? "+\(odds)" : "\(odds)"
     }
 
     // MARK: - Empty State
@@ -261,10 +461,42 @@ struct SportPageView: View {
         Spacer()
     }
 
+    // MARK: - Bet Slip Indicator
+
+    @ViewBuilder
+    private var betSlipIndicator: some View {
+        Button(action: {
+            showingBetSlipSheet = true
+        }) {
+            HStack {
+                Image(systemName: "ticket.fill")
+                    .foregroundStyle(Theme.background)
+
+                Text("\(betSlipManager.count) Selection\(betSlipManager.count == 1 ? "" : "s")")
+                    .font(Theme.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.background)
+
+                Spacer()
+
+                Image(systemName: "chevron.up")
+                    .foregroundStyle(Theme.background.opacity(0.7))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Theme.accent)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Theme.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+
     // MARK: - Selection Handling
 
     private func handleOddsSelection(_ selection: BetSlipSelection, event: Event) {
-        let eventDescription = "\(event.awayTeam) @ \(event.homeTeam)"
+        let eventDescription = event.awayTeam == "Outright" ? event.homeTeam : "\(event.awayTeam) @ \(event.homeTeam)"
         let marketDescription = buildMarketDescription(selection: selection, event: event)
 
         withAnimation(.easeInOut(duration: 0.15)) {
@@ -287,6 +519,8 @@ struct SportPageView: View {
             return "Total"
         case .moneyline:
             return "Moneyline"
+        case .outright:
+            return "Outright"
         }
     }
 

@@ -15,6 +15,9 @@ enum SportCategory: String, CaseIterable, Identifiable {
     case baseball
     case hockey
     case soccer
+    case mma
+    case tennis
+    case golf
 
     var id: String { rawValue }
 
@@ -25,6 +28,9 @@ enum SportCategory: String, CaseIterable, Identifiable {
         case .baseball: return "Baseball"
         case .hockey: return "Hockey"
         case .soccer: return "Soccer"
+        case .mma: return "MMA"
+        case .tennis: return "Tennis"
+        case .golf: return "Golf"
         }
     }
 
@@ -35,6 +41,9 @@ enum SportCategory: String, CaseIterable, Identifiable {
         case .baseball: return "baseball.diamond.bases"
         case .hockey: return "hockey.puck.fill"
         case .soccer: return "soccerball"
+        case .mma: return "figure.martial.arts"
+        case .tennis: return "tennisball.fill"
+        case .golf: return "figure.golf"
         }
     }
 
@@ -64,6 +73,22 @@ enum SportCategory: String, CaseIterable, Identifiable {
                 LeagueInfo(id: "epl", displayName: "EPL") { $0.sport == "Soccer" && $0.league == "EPL" },
                 LeagueInfo(id: "mls", displayName: "MLS") { $0.sport == "Soccer" && $0.league == "MLS" },
             ]
+        case .mma:
+            return [
+                LeagueInfo(id: "ufc", displayName: "UFC") { $0.sport == "MMA" && $0.league == "UFC" },
+            ]
+        case .tennis:
+            return [
+                LeagueInfo(id: "atp", displayName: "ATP") { $0.sport == "Tennis" && $0.league == "ATP" },
+                LeagueInfo(id: "wta", displayName: "WTA") { $0.sport == "Tennis" && $0.league == "WTA" },
+            ]
+        case .golf:
+            return [
+                LeagueInfo(id: "pga", displayName: "PGA") { $0.sport == "Golf" && $0.league == "PGA" },
+                LeagueInfo(id: "masters", displayName: "Masters") { $0.sport == "Golf" && $0.league == "Masters" },
+                LeagueInfo(id: "the_open", displayName: "The Open") { $0.sport == "Golf" && $0.league == "The Open" },
+                LeagueInfo(id: "us_open", displayName: "US Open") { $0.sport == "Golf" && $0.league == "US Open" },
+            ]
         }
     }
 
@@ -76,7 +101,7 @@ enum SportCategory: String, CaseIterable, Identifiable {
 
     /// Popular sports for Search tab quick access
     static var popular: [SportCategory] {
-        [.basketball, .football, .baseball, .hockey]
+        [.basketball, .football, .baseball, .hockey, .mma, .tennis]
     }
 
     /// Look up the SF Symbol icon name for a sport string, falling back to "sportscourt"

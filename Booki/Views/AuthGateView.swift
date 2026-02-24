@@ -134,6 +134,7 @@ struct AuthGateView: View {
                 hasTriggeredInitialSync = false
                 pendingInviteCode = nil
                 currentAuthView = .login
+                syncService.resetForLogout()
                 Task {
                     await realtimeService.unsubscribe()
                 }

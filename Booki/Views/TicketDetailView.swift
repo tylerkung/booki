@@ -418,7 +418,7 @@ struct TicketDetailView: View {
 
     private func eventName(for bet: Bet) -> String {
         if let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
-            return "\(event.awayTeam) @ \(event.homeTeam)"
+            return event.awayTeam == "Outright" ? event.homeTeam : "\(event.awayTeam) @ \(event.homeTeam)"
         }
         if let desc = bet.eventDescription, !desc.isEmpty {
             return desc

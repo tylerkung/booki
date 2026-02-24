@@ -622,6 +622,8 @@ struct GameDetailView: View {
             return ""
         case .moneyline:
             return ""
+        case .outright:
+            return ""
         }
     }
 
