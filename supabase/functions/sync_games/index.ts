@@ -8,7 +8,9 @@ import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
  */
 const SPORTS_TO_SYNC = [
   'basketball_nba',
+  'basketball_ncaab',
   'americanfootball_nfl',
+  'americanfootball_ncaaf',
   'baseball_mlb',
   'icehockey_nhl',
   'mma_mixed_martial_arts',
