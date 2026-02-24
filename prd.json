@@ -124,7 +124,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Same refactor pattern as US-002 for settle_bet. The edge function keeps: CORS, JWT extraction, idempotency, bookie validation. The RPC handles: bet status change, reversal ledger entry, audit events — all atomic. Deploy: `npx supabase functions deploy reverse_settlement --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`."
     },
     {

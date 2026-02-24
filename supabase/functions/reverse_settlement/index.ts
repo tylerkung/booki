@@ -1,7 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
-import { emitAuditEvent } from '../_shared/audit.ts';
 
 interface ReverseSettlementRequest {
   bet_id: string;
@@ -127,112 +126,36 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate: bet must be settled
-    if (bet.status !== 'settled') {
+    // Call the transactional RPC — it validates bet status, finds original settlement entry,
+    // creates reversal entry, updates bet to 'graded', and emits audit events atomically
+    const { data: rpcResult, error: rpcError } = await client.rpc('reverse_settlement_tx', {
+      p_bet_id: body.bet_id,
+      p_actor_user_id: userId,
+      p_reason: body.reason.trim(),
+      p_idempotency_key: body.idempotency_key,
+    });
+
+    if (rpcError) {
+      console.error('Error calling reverse_settlement_tx:', rpcError);
       return new Response(
-        JSON.stringify({ success: false, error: `Bet cannot be reversed (current status: ${bet.status}). Only settled bets can be reversed.` }),
+        JSON.stringify({ success: false, error: rpcError.message || 'Failed to reverse settlement' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // RPC returns JSONB with success flag
+    if (!rpcResult.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: rpcResult.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Find the original settlement ledger_entry for this bet
-    const { data: originalLedgerEntry, error: ledgerError } = await client
-      .from('ledger_entries')
-      .select('*')
-      .eq('bet_id', body.bet_id)
-      .eq('type', 'settlement')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (ledgerError || !originalLedgerEntry) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Settlement ledger entry not found for this bet' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const now = new Date().toISOString();
-    const reason = body.reason.trim();
-
-    // Store previous state for audit
-    const previousBetState = {
-      status: bet.status,
-      grade_result: bet.grade_result,
-    };
-
-    // Update bet status back to 'graded'
-    const { data: updatedBet, error: updateError } = await client
-      .from('bets')
-      .update({
-        status: 'graded',
-        updated_at: now,
-      })
-      .eq('id', body.bet_id)
-      .select()
-      .single();
-
-    if (updateError || !updatedBet) {
-      console.error('Error updating bet:', updateError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to reverse bet settlement' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Create reversing ledger_entry with opposite amount
-    const reversalAmount = -Number(originalLedgerEntry.amount);
-    const { data: reversalEntry, error: reversalError } = await client
-      .from('ledger_entries')
-      .insert({
-        bookie_id: bet.bookie_id,
-        player_id: bet.player_id,
-        bet_id: bet.id,
-        amount: reversalAmount,
-        type: 'reversal',
-        description: `Settlement reversal: ${reason}`,
-      })
-      .select()
-      .single();
-
-    if (reversalError || !reversalEntry) {
-      console.error('Error creating reversal entry:', reversalError);
-      // Note: Bet was already updated. In a production system, we'd use a DB transaction.
-      return new Response(
-        JSON.stringify({ success: false, error: 'Bet status reversed but failed to create reversal ledger entry. Please contact support.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Emit audit event for bet reversal
-    await emitAuditEvent(client, {
-      bookieId: bet.bookie_id,
-      actorUserId: userId,
-      entityType: 'bet',
-      entityId: bet.id,
-      actionType: 'reverse',
-      previousState: previousBetState,
-      newState: { status: 'graded', grade_result: bet.grade_result },
-      reason: reason,
-    });
-
-    // Emit audit event for reversal ledger entry creation
-    await emitAuditEvent(client, {
-      bookieId: bet.bookie_id,
-      actorUserId: userId,
-      entityType: 'ledger_entry',
-      entityId: reversalEntry.id,
-      actionType: 'create',
-      previousState: null,
-      newState: reversalEntry as unknown as Record<string, unknown>,
-      reason: reason,
-    });
-
-    // Prepare success response
+    // Prepare success response (same shape as before)
     const response = JSON.stringify({
       success: true,
-      bet: updatedBet,
-      reversal_entry: reversalEntry,
+      bet: rpcResult.bet,
+      reversal_entry: rpcResult.reversal_entry,
     });
 
     // Store idempotency key with response
