@@ -440,19 +440,18 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
                 payoutAmount = stake;
               }
 
-              if (payoutAmount !== 0) {
-                const description = gradeOutcome.result === 'win' ? 'Bet won' : 'Bet lost';
-                await client
-                  .from('ledger_entries')
-                  .insert({
-                    bookie_id: bet.bookie_id,
-                    player_id: bet.player_id,
-                    bet_id: bet.id,
-                    amount: payoutAmount,
-                    type: 'settlement',
-                    description: description,
-                  });
-              }
+              const descriptionMap: Record<string, string> = { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed', void: 'Bet voided' };
+              const description = descriptionMap[gradeOutcome.result] || 'Bet settled';
+              await client
+                .from('ledger_entries')
+                .insert({
+                  bookie_id: bet.bookie_id,
+                  player_id: bet.player_id,
+                  bet_id: bet.id,
+                  amount: payoutAmount,
+                  type: 'settlement',
+                  description: description,
+                });
 
               if (bookie?.auth_user_id) {
                 await emitAuditEvent(client, {
@@ -1289,25 +1288,23 @@ Deno.serve(async (req) => {
                           // Player loses: stake is positive (player owes bookie)
                           payoutAmount = stake;
                         }
-                        // push/void = 0, no ledger entry needed
+                        // Always create ledger entry — including $0 for push/void
+                        const descriptionMap: Record<string, string> = { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed', void: 'Bet voided' };
+                        const description = descriptionMap[gradeOutcome.result] || 'Bet settled';
+                        const { error: ledgerError } = await client
+                          .from('ledger_entries')
+                          .insert({
+                            bookie_id: bet.bookie_id,
+                            player_id: bet.player_id,
+                            bet_id: bet.id,
+                            amount: payoutAmount,
+                            type: 'settlement',
+                            description: description,
+                          });
 
-                        if (payoutAmount !== 0) {
-                          const description = gradeOutcome.result === 'win' ? 'Bet won' : 'Bet lost';
-                          const { error: ledgerError } = await client
-                            .from('ledger_entries')
-                            .insert({
-                              bookie_id: bet.bookie_id,
-                              player_id: bet.player_id,
-                              bet_id: bet.id,
-                              amount: payoutAmount,
-                              type: 'settlement',
-                              description: description,
-                            });
-
-                          if (ledgerError) {
-                            console.error(`Error creating ledger entry for bet ${bet.id}:`, ledgerError);
-                            gradingErrors.push(`Bet ${bet.id}: ledger entry failed - ${ledgerError.message}`);
-                          }
+                        if (ledgerError) {
+                          console.error(`Error creating ledger entry for bet ${bet.id}:`, ledgerError);
+                          gradingErrors.push(`Bet ${bet.id}: ledger entry failed - ${ledgerError.message}`);
                         }
 
                         // Emit audit event for auto-graded and settled bet
