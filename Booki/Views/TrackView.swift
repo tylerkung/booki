@@ -134,6 +134,7 @@ struct Ticket: Identifiable {
 
 /// View for players to track their submitted bets and their status
 struct TrackView: View {
+    @Environment(SyncService.self) private var syncService
     @Query private var allBets: [Bet]
     @Query private var events: [Event]
 
@@ -184,6 +185,14 @@ struct TrackView: View {
                     }
                 }
                 .padding()
+            }
+        }
+        .refreshable {
+            await withCheckedContinuation { continuation in
+                Task.detached {
+                    await syncService.sync()
+                    continuation.resume()
+                }
             }
         }
         .background(Theme.background)

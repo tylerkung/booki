@@ -407,7 +407,12 @@ struct GamesView: View {
             }
         }
         .refreshable {
-            await syncService.sync()
+            await withCheckedContinuation { continuation in
+                Task.detached {
+                    await syncService.sync()
+                    continuation.resume()
+                }
+            }
         }
         .background(Theme.background)
     }
@@ -622,7 +627,12 @@ struct GamesView: View {
             .frame(maxWidth: .infinity, minHeight: 400)
         }
         .refreshable {
-            await syncService.sync()
+            await withCheckedContinuation { continuation in
+                Task.detached {
+                    await syncService.sync()
+                    continuation.resume()
+                }
+            }
         }
     }
 
