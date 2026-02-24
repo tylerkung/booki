@@ -5,9 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Booki - Terms of Service">
     <title>Terms of Service - Booki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <nav class="site-nav">
+        <div class="container nav-content">
+            <a href="index.html" class="nav-logo">
+                <img src="assets/logo-booki-blk.svg" alt="Booki" />
+            </a>
+            <div class="nav-links">
+                <a href="features.html" class="nav-link">Features</a>
+                <a href="index.html#pricing" class="nav-link">Pricing</a>
+            </div>
+            <a href="index.html#waitlist" class="btn-primary btn-nav">Get Early Access</a>
+            <button class="nav-hamburger" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+        <div class="nav-mobile">
+            <a href="features.html" class="nav-link">Features</a>
+            <a href="index.html#pricing" class="nav-link">Pricing</a>
+            <a href="index.html#waitlist" class="btn-primary btn-nav-mobile">Get Early Access</a>
+        </div>
+    </nav>
+
     <main>
         <section class="legal-page">
             <div class="container">
@@ -27,5 +51,10 @@
             </div>
         </div>
     </footer>
+    <script>
+        document.querySelector('.nav-hamburger').addEventListener('click', function() {
+            document.querySelector('.site-nav').classList.toggle('nav-open');
+        });
+    </script>
 </body>
 </html>

@@ -345,3 +345,17 @@ Started: Mon Feb 23 00:39:19 PST 2026
 - **Learnings for future iterations:**
   - Private stored properties in structs make the synthesized memberwise init private in Swift 6 — always add explicit `init()` for views with private state
 ---
+
+## 2026-02-23 - Landing Page Redesign
+- **Homepage redesign**: Rewrote index.html from 5 sections to 8 — Hero (eyebrow + microcopy + updated CTAs), Positioning, Pillars (Control/Clarity/Confidence), Product (JS toggle between Bookie/Player with crossfade phone mockups), Comparison (Old Software vs Booki), Gated Pricing (no dollar amounts), Compliance, Final CTA
+- **Features page**: Created `landing/features.html` — hero, 6 alternating numbered feature sections (Member Management, Pick Tracking, Live Odds, Auto-Grading, Reconciliation, Analytics), capabilities grid (6 cards), by-the-numbers stats, final CTA with Netlify form
+- **Site nav bar**: Fixed glassmorphism nav (`backdrop-filter: blur`) with logo, Features/Pricing links, CTA button. Hamburger menu on mobile with animated X toggle. Added to all 4 pages (index, features, privacy, terms)
+- **Product toggle**: Inline JS swaps `.active` class on feature lists + phone mockup images with 0.4s opacity crossfade
+- **Responsive**: All new sections collapse to single-column at 768px, nav switches to hamburger
+- Files changed: landing/index.html, landing/styles.css, landing/features.html (new), landing/privacy.html, landing/terms.html
+- **Learnings for future iterations:**
+  - `backdrop-filter: blur()` needs `-webkit-` prefix for Safari
+  - Feature list crossfade via `opacity` + `max-height` transition is smoother than `display: none/block` toggle
+  - Fixed nav requires `padding-top` on hero to prevent content hiding behind it
+  - Condensed feature sections use inner `max-width: 860px` within the 1200px container for tighter reading width
+---
