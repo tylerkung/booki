@@ -22,7 +22,7 @@ function generateIdempotencyKey(): string {
 /**
  * auto_refresh_games Edge Function
  *
- * Automatically refreshes odds and scores for up to 10 games with accepted bets.
+ * Automatically refreshes odds and scores for up to 25 games with accepted bets.
  * Called twice daily via cron (morning and afternoon).
  *
  * Game selection criteria:
@@ -30,7 +30,7 @@ function generateIdempotencyKey(): string {
  * - Status is not 'final' (not completed)
  * - Not locked (status not in ['live', 'canceled'])
  * - Ordered by start_time ASC, then by total wagered amount DESC
- * - Limited to 10 games maximum
+ * - Limited to 25 games maximum
  *
  * Also includes catch-up grading: grades any accepted bets on events that are
  * already 'final' with scores (handles cases where events finalized between runs).
@@ -638,12 +638,12 @@ Deno.serve(async (req) => {
     // 1. Has at least one accepted bet
     // 2. Status is not 'final', 'live', or 'canceled' (i.e., still eligible for refresh)
     // 3. Order by start_time ASC, then total wagered DESC
-    // 4. Limit to 10 games
+    // 4. Limit to 25 games
     //
     // We use a raw query to aggregate bet data and filter properly
     const { data: selectedGames, error: queryError } = await client.rpc(
       'select_games_for_auto_refresh',
-      { max_games: 10 }
+      { max_games: 25 }
     );
 
     // If RPC doesn't exist yet, fall back to a manual query approach
@@ -802,8 +802,8 @@ Deno.serve(async (req) => {
         return b.total_wagered - a.total_wagered;
       });
 
-      // Limit to 10 games
-      const finalSelection = gamesWithStats.slice(0, 10);
+      // Limit to 25 games
+      const finalSelection = gamesWithStats.slice(0, 25);
 
       // ========================================
       // US-004: Odds Refresh Logic

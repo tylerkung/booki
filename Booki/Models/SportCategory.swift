@@ -101,7 +101,7 @@ enum SportCategory: String, CaseIterable, Identifiable {
 
     /// Popular sports for Search tab quick access
     static var popular: [SportCategory] {
-        [.basketball, .football, .baseball, .hockey, .mma, .tennis]
+        [.basketball, .football, .baseball, .hockey, .golf, .mma, .tennis]
     }
 
     /// Look up the SF Symbol icon name for a sport string, falling back to "sportscourt"

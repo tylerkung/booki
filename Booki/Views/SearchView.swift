@@ -178,8 +178,8 @@ struct SearchView: View {
     private var emptyPromptView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // POPULAR SPORTS section header
-                Text("POPULAR SPORTS")
+                // SPORTS section header
+                Text("SPORTS")
                     .font(Theme.caption)
                     .tracking(1.0)
                     .foregroundStyle(Theme.textSecondary)
@@ -189,7 +189,7 @@ struct SearchView: View {
 
                 // Sport rows
                 VStack(spacing: 8) {
-                    ForEach(SportCategory.popular) { category in
+                    ForEach(SportCategory.allCases) { category in
                         NavigationLink(value: category) {
                             HStack(spacing: 12) {
                                 Image(systemName: category.iconName)

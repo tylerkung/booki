@@ -61,12 +61,30 @@ struct SportPageView: View {
         category.leagues.first { $0.id == selectedLeagueId }
     }
 
-    /// Events filtered for the selected league
+    /// Whether this sport only has outright/futures markets (e.g. Golf)
+    private var isOutrightOnlySport: Bool {
+        category == .golf
+    }
+
+    /// Outright markets for the current league tab (used for Golf-style display)
+    /// Queries all events (not leagueEvents which excludes outrights)
+    private var leagueOutrightsGrouped: [(eventName: String, event: Event, markets: [Market])] {
+        guard let league = selectedLeague else { return [] }
+        return events.filter { $0.awayTeam == "Outright" && league.matchesEvent($0) }.compactMap { event in
+            let outrightMarkets = (event.markets ?? []).filter { $0.type == .outright }
+            guard !outrightMarkets.isEmpty else { return nil }
+            return (eventName: event.homeTeam, event: event, markets: outrightMarkets.sorted { $0.oddsA < $1.oddsA })
+        }
+    }
+
+    /// Events filtered for the selected league (excludes outright/futures events)
     private var leagueEvents: [Event] {
         guard let league = selectedLeague else { return [] }
         let now = Date()
         return events.filter { event in
             guard league.matchesEvent(event) else { return false }
+            // Outright events belong in the Futures tab, not league game lists
+            guard event.awayTeam != "Outright" else { return false }
             if isViewOnly {
                 // Bookie view: show all non-canceled events
                 return event.status != .canceled
@@ -112,6 +130,8 @@ struct SportPageView: View {
                 // Content
                 if selectedLeagueId == "futures" {
                     futuresContent
+                } else if isOutrightOnlySport {
+                    leagueOutrightsContent
                 } else if leagueEvents.isEmpty {
                     emptyLeagueState
                 } else {
@@ -150,7 +170,10 @@ struct SportPageView: View {
                 ForEach(category.leagues) { league in
                     leagueTab(id: league.id, title: league.displayName)
                 }
-                leagueTab(id: "futures", title: "Futures")
+                // Don't show separate Futures tab for sports where every league tab is already futures
+                if !isOutrightOnlySport {
+                    leagueTab(id: "futures", title: "Futures")
+                }
             }
             .padding(.horizontal, 16)
         }
@@ -273,6 +296,53 @@ struct SportPageView: View {
             guard !outrightMarkets.isEmpty else { return nil }
             let name = event.homeTeam // e.g., "NBA Championship Winner"
             return (eventName: name, event: event, markets: outrightMarkets.sorted { $0.oddsA < $1.oddsA })
+        }
+    }
+
+    /// Outright content for a league tab (e.g. Golf tournament tabs)
+    /// Shows all outcomes directly without show more / collapse
+    @ViewBuilder
+    private var leagueOutrightsContent: some View {
+        if leagueOutrightsGrouped.isEmpty {
+            futuresEmptyState
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    ForEach(leagueOutrightsGrouped, id: \.eventName) { group in
+                        Section(header: outrightSectionHeader(group.eventName, lastUpdated: group.event.lastOddsUpdate ?? group.event.lastSyncedAt)) {
+                            ForEach(Array(group.markets.enumerated()), id: \.element.id) { index, market in
+                                futuresRow(market: market, event: group.event, isAlternate: index.isMultiple(of: 2))
+                            }
+                        }
+                    }
+                }
+            }
+            .background(Theme.background)
+        }
+    }
+
+    /// Section header for league outright tabs — title + last updated date
+    @ViewBuilder
+    private func outrightSectionHeader(_ title: String, lastUpdated: Date?) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(title.uppercased())
+                    .font(Theme.font(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                if let date = lastUpdated {
+                    Text("Updated \(date.formatted(.relative(presentation: .named)))")
+                        .font(Theme.font(size: 11, weight: .regular))
+                        .foregroundStyle(Theme.textMuted)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.background)
+
+            Rectangle()
+                .fill(Theme.divider)
+                .frame(height: 0.5)
         }
     }
 
@@ -449,14 +519,20 @@ struct SportPageView: View {
     @ViewBuilder
     private var emptyLeagueState: some View {
         Spacer()
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Image(systemName: "sportscourt")
-                .font(.system(size: 36))
+                .font(.system(size: 48))
                 .foregroundStyle(Theme.textMuted)
 
-            Text("No games available")
-                .font(Theme.subheadline)
+            Text("No Games Available")
+                .font(Theme.headline)
+                .foregroundStyle(Theme.textPrimary)
+
+            Text("Upcoming games will appear here once synced.")
+                .font(Theme.body)
                 .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
         }
         Spacer()
     }

@@ -1729,9 +1729,12 @@ struct PremiumBetSlipItemCard: View {
         return formatter.string(from: date)
     }
 
-    /// Build context line: "NBA · MIL @ NOP · Fri 5:10 PM"
+    /// Build context line: "NBA · MIL @ NOP · Fri 5:10 PM" or "Masters · Outright Winner · Sun 2:45 PM"
     private var contextLine: String {
         if let event = event {
+            if event.awayTeam == "Outright" {
+                return "\(event.league) · Outright Winner · \(Self.formatGameTime(event.startTime))"
+            }
             let away = TeamAbbreviations.abbreviation(for: event.awayTeam)
             let home = TeamAbbreviations.abbreviation(for: event.homeTeam)
             return "\(event.league) · \(away) @ \(home) · \(Self.formatGameTime(event.startTime))"

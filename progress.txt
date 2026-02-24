@@ -143,3 +143,17 @@ Started: Mon Feb 23 17:56:56 PST 2026
   - Removing `clearLocalData` from logout and deferring to next sync's `hasCompletedInitialSync` check prevents SwiftData crash from invalidated model instances
   - Futures events from Odds API have `home_team: null, away_team: null` — use sentinel `awayTeam = "Outright"` to identify them in display logic
 ---
+
+## 2026-02-24 - Golf Sport Page, Outright Polish, Cron Frequency
+- **SportPageView.swift**: Golf league tabs (PGA, Masters, etc.) render outright markets directly instead of empty game cards; `isOutrightOnlySport` flag skips Futures tab for Golf; `leagueOutrightsContent` with "Updated X ago" header; outright events excluded from `leagueEvents` for non-Golf sports; empty state matches futures empty state styling
+- **BetSlipSheet.swift**: Outright bet slip context line shows "Masters · Outright Winner · Sun 2:45 PM" instead of "Masters · OUT @ MAS · Sun 2:45 PM"
+- **SearchView.swift**: "POPULAR SPORTS" → "SPORTS", shows all SportCategory.allCases instead of curated list
+- **SportCategory.swift**: Added Golf to popular sports list
+- **auto_refresh_games**: Increased game limit from 10 to 25 per run
+- **Migration 014**: Cron frequency increased from 2x/day to every 2 hours (9 runs/day, 8 AM–midnight PT)
+- Files changed: 5 files + 1 migration, +96 -17 lines
+- **Learnings for future iterations:**
+  - Filtering outright events from `leagueEvents` then checking `leagueHasOnlyOutrights` is circular — use a sport-level flag (`isOutrightOnlySport`) and query outrights from unfiltered events
+  - Golf is purely futures — each "league" tab is actually a tournament outright, so hide the Futures tab entirely
+  - `event.lastOddsUpdate ?? event.lastSyncedAt` provides best "last updated" timestamp for display
+---
