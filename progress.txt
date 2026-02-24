@@ -11,6 +11,8 @@ Started: Tue Feb 24 11:05:08 PST 2026
 - RPC functions return `{ success: false, error }` for business rule violations (not Postgres errors) — check `data.success` after `rpcError`
 - Reversal/override RPCs follow same pattern as settle_bet_tx: FOR UPDATE lock → validate → mutate → audit → return JSONB
 - Edge function RPC refactor pattern: keep CORS + JWT + idempotency + ownership check, replace inline DB ops with single RPC call
+- iOS edge function calls: UUID must be `.lowercased()` before sending to server (iOS uppercase vs PostgreSQL lowercase)
+- ParlayPushVoidPolicy mapping: `.treatAsPush` → `"treatAsPush"`, `.reduceLegReprice` → `"reduceLegReprice"`
 ---
 
 ## 2026-02-24 - US-001
@@ -129,4 +131,20 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - Payout: win = -(stake * combinedDecimalOdds - stake), loss = +stake, push = 0
   - No RPC needed for parlay settlement — simpler than per-bet case (one ledger row + batch bet update)
   - Deploy: `npx supabase functions deploy settle_parlay --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+---
+
+## 2026-02-24 - US-009
+- Updated `Booki/Services/GradingService.swift` to call `settle_parlay` edge function instead of per-leg `settle_bet` calls
+- Added `SettleParlayRequest` struct: `ticket_id`, `parlay_policy`, `idempotency_key`
+- Added `SettleParlayResponse` struct: `success`, `outcome`, `payout`, `ledger_entry`, `legs_settled`, `error`
+- `settleParlayBets()` now makes single edge function call with ticket ID and policy string
+- On success: updates all parlay legs to `.settled` locally, creates single `LedgerEntry` from response
+- Removed per-leg `settle_bet` loop — replaced by single `settle_parlay` call
+- Files changed: `Booki/Services/GradingService.swift`
+- **Learnings for future iterations:**
+  - `ParlayPushVoidPolicy` enum maps to string values: `.treatAsPush` → `"treatAsPush"`, `.reduceLegReprice` → `"reduceLegReprice"`
+  - `Bet.ticketId` is a `UUID` — must call `.uuidString.lowercased()` before sending to edge function
+  - The `settle_parlay` response has different shape than `settle_bet` — includes `outcome`, `payout`, and `legs_settled` fields
+  - The single-bet `settleBet()` method is unchanged — still calls `settle_bet` for individual bets
+  - `EdgeLedgerData` struct is reused between `settle_bet` and `settle_parlay` responses — same ledger entry fields
 ---

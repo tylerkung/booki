@@ -189,7 +189,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "GradingService.swift is at Booki/Services/GradingService.swift. The current settleParlayBets() loops through legs calling settle_bet per leg. Replace the loop with one call to settle_parlay. The ParlayPushVoidPolicy enum has .treatAsPush and .reduceLegReprice — map to the string values the edge function expects. The ticketId is on bet.ticketId (UUID). Use EdgeFunctionService.shared.callFunction(name: 'settle_parlay', body: request). All bets in the parlay share the same player relationship. UUID must be lowercased for the edge function call."
     },
     {
