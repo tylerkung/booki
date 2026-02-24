@@ -111,3 +111,22 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - The grade_result null check is kept in the edge function even though RPC validates too — defense in depth
   - Deploy: `npx supabase functions deploy override_grade --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
 ---
+
+## 2026-02-24 - US-008
+- Created `supabase/functions/settle_parlay/index.ts` — new edge function for server-authoritative parlay settlement
+- Computes combined parlay odds server-side (multiply decimal odds of active legs)
+- Supports two push/void policies: `treatAsPush` (entire parlay pushes) and `reduceLegReprice` (exclude push/void legs, recalculate with winners)
+- Creates exactly ONE ledger entry for the whole parlay instead of per-leg entries
+- Batch updates all legs to `settled` status in a single query
+- Writes `settlement_events` row (non-blocking) and emits audit event with combined odds/payout
+- Full validation: JWT, bookie ownership, same player on all legs, all legs graded
+- Idempotency check/store following existing pattern
+- Files changed: `supabase/functions/settle_parlay/index.ts` (new)
+- **Learnings for future iterations:**
+  - Parlay legs are grouped by `ticket_id` — all bets with same ticket_id are one parlay
+  - American to decimal conversion: positive → 1 + odds/100, negative → 1 + 100/abs(odds)
+  - Combined decimal odds = product of all active leg decimal odds
+  - Payout: win = -(stake * combinedDecimalOdds - stake), loss = +stake, push = 0
+  - No RPC needed for parlay settlement — simpler than per-bet case (one ledger row + batch bet update)
+  - Deploy: `npx supabase functions deploy settle_parlay --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+---

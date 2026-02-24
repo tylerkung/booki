@@ -170,7 +170,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Create the function directory and index.ts. Import shared helpers: cors.ts, supabase.ts, idempotency.ts, audit.ts. The ticket_id groups parlay legs — all bets with the same ticket_id are one parlay. Stake is identical on all legs (parlay convention). The key insight: instead of calling settle_bet per leg (which writes N ledger entries with per-leg odds), this writes ONE entry with the real combined payout. The description should be like 'Multi-Pick (3 legs) won' or 'Multi-Pick (3 legs) lost'. Use batch update for legs: `client.from('bets').update({ status: 'settled', updated_at: now }).in('id', legIds)`. For the settlement_events entry, use the ticket_id as a reference. This function does NOT need an RPC — it can use the single-ledger-entry approach directly since the entire operation is simpler than the per-bet case (one ledger row, one batch bet update). Deploy: `npx supabase functions deploy settle_parlay --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`."
     },
     {
