@@ -442,7 +442,7 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
 
               const descriptionMap: Record<string, string> = { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed', void: 'Bet voided' };
               const description = descriptionMap[gradeOutcome.result] || 'Bet settled';
-              await client
+              const { data: ledgerEntry, error: ledgerError } = await client
                 .from('ledger_entries')
                 .insert({
                   bookie_id: bet.bookie_id,
@@ -451,7 +451,27 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
                   amount: payoutAmount,
                   type: 'settlement',
                   description: description,
-                });
+                })
+                .select()
+                .single();
+
+              // Write settlement_events row for audit trail
+              if (ledgerEntry && !ledgerError) {
+                try {
+                  await client
+                    .from('settlement_events')
+                    .insert({
+                      bookie_id: bet.bookie_id,
+                      bet_id: bet.id,
+                      mode: 'auto',
+                      actor_user_id: bookie?.auth_user_id ?? null,
+                      idempotency_key: `auto_settle_catchup_${bet.id}_${Date.now()}`,
+                      ledger_entry_ids: [ledgerEntry.id],
+                    });
+                } catch (seError) {
+                  console.error(`Catch-up: error writing settlement_event for bet ${bet.id}:`, seError);
+                }
+              }
 
               if (bookie?.auth_user_id) {
                 await emitAuditEvent(client, {
@@ -1291,7 +1311,7 @@ Deno.serve(async (req) => {
                         // Always create ledger entry — including $0 for push/void
                         const descriptionMap: Record<string, string> = { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed', void: 'Bet voided' };
                         const description = descriptionMap[gradeOutcome.result] || 'Bet settled';
-                        const { error: ledgerError } = await client
+                        const { data: ledgerEntry, error: ledgerError } = await client
                           .from('ledger_entries')
                           .insert({
                             bookie_id: bet.bookie_id,
@@ -1300,11 +1320,31 @@ Deno.serve(async (req) => {
                             amount: payoutAmount,
                             type: 'settlement',
                             description: description,
-                          });
+                          })
+                          .select()
+                          .single();
 
                         if (ledgerError) {
                           console.error(`Error creating ledger entry for bet ${bet.id}:`, ledgerError);
                           gradingErrors.push(`Bet ${bet.id}: ledger entry failed - ${ledgerError.message}`);
+                        }
+
+                        // Write settlement_events row for audit trail
+                        if (ledgerEntry && !ledgerError) {
+                          try {
+                            await client
+                              .from('settlement_events')
+                              .insert({
+                                bookie_id: bet.bookie_id,
+                                bet_id: bet.id,
+                                mode: 'auto',
+                                actor_user_id: game.bookie_auth_user_id ?? null,
+                                idempotency_key: `auto_settle_${bet.id}_${Date.now()}`,
+                                ledger_entry_ids: [ledgerEntry.id],
+                              });
+                          } catch (seError) {
+                            console.error(`Error writing settlement_event for bet ${bet.id}:`, seError);
+                          }
                         }
 
                         // Emit audit event for auto-graded and settled bet
