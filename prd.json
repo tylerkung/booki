@@ -66,7 +66,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "There are TWO code paths that need this fix — both in auto_refresh_games/index.ts: (1) The main grading loop around line 1294 has `if (payoutAmount !== 0) { ... create ledger entry ... }`. Change to always create the entry, using a description map: { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed' }. (2) The catch-up grading in runCatchupGrading() around line 443 has the same `if (payoutAmount !== 0)` guard. Apply the same fix. After this change, auto-settle and manual settle produce identical ledger behavior. Deploy: `npx supabase functions deploy auto_refresh_games --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`."
     },
     {

@@ -39,3 +39,15 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - BetRecord and LedgerEntry interfaces kept for documentation even though RPC returns untyped JSONB
   - Deploy: `npx supabase functions deploy settle_bet --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
 ---
+
+## 2026-02-24 - US-003
+- Fixed `supabase/functions/auto_refresh_games/index.ts` to always create ledger entries for push/void outcomes ($0 amount)
+- Two code paths fixed: (1) catch-up grading in `runCatchupGrading()` ~line 443, (2) main grading loop ~line 1294
+- Removed `if (payoutAmount !== 0)` guards — ledger entries now created for ALL settlement outcomes
+- Added `descriptionMap` for consistent descriptions: win='Bet won', loss='Bet lost', push='Bet pushed', void='Bet voided'
+- Files changed: `supabase/functions/auto_refresh_games/index.ts`
+- **Learnings for future iterations:**
+  - auto_refresh_games has TWO settlement code paths: `runCatchupGrading()` (catch-up) and main `Deno.serve` handler (live grading) — both need identical ledger logic
+  - The catch-up path doesn't capture ledger insert errors (no `.select()` return) — US-004 will need to add `.select().single()` there
+  - Deploy: `npx supabase functions deploy auto_refresh_games --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+---
