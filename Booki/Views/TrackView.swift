@@ -250,7 +250,6 @@ struct TrackView: View {
     var body: some View {
         ScrollView {
             if tickets.isEmpty {
-                Spacer()
                 VStack(spacing: 16) {
                     Image(systemName: "ticket")
                         .font(.system(size: 48))
@@ -266,7 +265,8 @@ struct TrackView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
                 }
-                Spacer()
+                .frame(maxWidth: .infinity)
+                .padding(.top, 120)
             } else {
                 VStack(spacing: 12) {
                     TrackSummaryCard(
@@ -573,7 +573,9 @@ private struct TrackFilterChips: View {
                     .buttonStyle(.plain)
                 }
             }
+            .padding(.horizontal)
         }
+        .padding(.horizontal, -16)
     }
 }
 

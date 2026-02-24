@@ -143,7 +143,7 @@ struct PickPresenter {
         let workflow: WorkflowStatus
 
         if legStatuses.contains(where: { $0.1 == .rejected }) {
-            settlement = .open; workflow = .rejected
+            settlement = .push; workflow = .rejected
         } else if legStatuses.contains(where: { $0.0 == .lost }) {
             settlement = .lost; workflow = .approved
         } else if legStatuses.allSatisfy({ $0.0 == .won }) {
@@ -237,7 +237,7 @@ struct PickPresenter {
             case .none: return (.open, .approved)
             }
         case .declined:
-            return (.open, .rejected)
+            return (.push, .rejected)
         case .void:
             return (.void, .approved)
         }

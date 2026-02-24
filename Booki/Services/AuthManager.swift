@@ -122,6 +122,10 @@ final class AuthManager {
             currentPlayerId = playerRecord.id
             currentBookieId = playerRecord.bookieId  // Players need their bookie's ID to sync data
             userRole = .player
+            // Clean up spurious bookie record if user signed up before claiming invite
+            // get_user_bookie_id() COALESCE checks bookies first, so a leftover bookie
+            // record breaks RLS for the player account
+            await cleanUpSpuriousBookieRecord(forAuthUserId: authUserId)
             // Check agreement status for player
             await checkAgreementRequired(for: authUserId)
             isLoadingBookie = false
@@ -160,6 +164,23 @@ final class AuthManager {
         }
 
         isLoadingBookie = false
+    }
+
+    /// Removes any bookie record owned by this auth user.
+    /// This handles the case where a user signed up as bookie first, then claimed
+    /// a player invite. The leftover bookie record breaks get_user_bookie_id() COALESCE.
+    private func cleanUpSpuriousBookieRecord(forAuthUserId authUserId: UUID) async {
+        do {
+            try await supabase
+                .from("bookies")
+                .delete()
+                .eq("auth_user_id", value: authUserId.uuidString)
+                .execute()
+            print("Cleaned up spurious bookie record for player \(authUserId)")
+        } catch {
+            // Non-blocking — if no bookie record exists, delete is a no-op
+            print("No spurious bookie record to clean up (or error): \(error)")
+        }
     }
 
     /// Fetches a player record from Supabase by auth_user_id

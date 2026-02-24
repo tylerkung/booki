@@ -148,7 +148,7 @@ final class PickPresenterTests: XCTestCase {
 
     func testMapStatus_Declined() {
         let (settlement, workflow) = PickPresenter.mapStatus(betStatus: .declined, gradeResult: nil)
-        XCTAssertEqual(settlement, .open)
+        XCTAssertEqual(settlement, .push)
         XCTAssertEqual(workflow, .rejected)
     }
 
