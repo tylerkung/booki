@@ -81,3 +81,18 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - The reversal entry description differentiates: "Settlement reversal: {reason}" vs "Settlement reversal for grade override: {reason}"
   - override_grade_tx returns `settlement_reversed` boolean and optional `reversal_entry` — edge function can forward these directly
 ---
+
+## 2026-02-24 - US-006
+- Refactored `supabase/functions/reverse_settlement/index.ts` to use `reverse_settlement_tx` RPC
+- Removed inline DB operations: bet status update, reversal ledger entry insert, 2x audit event emits
+- Removed `emitAuditEvent` import (no longer needed — RPC handles audit atomically)
+- RPC handles all atomically: validates bet is settled, finds original settlement entry, creates reversal, updates bet to graded, emits audit events
+- Kept same response shape: `{ success: true, bet: {...}, reversal_entry: {...} }`
+- Edge function now: CORS → JWT → input validation → idempotency check → bookie validation → RPC → idempotency store → respond
+- Files changed: `supabase/functions/reverse_settlement/index.ts`
+- **Learnings for future iterations:**
+  - Same refactor pattern as US-002 (settle_bet): keep CORS + JWT + idempotency + ownership, replace inline ops with single RPC call
+  - The bet fetch + bookie ownership check is kept in the edge function (pre-RPC validation) even though the RPC also validates — defense in depth
+  - BetRecord and LedgerEntry interfaces retained for documentation even though RPC returns untyped JSONB
+  - Deploy: `npx supabase functions deploy reverse_settlement --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+---
