@@ -20,7 +20,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": "LeagueInfo needs to match on Event.sport AND Event.league strings. Use the existing string values from OddsAPIMapper: sport='Basketball' league='NBA', sport='Football' league='NFL', etc. Keep existing sportIconName() function in GamesView — don't remove yet."
     },
     {

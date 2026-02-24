@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		507360742F4D2C46000350CE /* SportCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507360752F4D2C46000350CE /* SportCategory.swift */; };
 		507360732F4D2C45000350CE /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507360722F4D2C45000350CE /* SearchView.swift */; };
 		50C083EF2F25F8B0001A0FE5 /* CompactOddsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */; };
 		50C083F02F25F8B0001A0FE5 /* CompactGameRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */; };
@@ -143,6 +144,7 @@
 
 /* Begin PBXFileReference section */
 		507360722F4D2C45000350CE /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		507360752F4D2C46000350CE /* SportCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SportCategory.swift; sourceTree = "<group>"; };
 		50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactGameRow.swift; sourceTree = "<group>"; };
 		50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactOddsButton.swift; sourceTree = "<group>"; };
 		50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDetailView.swift; sourceTree = "<group>"; };
@@ -356,6 +358,7 @@
 				8A1234550053 /* SettlementPeriod.swift */,
 				8A1234550054 /* PlayerSettlement.swift */,
 				8A1234550069 /* Syncable.swift */,
+				507360752F4D2C46000350CE /* SportCategory.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -631,6 +634,7 @@
 				8A1234560007 /* Bet.swift in Sources */,
 				8A1234560008 /* LedgerEntry.swift in Sources */,
 				8A1234560009 /* Event.swift in Sources */,
+				507360742F4D2C46000350CE /* SportCategory.swift in Sources */,
 				8A1234560010 /* Market.swift in Sources */,
 				8A1234560011 /* LiabilityService.swift in Sources */,
 				8A1234560013 /* ExposureService.swift in Sources */,

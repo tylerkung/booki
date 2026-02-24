@@ -1,265 +1,132 @@
 {
   "project": "Booki",
-  "branchName": "ralph/member-invite-redesign",
-  "description": "Redesign the member invite flow — lightweight Invite model, server-side invite creation/claiming, restyled Members list, simplified bookie invite sheet, and 3-path player claim flow with deep linking",
+  "branchName": "ralph/sport-hub-pages",
+  "description": "Dedicated Sport Pages (Sport Hub Architecture) — Create sport-level destination pages (Basketball, Football, etc.) with league sub-tabs (NBA, NCAAB, WNBA) and Futures placeholder, navigable from Search and Games tabs",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Create Invite SwiftData model",
-      "description": "As a developer, I need a lightweight Invite model in SwiftData to track invite lifecycle without creating premature player records.",
+      "title": "Create SportCategory enum and league metadata",
+      "description": "As a developer, I need a centralized sport category enum that groups leagues under sports, providing display names, icons, and league lists so sport pages can be configured from a single source of truth.",
       "acceptanceCriteria": [
-        "New `Invite` SwiftData `@Model` in `Booki/Models/Invite.swift` with fields: `id` (UUID), `bookieId` (UUID), `inviteCode` (String, 8-char), `email` (String?, optional), `createdAt` (Date), `expiresAt` (Date), `claimedAt` (Date?), `claimedByPlayerId` (UUID?), `needsSync` (Bool, default false), `version` (Int, default 0)",
-        "Add computed properties: `isExpired` (Bool, checks expiresAt < Date()), `isPending` (Bool, claimedAt == nil && !isExpired)",
-        "Add `Invite.self` to the ModelContainer schema array in the app entry point (BookiApp.swift or similar)",
-        "Explicit `init()` provided (private stored properties make synthesized init private)",
+        "Create Booki/Models/SportCategory.swift with enum SportCategory: String, CaseIterable, Identifiable",
+        "Cases: basketball, football, baseball, hockey, soccer (no golf yet)",
+        "Computed property displayName: 'Basketball', 'Football', 'Baseball', 'Hockey', 'Soccer'",
+        "Computed property iconName: SF Symbol string (basketball.fill, football.fill, etc.)",
+        "Computed property leagues: [LeagueInfo] where LeagueInfo is a struct with id, displayName (e.g. 'NBA'), and matchesEvent closure that checks Event.sport and Event.league",
+        "Basketball leagues: NBA, NCAAB, WNBA. Football leagues: NFL, NCAAF. Baseball: MLB. Hockey: NHL. Soccer: EPL, MLS",
+        "Static func fromEvent(_ event: Event) -> SportCategory? that matches an Event to its category",
+        "Static var popular: [SportCategory] returning [.basketball, .football, .baseball, .hockey] for Search tab",
+        "Add file to Xcode pbxproj (PBXBuildFile, PBXFileReference, group children, Sources build phase)",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "SwiftData schema change — requires deleting app from Simulator"
+      "notes": "LeagueInfo needs to match on Event.sport AND Event.league strings. Use the existing string values from OddsAPIMapper: sport='Basketball' league='NBA', sport='Football' league='NFL', etc. Keep existing sportIconName() function in GamesView — don't remove yet."
     },
     {
       "id": "US-002",
-      "title": "Create Supabase invites table migration",
-      "description": "As a developer, I need the invites table in Supabase so invite records can be stored server-side.",
+      "title": "Create SportPageView with league sub-tabs and Games content",
+      "description": "As a player, I want to navigate to a sport page (e.g. Basketball) that has league tabs (NBA, NCAAB, WNBA) showing filtered games for each league.",
       "acceptanceCriteria": [
-        "New migration SQL file in `supabase/migrations/` creating `invites` table with columns: `id` (uuid PK default gen_random_uuid()), `bookie_id` (uuid NOT NULL references bookies(id)), `invite_code` (text UNIQUE NOT NULL), `email` (text), `created_at` (timestamptz default now()), `expires_at` (timestamptz NOT NULL), `claimed_at` (timestamptz), `claimed_by_player_id` (uuid references players(id)), `version` (int default 0)",
-        "RLS enabled: bookie can SELECT own invites (bookie_id = get_user_bookie_id()), bookie can INSERT own invites",
-        "Service role can UPDATE (for claim_invite edge function)",
-        "Index on `invite_code` for fast lookups",
-        "Migration file documented in SUPABASE_MIGRATIONS.md",
+        "Create Booki/Views/SportPageView.swift",
+        "Init takes SportCategory parameter and optional isViewOnly: Bool = false",
+        "Navigation title shows category displayName (e.g. 'Basketball')",
+        "Top-level segmented Picker: league tabs derived from category.leagues, plus a 'Futures' tab at the end",
+        "When a league tab is selected, show events filtered to that league using CompactGameRow",
+        "Group events by date with sticky section headers, same pattern as GamesView",
+        "Only show bettable events (future start time, not locked/final/canceled) unless isViewOnly",
+        "Wire up bet slip selection when isViewOnly is false — pass through onSelectOdds and selections from BetSlipState environment",
+        "If isViewOnly is true, pass isViewOnly to CompactGameRow (muted odds, no tap)",
+        "Default selected tab to first league",
+        "Add file to Xcode pbxproj",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Run with: npx supabase db push --project-ref vstfauqufwpdytmvjyfz"
+      "passes": false,
+      "notes": "Reuse event filtering and grouping patterns from GamesView. Use @Environment(BetSlipState.self) for bet slip. Use @Query for events. Theme.background for page background. If a league has no events, show a simple empty state ('No games available')."
     },
     {
       "id": "US-003",
-      "title": "Create create_invite edge function",
-      "description": "As a bookie, I want invite creation to be server-authoritative so codes are unique and secure.",
+      "title": "Add Futures placeholder tab to SportPageView",
+      "description": "As a player, I want to see a Futures tab on the sport page that shows a coming soon placeholder, establishing the architecture for future expansion.",
       "acceptanceCriteria": [
-        "New edge function at `supabase/functions/create_invite/index.ts`",
-        "Request body: `{ email?: string }` (email is optional)",
-        "Validates JWT in code — caller must be a bookie (query bookies table for auth user id)",
-        "Generates unique 8-char invite code (charset: A-Z, 2-9, excluding 0/O/1/I/L) with collision retry",
-        "Sets `expires_at` to 24 hours from now",
-        "Inserts invite record into `invites` table with `bookie_id` from authenticated user",
-        "Returns `{ success: true, invite_id, invite_code, invite_url: 'booki://invite/{code}', expires_at }`",
-        "Uses shared helpers: `_shared/cors.ts`, `_shared/supabase.ts`, `_shared/idempotency.ts`, `_shared/audit.ts`",
-        "Idempotency key support matching existing edge function patterns",
-        "Emits audit event on successful creation",
+        "When 'Futures' is selected in the segmented control, show a centered placeholder view",
+        "Placeholder shows: 'Futures Coming Soon' as title (Theme.headline, Theme.textPrimary)",
+        "Subtitle: 'Season-long and tournament markets will appear here.' (Theme.bodyFont, Theme.textSecondary)",
+        "Use a relevant SF Symbol icon above the title (e.g. 'chart.line.uptrend.xyaxis') in Theme.textMuted at 48pt",
+        "Placeholder is vertically centered in the available space",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Deploy: npx supabase functions deploy create_invite --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz"
+      "passes": false,
+      "notes": "Keep this simple — just a static placeholder. No dynamic data needed."
     },
     {
       "id": "US-004",
-      "title": "Create claim_invite edge function",
-      "description": "As a player, I need a server-authoritative way to claim an invite that creates my player record and links me to the bookie.",
+      "title": "Add Popular Sports section to SearchView",
+      "description": "As a player, I want to see a 'Popular Sports' section in the Search tab when no search query is active, so I can quickly navigate to a sport page.",
       "acceptanceCriteria": [
-        "New edge function at `supabase/functions/claim_invite/index.ts`",
-        "Request body: `{ invite_code: string, auth_user_id: string }`",
-        "Validates invite code exists in `invites` table, is not expired (`expires_at > now()`), and is not already claimed (`claimed_at IS NULL`)",
-        "Verifies auth user exists via `supabase.auth.admin.getUserById()`",
-        "Checks auth user is not already linked to any bookie: query `players` table for `auth_user_id` WHERE `claimed_at IS NOT NULL` — if found, return 409 `{ error: 'already_in_group', message: \"You're already a member of another organizer's group.\" }`",
-        "Creates new Player record in `players` table: `name` = email prefix (before @), `status` = 'active', `auth_user_id`, `bookie_id` from invite record, `claimed_at` = now(), `credit_limit` = 10000",
-        "Updates invite record: `claimed_at` = now(), `claimed_by_player_id` = new player ID",
-        "Auto-confirms email on auth user via `admin.updateUserById(auth_user_id, { email_confirm: true })`",
-        "Returns `{ success: true, player_id, bookie_id, player_name }`",
-        "Uses shared helpers for CORS, Supabase client, idempotency, audit",
-        "Emits audit event on successful claim",
+        "When searchText is empty, show a 'POPULAR SPORTS' section header (Theme.caption, tracking 1.0, Theme.textSecondary)",
+        "List SportCategory.popular as tappable rows",
+        "Each row shows: sport icon (SF Symbol) + sport displayName + chevron.right",
+        "Row styling: Theme.textPrimary for name, Theme.accent for icon, Theme.cardBackground background with rounded corners",
+        "Tapping a row navigates to SportPageView(category: sportCategory) via NavigationLink",
+        "Popular Sports section disappears when user starts typing (search results take over)",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Uses service role client to bypass RLS (same pattern as claim_player). Deploy: npx supabase functions deploy claim_invite --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz"
+      "passes": false,
+      "notes": "SearchView is in Booki/Views/SearchView.swift. It already has NavigationStack context. Use existing styling patterns (Theme.cardBackground cards, section headers with tracking)."
     },
     {
       "id": "US-005",
-      "title": "Add invite sync to SyncService",
-      "description": "As a developer, I need invites to sync from Supabase so the bookie sees pending invites locally.",
+      "title": "Make Games tab sport headers tappable with navigation to sport page",
+      "description": "As a player, I want to tap a sport section header on the Games tab to navigate to that sport's dedicated page.",
       "acceptanceCriteria": [
-        "Add `Invite` to `SyncService` download cycle alongside existing models",
-        "Fetch invites where `bookie_id` matches current bookie ID (same pattern as players sync)",
-        "Upsert downloaded invites into local SwiftData context (match on `id`)",
-        "Claimed invites update locally showing `claimedAt` and `claimedByPlayerId`",
-        "Expired invites are retained locally (UI filters them, not deleted from DB)",
-        "Uses same version/conflict resolution pattern as other models",
+        "Sport-level sticky headers in GamesView become tappable NavigationLinks",
+        "Add a chevron.right indicator to the trailing side of each sport header",
+        "Tapping navigates to SportPageView for the matching SportCategory",
+        "Only add navigation if SportCategory.fromEvent returns a valid category for events in that sport group",
+        "If no matching SportCategory, header remains non-tappable (no chevron)",
+        "Preserve existing header styling (icon, sport name, league name)",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Follow existing SyncService patterns for Player/Bet/LedgerEntry downloads"
+      "passes": false,
+      "notes": "GamesView is in Booki/Views/GamesView.swift. Headers are rendered in LazyVStack with pinned section headers. The view is inside a NavigationStack. The outer grouping is by sport — tapping 'Basketball' header navigates to the Basketball sport page."
     },
     {
       "id": "US-006",
-      "title": "Restyle Members list — remove iOS List, use card rows",
-      "description": "As a bookie, I want the Members tab to use the same dark card-based styling as the rest of the app.",
+      "title": "Make bookie EventsListView sport headers tappable",
+      "description": "As a bookie, I want to tap sport headers on the Events tab to navigate to the sport page in view-only mode.",
       "acceptanceCriteria": [
-        "In `PlayersListView.swift`: replace `List { Section { ... } }` with `ScrollView { VStack(spacing: 12) }` layout on `Theme.background`",
-        "Each member row uses `Theme.cardBackground` with rounded corners (`Theme.cornerRadiusSmall`) — full-width card style",
-        "Row shows: player name (bold, `Theme.textPrimary`), status badge (teal capsule, existing style), balance (green if positive/red if negative), credit limit, utilization percentage",
-        "Remove the grouped container/section chrome (no more iOS List insets)",
-        "Remove `.listRowBackground` and `.scrollContentBackground(.hidden)` modifiers (no longer using List)",
-        "Remove the `+` nav bar button from toolbar",
-        "Remove the filter toggle and layout toggle icons from the top bar",
-        "Replace NavigationStack toolbar header with custom inline header: `BookiWordmark` image (leading, height 20) + `SyncStatusIndicator` (trailing) — matching AnalyticsDashboardView toolbar pattern",
+        "Sport-level sticky headers in EventsListView become tappable NavigationLinks",
+        "Add chevron.right indicator matching GamesView pattern from US-005",
+        "Navigate to SportPageView with isViewOnly: true",
+        "Only add navigation if SportCategory match exists",
+        "Preserve existing header styling",
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Reference AnalyticsDashboardView.swift for the inline header toolbar pattern"
+      "passes": false,
+      "notes": "EventsListView is in Booki/Views/EventsListView.swift. Similar architecture to GamesView."
     },
     {
       "id": "US-007",
-      "title": "Add Pending Invites section to Members list",
-      "description": "As a bookie, I want to see outstanding invites above the member list so I know who hasn't joined yet.",
+      "title": "Refactor GamesView and EventsListView to use SportCategory for icons",
+      "description": "As a developer, I want to replace the inline sportIconName() functions with SportCategory lookups to consolidate sport metadata in one place.",
       "acceptanceCriteria": [
-        "Add `@Query private var invites: [Invite]` to PlayersListView",
-        "Compute `pendingInvites` = invites where `claimedAt == nil` (includes expired for display)",
-        "'PENDING INVITES' section header (Theme.caption, Theme.textSecondary, tracking 1.0) appears above member rows only if `pendingInvites` is non-empty",
-        "Each pending invite row shows: email if provided or 'Link invite' as label, invite code in monospaced font (Theme.bodyFont), expiration countdown ('Expires in Xh Ym' or 'Expired' in Theme.danger)",
-        "Muted visual treatment: `Theme.elevatedBackground` background (not `Theme.cardBackground`), `Theme.textSecondary` text",
-        "Expired invites show 'Expired' label in `Theme.danger`",
-        "Swipe-to-delete gesture on pending invite rows that deletes the invite from local context + marks for sync",
+        "GamesView.sportIconName(for:) replaced with SportCategory-based lookup",
+        "EventsListView sport icon logic replaced similarly",
+        "SportTabButton and sport headers use SportCategory for icon resolution",
+        "Fallback to 'sportscourt' SF Symbol if no SportCategory match (same behavior as before)",
+        "Remove the standalone sportIconName() function from GamesView after migration",
+        "All existing sport tabs and headers render identically to before",
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Use TimeInterval math for countdown: (expiresAt.timeIntervalSince(Date())) / 3600 for hours, remainder for minutes"
-    },
-    {
-      "id": "US-008",
-      "title": "Invite Member sheet — Generate Link section",
-      "description": "As a bookie, I want to generate an invite link with one tap so I can share it however I want.",
-      "acceptanceCriteria": [
-        "Add 'Invite Member' button at the bottom of the member list in PlayersListView — full-width, `Theme.accent` background, white/black text, rounded corners",
-        "Tapping opens a `.sheet` with `presentationBackground(Theme.background)`",
-        "Sheet has a 'Generate Link' button that calls `create_invite` edge function via `EdgeFunctionService`",
-        "After generation: displays invite code (large, 28pt monospaced font), 'Expires in 24 hours' subtitle (Theme.textSecondary)",
-        "Copy button: copies `booki://invite/{code}` to `UIPasteboard.general.string` with haptic feedback (UIImpactFeedbackGenerator)",
-        "Share button: uses SwiftUI `ShareLink` or presents `UIActivityViewController` with the invite URL string",
-        "Sheet has a 'Done' button to dismiss",
-        "Loading state while edge function call is in-flight",
-        "Error state if edge function fails (inline alert)",
-        "Typecheck passes"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Use EdgeFunctionService for the API call. The invite URL format is booki://invite/{code}"
-    },
-    {
-      "id": "US-009",
-      "title": "Invite Member sheet — Email option",
-      "description": "As a bookie, I want to send an invite to a specific email so the member gets it directly.",
-      "acceptanceCriteria": [
-        "Add 'Send via Email' section below the Generate Link section in the invite sheet",
-        "Single email text field: `Theme.elevatedBackground` background, placeholder 'Enter email address', `keyboardType(.emailAddress)`, `textContentType(.emailAddress)`",
-        "'Send Invite' button: calls `create_invite` with the email, then opens iOS Mail compose sheet",
-        "Mail compose uses `MFMailComposeViewController` wrapped in `UIViewControllerRepresentable` — pre-filled with: To (entered email), Subject ('You've been invited to join Booki'), Body ('You've been invited to join [bookie name]'s group on Booki.\\n\\nOpen this link to get started: booki://invite/{code}\\n\\nThis invite expires in 24 hours.')",
-        "If `MFMailComposeViewController.canSendMail()` is false: copy link to clipboard + show alert 'Link copied! Mail is not configured — share the link manually.'",
-        "After sending or copying: show confirmation text 'Invite sent!' with checkmark icon",
-        "Typecheck passes"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Import MessageUI for MFMailComposeViewController. Bookie name from @Query bookies.first?.name"
-    },
-    {
-      "id": "US-010",
-      "title": "Register booki:// URL scheme for deep linking",
-      "description": "As a developer, I need the app to handle booki://invite/{code} URLs so invite links open directly in the app.",
-      "acceptanceCriteria": [
-        "Register `booki` URL scheme in Info.plist under CFBundleURLTypes → CFBundleURLSchemes",
-        "Add `.onOpenURL` modifier on root view in app entry point (BookiApp.swift or ContentView.swift)",
-        "Parse invite code from URL: check scheme is 'booki', host is 'invite', extract first path component as code",
-        "Store parsed invite code in a published/state property that triggers navigation to InviteClaimView",
-        "If app is not authenticated: show InviteClaimView directly with the code",
-        "If app is authenticated as a bookie: show alert 'Switch to a member account to accept invites'",
-        "If app is authenticated as a player: route to InviteClaimView existing-user path",
-        "Typecheck passes"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "URL format: booki://invite/{CODE}. Use URLComponents to parse."
-    },
-    {
-      "id": "US-011",
-      "title": "Invite claim landing screen",
-      "description": "As an invited user, I want to see who invited me and have clear options to join.",
-      "acceptanceCriteria": [
-        "New `InviteClaimView.swift` in `Booki/Views/`",
-        "Accepts optional `initialCode: String?` parameter (from deep link) or allows manual code entry",
-        "Manual code entry: text field with 8-char limit, auto-uppercase, filters non-alphanumeric (same pattern as existing PlayerClaimView)",
-        "On code submit/deep link: validates code against Supabase `invites` table (query where invite_code matches, not expired, not claimed) — fetches bookie name via bookie_id join",
-        "Valid code shows: Booki logo (BookiLogo image), 'You've been invited to join **[Bookie Name]**'s group' text, two CTAs",
-        "Primary CTA: 'Get Started' button (Theme.accent background, full-width)",
-        "Secondary CTA: 'Already have an account?' text link (Theme.accent foreground)",
-        "Invalid/expired code: error state 'This invite has expired or is invalid' in Theme.danger",
-        "Styled with Theme.background, centered content layout matching existing auth screens",
-        "Typecheck passes"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "Reference existing PlayerClaimView for code entry formatting patterns and Supabase validation approach"
-    },
-    {
-      "id": "US-012",
-      "title": "Invite claim — new user signup path",
-      "description": "As a new user accepting an invite, I want to create an account and join the bookie's group.",
-      "acceptanceCriteria": [
-        "'Get Started' from InviteClaimView navigates to account creation screen within same view (step-based navigation)",
-        "Account creation screen: email field + password field (min 6 chars) + confirm password field, dark themed matching existing auth screens",
-        "On submit: calls `supabase.auth.signUp(email: email, password: password)`",
-        "On signup success: calls `claim_invite` edge function via EdgeFunctionService with invite_code + auth_user_id from signup response",
-        "On claim success: triggers agreement acceptance flow (existing `submitPlayerAgreement()` / AgreementService pattern)",
-        "After agreement: calls `completePlayerClaimFlow` pattern — signs in fresh, app routes to player main view via AuthManager",
-        "Error handling: duplicate email, weak password, network failure — shown as inline error text below form (Theme.danger)",
-        "Loading state on submit button while API calls are in-flight",
-        "Typecheck passes"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": "Follow existing PlayerClaimView step 2 pattern for signup + claim sequence. Use AuthManager for session management."
-    },
-    {
-      "id": "US-013",
-      "title": "Invite claim — existing user login path",
-      "description": "As an existing user, I want to log in and join a bookie's group using my invite.",
-      "acceptanceCriteria": [
-        "'Already have an account?' from InviteClaimView navigates to login screen (email + password fields, dark themed)",
-        "On successful login via `supabase.auth.signIn(email:password:)`: calls `claim_invite` edge function",
-        "If claim succeeds (user has no existing bookie): shows confirmation screen 'Join [Bookie Name]'s group?' with Confirm and Cancel buttons",
-        "On Confirm: claim is already done, route to player main view via AuthManager",
-        "If claim returns 409 `already_in_group`: shows error screen 'You're already a member of another organizer's group. You cannot join multiple groups.' with a 'Back' button that returns to landing",
-        "Cancel button returns to InviteClaimView landing",
-        "Typecheck passes"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": "The 409 error case is the key differentiator from the new user path. claim_invite handles the check server-side."
-    },
-    {
-      "id": "US-014",
-      "title": "Remove old Add Member flow and cleanup",
-      "description": "As a developer, I want to remove the old manual player creation UI that's replaced by the invite flow.",
-      "acceptanceCriteria": [
-        "Remove `AddPlayerInterstitialSheet` struct from PlayersListView.swift (the 'Add to Your Group' choice sheet with Add Member / Purchase Seats)",
-        "Remove `AddPlayerSheet` struct from PlayersListView.swift (the manual name/email/username/limit form)",
-        "Remove all `@State` properties and `.sheet` modifiers that triggered the old add player sheets",
-        "Remove old `PlayerClaimView.swift` file entirely (replaced by InviteClaimView)",
-        "Update `AuthGateView.swift`: change `.playerClaim` case to present `InviteClaimView` instead of `PlayerClaimView`",
-        "Keep `PlayerService.addPlayer()` method — it's used programmatically by claim_invite flow",
-        "Keep `InviteCodeService` methods that are still referenced elsewhere",
-        "No dead code or unused imports remaining in modified files",
-        "Typecheck passes"
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": "Be careful not to remove PlayerService.addPlayer() — only the UI sheets are removed. The claim flow creates players server-side."
+      "passes": false,
+      "notes": "This is a refactor — output should be visually identical. The sportIconName function is at the bottom of GamesView.swift around line 620."
     }
   ]
 }
