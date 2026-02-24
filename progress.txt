@@ -148,3 +148,18 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - The single-bet `settleBet()` method is unchanged — still calls `settle_bet` for individual bets
   - `EdgeLedgerData` struct is reused between `settle_bet` and `settle_parlay` responses — same ledger entry fields
 ---
+
+## 2026-02-24 - US-010
+- Created `supabase/migrations/017_ledger_v2_hash_chain.sql` with tamper-evident hash chaining
+- Added `prev_hash` (TEXT, nullable) and `entry_hash` (TEXT, NOT NULL) columns to ledger_entries
+- `compute_ledger_hash()` trigger fires BEFORE INSERT: looks up most recent entry_hash for same (bookie_id, player_id) chain with FOR UPDATE lock, computes SHA-256 hash of key fields
+- Hash formula: `encode(sha256(concat(coalesce(prev_hash,''), bookie_id, player_id, amount, type, created_at, id)::bytea), 'hex')`
+- Backfill DO block: disables `prevent_mutation_ledger_entries` trigger, iterates each (bookie_id, player_id) pair, computes chain in created_at ASC order, re-enables trigger
+- NOT NULL constraint added to `entry_hash` after backfill (prev_hash stays nullable for chain heads)
+- Files changed: `supabase/migrations/017_ledger_v2_hash_chain.sql` (new)
+- **Learnings for future iterations:**
+  - The immutability trigger must be temporarily disabled for backfill — use `ALTER TABLE ... DISABLE TRIGGER <trigger_name>` / `ENABLE TRIGGER`
+  - Hash chain is per (bookie_id, player_id) — not global, not per-bookie
+  - FOR UPDATE lock on the previous entry lookup prevents race conditions with concurrent inserts
+  - The validate_ledger_chain function (US-011) must use the exact same hash formula for verification
+---
