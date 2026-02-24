@@ -125,7 +125,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "This is a refactor — output should be visually identical. The sportIconName function is at the bottom of GamesView.swift around line 620."
     }
   ]

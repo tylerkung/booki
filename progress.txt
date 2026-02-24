@@ -90,3 +90,15 @@ Started: Mon Feb 23 17:56:56 PST 2026
   - Bookie views pass `isViewOnly: true` to SportPageView (muted odds, no bet slip interaction)
   - The `let sportCategory = ...` declaration inside ForEach body works fine for computed values used in nested closures
 ---
+
+## 2026-02-23 - US-007
+- Replaced `sportIconName(for:)` calls in GamesView and EventsListView with `SportCategory.iconName(for:)`
+- Added `static func iconName(for sport: String) -> String` to SportCategory enum (returns iconName or "sportscourt" fallback)
+- Removed the standalone free function `sportIconName(for:)` from GamesView.swift (26 lines)
+- SportTabButton continues to work unchanged — it accepts `String?` for iconName, now receives non-optional `String`
+- Files changed: Booki/Models/SportCategory.swift, Booki/Views/GamesView.swift, Booki/Views/EventsListView.swift
+- **Learnings for future iterations:**
+  - Sport icon resolution is now centralized in `SportCategory.iconName(for:)` — use this for any future sport-to-icon mapping
+  - The old `sportIconName` function supported extra sports (MMA, Boxing, Tennis, Golf) not in SportCategory — if those sports are added later, add cases to SportCategory enum
+  - Refactors that remove free functions should verify no other files reference them via `Grep` before committing
+---
