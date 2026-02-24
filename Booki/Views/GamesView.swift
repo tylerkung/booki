@@ -239,6 +239,9 @@ struct GamesView: View {
             BetSlipSheet(availableCredit: balanceSummary.availableCredit, player: player)
                 .presentationDetents([.large])
         }
+        .navigationDestination(for: SportCategory.self) { category in
+            SportPageView(category: category, player: player)
+        }
         .task {
             // If cached data exists, skip skeleton immediately
             if hasEventsWithMarkets { showSkeleton = false; return }
@@ -367,6 +370,7 @@ struct GamesView: View {
                     let sortedLeagues = leaguesByEvent.keys.sorted()
 
                     ForEach(sortedLeagues, id: \.self) { league in
+                        let sportCategory = SportCategory.allCases.first { $0.displayName == sport }
                         Section(header: stickyHeader(leftContent: {
                             HStack(spacing: 4) {
                                 Text(sport)
@@ -376,7 +380,7 @@ struct GamesView: View {
                                 Text(league)
                                     .foregroundStyle(Theme.textMuted)
                             }
-                        })) {
+                        }, trailingNavigation: sportCategory)) {
                             ForEach(Array((leaguesByEvent[league] ?? []).enumerated()), id: \.element.id) { index, event in
                                 CompactGameRow(
                                     event: event,
@@ -495,13 +499,28 @@ struct GamesView: View {
     // MARK: - Sticky Section Header
 
     /// Reusable sticky header: sport/league title on the left, SPREAD/MONEY/TOTAL on the right
+    /// Optional trailingNavigation: if a SportCategory is provided, wraps the left content + chevron in a NavigationLink
     @ViewBuilder
-    private func stickyHeader<Left: View>(@ViewBuilder leftContent: () -> Left) -> some View {
+    private func stickyHeader<Left: View>(@ViewBuilder leftContent: () -> Left, trailingNavigation: SportCategory? = nil) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 4) {
-                leftContent()
+                if let category = trailingNavigation {
+                    NavigationLink(value: category) {
+                        HStack(spacing: 4) {
+                            leftContent()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                    .buttonStyle(.plain)
                     .font(Theme.font(size: 12, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
+                } else {
+                    leftContent()
+                        .font(Theme.font(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                }
 
                 Spacer()
 
