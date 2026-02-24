@@ -85,7 +85,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "The ledger entry insert currently returns data via `.select().single()` in some places but not others. For the main loop (around line 1296), the insert returns data — grab the id. For catch-up (around line 445), it does `.insert({...})` without `.select()` — add `.select().single()` to get the returned id. Insert settlement_events via `client.from('settlement_events').insert({ bookie_id, bet_id: bet.id, mode: 'auto', actor_user_id: bookie?.auth_user_id, idempotency_key: <run_key>, ledger_entry_ids: [ledgerEntry.id] })`. Deploy: `npx supabase functions deploy auto_refresh_games --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`."
     },
     {

@@ -51,3 +51,18 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - The catch-up path doesn't capture ledger insert errors (no `.select()` return) — US-004 will need to add `.select().single()` there
   - Deploy: `npx supabase functions deploy auto_refresh_games --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
 ---
+
+## 2026-02-24 - US-004
+- Added settlement_events row insertion to both auto_refresh_games settlement paths
+- Catch-up grading path (~line 445): added `.select().single()` to ledger insert to get returned ID, then inserts settlement_events row
+- Main grading loop (~line 1314): same — added `.select().single()` and settlement_events insert
+- Both paths: mode='auto', non-blocking (try/catch around settlement_events insert, logs error but doesn't fail bet settlement)
+- Idempotency keys: `auto_settle_catchup_{betId}_{timestamp}` (catch-up) and `auto_settle_{betId}_{timestamp}` (main loop)
+- actor_user_id sourced from bookie in catch-up path (`bookie?.auth_user_id`) and from game in main path (`game.bookie_auth_user_id`)
+- Files changed: `supabase/functions/auto_refresh_games/index.ts`
+- **Learnings for future iterations:**
+  - Catch-up grading uses `bookie?.auth_user_id` for actor; main loop uses `game.bookie_auth_user_id` — different variable names for same concept
+  - The catch-up path's ledger insert previously had no `.select()` — needed to add it to retrieve the inserted row's ID
+  - settlement_events insert is wrapped in try/catch to be non-blocking — if it fails, bet settlement still succeeds
+  - No Deno installed locally — can't run `deno check` for typechecking edge functions
+---
