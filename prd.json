@@ -106,7 +106,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Follow the same pattern as settle_bet_tx from migration 015. The reversal amount is: -1 * (original settlement entry amount). Find the original entry via: SELECT * FROM ledger_entries WHERE bet_id = p_bet_id AND type = 'settlement' ORDER BY created_at DESC LIMIT 1. For override_grade_tx, the settled-bet path does: (1) find+reverse original settlement, (2) update bet grade_result+status, (3) audit events. The graded-only path does: (1) update bet grade_result, (2) audit event. The override does NOT re-settle — bookie must call settle_bet again."
     },
     {

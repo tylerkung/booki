@@ -9,6 +9,7 @@ Started: Tue Feb 24 11:05:08 PST 2026
 - Immutability triggers on ledger_entries, settlement_events, audit_events prevent UPDATE/DELETE
 - settle_bet_tx RPC is SECURITY DEFINER — callable via `.rpc('settle_bet_tx', { params })`
 - RPC functions return `{ success: false, error }` for business rule violations (not Postgres errors) — check `data.success` after `rpcError`
+- Reversal/override RPCs follow same pattern as settle_bet_tx: FOR UPDATE lock → validate → mutate → audit → return JSONB
 - Edge function RPC refactor pattern: keep CORS + JWT + idempotency + ownership check, replace inline DB ops with single RPC call
 ---
 
@@ -65,4 +66,18 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - The catch-up path's ledger insert previously had no `.select()` — needed to add it to retrieve the inserted row's ID
   - settlement_events insert is wrapped in try/catch to be non-blocking — if it fails, bet settlement still succeeds
   - No Deno installed locally — can't run `deno check` for typechecking edge functions
+---
+
+## 2026-02-24 - US-005
+- Created `supabase/migrations/016_ledger_v2_reversal_rpcs.sql` with two SECURITY DEFINER RPC functions
+- `reverse_settlement_tx(p_bet_id, p_actor_user_id, p_reason, p_idempotency_key)`: validates bet is settled, finds most recent settlement ledger entry, creates reversal entry with negated amount (type='reversal'), updates bet to 'graded', emits 2 audit events (bet reverse + ledger create)
+- `override_grade_tx(p_bet_id, p_actor_user_id, p_new_outcome, p_reason, p_idempotency_key)`: handles two paths — (A) settled bet: reverses settlement first (same logic as reverse_settlement_tx), then updates grade_result; (B) graded bet: just updates grade_result. Both paths emit override audit event.
+- Both functions use `FOR UPDATE` row locking on bet fetch to prevent concurrent modification
+- Both return JSONB with success flag, bet data, and reversal entry data where applicable
+- Files changed: `supabase/migrations/016_ledger_v2_reversal_rpcs.sql` (new)
+- **Learnings for future iterations:**
+  - override_grade_tx has an internal reversal path — the edge function refactor (US-007) can remove ALL inline reversal logic and just call the RPC
+  - Both RPCs validate bet state before proceeding — edge functions only need to validate JWT, ownership, and idempotency
+  - The reversal entry description differentiates: "Settlement reversal: {reason}" vs "Settlement reversal for grade override: {reason}"
+  - override_grade_tx returns `settlement_reversed` boolean and optional `reversal_entry` — edge function can forward these directly
 ---
