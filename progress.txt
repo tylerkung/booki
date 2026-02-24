@@ -163,3 +163,19 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - FOR UPDATE lock on the previous entry lookup prevents race conditions with concurrent inserts
   - The validate_ledger_chain function (US-011) must use the exact same hash formula for verification
 ---
+
+## 2026-02-24 - US-011
+- Created `supabase/migrations/018_ledger_v2_validate_chain.sql` with `validate_ledger_chain` RPC function
+- SECURITY DEFINER function takes (p_bookie_id UUID, p_player_id UUID) and returns JSONB
+- Iterates all ledger_entries for the chain in created_at ASC order
+- For each entry: (1) verifies prev_hash matches running chain value, (2) recomputes expected hash using exact same formula as compute_ledger_hash trigger, (3) compares against stored entry_hash
+- Returns `{ valid: true, entries_checked: N }` on success
+- Returns `{ valid: false, first_invalid_entry_id: UUID, error_message: '...', entries_checked: N }` on mismatch
+- Chain head validation: first entry must have prev_hash IS NULL
+- Files changed: `supabase/migrations/018_ledger_v2_validate_chain.sql` (new)
+- **Learnings for future iterations:**
+  - The hash formula must exactly match the trigger in 017 — concat order: coalesce(prev_hash,''), bookie_id, player_id, amount, type, created_at, id
+  - `IS DISTINCT FROM` handles NULL comparison correctly (unlike `!=` which returns NULL for NULL comparisons)
+  - This is read-only — no locking needed, safe to call concurrently
+  - Can be called via `client.rpc('validate_ledger_chain', { p_bookie_id, p_player_id })`
+---

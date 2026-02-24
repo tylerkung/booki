@@ -229,7 +229,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "This is a read-only validation function. Use a FOR loop over the cursor with a running prev_hash variable. Start with prev_hash = NULL. For each row: compute expected_hash using the same concat+sha256+hex formula, compare with stored entry_hash, compare prev_hash with running value. If any mismatch, record the entry ID and break. This can be called on-demand from an edge function or as a scheduled job. No edge function wrapper needed yet — direct RPC call from client or admin tools."
     },
     {
