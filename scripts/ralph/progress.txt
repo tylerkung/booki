@@ -1,5 +1,5 @@
 # Ralph Progress Log
-Started: Fri Feb 21 2026
+Started: Mon Feb 24 2026
 ---
 
 ## Codebase Patterns
@@ -14,67 +14,16 @@ Started: Fri Feb 21 2026
 - UUID case sensitivity: iOS uppercase, PostgreSQL lowercase — always .lowercased() for comparison
 - Xcode IDE required for full builds — command-line swiftc can't resolve SwiftData macros
 - Complex @ViewBuilder bodies cause type-checker timeouts — extract sub-views proactively
-- @Observable migration pattern: remove ObservableObject + @Published, add @Observable macro, change @StateObject → @State, @EnvironmentObject → @Environment(Type.self), .environmentObject() → .environment()
-- #unavailable(iOS 26) guard pattern for backward-compatible appearance code
+- Supabase migrations numbered sequentially: 001_, 002_, etc. in supabase/migrations/
+- Edge functions deployed with: npx supabase functions deploy <name> --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz
+- Edge functions validate JWT in code (getUserIdFromAuthHeader), not at gateway level
+- Shared helpers in supabase/functions/_shared/: cors.ts, supabase.ts, idempotency.ts, audit.ts, grading.ts
+- Settlement payout math (American odds): win positive = -(stake * odds/100), win negative = -(stake * 100/abs(odds)), loss = +stake, push/void = 0
+- Internal balance convention: positive = player owes bookie, negative = bookie owes player
+- Append-only ledger: corrections via reversal entries (negated amount, type='reversal'), never UPDATE/DELETE
+- auto_refresh_games has TWO grading paths: main loop (score refresh → grade) and catch-up (runCatchupGrading for stranded bets)
+- Events are shared (bookie_id=NULL) — never use bookies!inner() joins on events table, get bookie from bets
+- Bet.eventId is String not UUID — don't call .uuidString on it
 
 ---
-
-## 2026-02-21 - US-008
-- Migrated AuthManager from ObservableObject to @Observable macro
-- Removed all 10 @Published property wrappers, added `import Observation` and `@Observable`
-- Changed BookiApp.swift: @StateObject → @State, .environmentObject() → .environment()
-- Updated 15 @EnvironmentObject references across 14 view files to @Environment(AuthManager.self)
-- Files changed: AuthManager.swift, BookiApp.swift, ContentView.swift, AuthGateView.swift, SettingsView.swift (2 structs), AccountView.swift, PlayerMainView.swift, PlayersListView.swift, BetSlipSheet.swift, SyncGamesView.swift, PlayerClaimView.swift, OnboardingContainerView.swift, OnboardingProfileView.swift, LoginView.swift, SignUpView.swift, ForgotPasswordView.swift
-- **Learnings for future iterations:**
-  - SettingsView.swift has TWO structs with authManager (SettingsView and EditBookieProfileSheet) — need replace_all
-  - DashboardView and AnalyticsDashboardView do NOT use authManager (PRD notes were slightly outdated)
-  - BetSlipSheet uses @ObservedObject for BetSlipManager.shared — this is different from @EnvironmentObject pattern
----
-
-## 2026-02-21 - Post-Ralph Build Fixes (Manual)
-- Fixed Swift 6 strict concurrency build errors across 25 files after Ralph's automated migration
-- `@preconcurrency import Supabase` added to 12 files (PostgrestResponse not Sendable)
-- OddsAPIService: replaced computed `var` properties with `func` getters/setters to avoid `@Observable` macro synthesis conflicts
-- BetService: added `@MainActor` to acceptBet/declineBet/voidBet/voidBetsForEvent, removed `await MainActor.run` wrappers
-- AuthManager: `nonisolated(unsafe)` for authStateTask deinit access
-- EdgeFunctionService: captured `var request` to `let finalRequest` for concurrent closure
-- GameDetailView/GamesView/BetConfirmationSheet: explicit `init()` (private vars made synthesized init inaccessible)
-- GameDetailView: wrapped Preview setup assignments in closure to satisfy ViewBuilder
-- 10+ Preview blocks: `.environmentObject()` → `.environment()`
-- **Learnings:**
-  - `@AppStorage` is fundamentally incompatible with `@Observable` — even `@ObservationIgnored` doesn't work, must use UserDefaults functions
-  - `@Observable` synthesizes `_propertyName` for ALL var properties including computed ones — use functions instead
-  - Clean Build Folder (Cmd+Shift+K) required when changing property→function to clear stale macro cache
----
-
-## 2026-02-22 - BetSlip UX + Auto-Grading Fixes
-- **BetSlip numpad UX**: "Done" → "DONE" (`.textCase(.uppercase)`), auto-scroll to active field via `ScrollViewReader` + `.id()` anchors on cards, 200pt bottom padding when keypad active to ensure scrollability with 2-3 selections
-- **Unknown Event fix**: `PlayerAnalyticsDetailView.RecentActivitySection` now queries events via `@Query` and resolves event names at display time; `SyncService.upsertBet` populates `eventDescription`/`sportLeague` from local Event; `BetConfirmationSheet` and `SubmitBetView` now pass `eventDescription` to `createLocalBetFromResponse`
-- **BetSlip auto-remove locked events**: `.onAppear` checks all selections against event lock status, removes started/locked events, dismisses sheet if empty
-- **Auto-grading overhaul** (`auto_refresh_games`):
-  - Fixed shared events architecture bug: events have `bookie_id=NULL`, `bookies!inner()` joins returned 0 rows — now looks up bookie from bets instead
-  - Increased game limit 2→10 per cron run
-  - Added `force` flag to bypass idempotency for manual triggers
-  - Included `pending` bets in game selection (not just `accepted`)
-  - Added catch-up grading: grades accepted bets on already-final events (zero API calls)
-  - Added auto-void: voids pending bets on final/started events
-  - Debug output in response for troubleshooting
-- Files changed: BetSlipSheet.swift, PlayerAnalyticsDetailView.swift, SyncService.swift, BetConfirmationSheet.swift, SubmitBetView.swift, auto_refresh_games/index.ts
-- **Learnings:**
-  - Events are shared (`bookie_id=NULL`) — never use `bookies!inner()` joins on events table, get bookie info from bets
-  - `Bet.eventId` is `String` not `UUID` — don't call `.uuidString` on it
-  - ScrollViewReader scroll timing: when keypad first opens, need 250ms delay for layout to settle before `scrollTo` works
-  - Idempotency keys block re-runs in same window — `force` flag essential for manual debugging
----
-
-## 2026-02-23 - Account Page & Branding Polish
-- **Account History redesign**: Negated amounts for player display (wins show +green, losses -red), enriched descriptions with bet details ("Won · Lakers ML — Lakers @ Celtics"), removed redundant icon circles, restructured layout (description+tag left, amount+date right), renamed labels (Settlement→"Graded", Payment→"Reconciled")
-- **Removed Odds Format picker**: Hardcoded to American until multi-format support is ready
-- **Branding**: Updated slogan to "Be The House." on LoginView and landing page (title, meta, hero h1)
-- Files changed: AccountView.swift, LoginView.swift, landing/index.html
-- **Learnings:**
-  - LedgerEntry amounts use internal convention (negative = bookie owes player) — must negate for player-facing display, same as displayBalance
-  - `player.bookie` SwiftData relationship not populated during sync — only `bookieId` UUID is set
-  - `entry.bet` relationship provides rich context (side, eventDescription) for better ledger descriptions
----
-
+## Tue Feb 24 11:24:28 PST 2026 - US-011 complete
