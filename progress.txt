@@ -96,3 +96,18 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - BetRecord and LedgerEntry interfaces retained for documentation even though RPC returns untyped JSONB
   - Deploy: `npx supabase functions deploy reverse_settlement --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
 ---
+
+## 2026-02-24 - US-007
+- Refactored `supabase/functions/override_grade/index.ts` to use `override_grade_tx` RPC
+- Removed entire inline reversal block (find settlement entry, create reversal, 3x audit emits), bet update, and grade override audit emit
+- Removed `emitAuditEvent` import (no longer needed — RPC handles all audit events atomically)
+- RPC handles all atomically: validates bet state, reverses settlement if needed, updates grade_result, emits audit events
+- Kept same response shape: `{ success: true, bet: {...}, settlement_reversed: boolean }`
+- Edge function now: CORS → JWT → input validation → idempotency check → bookie validation → grade_result check → RPC → idempotency store → respond
+- Files changed: `supabase/functions/override_grade/index.ts`
+- **Learnings for future iterations:**
+  - This was the most complex refactor — removed ~85 lines of inline reversal+update+audit logic, replaced with single RPC call
+  - Same pattern as US-002 and US-006: keep CORS + JWT + idempotency + ownership + business rule pre-checks, replace inline ops with RPC
+  - The grade_result null check is kept in the edge function even though RPC validates too — defense in depth
+  - Deploy: `npx supabase functions deploy override_grade --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+---

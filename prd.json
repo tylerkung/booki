@@ -142,7 +142,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "This is the most complex refactor because the current override_grade has inline reversal logic. After this change, the edge function is thin: validate → RPC → respond. Deploy: `npx supabase functions deploy override_grade --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`."
     },
     {
