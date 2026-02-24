@@ -57,6 +57,16 @@ struct PickCardCompact: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Theme.cardBackground)
+                GeometryReader { geo in
+                    Image("WaveBackground")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                        .opacity(0.1)
+                }
+                .allowsHitTesting(false)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(Theme.border, lineWidth: 0.5)
             }

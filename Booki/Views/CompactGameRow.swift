@@ -16,6 +16,9 @@ struct CompactGameRow: View {
     /// When true, odds buttons are rendered muted/disabled and non-interactive (bookie view-only mode)
     var isViewOnly: Bool = false
 
+    /// Alternating row tint for visual distinction between games
+    var isAlternate: Bool = false
+
     /// Computed property to determine if event is locked for betting
     private var isEventLocked: Bool {
         event.isLocked(offsetMinutes: lockOffsetMinutes)
@@ -104,7 +107,7 @@ struct CompactGameRow: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Theme.cardBackground)
+            .background(isAlternate ? Theme.cardBackground.opacity(0.6) : Theme.cardBackground)
             .contentShape(Rectangle())
             .onTapGesture {
                 onTapCard()

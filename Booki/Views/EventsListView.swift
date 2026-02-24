@@ -320,7 +320,7 @@ struct EventsListView: View {
                                     .foregroundStyle(Theme.textMuted)
                             }
                         })) {
-                            ForEach(leaguesByEvent[league] ?? [], id: \.id) { event in
+                            ForEach(Array((leaguesByEvent[league] ?? []).enumerated()), id: \.element.id) { index, event in
                                 CompactGameRow(
                                     event: event,
                                     selections: [],
@@ -328,7 +328,8 @@ struct EventsListView: View {
                                     onTapCard: {
                                         selectedEvent = event
                                     },
-                                    isViewOnly: true
+                                    isViewOnly: true,
+                                    isAlternate: index.isMultiple(of: 2)
                                 )
                             }
                             Color.clear.frame(height: 16)

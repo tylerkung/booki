@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 23, 2026 - Landing page redesign: 8-section homepage, Features page, fixed nav bar*
+*Last updated: February 23, 2026 - Wave background on bet cards and detail screens*

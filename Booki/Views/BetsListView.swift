@@ -544,7 +544,22 @@ struct BetDetailView: View {
             }
             .padding(16)
         }
-        .background(Theme.background)
+        .background(
+            ZStack(alignment: .top) {
+                Theme.background
+                GeometryReader { geo in
+                    Image("WaveBackground")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geo.size.width * 1.25)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .clipped()
+                        .opacity(0.1)
+                        .allowsHitTesting(false)
+                }
+            }
+            .ignoresSafeArea()
+        )
         .navigationTitle(betDisplayName)
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(
