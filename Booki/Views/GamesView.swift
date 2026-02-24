@@ -49,15 +49,6 @@ struct GamesView: View {
     /// Event to navigate to for full market view
     @State private var selectedEventForNavigation: Event? = nil
 
-    /// Search text for filtering by team name (US-038)
-    @State private var searchText: String = ""
-
-    /// Whether the inline search field is expanded
-    @State private var isSearchExpanded: Bool = false
-
-    /// Focus state for the inline search field
-    @FocusState private var isSearchFocused: Bool
-
     /// Time filter option (US-038, US-039)
     @State private var timeFilter: TimeFilter = .all
 
@@ -142,29 +133,17 @@ struct GamesView: View {
         }
     }
 
-    /// Events filtered by search text (US-038) - matches team names
-    private var searchFilteredEvents: [Event] {
-        guard !searchText.isEmpty else {
-            return timeFilteredEvents
-        }
-        let lowercasedSearch = searchText.lowercased()
-        return timeFilteredEvents.filter {
-            $0.homeTeam.lowercased().contains(lowercasedSearch) ||
-            $0.awayTeam.lowercased().contains(lowercasedSearch)
-        }
-    }
-
     /// Events filtered by selected sport (combines all filters)
     private var filteredEvents: [Event] {
         if let sport = selectedSport {
-            return searchFilteredEvents.filter { $0.sport == sport }
+            return timeFilteredEvents.filter { $0.sport == sport }
         }
-        return searchFilteredEvents
+        return timeFilteredEvents
     }
 
     /// Whether any filters are active (US-038, US-039)
     private var hasActiveFilters: Bool {
-        timeFilter != .all || !searchText.isEmpty
+        timeFilter != .all
     }
 
     /// Whether showing favorites filter (US-039)
@@ -178,10 +157,6 @@ struct GamesView: View {
             return "Star your favorite teams to see them here."
         } else if timeFilter == .favorites {
             return "No games with your favorite teams right now."
-        } else if !searchText.isEmpty && timeFilter != .all {
-            return "No games match '\(searchText)' for \(timeFilter.rawValue.lowercased())."
-        } else if !searchText.isEmpty {
-            return "No games match '\(searchText)'."
         } else if timeFilter != .all {
             return "No games available for \(timeFilter.rawValue.lowercased())."
         } else if let sport = selectedSport {
@@ -321,65 +296,6 @@ struct GamesView: View {
     private var sportTabsHeader: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                // Inline expandable search
-                if isSearchExpanded {
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Theme.textSecondary)
-
-                        TextField("Search teams...", text: $searchText)
-                            .textFieldStyle(.plain)
-                            .font(Theme.subheadline)
-                            .autocorrectionDisabled()
-                            .focused($isSearchFocused)
-
-                        Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                searchText = ""
-                                isSearchExpanded = false
-                                isSearchFocused = false
-                            }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundStyle(Theme.textSecondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Theme.cardBackground)
-                    .clipShape(Capsule())
-                    .frame(width: 200)
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity),
-                        removal: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity)
-                    ))
-                } else {
-                    Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            isSearchExpanded = true
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            isSearchFocused = true
-                        }
-                    } label: {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Theme.textPrimary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Theme.cardBackground)
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity),
-                        removal: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity)
-                    ))
-                }
-
                 // "All" tab
                 SportTabButton(
                     title: "All",
@@ -427,7 +343,7 @@ struct GamesView: View {
                                 .fontWeight(.medium)
                         }
                     })) {
-                        ForEach(favoriteEvents, id: \.id) { event in
+                        ForEach(Array(favoriteEvents.enumerated()), id: \.element.id) { index, event in
                             CompactGameRow(
                                 event: event,
                                 selections: betSlipManager.selectionsSet,
@@ -437,7 +353,8 @@ struct GamesView: View {
                                 onTapCard: {
                                     selectedEventForNavigation = event
                                 },
-                                lockOffsetMinutes: lockOffsetMinutes
+                                lockOffsetMinutes: lockOffsetMinutes,
+                                isAlternate: index.isMultiple(of: 2)
                             )
                         }
                         Color.clear.frame(height: 16)
@@ -460,7 +377,7 @@ struct GamesView: View {
                                     .foregroundStyle(Theme.textMuted)
                             }
                         })) {
-                            ForEach(leaguesByEvent[league] ?? [], id: \.id) { event in
+                            ForEach(Array((leaguesByEvent[league] ?? []).enumerated()), id: \.element.id) { index, event in
                                 CompactGameRow(
                                     event: event,
                                     selections: betSlipManager.selectionsSet,
@@ -470,7 +387,8 @@ struct GamesView: View {
                                     onTapCard: {
                                         selectedEventForNavigation = event
                                     },
-                                    lockOffsetMinutes: lockOffsetMinutes
+                                    lockOffsetMinutes: lockOffsetMinutes,
+                                    isAlternate: index.isMultiple(of: 2)
                                 )
                             }
                             Color.clear.frame(height: 16)
@@ -682,9 +600,8 @@ struct GamesView: View {
         }
     }
 
-    /// Clear all search and time filters (US-038)
+    /// Clear all time filters (US-038)
     private func clearFilters() {
-        searchText = ""
         timeFilter = .all
     }
 

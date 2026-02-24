@@ -336,3 +336,12 @@ Started: Mon Feb 23 00:39:19 PST 2026
   - `.clipped()` only clips to frame rect, not corner radius — use `.clipShape(RoundedRectangle(...))` for proper rounded clipping
   - `autoreverses: true` creates a rocking/pulsing effect — use `autoreverses: false` for a clean left-to-right sweep
 ---
+
+## 2026-02-23 - Search Tab
+- **Dedicated Search tab**: Extracted search from GamesView's inline expandable field into its own full-screen tab. Player tab bar now has 4 tabs: GAMES | SEARCH | TRACK | ACCOUNT
+- **SearchView**: Persistent search bar at top, filters bettable events by team name (case-insensitive), results grouped by sport/league with sticky headers, full bet slip integration
+- **GamesView cleanup**: Removed `searchText`, `isSearchExpanded`, `isSearchFocused` state vars, `searchFilteredEvents` computed property, and inline search UI from sport tabs header. `filteredEvents` chains directly from `timeFilteredEvents`
+- Files changed: SearchView.swift (new), PlayerMainView.swift, GamesView.swift
+- **Learnings for future iterations:**
+  - Private stored properties in structs make the synthesized memberwise init private in Swift 6 — always add explicit `init()` for views with private state
+---

@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 23, 2026 - Bookie UX polish: accept/decline loading feedback, parlay odds fix, member management overflow menu, remove member (sever relationship)*
+*Last updated: February 23, 2026 - Search tab: dedicated full-screen search experience as 2nd player tab*
