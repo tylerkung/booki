@@ -76,7 +76,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Use ScrollView(.horizontal) for the chips row. Filter the @Query bets array in a computed property. Compliance: chip labels use 'Open' not 'Pending'. The filter chips should match the styling pattern used in BetsListView (bookie picks tab) if one exists."
     },
     {

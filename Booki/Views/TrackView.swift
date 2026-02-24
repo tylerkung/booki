@@ -132,11 +132,21 @@ struct Ticket: Identifiable {
     }
 }
 
+/// Filter options for the Track tab
+private enum TrackFilter: String, CaseIterable {
+    case all = "All"
+    case open = "Open"
+    case won = "Won"
+    case lost = "Lost"
+    case pushed = "Pushed"
+}
+
 /// View for players to track their submitted bets and their status
 struct TrackView: View {
     @Environment(SyncService.self) private var syncService
     @Query private var allBets: [Bet]
     @Query private var events: [Event]
+    @State private var selectedFilter: TrackFilter = .all
 
     let player: Player
 
@@ -155,6 +165,48 @@ struct TrackView: View {
             Ticket(id: ticketId, bets: bets.sorted { $0.createdAt < $1.createdAt })
         }
         .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    // MARK: - Filtering
+
+    private var openStatuses: Set<BetStatus> {
+        [.pending, .accepted, .readyToGrade, .graded]
+    }
+
+    private func matchesFilter(_ ticket: Ticket) -> Bool {
+        switch selectedFilter {
+        case .all:
+            return true
+        case .open:
+            return openStatuses.contains(ticket.combinedStatus)
+        case .won:
+            return ticket.combinedStatus == .settled && ticket.bets.allSatisfy { $0.gradeResult == .win || $0.gradeResult == .push }
+                && ticket.bets.contains(where: { $0.gradeResult == .win })
+        case .lost:
+            return ticket.combinedStatus == .settled && ticket.bets.contains(where: { $0.gradeResult == .loss })
+        case .pushed:
+            return ticket.combinedStatus == .settled && ticket.bets.allSatisfy { $0.gradeResult == .push }
+        }
+    }
+
+    private var filteredTickets: [Ticket] {
+        tickets.filter { matchesFilter($0) }
+    }
+
+    private func countForFilter(_ filter: TrackFilter) -> Int {
+        tickets.filter { ticket in
+            switch filter {
+            case .all: return true
+            case .open: return openStatuses.contains(ticket.combinedStatus)
+            case .won:
+                return ticket.combinedStatus == .settled && ticket.bets.allSatisfy { $0.gradeResult == .win || $0.gradeResult == .push }
+                    && ticket.bets.contains(where: { $0.gradeResult == .win })
+            case .lost:
+                return ticket.combinedStatus == .settled && ticket.bets.contains(where: { $0.gradeResult == .loss })
+            case .pushed:
+                return ticket.combinedStatus == .settled && ticket.bets.allSatisfy { $0.gradeResult == .push }
+            }
+        }.count
     }
 
     // MARK: - Stats
@@ -214,7 +266,12 @@ struct TrackView: View {
                         netPerformance: netPerformance
                     )
 
-                    ForEach(tickets) { ticket in
+                    TrackFilterChips(
+                        selectedFilter: $selectedFilter,
+                        countForFilter: countForFilter
+                    )
+
+                    ForEach(filteredTickets) { ticket in
                         NavigationLink {
                             TicketDetailView(ticket: ticket)
                         } label: {
@@ -475,6 +532,37 @@ private struct TrackSummaryCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(Theme.cardBackground)
         )
+    }
+}
+
+// MARK: - Track Filter Chips
+
+private struct TrackFilterChips: View {
+    @Binding var selectedFilter: TrackFilter
+    let countForFilter: (TrackFilter) -> Int
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(TrackFilter.allCases, id: \.self) { filter in
+                    let count = countForFilter(filter)
+                    Button {
+                        selectedFilter = filter
+                    } label: {
+                        Text("\(filter.rawValue) (\(count))")
+                            .font(Theme.bodyFont(size: 13, weight: .medium))
+                            .foregroundStyle(selectedFilter == filter ? Theme.background : Theme.textSecondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule()
+                                    .fill(selectedFilter == filter ? Theme.accent : Theme.elevatedBackground)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 }
 
