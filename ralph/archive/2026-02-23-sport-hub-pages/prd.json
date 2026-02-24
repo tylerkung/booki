@@ -1,0 +1,132 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/sport-hub-pages",
+  "description": "Dedicated Sport Pages (Sport Hub Architecture) — Create sport-level destination pages (Basketball, Football, etc.) with league sub-tabs (NBA, NCAAB, WNBA) and Futures placeholder, navigable from Search and Games tabs",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create SportCategory enum and league metadata",
+      "description": "As a developer, I need a centralized sport category enum that groups leagues under sports, providing display names, icons, and league lists so sport pages can be configured from a single source of truth.",
+      "acceptanceCriteria": [
+        "Create Booki/Models/SportCategory.swift with enum SportCategory: String, CaseIterable, Identifiable",
+        "Cases: basketball, football, baseball, hockey, soccer (no golf yet)",
+        "Computed property displayName: 'Basketball', 'Football', 'Baseball', 'Hockey', 'Soccer'",
+        "Computed property iconName: SF Symbol string (basketball.fill, football.fill, etc.)",
+        "Computed property leagues: [LeagueInfo] where LeagueInfo is a struct with id, displayName (e.g. 'NBA'), and matchesEvent closure that checks Event.sport and Event.league",
+        "Basketball leagues: NBA, NCAAB, WNBA. Football leagues: NFL, NCAAF. Baseball: MLB. Hockey: NHL. Soccer: EPL, MLS",
+        "Static func fromEvent(_ event: Event) -> SportCategory? that matches an Event to its category",
+        "Static var popular: [SportCategory] returning [.basketball, .football, .baseball, .hockey] for Search tab",
+        "Add file to Xcode pbxproj (PBXBuildFile, PBXFileReference, group children, Sources build phase)",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "LeagueInfo needs to match on Event.sport AND Event.league strings. Use the existing string values from OddsAPIMapper: sport='Basketball' league='NBA', sport='Football' league='NFL', etc. Keep existing sportIconName() function in GamesView — don't remove yet."
+    },
+    {
+      "id": "US-002",
+      "title": "Create SportPageView with league sub-tabs and Games content",
+      "description": "As a player, I want to navigate to a sport page (e.g. Basketball) that has league tabs (NBA, NCAAB, WNBA) showing filtered games for each league.",
+      "acceptanceCriteria": [
+        "Create Booki/Views/SportPageView.swift",
+        "Init takes SportCategory parameter and optional isViewOnly: Bool = false",
+        "Navigation title shows category displayName (e.g. 'Basketball')",
+        "Top-level segmented Picker: league tabs derived from category.leagues, plus a 'Futures' tab at the end",
+        "When a league tab is selected, show events filtered to that league using CompactGameRow",
+        "Group events by date with sticky section headers, same pattern as GamesView",
+        "Only show bettable events (future start time, not locked/final/canceled) unless isViewOnly",
+        "Wire up bet slip selection when isViewOnly is false — pass through onSelectOdds and selections from BetSlipState environment",
+        "If isViewOnly is true, pass isViewOnly to CompactGameRow (muted odds, no tap)",
+        "Default selected tab to first league",
+        "Add file to Xcode pbxproj",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Reuse event filtering and grouping patterns from GamesView. Use @Environment(BetSlipState.self) for bet slip. Use @Query for events. Theme.background for page background. If a league has no events, show a simple empty state ('No games available')."
+    },
+    {
+      "id": "US-003",
+      "title": "Add Futures placeholder tab to SportPageView",
+      "description": "As a player, I want to see a Futures tab on the sport page that shows a coming soon placeholder, establishing the architecture for future expansion.",
+      "acceptanceCriteria": [
+        "When 'Futures' is selected in the segmented control, show a centered placeholder view",
+        "Placeholder shows: 'Futures Coming Soon' as title (Theme.headline, Theme.textPrimary)",
+        "Subtitle: 'Season-long and tournament markets will appear here.' (Theme.bodyFont, Theme.textSecondary)",
+        "Use a relevant SF Symbol icon above the title (e.g. 'chart.line.uptrend.xyaxis') in Theme.textMuted at 48pt",
+        "Placeholder is vertically centered in the available space",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Keep this simple — just a static placeholder. No dynamic data needed."
+    },
+    {
+      "id": "US-004",
+      "title": "Add Popular Sports section to SearchView",
+      "description": "As a player, I want to see a 'Popular Sports' section in the Search tab when no search query is active, so I can quickly navigate to a sport page.",
+      "acceptanceCriteria": [
+        "When searchText is empty, show a 'POPULAR SPORTS' section header (Theme.caption, tracking 1.0, Theme.textSecondary)",
+        "List SportCategory.popular as tappable rows",
+        "Each row shows: sport icon (SF Symbol) + sport displayName + chevron.right",
+        "Row styling: Theme.textPrimary for name, Theme.accent for icon, Theme.cardBackground background with rounded corners",
+        "Tapping a row navigates to SportPageView(category: sportCategory) via NavigationLink",
+        "Popular Sports section disappears when user starts typing (search results take over)",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "SearchView is in Booki/Views/SearchView.swift. It already has NavigationStack context. Use existing styling patterns (Theme.cardBackground cards, section headers with tracking)."
+    },
+    {
+      "id": "US-005",
+      "title": "Make Games tab sport headers tappable with navigation to sport page",
+      "description": "As a player, I want to tap a sport section header on the Games tab to navigate to that sport's dedicated page.",
+      "acceptanceCriteria": [
+        "Sport-level sticky headers in GamesView become tappable NavigationLinks",
+        "Add a chevron.right indicator to the trailing side of each sport header",
+        "Tapping navigates to SportPageView for the matching SportCategory",
+        "Only add navigation if SportCategory.fromEvent returns a valid category for events in that sport group",
+        "If no matching SportCategory, header remains non-tappable (no chevron)",
+        "Preserve existing header styling (icon, sport name, league name)",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "GamesView is in Booki/Views/GamesView.swift. Headers are rendered in LazyVStack with pinned section headers. The view is inside a NavigationStack. The outer grouping is by sport — tapping 'Basketball' header navigates to the Basketball sport page."
+    },
+    {
+      "id": "US-006",
+      "title": "Make bookie EventsListView sport headers tappable",
+      "description": "As a bookie, I want to tap sport headers on the Events tab to navigate to the sport page in view-only mode.",
+      "acceptanceCriteria": [
+        "Sport-level sticky headers in EventsListView become tappable NavigationLinks",
+        "Add chevron.right indicator matching GamesView pattern from US-005",
+        "Navigate to SportPageView with isViewOnly: true",
+        "Only add navigation if SportCategory match exists",
+        "Preserve existing header styling",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "EventsListView is in Booki/Views/EventsListView.swift. Similar architecture to GamesView."
+    },
+    {
+      "id": "US-007",
+      "title": "Refactor GamesView and EventsListView to use SportCategory for icons",
+      "description": "As a developer, I want to replace the inline sportIconName() functions with SportCategory lookups to consolidate sport metadata in one place.",
+      "acceptanceCriteria": [
+        "GamesView.sportIconName(for:) replaced with SportCategory-based lookup",
+        "EventsListView sport icon logic replaced similarly",
+        "SportTabButton and sport headers use SportCategory for icon resolution",
+        "Fallback to 'sportscourt' SF Symbol if no SportCategory match (same behavior as before)",
+        "Remove the standalone sportIconName() function from GamesView after migration",
+        "All existing sport tabs and headers render identically to before",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "This is a refactor — output should be visually identical. The sportIconName function is at the bottom of GamesView.swift around line 620."
+    }
+  ]
+}

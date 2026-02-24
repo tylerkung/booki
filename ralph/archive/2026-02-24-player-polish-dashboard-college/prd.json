@@ -1,0 +1,160 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/player-polish-dashboard-college",
+  "description": "Player Experience Polish, Bookie Dashboard Enhancements, and NCAAB/NCAAF Regular Games — Improve player-side UX with pull-to-refresh, track tab stats and filters, standardized empty states. Enhance bookie dashboard with sport breakdown, activity feed, and futures tracking. Add college sports game syncing.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add NCAAB and NCAAF to SPORTS_TO_SYNC in sync_games",
+      "description": "As a user, I want to see college basketball and football games in the app so I can bet on them.",
+      "acceptanceCriteria": [
+        "Add 'basketball_ncaab' to SPORTS_TO_SYNC array in supabase/functions/sync_games/index.ts",
+        "Add 'americanfootball_ncaaf' to SPORTS_TO_SYNC array in supabase/functions/sync_games/index.ts",
+        "SPORT_KEY_MAPPING already has entries for both — verify they exist and are correct",
+        "sportLeagueToApiKey in auto_refresh_games/index.ts already has entries for both — verify they exist",
+        "Verify OddsAPIMapper.swift sportKeyMapping has entries for 'basketball_ncaab' and 'americanfootball_ncaaf'",
+        "Deploy sync_games: npx supabase functions deploy sync_games --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz",
+        "Deploy auto_refresh_games: npx supabase functions deploy auto_refresh_games --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "SPORT_KEY_MAPPING and sportLeagueToApiKey already have the mappings from when futures were added. Only SPORTS_TO_SYNC needs the two new entries. College sports have many more games than pro — the sync function already handles large event lists. OddsAPIMapper.swift should already have 'basketball_ncaab' mapped to ('Basketball', 'NCAAB') from the futures work."
+    },
+    {
+      "id": "US-002",
+      "title": "Add pull-to-refresh to player Games and Track tabs",
+      "description": "As a player, I want to pull down to refresh game data and my pick history so I see the latest information.",
+      "acceptanceCriteria": [
+        "Add .refreshable modifier to the main ScrollView or List in the player's Games view (GamesView.swift or PlayerMainView equivalent)",
+        "Add .refreshable modifier to the main ScrollView or List in TrackView.swift",
+        "Both trigger syncService.sync() using @Environment(SyncService.self)",
+        "Use Task.detached with withCheckedContinuation pattern to prevent .refreshable cancellation on view re-render",
+        "Spinner shows while syncing and dismisses when sync completes",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "IMPORTANT: .refreshable cancels its task on view re-render. Use this pattern: .refreshable { await withCheckedContinuation { continuation in Task.detached { await syncService.sync(); continuation.resume() } } }. SyncService is available via @Environment(SyncService.self). The player Games view may be inside GamesView.swift with a player-specific code path, or a separate PlayerGamesView — check AuthGateView routing."
+    },
+    {
+      "id": "US-003",
+      "title": "Add summary stats card to Track tab",
+      "description": "As a player, I want to see my betting record and performance summary at the top of my Track tab.",
+      "acceptanceCriteria": [
+        "Add a summary card at the top of TrackView before the list of picks",
+        "Card shows Record line: 'W-L-P' format (e.g. '12-8-2') counting settled bets by result",
+        "Card shows Total Staked: sum of all bet stakes formatted as currency",
+        "Card shows Net Performance: total won minus total lost formatted as currency, green if positive, red if negative",
+        "Use Theme.cardBackground for card, Theme.accent for positive values, Theme.danger for negative",
+        "Count wins where bet.result == 'win', losses where bet.result == 'loss', pushes where bet.result == 'push'",
+        "Only count bets belonging to the current player",
+        "Compliance: use 'Picks' not 'Bets', 'Staked' not 'Wagered', 'Performance' not 'Profit/Loss'",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "TrackView is in Booki/Views/TrackView.swift. Use @Query for Bet model. Filter bets by player ID. The Bet model has properties: status (BetStatus enum), result (String?), stake (Decimal). Settled bets have status == .settled. Use Theme.swift for all colors. Extract the card as a separate private view to avoid type-checker timeouts."
+    },
+    {
+      "id": "US-004",
+      "title": "Add filter chips to Track tab",
+      "description": "As a player, I want to filter my picks by status (All, Open, Won, Lost, Pushed) so I can find specific picks quickly.",
+      "acceptanceCriteria": [
+        "Add a horizontal row of tappable filter chips below the summary card and above the bet list",
+        "Filter options: All, Open, Won, Lost, Pushed",
+        "Open = bets with status in [.pending, .accepted, .readyToGrade, .graded]",
+        "Won = settled bets with result == 'win'",
+        "Lost = settled bets with result == 'loss'",
+        "Pushed = settled bets with result == 'push'",
+        "Selected chip has Theme.accent background with Theme.background text",
+        "Unselected chips have Theme.elevatedBackground background with Theme.textSecondary text",
+        "Default selection is 'All'",
+        "Filter state is @State (session-only, not persisted)",
+        "Bet list updates immediately when filter changes",
+        "Show count badge on each chip (e.g. 'Open (5)')",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Use ScrollView(.horizontal) for the chips row. Filter the @Query bets array in a computed property. Compliance: chip labels use 'Open' not 'Pending'. The filter chips should match the styling pattern used in BetsListView (bookie picks tab) if one exists."
+    },
+    {
+      "id": "US-005",
+      "title": "Standardize player empty states",
+      "description": "As a player, I want consistent, informative empty states across all tabs so the app feels polished.",
+      "acceptanceCriteria": [
+        "Player Games empty state: 48pt 'sportscourt' icon in Theme.textMuted, 'No Games Available' in Theme.headline/Theme.textPrimary, 'Upcoming games will appear here once synced.' in Theme.body/Theme.textSecondary, centered with 32px horizontal padding",
+        "Track tab empty state: 48pt 'ticket' icon, 'No Picks Yet' title, 'Your pick history will appear here.' description, same styling pattern",
+        "Search results empty state: 48pt 'magnifyingglass' icon, 'No Results Found' title, 'No games matching \"[searchTerm]\"' description echoing the search term",
+        "All empty states vertically centered in available space (Spacer above and below)",
+        "All use Theme.swift colors — no hardcoded colors",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "The pattern to match is in SportPageView.swift — look at futuresEmptyState and emptyLeagueState for the exact styling. Player games view may already have an empty state — replace it with the standardized one. SearchView is in Booki/Views/SearchView.swift. TrackView is in Booki/Views/TrackView.swift. Use Spacer() above and below the VStack for vertical centering."
+    },
+    {
+      "id": "US-006",
+      "title": "Add sport performance breakdown to bookie dashboard",
+      "description": "As a bookie, I want to see how my book performs across different sports so I can identify profitable and unprofitable areas.",
+      "acceptanceCriteria": [
+        "Add a 'Performance by Sport' section to AnalyticsDashboardView",
+        "Group settled bets by the event's sport field (e.g. Basketball, Football, Baseball)",
+        "Each sport row shows: sport icon (from SportCategory.iconName), sport name, pick count, total staked, net P/L, win rate percentage",
+        "Net P/L: green if positive (bookie profit), red if negative (bookie loss). Bookie profit = player losses, bookie loss = player wins. Internal balance convention: positive = player owes bookie",
+        "Win rate = (bookie wins / total settled picks) * 100, formatted as percentage",
+        "Only show sports that have at least one settled pick",
+        "Sort by total staked descending (most active sport first)",
+        "Use Theme.cardBackground card with rounded corners for each sport row",
+        "Compliance: 'Performance' not 'Profit/Loss', 'Picks' not 'Bets', 'Staked' not 'Wagered'",
+        "Extract as a separate view struct to avoid type-checker timeouts",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "AnalyticsDashboardView is in Booki/Views/AnalyticsDashboardView.swift. Use @Query for Bet and Event. Settled bets have status == .settled. Access event sport via bet.event?.sport. Balance convention: positive balance = player owes bookie. For net P/L, sum up ledger entries or calculate from settled bets. Extract as private struct SportPerformanceSection to prevent SwiftUI type-checker timeouts."
+    },
+    {
+      "id": "US-007",
+      "title": "Add recent activity feed to bookie dashboard",
+      "description": "As a bookie, I want to see recent activity (new picks, gradings, settlements) at a glance on my dashboard.",
+      "acceptanceCriteria": [
+        "Add a 'Recent Activity' section to AnalyticsDashboardView",
+        "Show last 10 activities sorted by date descending",
+        "Activity types: new pick placed (from Bet.createdAt), pick graded (from Bet where status changed to settled), settlement (from LedgerEntry.createdAt)",
+        "Each row shows: icon (ticket.fill for pick, checkmark.circle for graded, banknote for settlement) + description + relative timestamp (e.g. '2h ago')",
+        "Pick placed: 'PlayerName placed a pick on EventDescription'",
+        "Pick graded: 'PlayerName's pick on EventDescription — Win/Loss/Push'",
+        "Settlement: 'Settlement for PlayerName — +$X / -$X'",
+        "Use Theme.cardBackground for the section, Theme.textPrimary for description, Theme.textMuted for timestamp",
+        "Compliance: 'Pick' not 'Bet', 'Reconciliation' not 'Settlement' in descriptions",
+        "Extract as a separate view struct",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Combine Bet and LedgerEntry into a unified activity list. Bet has player relationship (bet.player?.name), event relationship (bet.event), createdAt, status, result. LedgerEntry has player relationship, amount, createdAt, type. Use RelativeDateTimeFormatter for timestamps. Extract as private struct RecentActivitySection. Limit to 10 items total across all types."
+    },
+    {
+      "id": "US-008",
+      "title": "Add futures tracking card to bookie dashboard",
+      "description": "As a bookie, I want to see a summary of active futures picks on my dashboard so I can track long-term exposure.",
+      "acceptanceCriteria": [
+        "Add a 'Futures Activity' card to AnalyticsDashboardView",
+        "Show count of open futures picks (bets where market type is .outright and status is in [.pending, .accepted, .readyToGrade, .graded])",
+        "Show total futures open activity: sum of stakes on those open outright bets, formatted as currency",
+        "Show top 3 most popular futures selections: group open outright bets by the bet's side (team/player name), count each, show top 3 with count",
+        "If no futures picks exist, show a muted 'No futures picks yet' message",
+        "Use Theme.cardBackground with Theme.accent for the count badges",
+        "Compliance: 'Futures Activity' for section title, 'Open Activity' not 'Exposure', 'Picks' not 'Bets'",
+        "Extract as a separate view struct",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Filter bets where bet.marketType == 'outright' (the MarketType enum has a case .outright). The bet's side/selection name is stored in bet.side (String). Open statuses: [.pending, .accepted, .readyToGrade, .graded]. Extract as private struct FuturesTrackingCard. Place this card after the main stats cards but before sport breakdown."
+    }
+  ]
+}

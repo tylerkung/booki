@@ -367,7 +367,7 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
   try {
     const { data: strandedBets, error: strandedError } = await client
       .from('bets')
-      .select('id, event_id, market, side, bookie_id, player_id, stake, odds')
+      .select('id, event_id, market, side, bookie_id, player_id, stake, odds, is_parlay, ticket_id')
       .eq('status', 'accepted');
 
     debug.acceptedBetsFound = strandedBets?.length ?? 0;
@@ -413,6 +413,22 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
             try {
               const betInfo: BetInfo = { id: bet.id, market: bet.market, side: bet.side };
               const gradeOutcome = gradeBet(betInfo, eventScores);
+
+              // Parlay legs: grade only (don't settle individually — settle as ticket later)
+              if (bet.is_parlay) {
+                const { error: gradeError } = await client
+                  .from('bets')
+                  .update({
+                    status: 'graded',
+                    grade_result: gradeOutcome.result,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', bet.id);
+                if (!gradeError) {
+                  console.log(`Catch-up: graded parlay leg ${bet.id}: ${gradeOutcome.result} (ticket ${bet.ticket_id})`);
+                }
+                continue;
+              }
 
               const { error: updateError } = await client
                 .from('bets')
@@ -597,6 +613,167 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
   }
 
   return { catchupBetsSettled, catchupEventsProcessed, catchupBetsVoided, debug };
+}
+
+/**
+ * Auto-settle parlays where all legs are graded.
+ * Finds tickets with all legs in 'graded' status, calculates combined odds,
+ * creates one ledger entry per ticket, and marks all legs as 'settled'.
+ */
+async function autoSettleParlays(client: ReturnType<typeof createServiceClient>): Promise<number> {
+  let parlaysSettled = 0;
+
+  // Find all graded parlay legs
+  const { data: gradedLegs, error } = await client
+    .from('bets')
+    .select('id, ticket_id, bookie_id, player_id, stake, odds, grade_result, is_parlay')
+    .eq('status', 'graded')
+    .eq('is_parlay', true);
+
+  if (error || !gradedLegs || gradedLegs.length === 0) return 0;
+
+  // Group by ticket_id
+  const ticketMap = new Map<string, typeof gradedLegs>();
+  for (const leg of gradedLegs) {
+    const existing = ticketMap.get(leg.ticket_id) ?? [];
+    existing.push(leg);
+    ticketMap.set(leg.ticket_id, existing);
+  }
+
+  for (const [ticketId, legs] of ticketMap.entries()) {
+    try {
+      // Check ALL legs of this ticket are graded (some may still be accepted/pending)
+      const { count: totalLegs } = await client
+        .from('bets')
+        .select('*', { count: 'exact', head: true })
+        .eq('ticket_id', ticketId);
+
+      if ((totalLegs ?? 0) !== legs.length) {
+        // Not all legs graded yet — skip
+        continue;
+      }
+
+      const stake = Number(legs[0].stake);
+      const bookieId = legs[0].bookie_id;
+      const playerId = legs[0].player_id;
+
+      // Determine parlay outcome
+      const hasLoss = legs.some((l) => l.grade_result === 'loss');
+      const pushVoidLegs = legs.filter((l) => l.grade_result === 'push' || l.grade_result === 'void');
+      const winLegs = legs.filter((l) => l.grade_result === 'win');
+
+      let outcome: 'win' | 'loss' | 'push';
+      let payoutAmount: number;
+
+      if (hasLoss) {
+        outcome = 'loss';
+        payoutAmount = stake; // Player owes bookie
+      } else if (pushVoidLegs.length === 0) {
+        // All legs won
+        outcome = 'win';
+        const combinedDecimalOdds = winLegs.reduce((acc, leg) => {
+          const odds = Number(leg.odds);
+          return acc * (odds > 0 ? 1 + odds / 100 : 1 + 100 / Math.abs(odds));
+        }, 1);
+        const profit = stake * combinedDecimalOdds - stake;
+        payoutAmount = -profit; // Bookie owes player
+      } else if (winLegs.length === 0) {
+        // All push/void
+        outcome = 'push';
+        payoutAmount = 0;
+      } else {
+        // Mixed win + push/void — reduceLegReprice (exclude push/void legs)
+        outcome = 'win';
+        const combinedDecimalOdds = winLegs.reduce((acc, leg) => {
+          const odds = Number(leg.odds);
+          return acc * (odds > 0 ? 1 + odds / 100 : 1 + 100 / Math.abs(odds));
+        }, 1);
+        const profit = stake * combinedDecimalOdds - stake;
+        payoutAmount = -profit;
+      }
+
+      const outcomeLabel = outcome === 'win' ? 'won' : outcome === 'loss' ? 'lost' : 'pushed';
+      const description = `Multi-Pick (${legs.length} legs) ${outcomeLabel}`;
+
+      // Create single ledger entry for the parlay
+      const { data: ledgerEntry, error: ledgerError } = await client
+        .from('ledger_entries')
+        .insert({
+          bookie_id: bookieId,
+          player_id: playerId,
+          bet_id: legs[0].id,
+          amount: payoutAmount,
+          type: 'settlement',
+          description: description,
+        })
+        .select()
+        .single();
+
+      if (ledgerError || !ledgerEntry) {
+        console.error(`Auto-settle parlay: error creating ledger entry for ticket ${ticketId}:`, ledgerError);
+        continue;
+      }
+
+      // Update all legs to 'settled'
+      const legIds = legs.map((l) => l.id);
+      const { error: updateError } = await client
+        .from('bets')
+        .update({ status: 'settled', updated_at: new Date().toISOString() })
+        .in('id', legIds);
+
+      if (updateError) {
+        console.error(`Auto-settle parlay: error updating legs for ticket ${ticketId}:`, updateError);
+        continue;
+      }
+
+      // Write settlement_events row
+      try {
+        const { data: bookie } = await client
+          .from('bookies')
+          .select('auth_user_id')
+          .eq('id', bookieId)
+          .single();
+
+        await client
+          .from('settlement_events')
+          .insert({
+            bookie_id: bookieId,
+            bet_id: legs[0].id,
+            mode: 'auto',
+            actor_user_id: bookie?.auth_user_id ?? null,
+            idempotency_key: `auto_settle_parlay_${ticketId}_${Date.now()}`,
+            ledger_entry_ids: [ledgerEntry.id],
+          });
+
+        if (bookie?.auth_user_id) {
+          await emitAuditEvent(client, {
+            bookieId: bookieId,
+            actorUserId: bookie.auth_user_id,
+            entityType: 'bet',
+            entityId: legs[0].id,
+            actionType: 'parlay_auto_settled',
+            previousState: { ticket_id: ticketId, leg_count: legs.length },
+            newState: {
+              ticket_id: ticketId,
+              outcome,
+              payout: payoutAmount,
+              legs_settled: legs.length,
+              ledger_entry_id: ledgerEntry.id,
+            },
+          });
+        }
+      } catch (err) {
+        console.error(`Auto-settle parlay: error writing settlement_event for ticket ${ticketId}:`, err);
+      }
+
+      parlaysSettled++;
+      console.log(`Auto-settled parlay ticket ${ticketId}: ${outcome}, payout=${payoutAmount}`);
+    } catch (err) {
+      console.error(`Auto-settle parlay: error processing ticket ${ticketId}:`, err);
+    }
+  }
+
+  return parlaysSettled;
 }
 
 Deno.serve(async (req) => {
@@ -1248,7 +1425,7 @@ Deno.serve(async (req) => {
                   // Query all bets for this event with status 'accepted', including market/side/financial info
                   const { data: acceptedBets, error: betsQueryError } = await client
                     .from('bets')
-                    .select('id, market, side, bookie_id, player_id, stake, odds')
+                    .select('id, market, side, bookie_id, player_id, stake, odds, is_parlay, ticket_id')
                     .eq('event_id', game.id)
                     .eq('status', 'accepted');
 
@@ -1277,6 +1454,23 @@ Deno.serve(async (req) => {
 
                         // Get grade result from grading logic
                         const gradeOutcome = gradeBet(betInfo, eventScores);
+
+                        // Parlay legs: grade only (settle as ticket later)
+                        if (bet.is_parlay) {
+                          const { error: gradeError } = await client
+                            .from('bets')
+                            .update({
+                              status: 'graded',
+                              grade_result: gradeOutcome.result,
+                              updated_at: new Date().toISOString(),
+                            })
+                            .eq('id', bet.id);
+                          if (!gradeError) {
+                            gradedCount++;
+                            console.log(`Graded parlay leg ${bet.id}: ${gradeOutcome.result} (ticket ${bet.ticket_id})`);
+                          }
+                          continue;
+                        }
 
                         // Update bet with grade result — go straight to 'settled'
                         const { error: updateError } = await client
@@ -1481,6 +1675,9 @@ Deno.serve(async (req) => {
       // Run catch-up grading for any accepted bets on already-final events
       const catchup = await runCatchupGrading(client);
 
+      // Auto-settle any parlays where all legs are now graded
+      const parlaysAutoSettled = await autoSettleParlays(client);
+
       // Build response object
       const responseBody = {
         success: true,
@@ -1491,6 +1688,7 @@ Deno.serve(async (req) => {
         bets_transitioned: betsTransitioned,
         bets_graded: betsGraded,
         bets_settled: betsSettled + catchup.catchupBetsSettled,
+        parlays_auto_settled: parlaysAutoSettled,
         catchup_bets_settled: catchup.catchupBetsSettled,
         catchup_bets_voided: catchup.catchupBetsVoided,
         catchup_events_processed: catchup.catchupEventsProcessed,

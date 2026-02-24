@@ -213,7 +213,7 @@ Deno.serve(async (req) => {
       auto_accept_enabled: policy?.auto_accept_enabled ?? true,
       auto_accept_new_players: policy?.auto_accept_new_players ?? true,
       new_player_bet_threshold: policy?.new_player_bet_threshold ?? 5,
-      auto_accept_parlays: policy?.auto_accept_parlays ?? false,
+      auto_accept_parlays: policy?.auto_accept_parlays ?? true,
       parlay_max_legs: policy?.parlay_max_legs ?? 4,
     };
 

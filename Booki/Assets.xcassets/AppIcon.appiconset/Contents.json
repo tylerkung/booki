@@ -4,6 +4,13 @@
       "filename" : "booki-app-icon.png",
       "idiom" : "universal",
       "platform" : "ios",
+      "size" : "1024x1024",
+      "minimum-system-version" : "26.0"
+    },
+    {
+      "filename" : "booki-app-icon-legacy.png",
+      "idiom" : "universal",
+      "platform" : "ios",
       "size" : "1024x1024"
     }
   ],

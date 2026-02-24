@@ -14,6 +14,7 @@ struct PlayersListView: View {
 
     @State private var showArchived = false
     @State private var showingInviteSheet = false
+    @State private var selectedPendingInvite: Invite? = nil
     @State private var showCopiedToast = false
     @State private var showDeletedToast = false
     @AppStorage("deletedInviteIds") private var deletedInviteIdsString: String = ""
@@ -75,6 +76,10 @@ struct PlayersListView: View {
                 }
                 .sheet(isPresented: $showingInviteSheet) {
                     InviteMemberSheet()
+                        .presentationBackground(Theme.background)
+                }
+                .sheet(item: $selectedPendingInvite) { invite in
+                    InviteMemberSheet(existingInvite: invite)
                         .presentationBackground(Theme.background)
                 }
         }
@@ -219,6 +224,10 @@ struct PlayersListView: View {
                     }, onDelete: {
                         deleteInvite(invite)
                     })
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedPendingInvite = invite
+                    }
                 }
                 .padding(.horizontal)
             }
@@ -1320,10 +1329,14 @@ struct InviteMemberSheet: View {
         case error(String)
     }
 
+    /// Optional invite to show directly in generated state (from pending invite tap)
+    var existingInvite: Invite? = nil
+
     @Query private var bookies: [Bookie]
 
     @State private var inviteState: InviteState = .idle
     @State private var codeCopied = false
+    @State private var linkCopied = false
     @State private var emailAddress: String = ""
     @State private var emailInviteCode: String? = nil
     @State private var showingMailCompose = false
@@ -1360,6 +1373,11 @@ struct InviteMemberSheet: View {
             .frame(maxWidth: .infinity)
             .background(Theme.background)
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                if let invite = existingInvite {
+                    inviteState = .generated(code: invite.inviteCode, expiresAt: invite.expiresAt.ISO8601Format())
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
@@ -1491,15 +1509,25 @@ struct InviteMemberSheet: View {
                 .font(Theme.title2)
                 .foregroundStyle(Theme.textPrimary)
 
-            // Invite code display
-            Text(code)
-                .font(.system(size: 28, weight: .bold, design: .monospaced))
-                .kerning(3)
-                .foregroundStyle(Theme.textPrimary)
+            // Invite code display with copy button
+            Button {
+                copyInviteCode(code: code)
+            } label: {
+                HStack(spacing: 12) {
+                    Text(code)
+                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        .kerning(3)
+                        .foregroundStyle(Theme.textPrimary)
+                    Image(systemName: codeCopied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 18))
+                        .foregroundStyle(codeCopied ? Theme.accent : Theme.textSecondary)
+                }
                 .padding(.vertical, 16)
                 .padding(.horizontal, 24)
                 .background(Theme.elevatedBackground)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            }
+            .buttonStyle(.plain)
 
             Text("Expires in 24 hours")
                 .font(Theme.subheadline)
@@ -1507,13 +1535,13 @@ struct InviteMemberSheet: View {
 
             // Action buttons
             VStack(spacing: 12) {
-                // Copy button
+                // Copy Link button
                 Button {
                     copyInviteLink(code: code)
                 } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: codeCopied ? "checkmark" : "doc.on.doc")
-                        Text(codeCopied ? "Copied!" : "Copy Link")
+                        Image(systemName: linkCopied ? "checkmark" : "link")
+                        Text(linkCopied ? "Link Copied!" : "Copy Link")
                     }
                     .font(Theme.headline)
                     .foregroundStyle(Theme.background)
@@ -1688,14 +1716,23 @@ struct InviteMemberSheet: View {
         modelContext.insert(invite)
     }
 
-    private func copyInviteLink(code: String) {
-        UIPasteboard.general.string = "booki://invite/\(code)"
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
+    private func copyInviteCode(code: String) {
+        UIPasteboard.general.string = code
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         codeCopied = true
-
+        linkCopied = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             codeCopied = false
+        }
+    }
+
+    private func copyInviteLink(code: String) {
+        UIPasteboard.general.string = "booki://invite/\(code)"
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        linkCopied = true
+        codeCopied = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            linkCopied = false
         }
     }
 

@@ -27,3 +27,28 @@ Started: Mon Feb 24 2026
 
 ---
 ## Tue Feb 24 11:24:28 PST 2026 - US-011 complete
+
+---
+## Mon Feb 24 2026 - Post-Ralph polish & parlay auto-settlement
+
+### What was implemented
+- **Parlay auto-acceptance**: `submit_parlay` defaults `auto_accept_parlays` to `true` (was `false`)
+- **Parlay auto-settlement**: `auto_refresh_games` now grades parlay legs to `'graded'` (not `'settled'`), then `autoSettleParlays()` settles fully-graded tickets with combined odds and single ledger entry
+- **Invite UX improvements**: Tapping pending invite opens InviteMemberSheet with code pre-populated; inline copy-code icon next to code display; separate Copy Code (inline) and Copy Link (button) actions
+- **iOS 26 app icon**: Liquid glass icon for iOS 26+, legacy icon fallback for older versions via asset catalog `minimum-system-version`
+- **RLS fix**: `cleanUpSpuriousBookieRecord()` in AuthManager deletes leftover bookie records for player accounts (fixes sync returning 0 results)
+- **Rejected parlay display**: Declined bets map to `.push` settlement (shows "Returned" not "Potential")
+- **Track tab layout**: Fixed empty state margins and filter chip clipping
+
+### Key files changed
+- `supabase/functions/auto_refresh_games/index.ts` — parlay-aware grading + `autoSettleParlays()`
+- `supabase/functions/submit_parlay/index.ts` — default `auto_accept_parlays: true`
+- `Booki/Services/AuthManager.swift` — `cleanUpSpuriousBookieRecord()`
+- `Booki/Views/PlayersListView.swift` — invite copy code inline, pending invite tap opens sheet
+- `Booki/Assets.xcassets/AppIcon.appiconset/` — dual icon with iOS 26 minimum-system-version
+
+### Learnings
+- `get_user_bookie_id()` COALESCE returns bookie ID first — if user signs up then claims player invite, spurious bookie record breaks ALL RLS queries (returns wrong bookie_id)
+- Parlay legs must be graded to `'graded'` not `'settled'` — individual settlement creates per-leg ledger entries instead of one combined entry
+- iOS app icon must be exactly 1024x1024 — `@2x` exports from Icon Composer are 2048x2048 and need resizing
+- Asset catalog `minimum-system-version` key allows iOS 26 liquid glass icon with legacy fallback

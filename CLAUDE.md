@@ -158,7 +158,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 
 ## Current State (February 24, 2026)
 
-- **Branch**: `ralph/player-polish-dashboard-college`
+- **Branch**: `ralph/ledger-v2-hardening`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
 - **Phases complete**: 1-17 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration)
@@ -166,7 +166,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Edge Functions**: 12 functions for server-authoritative operations (including `submit_bets`, `submit_parlay`, `sync_games`, `claim_player`, `create_invite`, `claim_invite`)
 - **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
 - **Settings**: Streamlined — removed Odds API config, sample data, and sync button
-- **Auto-pilot mode**: Picks auto-accepted, auto-graded, and auto-settled (ledger entries created automatically)
+- **Auto-pilot mode**: Singles and parlays auto-accepted, auto-graded, and auto-settled (ledger entries created automatically). Parlays graded per-leg then settled as ticket with combined odds.
 - **Auto-refresh**: Processes up to 10 games per run, catch-up grading for missed events, auto-void for stale pending bets, `force` flag for manual triggers
 - **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
 - **Branding**: App icon and in-app logo (`BookiLogo` image set), dark launch screen, `DESIGN_SYSTEM.md` restored
@@ -197,3 +197,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Player bookie RLS**: Migration 013 adds `get_player_bookie_id()` SECURITY DEFINER function + RLS policy so players can read their bookie's settings
 - **Golf sport page**: League tabs render outrights directly (no separate Futures tab), "Updated X ago" in section headers, all outcomes shown without show more
 - **Auto-refresh**: Every 2 hours (9 runs/day), 25 games per run (was 2 runs/day, 10 games)
+- **Ledger V2**: Atomic settlement RPCs (`settle_bet_tx`, `reverse_settlement_tx`, `override_grade_tx`), tamper-evident hash chain on ledger_entries, immutability triggers, `settlement_events` audit table, canonical `player_balances_view` + `get_player_balance` RPC. Migrations 015-019.
+- **Parlay auto-settlement**: `autoSettleParlays()` in auto_refresh_games grades legs to `'graded'`, then settles fully-graded tickets with combined odds and single ledger entry
+- **Spurious bookie cleanup**: `cleanUpSpuriousBookieRecord()` in AuthManager auto-deletes leftover bookie records when player is detected, fixing RLS `get_user_bookie_id()` COALESCE issue
+- **Invite UX**: Pending invite rows tappable (opens sheet with code), inline copy-code icon next to code, separate Copy Code / Copy Link actions
+- **iOS 26 app icon**: Liquid glass icon for iOS 26+ with legacy fallback via asset catalog `minimum-system-version`
