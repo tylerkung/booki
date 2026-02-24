@@ -1,94 +1,41 @@
 # Ralph Progress Log
-Started: Tue Feb 24 03:52:41 PST 2026
----
+Started: Tue Feb 24 11:05:08 PST 2026
 
 ## Codebase Patterns
-- College sports mappings (NCAAB/NCAAF) already exist in SPORT_KEY_MAPPING, sportLeagueToApiKey, and OddsAPIMapper.swift from futures work — only SPORTS_TO_SYNC needed updating
-- Edge function deploy: `npx supabase functions deploy <name> --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
-- Sport key format: `sport_league` (e.g., `basketball_ncaab`, `americanfootball_ncaaf`)
-- Bet.sportLeague stores league abbreviation (e.g. "NBA"), not sport name — use `SportCategory.fromLeague()` to map to sport
-- `PlayerAttentionService.totalBookiePL(bets:)` works on any subset of bets — useful for per-sport P/L
-- Bookie win rate = player loss count / total non-push settled count (bookie profits when players lose)
-
+- SQL migrations follow style in `006_audit_events.sql`: CREATE TABLE → indexes → RLS → policies → COMMENTS
+- Payout math (American odds): win positive = -(stake * odds/100), win negative = -(stake * 100/abs(odds)), loss = +stake, push/void = 0
+- Internal balance convention: positive = player owes bookie, negative = bookie owes player
+- Edge functions use service role for DB writes; RLS policies are SELECT-only for most financial tables
+- Immutability triggers on ledger_entries, settlement_events, audit_events prevent UPDATE/DELETE
+- settle_bet_tx RPC is SECURITY DEFINER — callable via `.rpc('settle_bet_tx', { params })`
+- RPC functions return `{ success: false, error }` for business rule violations (not Postgres errors) — check `data.success` after `rpcError`
+- Edge function RPC refactor pattern: keep CORS + JWT + idempotency + ownership check, replace inline DB ops with single RPC call
 ---
 
 ## 2026-02-24 - US-001
-- Added `basketball_ncaab` and `americanfootball_ncaaf` to SPORTS_TO_SYNC in sync_games/index.ts
-- Verified all mappings already exist: SPORT_KEY_MAPPING (sync_games), sportLeagueToApiKey (auto_refresh_games), sportKeyMapping (OddsAPIMapper.swift)
-- Deployed both sync_games and auto_refresh_games edge functions
-- Files changed: supabase/functions/sync_games/index.ts (+2 lines)
+- Created `supabase/migrations/015_ledger_v2_atomic_settlement.sql`
+- settlement_events table with RLS (SELECT-only for bookie's own records)
+- prevent_mutation() trigger function applied to ledger_entries, settlement_events, audit_events
+- settle_bet_tx() atomic RPC: validates bet → calculates payout → updates bet → inserts ledger entry → inserts settlement_event → inserts audit events → returns JSONB
+- Files changed: `supabase/migrations/015_ledger_v2_atomic_settlement.sql` (new)
 - **Learnings for future iterations:**
-  - All sport key mappings were added during futures work — SPORTS_TO_SYNC was the only array missing college sports
-  - auto_refresh_games didn't need code changes, just redeployment to stay in sync
-  - Supabase deploy works without Docker for function uploads
+  - The settle_bet edge function currently does separate update+insert queries — US-002 will replace with single RPC call
+  - The bets table does NOT have an immutability trigger (only financial history tables do)
+  - Use `FOR UPDATE` row locking when reading bet in the RPC to prevent concurrent settlement
+  - UNIQUE(bet_id, settlement_version) prevents duplicate settlements for the same version
 ---
 
-## 2026-02-24 - US-004
-- Added filter chips (All, Open, Won, Lost, Pushed) to TrackView below the summary card
-- Filters work at the ticket level using combinedStatus for open, and gradeResult for won/lost/pushed
-- Each chip shows count badge, selected chip uses Theme.accent, unselected uses Theme.elevatedBackground
-- Extracted TrackFilterChips as private struct to avoid type-checker issues
-- Files changed: Booki/Views/TrackView.swift (+90 lines)
+## 2026-02-24 - US-002
+- Refactored `supabase/functions/settle_bet/index.ts` to use `settle_bet_tx` RPC
+- Removed inline `calculatePayout()` function, separate bet update, ledger insert, and audit emit calls
+- RPC handles all atomically: bet status update, ledger entry, settlement_events, audit events
+- Edge function now: CORS → JWT → idempotency check → bookie validation → RPC → idempotency store → respond
+- Kept same response shape: `{ success: true, bet: {...}, ledger_entry: {...} }`
+- Removed `emitAuditEvent` import (no longer needed)
+- Files changed: `supabase/functions/settle_bet/index.ts`
 - **Learnings for future iterations:**
-  - TrackView groups bets into Ticket structs by ticketId — filters should work at ticket level, not individual bet level
-  - Ticket.combinedStatus aggregates all leg statuses — use it for open/settled determination
-  - For parlay won/lost logic: "won" = all legs win or push with at least one win; "lost" = any leg lost
-  - Theme.elevatedBackground (0x1E1E2D) is the standard unselected chip background color
----
-
-## 2026-02-24 - US-005
-- Standardized empty states across player Games, Track, and Search views
-- Replaced ContentUnavailableView with consistent pattern: 48pt icon (Theme.textMuted) + headline (Theme.textPrimary) + description (Theme.body/Theme.textSecondary) + Spacer centering
-- GamesView: "sportscourt" icon, "No Games Available", "Upcoming games will appear here once synced." (preserves filter-aware descriptions)
-- TrackView: "ticket" icon, "No Picks Yet", "Your pick history will appear here."
-- SearchView: "magnifyingglass" icon, "No Results Found", "No games matching \"[searchTerm]\""
-- Files changed: Booki/Views/GamesView.swift, Booki/Views/SearchView.swift, Booki/Views/TrackView.swift
-- **Learnings for future iterations:**
-  - The empty state pattern from SportPageView uses Spacer() above and below VStack for vertical centering — don't use ContentUnavailableView
-  - GamesView has filter-dependent empty state descriptions via `emptyStateDescription` computed property — preserve that logic when updating the visual pattern
-  - Standard pattern: 48pt system icon → Theme.headline title → Theme.body description with .multilineTextAlignment(.center) and .padding(.horizontal, 32)
----
-
-## 2026-02-24 - US-006
-- Added "Performance by Sport" section to AnalyticsDashboardView below summary cards grid
-- Groups settled bets by sport using Bet.sportLeague → SportCategory.fromLeague() mapping
-- Each sport row shows: sport icon, sport name, pick count, total staked, net P/L (colored), win rate %
-- Sorted by total staked descending; hidden when no settled bets exist
-- Added `SportCategory.fromLeague(_:)` static helper to map league abbreviations to sport categories
-- Files changed: Booki/Views/AnalyticsDashboardView.swift (+128 lines), Booki/Models/SportCategory.swift (+7 lines)
-- **Learnings for future iterations:**
-  - Bet has no direct Event relationship — use `sportLeague` property to derive sport via `SportCategory.fromLeague()`
-  - Extract dashboard sections as private structs to avoid SwiftUI type-checker timeouts
-  - `PlayerAttentionService.totalBookiePL(bets:)` can be reused for any bet subset (per-sport, per-player, etc.)
-  - AnalyticsDashboardView is already large (~980 lines) — always extract new sections as separate structs
----
-
-## 2026-02-24 - US-007
-- Added "Recent Activity" section to AnalyticsDashboardView between Sport Performance and "Last updated"
-- Combines Bet events (pick placed, pick graded) and LedgerEntry events (reconciliation) into unified feed
-- Shows last 10 activities sorted by date descending with relative timestamps
-- Icons: ticket.fill (pick placed), checkmark.circle (graded), banknote (reconciliation)
-- Compliance: uses "Pick" not "Bet", "Reconciliation" not "Settlement"
-- Extracted as private struct RecentActivitySection to avoid type-checker timeouts
-- Files changed: Booki/Views/AnalyticsDashboardView.swift (+150 lines)
-- **Learnings for future iterations:**
-  - Bet.eventDescription stores human-readable event name — use it for activity descriptions
-  - LedgerEntry.amount is the balance change — use formatSignedCurrency for display
-  - RelativeDateTimeFormatter with .abbreviated gives "2h ago" style timestamps
-  - Use `Array(items.enumerated())` with `id: \.element.id` for indexed ForEach with identifiable items
-  - Dashboard sections: PNL → Summary Cards → Futures Tracking → Sport Performance → Recent Activity → Last Updated → Members
----
-
-## 2026-02-24 - US-008
-- Added "Futures Activity" card to AnalyticsDashboardView between summary cards and sport performance
-- Shows count of open futures picks and total open activity (staked amount)
-- Shows top 3 most popular selections with count badges in Theme.accent
-- Muted "No futures picks yet" message when no outright bets exist
-- Extracted as private struct FuturesTrackingCard to avoid type-checker timeouts
-- Files changed: Booki/Views/AnalyticsDashboardView.swift (+121 lines)
-- **Learnings for future iterations:**
-  - Bet.market stores the MarketType raw value as String — compare with `MarketType.outright.rawValue` (i.e. `"outright"`)
-  - Bet.side stores the human-readable selection name (team/player name) — can be used directly for display
-  - Open statuses: pending, accepted, readyToGrade, graded — use Set<String> for efficient lookup
-  - Dashboard section order: PNL → Summary Cards → Futures Tracking → Sport Performance → Recent Activity → Last Updated → Members
+  - `client.rpc('settle_bet_tx', { params })` returns `{ data: JSONB, error }` — data is already parsed object
+  - RPC returns `{ success: false, error: '...' }` for business rule violations (not a Postgres error) — handle as 400
+  - BetRecord and LedgerEntry interfaces kept for documentation even though RPC returns untyped JSONB
+  - Deploy: `npx supabase functions deploy settle_bet --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
 ---
