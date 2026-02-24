@@ -207,7 +207,7 @@ struct CompactGameRow: View {
         isAwayTeam: Bool
     ) -> some View {
         HStack(spacing: 4) {
-            // Team abbreviation badge + name
+            // Team abbreviation badge + name — taps here navigate to detail
             teamBadge(teamName)
 
             Text(teamName)
@@ -216,7 +216,24 @@ struct CompactGameRow: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Spread button - US-005: line value prominent, odds secondary
+            // Odds grid — absorb taps between buttons to prevent accidental navigation
+            oddsGrid(spreadMarket: spreadMarket, moneylineMarket: moneylineMarket, totalMarket: totalMarket, isAwayTeam: isAwayTeam)
+                .contentShape(Rectangle())
+                .onTapGesture { } // absorb taps in gaps between odds buttons
+        }
+        .frame(height: oddsButtonHeight)
+    }
+
+    /// The 3-column odds grid (spread, moneyline, total)
+    @ViewBuilder
+    private func oddsGrid(
+        spreadMarket: Market?,
+        moneylineMarket: Market?,
+        totalMarket: Market?,
+        isAwayTeam: Bool
+    ) -> some View {
+        HStack(spacing: 4) {
+            // Spread button
             if let spread = spreadMarket {
                 let side = isAwayTeam ? spread.sideA : spread.sideB
                 let odds = isAwayTeam ? spread.oddsA : spread.oddsB
@@ -279,7 +296,6 @@ struct CompactGameRow: View {
                     .frame(width: oddsButtonWidth, height: oddsButtonHeight)
             }
         }
-        .frame(height: oddsButtonHeight)
     }
 
     // MARK: - Compact Odds Button

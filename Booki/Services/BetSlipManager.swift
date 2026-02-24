@@ -122,40 +122,61 @@ class BetSlipManager {
 
     // MARK: - Parlay Conflict Detection (US-003)
 
-    /// Check if selections contain conflicting picks (opposite sides of the same market)
-    /// This makes a parlay impossible since you can't bet both sides of one market
+    /// Check if selections contain conflicting picks that can't be combined in a parlay
     var hasConflictingSelections: Bool {
-        // Group items by marketId
-        let marketGroups = Dictionary(grouping: items) { $0.marketId }
+        parlayConflictReason != nil
+    }
 
-        // If any market has multiple selections with different sideIndicators, there's a conflict
+    /// Identifies the specific conflict reason, or nil if no conflicts
+    private var parlayConflictReason: String? {
+        // Both sides of same market
+        let marketGroups = Dictionary(grouping: items) { $0.marketId }
         for (_, marketItems) in marketGroups {
             if marketItems.count > 1 {
-                // Multiple selections on the same market = conflict
-                return true
+                return "Multi-Pick unavailable: conflicting selections on same market"
             }
         }
 
-        // Also check for same event, same market type, different sides
-        // (e.g., both ML selections on the same game)
-        let eventMarketTypeGroups = Dictionary(grouping: items) { item in
-            "\(item.eventId)-\(item.marketType.rawValue)"
-        }
+        // Same-game checks
+        let eventGroups = Dictionary(grouping: items) { $0.eventId }
+        for (_, eventItems) in eventGroups {
+            guard eventItems.count > 1 else { continue }
 
-        for (_, groupItems) in eventMarketTypeGroups {
-            if groupItems.count > 1 {
-                // Multiple selections on same event's same market type = conflict
-                return true
+            // Same market type on same game (e.g. two moneylines)
+            let typeGroups = Dictionary(grouping: eventItems) { $0.marketType.rawValue }
+            for (_, typeItems) in typeGroups {
+                if typeItems.count > 1 {
+                    return "Multi-Pick unavailable: conflicting selections on same game"
+                }
+            }
+
+            // Correlated markets: spread/alt spread + moneyline on same game
+            let types = Set(eventItems.map { $0.marketType })
+            let hasMoneyline = types.contains(.moneyline)
+            let hasSpread = types.contains(.spread) || types.contains(.alternateSpread)
+            if hasMoneyline && hasSpread {
+                return "Multi-Pick unavailable: spread and moneyline are correlated on the same game"
             }
         }
 
-        return false
+        // Correlated: futures/outright team + moneyline/spread on a game involving that team
+        let outrightPicks = items.filter { $0.marketType == .outright }
+        let gamePicks = items.filter { $0.marketType == .moneyline || $0.marketType == .spread || $0.marketType == .alternateSpread }
+        for outright in outrightPicks {
+            let teamName = outright.side.lowercased()
+            for game in gamePicks {
+                if game.eventDescription.lowercased().contains(teamName) {
+                    return "Multi-Pick unavailable: futures and game pick are correlated for the same team"
+                }
+            }
+        }
+
+        return nil
     }
 
     /// Get a human-readable description of why parlay is unavailable due to conflicts
     var conflictDescription: String? {
-        guard hasConflictingSelections else { return nil }
-        return "Multi-Pick unavailable: conflicting selections on same game"
+        parlayConflictReason
     }
 
     // MARK: - Futures Parlay Detection
@@ -165,25 +186,10 @@ class BetSlipManager {
         items.contains { $0.marketType == .outright }
     }
 
-    // MARK: - Same-Game Parlay Warning (US-015)
+    // MARK: - Same-Game Parlay Warning
 
-    /// Detect when multiple items have the same eventId and warn the user
-    /// Returns nil if no same-game parlay detected, or a warning string with the event name
-    var sameGameParlayWarning: String? {
-        guard betMode == .parlay else { return nil }
-
-        // Group items by eventId
-        let eventGroups = Dictionary(grouping: items) { $0.eventId }
-
-        // Find events with multiple selections
-        for (_, eventItems) in eventGroups {
-            if eventItems.count > 1 {
-                return "Same-game multi-pick: multiple picks from \(eventItems[0].eventDescription)"
-            }
-        }
-
-        return nil
-    }
+    /// No longer needed — correlated market conflicts handled by hasConflictingSelections
+    var sameGameParlayWarning: String? { nil }
 
     private init() {
         loadItems()
@@ -432,6 +438,7 @@ class BetSlipManager {
             itemStakes.removeValue(forKey: key)
         }
         items.removeAll { $0.asSelection == selection }
+        if !hasConflictingSelections { modeSwitchMessage = nil }
         saveItems()
         saveItemStakes()
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -444,6 +451,7 @@ class BetSlipManager {
         let key = itemStakeKey(marketId: item.marketId, sideIndicator: item.sideIndicator)
         itemStakes.removeValue(forKey: key)
         items.remove(at: index)
+        if !hasConflictingSelections { modeSwitchMessage = nil }
         saveItems()
         saveItemStakes()
     }
@@ -475,6 +483,7 @@ class BetSlipManager {
     func clearAll() {
         items.removeAll()
         itemStakes.removeAll()
+        modeSwitchMessage = nil
         saveItems()
         saveItemStakes()
     }

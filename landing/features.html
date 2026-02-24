@@ -273,6 +273,11 @@
                     </div>
                     <p class="waitlist-privacy">We'll never share your email. Unsubscribe anytime.</p>
                 </form>
+                <div class="waitlist-success" style="display: none;">
+                    <span class="waitlist-success-icon">&#10003;</span>
+                    <p class="waitlist-success-title">You're on the list.</p>
+                    <p class="waitlist-success-sub">We'll be in touch when early access opens.</p>
+                </div>
             </div>
         </section>
     </main>
@@ -291,6 +296,27 @@
         // Mobile nav toggle
         document.querySelector('.nav-hamburger').addEventListener('click', function() {
             document.querySelector('.site-nav').classList.toggle('nav-open');
+        });
+
+        // Waitlist form submission with success state
+        document.querySelectorAll('.waitlist-form').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var data = new URLSearchParams(new FormData(form)).toString();
+                fetch('/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: data
+                }).then(function() {
+                    form.style.display = 'none';
+                    var success = form.parentElement.querySelector('.waitlist-success');
+                    if (success) success.style.display = 'block';
+                }).catch(function() {
+                    form.style.display = 'none';
+                    var success = form.parentElement.querySelector('.waitlist-success');
+                    if (success) success.style.display = 'block';
+                });
+            });
         });
     </script>
 </body>
