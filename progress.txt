@@ -23,3 +23,43 @@ Started: Mon Feb 23 17:56:56 PST 2026
   - LeagueInfo closures match on both sport AND league to avoid cross-sport collisions
   - Keep existing `sportIconName()` in GamesView for now — US-007 will refactor to use SportCategory
 ---
+
+## 2026-02-23 - US-002
+- Created `Booki/Views/SportPageView.swift` with league sub-tabs, filtered games, and Futures placeholder
+- Init takes `SportCategory`, optional `isViewOnly: Bool` (default false), optional `Player?` (for bet slip + navigation)
+- League sub-tabs rendered as horizontal scroll capsule buttons (same style as GamesView sport tabs)
+- Events filtered per selected league using `LeagueInfo.matchesEvent` closure
+- Events grouped by date with sticky section headers (Today/Tomorrow/formatted date) + SPREAD/MONEY/TOTAL column headers
+- Player mode: bettable events only (scheduled, future, not locked), bet slip selection via BetSlipManager.shared, card tap navigates to GameDetailView
+- Bookie mode (isViewOnly=true): shows all non-canceled events, muted odds, no tap/selection
+- Futures tab shows centered placeholder (icon + title + subtitle) — satisfies US-003 acceptance criteria
+- Empty league state: "No games available" centered message
+- Added file to Xcode pbxproj (PBXBuildFile, PBXFileReference, Views group, Sources build phase)
+- Files changed: Booki/Views/SportPageView.swift (new), Booki.xcodeproj/project.pbxproj
+- **Learnings for future iterations:**
+  - SportPageView needs `player` param for GameDetailView navigation — passed from GamesView/SearchView parent
+  - Futures placeholder is built into SportPageView (not a separate view), selected via `selectedLeagueId == "futures"`
+  - Date grouping preserves insertion order via `dateOrder` array to keep chronological sort
+  - Reuse same CompactGameRow + BetSlipManager patterns from GamesView for consistency
+---
+
+## 2026-02-23 - US-003
+- Futures placeholder already implemented within SportPageView (US-002)
+- When "Futures" tab selected: centered VStack with chart.line.uptrend.xyaxis icon (48pt, Theme.textMuted), "Futures Coming Soon" (Theme.headline, Theme.textPrimary), subtitle (Theme.body, Theme.textSecondary)
+- No additional files changed — covered by US-002 commit
+---
+
+## 2026-02-23 - US-004
+- Added "POPULAR SPORTS" section to SearchView when search text is empty
+- Replaced generic magnifying glass empty state with scrollable list of SportCategory.popular
+- Each row: sport icon (Theme.accent) + displayName (Theme.textPrimary) + chevron.right, on Theme.cardBackground rounded card
+- Section header: "POPULAR SPORTS" with Theme.caption, 1.0 tracking, Theme.textSecondary
+- NavigationLink(value: SportCategory) navigates to SportPageView(category:player:)
+- Added `.navigationDestination(for: SportCategory.self)` on body's outer VStack
+- Popular Sports disappears when user types (searchText.isEmpty branch)
+- Files changed: Booki/Views/SearchView.swift
+- **Learnings for future iterations:**
+  - SportCategory is a String raw-value enum so it's automatically Hashable — works with NavigationLink(value:)
+  - Place `.navigationDestination` modifiers on the body-level VStack, not inside sub-views, for reliable navigation
+  - SearchView already has `player` property, so passing it to SportPageView is straightforward
+---

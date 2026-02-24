@@ -119,6 +119,9 @@ struct SearchView: View {
         .navigationDestination(for: Event.self) { event in
             GameDetailView(player: player, event: event)
         }
+        .navigationDestination(for: SportCategory.self) { category in
+            SportPageView(category: category, player: player)
+        }
         .navigationDestination(item: $selectedEventForNavigation) { event in
             GameDetailView(player: player, event: event)
         }
@@ -173,17 +176,49 @@ struct SearchView: View {
 
     @ViewBuilder
     private var emptyPromptView: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 40))
-                .foregroundStyle(Theme.textMuted)
-            Text("Search for teams across all games")
-                .font(Theme.body)
-                .foregroundStyle(Theme.textSecondary)
-            Spacer()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // POPULAR SPORTS section header
+                Text("POPULAR SPORTS")
+                    .font(Theme.caption)
+                    .tracking(1.0)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 12)
+
+                // Sport rows
+                VStack(spacing: 8) {
+                    ForEach(SportCategory.popular) { category in
+                        NavigationLink(value: category) {
+                            HStack(spacing: 12) {
+                                Image(systemName: category.iconName)
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(Theme.accent)
+                                    .frame(width: 28)
+
+                                Text(category.displayName)
+                                    .font(Theme.body)
+                                    .foregroundStyle(Theme.textPrimary)
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .background(Theme.cardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
         }
-        .frame(maxWidth: .infinity)
+        .background(Theme.background)
     }
 
     // MARK: - No Results

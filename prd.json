@@ -42,7 +42,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Reuse event filtering and grouping patterns from GamesView. Use @Environment(BetSlipState.self) for bet slip. Use @Query for events. Theme.background for page background. If a league has no events, show a simple empty state ('No games available')."
     },
     {
@@ -58,7 +58,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Keep this simple — just a static placeholder. No dynamic data needed."
     },
     {
@@ -75,7 +75,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "SearchView is in Booki/Views/SearchView.swift. It already has NavigationStack context. Use existing styling patterns (Theme.cardBackground cards, section headers with tracking)."
     },
     {
