@@ -1,7 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
-import { emitAuditEvent } from '../_shared/audit.ts';
 
 interface OverrideGradeRequest {
   bet_id: string;
@@ -152,120 +151,36 @@ Deno.serve(async (req) => {
       );
     }
 
-    const now = new Date().toISOString();
-    const reason = body.reason.trim();
-    let settlementReversed = false;
+    // Call transactional RPC — handles reversal (if settled), grade update, and audit atomically
+    const { data: rpcData, error: rpcError } = await client.rpc('override_grade_tx', {
+      p_bet_id: body.bet_id,
+      p_actor_user_id: userId,
+      p_new_outcome: body.new_outcome,
+      p_reason: body.reason.trim(),
+      p_idempotency_key: body.idempotency_key,
+    });
 
-    // Store previous state for audit
-    const previousGradeResult = bet.grade_result;
-    const previousStatus = bet.status;
-
-    // If bet status is 'settled', first reverse the settlement internally
-    if (bet.status === 'settled') {
-      // Find the original settlement ledger_entry for this bet
-      const { data: originalLedgerEntry, error: ledgerError } = await client
-        .from('ledger_entries')
-        .select('*')
-        .eq('bet_id', body.bet_id)
-        .eq('type', 'settlement')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (ledgerError || !originalLedgerEntry) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Settlement ledger entry not found for this bet' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Create reversing ledger_entry with opposite amount
-      const reversalAmount = -Number(originalLedgerEntry.amount);
-      const { data: reversalEntry, error: reversalError } = await client
-        .from('ledger_entries')
-        .insert({
-          bookie_id: bet.bookie_id,
-          player_id: bet.player_id,
-          bet_id: bet.id,
-          amount: reversalAmount,
-          type: 'reversal',
-          description: `Settlement reversal for grade override: ${reason}`,
-        })
-        .select()
-        .single();
-
-      if (reversalError || !reversalEntry) {
-        console.error('Error creating reversal entry:', reversalError);
-        return new Response(
-          JSON.stringify({ success: false, error: 'Failed to reverse settlement' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Emit audit event for settlement reversal
-      await emitAuditEvent(client, {
-        bookieId: bet.bookie_id,
-        actorUserId: userId,
-        entityType: 'bet',
-        entityId: bet.id,
-        actionType: 'reverse',
-        previousState: { status: 'settled', grade_result: previousGradeResult },
-        newState: { status: 'graded', grade_result: previousGradeResult },
-        reason: `Settlement reversal for grade override: ${reason}`,
-      });
-
-      // Emit audit event for reversal ledger entry creation
-      await emitAuditEvent(client, {
-        bookieId: bet.bookie_id,
-        actorUserId: userId,
-        entityType: 'ledger_entry',
-        entityId: reversalEntry.id,
-        actionType: 'create',
-        previousState: null,
-        newState: reversalEntry as unknown as Record<string, unknown>,
-        reason: `Settlement reversal for grade override: ${reason}`,
-      });
-
-      settlementReversed = true;
-    }
-
-    // Update bet grade_result to new_outcome, keep status as 'graded'
-    const { data: updatedBet, error: updateError } = await client
-      .from('bets')
-      .update({
-        grade_result: body.new_outcome,
-        status: 'graded',
-        updated_at: now,
-      })
-      .eq('id', body.bet_id)
-      .select()
-      .single();
-
-    if (updateError || !updatedBet) {
-      console.error('Error updating bet:', updateError);
+    if (rpcError) {
+      console.error('RPC error:', rpcError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to override bet grade' }),
+        JSON.stringify({ success: false, error: rpcError.message || 'Failed to override grade' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Emit audit event for grade override
-    await emitAuditEvent(client, {
-      bookieId: bet.bookie_id,
-      actorUserId: userId,
-      entityType: 'bet',
-      entityId: bet.id,
-      actionType: 'override',
-      previousState: { status: previousStatus, grade_result: previousGradeResult },
-      newState: { status: 'graded', grade_result: body.new_outcome },
-      reason: reason,
-    });
+    // RPC returns { success, error, bet, settlement_reversed, reversal_entry } as JSONB
+    if (!rpcData || !rpcData.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: rpcData?.error || 'Failed to override grade' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Prepare success response
     const response = JSON.stringify({
       success: true,
-      bet: updatedBet,
-      settlement_reversed: settlementReversed,
+      bet: rpcData.bet,
+      settlement_reversed: rpcData.settlement_reversed || false,
     });
 
     // Store idempotency key with response
