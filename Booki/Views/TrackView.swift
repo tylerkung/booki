@@ -250,12 +250,23 @@ struct TrackView: View {
     var body: some View {
         ScrollView {
             if tickets.isEmpty {
-                ContentUnavailableView(
-                    "No Picks Yet",
-                    systemImage: "list.bullet.clipboard",
-                    description: Text("Your pick requests will appear here.")
-                )
-                .padding(.top, 60)
+                Spacer()
+                VStack(spacing: 16) {
+                    Image(systemName: "ticket")
+                        .font(.system(size: 48))
+                        .foregroundStyle(Theme.textMuted)
+
+                    Text("No Picks Yet")
+                        .font(Theme.headline)
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text("Your pick history will appear here.")
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+                Spacer()
             } else {
                 VStack(spacing: 12) {
                     TrackSummaryCard(

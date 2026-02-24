@@ -225,13 +225,23 @@ struct SearchView: View {
 
     @ViewBuilder
     private var noResultsView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Spacer()
-            ContentUnavailableView(
-                "No Results",
-                systemImage: "magnifyingglass",
-                description: Text("No games found for '\(searchText)'")
-            )
+
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 48))
+                .foregroundStyle(Theme.textMuted)
+
+            Text("No Results Found")
+                .font(Theme.headline)
+                .foregroundStyle(Theme.textPrimary)
+
+            Text("No games matching \"\(searchText)\"")
+                .font(Theme.body)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
             Spacer()
         }
         .frame(maxWidth: .infinity)

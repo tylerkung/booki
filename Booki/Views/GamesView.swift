@@ -162,7 +162,7 @@ struct GamesView: View {
         } else if let sport = selectedSport {
             return "There are no upcoming \(sport) games."
         }
-        return "There are no upcoming games to browse."
+        return "Upcoming games will appear here once synced."
     }
 
     /// Events grouped by sport and league for display
@@ -601,11 +601,21 @@ struct GamesView: View {
     private var emptyStateView: some View {
         ScrollView {
             VStack(spacing: 16) {
-                ContentUnavailableView(
-                    hasActiveFilters ? "No Results" : "No Games Available",
-                    systemImage: hasActiveFilters ? "magnifyingglass" : "sportscourt",
-                    description: Text(emptyStateDescription)
-                )
+                Spacer()
+
+                Image(systemName: hasActiveFilters ? "magnifyingglass" : "sportscourt")
+                    .font(.system(size: 48))
+                    .foregroundStyle(Theme.textMuted)
+
+                Text(hasActiveFilters ? "No Results" : "No Games Available")
+                    .font(Theme.headline)
+                    .foregroundStyle(Theme.textPrimary)
+
+                Text(emptyStateDescription)
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
 
                 // Clear filters button if filters are active (US-038)
                 if hasActiveFilters {
@@ -617,12 +627,7 @@ struct GamesView: View {
                     .buttonStyle(.bordered)
                 }
 
-                // Refresh hint
-                if !hasActiveFilters {
-                    Text("Pull down to refresh")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                }
+                Spacer()
             }
             .frame(maxWidth: .infinity, minHeight: 400)
         }
