@@ -181,7 +181,7 @@ struct PlayerAnalyticsDetailView: View {
             Button {
                 print("Settle Up tapped for \(summary.player.name)")
             } label: {
-                Text("RECONCILE")
+                Text("SETTLE UP")
                     .font(Theme.headline)
                     .textCase(.uppercase)
                     .foregroundStyle(.black)
@@ -293,9 +293,14 @@ struct PlayerAnalyticsDetailView: View {
 
     // MARK: - Reliability Section
 
+    /// Only bookie-initiated payments count for reliability tracking
+    private var paymentEntries: [LedgerEntry] {
+        playerLedgerEntries.filter { $0.type == .paymentLogged }
+    }
+
     private var paymentStatus: (label: String, color: Color) {
-        if playerLedgerEntries.isEmpty {
-            return ("New", Theme.textSecondary)
+        if paymentEntries.isEmpty {
+            return ("No payments", Theme.textSecondary)
         } else if summary.isOverdue {
             return ("Overdue", Theme.danger)
         } else {
@@ -304,8 +309,8 @@ struct PlayerAnalyticsDetailView: View {
     }
 
     private var daysSinceLastPayment: String {
-        guard let mostRecent = playerLedgerEntries.max(by: { $0.createdAt < $1.createdAt }) else {
-            return "No payments yet"
+        guard let mostRecent = paymentEntries.max(by: { $0.createdAt < $1.createdAt }) else {
+            return "Never"
         }
         let days = Calendar.current.dateComponents([.day], from: mostRecent.createdAt, to: Date()).day ?? 0
         if days == 0 { return "Today" }

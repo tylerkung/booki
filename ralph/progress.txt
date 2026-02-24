@@ -30,3 +30,19 @@ Started: Mon Feb 24 2026
   - LiabilityService.calculatePayout(stake:odds:) returns profit (not total return), so it's the right amount for net performance wins
   - Stats computed properties (settledBets, wins, losses, etc.) live on TrackView struct, card is a separate private struct taking values as parameters
 ---
+
+## 2026-02-24 - Language overhaul: Reconciliation → Settlement/Graded
+- Replaced all user-facing "Reconcile/Reconciliation" strings with "Settle/Settlement" across 14 Swift view files + 2 landing pages
+- Split terminology: "Settle/Settlement" for balance clearing, "Graded/Pick Graded" for bet resolution
+- Fixed parlay partial grading: suppressed "Partial (X/Y)" badge and "will lose" warning when parlay already has losing leg
+- Fixed reliability section: "Payment Status" and "Last Payment" now only track `paymentLogged` entries, not auto-grading settlements
+- Fixed overdue detection in PlayerAttentionService to only consider bookie-initiated payments
+- Renamed "RECONCILE" CTA to "SETTLE UP" on PlayerAnalyticsDetailView
+- Updated activity feed: "Settlement for X" → "Pick graded for X" for auto-graded ledger entries
+- Updated CLAUDE.md compliance table
+- Files changed: BetsListView, GradingView, DashboardView, WeeklySettlementView, SettlementSnapshotCard, TicketDetailView, AccountView, AcceptancePolicySettingsView, BetHistoryView, AttentionFeedView, OnboardingWelcomeView, AnalyticsDashboardView, PlayerAnalyticsDetailView, PlayerAttentionService, landing/index.html, landing/features.html
+- **Learnings for future iterations:**
+  - `EntryType.settlement` = auto-grading ledger entries (bet resolved), `EntryType.paymentLogged` = bookie-initiated payment — never conflate the two
+  - Reliability/overdue tracking must filter on `.paymentLogged` only, not all ledger entries
+  - David's $0.00 balance = zero ledger entries in Supabase (events haven't reached final status for auto-grading)
+---

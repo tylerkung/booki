@@ -6,7 +6,7 @@ enum TransactionFilter: String, CaseIterable, Identifiable {
     case all = "All"
     case settlements = "Graded"
     case adjustments = "Adjustments"
-    case payments = "Reconciled"
+    case payments = "Settled"
 
     var id: String { rawValue }
 
@@ -197,7 +197,7 @@ struct AccountView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(Theme.textSecondary)
-                    Text("All reconciled")
+                    Text("All settled")
                         .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -601,7 +601,7 @@ struct TransactionRowView: View {
         switch entry.type {
         case .settlement: return "Graded"
         case .adjustment: return "Adjustment"
-        case .paymentLogged: return "Reconciled"
+        case .paymentLogged: return "Settled"
         case .reversal: return "Reversal"
         }
     }

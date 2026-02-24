@@ -138,7 +138,7 @@ struct GradingView: View {
                         ContentUnavailableView(
                             "No Picks to Grade",
                             systemImage: "checkmark.circle",
-                            description: Text("All picks have been graded. Use the button above to reconcile graded picks.")
+                            description: Text("All picks have been graded. Use the button above to settle graded picks.")
                         )
                     } else {
                         List {
@@ -212,30 +212,30 @@ struct GradingView: View {
                 }
             }
             .confirmationDialog(
-                "Reconcile All Graded Picks?",
+                "Settle All Graded Picks?",
                 isPresented: $showingBulkSettlementConfirmation,
                 titleVisibility: .visible
             ) {
-                Button("Reconcile All") {
+                Button("Settle All") {
                     performBulkSettlement()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 let preview = settlementPreview
                 Text("""
-                    Total picks to reconcile: \(preview.betCount)
+                    Total picks to settle: \(preview.betCount)
                     Total member winnings: \(formatCurrency(preview.totalWinnings))
                     Total member losses: \(formatCurrency(preview.totalLosses))
                     Net impact: \(formatCurrency(preview.netImpact))
                     """)
             }
-            .alert("Reconciliation Complete", isPresented: $showingBulkSettlementSuccess) {
+            .alert("Settlement Complete", isPresented: $showingBulkSettlementSuccess) {
                 Button("OK") {
                     settlementSummary = nil
                 }
             } message: {
                 if let summary = settlementSummary {
-                    Text("Reconciled \(summary.settledCount) picks: \(summary.winCount) wins, \(summary.lossCount) losses, \(summary.pushCount) pushes")
+                    Text("Settled \(summary.settledCount) picks: \(summary.winCount) wins, \(summary.lossCount) losses, \(summary.pushCount) pushes")
                 }
             }
         }
@@ -253,7 +253,7 @@ struct GradingView: View {
                     .foregroundStyle(Theme.accent)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Reconcile All Graded")
+                    Text("Settle All Graded")
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
 

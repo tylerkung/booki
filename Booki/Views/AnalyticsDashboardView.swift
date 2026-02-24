@@ -1044,7 +1044,7 @@ private struct RecentActivitySection: View {
         case .reconciliation(let entry):
             let playerName = entry.player?.name ?? "Unknown"
             let amount = formatSignedCurrency(entry.amount)
-            return "Reconciliation for \(playerName) — \(amount)"
+            return "Pick graded for \(playerName) — \(amount)"
         }
     }
 

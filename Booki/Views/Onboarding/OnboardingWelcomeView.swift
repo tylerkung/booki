@@ -34,7 +34,7 @@ struct OnboardingWelcomeView: View {
                 .padding(.horizontal, 32)
 
             // Body
-            Text("Booki helps you track picks, manage members, and run weekly reconciliations.")
+            Text("Booki helps you track picks, manage members, and run weekly settlements.")
                 .font(.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)

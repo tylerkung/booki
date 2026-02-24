@@ -150,7 +150,7 @@ struct DashboardView: View {
                 Section {
                     SettlementSnapshotCard()
                 } header: {
-                    Text("Reconciliation")
+                    Text("Settlement")
                         .foregroundStyle(Theme.textMuted)
                 }
                 .listRowBackground(Theme.cardBackground)
@@ -343,7 +343,7 @@ struct DashboardView: View {
                                 .foregroundStyle(Theme.accent)
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Weekly Reconciliation")
+                                Text("Weekly Settlement")
                                     .font(Theme.subheadline)
                                     .foregroundStyle(Theme.textPrimary)
 
@@ -361,7 +361,7 @@ struct DashboardView: View {
                         .padding(.vertical, 4)
                     }
                 } header: {
-                    Text("Reconciliation")
+                    Text("Settlement")
                 }
                 .listRowBackground(Theme.cardBackground)
             }

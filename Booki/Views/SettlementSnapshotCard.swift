@@ -137,7 +137,7 @@ struct SettlementSnapshotCard: View {
                     )
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Reconciliation")
+                    Text("Settlement")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(Theme.textPrimary)
 
@@ -291,7 +291,7 @@ struct SettlementSnapshotCard: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.textMuted)
 
-                    Text("Next reconciliation in \(daysUntilNextSettlement) day\(daysUntilNextSettlement == 1 ? "" : "s")")
+                    Text("Next settlement in \(daysUntilNextSettlement) day\(daysUntilNextSettlement == 1 ? "" : "s")")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -300,7 +300,7 @@ struct SettlementSnapshotCard: View {
                     WeeklySettlementView()
                 } label: {
                     HStack {
-                        Text("View Reconciliations")
+                        Text("View Settlements")
                             .font(.system(size: 14, weight: .bold))
 
                         Spacer()

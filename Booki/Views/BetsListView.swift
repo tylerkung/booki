@@ -282,8 +282,8 @@ struct BetRowView: View {
             // Canonical pick card display
             PickCardCompact(presenter: presenter, playerName: bet.player?.name)
 
-            // Parlay partial grading badge (bookie-specific overlay)
-            if let info = parlayInfo, info.isPartiallyGraded {
+            // Parlay partial grading badge (only when still in play, not already determined to lose)
+            if let info = parlayInfo, info.isPartiallyGraded, !info.willLose {
                 Text("Partial (\(info.gradedCount)/\(info.totalLegs))")
                     .font(Theme.caption)
                     .fontWeight(.medium)
@@ -301,18 +301,6 @@ struct BetRowView: View {
                     .font(Theme.caption)
                     .foregroundStyle(Theme.warning)
                     .padding(.leading, 12)
-            }
-
-            // Parlay will lose indicator
-            if let info = parlayInfo, info.willLose {
-                HStack(spacing: 4) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(Theme.caption)
-                    Text("Multi-pick will lose when reconciled")
-                        .font(Theme.caption)
-                }
-                .foregroundStyle(Theme.danger)
-                .padding(.leading, 12)
             }
         }
     }
@@ -575,19 +563,19 @@ struct BetDetailView: View {
             Text("This action cannot be undone. The pick will be marked as void.")
         }
         .confirmationDialog(
-            "Reconcile this pick?",
+            "Settle this pick?",
             isPresented: $showingSettleConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Reconcile Pick") {
+            Button("Settle Pick") {
                 settleBet()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             if let result = bet.gradeResult {
-                Text("This will create a ledger entry for a \(result.rawValue) reconciliation.")
+                Text("This will create a ledger entry for a \(result.rawValue) settlement.")
             } else {
-                Text("This will create a ledger entry for the reconciliation.")
+                Text("This will create a ledger entry for the settlement.")
             }
         }
         .sheet(isPresented: $showingReverseSettlementSheet) {
@@ -599,7 +587,7 @@ struct BetDetailView: View {
         .alert("Reversal Successful", isPresented: $showingReverseSuccess) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("The reconciliation has been reversed. The pick has returned to 'graded' status.")
+            Text("The settlement has been reversed. The pick has returned to 'graded' status.")
         }
         .alert("Reversal Failed", isPresented: $showingReverseError) {
             Button("OK", role: .cancel) {}
@@ -637,7 +625,7 @@ struct BetDetailView: View {
                 return "This will have no impact on the member's balance (push)."
             }
         }
-        return "This will reverse the reconciliation and adjust the member's balance."
+        return "This will reverse the settlement and adjust the member's balance."
     }
 
     @ViewBuilder
@@ -668,7 +656,7 @@ struct BetDetailView: View {
                             Text("Partial (\(parlayBets.count - legsAwaitingCount)/\(parlayBets.count))")
                                 .font(Theme.font(size: 15, weight: .medium))
                                 .foregroundStyle(Theme.warning)
-                            Text("Cannot reconcile - \(legsAwaitingCount) leg\(legsAwaitingCount == 1 ? "" : "s") awaiting results")
+                            Text("Cannot settle - \(legsAwaitingCount) leg\(legsAwaitingCount == 1 ? "" : "s") awaiting results")
                                 .font(Theme.caption)
                                 .foregroundStyle(Theme.textMuted)
                         }
@@ -682,12 +670,12 @@ struct BetDetailView: View {
                         parlayWillLoseBanner
                     }
 
-                    actionButton("Reconcile Multi-Pick", icon: "dollarsign.circle.fill", color: Theme.accent) {
+                    actionButton("Settle Multi-Pick", icon: "dollarsign.circle.fill", color: Theme.accent) {
                         showingSettleConfirmation = true
                     }
                 }
             } else {
-                actionButton("Reconcile Pick", icon: "dollarsign.circle.fill", color: Theme.accent) {
+                actionButton("Settle Pick", icon: "dollarsign.circle.fill", color: Theme.accent) {
                     showingSettleConfirmation = true
                 }
             }
@@ -699,7 +687,7 @@ struct BetDetailView: View {
             }
 
         case .settled:
-            actionButton("Reverse Reconciliation", icon: "arrow.uturn.backward.circle.fill", color: Theme.danger) {
+            actionButton("Reverse Settlement", icon: "arrow.uturn.backward.circle.fill", color: Theme.danger) {
                 prepareReverseSettlementSheet()
             }
 
@@ -718,7 +706,7 @@ struct BetDetailView: View {
         HStack {
             Image(systemName: "xmark.circle.fill")
                 .foregroundStyle(Theme.danger)
-            Text("Multi-pick will lose when reconciled")
+            Text("Multi-pick will lose when settled")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.danger)
         }
@@ -1060,7 +1048,7 @@ struct BetDetailView: View {
                         }
 
                         if bet.status == .settled {
-                            Text("Reconciliation will be reversed")
+                            Text("Settlement will be reversed")
                                 .font(Theme.caption)
                                 .foregroundStyle(Theme.warning)
                                 .padding(.top, 4)
@@ -1215,11 +1203,11 @@ struct BetDetailView: View {
                             .font(Theme.largeTitle)
                             .foregroundStyle(Theme.warning)
 
-                        Text("Reverse Reconciliation")
+                        Text("Reverse Settlement")
                             .font(Theme.title2)
                             .foregroundStyle(Theme.textPrimary)
 
-                        Text("This will undo the ledger entry created when this pick was reconciled. The member's balance will be adjusted accordingly.")
+                        Text("This will undo the ledger entry created when this pick was settled. The member's balance will be adjusted accordingly.")
                             .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
                             .multilineTextAlignment(.center)
@@ -1285,7 +1273,7 @@ struct BetDetailView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Reverse Reconciliation")
+            .navigationTitle("Reverse Settlement")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

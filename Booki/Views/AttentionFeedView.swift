@@ -32,7 +32,7 @@ enum AttentionItemType {
     var description: String {
         switch self {
         case .overdueSettlement(let player):
-            return "\(player.name) has overdue reconciliation"
+            return "\(player.name) has overdue settlement"
         case .nearCreditLimit(let player, let percent):
             return "\(player.name) at \(percent)% of credit limit"
         case .highExposureGame(let event, let exposure):

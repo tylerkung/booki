@@ -216,10 +216,12 @@ enum PlayerAttentionService {
 
         guard balanceOwed > 0 else { return (false, .zero) }
 
+        // Only bookie-initiated payments count for overdue tracking
+        let paymentEntries = playerEntries.filter { $0.type == .paymentLogged }
         let cutoff = Calendar.current.date(byAdding: .day, value: -thresholdDays, to: Date())!
-        let hasRecentEntry = playerEntries.contains { $0.createdAt >= cutoff }
+        let hasRecentPayment = paymentEntries.contains { $0.createdAt >= cutoff }
 
-        if hasRecentEntry {
+        if hasRecentPayment {
             return (false, .zero)
         }
 

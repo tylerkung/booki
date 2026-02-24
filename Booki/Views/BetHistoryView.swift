@@ -159,9 +159,9 @@ private struct TimelineEventRow: View {
         case "grade":
             return "Pick Graded"
         case "settle":
-            return "Pick Reconciled"
+            return "Pick Settled"
         case "reverse":
-            return "Reconciliation Reversed"
+            return "Settlement Reversed"
         case "override":
             return "Grade Overridden"
         case "adjust":

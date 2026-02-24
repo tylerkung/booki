@@ -341,7 +341,7 @@ struct TicketDetailView: View {
                 )
 
                 if isTicketSettled {
-                    labeledRow(label: "Status", value: "Reconciled", valueColor: Theme.accent)
+                    labeledRow(label: "Status", value: "Settled", valueColor: Theme.accent)
                 }
             }
             .padding(12)

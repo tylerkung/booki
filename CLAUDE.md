@@ -150,7 +150,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Player | Member |
 | Bet/Bets | Pick/Picks |
 | Parlay | Multi-Pick |
-| Settlement | Reconciliation |
+| Settlement | Settlement / Settle Up (balance clearing), Settled (pick resolved) |
 | Exposure | Open Activity |
 | Payout | Potential Return |
 | Profit/Loss | Performance |
@@ -158,7 +158,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 
 ## Current State (February 24, 2026)
 
-- **Branch**: `ralph/sport-hub-pages`
+- **Branch**: `ralph/player-polish-dashboard-college`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
 - **Phases complete**: 1-17 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration)
@@ -192,6 +192,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Futures/outrights**: Full futures market support across all sports — `.outright` MarketType, futures tab on sport pages, outright markets synced via `sync_games`, odds refreshed via `auto_refresh_games`, manual grading only
 - **Bookie futures parlay setting**: `allow_futures_parlays` on bookies table, toggle in Settings, enforced in BetSlipSheet for player accounts (Multi-Pick disabled with alert)
 - **Logout stability**: Removed `clearLocalData` from logout paths — data cleared on next sync via `hasCompletedInitialSync` reset, prevents SwiftData model invalidation crashes
+- **Terminology overhaul**: "Reconciliation" replaced with "Settlement" (balance clearing) and "Graded" (bet resolution) across all user-facing strings. Reliability section tracks only `paymentLogged` entries, not auto-grading settlements.
+- **Parlay display**: Suppressed "Partial (X/Y)" badge and "will lose" warning when parlay already has a losing leg — shows normal Lost appearance
 - **Player bookie RLS**: Migration 013 adds `get_player_bookie_id()` SECURITY DEFINER function + RLS policy so players can read their bookie's settings
 - **Golf sport page**: League tabs render outrights directly (no separate Futures tab), "Updated X ago" in section headers, all outcomes shown without show more
 - **Auto-refresh**: Every 2 hours (9 runs/day), 25 games per run (was 2 runs/day, 10 games)

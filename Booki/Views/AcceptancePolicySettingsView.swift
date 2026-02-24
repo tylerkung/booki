@@ -110,7 +110,7 @@ struct AcceptancePolicySettingsView: View {
                     }
                 }
             } header: {
-                Text("Multi-Pick Reconciliation")
+                Text("Multi-Pick Settlement")
             } footer: {
                 Text(policy?.parlayPushVoidPolicyEnum.explanation ?? ParlayPushVoidPolicy.reduceLegReprice.explanation)
             }
