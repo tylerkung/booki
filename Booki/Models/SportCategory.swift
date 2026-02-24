@@ -108,4 +108,11 @@ enum SportCategory: String, CaseIterable, Identifiable {
     static func iconName(for sport: String) -> String {
         allCases.first { $0.displayName == sport }?.iconName ?? "sportscourt"
     }
+
+    /// Match a league abbreviation (e.g. "NBA", "NFL") to its SportCategory
+    static func fromLeague(_ league: String) -> SportCategory? {
+        allCases.first { category in
+            category.leagues.contains { $0.displayName == league }
+        }
+    }
 }

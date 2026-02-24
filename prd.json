@@ -92,7 +92,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "The pattern to match is in SportPageView.swift — look at futuresEmptyState and emptyLeagueState for the exact styling. Player games view may already have an empty state — replace it with the standardized one. SearchView is in Booki/Views/SearchView.swift. TrackView is in Booki/Views/TrackView.swift. Use Spacer() above and below the VStack for vertical centering."
     },
     {
@@ -113,7 +113,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "AnalyticsDashboardView is in Booki/Views/AnalyticsDashboardView.swift. Use @Query for Bet and Event. Settled bets have status == .settled. Access event sport via bet.event?.sport. Balance convention: positive balance = player owes bookie. For net P/L, sum up ledger entries or calculate from settled bets. Extract as private struct SportPerformanceSection to prevent SwiftUI type-checker timeouts."
     },
     {

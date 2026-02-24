@@ -211,6 +211,9 @@ struct AnalyticsDashboardView: View {
                         summaryCardsGrid
                             .padding(.horizontal, 16)
 
+                        SportPerformanceSection(bets: bets)
+                            .padding(.horizontal, 16)
+
                         Text("Last updated \(lastUpdated.formatted(date: .omitted, time: .shortened))")
                             .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
@@ -667,6 +670,131 @@ private struct SummaryCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(14)
         .cardStyle()
+    }
+}
+
+// MARK: - Sport Performance Section
+
+private struct SportPerformanceSection: View {
+    let bets: [Bet]
+
+    private struct SportStat: Identifiable {
+        let id: String // sport name
+        let iconName: String
+        let pickCount: Int
+        let totalStaked: Decimal
+        let netPL: Decimal
+        let winRate: Double
+    }
+
+    private var sportStats: [SportStat] {
+        let settledBets = bets.filter { $0.status == .settled && $0.gradeResult != nil }
+        guard !settledBets.isEmpty else { return [] }
+
+        // Group by sport derived from sportLeague
+        var grouped: [String: [Bet]] = [:]
+        for bet in settledBets {
+            let sportName: String
+            if let league = bet.sportLeague,
+               let category = SportCategory.fromLeague(league) {
+                sportName = category.displayName
+            } else {
+                sportName = bet.sportLeague ?? "Other"
+            }
+            grouped[sportName, default: []].append(bet)
+        }
+
+        return grouped.map { sport, sportBets in
+            let staked = sportBets.reduce(Decimal.zero) { $0 + $1.stake }
+            let pl = PlayerAttentionService.totalBookiePL(bets: sportBets)
+            let totalSettled = sportBets.filter { $0.gradeResult != .push }.count
+            // Win rate from bookie perspective: player losses are bookie wins
+            let bookieWins = sportBets.filter { $0.gradeResult == .loss }.count
+            let winRate = totalSettled > 0 ? Double(bookieWins) / Double(totalSettled) * 100 : 0
+
+            return SportStat(
+                id: sport,
+                iconName: SportCategory.iconName(for: sport),
+                pickCount: sportBets.count,
+                totalStaked: staked,
+                netPL: pl,
+                winRate: winRate
+            )
+        }
+        .sorted { $0.totalStaked > $1.totalStaked }
+    }
+
+    var body: some View {
+        let stats = sportStats
+        if !stats.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("PERFORMANCE BY SPORT")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .tracking(1.0)
+                    .padding(.leading, 4)
+
+                ForEach(stats) { stat in
+                    sportRow(stat)
+                }
+            }
+        }
+    }
+
+    private func sportRow(_ stat: SportStat) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: stat.iconName)
+                .font(.system(size: 20))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 32)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(stat.id)
+                        .font(Theme.font(size: 15, weight: .bold))
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Spacer()
+
+                    Text(formatSignedCurrency(stat.netPL))
+                        .font(Theme.font(size: 15, weight: .bold))
+                        .foregroundStyle(stat.netPL > 0 ? Theme.accent : stat.netPL < 0 ? Theme.danger : Theme.textSecondary)
+                }
+
+                HStack(spacing: 12) {
+                    Text("\(stat.pickCount) picks")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    Text(formatCurrency(stat.totalStaked) + " staked")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    Spacer()
+
+                    Text(String(format: "%.0f%% win", stat.winRate))
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
+            }
+        }
+        .padding(14)
+        .background(Theme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+    }
+
+    private func formatSignedCurrency(_ value: Decimal) -> String {
+        let formatted = formatCurrency(value < 0 ? -value : value)
+        if value > 0 { return "+\(formatted)" }
+        if value < 0 { return "-\(formatted)" }
+        return formatted
+    }
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 }
 
