@@ -1,159 +1,21 @@
 # Ralph Progress Log
-Started: Mon Feb 23 17:56:56 PST 2026
+Started: Tue Feb 24 03:52:41 PST 2026
+---
 
 ## Codebase Patterns
-- Sport string values from OddsAPIMapper: "Basketball", "Football", "Baseball", "Hockey", "Soccer" (capitalized)
-- League string values: "NBA", "NCAAB", "WNBA", "NFL", "NCAAF", "MLB", "NHL", "EPL", "MLS" (uppercased)
-- Xcode pbxproj requires entries in 4 places: PBXBuildFile, PBXFileReference, group children, Sources build phase
-- `xcodebuild` not available — Xcode IDE required for full builds; `swiftc -parse` works for syntax checking standalone files
-- Event.sport and Event.league are plain String properties, not enums
+- College sports mappings (NCAAB/NCAAF) already exist in SPORT_KEY_MAPPING, sportLeagueToApiKey, and OddsAPIMapper.swift from futures work — only SPORTS_TO_SYNC needed updating
+- Edge function deploy: `npx supabase functions deploy <name> --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+- Sport key format: `sport_league` (e.g., `basketball_ncaab`, `americanfootball_ncaaf`)
 
 ---
 
-## 2026-02-23 - US-001
-- Created `Booki/Models/SportCategory.swift` with `SportCategory` enum (basketball, football, baseball, hockey, soccer)
-- `LeagueInfo` struct with id, displayName, and `matchesEvent` closure checking Event.sport + Event.league
-- Computed properties: `displayName`, `iconName` (SF Symbols), `leagues` (per-sport league lists)
-- Static `fromEvent(_:)` matches Event.sport to SportCategory.displayName
-- Static `popular` returns [basketball, football, baseball, hockey] for Search tab
-- Added file to Xcode pbxproj (PBXBuildFile, PBXFileReference, Models group, Sources build phase)
-- Files changed: Booki/Models/SportCategory.swift (new), Booki.xcodeproj/project.pbxproj
+## 2026-02-24 - US-001
+- Added `basketball_ncaab` and `americanfootball_ncaaf` to SPORTS_TO_SYNC in sync_games/index.ts
+- Verified all mappings already exist: SPORT_KEY_MAPPING (sync_games), sportLeagueToApiKey (auto_refresh_games), sportKeyMapping (OddsAPIMapper.swift)
+- Deployed both sync_games and auto_refresh_games edge functions
+- Files changed: supabase/functions/sync_games/index.ts (+2 lines)
 - **Learnings for future iterations:**
-  - Sport matching uses `category.displayName == event.sport` since Event.sport stores capitalized sport names
-  - LeagueInfo closures match on both sport AND league to avoid cross-sport collisions
-  - Keep existing `sportIconName()` in GamesView for now — US-007 will refactor to use SportCategory
----
-
-## 2026-02-23 - US-002
-- Created `Booki/Views/SportPageView.swift` with league sub-tabs, filtered games, and Futures placeholder
-- Init takes `SportCategory`, optional `isViewOnly: Bool` (default false), optional `Player?` (for bet slip + navigation)
-- League sub-tabs rendered as horizontal scroll capsule buttons (same style as GamesView sport tabs)
-- Events filtered per selected league using `LeagueInfo.matchesEvent` closure
-- Events grouped by date with sticky section headers (Today/Tomorrow/formatted date) + SPREAD/MONEY/TOTAL column headers
-- Player mode: bettable events only (scheduled, future, not locked), bet slip selection via BetSlipManager.shared, card tap navigates to GameDetailView
-- Bookie mode (isViewOnly=true): shows all non-canceled events, muted odds, no tap/selection
-- Futures tab shows centered placeholder (icon + title + subtitle) — satisfies US-003 acceptance criteria
-- Empty league state: "No games available" centered message
-- Added file to Xcode pbxproj (PBXBuildFile, PBXFileReference, Views group, Sources build phase)
-- Files changed: Booki/Views/SportPageView.swift (new), Booki.xcodeproj/project.pbxproj
-- **Learnings for future iterations:**
-  - SportPageView needs `player` param for GameDetailView navigation — passed from GamesView/SearchView parent
-  - Futures placeholder is built into SportPageView (not a separate view), selected via `selectedLeagueId == "futures"`
-  - Date grouping preserves insertion order via `dateOrder` array to keep chronological sort
-  - Reuse same CompactGameRow + BetSlipManager patterns from GamesView for consistency
----
-
-## 2026-02-23 - US-003
-- Futures placeholder already implemented within SportPageView (US-002)
-- When "Futures" tab selected: centered VStack with chart.line.uptrend.xyaxis icon (48pt, Theme.textMuted), "Futures Coming Soon" (Theme.headline, Theme.textPrimary), subtitle (Theme.body, Theme.textSecondary)
-- No additional files changed — covered by US-002 commit
----
-
-## 2026-02-23 - US-004
-- Added "POPULAR SPORTS" section to SearchView when search text is empty
-- Replaced generic magnifying glass empty state with scrollable list of SportCategory.popular
-- Each row: sport icon (Theme.accent) + displayName (Theme.textPrimary) + chevron.right, on Theme.cardBackground rounded card
-- Section header: "POPULAR SPORTS" with Theme.caption, 1.0 tracking, Theme.textSecondary
-- NavigationLink(value: SportCategory) navigates to SportPageView(category:player:)
-- Added `.navigationDestination(for: SportCategory.self)` on body's outer VStack
-- Popular Sports disappears when user types (searchText.isEmpty branch)
-- Files changed: Booki/Views/SearchView.swift
-- **Learnings for future iterations:**
-  - SportCategory is a String raw-value enum so it's automatically Hashable — works with NavigationLink(value:)
-  - Place `.navigationDestination` modifiers on the body-level VStack, not inside sub-views, for reliable navigation
-  - SearchView already has `player` property, so passing it to SportPageView is straightforward
----
-
-## 2026-02-23 - US-005
-- Made sport+league sticky headers in GamesView tappable with NavigationLink to SportPageView
-- Added `trailingNavigation: SportCategory?` parameter to `stickyHeader()` function
-- When a SportCategory match exists, header shows chevron.right and navigates to SportPageView on tap
-- When no match (e.g. unknown sport), header remains static (no chevron, no navigation)
-- Added `.navigationDestination(for: SportCategory.self)` to GamesView body
-- Favorites header unaffected (uses default nil parameter)
-- Files changed: Booki/Views/GamesView.swift
-- **Learnings for future iterations:**
-  - `stickyHeader` is a generic function — adding optional parameters with defaults preserves backward compatibility
-  - `SportCategory.allCases.first { $0.displayName == sport }` is the pattern for matching sport strings to categories
-  - NavigationLink inside a sticky header works well — use `.buttonStyle(.plain)` to prevent default button styling
----
-
-## 2026-02-23 - US-006
-- Made sport+league sticky headers in EventsListView tappable with NavigationLink to SportPageView (isViewOnly: true)
-- Added `trailingNavigation: SportCategory?` parameter to `stickyHeader()` function (same pattern as GamesView)
-- Added `.navigationDestination(for: SportCategory.self)` navigating to SportPageView with `isViewOnly: true`
-- Sport category lookup via `SportCategory.allCases.first { $0.displayName == sport }`
-- Headers without a matching SportCategory remain non-tappable (no chevron)
-- Files changed: Booki/Views/EventsListView.swift
-- **Learnings for future iterations:**
-  - EventsListView stickyHeader now matches GamesView pattern exactly — both accept optional `trailingNavigation`
-  - Bookie views pass `isViewOnly: true` to SportPageView (muted odds, no bet slip interaction)
-  - The `let sportCategory = ...` declaration inside ForEach body works fine for computed values used in nested closures
----
-
-## 2026-02-23 - US-007
-- Replaced `sportIconName(for:)` calls in GamesView and EventsListView with `SportCategory.iconName(for:)`
-- Added `static func iconName(for sport: String) -> String` to SportCategory enum (returns iconName or "sportscourt" fallback)
-- Removed the standalone free function `sportIconName(for:)` from GamesView.swift (26 lines)
-- SportTabButton continues to work unchanged — it accepts `String?` for iconName, now receives non-optional `String`
-- Files changed: Booki/Models/SportCategory.swift, Booki/Views/GamesView.swift, Booki/Views/EventsListView.swift
-- **Learnings for future iterations:**
-  - Sport icon resolution is now centralized in `SportCategory.iconName(for:)` — use this for any future sport-to-icon mapping
-  - The old `sportIconName` function supported extra sports (MMA, Boxing, Tennis, Golf) not in SportCategory — if those sports are added later, add cases to SportCategory enum
-  - Refactors that remove free functions should verify no other files reference them via `Grep` before committing
----
-
-## 2026-02-23 - Sport Page Polish (post-Ralph)
-- **League tab restyling**: Replaced capsule buttons with text-only + accent underline bar, all-caps Space Grotesk (13pt), `.tracking(1.2)`, reduced padding so underline sits on divider
-- **Search results tappable headers**: Sport+league headers in SearchView search results now have NavigationLink to SportPageView (chevron.right indicator), matching GamesView pattern
-- **Date section headers**: SportPageView `eventsByDate` now always uses actual dates (e.g. "Monday, Feb 24") instead of "Today"/"Tomorrow" — individual game rows still show relative time
-- **Sticky header alignment fix**: SportPageView `dateStickyHeader` HStack changed from default spacing to `spacing: 4` to match CompactGameRow odds button spacing
-- **Team abbreviation fix**: Reordered `TeamAbbreviations.abbreviation(for:)` to check pro mascot map before college prefix-strip — fixes "Oklahoma City Thunder" → "OKC" instead of "OU" (Oklahoma University)
-- Files changed: Booki/Views/SportPageView.swift, Booki/Views/SearchView.swift, Booki/Services/TeamAbbreviations.swift
-- **Learnings for future iterations:**
-  - TeamAbbreviations lookup order matters: pro mascot must be checked before college prefix-strip to avoid "Oklahoma" matching college map
-  - Sticky header HStack spacing must match CompactGameRow's `HStack(spacing: 4)` for column alignment
-  - SportPageView league tabs use VStack with RoundedRectangle underline indicator — not capsules
----
-
-## 2026-02-24 - Futures/Outright Market Support
-- **Market.swift**: Added `.outright` MarketType case with displayName, grading flags
-- **OddsAPIModels.swift**: Made `homeTeam`/`awayTeam` optional for futures events (null from API)
-- **OddsAPIMapper.swift**: Added futures sport key mappings, `mapOutrightMarkets()`, handle optional home/away teams
-- **SportCategory.swift**: Added futures API key mappings for all sports
-- **BetSlipManager.swift**: Added `containsOutrightSelection` check for futures parlay blocking
-- **BetSlipSheet.swift**: Futures parlay enforcement — disabled Multi-Pick toggle with alert when organizer disallows; uses `modelContext.fetch()` instead of `@Query` for bookie lookup in sheets
-- **SettingsView.swift**: "Allow futures in multi-picks" toggle for bookies, persists to Supabase
-- **Bookie.swift**: Added `allowFuturesParlays` property
-- **SyncService.swift**: `downloadBookieForPlayer()` fetches bookie record for player accounts; custom ISO8601 date decoder with fractional seconds; `resetForLogout()` method
-- **BookieService.swift**: `updateSettings()` supports `allowFuturesParlays` param, UUID lowercased for Postgres
-- **SportPageView.swift**: Full futures tab with outright markets display, expandable sections, odds buttons
-- **sync_games/index.ts**: Fetches outrights from Odds API for all major sports, upserts as outright markets
-- **auto_refresh_games/index.ts**: Handles outright events for odds refresh (detects via `away_team === 'Outright'`)
-- **grading.ts**: Outright case returns push (manual grading required)
-- **AccountView/ContentView**: Removed `clearLocalData` from logout to prevent SwiftData crashes
-- **AuthGateView.swift**: Added `syncService.resetForLogout()` on sign-out
-- **Migration 012**: `allow_futures_parlays` boolean column on bookies table
-- **Migration 013**: RLS policy + `get_player_bookie_id()` SECURITY DEFINER function — players can read their bookie's record
-- Files changed: 32 files, +1034 -118 lines
-- **Learnings for future iterations:**
-  - `@Query` in `.sheet` contexts may not reflect parent's model context — use `modelContext.fetch(FetchDescriptor)` directly
-  - RLS policies that subquery tables with their own RLS → infinite recursion. Use `SECURITY DEFINER` functions to bypass.
-  - Swift `.iso8601` date decoding does NOT handle fractional seconds — use custom decoder with `ISO8601DateFormatter(.withFractionalSeconds)`
-  - Removing `clearLocalData` from logout and deferring to next sync's `hasCompletedInitialSync` check prevents SwiftData crash from invalidated model instances
-  - Futures events from Odds API have `home_team: null, away_team: null` — use sentinel `awayTeam = "Outright"` to identify them in display logic
----
-
-## 2026-02-24 - Golf Sport Page, Outright Polish, Cron Frequency
-- **SportPageView.swift**: Golf league tabs (PGA, Masters, etc.) render outright markets directly instead of empty game cards; `isOutrightOnlySport` flag skips Futures tab for Golf; `leagueOutrightsContent` with "Updated X ago" header; outright events excluded from `leagueEvents` for non-Golf sports; empty state matches futures empty state styling
-- **BetSlipSheet.swift**: Outright bet slip context line shows "Masters · Outright Winner · Sun 2:45 PM" instead of "Masters · OUT @ MAS · Sun 2:45 PM"
-- **SearchView.swift**: "POPULAR SPORTS" → "SPORTS", shows all SportCategory.allCases instead of curated list
-- **SportCategory.swift**: Added Golf to popular sports list
-- **auto_refresh_games**: Increased game limit from 10 to 25 per run
-- **Migration 014**: Cron frequency increased from 2x/day to every 2 hours (9 runs/day, 8 AM–midnight PT)
-- Files changed: 5 files + 1 migration, +96 -17 lines
-- **Learnings for future iterations:**
-  - Filtering outright events from `leagueEvents` then checking `leagueHasOnlyOutrights` is circular — use a sport-level flag (`isOutrightOnlySport`) and query outrights from unfiltered events
-  - Golf is purely futures — each "league" tab is actually a tournament outright, so hide the Futures tab entirely
-  - `event.lastOddsUpdate ?? event.lastSyncedAt` provides best "last updated" timestamp for display
+  - All sport key mappings were added during futures work — SPORTS_TO_SYNC was the only array missing college sports
+  - auto_refresh_games didn't need code changes, just redeployment to stay in sync
+  - Supabase deploy works without Docker for function uploads
 ---
