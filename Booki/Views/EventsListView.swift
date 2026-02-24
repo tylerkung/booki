@@ -124,6 +124,9 @@ struct EventsListView: View {
             .navigationDestination(item: $selectedEvent) { event in
                 EventDetailView(event: event)
             }
+            .navigationDestination(for: SportCategory.self) { category in
+                SportPageView(category: category, isViewOnly: true)
+            }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
@@ -309,6 +312,8 @@ struct EventsListView: View {
                     let leaguesByEvent = eventsBySportAndLeague[sport] ?? [:]
                     let sortedLeagues = leaguesByEvent.keys.sorted()
 
+                    let sportCategory = SportCategory.allCases.first { $0.displayName == sport }
+
                     ForEach(sortedLeagues, id: \.self) { league in
                         Section(header: stickyHeader(leftContent: {
                             HStack(spacing: 4) {
@@ -319,7 +324,7 @@ struct EventsListView: View {
                                 Text(league)
                                     .foregroundStyle(Theme.textMuted)
                             }
-                        })) {
+                        }, trailingNavigation: sportCategory)) {
                             ForEach(Array((leaguesByEvent[league] ?? []).enumerated()), id: \.element.id) { index, event in
                                 CompactGameRow(
                                     event: event,
@@ -344,12 +349,26 @@ struct EventsListView: View {
     // MARK: - Sticky Section Header
 
     @ViewBuilder
-    private func stickyHeader<Left: View>(@ViewBuilder leftContent: () -> Left) -> some View {
+    private func stickyHeader<Left: View>(@ViewBuilder leftContent: () -> Left, trailingNavigation: SportCategory? = nil) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 4) {
-                leftContent()
+                if let category = trailingNavigation {
+                    NavigationLink(value: category) {
+                        HStack(spacing: 4) {
+                            leftContent()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                    .buttonStyle(.plain)
                     .font(Theme.font(size: 12, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
+                } else {
+                    leftContent()
+                        .font(Theme.font(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                }
 
                 Spacer()
 
