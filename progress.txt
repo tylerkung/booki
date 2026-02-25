@@ -102,3 +102,14 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - Gate is inside the sheet (idle state), not on the button that opens it — preserves discoverability
   - `isAtCapacity` reuses same active member counting logic as PlayersListView capacity banner
 ---
+
+## 2026-02-25 - US-008
+- What was implemented: Multi-pick gated on player-side BetSlipSheet for free tier bookies — Multi-Pick tab visible but grayed out (reduced opacity via isDisabled), tapping shows inline message below selector: "Multi-Picks aren't available yet. Ask your organizer to upgrade." in Theme.textSecondary. Singles mode unaffected.
+- Files changed:
+  - Booki/Views/BetSlipSheet.swift — added `bookieIsPro` computed property (fetches bookie tier via player's bookieId + FetchDescriptor), `showMultiPickTierMessage` state, `isTierBlocked` check in betModeToggle, inline message in selectionsHeaderSection
+- **Learnings for future iterations:**
+  - Player-side bookie data access pattern: use `player?.bookieId` → `FetchDescriptor<Bookie>` → read property. Same pattern as `bookieAllowsFuturesParlays`
+  - BetSlipSheet uses `.disabled(isDisabled && !isFuturesBlocked && !isTierBlocked)` to keep blocked buttons tappable for showing feedback
+  - Tier blocking takes priority over futures blocking in the conditional chain (checked first)
+  - No canSubmit guard needed for tier — user can't switch to parlay mode so it's never reachable
+---

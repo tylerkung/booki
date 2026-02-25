@@ -153,7 +153,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "BetSlipSheet.swift has a mode selector for Singles vs Multi-Pick. The player needs to know their bookie's tier. This is available through the player's bookie_id → bookie record (check if there's a @Query for the bookie or if it comes through environment). The player may need to read the bookie's tier from the synced Bookie model via SwiftData query. If the bookie's tier isn't synced to the player's device, it may need to be added to the player sync or stored in @AppStorage during claim_player. This is the intentional social pressure mechanism — players asking 'why can't I do multi-picks?' drives bookie upgrades."
     },
     {
