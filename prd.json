@@ -151,7 +151,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Target keywords: 'pph vs manual', 'pay per head', 'ledger management', 'bookie software comparison'. This article should be genuinely informative — not just a sales pitch. Compare: cost (PPH per-head fees vs free spreadsheets vs Booki flat rate), features, ease of use, scalability, privacy/control. Use compliance language in body. Cross-link to the PPH and ledger SEO landing pages with descriptive anchor text. Update the blog index card for this article to point to the real URL."
     },
     {
