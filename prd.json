@@ -87,7 +87,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Focus on the financial tracking angle — settlements, balances, credit limits, transaction history, audit trails. SEO keywords: 'bookie ledger', 'bookie software', 'settlement tracking', 'pick ledger'. Highlight features like auto-settlement, hash-chain audit trail, real-time balance tracking, credit limit management. Use compliance language in body copy. Reuse existing CSS classes. Add to sitemap.xml."
     },
     {
