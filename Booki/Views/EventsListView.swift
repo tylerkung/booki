@@ -3,6 +3,7 @@ import SwiftData
 
 struct EventsListView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(SyncService.self) private var syncService
     @Query(sort: \Event.startTime) private var events: [Event]
 
     /// Currently selected sport filter (nil = "All")
@@ -100,6 +101,14 @@ struct EventsListView: View {
                 }
             }
             .background(Theme.background)
+            .refreshable {
+                await withCheckedContinuation { continuation in
+                    Task.detached {
+                        await syncService.sync()
+                        continuation.resume()
+                    }
+                }
+            }
             .navigationTitle("Events")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(item: $selectedEvent) { event in

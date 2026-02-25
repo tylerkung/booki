@@ -6,31 +6,31 @@ import { gradeBet, type BetInfo, type EventScores } from '../_shared/grading.ts'
 
 /**
  * Generates an idempotency key for auto-refresh operations.
- * Format: auto_refresh_{YYYY-MM-DD}_{window}
- * Window is 'morning' (before 12:00 UTC) or 'afternoon' (12:00 UTC and later)
+ * Format: auto_refresh_{YYYY-MM-DD}_{HH}
+ * Uses the current UTC hour so each cron run gets its own key.
  */
 function generateIdempotencyKey(): string {
   const now = new Date();
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, '0');
   const day = String(now.getUTCDate()).padStart(2, '0');
+  const hour = String(now.getUTCHours()).padStart(2, '0');
   const dateStr = `${year}-${month}-${day}`;
-  const window = now.getUTCHours() < 12 ? 'morning' : 'afternoon';
-  return `auto_refresh_${dateStr}_${window}`;
+  return `auto_refresh_${dateStr}_${hour}`;
 }
 
 /**
  * auto_refresh_games Edge Function
  *
- * Automatically refreshes odds and scores for up to 25 games with accepted bets.
- * Called twice daily via cron (morning and afternoon).
+ * Automatically refreshes odds and scores for up to 50 games with accepted bets.
+ * Called every 2 hours via cron (9 runs/day, 8AM-midnight PT).
  *
  * Game selection criteria:
  * - Has at least one accepted bet
  * - Status is not 'final' (not completed)
  * - Not locked (status not in ['live', 'canceled'])
  * - Ordered by start_time ASC, then by total wagered amount DESC
- * - Limited to 25 games maximum
+ * - Limited to 50 games maximum
  *
  * Also includes catch-up grading: grades any accepted bets on events that are
  * already 'final' with scores (handles cases where events finalized between runs).
@@ -998,8 +998,8 @@ Deno.serve(async (req) => {
         return b.total_wagered - a.total_wagered;
       });
 
-      // Limit to 25 games
-      const finalSelection = gamesWithStats.slice(0, 25);
+      // Limit to 50 games
+      const finalSelection = gamesWithStats.slice(0, 50);
 
       // ========================================
       // US-004: Odds Refresh Logic

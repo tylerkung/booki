@@ -5,6 +5,7 @@ import SwiftData
 struct PlayerAnalyticsDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(SyncService.self) private var syncService
 
     let summary: PlayerAnalyticsSummary
     let playerBets: [Bet]
@@ -285,10 +286,10 @@ struct PlayerAnalyticsDetailView: View {
             }
         }
         .sheet(isPresented: $showingSettleUp) {
-            SettleUpSheet(player: player, balanceOwed: balanceSummary.balanceOwed, modelContext: modelContext)
+            SettleUpSheet(player: player, balanceOwed: balanceSummary.balanceOwed, modelContext: modelContext, syncService: syncService)
         }
         .sheet(isPresented: $showingAdjustBalance) {
-            AdjustBalanceSheet(player: player, balanceOwed: balanceSummary.balanceOwed, modelContext: modelContext)
+            AdjustBalanceSheet(player: player, balanceOwed: balanceSummary.balanceOwed, modelContext: modelContext, syncService: syncService)
         }
     }
 
@@ -532,10 +533,12 @@ private struct SettleUpSheet: View {
     let player: Player
     let balanceOwed: Decimal
     let modelContext: ModelContext
+    let syncService: SyncService
     @Environment(\.dismiss) private var dismiss
 
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var idempotencyKey = UUID().uuidString
 
     private var formattedBalanceOwed: String {
         let formatter = NumberFormatter()
@@ -622,29 +625,31 @@ private struct SettleUpSheet: View {
             playerId: player.id.uuidString.lowercased(),
             amount: "\(-amount)",
             reason: reason,
-            idempotencyKey: UUID().uuidString
+            idempotencyKey: idempotencyKey
         )
         request.type = "paymentLogged"
 
+        print("[SettleUpSheet] Submitting settlement: player=\(player.id), amount=\(-amount), idempotencyKey=\(idempotencyKey)")
+
         do {
-            let _: AdjustBalanceResponse = try await EdgeFunctionService.shared.callFunction(
+            let response: AdjustBalanceResponse = try await EdgeFunctionService.shared.callFunction(
                 name: "adjust_balance",
                 body: request
             )
 
+            print("[SettleUpSheet] Edge function returned: success=\(response.success)")
+
+            // Pull down the new ledger entry from server immediately
+            print("[SettleUpSheet] Triggering ledger sync...")
+            await syncService.syncTable(.ledgerEntries)
+            print("[SettleUpSheet] Ledger sync complete")
+
             await MainActor.run {
-                // Insert local ledger entry so UI updates immediately
-                let entry = LedgerEntry(
-                    amount: -amount,
-                    type: .paymentLogged,
-                    entryDescription: reason,
-                    player: player
-                )
-                modelContext.insert(entry)
                 isLoading = false
                 dismiss()
             }
         } catch {
+            print("[SettleUpSheet] Error: \(error)")
             await MainActor.run {
                 isLoading = false
                 errorMessage = error.localizedDescription
@@ -659,12 +664,14 @@ private struct AdjustBalanceSheet: View {
     let player: Player
     let balanceOwed: Decimal
     let modelContext: ModelContext
+    let syncService: SyncService
     @Environment(\.dismiss) private var dismiss
 
     @State private var amountText = ""
     @State private var isCredit = false // false = increase debt (positive), true = credit (negative)
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var idempotencyKey = UUID().uuidString
 
     private var amountDecimal: Decimal? {
         guard !amountText.isEmpty else { return nil }
@@ -785,27 +792,30 @@ private struct AdjustBalanceSheet: View {
             playerId: player.id.uuidString.lowercased(),
             amount: "\(signedAmount)",
             reason: description,
-            idempotencyKey: UUID().uuidString
+            idempotencyKey: idempotencyKey
         )
 
+        print("[AdjustBalanceSheet] Submitting adjustment: player=\(player.id), amount=\(signedAmount), isCredit=\(isCredit), idempotencyKey=\(idempotencyKey)")
+
         do {
-            let _: AdjustBalanceResponse = try await EdgeFunctionService.shared.callFunction(
+            let response: AdjustBalanceResponse = try await EdgeFunctionService.shared.callFunction(
                 name: "adjust_balance",
                 body: request
             )
 
+            print("[AdjustBalanceSheet] Edge function returned: success=\(response.success)")
+
+            // Pull down the new ledger entry from server immediately
+            print("[AdjustBalanceSheet] Triggering ledger sync...")
+            await syncService.syncTable(.ledgerEntries)
+            print("[AdjustBalanceSheet] Ledger sync complete")
+
             await MainActor.run {
-                let entry = LedgerEntry(
-                    amount: signedAmount,
-                    type: .adjustment,
-                    entryDescription: description,
-                    player: player
-                )
-                modelContext.insert(entry)
                 isLoading = false
                 dismiss()
             }
         } catch {
+            print("[AdjustBalanceSheet] Error: \(error)")
             await MainActor.run {
                 isLoading = false
                 errorMessage = error.localizedDescription

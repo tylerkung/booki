@@ -167,8 +167,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
 - **Settings**: Streamlined — removed Odds API config, sample data, and sync button
 - **Auto-pilot mode**: Singles and parlays auto-accepted, auto-graded, and auto-settled (ledger entries created automatically). Parlays graded per-leg then settled as ticket with combined odds.
-- **Auto-refresh**: Processes up to 10 games per run, catch-up grading for missed events, auto-void for stale pending bets, `force` flag for manual triggers
-- **Cron jobs**: Auto-refresh runs twice daily (9 AM PT, 1 PM PT)
+- **Auto-refresh**: Processes up to 50 games per run, catch-up grading for missed events, auto-void for stale pending bets, `force` flag for manual triggers
+- **Cron jobs**: Auto-refresh runs every 2 hours (9 runs/day, 8 AM–midnight PT)
 - **Branding**: App icon and in-app logo (`BookiLogo` image set), dark launch screen, `DESIGN_SYSTEM.md` restored
 - **Landing page**: `landing/` directory with 8-section homepage (Hero, Positioning, Pillars, Product, Comparison, Pricing, Compliance, Final CTA), Features page with 6 alternating sections + capabilities grid, fixed top nav bar across all pages
 - **Compliance**: All user-facing strings use approved vocabulary; disclaimers on auth and pick entry screens
@@ -196,7 +196,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Parlay display**: Suppressed "Partial (X/Y)" badge and "will lose" warning when parlay already has a losing leg — shows normal Lost appearance
 - **Player bookie RLS**: Migration 013 adds `get_player_bookie_id()` SECURITY DEFINER function + RLS policy so players can read their bookie's settings
 - **Golf sport page**: League tabs render outrights directly (no separate Futures tab), "Updated X ago" in section headers, all outcomes shown without show more
-- **Auto-refresh**: Every 2 hours (9 runs/day), 25 games per run (was 2 runs/day, 10 games)
+- **Auto-refresh**: Every 2 hours (9 runs/day), 50 games per run, hourly idempotency keys so each run executes
 - **Member management polish**: Settle Up (one-tap confirmation), Adjust Balance (custom NumericKeypadView), editable names, credit utilization display, "Owes $X"/"You owe $X"/"Settled" balance labels
 - **Members tab**: Search bar + filter chips (All, Attention needed, Overdue, High exposure, Big winners, Big losers), expanded cards with metrics + attention tags
 - **Attention tags**: Picks Pending, Overdue, On Heater, Cold Streak, Whale, Degen, Parlay Demon — tappable with explainer modal
@@ -221,3 +221,11 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **About page links**: Website, Terms of Service, Privacy Policy, Twitter with `openURL`
 - **Terms of Service redesign**: Icon-based key points summary, "Back" button for sign-out
 - **Bookie Settings Log Out**: Inline row in card (matching player Account style), no longer fixed bottom button
+- **Tier source of truth**: All views read `bookies.first?.tier` from SwiftData `@Query`, not `@AppStorage`. Debug toggle writes to SwiftData `Bookie.tier`.
+- **Duplicate ledger fix**: Removed optimistic local inserts from SettleUpSheet, AdjustBalanceSheet, GradingService. After edge function success, triggers `syncService.syncTable(.ledgerEntries)` to pull server entry immediately.
+- **Dashboard PnL**: Ledger-entry-based net balance excluding `paymentLogged` entries (settle ups don't affect PnL)
+- **Change Password**: Requires current password re-authentication before update, disabled button matches login CTA gradient styling
+- **Landing animations**: Scroll-reveal via IntersectionObserver (`.reveal`, `.reveal-scale`, `.reveal-stagger`), section divider fade-in, `prefers-reduced-motion` respected
+- **Landing pricing**: Free ($0) + Pro ($49.99) + faded Traditional PPH (~$10/head/week) comparison column
+- **Pro tier spec**: `docs/pro-tier-spec.md` — pricing, feature gates, enforcement, upgrade flows, payment plan
+- **sync_games markets**: Uses `h2h,spreads,totals` only (alternate markets require paid Odds API tier)

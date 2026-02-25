@@ -1008,7 +1008,7 @@ final class SyncService {
         let playerDescriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.id == playerId })
         guard let player = try context.fetch(playerDescriptor).first else {
             // Skip if player not found (may be deleted)
-            print("Skipping ledger entry \(record.id) - player \(record.playerId) not found")
+            print("[Sync:Ledger] SKIPPED entry \(record.id) — player \(record.playerId) not found")
             return
         }
 
@@ -1021,7 +1021,7 @@ final class SyncService {
 
         if existingEntries.first != nil {
             // Ledger entries are append-only, so we don't update existing ones
-            // Just skip if it already exists
+            print("[Sync:Ledger] SKIPPED entry \(record.id) — already exists locally")
         } else {
             // Insert new record
             let entry = LedgerEntry(
@@ -1037,6 +1037,7 @@ final class SyncService {
                 lastSyncedAt: Date()
             )
             context.insert(entry)
+            print("[Sync:Ledger] INSERTED entry \(record.id) type=\(record.type) amount=\(record.amount) for player \(player.name)")
         }
     }
 

@@ -12,10 +12,9 @@ struct SettingsView: View {
     @State private var showingLogoutError = false
     @State private var logoutErrorMessage = ""
     @State private var showingProUpgrade = false
-    @AppStorage("bookieTier") private var bookieTierRaw: String = BookieTier.free.rawValue
 
     private var isPro: Bool {
-        (BookieTier(rawValue: bookieTierRaw) ?? .free).isPro
+        bookies.first?.tier.isPro ?? false
     }
 
     private var currentBookie: Bookie? {
@@ -154,15 +153,6 @@ struct SettingsView: View {
                     Text("Free")
                         .font(Theme.body)
                         .foregroundStyle(Theme.textSecondary)
-
-                    Text("PRO")
-                        .font(Theme.caption)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Theme.background)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Theme.accent)
-                        .clipShape(Capsule())
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
@@ -576,7 +566,8 @@ struct AboutSettingsView: View {
     }
 
     @Environment(\.openURL) private var openURL
-    @AppStorage("bookieTier") private var bookieTierRaw: String = "free"
+    @Environment(\.modelContext) private var modelContext
+    @Query private var bookies: [Bookie]
     @State private var showDebugToast = false
     @State private var debugToastMessage = ""
 
@@ -588,9 +579,11 @@ struct AboutSettingsView: View {
                 VStack(spacing: 0) {
                     settingsDetailRow(label: "Version", value: appVersion)
                         .onTapGesture(count: 3) {
-                            let newTier = bookieTierRaw == "pro" ? "free" : "pro"
-                            bookieTierRaw = newTier
-                            debugToastMessage = "Debug: Tier set to \(newTier.capitalized)"
+                            guard let bookie = bookies.first else { return }
+                            let newTier: BookieTier = bookie.tier.isPro ? .free : .pro
+                            bookie.tier = newTier
+                            try? modelContext.save()
+                            debugToastMessage = "Debug: Tier set to \(newTier.rawValue.capitalized)"
                             withAnimation {
                                 showDebugToast = true
                             }
@@ -1002,6 +995,7 @@ struct ExportDataView: View {
 // MARK: - Change Password
 
 struct ChangePasswordView: View {
+    @State private var currentPassword: String = ""
     @State private var newPassword: String = ""
     @State private var confirmPassword: String = ""
     @State private var isSaving = false
@@ -1020,6 +1014,7 @@ struct ChangePasswordView: View {
     }
 
     private var isValid: Bool {
+        !currentPassword.isEmpty &&
         !newPassword.isEmpty &&
         !confirmPassword.isEmpty &&
         newPassword.count >= 8 &&
@@ -1029,6 +1024,23 @@ struct ChangePasswordView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                sectionHeader("Current Password")
+
+                VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Current Password")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        SecureField("Enter current password", text: $currentPassword)
+                            .textContentType(.password)
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                }
+                .cardStyle()
+
                 sectionHeader("New Password")
 
                 VStack(spacing: 0) {
@@ -1075,19 +1087,31 @@ struct ChangePasswordView: View {
                 Button {
                     Task { await changePassword() }
                 } label: {
-                    HStack {
+                    Group {
                         if isSaving {
                             ProgressView()
-                                .tint(Theme.background)
+                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
+                        } else {
+                            Text("Update Password")
+                                .font(Theme.headline)
+                                .fontWeight(.bold)
+                                .textCase(.uppercase)
+                                .tracking(1)
                         }
-                        Text("Update Password")
                     }
-                    .font(Theme.headline)
-                    .foregroundStyle(Theme.background)
+                    .foregroundStyle(isValid && !isSaving ? Theme.background : Theme.textMuted)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(isValid && !isSaving ? Theme.accent : Theme.textMuted.opacity(0.3))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .frame(height: 56)
+                    .background(
+                        Group {
+                            if isValid && !isSaving {
+                                Theme.buttonGradient
+                            } else {
+                                LinearGradient(colors: [Theme.elevatedBackground], startPoint: .leading, endPoint: .trailing)
+                            }
+                        }
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                 }
                 .disabled(!isValid || isSaving)
                 .buttonStyle(.plain)
@@ -1115,7 +1139,18 @@ struct ChangePasswordView: View {
         defer { isSaving = false }
 
         do {
+            // Re-authenticate with current password first
+            let session = SupabaseClientManager.shared.client.auth.currentSession
+            guard let email = session?.user.email else {
+                errorMessage = "Unable to verify your account. Please log out and log back in."
+                showingError = true
+                return
+            }
+            _ = try await SupabaseClientManager.shared.client.auth.signIn(email: email, password: currentPassword)
+
+            // Now update to the new password
             try await SupabaseClientManager.shared.client.auth.update(user: .init(password: newPassword))
+            currentPassword = ""
             newPassword = ""
             confirmPassword = ""
             showingSuccess = true

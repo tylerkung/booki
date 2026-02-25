@@ -7,6 +7,7 @@ struct SelectionRow: View {
     let eventName: String
     var league: String? = nil
     var gradeResult: GradeResult? = nil
+    var score: String? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -18,18 +19,24 @@ struct SelectionRow: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                // Line 1: selection + odds
-                Text("\(selectionLabel) (\(PickPresenter.formatOdds(odds)))")
-                    .font(Theme.bodyFont(size: 15))
-                    .foregroundStyle(Theme.textPrimary)
+                // Line 1: selection + odds, score floated right
+                HStack(alignment: .firstTextBaseline) {
+                    Text("\(selectionLabel) (\(PickPresenter.formatOdds(odds)))")
+                        .font(Theme.bodyFont(size: 15))
+                        .foregroundStyle(Theme.textPrimary)
+                    Spacer(minLength: 4)
+                    if let score {
+                        Text(score)
+                            .font(Theme.bodyFont(size: 13))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
 
                 // Line 2: league · event
                 Text(contextText)
                     .font(Theme.bodyFont(size: 13))
                     .foregroundStyle(Theme.textSecondary)
             }
-
-            Spacer(minLength: 0)
         }
     }
 

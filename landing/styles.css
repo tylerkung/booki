@@ -330,9 +330,9 @@ main {
 /* Phone screenshots */
 .hero-phones {
     position: relative;
-    width: 380px;
-    min-width: 320px;
-    height: 580px;
+    width: 480px;
+    min-width: 360px;
+    height: 786px;
 }
 
 .phone-frame {
@@ -355,20 +355,37 @@ main {
 }
 
 .phone-frame--front {
-    width: 260px;
-    height: 540px;
+    width: 360px;
+    height: 786px;
     z-index: 2;
     bottom: 0;
     left: 0;
 }
 
 .phone-frame--back {
-    width: 240px;
-    height: 500px;
+    width: 330px;
+    height: 720px;
     z-index: 1;
     top: 0;
     right: 0;
     opacity: 0.85;
+}
+
+@media (min-width: 1200px) {
+    .hero-phones {
+        width: 540px;
+        height: 860px;
+    }
+
+    .phone-frame--front {
+        width: 396px;
+        height: 864px;
+    }
+
+    .phone-frame--back {
+        width: 363px;
+        height: 792px;
+    }
 }
 
 .phone-frame--solo {
@@ -414,6 +431,12 @@ main {
     background: linear-gradient(90deg, transparent, var(--border), transparent);
     max-width: 800px;
     margin: 0 auto;
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+
+.section-divider.is-visible {
+    opacity: 1;
 }
 
 /* 2. Positioning */
@@ -447,6 +470,11 @@ main {
 
 .pillar {
     text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.pillar:hover {
+    transform: translateY(-2px);
 }
 
 .pillar h3 {
@@ -560,6 +588,12 @@ main {
 .comparison-col {
     border-radius: 16px;
     padding: 40px 32px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.comparison-col--new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 32px rgba(0, 245, 212, 0.1);
 }
 
 .comparison-col h3 {
@@ -598,9 +632,17 @@ main {
     color: var(--accent);
 }
 
-/* 6. Pricing (gated) */
+/* 6. Pricing */
 .pricing {
     padding: 120px 0;
+}
+
+.pricing-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    margin-top: -16px;
+    margin-bottom: 48px;
 }
 
 .pricing-grid {
@@ -608,6 +650,12 @@ main {
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
     align-items: start;
+}
+
+.pricing-grid--two {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 800px;
+    margin: 0 auto;
 }
 
 .pricing-card {
@@ -618,6 +666,8 @@ main {
     text-align: center;
     position: relative;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 .pricing-card:hover {
@@ -634,7 +684,7 @@ main {
     box-shadow: 0 8px 48px rgba(0, 245, 212, 0.12);
 }
 
-.pricing-popular-badge {
+.badge.pricing-popular-badge {
     position: absolute;
     top: -14px;
     left: 50%;
@@ -662,20 +712,87 @@ main {
 .pricing-card h3 {
     font-size: 1.25rem;
     font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.pricing-price {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
     margin-bottom: 16px;
+}
+
+.pricing-period {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
 }
 
 .pricing-desc {
     font-size: 0.95rem;
     line-height: 1.7;
     color: var(--text-secondary);
-    margin-bottom: 32px;
+    margin-bottom: 24px;
+}
+
+.pricing-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 32px;
+    text-align: left;
+    flex: 1;
+}
+
+.pricing-features li {
+    position: relative;
+    padding-left: 24px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.pricing-features li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.pricing-card--faded {
+    opacity: 0.5;
+}
+
+.pricing-card--faded:hover {
+    transform: none;
+}
+
+.pricing-features--muted li::before {
+    content: '✕';
+    color: var(--text-secondary);
 }
 
 .pricing-btn {
     display: block;
     width: 100%;
     text-align: center;
+    margin-top: auto;
+}
+
+.pricing-btn--disabled {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-top: auto;
+    padding: 14px 24px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: default;
 }
 
 /* 7. Compliance */
@@ -956,7 +1073,7 @@ html, body {
     min-height: 44px;
 }
 
-/* Fade-in animation */
+/* Fade-in animation (hero only — plays immediately on load) */
 @keyframes fadeInUp {
     from {
         opacity: 0;
@@ -977,6 +1094,50 @@ html, body {
 .fade-in--delay-2 { animation-delay: 0.2s; }
 .fade-in--delay-3 { animation-delay: 0.35s; }
 .fade-in--delay-4 { animation-delay: 0.5s; }
+
+/* Scroll-reveal — elements start hidden, revealed by IntersectionObserver */
+.reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Staggered children — each child delays slightly */
+.reveal-stagger > .reveal { transition-delay: 0s; }
+.reveal-stagger > .reveal:nth-child(2) { transition-delay: 0.1s; }
+.reveal-stagger > .reveal:nth-child(3) { transition-delay: 0.2s; }
+.reveal-stagger > .reveal:nth-child(4) { transition-delay: 0.2s; }
+
+/* Subtle scale-in for cards */
+.reveal-scale {
+    opacity: 0;
+    transform: scale(0.96) translateY(16px);
+    transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-scale.is-visible {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    .reveal,
+    .reveal-scale,
+    .fade-in {
+        opacity: 1;
+        transform: none;
+        transition: none;
+        animation: none;
+    }
+}
 
 /* Features Page — Hero */
 .features-hero {

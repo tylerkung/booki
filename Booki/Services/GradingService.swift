@@ -207,17 +207,8 @@ enum GradingService {
         // Server accepted — update local model
         bet.status = .settled
 
-        // Create local LedgerEntry from response data
-        if let ledgerData = response.ledgerEntry, let player = bet.player {
-            let ledgerEntry = LedgerEntry(
-                amount: Decimal(ledgerData.amount),
-                type: .settlement,
-                entryDescription: ledgerData.description,
-                player: player,
-                bet: bet
-            )
-            context.insert(ledgerEntry)
-        }
+        // Let sync/realtime bring down the server entry — no local insert
+        // (local insert with auto-generated UUID causes duplicates on sync)
     }
 
     /// Settles parlay bets by calling the settle_parlay edge function
@@ -260,17 +251,8 @@ enum GradingService {
             bet.status = .settled
         }
 
-        // Create single local LedgerEntry from response
-        if let ledgerData = response.ledgerEntry {
-            let ledgerEntry = LedgerEntry(
-                amount: Decimal(ledgerData.amount),
-                type: .settlement,
-                entryDescription: ledgerData.description,
-                player: player,
-                bet: firstBet
-            )
-            context.insert(ledgerEntry)
-        }
+        // Let sync/realtime bring down the server entry — no local insert
+        // (local insert with auto-generated UUID causes duplicates on sync)
     }
 
     // MARK: - Private Helpers

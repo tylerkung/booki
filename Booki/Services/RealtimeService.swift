@@ -171,6 +171,8 @@ final class RealtimeService {
             return
         }
 
+        print("[Realtime] Postgres change on \(table.rawValue): \(String(describing: change))")
+
         switch change {
         case .insert(let action):
             await handleInsert(action, table: table, bookieId: bookieId, context: context)
@@ -457,6 +459,7 @@ final class RealtimeService {
     /// Upsert a ledger entry record from realtime event
     private func upsertLedgerEntry(_ record: LedgerEntryRecord, bookieId: UUID, context: ModelContext) throws {
         let recordId = record.id
+        print("[Realtime:Ledger] Received ledger entry: id=\(recordId), type=\(record.type), amount=\(record.amount), playerId=\(record.playerId)")
         let descriptor = FetchDescriptor<LedgerEntry>(predicate: #Predicate { $0.id == recordId })
         let existingEntries = try context.fetch(descriptor)
 
@@ -465,7 +468,7 @@ final class RealtimeService {
             let playerId = record.playerId
             let playerDescriptor = FetchDescriptor<Player>(predicate: #Predicate { $0.id == playerId })
             guard let player = try context.fetch(playerDescriptor).first else {
-                print("RealtimeService: Skipping ledger entry - player not found")
+                print("[Realtime:Ledger] SKIPPED — player \(record.playerId) not found in local SwiftData")
                 return
             }
 
@@ -488,6 +491,9 @@ final class RealtimeService {
                 lastSyncedAt: Date()
             )
             context.insert(entry)
+            print("[Realtime:Ledger] INSERTED ledger entry \(recordId) for player \(player.name)")
+        } else {
+            print("[Realtime:Ledger] SKIPPED — entry \(recordId) already exists locally")
         }
     }
 

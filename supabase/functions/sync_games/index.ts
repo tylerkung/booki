@@ -196,7 +196,7 @@ async function fetchOddsFromApi(
   const url = new URL(`https://api.the-odds-api.com/v4/sports/${sportKey}/odds/`);
   url.searchParams.set('apiKey', apiKey);
   url.searchParams.set('regions', 'us');
-  url.searchParams.set('markets', 'h2h,spreads,totals,alternate_spreads,alternate_totals');
+  url.searchParams.set('markets', 'h2h,spreads,totals');
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());

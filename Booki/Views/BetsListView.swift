@@ -332,12 +332,12 @@ struct BetDetailView: View {
     @Query private var ledgerEntries: [LedgerEntry]
     @Query private var allBets: [Bet]
     @Query private var policies: [AcceptancePolicy]
-    @AppStorage("bookieTier") private var bookieTierRaw: String = "free"
+    @Query private var bookies: [Bookie]
 
     let bet: Bet
 
     private var isPro: Bool {
-        BookieTier(rawValue: bookieTierRaw)?.isPro ?? false
+        bookies.first?.tier.isPro ?? false
     }
 
     /// Get the current parlay push/void policy

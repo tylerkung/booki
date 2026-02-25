@@ -35,7 +35,7 @@ struct StatusPill: View {
 
     @ViewBuilder
     private func pillView(label: String, color: Color) -> some View {
-        Text(label)
+        Text(label.uppercased())
             .font(Theme.font(size: 12, weight: .semibold))
             .foregroundStyle(color)
             .padding(.horizontal, 10)

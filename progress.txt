@@ -167,3 +167,27 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - Toast pattern: use `.overlay(alignment: .top)` + `@State` bool + `DispatchQueue.main.asyncAfter` for auto-dismiss, `withAnimation` for enter/exit transitions
   - Debug toggle updates @AppStorage which all tier-gated views read — changes propagate instantly across the app
 ---
+
+## 2026-02-25 - Tier fixes, duplicate ledger fix, dashboard PnL, landing polish
+- What was implemented:
+  - **Tier source of truth fix**: Consolidated all tier reads from @AppStorage to SwiftData `bookies.first?.tier` across 5 view files. Debug toggle now writes to SwiftData Bookie model instead of UserDefaults.
+  - **Duplicate ledger fix**: Removed optimistic local inserts from SettleUpSheet, AdjustBalanceSheet, and GradingService (settleBet/settleParlay). Local inserts with auto-generated UUIDs caused duplicates when sync brought server entries with different UUIDs. Now triggers `syncService.syncTable(.ledgerEntries)` after edge function success for immediate UI updates.
+  - **Dashboard PnL**: Changed from bet-outcome-based PnL to ledger-entry-based net balance, excluding `paymentLogged` entries (settle ups don't affect PnL).
+  - **Change Password**: Added current password requirement with re-authentication, disabled button matches login CTA styling.
+  - **Landing page**: Updated pricing to Free/Pro + faded Traditional PPH column, compliance-friendly copy throughout, new mockup images (for-bookies-2, for-players-2, rossy), scroll-reveal animations (IntersectionObserver), larger hero phones (360x786 ratio), responsive breakpoints.
+  - **Pro tier spec**: Created docs/pro-tier-spec.md reference document.
+  - **sync_games fix**: Removed alternate_spreads/alternate_totals markets (require higher API tier).
+- Files changed:
+  - Booki/Views/SettingsView.swift, PlayersListView.swift, BetsListView.swift, AccountView.swift — tier source of truth
+  - Booki/Views/PlayerAnalyticsDetailView.swift — removed optimistic inserts, added sync after edge function
+  - Booki/Services/GradingService.swift — removed optimistic ledger inserts
+  - Booki/Services/SyncService.swift, RealtimeService.swift — debug logs for ledger sync
+  - Booki/Views/AnalyticsDashboardView.swift — ledger-based PnL excluding payments
+  - landing/index.html, styles.css, features.html — pricing, copy, animations, mockups
+  - docs/pro-tier-spec.md — new file
+  - supabase/functions/sync_games/index.ts — removed alternate markets
+- **Learnings for future iterations:**
+  - Never create local optimistic inserts with auto-generated UUIDs when server creates the canonical entry — sync will duplicate them. Either use the server-returned ID or let sync/realtime handle it.
+  - @AppStorage and SwiftData are two separate sources of truth — pick one and stick with it. SwiftData is the production source since it syncs with Supabase.
+  - Odds API alternate markets (alternate_spreads, alternate_totals) require a paid tier — stick to h2h,spreads,totals on the free plan.
+  - `paymentLogged` ledger entries represent balance clearing (collecting payment), not PnL — exclude from performance metrics.

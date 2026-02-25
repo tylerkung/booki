@@ -676,11 +676,11 @@ struct PlayerActivityView: View {
     let playerBets: [Bet]
     @Binding var selectedFilter: TransactionFilter
     @Query private var events: [Event]
-    @AppStorage("bookieTier") private var bookieTierRaw: String = BookieTier.free.rawValue
+    @Query private var bookies: [Bookie]
     @State private var showingProUpgrade = false
 
     private var bookieTier: BookieTier {
-        BookieTier(rawValue: bookieTierRaw) ?? .free
+        bookies.first?.tier ?? .free
     }
 
     private var isHistoryLimited: Bool {

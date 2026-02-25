@@ -138,9 +138,6 @@ struct TicketDetailView: View {
             VStack(spacing: 16) {
                 heroCard
                 financialsCard
-                if ticket.isParlay {
-                    oddsBreakdownCard
-                }
                 activityCard
             }
             .padding(16)
@@ -212,14 +209,14 @@ struct TicketDetailView: View {
                 Text(presenter.profitLine)
                     .font(Theme.bodyFont(size: 13, weight: .medium))
                     .foregroundStyle(presenter.profitColor)
-            }
-
-            if ticket.isParlay {
-                HStack(spacing: 4) {
-                    ForEach(ticket.bets) { bet in
-                        Circle()
-                            .fill(legStatusColor(for: bet))
-                            .frame(width: 8, height: 8)
+                if ticket.isParlay {
+                    Spacer()
+                    HStack(spacing: 4) {
+                        ForEach(ticket.bets) { bet in
+                            Circle()
+                                .fill(legStatusColor(for: bet))
+                                .frame(width: 8, height: 8)
+                        }
                     }
                 }
             }
@@ -233,7 +230,8 @@ struct TicketDetailView: View {
                 odds: bet.odds,
                 eventName: eventName(for: bet),
                 league: eventLeague(for: bet),
-                gradeResult: bet.gradeResult
+                gradeResult: bet.gradeResult,
+                score: eventScore(for: bet)
             )
 
             if bet.gradeResult == nil && (bet.status == .accepted || bet.status == .readyToGrade) {
@@ -431,6 +429,13 @@ struct TicketDetailView: View {
             return event.league
         }
         return bet.sportLeague
+    }
+
+    private func eventScore(for bet: Bet) -> String? {
+        guard let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) else { return nil }
+        guard let home = event.homeScore, let away = event.awayScore else { return nil }
+        guard event.awayTeam != "Outright" else { return nil }
+        return "\(away)-\(home)"
     }
 
     private func formatCurrency(_ value: Decimal) -> String {

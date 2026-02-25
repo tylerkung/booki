@@ -22,10 +22,9 @@ struct PlayersListView: View {
     @State private var activeFilter = "All"
     @State private var showProUpgrade = false
     @AppStorage("deletedInviteIds") private var deletedInviteIdsString: String = ""
-    @AppStorage("bookieTier") private var bookieTierRaw: String = BookieTier.free.rawValue
 
     private var bookieTier: BookieTier {
-        BookieTier(rawValue: bookieTierRaw) ?? .free
+        bookies.first?.tier ?? .free
     }
 
     private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
@@ -1569,11 +1568,10 @@ struct InviteMemberSheet: View {
 
     @Query private var bookies: [Bookie]
     @Query(sort: \Player.name) private var players: [Player]
-    @AppStorage("bookieTier") private var bookieTierRaw: String = BookieTier.free.rawValue
     @State private var showProUpgrade = false
 
     private var bookieTier: BookieTier {
-        BookieTier(rawValue: bookieTierRaw) ?? .free
+        bookies.first?.tier ?? .free
     }
 
     private var isAtCapacity: Bool {
