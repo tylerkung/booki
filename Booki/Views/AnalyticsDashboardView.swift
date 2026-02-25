@@ -164,6 +164,10 @@ struct AnalyticsDashboardView: View {
                         summaryCardsGrid
                             .padding(.horizontal, 16)
 
+                        playerListSection
+                            .padding(.horizontal, 16)
+                            .id("playerList")
+
                         FuturesTrackingCard(bets: bets)
                             .padding(.horizontal, 16)
 
@@ -178,10 +182,6 @@ struct AnalyticsDashboardView: View {
                             .foregroundStyle(Theme.textMuted)
                             .frame(maxWidth: .infinity, alignment: .trailing)
                             .padding(.horizontal, 16)
-
-                        playerListSection
-                            .padding(.horizontal, 16)
-                            .id("playerList")
                     }
                 }
                 .padding(.vertical, 16)

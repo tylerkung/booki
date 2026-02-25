@@ -839,7 +839,9 @@ main {
 
 .footer-links {
     display: flex;
-    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px 24px;
 }
 
 .footer-links a {

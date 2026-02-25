@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+@preconcurrency import Supabase
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -17,53 +18,55 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        settingsMenuRow(icon: "person.circle", title: "Profile", subtitle: currentBookie?.name) {
-                            ProfileSettingsView()
-                        }
-                        menuDivider
-                        settingsMenuRow(icon: "bell.badge", title: "Balance Alerts") {
-                            BalanceAlertsSettingsView()
-                        }
-                        menuDivider
-                        settingsMenuRow(icon: "hand.raised", title: "Pick Management") {
-                            PickManagementSettingsView()
-                        }
-                        menuDivider
-                        settingsMenuRow(icon: "square.and.arrow.up", title: "Export Data") {
-                            ExportDataView()
-                        }
-                        menuDivider
-                        settingsMenuRow(icon: "info.circle", title: "About") {
-                            AboutSettingsView()
-                        }
+            ScrollView {
+                VStack(spacing: 0) {
+                    settingsMenuRow(icon: "person.circle", title: "Profile", subtitle: currentBookie?.name) {
+                        ProfileSettingsView()
                     }
-                    .cardStyle()
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-                }
+                    menuDivider
+                    settingsMenuRow(icon: "bell.badge", title: "Balance Alerts") {
+                        BalanceAlertsSettingsView()
+                    }
+                    menuDivider
+                    settingsMenuRow(icon: "hand.raised", title: "Pick Management") {
+                        PickManagementSettingsView()
+                    }
+                    menuDivider
+                    settingsMenuRow(icon: "square.and.arrow.up", title: "Export Data") {
+                        ExportDataView()
+                    }
+                    menuDivider
+                    settingsMenuRow(icon: "lock.rotation", title: "Change Password") {
+                        ChangePasswordView()
+                    }
+                    menuDivider
+                    settingsMenuRow(icon: "info.circle", title: "About") {
+                        AboutSettingsView()
+                    }
+                    menuDivider
+                    Button {
+                        showingLogoutConfirmation = true
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .font(.system(size: 20))
+                                .foregroundStyle(Theme.danger)
+                                .frame(width: 28, alignment: .center)
 
-                // Fixed logout at bottom
-                Button {
-                    showingLogoutConfirmation = true
-                } label: {
-                    HStack {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("Log Out")
+                            Text("Log Out")
+                                .font(Theme.body)
+                                .fontWeight(.medium)
+                                .foregroundStyle(Theme.danger)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
                     }
-                    .font(Theme.headline)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Theme.background)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Theme.danger)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .buttonStyle(.plain)
+                .cardStyle()
                 .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.top, 20)
             }
             .background(Theme.background)
             .navigationTitle("Settings")
@@ -439,6 +442,8 @@ struct AboutSettingsView: View {
         return "\(version) (\(build))"
     }
 
+    @Environment(\.openURL) private var openURL
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -450,6 +455,19 @@ struct AboutSettingsView: View {
                     settingsDetailRow(label: "Platform", value: "iOS")
                 }
                 .cardStyle()
+
+                sectionHeader("Links")
+
+                VStack(spacing: 0) {
+                    aboutLinkRow(icon: "globe", title: "Website", url: "https://bookisports.com")
+                    settingsDivider
+                    aboutLinkRow(icon: "doc.text", title: "Terms of Service", url: "https://bookisports.com/terms.html")
+                    settingsDivider
+                    aboutLinkRow(icon: "hand.raised", title: "Privacy Policy", url: "https://bookisports.com/privacy.html")
+                    settingsDivider
+                    aboutLinkRow(icon: "at", title: "Twitter", url: "https://x.com/bookisports")
+                }
+                .cardStyle()
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
@@ -457,6 +475,34 @@ struct AboutSettingsView: View {
         .background(Theme.background)
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func aboutLinkRow(icon: String, title: String, url: String) -> some View {
+        Button {
+            if let linkURL = URL(string: url) {
+                openURL(linkURL)
+            }
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 28, alignment: .center)
+
+                Text(title)
+                    .font(Theme.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Theme.textPrimary)
+
+                Spacer()
+
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+        }
     }
 }
 
@@ -787,6 +833,133 @@ struct ExportDataView: View {
             if let url = ledgerExportURL {
                 ShareSheet(activityItems: [url])
             }
+        }
+    }
+}
+
+// MARK: - Change Password
+
+struct ChangePasswordView: View {
+    @State private var newPassword: String = ""
+    @State private var confirmPassword: String = ""
+    @State private var isSaving = false
+    @State private var showingSuccess = false
+    @State private var showingError = false
+    @State private var errorMessage = ""
+
+    private var passwordError: String? {
+        guard !newPassword.isEmpty else { return nil }
+        return newPassword.count >= 8 ? nil : "Password must be at least 8 characters"
+    }
+
+    private var confirmError: String? {
+        guard !confirmPassword.isEmpty else { return nil }
+        return newPassword == confirmPassword ? nil : "Passwords do not match"
+    }
+
+    private var isValid: Bool {
+        !newPassword.isEmpty &&
+        !confirmPassword.isEmpty &&
+        newPassword.count >= 8 &&
+        newPassword == confirmPassword
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                sectionHeader("New Password")
+
+                VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("New Password")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        SecureField("Min 8 characters", text: $newPassword)
+                            .textContentType(.newPassword)
+                            .foregroundStyle(Theme.textPrimary)
+
+                        if let error = passwordError {
+                            Text(error)
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.danger)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+
+                    settingsDivider
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Confirm Password")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        SecureField("Re-enter password", text: $confirmPassword)
+                            .textContentType(.newPassword)
+                            .foregroundStyle(Theme.textPrimary)
+
+                        if let error = confirmError {
+                            Text(error)
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.danger)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                }
+                .cardStyle()
+
+                Button {
+                    Task { await changePassword() }
+                } label: {
+                    HStack {
+                        if isSaving {
+                            ProgressView()
+                                .tint(Theme.background)
+                        }
+                        Text("Update Password")
+                    }
+                    .font(Theme.headline)
+                    .foregroundStyle(Theme.background)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(isValid && !isSaving ? Theme.accent : Theme.textMuted.opacity(0.3))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(!isValid || isSaving)
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+        }
+        .background(Theme.background)
+        .navigationTitle("Change Password")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Password Updated", isPresented: $showingSuccess) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your password has been changed successfully.")
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+
+    private func changePassword() async {
+        isSaving = true
+        defer { isSaving = false }
+
+        do {
+            try await SupabaseClientManager.shared.client.auth.update(user: .init(password: newPassword))
+            newPassword = ""
+            confirmPassword = ""
+            showingSuccess = true
+        } catch {
+            errorMessage = error.localizedDescription
+            showingError = true
         }
     }
 }

@@ -6,6 +6,8 @@ struct UserAgreementView: View {
 
     // MARK: - Properties
 
+    @Environment(AuthManager.self) private var authManager
+
     /// Callback when the user accepts the agreement
     var onAccept: () -> Void
 
@@ -20,7 +22,7 @@ struct UserAgreementView: View {
     // MARK: - Body
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topLeading) {
             Theme.backgroundGradient
                 .ignoresSafeArea()
 
@@ -50,6 +52,23 @@ struct UserAgreementView: View {
                 .padding(.top, 40)
                 .padding(.bottom, 32)
             }
+
+            // Back button
+            Button {
+                Task { try? await authManager.signOut() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Back")
+                        .font(Theme.subheadline)
+                        .fontWeight(.medium)
+                }
+                .foregroundStyle(Theme.textSecondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+            }
+            .padding(.top, 8)
         }
         .sheet(isPresented: $showingFullTerms) {
             FullTermsSheet()
@@ -88,16 +107,39 @@ struct UserAgreementView: View {
     }
 
     private var summaryView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(TermsOfService.summary)
+        VStack(alignment: .leading, spacing: 0) {
+            Text("By using Booki, you acknowledge:")
                 .font(Theme.body)
-                .foregroundStyle(Theme.textSecondary)
-                .lineSpacing(4)
+                .fontWeight(.semibold)
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.bottom, 16)
+
+            keyPoint(icon: "xmark.circle", color: Theme.danger, text: "Booki does NOT place, accept, or process bets on your behalf")
+            keyPoint(icon: "banknote", color: Theme.warning, text: "Booki does NOT hold, transfer, or process any money")
+            keyPoint(icon: "tray.full", color: Theme.accent, text: "Booki is an organizational tool for tracking bets and balances")
+            keyPoint(icon: "scale.3d", color: Theme.accentSecondary, text: "You are responsible for complying with all applicable laws")
+            keyPoint(icon: "person.badge.shield.checkmark", color: .blue, text: "You must be 18+ (or legal age in your jurisdiction)")
         }
-        .padding()
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius))
+    }
+
+    private func keyPoint(icon: String, color: Color, text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(color)
+                .frame(width: 24, alignment: .center)
+                .padding(.top, 2)
+
+            Text(text)
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 8)
     }
 
     private var viewFullTermsButton: some View {
@@ -106,7 +148,7 @@ struct UserAgreementView: View {
         } label: {
             HStack {
                 Image(systemName: "doc.plaintext")
-                Text("View Full Terms")
+                Text("Read Full Terms of Service")
             }
             .font(Theme.subheadline)
             .fontWeight(.medium)
@@ -193,6 +235,7 @@ private struct FullTermsSheet: View {
     UserAgreementView(onAccept: {
         print("Agreement accepted")
     })
+    .environment(AuthManager())
 }
 
 #Preview("With Message") {
@@ -202,4 +245,5 @@ private struct FullTermsSheet: View {
         },
         message: "We have updated our Terms of Service. Please review and accept to continue."
     )
+    .environment(AuthManager())
 }

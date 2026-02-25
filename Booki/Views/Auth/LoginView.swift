@@ -51,92 +51,114 @@ struct LoginView: View {
     private var welcomeView: some View {
         VStack(spacing: 0) {
             Spacer()
+            welcomeHero
+            Spacer()
+            welcomeCTAs
+        }
+        .background(Theme.backgroundGradient.ignoresSafeArea())
+        .onAppear { runEntrance() }
+    }
 
-            // Hero section
-            VStack(spacing: 28) {
-                // Logo with accent glow
+    private var welcomeHero: some View {
+        VStack(spacing: 28) {
+            pulsingLogo
+                .opacity(logoOpacity)
+                .scaleEffect(logoScale)
+
+            VStack(spacing: 8) {
+                Text("Be The House")
+                    .font(Theme.font(size: 30, weight: .bold))
+                    .foregroundStyle(Theme.textPrimary)
+
+                Text("Run your group. Track the action.")
+                    .font(Theme.bodyFont(size: 16))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .multilineTextAlignment(.center)
+            .opacity(headlineOpacity)
+            .offset(y: headlineOffset)
+        }
+    }
+
+    private var pulsingLogo: some View {
+        TimelineView(.animation) { timeline in
+            let time = timeline.date.timeIntervalSinceReferenceDate
+            ZStack {
+                ForEach(0..<3, id: \.self) { ring in
+                    PulsingRingView(time: time, ring: ring)
+                }
+
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [Theme.accent.opacity(0.12), Theme.accent.opacity(0.0)],
+                            center: .center,
+                            startRadius: 40,
+                            endRadius: 160
+                        )
+                    )
+                    .frame(width: 320, height: 320)
+                    .scaleEffect(1.0 + sin(time * 0.8) * 0.04)
+
                 Image("BookiLogo")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 240)
                     .shadow(color: Theme.accent.opacity(0.4), radius: 60, x: 0, y: 0)
-                    .opacity(logoOpacity)
-                    .scaleEffect(logoScale)
-
-                // Headline
-                VStack(spacing: 8) {
-                    Text("Be The House.")
-                        .font(Theme.font(size: 30, weight: .bold))
-                        .foregroundStyle(Theme.textPrimary)
-
-                    Text("Run your group. Track the action.")
-                        .font(Theme.bodyFont(size: 16))
-                        .foregroundStyle(Theme.textSecondary)
-                }
-                .multilineTextAlignment(.center)
-                .opacity(headlineOpacity)
-                .offset(y: headlineOffset)
             }
+        }
+    }
 
-            Spacer()
+    private var welcomeCTAs: some View {
+        VStack(spacing: 16) {
+            Button(action: onNavigateToSignUp) {
+                Text("Get Started")
+                    .font(Theme.headline)
+                    .fontWeight(.bold)
+                    .textCase(.uppercase)
+                    .tracking(1)
+                    .foregroundStyle(Theme.background)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(Theme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            }
+            .padding(.horizontal, 24)
 
-            // CTAs
-            VStack(spacing: 16) {
-                // GET STARTED button — primary CTA with gradient
-                Button(action: onNavigateToSignUp) {
-                    Text("Get Started")
-                        .font(Theme.headline)
-                        .fontWeight(.bold)
-                        .textCase(.uppercase)
-                        .tracking(1)
-                        .foregroundStyle(Theme.background)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(Theme.buttonGradient)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
-                }
-                .padding(.horizontal, 24)
-
-                // Invite code link
-                Button(action: onNavigateToPlayerClaim) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "ticket.fill")
-                        Text("I have an invite code")
-                            .fontWeight(.medium)
-                    }
-                    .font(Theme.subheadline)
-                    .foregroundStyle(Theme.accent)
-                }
-
-                // Sign in link
-                HStack(spacing: 4) {
-                    Text("Already have an account?")
-                        .foregroundStyle(Theme.textMuted)
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showSignIn = true
-                        }
-                    } label: {
-                        Text("Sign in")
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Theme.textPrimary)
-                    }
+            Button(action: onNavigateToPlayerClaim) {
+                HStack(spacing: 6) {
+                    Image(systemName: "ticket.fill")
+                    Text("I have an invite code")
+                        .fontWeight(.medium)
                 }
                 .font(Theme.subheadline)
-
-                // Disclaimer
-                Text("This app is designed for tracking and organizing private group activity. No real money is processed or transferred through Booki.")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textMuted)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 24)
+                .foregroundStyle(Theme.accent)
             }
-            .opacity(ctaOpacity)
-            .offset(y: ctaOffset)
+
+            HStack(spacing: 4) {
+                Text("Already have an account?")
+                    .foregroundStyle(Theme.textMuted)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showSignIn = true
+                    }
+                } label: {
+                    Text("Sign in")
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.textPrimary)
+                }
+            }
+            .font(Theme.subheadline)
+
+            Text("This app is designed for tracking and organizing private group activity. No real money is processed or transferred through Booki.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 24)
         }
-        .background(Theme.backgroundGradient.ignoresSafeArea())
-        .onAppear { runEntrance() }
+        .opacity(ctaOpacity)
+        .offset(y: ctaOffset)
     }
 
     // MARK: - Entrance Animation
@@ -338,6 +360,39 @@ struct LoginView: View {
         }
 
         return "Login failed. Please try again."
+    }
+}
+
+// MARK: - Pulsing Ring
+
+private struct PulsingRingView: View {
+    let time: TimeInterval
+    let ring: Int
+
+    var body: some View {
+        let ringSize: CGFloat = 200 + CGFloat(ring) * 80
+        let rotation = time * 30 + Double(ring) * 120
+        let breathe = 1.0 + sin(time * 0.8 + Double(ring) * 0.8) * 0.06
+
+        Circle()
+            .stroke(
+                AngularGradient(
+                    colors: [
+                        Theme.accent.opacity(0.3),
+                        Theme.accentSecondary.opacity(0.15),
+                        Theme.accent.opacity(0.0),
+                        Theme.accentSecondary.opacity(0.15),
+                        Theme.accent.opacity(0.3)
+                    ],
+                    center: .center,
+                    startAngle: .degrees(rotation),
+                    endAngle: .degrees(rotation + 360)
+                ),
+                lineWidth: 1.5
+            )
+            .frame(width: ringSize, height: ringSize)
+            .scaleEffect(breathe)
+            .opacity(0.6 - Double(ring) * 0.15)
     }
 }
 

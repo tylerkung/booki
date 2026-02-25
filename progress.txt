@@ -216,3 +216,22 @@ Started: Tue Feb 24 21:16:16 PST 2026
   - `UnevenRoundedRectangle` with 0 left radii + container `.padding(.leading, 0)` = flush edge indicators
   - ScrollView + VStack + `.cardStyle()` is cleaner than List for settings-style pages
 ---
+
+## 2026-02-24 - UI Polish Pass 2
+- Welcome screen: pulsing ring animation behind logo using `TimelineView(.animation)`, removed period from "Be The House", flat teal CTA button
+- Player tab headers: `AppHeaderView` now supports optional centered `title` and `showBalance` toggle; all 4 player tabs (Games, Search, Track, Account) show centered titles
+- Account tab: wrapped in `PlayerTabView` matching other tabs, removed large nav title, removed balance from header (card shows it)
+- Bookie Settings: moved Log Out from fixed bottom button into card as inline row (matches player Account style)
+- Change Password: new `ChangePasswordView` using `supabase.auth.update(user:)`, added to both bookie Settings and player Account menus
+- About page: added Links section (Website, Terms of Service, Privacy Policy, Twitter) with `openURL` external links
+- Terms of Service: redesigned summary with icon-based key points instead of wall of text, added "Back" button for sign-out
+- Dashboard: moved Members section above Futures Activity
+- Badge positioning: adjusted tab bar badge offset from `(-24, 0)` to `(-8, -4)` for tighter icon overlap
+- Footer mobile fix: added `flex-wrap` and `justify-content: center` to `.footer-links`
+- Removed "By the numbers" section from features page
+- Files changed: LoginView.swift, AppHeaderView.swift, PlayerMainView.swift, ContentView.swift, AccountView.swift, SettingsView.swift, UserAgreementView.swift, AnalyticsDashboardView.swift, BookiApp.swift, features.html, styles.css
+- **Learnings:**
+  - `TimelineView(.animation)` is the correct way to drive continuous animations — `@State` with `.repeatForever` only interpolates start/end values
+  - Extract complex animated views into separate structs to avoid Swift type-checker timeouts
+  - `AppHeaderView` with optional title/showBalance params is flexible enough for all tab configurations
+---

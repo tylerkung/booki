@@ -186,6 +186,8 @@ struct ContentView: View {
 struct PlayerTabView<Content: View>: View {
     let player: Player
     let balance: Decimal
+    var title: String? = nil
+    var showBalance: Bool = true
     var onLogoTap: (() -> Void)? = nil
     @ViewBuilder let content: Content
 
@@ -196,6 +198,8 @@ struct PlayerTabView<Content: View>: View {
                 AppHeaderView(
                     player: player,
                     balance: balance,
+                    title: title,
+                    showBalance: showBalance,
                     onLogoTap: onLogoTap
                 )
 

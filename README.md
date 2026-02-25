@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 24, 2026 - App Store polish (settings restructure, events cleanup, activity rows, subscription tiers, dev-only sync indicator), SEO foundation (sitemap, robots.txt, OG tags, 3 SEO landing pages, blog with 4 posts, JSON-LD schema, internal linking)*
+*Last updated: February 24, 2026 - Welcome screen animation, player tab header titles, change password, about page links, ToS redesign, bookie settings inline logout, dashboard reorder, badge positioning*

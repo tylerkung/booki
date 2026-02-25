@@ -143,8 +143,7 @@ struct AccountView: View {
             .padding()
         }
         .background(Theme.background)
-        .navigationTitle("Account")
-        .navigationBarTitleDisplayMode(.large)
+        .toolbar(.hidden, for: .navigationBar)
         .alert("Log Out", isPresented: $showingLogoutConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Log Out", role: .destructive) { performLogout() }
@@ -446,6 +445,16 @@ struct AccountView: View {
                 )
             } label: {
                 playerMenuRow(icon: "clock.arrow.circlepath", title: "Activity")
+            }
+
+            Divider()
+                .background(Theme.border)
+                .padding(.leading, 58)
+
+            NavigationLink {
+                ChangePasswordView()
+            } label: {
+                playerMenuRow(icon: "lock.rotation", title: "Change Password")
             }
 
             Divider()

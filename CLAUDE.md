@@ -215,3 +215,9 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **SEO foundation**: sitemap.xml, robots.txt, OG/Twitter/canonical tags on all pages, 3 SEO landing pages (PPH alternative, run your own sportsbook, bookie ledger software), blog with 4 posts, JSON-LD schema markup, internal linking pass
 - **Landing blog**: `landing/blog/` with index + 4 articles, blog nav link on all pages, Article schema markup
 - **iOS 26 app icon**: Liquid glass icon for iOS 26+ with legacy fallback via asset catalog `minimum-system-version`
+- **Welcome screen**: Pulsing ring animation behind logo (`TimelineView`), flat teal CTA, "Be The House" (no period)
+- **Player tab headers**: `AppHeaderView` with optional centered title + showBalance toggle; all 4 tabs show titles
+- **Change Password**: `ChangePasswordView` using Supabase auth update, available in both bookie Settings and player Account
+- **About page links**: Website, Terms of Service, Privacy Policy, Twitter with `openURL`
+- **Terms of Service redesign**: Icon-based key points summary, "Back" button for sign-out
+- **Bookie Settings Log Out**: Inline row in card (matching player Account style), no longer fixed bottom button

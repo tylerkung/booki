@@ -2,10 +2,12 @@ import SwiftUI
 import SwiftData
 
 /// Persistent app header showing logo and balance
-/// Used across player mode tabs (Games, Track)
+/// Used across player mode tabs (Games, Search, Track, Account)
 struct AppHeaderView: View {
     let player: Player
     let balance: Decimal
+    var title: String? = nil
+    var showBalance: Bool = true
 
     /// Callback when logo is tapped (navigate to Games tab)
     var onLogoTap: (() -> Void)?
@@ -37,20 +39,31 @@ struct AppHeaderView: View {
     // MARK: - Body
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Left side: App logo
-            Button(action: { onLogoTap?() }) {
-                Image("BookiWordmark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 24)
+        ZStack {
+            // Center: Title (if provided)
+            if let title {
+                Text(title)
+                    .font(Theme.font(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
             }
-            .buttonStyle(.plain)
 
-            Spacer()
+            HStack(spacing: 12) {
+                // Left side: App logo
+                Button(action: { onLogoTap?() }) {
+                    Image("BookiWordmark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 24)
+                }
+                .buttonStyle(.plain)
 
-            // Right side: Balance
-            balanceSection
+                Spacer()
+
+                // Right side: Balance (optional)
+                if showBalance {
+                    balanceSection
+                }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
