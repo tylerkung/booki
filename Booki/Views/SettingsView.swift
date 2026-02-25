@@ -576,6 +576,9 @@ struct AboutSettingsView: View {
     }
 
     @Environment(\.openURL) private var openURL
+    @AppStorage("bookieTier") private var bookieTierRaw: String = "free"
+    @State private var showDebugToast = false
+    @State private var debugToastMessage = ""
 
     var body: some View {
         ScrollView {
@@ -584,6 +587,19 @@ struct AboutSettingsView: View {
 
                 VStack(spacing: 0) {
                     settingsDetailRow(label: "Version", value: appVersion)
+                        .onTapGesture(count: 3) {
+                            let newTier = bookieTierRaw == "pro" ? "free" : "pro"
+                            bookieTierRaw = newTier
+                            debugToastMessage = "Debug: Tier set to \(newTier.capitalized)"
+                            withAnimation {
+                                showDebugToast = true
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                withAnimation {
+                                    showDebugToast = false
+                                }
+                            }
+                        }
                     settingsDivider
                     settingsDetailRow(label: "Platform", value: "iOS")
                 }
@@ -608,6 +624,19 @@ struct AboutSettingsView: View {
         .background(Theme.background)
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
+        .overlay(alignment: .top) {
+            if showDebugToast {
+                Text(debugToastMessage)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Theme.accent.opacity(0.9))
+                    .clipShape(Capsule())
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
     }
 
     private func aboutLinkRow(icon: String, title: String, url: String) -> some View {
