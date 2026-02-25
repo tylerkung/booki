@@ -145,3 +145,15 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - Graded bets always have at least the settle action on free tier, so the card still shows — only settled bets have all actions gated
   - Use `if isPro, condition` (comma-separated) for combined tier + state checks in @ViewBuilder
 ---
+
+## 2026-02-25 - US-012
+- What was implemented: Server-side tier enforcement in two edge functions. create_invite: reads bookie.tier, counts active members (auth_user_id IS NOT NULL), enforces 3 for free / 50 for pro limit, returns 403 `member_limit_reached`. submit_parlay: reads bookie.tier, blocks non-pro with 403 `pro_required`.
+- Files changed:
+  - supabase/functions/create_invite/index.ts — added tier to bookie select, replaced hardcoded MAX_PLAYERS with tier-based MEMBER_LIMIT_FREE/PRO, added auth_user_id NOT NULL filter to player count, changed error to 403 `member_limit_reached`
+  - supabase/functions/submit_parlay/index.ts — added tier to bookie select, added tier check returning 403 `pro_required` before processing
+- **Learnings for future iterations:**
+  - create_invite already had a player count check — modify existing logic rather than adding duplicate checks
+  - submit_parlay already fetches bookie for manual_bet_acceptance — just add `tier` to the same select query
+  - Deno typecheck via `npx deno check` has pre-existing Deno namespace errors (no deno.ns lib) — these are not real issues for Supabase Edge Functions
+  - Error responses for tier enforcement use short machine-readable strings (`member_limit_reached`, `pro_required`) not human-readable messages — client handles display
+---
