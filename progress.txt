@@ -194,3 +194,25 @@ Started: Tue Feb 24 11:05:08 PST 2026
   - Can be called via `client.rpc('get_player_balance', { p_bookie_id, p_player_id })`
   - The view provides dashboard/report convenience; the RPC is the canonical balance endpoint for reconciliation
 ---
+
+## 2026-02-24 - Bookie Member Management Polish
+- Wired up SETTLE UP and ADJUST BALANCE buttons on member detail page with edge function calls
+- Settle Up: simplified to one-tap confirmation (zeroes balance), Adjust Balance: custom NumericKeypadView
+- Custom NumericKeypadView added to all money input screens (AdjustBalance, PaymentSheet, WeeklySettlement)
+- Balance display overhaul: replaced +/- currency with "Owes $X" / "You owe $X" / "Settled" labels
+- Fixed stale data: added @Query for live ledger/bet data instead of snapshot properties
+- Fixed overdue logic: negative adjustments (credits) now reset the overdue clock
+- adjust_balance edge function: reason now optional, accepts `type` param for paymentLogged vs adjustment
+- Members tab: added search bar + filter chips (moved from Dashboard), expanded cards with metrics row + attention tags
+- Dashboard: simplified member section to compact PlayerRowView cards (no search/filter)
+- Attention tags renamed: Picks Pending, Whale, Degen, Parlay Demon, On Heater, Cold Streak
+- TagExplainerSheet: tappable tags open modal explaining all 7 tag types
+- Recent Activity on member detail: merged bets + ledger entries chronologically with View All toggle
+- Editable member names (persisted to Supabase), credit utilization in header + list rows
+- Favicons added to all 5 landing pages
+- Files changed: PlayerAnalyticsDetailView, PlayersListView, AnalyticsDashboardView, PlayerAttentionService, PaymentSheet, WeeklySettlementView, adjust_balance edge function, landing HTML files
+- **Learnings:**
+  - Ledger table is immutable (prevent_mutation trigger) — can't fix old data, must handle both old and new formats in UI
+  - SettleUpSheet local entry type must match server type — mismatch caused "ADJ" appearing after sync
+  - `@Query` live data vs `let` snapshot: always use @Query computed properties for data that changes during the session
+---

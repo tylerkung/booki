@@ -11,8 +11,6 @@ struct AnalyticsDashboardView: View {
     @Query private var bookies: [Bookie]
 
     @State private var lastUpdated = Date()
-    @State private var searchText = ""
-    @State private var activeFilter = "All"
     @State private var scrollToPlayers = false
     @State private var selectedRange: String = "ALL"
     @State private var showSkeleton = true
@@ -50,8 +48,6 @@ struct AnalyticsDashboardView: View {
         }
     }
 
-    private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
-
     private var lifetimePL: Decimal {
         PlayerAttentionService.totalBookiePL(bets: bets)
     }
@@ -63,49 +59,6 @@ struct AnalyticsDashboardView: View {
             bets: bets,
             ledgerEntries: ledgerEntries
         )
-    }
-
-    private var filteredSummaries: [PlayerAnalyticsSummary] {
-        var result = summaries
-
-        // Apply search
-        if !searchText.isEmpty {
-            result = result.filter { $0.player.name.localizedCaseInsensitiveContains(searchText) }
-        }
-
-        // Apply filter
-        switch activeFilter {
-        case "Attention needed":
-            result = result.filter { $0.pas.score >= 34 }
-        case "Overdue":
-            result = result.filter { $0.isOverdue }
-        case "High exposure":
-            result = result.filter { $0.exposure.grossExposure > 0 }
-        case "Big winners":
-            result = result.filter { $0.sevenDayPL < 0 }  // Bookie P/L negative = player winning
-        case "Big losers":
-            result = result.filter { $0.sevenDayPL > 0 }  // Bookie P/L positive = player losing
-        default:
-            break
-        }
-
-        // Sort: open activity (highest first), then 7d performance (highest absolute value first)
-        result.sort { a, b in
-            let aExposure = a.exposure.grossExposure
-            let bExposure = b.exposure.grossExposure
-            // Players with open activity come first
-            if (aExposure > 0) != (bExposure > 0) {
-                return aExposure > 0
-            }
-            // Among players with open activity, sort by exposure descending
-            if aExposure > 0 && bExposure > 0 {
-                return aExposure > bExposure
-            }
-            // Among players without open activity, sort by 7d performance absolute value descending
-            return abs(a.sevenDayPL) > abs(b.sevenDayPL)
-        }
-
-        return result
     }
 
     // MARK: - Aggregated Metrics
@@ -438,7 +391,7 @@ struct AnalyticsDashboardView: View {
             topRiskCard
 
             // Card 4 — Outstanding Balances → filter to Overdue
-            Button { activeFilter = "Overdue"; scrollToPlayers = true } label: {
+            Button { scrollToPlayers = true } label: {
                 SummaryCard(
                     label: "Outstanding",
                     value: overduePlayers.isEmpty ? "All clear" : formatCurrency(totalOverdueAmount),
@@ -482,85 +435,35 @@ struct AnalyticsDashboardView: View {
                 .tracking(1.0)
                 .padding(.leading, 4)
 
-            // Search bar
-            searchBar
-
-            // Filter chips
-            filterChips
-
-            // Result count
-            if activeFilter != "All" || !searchText.isEmpty {
-                Text("\(filteredSummaries.count) of \(summaries.count) members")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                    .padding(.leading, 4)
-            }
-
-            // Player rows
-            if filteredSummaries.isEmpty {
-                Text("No members match filters")
-                    .font(Theme.bodyFont(size: 15))
-                    .foregroundStyle(Theme.textMuted)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 24)
-            } else {
-                ForEach(filteredSummaries, id: \.player.id) { summary in
-                    NavigationLink(value: summary) {
-                        PlayerAnalyticsRow(summary: summary, formatCurrency: formatCurrency)
-                    }
-                    .buttonStyle(.plain)
+            ForEach(summaries, id: \.player.id) { summary in
+                NavigationLink(value: summary) {
+                    PlayerRowView(
+                        player: summary.player,
+                        balance: balanceForPlayer(summary.player),
+                        utilization: utilizationForPlayer(summary.player)
+                    )
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .cardStyle()
                 }
+                .buttonStyle(.plain)
             }
         }
     }
 
-    // MARK: - Search Bar
-
-    private var searchBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(Theme.textMuted)
-                .font(.system(size: 14))
-
-            TextField("Search members", text: $searchText)
-                .font(Theme.bodyFont(size: 15))
-                .foregroundStyle(Theme.textPrimary)
-
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(Theme.textMuted)
-                        .font(.system(size: 14))
-                }
-            }
-        }
-        .padding(10)
-        .background(Theme.elevatedBackground)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+    private func balanceForPlayer(_ player: Player) -> Decimal {
+        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+        return BalanceService.calculateBalance(from: playerLedgerEntries)
     }
 
-    // MARK: - Filter Chips
-
-    private var filterChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(Self.filterOptions, id: \.self) { filter in
-                    Button {
-                        activeFilter = filter
-                    } label: {
-                        Text(filter)
-                            .font(Theme.bodyFont(size: 13, weight: .medium))
-                            .foregroundStyle(activeFilter == filter ? .black : Theme.textSecondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(activeFilter == filter ? Theme.accent : Theme.elevatedBackground)
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-        }
+    private func utilizationForPlayer(_ player: Player) -> Double {
+        guard player.creditLimit > 0 else { return 0 }
+        let playerBets = bets.filter { $0.player?.id == player.id }
+        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+        let summary = BalanceService.playerSummary(for: player, bets: playerBets, ledgerEntries: playerLedgerEntries)
+        let used = player.creditLimit - summary.availableCredit
+        let utilization = (used as NSDecimalNumber).doubleValue / (player.creditLimit as NSDecimalNumber).doubleValue
+        return max(0, min(1, utilization)) * 100
     }
 
     // MARK: - Helpers
@@ -1043,8 +946,27 @@ private struct RecentActivitySection: View {
             return "\(playerName)'s pick on \(eventDesc) — \(resultText)"
         case .reconciliation(let entry):
             let playerName = entry.player?.name ?? "Unknown"
-            let amount = formatSignedCurrency(entry.amount)
-            return "Pick graded for \(playerName) — \(amount)"
+            let absAmount = formatCurrency(entry.amount < 0 ? -entry.amount : entry.amount)
+            switch entry.type {
+            case .adjustment:
+                if entry.amount > 0 {
+                    return "\(playerName) owes \(absAmount) more"
+                } else {
+                    return "\(playerName) credited \(absAmount)"
+                }
+            case .paymentLogged:
+                return "Payment received from \(playerName) — \(absAmount)"
+            case .reversal:
+                return "Reversal for \(playerName) — \(absAmount)"
+            case .settlement:
+                if entry.amount > 0 {
+                    return "\(playerName) owes \(absAmount) — pick settled"
+                } else if entry.amount < 0 {
+                    return "\(playerName) won \(absAmount) — pick settled"
+                } else {
+                    return "\(playerName)'s pick pushed"
+                }
+            }
         }
     }
 
@@ -1066,138 +988,6 @@ private struct RecentActivitySection: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
-}
-
-// MARK: - Player Analytics Row
-
-private struct PlayerAnalyticsRow: View {
-    let summary: PlayerAnalyticsSummary
-    let formatCurrency: (Decimal) -> String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Top: name + PAS badge
-            HStack {
-                Text(summary.player.name)
-                    .font(Theme.font(size: 17, weight: .bold))
-                    .foregroundStyle(Theme.textPrimary)
-
-                Spacer()
-
-                Text(summary.pas.label)
-                    .font(Theme.bodyFont(size: 11, weight: .semibold))
-                    .foregroundStyle(pasLabelColor == Theme.textMuted ? Theme.textPrimary : .black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(pasLabelColor)
-                    .clipShape(Capsule())
-            }
-
-            // Primary metric
-            primaryMetric
-
-            // Secondary metrics
-            HStack(spacing: 16) {
-                secondaryLabel("Lifetime", value: formatSignedCurrency(summary.allTimePL))
-                secondaryLabel("Avg pick", value: formatCurrency(summary.avgBetSize30d))
-            }
-
-            // Reason chips
-            if !summary.pas.reasonChips.isEmpty {
-                reasonChipsView
-            }
-        }
-        .padding(14)
-        .background(Theme.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
-    }
-
-    // MARK: - PAS Badge Color
-
-    private var pasLabelColor: Color {
-        switch summary.pas.label {
-        case "High": return Theme.danger
-        case "Medium": return Theme.warning
-        default: return Theme.textMuted
-        }
-    }
-
-    // MARK: - Primary Metric
-
-    private var primaryMetric: some View {
-        Group {
-            if summary.isOverdue {
-                Text("Overdue: \(formatCurrency(summary.overdueAmount))")
-                    .font(Theme.bodyFont(size: 15))
-                    .foregroundStyle(Theme.danger)
-            } else if summary.exposure.grossExposure > 0 {
-                Text("Open activity: \(formatCurrency(summary.exposure.grossExposure))")
-                    .font(Theme.bodyFont(size: 15))
-                    .foregroundStyle(Theme.textPrimary)
-            } else {
-                Text("7d Performance: \(formatSignedCurrency(summary.sevenDayPL))")
-                    .font(Theme.bodyFont(size: 15))
-                    .foregroundStyle(summary.sevenDayPL > 0 ? Theme.accent : summary.sevenDayPL < 0 ? Theme.danger : Theme.textSecondary)
-            }
-        }
-    }
-
-    // MARK: - Secondary Label
-
-    private func secondaryLabel(_ label: String, value: String) -> some View {
-        HStack(spacing: 4) {
-            Text(label + ":")
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textSecondary)
-            Text(value)
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textSecondary)
-        }
-    }
-
-    // MARK: - Reason Chips
-
-    private var reasonChipsView: some View {
-        HStack(spacing: 6) {
-            ForEach(Array(summary.pas.reasonChips.prefix(3)), id: \.self) { chip in
-                Text(chip)
-                    .font(Theme.bodyFont(size: 10, weight: .medium))
-                    .foregroundStyle(Theme.textPrimary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(chipColor(for: chip).opacity(0.25))
-                    .clipShape(Capsule())
-            }
-        }
-    }
-
-    // MARK: - Chip Colors
-
-    private func chipColor(for chip: String) -> Color {
-        switch chip {
-        case "Overdue": return Theme.danger
-        case "On heater": return Theme.gold
-        case "Cold streak": return Theme.accentTertiary
-        case "High roller": return Theme.accentSecondary
-        case "Multi-Pick heavy": return Theme.scheduled
-        case "High volatility": return Theme.warning
-        case "Large pending": return Theme.accent
-        default: return Theme.textMuted
-        }
-    }
-
-    // MARK: - Signed Currency
-
-    private func formatSignedCurrency(_ value: Decimal) -> String {
-        let formatted = formatCurrency(abs(value))
-        if value > 0 { return "+\(formatted)" }
-        if value < 0 { return "-\(formatted)" }
-        return formatted
-    }
-
-    private func abs(_ value: Decimal) -> Decimal {
-        value < 0 ? -value : value
     }
 }
 

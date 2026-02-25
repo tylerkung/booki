@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 24, 2026 - Golf sport page, outright polish, auto-refresh every 2 hours*
+*Last updated: February 24, 2026 - Member management polish, search/filter on Members tab, attention tags, merged activity feed*

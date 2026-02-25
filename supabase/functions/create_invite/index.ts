@@ -13,6 +13,8 @@ const INVITE_CODE_CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const INVITE_CODE_LENGTH = 8;
 const INVITE_EXPIRY_HOURS = 24;
 const MAX_CODE_RETRIES = 5;
+const MAX_OPEN_INVITES = 5;
+const MAX_PLAYERS = 10;
 
 function generateInviteCode(): string {
   const bytes = new Uint8Array(INVITE_CODE_LENGTH);
@@ -80,6 +82,34 @@ Deno.serve(async (req) => {
 
     const bookieId = bookie.id;
 
+    // Check open invite limit
+    const { count: openInviteCount } = await client
+      .from('invites')
+      .select('*', { count: 'exact', head: true })
+      .eq('bookie_id', bookieId)
+      .is('claimed_by', null)
+      .gt('expires_at', new Date().toISOString());
+
+    if ((openInviteCount ?? 0) >= MAX_OPEN_INVITES) {
+      return new Response(
+        JSON.stringify({ success: false, error: `You can have at most ${MAX_OPEN_INVITES} open invites at a time` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check player limit
+    const { count: playerCount } = await client
+      .from('players')
+      .select('*', { count: 'exact', head: true })
+      .eq('bookie_id', bookieId);
+
+    if ((playerCount ?? 0) >= MAX_PLAYERS) {
+      return new Response(
+        JSON.stringify({ success: false, error: `You have reached the maximum of ${MAX_PLAYERS} members` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Generate unique invite code with collision retry
     let inviteCode = '';
     let codeIsUnique = false;
@@ -145,7 +175,7 @@ Deno.serve(async (req) => {
       success: true,
       invite_id: invite.id,
       invite_code: inviteCode,
-      invite_url: `booki://invite/${inviteCode}`,
+      invite_url: `https://bookisports.com/invite/${inviteCode}`,
       expires_at: expiresAt,
     });
 

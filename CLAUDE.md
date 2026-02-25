@@ -158,7 +158,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 
 ## Current State (February 24, 2026)
 
-- **Branch**: `ralph/ledger-v2-hardening`
+- **Branch**: `main`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
 - **Phases complete**: 1-17 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration)
@@ -197,6 +197,11 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Player bookie RLS**: Migration 013 adds `get_player_bookie_id()` SECURITY DEFINER function + RLS policy so players can read their bookie's settings
 - **Golf sport page**: League tabs render outrights directly (no separate Futures tab), "Updated X ago" in section headers, all outcomes shown without show more
 - **Auto-refresh**: Every 2 hours (9 runs/day), 25 games per run (was 2 runs/day, 10 games)
+- **Member management polish**: Settle Up (one-tap confirmation), Adjust Balance (custom NumericKeypadView), editable names, credit utilization display, "Owes $X"/"You owe $X"/"Settled" balance labels
+- **Members tab**: Search bar + filter chips (All, Attention needed, Overdue, High exposure, Big winners, Big losers), expanded cards with metrics + attention tags
+- **Attention tags**: Picks Pending, Overdue, On Heater, Cold Streak, Whale, Degen, Parlay Demon — tappable with explainer modal
+- **Recent Activity (detail)**: Merged bets + ledger entries chronologically with View All/Show Less toggle
+- **adjust_balance edge function**: Optional `type` param (`paymentLogged` for settle ups, `adjustment` default), optional `reason`
 - **Ledger V2**: Atomic settlement RPCs (`settle_bet_tx`, `reverse_settlement_tx`, `override_grade_tx`), tamper-evident hash chain on ledger_entries, immutability triggers, `settlement_events` audit table, canonical `player_balances_view` + `get_player_balance` RPC. Migrations 015-019.
 - **Parlay auto-settlement**: `autoSettleParlays()` in auto_refresh_games grades legs to `'graded'`, then settles fully-graded tickets with combined odds and single ledger entry
 - **Spurious bookie cleanup**: `cleanUpSpuriousBookieRecord()` in AuthManager auto-deletes leftover bookie records when player is detected, fixing RLS `get_user_bookie_id()` COALESCE issue

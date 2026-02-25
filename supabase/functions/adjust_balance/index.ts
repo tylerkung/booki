@@ -6,7 +6,8 @@ import { emitAuditEvent } from '../_shared/audit.ts';
 interface AdjustBalanceRequest {
   player_id: string;
   amount: string; // Decimal string, positive or negative
-  reason: string;
+  reason?: string;
+  type?: string; // 'adjustment' (default) or 'paymentLogged'
   idempotency_key: string;
 }
 
@@ -62,13 +63,6 @@ Deno.serve(async (req) => {
     if (isNaN(amount)) {
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid amount: must be a valid decimal number' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!body.reason || body.reason.trim() === '') {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Missing required field: reason' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -134,8 +128,8 @@ Deno.serve(async (req) => {
         player_id: body.player_id,
         bet_id: null, // Adjustments are not tied to a specific bet
         amount: amount,
-        type: 'adjustment',
-        description: body.reason.trim(),
+        type: (body.type === 'paymentLogged') ? 'paymentLogged' : 'adjustment',
+        description: (body.reason ?? 'Balance adjustment').trim(),
       })
       .select()
       .single();
@@ -157,7 +151,7 @@ Deno.serve(async (req) => {
       actionType: 'adjust',
       previousState: null,
       newState: ledgerEntry as unknown as Record<string, unknown>,
-      reason: body.reason.trim(),
+      reason: (body.reason ?? 'Balance adjustment').trim(),
     });
 
     // Prepare success response

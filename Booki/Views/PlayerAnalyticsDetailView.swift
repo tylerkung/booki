@@ -10,15 +10,44 @@ struct PlayerAnalyticsDetailView: View {
     let playerBets: [Bet]
     let playerLedgerEntries: [LedgerEntry]
 
+    @Query private var allLedgerEntries: [LedgerEntry]
+    @Query private var allBets: [Bet]
+
     @State private var showingArchiveConfirmation = false
     @State private var showingDeleteConfirmation = false
     @State private var isDeleting = false
     @State private var deleteError: String?
 
+    // Settle Up / Adjust Balance
+    @State private var showingSettleUp = false
+    @State private var showingAdjustBalance = false
+
+    // Edit name
+    @State private var showingEditName = false
+    @State private var editedName = ""
+
     private var player: Player { summary.player }
 
     private var playerHasHistory: Bool {
         !playerBets.isEmpty || !playerLedgerEntries.isEmpty
+    }
+
+    private var livePlayerLedgerEntries: [LedgerEntry] {
+        allLedgerEntries.filter { $0.player?.id == player.id }
+    }
+
+    private var livePlayerBets: [Bet] {
+        allBets.filter { $0.player?.id == player.id }
+    }
+
+    private var balanceSummary: PlayerBalanceSummary {
+        BalanceService.playerSummary(for: player, bets: livePlayerBets, ledgerEntries: livePlayerLedgerEntries)
+    }
+
+    private var utilization: Double {
+        guard player.creditLimit > 0 else { return 0 }
+        let used = player.creditLimit - balanceSummary.availableCredit
+        return (used as NSDecimalNumber).doubleValue / (player.creditLimit as NSDecimalNumber).doubleValue * 100
     }
 
     var body: some View {
@@ -30,7 +59,7 @@ struct PlayerAnalyticsDetailView: View {
                 performanceSection
                 behaviorSection
                 reliabilitySection
-                RecentActivitySection(playerBets: playerBets)
+                RecentActivitySection(playerBets: livePlayerBets, playerLedgerEntries: livePlayerLedgerEntries)
             }
             .padding(16)
         }
@@ -92,9 +121,43 @@ struct PlayerAnalyticsDetailView: View {
                 Text(error)
             }
         }
+        .alert("Edit Name", isPresented: $showingEditName) {
+            TextField("Name", text: $editedName)
+            Button("Save") {
+                saveName()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This name is only visible to you.")
+        }
     }
 
     // MARK: - Actions
+
+    private func saveName() {
+        let trimmed = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != player.name else { return }
+
+        let newName = trimmed
+        let playerId = player.id.uuidString.lowercased()
+
+        Task {
+            do {
+                let supabase = SupabaseClientManager.shared.client
+                try await supabase
+                    .from("players")
+                    .update(["name": newName])
+                    .eq("id", value: playerId)
+                    .execute()
+
+                await MainActor.run {
+                    player.name = newName
+                }
+            } catch {
+                print("Failed to update player name: \(error)")
+            }
+        }
+    }
 
     private func archivePlayer() {
         let result = PlayerService.archivePlayer(player)
@@ -144,13 +207,24 @@ struct PlayerAnalyticsDetailView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(summary.player.name)
-                .font(Theme.title1)
-                .foregroundStyle(Theme.textPrimary)
+            HStack(spacing: 8) {
+                Text(summary.player.name)
+                    .font(Theme.title1)
+                    .foregroundStyle(Theme.textPrimary)
+
+                Button {
+                    editedName = player.name
+                    showingEditName = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
 
             // Balance + PAS badge
             HStack(alignment: .center) {
-                Text(formatCurrency(summary.balanceOwed))
+                Text(formattedBalanceLabel)
                     .font(Theme.font(size: 22, weight: .bold))
                     .foregroundStyle(balanceColor)
 
@@ -164,6 +238,11 @@ struct PlayerAnalyticsDetailView: View {
                     .background(pasLabelColor)
                     .clipShape(Capsule())
             }
+
+            // Credit limit utilization
+            Text("Credit: \(formatCurrency(player.creditLimit - balanceSummary.availableCredit)) / \(formatCurrency(player.creditLimit)) · \(Int(utilization))%")
+                .font(Theme.bodyFont(size: 13))
+                .foregroundStyle(Theme.textSecondary)
 
             // Reason chips
             if !summary.pas.reasonChips.isEmpty {
@@ -179,20 +258,21 @@ struct PlayerAnalyticsDetailView: View {
     private var ctaButtons: some View {
         HStack(spacing: 12) {
             Button {
-                print("Settle Up tapped for \(summary.player.name)")
+                showingSettleUp = true
             } label: {
                 Text("SETTLE UP")
                     .font(Theme.headline)
                     .textCase(.uppercase)
-                    .foregroundStyle(.black)
+                    .foregroundStyle(.black.opacity(balanceSummary.balanceOwed == 0 ? 0.4 : 1))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Theme.accent)
+                    .background(balanceSummary.balanceOwed == 0 ? Theme.accent.opacity(0.3) : Theme.accent)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
             }
+            .disabled(balanceSummary.balanceOwed == 0)
 
             Button {
-                print("Adjust Balance tapped for \(summary.player.name)")
+                showingAdjustBalance = true
             } label: {
                 Text("ADJUST BALANCE")
                     .font(Theme.headline)
@@ -203,6 +283,12 @@ struct PlayerAnalyticsDetailView: View {
                     .background(Theme.elevatedBackground)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
             }
+        }
+        .sheet(isPresented: $showingSettleUp) {
+            SettleUpSheet(player: player, balanceOwed: balanceSummary.balanceOwed, modelContext: modelContext)
+        }
+        .sheet(isPresented: $showingAdjustBalance) {
+            AdjustBalanceSheet(player: player, balanceOwed: balanceSummary.balanceOwed, modelContext: modelContext)
         }
     }
 
@@ -293,15 +379,21 @@ struct PlayerAnalyticsDetailView: View {
 
     // MARK: - Reliability Section
 
-    /// Only bookie-initiated payments count for reliability tracking
+    /// Payments and settle-ups count for reliability tracking
     private var paymentEntries: [LedgerEntry] {
-        playerLedgerEntries.filter { $0.type == .paymentLogged }
+        livePlayerLedgerEntries.filter {
+            $0.type == .paymentLogged || $0.entryDescription == "Settled up"
+        }
+    }
+
+    private var liveOverdue: (isOverdue: Bool, amount: Decimal) {
+        PlayerAttentionService.isOverdue(player: player, ledgerEntries: livePlayerLedgerEntries)
     }
 
     private var paymentStatus: (label: String, color: Color) {
         if paymentEntries.isEmpty {
             return ("No payments", Theme.textSecondary)
-        } else if summary.isOverdue {
+        } else if liveOverdue.isOverdue {
             return ("Overdue", Theme.danger)
         } else {
             return ("Current", Theme.accent)
@@ -341,13 +433,13 @@ struct PlayerAnalyticsDetailView: View {
 
             todayMetricRow(label: "Last Payment", value: daysSinceLastPayment)
 
-            if summary.isOverdue && summary.overdueAmount > 0 {
+            if liveOverdue.isOverdue && liveOverdue.amount > 0 {
                 HStack {
                     Text("Overdue Amount")
                         .font(Theme.bodyFont(size: 15))
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
-                    Text(formatCurrency(summary.overdueAmount))
+                    Text(formatCurrency(liveOverdue.amount))
                         .font(Theme.font(size: 17, weight: .bold))
                         .foregroundStyle(Theme.danger)
                 }
@@ -378,11 +470,21 @@ struct PlayerAnalyticsDetailView: View {
 
     // MARK: - Helpers
 
+    private var formattedBalanceLabel: String {
+        let amount = balanceSummary.balanceOwed
+        if amount > 0 {
+            return "Owes \(formatCurrency(amount))"
+        } else if amount < 0 {
+            return "You owe \(formatCurrency(-amount))"
+        }
+        return "Settled"
+    }
+
     private var balanceColor: Color {
         // Positive balanceOwed = player owes bookie (good for bookie, green)
         // Negative = bookie owes player (bad, red)
-        if summary.balanceOwed > 0 { return Theme.accent }
-        if summary.balanceOwed < 0 { return Theme.danger }
+        if balanceSummary.balanceOwed > 0 { return Theme.accent }
+        if balanceSummary.balanceOwed < 0 { return Theme.danger }
         return Theme.textSecondary
     }
 
@@ -399,6 +501,316 @@ struct PlayerAnalyticsDetailView: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+}
+
+// MARK: - Adjust Balance Request/Response
+
+private struct AdjustBalanceRequest: Encodable {
+    let playerId: String
+    let amount: String
+    let reason: String
+    var type: String?
+    let idempotencyKey: String
+
+    enum CodingKeys: String, CodingKey {
+        case playerId = "player_id"
+        case amount
+        case reason
+        case type
+        case idempotencyKey = "idempotency_key"
+    }
+}
+
+private struct AdjustBalanceResponse: Decodable {
+    let success: Bool
+}
+
+// MARK: - Settle Up Sheet
+
+private struct SettleUpSheet: View {
+    let player: Player
+    let balanceOwed: Decimal
+    let modelContext: ModelContext
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    private var formattedBalanceOwed: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: balanceOwed as NSDecimalNumber) ?? "$\(balanceOwed)"
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Theme.background.ignoresSafeArea()
+
+                VStack(spacing: 24) {
+                    Spacer()
+
+                    // Confirmation message
+                    VStack(spacing: 16) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 48))
+                            .foregroundStyle(Theme.accent)
+
+                        Text("Settle \(player.name)'s balance?")
+                            .font(Theme.font(size: 20, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                            .multilineTextAlignment(.center)
+
+                        Text("This will zero out the outstanding balance of \(formattedBalanceOwed).")
+                            .font(Theme.bodyFont(size: 15))
+                            .foregroundStyle(Theme.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    Spacer()
+
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(Theme.bodyFont(size: 13))
+                            .foregroundStyle(Theme.danger)
+                    }
+
+                    // CTA
+                    Button {
+                        Task { await submitSettlement() }
+                    } label: {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        } else {
+                            Text("CONFIRM SETTLED")
+                                .font(Theme.font(size: 16, weight: .bold))
+                                .foregroundStyle(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        }
+                    }
+                    .background(isLoading ? Theme.accent.opacity(0.5) : Theme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .disabled(isLoading)
+                }
+                .padding()
+            }
+            .navigationTitle("Settle Up")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+        }
+    }
+
+    private func submitSettlement() async {
+        isLoading = true
+        errorMessage = nil
+
+        let amount = balanceOwed
+        let reason = "Settled up"
+
+        var request = AdjustBalanceRequest(
+            playerId: player.id.uuidString.lowercased(),
+            amount: "\(-amount)",
+            reason: reason,
+            idempotencyKey: UUID().uuidString
+        )
+        request.type = "paymentLogged"
+
+        do {
+            let _: AdjustBalanceResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "adjust_balance",
+                body: request
+            )
+
+            await MainActor.run {
+                // Insert local ledger entry so UI updates immediately
+                let entry = LedgerEntry(
+                    amount: -amount,
+                    type: .paymentLogged,
+                    entryDescription: reason,
+                    player: player
+                )
+                modelContext.insert(entry)
+                isLoading = false
+                dismiss()
+            }
+        } catch {
+            await MainActor.run {
+                isLoading = false
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+}
+
+// MARK: - Adjust Balance Sheet
+
+private struct AdjustBalanceSheet: View {
+    let player: Player
+    let balanceOwed: Decimal
+    let modelContext: ModelContext
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var amountText = ""
+    @State private var isCredit = false // false = increase debt (positive), true = credit (negative)
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    private var amountDecimal: Decimal? {
+        guard !amountText.isEmpty else { return nil }
+        return Decimal(string: amountText)
+    }
+
+    private var isValid: Bool {
+        guard let amount = amountDecimal else { return false }
+        return amount > 0 && !isLoading
+    }
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+
+    private var formattedBalanceOwed: String {
+        formatCurrency(balanceOwed)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Theme.background.ignoresSafeArea()
+
+                VStack(spacing: 16) {
+                    // Current balance
+                    HStack {
+                        Text("Current")
+                            .font(Theme.bodyFont(size: 15))
+                            .foregroundStyle(Theme.textSecondary)
+                        Spacer()
+                        Text(balanceOwed > 0 ? "Owes \(formattedBalanceOwed)" : balanceOwed < 0 ? "You owe \(formatCurrency(-balanceOwed))" : "Settled")
+                            .font(Theme.font(size: 17, weight: .bold))
+                            .foregroundStyle(balanceOwed > 0 ? Theme.accent : balanceOwed < 0 ? Theme.danger : Theme.textSecondary)
+                    }
+                    .padding(14)
+                    .background(Theme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+
+                    // Direction picker
+                    Picker("Direction", selection: $isCredit) {
+                        Text("Add to Balance").tag(false)
+                        Text("Credit / Reduce").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+
+                    // Amount display
+                    VStack(spacing: 4) {
+                        Text("$\(amountText.isEmpty ? "0" : amountText)")
+                            .font(Theme.font(size: 36, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+
+                        Text(isCredit
+                            ? "This will reduce what \(player.name) owes"
+                            : "This will increase what \(player.name) owes")
+                            .font(Theme.bodyFont(size: 12))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(Theme.bodyFont(size: 13))
+                            .foregroundStyle(Theme.danger)
+                    }
+
+                    Spacer()
+
+                    // Keypad + CTA
+                    NumericKeypadView(text: $amountText)
+
+                    Button {
+                        Task { await submitAdjustment() }
+                    } label: {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.background))
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        } else {
+                            Text("CONFIRM ADJUSTMENT")
+                                .font(Theme.font(size: 16, weight: .bold))
+                                .foregroundStyle(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        }
+                    }
+                    .background(isValid ? Theme.accent : Theme.accent.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .disabled(!isValid)
+                }
+                .padding()
+            }
+            .navigationTitle("Adjust Balance")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+        }
+    }
+
+    private func submitAdjustment() async {
+        guard let amount = amountDecimal else { return }
+        isLoading = true
+        errorMessage = nil
+
+        let signedAmount = isCredit ? -amount : amount
+        let description = "Balance adjustment"
+
+        let request = AdjustBalanceRequest(
+            playerId: player.id.uuidString.lowercased(),
+            amount: "\(signedAmount)",
+            reason: description,
+            idempotencyKey: UUID().uuidString
+        )
+
+        do {
+            let _: AdjustBalanceResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "adjust_balance",
+                body: request
+            )
+
+            await MainActor.run {
+                let entry = LedgerEntry(
+                    amount: signedAmount,
+                    type: .adjustment,
+                    entryDescription: description,
+                    player: player
+                )
+                modelContext.insert(entry)
+                isLoading = false
+                dismiss()
+            }
+        } catch {
+            await MainActor.run {
+                isLoading = false
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 }
 
@@ -429,30 +841,40 @@ private struct PerformanceMetricCard: View {
 
 private struct DetailReasonChips: View {
     let chips: [String]
+    @State private var showingTagExplainer = false
 
     var body: some View {
         HStack(spacing: 6) {
             ForEach(Array(chips.prefix(3)), id: \.self) { chip in
-                Text(chip)
-                    .font(Theme.bodyFont(size: 10, weight: .medium))
-                    .foregroundStyle(Theme.textPrimary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(chipColor(for: chip).opacity(0.25))
-                    .clipShape(Capsule())
+                Button {
+                    showingTagExplainer = true
+                } label: {
+                    Text(chip)
+                        .font(Theme.bodyFont(size: 10, weight: .medium))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(chipColor(for: chip).opacity(0.25))
+                        .clipShape(Capsule())
+                }
             }
+        }
+        .sheet(isPresented: $showingTagExplainer) {
+            TagExplainerSheet()
+                .presentationDetents([.medium])
+                .presentationBackground(Theme.background)
         }
     }
 
     private func chipColor(for chip: String) -> Color {
         switch chip {
         case "Overdue": return Theme.danger
-        case "On heater": return Theme.gold
-        case "Cold streak": return Theme.accentTertiary
-        case "High roller": return Theme.accentSecondary
-        case "Multi-Pick heavy": return Theme.scheduled
-        case "High volatility": return Theme.warning
-        case "Large pending": return Theme.accent
+        case "On Heater": return Theme.gold
+        case "Cold Streak": return Theme.accentTertiary
+        case "Whale": return Theme.accentSecondary
+        case "Parlay Demon": return Theme.scheduled
+        case "Degen": return Theme.warning
+        case "Picks Pending": return Theme.accent
         default: return Theme.textMuted
         }
     }
@@ -543,14 +965,42 @@ private struct MarketMixBar: View {
 
 private struct RecentActivitySection: View {
     let playerBets: [Bet]
+    let playerLedgerEntries: [LedgerEntry]
     @Query private var events: [Event]
+    @State private var showAll = false
 
-    private var sortedBets: [Bet] {
-        playerBets.sorted { $0.createdAt > $1.createdAt }
+    private enum ActivityItem: Identifiable {
+        case bet(Bet)
+        case ledger(LedgerEntry)
+
+        var id: String {
+            switch self {
+            case .bet(let bet): return "bet-\(bet.id)"
+            case .ledger(let entry): return "ledger-\(entry.id)"
+            }
+        }
+
+        var date: Date {
+            switch self {
+            case .bet(let bet): return bet.createdAt
+            case .ledger(let entry): return entry.createdAt
+            }
+        }
     }
 
-    private var displayBets: [Bet] {
-        Array(sortedBets.prefix(10))
+    private var activities: [ActivityItem] {
+        var items: [ActivityItem] = []
+        for bet in playerBets {
+            items.append(.bet(bet))
+        }
+        for entry in playerLedgerEntries {
+            items.append(.ledger(entry))
+        }
+        return items.sorted { $0.date > $1.date }
+    }
+
+    private var displayItems: [ActivityItem] {
+        showAll ? activities : Array(activities.prefix(10))
     }
 
     private func eventName(for bet: Bet) -> String {
@@ -568,27 +1018,33 @@ private struct RecentActivitySection: View {
                 .foregroundStyle(Theme.textSecondary)
                 .tracking(1.0)
 
-            if playerBets.isEmpty {
-                Text("No betting history")
+            if activities.isEmpty {
+                Text("No activity yet")
                     .font(Theme.bodyFont(size: 15))
                     .foregroundStyle(Theme.textSecondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
             } else {
-                ForEach(displayBets, id: \.id) { bet in
-                    BetHistoryRow(bet: bet, eventName: eventName(for: bet))
-                    if bet.id != displayBets.last?.id {
+                ForEach(Array(displayItems.enumerated()), id: \.element.id) { index, item in
+                    activityRow(item)
+                    if index < displayItems.count - 1 {
                         Divider().overlay(Theme.elevatedBackground)
                     }
                 }
 
-                if sortedBets.count > 10 {
-                    HStack {
-                        Spacer()
-                        Text("View All (\(sortedBets.count))")
-                            .font(Theme.bodyFont(size: 13, weight: .medium))
-                            .foregroundStyle(Theme.accent)
-                        Spacer()
+                if activities.count > 10 {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showAll.toggle()
+                        }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text(showAll ? "Show Less" : "View All (\(activities.count))")
+                                .font(Theme.bodyFont(size: 13, weight: .medium))
+                                .foregroundStyle(Theme.accent)
+                            Spacer()
+                        }
                     }
                     .padding(.top, 4)
                 }
@@ -596,6 +1052,16 @@ private struct RecentActivitySection: View {
         }
         .padding(16)
         .cardStyle()
+    }
+
+    @ViewBuilder
+    private func activityRow(_ item: ActivityItem) -> some View {
+        switch item {
+        case .bet(let bet):
+            BetHistoryRow(bet: bet, eventName: eventName(for: bet))
+        case .ledger(let entry):
+            LedgerHistoryRow(entry: entry)
+        }
     }
 }
 
@@ -687,5 +1153,163 @@ private struct BetHistoryRow: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+}
+
+// MARK: - Ledger History Row
+
+private struct LedgerHistoryRow: View {
+    let entry: LedgerEntry
+
+    private var absAmount: String {
+        formatCurrency(entry.amount < 0 ? -entry.amount : entry.amount)
+    }
+
+    private var iconName: String {
+        switch entry.type {
+        case .adjustment: return "slider.horizontal.3"
+        case .paymentLogged: return "banknote"
+        case .reversal: return "arrow.uturn.backward"
+        case .settlement: return "checkmark.circle"
+        }
+    }
+
+    private var description: String {
+        switch entry.type {
+        case .adjustment:
+            if entry.amount > 0 {
+                return "Balance adjusted — owes \(absAmount) more"
+            } else {
+                return "Balance adjusted — \(absAmount) credited"
+            }
+        case .paymentLogged:
+            return "Payment received — \(absAmount)"
+        case .reversal:
+            return "Reversal — \(absAmount)"
+        case .settlement:
+            if entry.amount > 0 {
+                return "Pick settled — owes \(absAmount)"
+            } else if entry.amount < 0 {
+                return "Pick settled — won \(absAmount)"
+            } else {
+                return "Pick pushed"
+            }
+        }
+    }
+
+    private var badgeInfo: (text: String, color: Color) {
+        switch entry.type {
+        case .adjustment: return ("ADJ", Theme.warning)
+        case .paymentLogged: return ("PAY", Theme.accent)
+        case .reversal: return ("REV", Theme.danger)
+        case .settlement: return ("SETTLE", Theme.textMuted)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(formatDate(entry.createdAt))
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Text(badgeInfo.text)
+                    .font(Theme.bodyFont(size: 11, weight: .bold))
+                    .foregroundStyle(badgeInfo.color == Theme.textMuted ? Theme.textPrimary : .black)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(badgeInfo.color)
+                    .clipShape(Capsule())
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: iconName)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.accent)
+
+                Text(description)
+                    .font(Theme.bodyFont(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, h:mm a"
+        return formatter.string(from: date)
+    }
+
+    private func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+}
+
+// MARK: - Tag Explainer Sheet
+
+struct TagExplainerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private struct TagInfo: Identifiable {
+        let id = UUID()
+        let name: String
+        let description: String
+        let color: Color
+    }
+
+    private let tags: [TagInfo] = [
+        TagInfo(name: "Picks Pending", description: "This member has open picks waiting to be graded.", color: Theme.accent),
+        TagInfo(name: "Overdue", description: "Outstanding balance with no recent payment in the last 7 days.", color: Theme.danger),
+        TagInfo(name: "On Heater", description: "On a hot streak — winning big over the last 7 days.", color: Theme.gold),
+        TagInfo(name: "Cold Streak", description: "Losing consistently over the last 7 days.", color: Theme.accentTertiary),
+        TagInfo(name: "Whale", description: "Average pick size exceeds $200 over the last 30 days.", color: Theme.accentSecondary),
+        TagInfo(name: "Degen", description: "High day-to-day swings in pick results.", color: Theme.warning),
+        TagInfo(name: "Parlay Demon", description: "More than half of recent picks are multi-picks.", color: Theme.scheduled),
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Tags are auto-assigned based on each member's recent activity and help you spot trends at a glance.")
+                        .font(Theme.bodyFont(size: 14))
+                        .foregroundStyle(Theme.textSecondary)
+
+                    ForEach(tags) { tag in
+                        HStack(alignment: .top, spacing: 12) {
+                            Text(tag.name)
+                                .font(Theme.bodyFont(size: 11, weight: .medium))
+                                .foregroundStyle(Theme.textPrimary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(tag.color.opacity(0.25))
+                                .clipShape(Capsule())
+                                .frame(width: 120, alignment: .leading)
+
+                            Text(tag.description)
+                                .font(Theme.bodyFont(size: 13))
+                                .foregroundStyle(Theme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding()
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .navigationTitle("Member Tags")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+        }
     }
 }

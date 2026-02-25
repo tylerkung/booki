@@ -69,105 +69,77 @@ struct PaymentSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                // MARK: - Amount Section
-                Section {
-                    HStack {
-                        Text("$")
-                            .font(Theme.title2)
-                            .foregroundStyle(Theme.textMuted)
-                        TextField("0.00", text: $amount)
-                            .keyboardType(.decimalPad)
-                            .font(Theme.title2)
-                    }
-                } header: {
-                    Text("Amount")
-                } footer: {
-                    Text("Enter the payment amount")
-                }
-                .listRowBackground(Theme.cardBackground)
+            ZStack {
+                Theme.background.ignoresSafeArea()
 
-                // MARK: - Direction Section
-                Section {
+                VStack(spacing: 16) {
+                    // Amount display
+                    Text("$\(amount.isEmpty ? "0" : amount)")
+                        .font(Theme.font(size: 36, weight: .bold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 8)
+
+                    // Direction picker
                     Picker("Direction", selection: $direction) {
                         ForEach(PaymentDirection.allCases) { dir in
                             Text(dir.rawValue).tag(dir)
                         }
                     }
                     .pickerStyle(.segmented)
-                } header: {
-                    Text("Payment Direction")
-                } footer: {
-                    if direction == .playerPaidBookie {
-                        Text("\(player.name) is paying you. This reduces their balance (what they owe).")
-                    } else {
-                        Text("You are paying \(player.name). This increases their balance (what you owe them becomes what they have in credit).")
-                    }
-                }
-                .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Payment Method Section
-                Section {
-                    Picker("Method", selection: $paymentMethod) {
-                        ForEach(PaymentMethod.allCases) { method in
-                            Label(method.rawValue, systemImage: method.icon)
-                                .tag(method)
-                        }
-                    }
-                } header: {
-                    Text("Payment Method")
-                }
-                .listRowBackground(Theme.cardBackground)
-
-                // MARK: - Note Section
-                Section {
-                    TextField("Add a note (optional)", text: $note, axis: .vertical)
-                        .lineLimit(3...6)
-                } header: {
-                    Text("Note")
-                }
-                .listRowBackground(Theme.cardBackground)
-
-                // MARK: - Preview Section
-                Section {
-                    if let displayAmount = amountDecimal, let ledgerAmt = ledgerAmount {
-                        LabeledContent("Amount") {
-                            Text(formatCurrency(displayAmount))
-                                .fontWeight(.semibold)
-                        }
-
-                        LabeledContent("Direction") {
-                            Text(direction.rawValue)
-                        }
-
-                        LabeledContent("Method") {
-                            Label(paymentMethod.rawValue, systemImage: paymentMethod.icon)
-                        }
-
-                        LabeledContent("Balance Impact") {
-                            Text(formatCurrency(ledgerAmt))
-                                .foregroundStyle(ledgerAmt < 0 ? Theme.accent : Theme.danger)
-                                .fontWeight(.semibold)
-                        }
-
-                        if !note.trimmingCharacters(in: .whitespaces).isEmpty {
-                            LabeledContent("Note") {
-                                Text(note.trimmingCharacters(in: .whitespaces))
-                                    .foregroundStyle(Theme.textMuted)
+                    // Payment method + note
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Method")
+                                .font(Theme.bodyFont(size: 15))
+                                .foregroundStyle(Theme.textSecondary)
+                            Spacer()
+                            Picker("Method", selection: $paymentMethod) {
+                                ForEach(PaymentMethod.allCases) { method in
+                                    Text(method.rawValue).tag(method)
+                                }
                             }
+                            .tint(Theme.textPrimary)
                         }
-                    } else {
-                        Text("Enter an amount to see preview")
-                            .foregroundStyle(Theme.textMuted)
-                            .italic()
+                        .padding(12)
+
+                        Divider().overlay(Theme.elevatedBackground)
+
+                        TextField("Note (optional)", text: $note)
+                            .font(Theme.bodyFont(size: 15))
+                            .foregroundStyle(Theme.textPrimary)
+                            .padding(12)
                     }
-                } header: {
-                    Text("Preview")
+                    .background(Theme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+
+                    Text(direction == .playerPaidBookie
+                        ? "\(player.name) is paying you"
+                        : "You are paying \(player.name)")
+                        .font(Theme.bodyFont(size: 12))
+                        .foregroundStyle(Theme.textSecondary)
+
+                    Spacer()
+
+                    // Keypad + CTA
+                    NumericKeypadView(text: $amount)
+
+                    Button {
+                        savePayment()
+                    } label: {
+                        Text("RECORD PAYMENT")
+                            .font(Theme.font(size: 16, weight: .bold))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    }
+                    .background(isValidInput ? Theme.accent : Theme.accent.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .disabled(!isValidInput)
                 }
-                .listRowBackground(Theme.cardBackground)
+                .padding()
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.background)
             .navigationTitle("Record Payment")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -175,13 +147,7 @@ struct PaymentSheet: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        savePayment()
-                    }
-                    .disabled(!isValidInput)
+                    .foregroundStyle(Theme.accent)
                 }
             }
         }

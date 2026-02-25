@@ -17,7 +17,11 @@ struct PlayersListView: View {
     @State private var selectedPendingInvite: Invite? = nil
     @State private var showCopiedToast = false
     @State private var showDeletedToast = false
+    @State private var searchText = ""
+    @State private var activeFilter = "All"
     @AppStorage("deletedInviteIds") private var deletedInviteIdsString: String = ""
+
+    private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
 
     private var deletedInviteIds: Set<String> {
         Set(deletedInviteIdsString.split(separator: ",").map(String.init))
@@ -39,15 +43,40 @@ struct PlayersListView: View {
         playerSummaries.first { $0.player.id == player.id }
     }
 
-    private var filteredPlayers: [Player] {
-        var result = players
+    private var filteredSummaries: [PlayerAnalyticsSummary] {
+        var result = playerSummaries
 
         // Filter by archived status
         if !showArchived {
-            result = result.filter { $0.status != .archived }
+            result = result.filter { $0.player.status != .archived }
+        }
+
+        // Apply search
+        if !searchText.isEmpty {
+            result = result.filter { $0.player.name.localizedCaseInsensitiveContains(searchText) }
+        }
+
+        // Apply filter
+        switch activeFilter {
+        case "Attention needed":
+            result = result.filter { $0.pas.score >= 34 }
+        case "Overdue":
+            result = result.filter { $0.isOverdue }
+        case "High exposure":
+            result = result.filter { $0.exposure.grossExposure > 0 }
+        case "Big winners":
+            result = result.filter { $0.sevenDayPL < 0 }
+        case "Big losers":
+            result = result.filter { $0.sevenDayPL > 0 }
+        default:
+            break
         }
 
         return result
+    }
+
+    private var filteredPlayers: [Player] {
+        filteredSummaries.map(\.player)
     }
 
     var body: some View {
@@ -102,46 +131,102 @@ struct PlayersListView: View {
         }
     }
 
+    private var memberSearchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(Theme.textMuted)
+                .font(.system(size: 14))
+
+            TextField("Search members", text: $searchText)
+                .font(Theme.bodyFont(size: 15))
+                .foregroundStyle(Theme.textPrimary)
+
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Theme.textMuted)
+                        .font(.system(size: 14))
+                }
+            }
+        }
+        .padding(10)
+        .background(Theme.elevatedBackground)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+    }
+
+    private var memberFilterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Self.filterOptions, id: \.self) { filter in
+                    Button {
+                        activeFilter = filter
+                    } label: {
+                        Text(filter)
+                            .font(Theme.bodyFont(size: 13, weight: .medium))
+                            .foregroundStyle(activeFilter == filter ? .black : Theme.textSecondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(activeFilter == filter ? Theme.accent : Theme.elevatedBackground)
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+        }
+    }
+
     @ViewBuilder
     private var membersSection: some View {
-        if filteredPlayers.isEmpty && pendingInvites.isEmpty {
+        if players.filter({ $0.status != .archived }).isEmpty && pendingInvites.isEmpty {
             ContentUnavailableView(
                 "No Members",
                 systemImage: "person.2.slash",
                 description: Text("Add members to start managing your group.")
             )
             .padding(.top, 60)
-        } else if !filteredPlayers.isEmpty {
+        } else {
             VStack(spacing: 12) {
-                ForEach(filteredPlayers) { player in
-                    if let summary = summaryForPlayer(player) {
-                        NavigationLink(value: summary) {
-                            PlayerRowView(
-                                player: player,
-                                balance: balanceForPlayer(player),
-                                utilization: utilizationForPlayer(player)
-                            )
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Theme.cardBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        PlayerRowView(
-                            player: player,
-                            balance: balanceForPlayer(player),
-                            utilization: utilizationForPlayer(player)
-                        )
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
-                    }
+                memberSearchBar
+                memberFilterChips
+
+                if activeFilter != "All" || !searchText.isEmpty {
+                    Text("\(filteredSummaries.count) of \(playerSummaries.count) members")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
             .padding(.horizontal)
-            .padding(.top, pendingInvites.isEmpty ? 8 : 0)
+            .padding(.top, pendingInvites.isEmpty ? 8 : 12)
+            .padding(.bottom, 12)
+
+            if filteredPlayers.isEmpty && (activeFilter != "All" || !searchText.isEmpty) {
+                Text("No members match filters")
+                    .font(Theme.bodyFont(size: 15))
+                    .foregroundStyle(Theme.textMuted)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(filteredSummaries, id: \.player.id) { summary in
+                        NavigationLink(value: summary) {
+                            PlayerRowView(
+                                player: summary.player,
+                                balance: balanceForPlayer(summary.player),
+                                utilization: utilizationForPlayer(summary.player),
+                                summary: summary,
+                                expanded: true
+                            )
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .cardStyle()
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 0)
+            }
         }
     }
 
@@ -149,8 +234,8 @@ struct PlayersListView: View {
         Button {
             showingInviteSheet = true
         } label: {
-            Text("Invite Member")
-                .font(Theme.headline)
+            Text("INVITE MEMBER")
+                .font(Theme.font(size: 16, weight: .bold))
                 .foregroundStyle(Theme.background)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -367,6 +452,10 @@ struct PlayerRowView: View {
     let player: Player
     let balance: Decimal
     let utilization: Double
+    var summary: PlayerAnalyticsSummary?
+    var expanded: Bool = false
+
+    @State private var showingTagExplainer = false
 
     /// Whether to show collection status (only when player owes money)
     private var shouldShowCollectionStatus: Bool {
@@ -386,6 +475,7 @@ struct PlayerRowView: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 0
         return formatter.string(from: balance as NSDecimalNumber) ?? "$\(balance)"
     }
 
@@ -414,72 +504,147 @@ struct PlayerRowView: View {
     }
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(player.name)
-                        .font(Theme.headline)
+        VStack(alignment: .leading, spacing: 8) {
+            // Row 1: Name + badges → Balance
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(player.name)
+                            .font(Theme.headline)
 
-                    Text(statusText)
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.background)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(statusColor)
-                        .clipShape(Capsule())
-
-                    if shouldShowCollectionStatus, let collectionStatus = player.collectionStatus {
-                        Text(collectionStatus.displayName)
+                        Text(statusText)
                             .font(Theme.caption)
                             .foregroundStyle(Theme.background)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(collectionStatusColor)
+                            .background(statusColor)
                             .clipShape(Capsule())
+
+                        if shouldShowCollectionStatus, let collectionStatus = player.collectionStatus {
+                            Text(collectionStatus.displayName)
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.background)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(collectionStatusColor)
+                                .clipShape(Capsule())
+                        }
                     }
-                }
 
-                HStack(spacing: 12) {
-                    Text("Balance: \(formattedBalance)")
-                        .font(Theme.subheadline)
-                        .foregroundStyle(balanceColor)
-
-                    Text("Limit: \(formattedCreditLimit)")
+                    Text("Credit: \(formattedBalance) / \(formattedCreditLimit) · \(Int(utilization))%")
                         .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
+
+                Spacer()
+
+                Text(balanceLabel)
+                    .font(Theme.title3)
+                    .foregroundStyle(balanceColor)
             }
 
-            Spacer()
-
-            // Utilization percentage
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(Int(utilization))%")
-                    .font(Theme.title3)
-                    .foregroundStyle(utilizationColor)
-
-                Text("Utilized")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
+            // Expanded: extra metrics from summary
+            if expanded, let summary = summary {
+                expandedMetrics(summary)
             }
         }
         .padding(.vertical, 4)
     }
 
-    private var utilizationColor: Color {
-        if utilization >= 90 {
-            return Theme.danger
-        } else if utilization >= 70 {
-            return Theme.warning
-        } else {
-            return Theme.textPrimary
+    @ViewBuilder
+    private func expandedMetrics(_ summary: PlayerAnalyticsSummary) -> some View {
+        // Row 2: Key metrics
+        HStack(spacing: 0) {
+            metricColumn(label: "Open Activity", value: formatCurrencyShort(summary.exposure.grossExposure), color: summary.exposure.grossExposure > 0 ? Theme.textPrimary : Theme.textSecondary)
+            metricColumn(label: "7d P/L", value: formatSignedCurrencyShort(summary.sevenDayPL), color: summary.sevenDayPL > 0 ? Theme.accent : summary.sevenDayPL < 0 ? Theme.danger : Theme.textSecondary)
+            metricColumn(label: "Win Rate", value: "\(Int(summary.winRate * 100))%", color: Theme.textPrimary)
+            metricColumn(label: "Avg Pick", value: formatCurrencyShort(summary.avgBetSize30d), color: Theme.textPrimary)
+        }
+
+        // Row 3: Attention chips
+        if !summary.pas.reasonChips.isEmpty {
+            HStack(spacing: 6) {
+                ForEach(Array(summary.pas.reasonChips.prefix(3)), id: \.self) { chip in
+                    Button {
+                        showingTagExplainer = true
+                    } label: {
+                        Text(chip)
+                            .font(Theme.bodyFont(size: 10, weight: .medium))
+                            .foregroundStyle(Theme.textPrimary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(chipColor(for: chip).opacity(0.25))
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+            .sheet(isPresented: $showingTagExplainer) {
+                TagExplainerSheet()
+                    .presentationDetents([.medium])
+                    .presentationBackground(Theme.background)
+            }
         }
     }
 
+    private func metricColumn(label: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(Theme.bodyFont(size: 10))
+                .foregroundStyle(Theme.textMuted)
+            Text(value)
+                .font(Theme.bodyFont(size: 13, weight: .semibold))
+                .foregroundStyle(color)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func formatCurrencyShort(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+    }
+
+    private func formatSignedCurrencyShort(_ value: Decimal) -> String {
+        let absValue = value < 0 ? -value : value
+        let formatted = formatCurrencyShort(absValue)
+        if value > 0 { return "+\(formatted)" }
+        if value < 0 { return "-\(formatted)" }
+        return formatted
+    }
+
+    private func chipColor(for chip: String) -> Color {
+        switch chip {
+        case "Overdue": return Theme.danger
+        case "On Heater": return Theme.gold
+        case "Cold Streak": return Theme.accentTertiary
+        case "Whale": return Theme.accentSecondary
+        case "Parlay Demon": return Theme.scheduled
+        case "Degen": return Theme.warning
+        case "Picks Pending": return Theme.accent
+        default: return Theme.textMuted
+        }
+    }
+
+    private var balanceLabel: String {
+        if balance > 0 {
+            return "Owes \(formattedBalance)"
+        } else if balance < 0 {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .currency
+            formatter.currencyCode = "USD"
+            formatter.maximumFractionDigits = 0
+            let absFormatted = formatter.string(from: (-balance) as NSDecimalNumber) ?? "$\(-balance)"
+            return "You owe \(absFormatted)"
+        }
+        return "Settled"
+    }
+
     private var balanceColor: Color {
-        // Positive balance = player owes bookie (secondary color)
-        // Negative balance = bookie owes player (accent - player is winning)
-        balance >= 0 ? Theme.textSecondary : Theme.accent
+        if balance > 0 { return Theme.accent }
+        if balance < 0 { return Theme.danger }
+        return Theme.textSecondary
     }
 }
 
@@ -1194,40 +1359,60 @@ struct BalanceAdjustmentSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Amount", text: $amount)
-                        .keyboardType(.decimalPad)
+            ZStack {
+                Theme.background.ignoresSafeArea()
 
-                    Toggle("Credit (negative)", isOn: $isNegative)
-
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                } header: {
-                    Text("Adjustment Details")
-                } footer: {
-                    if isNegative {
-                        Text("A negative adjustment credits the member (reduces what they owe).")
-                    } else {
-                        Text("A positive adjustment debits the member (increases what they owe).")
+                VStack(spacing: 16) {
+                    // Direction picker
+                    Picker("Direction", selection: $isNegative) {
+                        Text("Add to Balance").tag(false)
+                        Text("Credit / Reduce").tag(true)
                     }
-                }
-                .listRowBackground(Theme.cardBackground)
+                    .pickerStyle(.segmented)
 
-                Section {
-                    if let value = amountDecimal {
-                        LabeledContent("Adjustment Amount") {
-                            Text(formatCurrency(value))
-                                .foregroundStyle(value >= 0 ? Theme.textSecondary : Theme.accent)
-                        }
+                    // Amount display
+                    VStack(spacing: 4) {
+                        Text("$\(amount.isEmpty ? "0" : amount)")
+                            .font(Theme.font(size: 36, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+
+                        Text(isNegative
+                            ? "This will reduce what \(player.name) owes"
+                            : "This will increase what \(player.name) owes")
+                            .font(Theme.bodyFont(size: 12))
+                            .foregroundStyle(Theme.textSecondary)
                     }
-                } header: {
-                    Text("Preview")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+
+                    // Description field
+                    TextField("Reason (required)", text: $description)
+                        .font(Theme.bodyFont(size: 15))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(12)
+                        .background(Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+
+                    Spacer()
+
+                    // Keypad + CTA
+                    NumericKeypadView(text: $amount)
+
+                    Button {
+                        saveAdjustment()
+                    } label: {
+                        Text("CONFIRM ADJUSTMENT")
+                            .font(Theme.font(size: 16, weight: .bold))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    }
+                    .background(isValidInput ? Theme.accent : Theme.accent.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .disabled(!isValidInput)
                 }
-                .listRowBackground(Theme.cardBackground)
+                .padding()
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.background)
             .navigationTitle("Adjust Balance")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1235,13 +1420,7 @@ struct BalanceAdjustmentSheet: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveAdjustment()
-                    }
-                    .disabled(!isValidInput)
+                    .foregroundStyle(Theme.accent)
                 }
             }
         }
@@ -1431,8 +1610,8 @@ struct InviteMemberSheet: View {
             Button {
                 generateInvite()
             } label: {
-                Text("Generate Link")
-                    .font(Theme.headline)
+                Text("GENERATE LINK")
+                    .font(Theme.font(size: 16, weight: .bold))
                     .foregroundStyle(Theme.background)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -1470,8 +1649,8 @@ struct InviteMemberSheet: View {
                 Button {
                     generateEmailInvite()
                 } label: {
-                    Text("Send Invite")
-                        .font(Theme.headline)
+                    Text("SEND INVITE")
+                        .font(Theme.font(size: 16, weight: .bold))
                         .foregroundStyle(Theme.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -1541,9 +1720,9 @@ struct InviteMemberSheet: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: linkCopied ? "checkmark" : "link")
-                        Text(linkCopied ? "Link Copied!" : "Copy Link")
+                        Text(linkCopied ? "LINK COPIED!" : "COPY LINK")
                     }
-                    .font(Theme.headline)
+                    .font(Theme.font(size: 16, weight: .bold))
                     .foregroundStyle(Theme.background)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -1557,9 +1736,9 @@ struct InviteMemberSheet: View {
                     ShareLink(item: url) {
                         HStack(spacing: 8) {
                             Image(systemName: "square.and.arrow.up")
-                            Text("Share")
+                            Text("SHARE")
                         }
-                        .font(Theme.headline)
+                        .font(Theme.font(size: 16, weight: .bold))
                         .foregroundStyle(Theme.accent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -1597,8 +1776,8 @@ struct InviteMemberSheet: View {
             Button {
                 generateInvite()
             } label: {
-                Text("Try Again")
-                    .font(Theme.headline)
+                Text("TRY AGAIN")
+                    .font(Theme.font(size: 16, weight: .bold))
                     .foregroundStyle(Theme.background)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)

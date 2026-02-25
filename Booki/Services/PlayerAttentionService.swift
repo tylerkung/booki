@@ -216,10 +216,10 @@ enum PlayerAttentionService {
 
         guard balanceOwed > 0 else { return (false, .zero) }
 
-        // Only bookie-initiated payments count for overdue tracking
-        let paymentEntries = playerEntries.filter { $0.type == .paymentLogged }
+        // Payments and credits (negative adjustments) reset the overdue clock
+        let creditEntries = playerEntries.filter { $0.type == .paymentLogged || $0.amount < 0 }
         let cutoff = Calendar.current.date(byAdding: .day, value: -thresholdDays, to: Date())!
-        let hasRecentPayment = paymentEntries.contains { $0.createdAt >= cutoff }
+        let hasRecentPayment = creditEntries.contains { $0.createdAt >= cutoff }
 
         if hasRecentPayment {
             return (false, .zero)
@@ -293,22 +293,22 @@ enum PlayerAttentionService {
         var chips: [(String, Double)] = []
 
         if exposure.grossExposure > 0 {
-            chips.append(("Large pending", a))
+            chips.append(("Picks Pending", a))
         }
         if overdue {
             chips.append(("Overdue", d))
         }
         if NSDecimalNumber(decimal: sevenDayPL).doubleValue < -200 {
-            chips.append(("On heater", b))  // Player winning = heater
+            chips.append(("On Heater", b))  // Player winning = heater
         }
         if NSDecimalNumber(decimal: sevenDayPL).doubleValue > 200 {
-            chips.append(("Cold streak", b))  // Player losing = cold streak from player perspective
+            chips.append(("Cold Streak", b))  // Player losing = cold streak from player perspective
         }
         if e > 0.5 {
-            chips.append(("High volatility", e))
+            chips.append(("Degen", e))
         }
         if NSDecimalNumber(decimal: avgBet).doubleValue > 200 {
-            chips.append(("High roller", 0.8))
+            chips.append(("Whale", 0.8))
         }
 
         // Parlay heavy: >50% of last 30d bets are parlays
@@ -317,7 +317,7 @@ enum PlayerAttentionService {
         if !recentBets.isEmpty {
             let parlayCount = recentBets.filter(\.isParlay).count
             if Double(parlayCount) / Double(recentBets.count) > 0.5 {
-                chips.append(("Multi-Pick heavy", 0.7))
+                chips.append(("Parlay Demon", 0.7))
             }
         }
 

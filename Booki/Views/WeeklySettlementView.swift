@@ -1271,108 +1271,93 @@ struct QuickPaymentSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                // MARK: - Amount Section
-                Section {
-                    VStack(alignment: .leading, spacing: 16) {
-                        // Amount input
-                        HStack {
-                            Text("$")
-                                .font(Theme.title2)
-                                .foregroundStyle(Theme.textMuted)
-                            TextField("0.00", text: $paymentAmount)
-                                .keyboardType(.decimalPad)
-                                .font(Theme.title2)
-                        }
+            ZStack {
+                Theme.background.ignoresSafeArea()
 
-                        // Quick buttons
-                        HStack(spacing: 12) {
+                VStack(spacing: 16) {
+                    // Outstanding balance
+                    HStack {
+                        Text("Outstanding")
+                            .font(Theme.bodyFont(size: 15))
+                            .foregroundStyle(Theme.textSecondary)
+                        Spacer()
+                        Text(formatCurrency(amountOwed))
+                            .font(Theme.font(size: 17, weight: .bold))
+                            .foregroundStyle(amountOwed > 0 ? Theme.accent : Theme.textSecondary)
+                    }
+                    .padding(14)
+                    .background(Theme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+
+                    // Amount display
+                    VStack(spacing: 4) {
+                        Text("$\(paymentAmount.isEmpty ? "0" : paymentAmount)")
+                            .font(Theme.font(size: 36, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+
+                        if amountOwed > 0 {
                             Button {
                                 paymentAmount = "\(amountOwed)"
                             } label: {
-                                Text("Full Payment")
-                                    .font(Theme.font(size: 15, weight: .semibold))
+                                Text("PAY IN FULL")
+                                    .font(Theme.bodyFont(size: 12, weight: .bold))
                                     .foregroundStyle(Theme.accent)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(Theme.accent.opacity(0.15))
-                                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
                             }
-                            .buttonStyle(.plain)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
 
-                            if amountOwed > 50 {
-                                Button {
-                                    paymentAmount = "\(amountOwed / 2)"
-                                } label: {
-                                    Text("Partial (50%)")
-                                        .font(Theme.font(size: 15, weight: .semibold))
-                                        .foregroundStyle(Theme.warning)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 10)
-                                        .background(Theme.warning.opacity(0.15))
-                                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    // Method + note
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Method")
+                                .font(Theme.bodyFont(size: 15))
+                                .foregroundStyle(Theme.textSecondary)
+                            Spacer()
+                            Picker("Method", selection: $selectedMethod) {
+                                ForEach(PaymentMethod.allCases) { method in
+                                    Text(method.rawValue).tag(method)
                                 }
-                                .buttonStyle(.plain)
                             }
+                            .tint(Theme.textPrimary)
                         }
+                        .padding(12)
+
+                        Divider().overlay(Theme.elevatedBackground)
+
+                        TextField("Note (optional)", text: $note)
+                            .font(Theme.bodyFont(size: 15))
+                            .foregroundStyle(Theme.textPrimary)
+                            .padding(12)
                     }
-                } header: {
-                    Text("Payment Amount")
-                } footer: {
-                    Text("Member owes \(formatCurrency(amountOwed))")
-                }
+                    .background(Theme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
 
-                // MARK: - Payment Method Section
-                Section {
-                    Picker("Method", selection: $selectedMethod) {
-                        ForEach(PaymentMethod.allCases) { method in
-                            Label(method.rawValue, systemImage: method.icon)
-                                .tag(method)
-                        }
+                    Spacer()
+
+                    // Keypad + CTA
+                    NumericKeypadView(text: $paymentAmount)
+
+                    Button {
+                        savePayment()
+                    } label: {
+                        Text("RECORD PAYMENT")
+                            .font(Theme.font(size: 16, weight: .bold))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding()
                     }
-                } header: {
-                    Text("Payment Method")
+                    .background(isValidInput ? Theme.accent : Theme.accent.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .disabled(!isValidInput)
                 }
+                .padding()
 
-                // MARK: - Note Section
-                Section {
-                    TextField("Add a note (optional)", text: $note, axis: .vertical)
-                        .lineLimit(3...6)
-                } header: {
-                    Text("Note")
-                }
-
-                // MARK: - Preview Section
-                if let displayAmount = amountDecimal {
-                    Section {
-                        LabeledContent("Amount") {
-                            Text(formatCurrency(displayAmount))
-                                .fontWeight(.semibold)
-                        }
-
-                        LabeledContent("Method") {
-                            Label(selectedMethod.rawValue, systemImage: selectedMethod.icon)
-                        }
-
-                        LabeledContent("Balance Impact") {
-                            Text("-\(formatCurrency(displayAmount))")
-                                .foregroundStyle(Theme.accent)
-                                .fontWeight(.semibold)
-                        }
-
-                        if !note.trimmingCharacters(in: .whitespaces).isEmpty {
-                            LabeledContent("Note") {
-                                Text(note.trimmingCharacters(in: .whitespaces))
-                                    .foregroundStyle(Theme.textMuted)
-                            }
-                        }
-                    } header: {
-                        Text("Preview")
-                    }
+                if showSuccessMessage {
+                    successOverlay
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.background)
             .navigationTitle("Record Payment")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1380,24 +1365,9 @@ struct QuickPaymentSheet: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        savePayment()
-                    }
-                    .disabled(!isValidInput)
+                    .foregroundStyle(Theme.accent)
                 }
             }
-            .overlay {
-                if showSuccessMessage {
-                    successOverlay
-                }
-            }
-        }
-        .onAppear {
-            // Pre-fill with full amount owed
-            paymentAmount = "\(amountOwed)"
         }
     }
 
