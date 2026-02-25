@@ -61,6 +61,7 @@ struct BetSlipSheet: View {
     /// US-009: State for locked events error alert (client-side pre-check)
     @State private var showLockedEventsAlert: Bool = false
     @State private var showFuturesParlayAlert: Bool = false
+    @State private var showMultiPickTierMessage: Bool = false
     @State private var lockedEventNames: [String] = []
 
     /// US-010: Track which stake field is active for the custom keypad
@@ -394,6 +395,14 @@ struct BetSlipSheet: View {
             // Primary: bet mode toggle
             betModeToggle
 
+            if showMultiPickTierMessage {
+                Text("Multi-Picks aren't available yet. Ask your organizer to upgrade.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.opacity)
+            }
+
             // Secondary: selection count + balance on one line
             HStack {
                 Text("\(betSlipManager.count) selection\(betSlipManager.count == 1 ? "" : "s")")
@@ -464,9 +473,14 @@ struct BetSlipSheet: View {
         HStack(spacing: 0) {
             ForEach(BetMode.allCases, id: \.self) { mode in
                 let isFuturesBlocked = mode == .parlay && betSlipManager.containsOutrightSelection && !bookieAllowsFuturesParlays
-                let isDisabled = isSubmitting || (mode == .parlay && betSlipManager.hasConflictingSelections) || isFuturesBlocked
+                let isTierBlocked = mode == .parlay && !bookieIsPro
+                let isDisabled = isSubmitting || (mode == .parlay && betSlipManager.hasConflictingSelections) || isFuturesBlocked || isTierBlocked
                 Button(action: {
-                    if isFuturesBlocked {
+                    if isTierBlocked {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showMultiPickTierMessage = true
+                        }
+                    } else if isFuturesBlocked {
                         showFuturesParlayAlert = true
                     } else {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -490,7 +504,7 @@ struct BetSlipSheet: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(isDisabled && !isFuturesBlocked)
+                .disabled(isDisabled && !isFuturesBlocked && !isTierBlocked)
             }
         }
         .background(Theme.elevatedBackground)
@@ -899,6 +913,18 @@ struct BetSlipSheet: View {
             }
         }
         return true
+    }
+
+    /// Whether the bookie is on Pro tier (for multi-pick gating)
+    private var bookieIsPro: Bool {
+        if let bookieId = player?.bookieId {
+            let predicate = #Predicate<Bookie> { $0.id == bookieId }
+            let descriptor = FetchDescriptor<Bookie>(predicate: predicate)
+            if let bookie = try? modelContext.fetch(descriptor).first {
+                return bookie.tier.isPro
+            }
+        }
+        return true // Default to allowing if bookie not found
     }
 
     /// Whether the parlay is blocked because it contains futures and the bookie disallows it
