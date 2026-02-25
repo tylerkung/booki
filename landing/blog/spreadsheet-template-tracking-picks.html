@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon_io/favicon-16x16.png">
+    <link rel="icon" type="image/x-icon" href="../assets/favicon_io/favicon.ico">
+    <meta name="description" content="A ready-to-use spreadsheet layout for tracking picks with columns, formulas, and sample data. Learn when it's time to upgrade to dedicated software.">
+    <title>Free Spreadsheet Template for Tracking Picks — Booki</title>
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://bookisports.com/blog/spreadsheet-template-tracking-picks.html">
+    <meta property="og:title" content="Free Spreadsheet Template for Tracking Picks — Booki">
+    <meta property="og:description" content="A ready-to-use spreadsheet layout for tracking picks with columns, formulas, and sample data. Learn when it's time to upgrade to dedicated software.">
+    <meta property="og:image" content="https://bookisports.com/assets/og-image.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Free Spreadsheet Template for Tracking Picks — Booki">
+    <meta name="twitter:description" content="A ready-to-use spreadsheet layout for tracking picks with columns, formulas, and sample data. Learn when it's time to upgrade to dedicated software.">
+    <meta name="twitter:image" content="https://bookisports.com/assets/og-image.png">
+
+    <link rel="canonical" href="https://bookisports.com/blog/spreadsheet-template-tracking-picks.html">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <nav class="site-nav">
+        <div class="container nav-content">
+            <a href="../index.html" class="nav-logo">
+                <img src="../assets/logo-booki-blk.svg" alt="Booki" />
+            </a>
+            <div class="nav-links">
+                <a href="../features.html" class="nav-link">Features</a>
+                <a href="../blog/" class="nav-link active">Blog</a>
+                <a href="../index.html#pricing" class="nav-link">Pricing</a>
+            </div>
+            <a href="../index.html#waitlist" class="btn-primary btn-nav">Get Early Access</a>
+            <button class="nav-hamburger" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+        <div class="nav-mobile">
+            <a href="../features.html" class="nav-link">Features</a>
+            <a href="../blog/" class="nav-link active">Blog</a>
+            <a href="../index.html#pricing" class="nav-link">Pricing</a>
+            <a href="../index.html#waitlist" class="btn-primary btn-nav-mobile">Get Early Access</a>
+        </div>
+    </nav>
+
+    <main>
+        <article class="blog-article">
+            <div class="container">
+                <header class="blog-article-header">
+                    <a href="../blog/" class="blog-back-link">&larr; Back to Blog</a>
+                    <h1>Free Spreadsheet Template for Tracking Picks</h1>
+                    <div class="blog-article-meta">
+                        <span>February 24, 2026</span>
+                        <span class="blog-meta-sep">&middot;</span>
+                        <span>7 min read</span>
+                        <span class="blog-meta-sep">&middot;</span>
+                        <span>By the Booki Team</span>
+                    </div>
+                </header>
+
+                <div class="blog-prose">
+                    <p>Every independent organizer needs a system for tracking picks. If you're just getting started or running a small operation, a well-structured spreadsheet can be surprisingly effective. It costs nothing, you control the data, and it forces you to understand the mechanics of pick tracking before investing in any software.</p>
+
+                    <p>In this guide, we'll walk through a spreadsheet layout you can copy into Google Sheets or Excel today, explain the columns and formulas you need, and show you sample data so you can see exactly how it works in practice.</p>
+
+                    <h2>Why You Need a Tracking System</h2>
+
+                    <p>Running an operation without a tracking system is a recipe for disputes and lost money. Even with just three or four members, picks add up fast during a busy sports weekend. Without a clear record of who picked what, at which odds, and for how much &mdash; you're relying on memory and text message threads to settle up.</p>
+
+                    <p>A spreadsheet gives you a single source of truth. Every pick is logged, every result is recorded, and every balance is calculated. When it's time to <a href="how-organizers-track-weekly-settlements.html">settle up at the end of the week</a>, there's no guesswork involved.</p>
+
+                    <h2>The Essential Columns</h2>
+
+                    <p>A good pick-tracking spreadsheet needs eight columns. Here's what each one captures and why it matters:</p>
+
+                    <ol>
+                        <li><strong>Date</strong> &mdash; When the pick was placed. Essential for weekly settlement grouping and resolving timing disputes.</li>
+                        <li><strong>Member</strong> &mdash; Who made the pick. You'll filter by this column to calculate individual balances.</li>
+                        <li><strong>Event</strong> &mdash; The game or match. Include both teams so there's no ambiguity about which event the pick was for.</li>
+                        <li><strong>Pick</strong> &mdash; What the member selected. Be specific: "Lakers ML" or "Chiefs -3.5", not just a team name.</li>
+                        <li><strong>Odds</strong> &mdash; The American odds at the time the pick was placed. This locks in the terms of the pick and prevents after-the-fact disputes.</li>
+                        <li><strong>Stake</strong> &mdash; How much the member risked. This is the amount they'll lose if the pick doesn't hit.</li>
+                        <li><strong>Result</strong> &mdash; Win, Loss, or Push. Fill this in after the event finishes.</li>
+                        <li><strong>Payout</strong> &mdash; The calculated return. For wins, this is the profit based on the odds and stake. For losses, it's the negative stake. For pushes, it's zero.</li>
+                    </ol>
+
+                    <h2>Sample Spreadsheet with Data</h2>
+
+                    <p>Here's what a completed week looks like in practice. This table shows picks from three members across a typical NFL Sunday:</p>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Member</th>
+                                <th>Event</th>
+                                <th>Pick</th>
+                                <th>Odds</th>
+                                <th>Stake</th>
+                                <th>Result</th>
+                                <th>Payout</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>2/23</td>
+                                <td>Alex</td>
+                                <td>Chiefs vs Bills</td>
+                                <td>Chiefs -3.5</td>
+                                <td>-110</td>
+                                <td>$50</td>
+                                <td>Win</td>
+                                <td>+$45.45</td>
+                            </tr>
+                            <tr>
+                                <td>2/23</td>
+                                <td>Alex</td>
+                                <td>Eagles vs Cowboys</td>
+                                <td>Over 47.5</td>
+                                <td>-105</td>
+                                <td>$30</td>
+                                <td>Loss</td>
+                                <td>-$30.00</td>
+                            </tr>
+                            <tr>
+                                <td>2/23</td>
+                                <td>Jordan</td>
+                                <td>Lakers vs Celtics</td>
+                                <td>Lakers ML</td>
+                                <td>+150</td>
+                                <td>$25</td>
+                                <td>Win</td>
+                                <td>+$37.50</td>
+                            </tr>
+                            <tr>
+                                <td>2/23</td>
+                                <td>Jordan</td>
+                                <td>Chiefs vs Bills</td>
+                                <td>Bills +3.5</td>
+                                <td>-110</td>
+                                <td>$40</td>
+                                <td>Loss</td>
+                                <td>-$40.00</td>
+                            </tr>
+                            <tr>
+                                <td>2/23</td>
+                                <td>Sam</td>
+                                <td>Eagles vs Cowboys</td>
+                                <td>Eagles ML</td>
+                                <td>-135</td>
+                                <td>$50</td>
+                                <td>Win</td>
+                                <td>+$37.04</td>
+                            </tr>
+                            <tr>
+                                <td>2/23</td>
+                                <td>Sam</td>
+                                <td>Lakers vs Celtics</td>
+                                <td>Celtics -4.5</td>
+                                <td>-110</td>
+                                <td>$35</td>
+                                <td>Push</td>
+                                <td>$0.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>At a glance, you can see the full picture: Alex is up $15.45, Jordan is down $2.50, and Sam is up $37.04 for the week. That's exactly the kind of clarity you need when settlement day arrives.</p>
+
+                    <h2>Key Formulas</h2>
+
+                    <p>The payout column is where the math lives. You'll need a formula that handles three scenarios based on the odds and result:</p>
+
+                    <ul>
+                        <li><strong>Wins with negative odds</strong> (favorites): Payout = Stake &divide; (Odds &divide; -100). For example, a $50 stake at -110 returns $50 &divide; 1.1 = $45.45 profit.</li>
+                        <li><strong>Wins with positive odds</strong> (underdogs): Payout = Stake &times; (Odds &divide; 100). A $25 stake at +150 returns $25 &times; 1.5 = $37.50 profit.</li>
+                        <li><strong>Losses:</strong> Payout = -Stake. The member loses their full stake amount.</li>
+                        <li><strong>Pushes:</strong> Payout = $0. No money changes hands.</li>
+                    </ul>
+
+                    <p>In Google Sheets, a formula combining these scenarios in a single cell might look like:</p>
+
+                    <blockquote>
+                        =IF(G2="Push", 0, IF(G2="Loss", -F2, IF(E2&lt;0, F2/(E2/-100), F2*(E2/100))))
+                    </blockquote>
+
+                    <p>For member balances, use a SUMIF at the bottom of your sheet: <code>=SUMIF(B:B, "Alex", H:H)</code> gives you Alex's running total for the week.</p>
+
+                    <h2>Organizing for Weekly Settlements</h2>
+
+                    <p>Keep each week on a separate tab. Label tabs by date range &mdash; "Feb 17-23", "Feb 24-Mar 2" &mdash; so you can quickly pull up any historical week if a dispute arises. At the bottom of each weekly tab, add a summary section with each member's net balance and whether they owe you or you owe them.</p>
+
+                    <p>This weekly structure aligns with the <a href="how-organizers-track-weekly-settlements.html">settlement workflow</a> most organizers follow: picks accumulate Monday through Sunday, balances are calculated Sunday night, and settlements happen Monday or Tuesday.</p>
+
+                    <h2>When Spreadsheets Start to Break Down</h2>
+
+                    <p>A spreadsheet works well for small operations, but it has real limitations that become painful as you grow. Here are the signs it's time to upgrade:</p>
+
+                    <ul>
+                        <li><strong>You're grading picks manually every weekend.</strong> Looking up scores for 30+ events and entering results by hand takes hours and introduces errors. One wrong result can cascade through multiple member balances. As we covered in our guide on <a href="common-mistakes-independent-organizers.html">common organizer mistakes</a>, manual grading errors are the number one cause of member disputes.</li>
+                        <li><strong>Members are messaging you picks in different formats.</strong> Some text "Lakers ML $50", others send "50 on LA". Without a standardized input method, you're transcribing and interpreting picks &mdash; another source of errors.</li>
+                        <li><strong>You can't enforce credit limits.</strong> Spreadsheets have no concept of a maximum stake or credit ceiling. A member can be deep in the red and you won't know until you manually check their running balance.</li>
+                        <li><strong>Settlement disputes are increasing.</strong> When there's no immutable record &mdash; just a spreadsheet that anyone with access could theoretically edit &mdash; trust erodes. Members start questioning results, and you have no audit trail to point to.</li>
+                        <li><strong>You have more than 10 active members.</strong> The volume of picks, the time spent grading, and the complexity of settlement calculations all grow linearly. What took 20 minutes with 5 members takes over an hour with 15.</li>
+                    </ul>
+
+                    <h2>Moving Beyond the Spreadsheet</h2>
+
+                    <p>When your spreadsheet starts holding you back, you have options. Traditional <a href="../pph-software-alternative.html">pay-per-head services</a> solve the automation problem but introduce per-head fees that scale with your member count. Modern alternatives like Booki offer the same automation &mdash; auto-grading, real-time balances, <a href="../bookie-ledger-software.html">immutable ledger tracking</a> &mdash; without the per-member pricing.</p>
+
+                    <p>The key features to look for in any upgrade:</p>
+
+                    <ul>
+                        <li><strong>Automatic grading</strong> that pulls live scores and settles picks without manual input</li>
+                        <li><strong>Credit limits</strong> that prevent members from overextending</li>
+                        <li><strong>An audit trail</strong> that records every pick, every result, and every settlement in a tamper-proof log</li>
+                        <li><strong>Real-time balances</strong> so both you and your members always know where they stand</li>
+                    </ul>
+
+                    <p>Start with the spreadsheet. Learn the mechanics. And when you're ready to scale, upgrade to a tool that handles the grunt work so you can focus on running your operation.</p>
+                </div>
+
+                <!-- Related Articles -->
+                <section class="blog-related">
+                    <h2>Related Articles</h2>
+                    <div class="blog-grid">
+                        <a href="how-organizers-track-weekly-settlements.html" class="blog-card">
+                            <div class="blog-card-content">
+                                <span class="blog-card-date">February 24, 2026</span>
+                                <h3 class="blog-card-title">How Organizers Track Weekly Settlements</h3>
+                                <p class="blog-card-excerpt">Why weekly settlements matter, manual vs automated approaches, and a step-by-step workflow to keep your ledger clean.</p>
+                            </div>
+                        </a>
+                        <a href="pph-vs-manual-ledger-systems.html" class="blog-card">
+                            <div class="blog-card-content">
+                                <span class="blog-card-date">February 24, 2026</span>
+                                <h3 class="blog-card-title">PPH vs Manual Ledger Systems: Which Is Right for You?</h3>
+                                <p class="blog-card-excerpt">A side-by-side comparison of pay-per-head services and manual ledger tracking — cost, features, and when to use each.</p>
+                            </div>
+                        </a>
+                        <a href="common-mistakes-independent-organizers.html" class="blog-card">
+                            <div class="blog-card-content">
+                                <span class="blog-card-date">February 24, 2026</span>
+                                <h3 class="blog-card-title">Common Mistakes Independent Organizers Make (and How to Avoid Them)</h3>
+                                <p class="blog-card-excerpt">The most frequent pitfalls — from poor record keeping to scaling too fast — and practical solutions for each.</p>
+                            </div>
+                        </a>
+                    </div>
+                </section>
+            </div>
+        </article>
+
+        <div class="section-divider"></div>
+
+        <!-- CTA -->
+        <section class="final-cta">
+            <div class="container">
+                <h2 class="final-cta-headline"><span class="gradient-text">Ready to upgrade?</span></h2>
+                <p class="final-cta-sub">Join the waitlist and be first in line when we launch.</p>
+                <form class="waitlist-form" name="waitlist-blog-spreadsheet" data-netlify="true">
+                    <input type="hidden" name="form-name" value="waitlist-blog-spreadsheet">
+                    <div class="waitlist-input-group">
+                        <input type="email" name="email" placeholder="Enter your email" required>
+                        <button type="submit" class="btn-primary">Get Early Access</button>
+                    </div>
+                    <p class="waitlist-privacy">We'll never share your email. Unsubscribe anytime.</p>
+                </form>
+                <div class="waitlist-success" style="display: none;">
+                    <span class="waitlist-success-icon">&#10003;</span>
+                    <p class="waitlist-success-title">You're on the list.</p>
+                    <p class="waitlist-success-sub">We'll be in touch when early access opens.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-content">
+            <img src="../assets/logo-booki-blk.svg" alt="Booki" class="footer-logo" />
+            <p class="footer-copyright">&copy; 2026 Booki. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="../privacy.html">Privacy Policy</a>
+                <a href="../terms.html">Terms of Service</a>
+                <a href="https://x.com/booki_sports" target="_blank" rel="noopener">Twitter</a>
+            </div>
+        </div>
+    </footer>
+    <script>
+        // Mobile nav toggle
+        document.querySelector('.nav-hamburger').addEventListener('click', function() {
+            document.querySelector('.site-nav').classList.toggle('nav-open');
+        });
+
+        // Waitlist form submission with success state
+        document.querySelectorAll('.waitlist-form').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var data = new URLSearchParams(new FormData(form)).toString();
+                fetch('/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: data
+                }).then(function() {
+                    form.style.display = 'none';
+                    var success = form.parentElement.querySelector('.waitlist-success');
+                    if (success) success.style.display = 'block';
+                }).catch(function() {
+                    form.style.display = 'none';
+                    var success = form.parentElement.querySelector('.waitlist-success');
+                    if (success) success.style.display = 'block';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -173,7 +173,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Target keywords: 'spreadsheet template picks', 'tracking picks spreadsheet', 'pick tracking template'. This is a high-value content piece — give real, usable advice. The HTML table should show columns like: Date, Member, Event, Pick, Odds, Stake, Result, Payout, Balance. Include 5-6 sample rows with realistic data. Style the table to match the dark theme (use border-color from theme, alternating row backgrounds). The 'limitations' section naturally leads to Booki as the solution. Use compliance language throughout."
     },
     {
