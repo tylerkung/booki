@@ -37,6 +37,7 @@ extension BetStatus: CaseIterable {
 
 struct BetsListView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(SyncService.self) private var syncService
     @Query private var bets: [Bet]
     @Query private var events: [Event]
 
@@ -157,6 +158,14 @@ struct BetsListView: View {
                 }
             }
             .background(Theme.background)
+            .refreshable {
+                await withCheckedContinuation { continuation in
+                    Task.detached {
+                        await syncService.sync()
+                        continuation.resume()
+                    }
+                }
+            }
             .navigationTitle("Picks")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -323,8 +332,13 @@ struct BetDetailView: View {
     @Query private var ledgerEntries: [LedgerEntry]
     @Query private var allBets: [Bet]
     @Query private var policies: [AcceptancePolicy]
+    @AppStorage("bookieTier") private var bookieTierRaw: String = "free"
 
     let bet: Bet
+
+    private var isPro: Bool {
+        BookieTier(rawValue: bookieTierRaw)?.isPro ?? false
+    }
 
     /// Get the current parlay push/void policy
     private var parlayPolicy: ParlayPushVoidPolicy {
@@ -613,8 +627,11 @@ struct BetDetailView: View {
 
     private var shouldShowActions: Bool {
         switch bet.status {
-        case .pending, .accepted, .graded, .settled:
+        case .pending, .accepted, .graded:
             return true
+        case .settled:
+            // Free tier has no actions on settled bets (reverse/override are Pro-only)
+            return isPro
         default:
             return false
         }
@@ -688,18 +705,20 @@ struct BetDetailView: View {
                 }
             }
 
-            if bet.gradeResult != nil {
+            if isPro, bet.gradeResult != nil {
                 actionButton("Override Grade", icon: "pencil.circle.fill", color: Theme.warning) {
                     prepareOverrideGradeSheet()
                 }
             }
 
         case .settled:
-            actionButton("Reverse Settlement", icon: "arrow.uturn.backward.circle.fill", color: Theme.danger) {
-                prepareReverseSettlementSheet()
+            if isPro {
+                actionButton("Reverse Settlement", icon: "arrow.uturn.backward.circle.fill", color: Theme.danger) {
+                    prepareReverseSettlementSheet()
+                }
             }
 
-            if bet.gradeResult != nil {
+            if isPro, bet.gradeResult != nil {
                 actionButton("Override Grade", icon: "pencil.circle.fill", color: Theme.warning) {
                     prepareOverrideGradeSheet()
                 }
@@ -798,14 +817,14 @@ struct BetDetailView: View {
                 Text(presenter.profitLine)
                     .font(Theme.bodyFont(size: 13, weight: .medium))
                     .foregroundStyle(presenter.profitColor)
-            }
-
-            if bet.isParlay && parlayBets.count > 1 {
-                HStack(spacing: 4) {
-                    ForEach(parlayBets) { leg in
-                        Circle()
-                            .fill(legStatusColor(for: leg))
-                            .frame(width: 8, height: 8)
+                if bet.isParlay && parlayBets.count > 1 {
+                    Spacer()
+                    HStack(spacing: 4) {
+                        ForEach(parlayBets) { leg in
+                            Circle()
+                                .fill(legStatusColor(for: leg))
+                                .frame(width: 8, height: 8)
+                        }
                     }
                 }
             }
@@ -819,7 +838,8 @@ struct BetDetailView: View {
                 odds: leg.odds,
                 eventName: detailEventName(for: leg),
                 league: detailEventLeague(for: leg),
-                gradeResult: leg.gradeResult
+                gradeResult: leg.gradeResult,
+                score: detailEventScore(for: leg)
             )
 
             if leg.gradeResult == nil && (leg.status == .accepted || leg.status == .readyToGrade) {
@@ -856,6 +876,13 @@ struct BetDetailView: View {
             return event.league
         }
         return bet.sportLeague
+    }
+
+    private func detailEventScore(for bet: Bet) -> String? {
+        guard let event = events.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) else { return nil }
+        guard let home = event.homeScore, let away = event.awayScore else { return nil }
+        guard event.awayTeam != "Outright" else { return nil }
+        return "\(away)-\(home)"
     }
 
     // MARK: - Financials Card
