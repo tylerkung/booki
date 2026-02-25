@@ -13,6 +13,8 @@ Started: Wed Feb 25 02:44:29 PST 2026
 - ProUpgradeSheet accepts optional `contextMessage: String?` — pass context-specific upsell text from each entry point
 - Bookie Settings is SettingsView.swift; Player Account is AccountView.swift — don't confuse them
 - Settings row layout: HStack(spacing: 14) with icon (20pt, accent, 28w frame) + title + Spacer + value + chevron, padded (.horizontal 16, .vertical 14)
+- Dashboard tier gating: use `bookieTier.isPro` checks in dashboardContent VStack — wrap sections in `if bookieTier.isPro { }` for hide, use ZStack+blur+overlay for blurred teasers
+- Sport performance placeholder: use static placeholder rows for blur target (ensures content visible even with no data)
 
 ---
 
@@ -68,4 +70,14 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - File-private helpers (sectionHeader, settingsDivider) in SettingsView.swift can't be used from other files — either inline or duplicate
   - Use @AppStorage("bookieTier") + BookieTier(rawValue:) for tier checks in views, not TierService (which is for non-View contexts)
   - Settings row pattern: icon (20pt, accent, 28w frame) + title (Theme.body, medium) + spacer + value + chevron, all in HStack(spacing: 14) with .padding(.horizontal, 16) .padding(.vertical, 14)
+---
+
+## 2026-02-25 - US-005
+- What was implemented: Dashboard tier gating — SportPerformanceSection blurred with frosted overlay + "Unlock with Pro" CTA on free tier, FuturesTrackingCard and RecentActivitySection completely hidden on free tier, placeholder sport rows for blur target
+- Files changed:
+  - Booki/Views/AnalyticsDashboardView.swift — added `showProUpgrade` state, `sportPerformanceGated` computed property with ZStack blur+overlay, `sportPerformancePlaceholder` with 3 static sport rows, wrapped FuturesTrackingCard and RecentActivitySection in `if bookieTier.isPro`
+- **Learnings for future iterations:**
+  - Use `.ultraThinMaterial` for frosted overlays on blurred content — works well on dark theme
+  - Always use placeholder data behind blur (not real data) — ensures the blurred area has visible content even for new bookies with no data
+  - The `bookieTier` property on AnalyticsDashboardView reads from `bookies.first?.tier ?? .free` — no @AppStorage needed since @Query already provides the data
 ---

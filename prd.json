@@ -98,7 +98,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "The dashboard is in AnalyticsDashboardView.swift. The blur overlay is the ONE blurred section in the entire app — keep it tasteful. Use ZStack for the blur + overlay card. The frosted overlay card should use .ultraThinMaterial or Theme.cardBackground with some opacity. Read isPro from the tier infrastructure built in US-001. Only ONE blur on the entire dashboard."
     },
     {
