@@ -92,3 +92,21 @@ Started: Tue Feb 24 21:16:16 PST 2026
   - invite.html is a standalone page with no nav bar — don't try to update it
   - Blog card grid is 2 columns on desktop, 1 column on mobile
 ---
+
+## 2026-02-24 - US-006
+- Created `landing/blog/how-organizers-track-weekly-settlements.html` — first blog post (~1000 words)
+- Article covers: why weekly settlements matter, manual workflow (6 steps), common pitfalls (5), automated approach, building a routine
+- Uses blog post template: nav, article header (title, date, read time, author), prose body with h2 sections, related articles section, footer
+- Proper heading hierarchy: h1 title, h2 section headings
+- Internal links to: `common-mistakes-independent-organizers.html`, `../bookie-ledger-software.html`, `../features.html`, `../index.html#waitlist`, `spreadsheet-template-tracking-picks.html`
+- Related articles section links to the other 3 planned blog posts
+- Added page to `landing/sitemap.xml` with monthly changefreq
+- Compliance-safe language throughout (organizer, members, picks, operation)
+- Files changed: landing/blog/how-organizers-track-weekly-settlements.html (new), landing/sitemap.xml, prd.json
+- **Learnings for future iterations:**
+  - Blog post template structure: nav → article (header + prose) → related articles → CTA → footer
+  - Blog article uses `og:type` of `article` instead of `website` for OG tags
+  - Related articles section uses same `.blog-grid` and `.blog-card` classes as the blog index
+  - Each blog post has a unique Netlify form name (e.g., `waitlist-blog-settlements`) to track conversions per post
+  - Back link (`← Back to Blog`) at top of article header for easy navigation
+---

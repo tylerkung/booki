@@ -3,89 +3,14 @@ Started: Mon Feb 24 2026
 ---
 
 ## Codebase Patterns
-- LiabilityService.calculatePayout(stake:odds:) returns profit only (not including stake)
-- American odds formatting: positive gets '+' prefix, negative is as-is
-- Theme.font() = Space Grotesk (titles), Theme.bodyFont() = IBM Plex Sans (body text)
-- Status colors: Theme.accent (won/open), Theme.danger (lost), Theme.warning (pending), Theme.textMuted (void)
-- Event display format: "league · awayTeam @ homeTeam"
-- americanToDecimal/decimalToAmerican helpers centralized in PickPresenter
-- Bet.eventDescription and Bet.sportLeague provide offline fallbacks when Event is nil
-- Always use StatusPill + PickPresenter.mapStatus for pick status display
-- UUID case sensitivity: iOS uppercase, PostgreSQL lowercase — always .lowercased() for comparison
-- Xcode IDE required for full builds — command-line swiftc can't resolve SwiftData macros
-- Complex @ViewBuilder bodies cause type-checker timeouts — extract sub-views proactively
-- Supabase migrations numbered sequentially: 001_, 002_, etc. in supabase/migrations/
-- Edge functions deployed with: npx supabase functions deploy <name> --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz
-- Edge functions validate JWT in code (getUserIdFromAuthHeader), not at gateway level
-- Shared helpers in supabase/functions/_shared/: cors.ts, supabase.ts, idempotency.ts, audit.ts, grading.ts
-- Settlement payout math (American odds): win positive = -(stake * odds/100), win negative = -(stake * 100/abs(odds)), loss = +stake, push/void = 0
-- Internal balance convention: positive = player owes bookie, negative = bookie owes player
-- Append-only ledger: corrections via reversal entries (negated amount, type='reversal'), never UPDATE/DELETE
-- auto_refresh_games has TWO grading paths: main loop (score refresh → grade) and catch-up (runCatchupGrading for stranded bets)
-- Events are shared (bookie_id=NULL) — never use bookies!inner() joins on events table, get bookie from bets
-- Bet.eventId is String not UUID — don't call .uuidString on it
-
+- Landing site is plain HTML/CSS/JS in landing/ directory — no build tools or frameworks
+- Dark theme: #0A0A12 background, #00F5D4 accent, Inter (body) + Space Grotesk (headings)
+- Nav bar pattern: copy from features.html <nav class="site-nav"> block
+- Footer pattern: copy from features.html footer block
+- OG tags pattern: see index.html <head> for complete example (og:type, og:url, og:title, og:description, og:image + Twitter card)
+- Compliance language: organizer (not bookie), member (not player), pick (not bet), stake (not wager)
+- Base URL: https://bookisports.com/
+- Existing CSS classes: .container, .section, .btn-primary, .nav-link, .nav-content
+- Relative paths from blog/: use ../ prefix for root landing assets (../styles.css, ../assets/)
+- Sitemap lives at landing/sitemap.xml
 ---
-## Tue Feb 24 11:24:28 PST 2026 - US-011 complete
-
----
-## Mon Feb 24 2026 - Post-Ralph polish & parlay auto-settlement
-
-### What was implemented
-- **Parlay auto-acceptance**: `submit_parlay` defaults `auto_accept_parlays` to `true` (was `false`)
-- **Parlay auto-settlement**: `auto_refresh_games` now grades parlay legs to `'graded'` (not `'settled'`), then `autoSettleParlays()` settles fully-graded tickets with combined odds and single ledger entry
-- **Invite UX improvements**: Tapping pending invite opens InviteMemberSheet with code pre-populated; inline copy-code icon next to code display; separate Copy Code (inline) and Copy Link (button) actions
-- **iOS 26 app icon**: Liquid glass icon for iOS 26+, legacy icon fallback for older versions via asset catalog `minimum-system-version`
-- **RLS fix**: `cleanUpSpuriousBookieRecord()` in AuthManager deletes leftover bookie records for player accounts (fixes sync returning 0 results)
-- **Rejected parlay display**: Declined bets map to `.push` settlement (shows "Returned" not "Potential")
-- **Track tab layout**: Fixed empty state margins and filter chip clipping
-
-### Key files changed
-- `supabase/functions/auto_refresh_games/index.ts` — parlay-aware grading + `autoSettleParlays()`
-- `supabase/functions/submit_parlay/index.ts` — default `auto_accept_parlays: true`
-- `Booki/Services/AuthManager.swift` — `cleanUpSpuriousBookieRecord()`
-- `Booki/Views/PlayersListView.swift` — invite copy code inline, pending invite tap opens sheet
-- `Booki/Assets.xcassets/AppIcon.appiconset/` — dual icon with iOS 26 minimum-system-version
-
-### Learnings
-- `get_user_bookie_id()` COALESCE returns bookie ID first — if user signs up then claims player invite, spurious bookie record breaks ALL RLS queries (returns wrong bookie_id)
-- Parlay legs must be graded to `'graded'` not `'settled'` — individual settlement creates per-leg ledger entries instead of one combined entry
-- iOS app icon must be exactly 1024x1024 — `@2x` exports from Icon Composer are 2048x2048 and need resizing
-- Asset catalog `minimum-system-version` key allows iOS 26 liquid glass icon with legacy fallback
-
----
-## Mon Feb 24 2026 - UI polish: tap targets, encryption, golf tab ordering
-
-### What was implemented
-- **Futures row tap target fix**: Added `.contentShape(Rectangle())` to outright market rows so tapping empty space between player name and odds button registers
-- **App Store encryption compliance**: Added `ITSAppUsesNonExemptEncryption = NO` to Info.plist to skip encryption questionnaire
-- **Golf league tab sorting**: Outright-only sports (golf) sort league tabs by earliest event start date; other sports keep hardcoded popularity order
-
-### Key files changed
-- `Booki/Views/SportPageView.swift` — `.contentShape(Rectangle())` on futures rows, `orderedLeagues` computed property
-- `Booki/Info.plist` — `ITSAppUsesNonExemptEncryption` key
-
-### Learnings
-- SwiftUI `Spacer()` inside a `Button` with `.buttonStyle(.plain)` doesn't register taps — need `.contentShape(Rectangle())`
-- `ITSAppUsesNonExemptEncryption = NO` in Info.plist skips App Store encryption compliance dialog on every upload
-
----
-## Mon Feb 24 2026 - Bookie Events overhaul, invite web links, Picks wordmark
-
-### What was implemented
-- **Bookie Events tab overhaul**: Persistent search bar (replacing collapsible inline search), sport category links when idle (matching player Search tab), wordmark logo in nav bar
-- **Bookie Picks tab wordmark**: Added BookiWordmark to top-left toolbar, matching Dashboard/Members
-- **Web invite links**: Invite copy link now generates `https://bookisports.com/invite/[code]` instead of deep link; new `invite.html` landing page auto-redirects to `booki://` deep link on iOS, shows branded fallback with code for non-app users
-- **Netlify redirect**: `/invite/*` → `invite.html` via rewrite rule in `netlify.toml`
-
-### Key files changed
-- `Booki/Views/EventsListView.swift` — persistent search bar, sport categories idle view, wordmark toolbar
-- `Booki/Views/BetsListView.swift` — wordmark toolbar
-- `Booki/Views/PlayersListView.swift` — web URL for invite link copy
-- `landing/invite.html` — new invite redirect/landing page
-- `landing/netlify.toml` — redirect rule for `/invite/*`
-
-### Learnings
-- Netlify redirects with `status = 200` serve the target file while keeping the original URL (rewrite, not redirect)
-- Auto deep link on iOS: `window.location.href = 'booki://...'` triggers app open if installed, falls through silently if not
-- `ITSAppUsesNonExemptEncryption = NO` in Info.plist skips App Store encryption compliance dialog on every upload
