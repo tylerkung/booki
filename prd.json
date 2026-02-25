@@ -195,7 +195,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Target keywords: 'bookie mistakes', 'organizer mistakes', 'sportsbook management tips'. Format each mistake as: numbered heading, description of the problem, why it matters, how to fix it. The tone should be empathetic and helpful — 'we've seen this' not 'you're doing it wrong'. Naturally mention Booki features where relevant (auto-grading prevents manual errors, credit limits prevent overexposure, etc.) but don't make every solution 'use Booki'. Use compliance language. Cross-link to the how-to-run-your-own-sportsbook landing page."
     },
     {
