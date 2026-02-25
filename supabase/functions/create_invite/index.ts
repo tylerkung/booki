@@ -14,7 +14,8 @@ const INVITE_CODE_LENGTH = 8;
 const INVITE_EXPIRY_HOURS = 24;
 const MAX_CODE_RETRIES = 5;
 const MAX_OPEN_INVITES = 5;
-const MAX_PLAYERS = 10;
+const MEMBER_LIMIT_FREE = 3;
+const MEMBER_LIMIT_PRO = 50;
 
 function generateInviteCode(): string {
   const bytes = new Uint8Array(INVITE_CODE_LENGTH);
@@ -69,7 +70,7 @@ Deno.serve(async (req) => {
     // Validate caller is a bookie
     const { data: bookie, error: bookieError } = await client
       .from('bookies')
-      .select('id')
+      .select('id, tier')
       .eq('auth_user_id', userId)
       .single();
 
@@ -97,16 +98,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check player limit
+    // Check tier-based member limit
+    const bookieTier = bookie.tier ?? 'free';
+    const memberLimit = bookieTier === 'pro' ? MEMBER_LIMIT_PRO : MEMBER_LIMIT_FREE;
+
     const { count: playerCount } = await client
       .from('players')
       .select('*', { count: 'exact', head: true })
-      .eq('bookie_id', bookieId);
+      .eq('bookie_id', bookieId)
+      .not('auth_user_id', 'is', null);
 
-    if ((playerCount ?? 0) >= MAX_PLAYERS) {
+    if ((playerCount ?? 0) >= memberLimit) {
       return new Response(
-        JSON.stringify({ success: false, error: `You have reached the maximum of ${MAX_PLAYERS} members` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'member_limit_reached' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

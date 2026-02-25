@@ -217,12 +217,21 @@ Deno.serve(async (req) => {
       parlay_max_legs: policy?.parlay_max_legs ?? 4,
     };
 
-    // Check bookie's manual_bet_acceptance setting
+    // Check bookie's tier and manual_bet_acceptance setting
     const { data: bookie } = await client
       .from('bookies')
-      .select('manual_bet_acceptance')
+      .select('manual_bet_acceptance, tier')
       .eq('id', requestBookieId)
       .single();
+
+    // Tier enforcement: parlays require Pro
+    const bookieTier = bookie?.tier ?? 'free';
+    if (bookieTier !== 'pro') {
+      return new Response(
+        JSON.stringify({ success: false, error: 'pro_required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Collect policy violation reasons
     const policyViolations: string[] = [];
