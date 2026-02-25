@@ -930,20 +930,22 @@ struct BetDetailView: View {
                     detailLabeledRow(label: "Member", value: player.name)
                 }
 
-                NavigationLink {
-                    BetHistoryView(betId: bet.id)
-                } label: {
-                    HStack {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .foregroundStyle(Theme.accent)
-                        Text("View History")
-                            .font(Theme.bodyFont(size: 14))
-                            .foregroundStyle(Theme.textPrimary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(Theme.caption)
+                if let player = bet.player {
+                    NavigationLink {
+                        PlayerPickHistoryView(player: player)
+                    } label: {
+                        HStack {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .foregroundStyle(Theme.accent)
+                            Text("View Member History")
+                                .font(Theme.bodyFont(size: 14))
+                                .foregroundStyle(Theme.textPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(Theme.caption)
                             .foregroundStyle(Theme.textMuted)
                     }
+                }
                 }
             }
             .padding(12)

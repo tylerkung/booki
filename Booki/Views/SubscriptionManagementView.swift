@@ -1,11 +1,22 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Request/Response Models
+
+private struct PortalRequest: Encodable {}
+
+private struct PortalResponse: Decodable {
+    let success: Bool
+    let url: String?
+    let error: String?
+}
+
 /// Subscription management screen for Pro bookies to view plan details.
 struct SubscriptionManagementView: View {
     @Query private var bookies: [Bookie]
     @Query private var players: [Player]
-    @State private var showingManageAlert = false
+    @State private var isLoadingPortal = false
+    @State private var portalError: String?
 
     private var currentBookie: Bookie? {
         bookies.first
@@ -95,7 +106,7 @@ struct SubscriptionManagementView: View {
 
                 VStack(spacing: 0) {
                     Button {
-                        showingManageAlert = true
+                        Task { await openCustomerPortal() }
                     } label: {
                         HStack(spacing: 14) {
                             Image(systemName: "creditcard")
@@ -110,15 +121,28 @@ struct SubscriptionManagementView: View {
 
                             Spacer()
 
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Theme.textMuted)
+                            if isLoadingPortal {
+                                ProgressView()
+                                    .tint(Theme.textMuted)
+                            } else {
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Theme.textMuted)
+                            }
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                     }
+                    .disabled(isLoadingPortal)
                 }
                 .cardStyle()
+
+                if let portalError {
+                    Text(portalError)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.danger)
+                        .padding(.horizontal, 4)
+                }
 
                 Text("Cancel anytime. Your existing members and data are preserved.")
                     .font(Theme.caption)
@@ -131,14 +155,38 @@ struct SubscriptionManagementView: View {
         .background(Theme.background)
         .navigationTitle("Subscription")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Coming Soon", isPresented: $showingManageAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("Stripe billing portal will be available soon.")
-        }
     }
 
     // MARK: - Private Helpers
+
+    private func openCustomerPortal() async {
+        isLoadingPortal = true
+        portalError = nil
+
+        do {
+            let response: PortalResponse = try await EdgeFunctionService.shared.callFunction(
+                name: "create_customer_portal",
+                body: PortalRequest()
+            )
+
+            if response.success, let urlString = response.url, let url = URL(string: urlString) {
+                await MainActor.run {
+                    UIApplication.shared.open(url)
+                    isLoadingPortal = false
+                }
+            } else {
+                await MainActor.run {
+                    portalError = response.error ?? "Failed to open billing portal"
+                    isLoadingPortal = false
+                }
+            }
+        } catch {
+            await MainActor.run {
+                portalError = error.localizedDescription
+                isLoadingPortal = false
+            }
+        }
+    }
 
     private func detailRow(label: String, value: String) -> some View {
         HStack {

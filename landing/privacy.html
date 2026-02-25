@@ -57,7 +57,7 @@
         <section class="legal-page">
             <div class="container legal-container">
                 <h1>Privacy Policy</h1>
-                <p class="legal-updated">Last updated: February 25, 2026</p>
+                <p class="legal-updated">Last updated: February 26, 2026</p>
 
                 <div class="legal-content">
                     <h2>1. Introduction</h2>
@@ -81,11 +81,20 @@
                         <li>App usage patterns (features accessed, timestamps)</li>
                     </ul>
 
+                    <h3>Payment Information</h3>
+                    <p>If you subscribe to Booki Pro, payment processing is handled entirely by Stripe. We do not collect, store, or have access to your full credit card number, bank account details, or other sensitive financial information. We receive from Stripe only:</p>
+                    <ul>
+                        <li>A Stripe customer identifier (for managing your subscription)</li>
+                        <li>Subscription status (active, canceled, etc.)</li>
+                        <li>The email address associated with your Stripe account</li>
+                    </ul>
+                    <p>For details on how Stripe handles your payment data, see <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Stripe's Privacy Policy</a>.</p>
+
                     <h3>Information We Do Not Collect</h3>
                     <ul>
                         <li>We do not collect location data</li>
                         <li>We do not access your contacts, photos, or other device data</li>
-                        <li>We do not collect financial information such as bank accounts or credit card numbers</li>
+                        <li>We do not directly collect or store credit card numbers, bank account details, or other sensitive financial information (payment processing is handled by Stripe)</li>
                     </ul>
 
                     <h2>3. How We Use Your Information</h2>
@@ -93,8 +102,9 @@
                     <ul>
                         <li>Provide, maintain, and improve the App</li>
                         <li>Authenticate your identity and manage your account</li>
+                        <li>Process and manage your subscription (if applicable)</li>
                         <li>Sync your data across your devices</li>
-                        <li>Send important notifications about your account or the service</li>
+                        <li>Send important notifications about your account, subscription status, or the service</li>
                         <li>Respond to your inquiries and support requests</li>
                         <li>Detect, prevent, and address technical issues</li>
                     </ul>
@@ -138,6 +148,7 @@
                     <p>The App integrates with the following third-party services:</p>
                     <ul>
                         <li><strong>Supabase:</strong> Cloud database, authentication, and real-time sync</li>
+                        <li><strong>Stripe:</strong> Payment processing for Booki Pro subscriptions. Stripe receives your payment details directly — we never see or store your full card number. See <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Stripe's Privacy Policy</a>.</li>
                         <li><strong>The Odds API:</strong> Sports data and scores (no personal data is shared)</li>
                         <li><strong>Apple Sign-In:</strong> Optional authentication method</li>
                     </ul>

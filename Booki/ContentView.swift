@@ -159,7 +159,6 @@ struct ContentView: View {
             Tab("PICKS", systemImage: "list.bullet.rectangle") {
                 BetsListView()
             }
-            .badge(openBetsCount > 9 ? "9+" : (openBetsCount > 0 ? "\(openBetsCount)" : ""))
 
             Tab("MEMBERS", systemImage: "person.2.fill") {
                 PlayersListView()

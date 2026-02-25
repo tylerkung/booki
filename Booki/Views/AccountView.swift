@@ -42,6 +42,10 @@ struct AccountView: View {
     @State private var showingLogoutConfirmation = false
     @State private var showingLogoutError = false
     @State private var logoutErrorMessage = ""
+    @State private var showingDeleteConfirmation = false
+    @State private var showingDeleteFinalConfirmation = false
+    @State private var isDeletingAccount = false
+    @State private var deleteError: String?
     @State private var selectedTransactionFilter: TransactionFilter = .all
     @AppStorage("playerOddsFormat") private var oddsFormat: String = OddsFormat.american.rawValue
 
@@ -175,6 +179,48 @@ struct AccountView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(logoutErrorMessage)
+        }
+        .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Continue", role: .destructive) {
+                showingDeleteFinalConfirmation = true
+            }
+        } message: {
+            Text("This will permanently delete your account and all your data. This action cannot be undone.")
+        }
+        .alert("Are you sure?", isPresented: $showingDeleteFinalConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete My Account", role: .destructive) {
+                performAccountDeletion()
+            }
+        } message: {
+            Text("This is your final confirmation. Your account will be permanently deleted.")
+        }
+        .alert("Deletion Error", isPresented: Binding(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(deleteError ?? "")
+        }
+        .overlay {
+            if isDeletingAccount {
+                ZStack {
+                    Color.black.opacity(0.5).ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .tint(Theme.accent)
+                            .scaleEffect(1.5)
+                        Text("Deleting account...")
+                            .font(Theme.bodyFont(size: 15, weight: .medium))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .padding(32)
+                    .background(Theme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+            }
         }
     }
 
@@ -482,6 +528,16 @@ struct AccountView: View {
                 } label: {
                     playerMenuRow(icon: "rectangle.portrait.and.arrow.right", title: "Log Out", color: Theme.danger)
                 }
+
+                Divider()
+                    .background(Theme.border)
+                    .padding(.leading, 58)
+
+                Button {
+                    showingDeleteConfirmation = true
+                } label: {
+                    playerMenuRow(icon: "trash", title: "Delete Account", color: Theme.danger.opacity(0.7))
+                }
             }
         }
         .cardStyle()
@@ -497,7 +553,7 @@ struct AccountView: View {
             Text(title)
                 .font(Theme.body)
                 .fontWeight(.medium)
-                .foregroundStyle(title == "Log Out" ? Theme.danger : Theme.textPrimary)
+                .foregroundStyle(title == "Log Out" || title == "Delete Account" ? color : Theme.textPrimary)
 
             Spacer()
 
@@ -643,11 +699,38 @@ struct AccountView: View {
             do {
                 try await authManager.signOut()
                 BetSlipManager.shared.clearAll()
-                // Data clearing happens on next login via SyncService.sync()
-                // (hasCompletedInitialSync resets on new session)
             } catch {
                 logoutErrorMessage = error.localizedDescription
                 showingLogoutError = true
+            }
+        }
+    }
+
+    private func performAccountDeletion() {
+        isDeletingAccount = true
+        Task {
+            do {
+                let response: PlayerDeleteAccountResponse = try await EdgeFunctionService.shared.callFunction(
+                    name: "delete_account",
+                    body: PlayerEmptyRequest()
+                )
+                if response.success {
+                    await MainActor.run {
+                        isDeletingAccount = false
+                    }
+                    try await authManager.signOut()
+                    BetSlipManager.shared.clearAll()
+                } else {
+                    await MainActor.run {
+                        isDeletingAccount = false
+                        deleteError = response.error ?? "Failed to delete account"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isDeletingAccount = false
+                    deleteError = error.localizedDescription
+                }
             }
         }
     }
@@ -1092,4 +1175,10 @@ struct TransactionDetailView: View {
         ))
     }
     .modelContainer(for: [Player.self, Bet.self, LedgerEntry.self], inMemory: true)
+}
+
+private struct PlayerEmptyRequest: Encodable {}
+private struct PlayerDeleteAccountResponse: Decodable {
+    let success: Bool
+    let error: String?
 }

@@ -649,7 +649,7 @@ main {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
-    align-items: start;
+    align-items: stretch;
 }
 
 .pricing-grid--two {
@@ -763,6 +763,34 @@ main {
 
 .pricing-card--faded {
     opacity: 0.5;
+}
+
+.pph-cost-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 24px;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.pph-cost-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0 0 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.pph-cost-table td {
+    color: var(--text-secondary);
+    padding: 8px 0;
+    border-bottom: 1px solid var(--divider);
+}
+
+.pph-cost-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
 .pricing-card--faded:hover {
@@ -1125,6 +1153,10 @@ html, body {
 .reveal-scale.is-visible {
     opacity: 1;
     transform: scale(1) translateY(0);
+}
+
+.pricing-card--faded.reveal-scale.is-visible {
+    opacity: 0.5;
 }
 
 /* Respect reduced motion preference */

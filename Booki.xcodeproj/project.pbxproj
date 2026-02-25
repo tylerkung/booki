@@ -136,6 +136,9 @@
 		8A12345600A2 /* ProCheckoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A2 /* ProCheckoutView.swift */; };
 		8A12345600A3 /* ProSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A3 /* ProSuccessView.swift */; };
 		8A12345600A4 /* SubscriptionManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A4 /* SubscriptionManagementView.swift */; };
+		8A12345600A5 /* PlayerPickHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A5 /* PlayerPickHistoryView.swift */; };
+		8A12345600A6 /* PlayerPicksListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A6 /* PlayerPicksListView.swift */; };
+		8A12345600A7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A12345500A7 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -281,6 +284,9 @@
 		8A12345500A2 /* ProCheckoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProCheckoutView.swift; sourceTree = "<group>"; };
 		8A12345500A3 /* ProSuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProSuccessView.swift; sourceTree = "<group>"; };
 		8A12345500A4 /* SubscriptionManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManagementView.swift; sourceTree = "<group>"; };
+		8A12345500A5 /* PlayerPickHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPickHistoryView.swift; sourceTree = "<group>"; };
+		8A12345500A6 /* PlayerPicksListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPicksListView.swift; sourceTree = "<group>"; };
+		8A12345500A7 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -339,6 +345,7 @@
 				8A1234530006 /* Services */,
 				50F000032F33000000000000 /* Fonts */,
 				8A1234550003 /* Assets.xcassets */,
+				8A12345500A7 /* PrivacyInfo.xcprivacy */,
 				8A1234530007 /* Preview Content */,
 			);
 			path = Booki;
@@ -429,6 +436,8 @@
 				8A12345500A2 /* ProCheckoutView.swift */,
 				8A12345500A3 /* ProSuccessView.swift */,
 				8A12345500A4 /* SubscriptionManagementView.swift */,
+				8A12345500A5 /* PlayerPickHistoryView.swift */,
+				8A12345500A6 /* PlayerPicksListView.swift */,
 				8A1234530011 /* Onboarding */,
 				8A1234530012 /* Components */,
 			);
@@ -628,6 +637,7 @@
 			files = (
 				8A1234560004 /* Preview Assets.xcassets in Resources */,
 				8A1234560003 /* Assets.xcassets in Resources */,
+				8A12345600A7 /* PrivacyInfo.xcprivacy in Resources */,
 				50F000012F33000000000001 /* SpaceGrotesk-Regular.ttf in Resources */,
 				50F000012F33000000000002 /* SpaceGrotesk-Medium.ttf in Resources */,
 				50F000012F33000000000003 /* SpaceGrotesk-Bold.ttf in Resources */,
@@ -758,6 +768,8 @@
 				8A12345600A2 /* ProCheckoutView.swift in Sources */,
 				8A12345600A3 /* ProSuccessView.swift in Sources */,
 				8A12345600A4 /* SubscriptionManagementView.swift in Sources */,
+				8A12345600A5 /* PlayerPickHistoryView.swift in Sources */,
+				8A12345600A6 /* PlayerPicksListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -926,7 +938,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bookiapp.booki;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -959,7 +971,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bookiapp.booki;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

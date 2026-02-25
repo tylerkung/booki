@@ -25,9 +25,15 @@ When creating PRDs for this project:
 - Reference existing files to modify rather than creating new ones when possible
 
 ## Tech Stack
-- iOS 17+ / Swift 5.9+ / SwiftUI
-- SwiftData for local persistence + Supabase for cloud
-- MVVM with Services layer
+- **Platform**: iOS 18.0+ / Swift 6.0 / SwiftUI (strict concurrency enabled)
+- **Local persistence**: SwiftData
+- **Cloud backend**: Supabase (Postgres + Auth + Realtime + Edge Functions)
+- **Payments**: Stripe (checkout sessions, customer portal, webhooks)
+- **Transactional email**: Resend (SMTP relay for Supabase auth emails via `noreply@bookisports.com`)
+- **Architecture**: MVVM with Services layer
+- **Edge Functions**: Deno/TypeScript, deployed to Supabase with `--no-verify-jwt`
+- **Landing page**: Static HTML/CSS/JS in `landing/` directory
+- **Domain**: bookisports.com (DNS via GoDaddy)
 
 ## Styling
 
@@ -156,7 +162,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (February 24, 2026)
+## Current State (February 25, 2026)
 
 - **Branch**: `main`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
@@ -229,3 +235,14 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Landing pricing**: Free ($0) + Pro ($49.99) + faded Traditional PPH (~$10/head/week) comparison column
 - **Pro tier spec**: `docs/pro-tier-spec.md` — pricing, feature gates, enforcement, upgrade flows, payment plan
 - **sync_games markets**: Uses `h2h,spreads,totals` only (alternate markets require paid Odds API tier)
+- **Stripe integration**: `create_checkout_session`, `create_customer_portal`, `stripe_webhook` edge functions for Pro subscription ($49.99/mo). Webhook handles `checkout.session.completed` and `customer.subscription.updated/deleted` to sync tier.
+- **Account deletion**: `delete_account` edge function cancels Stripe subscription, deletes all bookie data in FK order, unlinks player records, deletes auth user. Two-step confirmation UI on both bookie Settings and player Account.
+- **Privacy manifest**: `PrivacyInfo.xcprivacy` declares email, name, userID, purchase history collection + UserDefaults API access (CA92.1)
+- **Age gate**: SignUpView requires 18+ confirmation checkbox before account creation
+- **Email verification**: Supabase email confirmations enabled, sent via Resend SMTP from `noreply@bookisports.com` (custom domain verified with SPF/DKIM/DMARC)
+- **Dashboard time selector**: 1D/1W/1M/All tabs filter headline PnL number, label updates dynamically
+- **Player pick history**: `PlayerPickHistoryView` + `PlayerPicksListView` with open/graded toggle, max 5 shown on member detail with "See All"
+- **Member detail restructure**: Recent Activity as single navigable row, picks section with open/graded filter below
+- **Settings reorder**: Profile, Change Password, Subscription, Pick Management, About, Log Out (removed Balance Alerts + Export Data)
+- **ProUpgradeSheet**: Uses `BookiPro` image asset, removed Restore Purchase placeholder
+- **Terms/Privacy updates**: Subscription billing section, Stripe references, pro-rated refund clause, payment data handling

@@ -191,3 +191,41 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - @AppStorage and SwiftData are two separate sources of truth — pick one and stick with it. SwiftData is the production source since it syncs with Supabase.
   - Odds API alternate markets (alternate_spreads, alternate_totals) require a paid tier — stick to h2h,spreads,totals on the free plan.
   - `paymentLogged` ledger entries represent balance clearing (collecting payment), not PnL — exclude from performance metrics.
+---
+
+## 2026-02-25 - App Store prep, Stripe integration, account deletion, age gate, email verification
+- What was implemented:
+  - **Stripe checkout**: `create_checkout_session` reads `STRIPE_PROMO_COUPON_ID` from env (optional promo support), `ProCheckoutView` opens Stripe-hosted checkout, `stripe_webhook` syncs tier on payment events
+  - **Account deletion**: `delete_account` edge function (cancels Stripe, deletes data in FK order, unlinks players, deletes auth user), two-step confirmation UI on bookie Settings + player Account
+  - **Privacy manifest**: `PrivacyInfo.xcprivacy` with collected data types (email, name, userID, purchase history) + UserDefaults API reason
+  - **Age gate**: 18+ confirmation checkbox on SignUpView, required for form submission
+  - **Email verification**: Resend SMTP configured for `noreply@bookisports.com` with SPF/DKIM/DMARC DNS records on GoDaddy, Supabase custom SMTP enabled
+  - **Dashboard time selector**: 1D/1W/1M/All tabs filtering headline PnL, dynamic subtitle label
+  - **Player pick history**: PlayerPickHistoryView + PlayerPicksListView with open/graded toggle
+  - **Member detail**: Recent Activity as single navigable row, picks section with filter + "See All" (max 5 shown)
+  - **Settings reorder**: Profile → Change Password → Subscription → Pick Management → About → Log Out
+  - **ProUpgradeSheet**: BookiPro image asset, removed Restore Purchase placeholder
+  - **Terms/Privacy**: Added subscription billing sections, Stripe references, payment data handling
+  - **Landing**: Updated pricing, scroll-reveal animations
+- Files changed:
+  - Booki/Views/Auth/SignUpView.swift — age confirmation checkbox
+  - Booki/Views/SettingsView.swift — reorder, account deletion, removed Balance Alerts/Export Data
+  - Booki/Views/AccountView.swift — player account deletion
+  - Booki/Views/AnalyticsDashboardView.swift — Timeframe enum, time selector tabs, filteredPL
+  - Booki/Views/PlayerAnalyticsDetailView.swift — recent activity row, picks section with toggle
+  - Booki/Views/PlayerPickHistoryView.swift — NEW: full pick history view
+  - Booki/Views/PlayerPicksListView.swift — NEW: picks list with open/graded filter
+  - Booki/Views/ProUpgradeSheet.swift — BookiPro image, removed restore purchase
+  - Booki/Views/ProCheckoutView.swift — Stripe checkout integration
+  - Booki/Views/SubscriptionManagementView.swift — Stripe portal link
+  - Booki/PrivacyInfo.xcprivacy — NEW: privacy manifest
+  - supabase/functions/delete_account/index.ts — NEW: account deletion edge function
+  - supabase/functions/create_checkout_session/index.ts — NEW: Stripe checkout session
+  - supabase/functions/stripe_webhook/index.ts — NEW: Stripe webhook handler
+  - landing/terms.html, privacy.html — subscription/billing sections
+- **Learnings for future iterations:**
+  - Resend provides SMTP relay for Supabase auth emails — configure custom SMTP in Supabase dashboard with Resend API key as password
+  - DNS records for email: SPF (merge into existing TXT), DKIM (new TXT on subdomain), DMARC (new TXT on `_dmarc`) — don't overwrite existing records
+  - GoDaddy auto-appends domain to CNAME/TXT host fields — only enter the subdomain part
+  - PrivacyInfo.xcprivacy is required for App Store — declares API usage reasons and collected data types
+  - Account deletion must cancel Stripe subscription before deleting data, and delete in FK dependency order

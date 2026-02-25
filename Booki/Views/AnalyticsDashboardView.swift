@@ -13,16 +13,47 @@ struct AnalyticsDashboardView: View {
     @State private var scrollToPlayers = false
     @State private var showSkeleton = true
     @State private var showProUpgrade = false
+    @State private var timeframe: Timeframe = .all
+
+    enum Timeframe: String, CaseIterable {
+        case day = "1D"
+        case week = "1W"
+        case month = "1M"
+        case all = "All"
+
+        var startDate: Date? {
+            switch self {
+            case .day: return Calendar.current.date(byAdding: .day, value: -1, to: .now)
+            case .week: return Calendar.current.date(byAdding: .day, value: -7, to: .now)
+            case .month: return Calendar.current.date(byAdding: .month, value: -1, to: .now)
+            case .all: return nil
+            }
+        }
+
+        var label: String {
+            switch self {
+            case .day: return "today"
+            case .week: return "this week"
+            case .month: return "this month"
+            case .all: return "all time"
+            }
+        }
+    }
 
     private var bookieTier: BookieTier {
         bookies.first?.tier ?? .free
     }
 
     private var lifetimePL: Decimal {
-        // Net PnL: sum of all ledger entries excluding payments (settle ups)
-        // Payments just clear balances — they don't affect PnL
         ledgerEntries
             .filter { $0.type != .paymentLogged }
+            .reduce(Decimal.zero) { $0 + $1.amount }
+    }
+
+    private var filteredPL: Decimal {
+        guard let start = timeframe.startDate else { return lifetimePL }
+        return ledgerEntries
+            .filter { $0.type != .paymentLogged && $0.createdAt >= start }
             .reduce(Decimal.zero) { $0 + $1.amount }
     }
 
@@ -331,14 +362,39 @@ struct AnalyticsDashboardView: View {
     // MARK: - Earnings Header
 
     private var earningsHeader: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(formatSignedCurrency(lifetimePL))
+        VStack(alignment: .leading, spacing: 8) {
+            Text(formatSignedCurrency(filteredPL))
                 .font(Theme.font(size: 34, weight: .bold))
-                .foregroundStyle(lifetimePL > 0 ? Theme.accent : lifetimePL < 0 ? Theme.danger : Theme.textPrimary)
+                .foregroundStyle(filteredPL > 0 ? Theme.accent : filteredPL < 0 ? Theme.danger : Theme.textPrimary)
 
-            Text("\(formatSignedCurrency(lifetimePL)) all time")
+            Text("\(formatSignedCurrency(filteredPL)) \(timeframe.label)")
                 .font(Theme.caption)
-                .foregroundStyle(lifetimePL != 0 ? (lifetimePL > 0 ? Theme.accent : Theme.danger) : Theme.textSecondary)
+                .foregroundStyle(filteredPL != 0 ? (filteredPL > 0 ? Theme.accent : Theme.danger) : Theme.textSecondary)
+
+            HStack(spacing: 0) {
+                ForEach(Timeframe.allCases, id: \.self) { tf in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            timeframe = tf
+                        }
+                    } label: {
+                        Text(tf.rawValue)
+                            .font(Theme.bodyFont(size: 13, weight: .semibold))
+                            .foregroundStyle(timeframe == tf ? Theme.textPrimary : Theme.textMuted)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(
+                                timeframe == tf
+                                    ? Theme.elevatedBackground
+                                    : Color.clear
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+            }
+            .padding(2)
+            .background(Theme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

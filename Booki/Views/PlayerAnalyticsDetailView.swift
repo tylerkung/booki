@@ -13,6 +13,7 @@ struct PlayerAnalyticsDetailView: View {
 
     @Query private var allLedgerEntries: [LedgerEntry]
     @Query private var allBets: [Bet]
+    @Query private var allEvents: [Event]
 
     @State private var showingArchiveConfirmation = false
     @State private var showingDeleteConfirmation = false
@@ -26,6 +27,14 @@ struct PlayerAnalyticsDetailView: View {
     // Edit name
     @State private var showingEditName = false
     @State private var editedName = ""
+
+    // Picks filter
+    @State private var picksFilter: PicksFilter = .open
+
+    enum PicksFilter: String, CaseIterable {
+        case open = "Open"
+        case graded = "Graded"
+    }
 
     private var player: Player { summary.player }
 
@@ -60,7 +69,8 @@ struct PlayerAnalyticsDetailView: View {
                 performanceSection
                 behaviorSection
                 reliabilitySection
-                RecentActivitySection(playerBets: livePlayerBets, playerLedgerEntries: livePlayerLedgerEntries)
+                recentActivityRow
+                playerPicksSection
             }
             .padding(16)
         }
@@ -443,6 +453,116 @@ struct PlayerAnalyticsDetailView: View {
                     Text(formatCurrency(liveOverdue.amount))
                         .font(Theme.font(size: 17, weight: .bold))
                         .foregroundStyle(Theme.danger)
+                }
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+
+    // MARK: - Recent Activity Row
+
+    private var recentActivityRow: some View {
+        NavigationLink {
+            PlayerPickHistoryView(player: player)
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 28, alignment: .center)
+
+                Text("Recent Activity")
+                    .font(Theme.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Theme.textPrimary)
+
+                Spacer()
+
+                Text("\(livePlayerLedgerEntries.count)")
+                    .font(Theme.bodyFont(size: 13, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+        }
+        .cardStyle()
+    }
+
+    // MARK: - Player Picks Section
+
+    private var openBets: [Bet] {
+        livePlayerBets
+            .filter { [.pending, .accepted, .readyToGrade].contains($0.status) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private var gradedBets: [Bet] {
+        livePlayerBets
+            .filter { [BetStatus.graded, .settled, .void].contains($0.status) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private var filteredBets: [Bet] {
+        picksFilter == .open ? openBets : gradedBets
+    }
+
+    private func eventName(for bet: Bet) -> String {
+        if let desc = bet.eventDescription { return desc }
+        if let event = allEvents.first(where: { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }) {
+            return "\(event.awayTeam) @ \(event.homeTeam)"
+        }
+        return "Unknown Event"
+    }
+
+    private var displayBets: [Bet] {
+        Array(filteredBets.prefix(5))
+    }
+
+    private var playerPicksSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("PICKS")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .tracking(1.0)
+
+                Spacer()
+
+                if filteredBets.count > 5 {
+                    NavigationLink {
+                        PlayerPicksListView(player: player, initialFilter: picksFilter)
+                    } label: {
+                        Text("See All (\(filteredBets.count))")
+                            .font(Theme.bodyFont(size: 13, weight: .medium))
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+            }
+
+            Picker("Filter", selection: $picksFilter) {
+                ForEach(PicksFilter.allCases, id: \.self) { filter in
+                    Text(filter.rawValue).tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            if filteredBets.isEmpty {
+                Text(picksFilter == .open ? "No open picks" : "No graded picks")
+                    .font(Theme.bodyFont(size: 15))
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+            } else {
+                ForEach(Array(displayBets.enumerated()), id: \.element.id) { index, bet in
+                    BetHistoryRow(bet: bet, eventName: eventName(for: bet))
+                    if index < displayBets.count - 1 {
+                        Divider().overlay(Theme.elevatedBackground)
+                    }
                 }
             }
         }
@@ -974,10 +1094,10 @@ private struct MarketMixBar: View {
 // MARK: - Recent Activity Section
 
 private struct RecentActivitySection: View {
+    let player: Player
     let playerBets: [Bet]
     let playerLedgerEntries: [LedgerEntry]
     @Query private var events: [Event]
-    @State private var showAll = false
 
     private enum ActivityItem: Identifiable {
         case bet(Bet)
@@ -1010,7 +1130,7 @@ private struct RecentActivitySection: View {
     }
 
     private var displayItems: [ActivityItem] {
-        showAll ? activities : Array(activities.prefix(10))
+        Array(activities.prefix(10))
     }
 
     private func eventName(for bet: Bet) -> String {
@@ -1045,14 +1165,12 @@ private struct RecentActivitySection: View {
                 }
 
                 if activities.count > 10 {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showAll.toggle()
-                        }
+                    NavigationLink {
+                        PlayerPickHistoryView(player: player)
                     } label: {
                         HStack {
                             Spacer()
-                            Text(showAll ? "Show Less" : "View All (\(activities.count))")
+                            Text("View All (\(activities.count))")
                                 .font(Theme.bodyFont(size: 13, weight: .medium))
                                 .foregroundStyle(Theme.accent)
                             Spacer()
@@ -1082,7 +1200,7 @@ private struct RecentActivitySection: View {
 
 // MARK: - Bet History Row
 
-private struct BetHistoryRow: View {
+struct BetHistoryRow: View {
     let bet: Bet
     let eventName: String
 
@@ -1171,7 +1289,7 @@ private struct BetHistoryRow: View {
 
 // MARK: - Ledger History Row
 
-private struct LedgerHistoryRow: View {
+struct LedgerHistoryRow: View {
     let entry: LedgerEntry
 
     private var description: String {

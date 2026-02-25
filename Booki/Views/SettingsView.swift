@@ -12,6 +12,10 @@ struct SettingsView: View {
     @State private var showingLogoutError = false
     @State private var logoutErrorMessage = ""
     @State private var showingProUpgrade = false
+    @State private var showingDeleteConfirmation = false
+    @State private var showingDeleteFinalConfirmation = false
+    @State private var isDeletingAccount = false
+    @State private var deleteError: String?
 
     private var isPro: Bool {
         bookies.first?.tier.isPro ?? false
@@ -29,26 +33,18 @@ struct SettingsView: View {
                         ProfileSettingsView()
                     }
                     menuDivider
-                    subscriptionRow
-                    menuDivider
-                    settingsMenuRow(icon: "bell.badge", title: "Balance Alerts") {
-                        BalanceAlertsSettingsView()
+                    settingsMenuRow(icon: "lock.rotation", title: "Change Password") {
+                        ChangePasswordView()
                     }
+                    menuDivider
+                    subscriptionRow
                     menuDivider
                     if isPro {
                         settingsMenuRow(icon: "hand.raised", title: "Pick Management") {
                             PickManagementSettingsView()
                         }
-                        menuDivider
-                        settingsMenuRow(icon: "square.and.arrow.up", title: "Export Data") {
-                            ExportDataView()
-                        }
                     } else {
                         pickManagementProRow
-                    }
-                    menuDivider
-                    settingsMenuRow(icon: "lock.rotation", title: "Change Password") {
-                        ChangePasswordView()
                     }
                     menuDivider
                     settingsMenuRow(icon: "info.circle", title: "About") {
@@ -68,6 +64,26 @@ struct SettingsView: View {
                                 .font(Theme.body)
                                 .fontWeight(.medium)
                                 .foregroundStyle(Theme.danger)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                    menuDivider
+                    Button {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 20))
+                                .foregroundStyle(Theme.danger.opacity(0.7))
+                                .frame(width: 28, alignment: .center)
+
+                            Text("Delete Account")
+                                .font(Theme.body)
+                                .fontWeight(.medium)
+                                .foregroundStyle(Theme.danger.opacity(0.7))
 
                             Spacer()
                         }
@@ -97,6 +113,48 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingProUpgrade) {
                 ProUpgradeSheet()
+            }
+            .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Continue", role: .destructive) {
+                    showingDeleteFinalConfirmation = true
+                }
+            } message: {
+                Text("This will permanently delete your account, all your data, members, picks, and history. This action cannot be undone.")
+            }
+            .alert("Are you sure?", isPresented: $showingDeleteFinalConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete My Account", role: .destructive) {
+                    performAccountDeletion()
+                }
+            } message: {
+                Text("This is your final confirmation. Your account and all associated data will be permanently deleted.")
+            }
+            .alert("Deletion Error", isPresented: Binding(
+                get: { deleteError != nil },
+                set: { if !$0 { deleteError = nil } }
+            )) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(deleteError ?? "")
+            }
+            .overlay {
+                if isDeletingAccount {
+                    ZStack {
+                        Color.black.opacity(0.5).ignoresSafeArea()
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .tint(Theme.accent)
+                                .scaleEffect(1.5)
+                            Text("Deleting account...")
+                                .font(Theme.bodyFont(size: 15, weight: .medium))
+                                .foregroundStyle(Theme.textPrimary)
+                        }
+                        .padding(32)
+                        .background(Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                }
             }
         }
     }
@@ -260,6 +318,40 @@ struct SettingsView: View {
             }
         }
     }
+
+    private func performAccountDeletion() {
+        isDeletingAccount = true
+        Task {
+            do {
+                let response: DeleteAccountResponse = try await EdgeFunctionService.shared.callFunction(
+                    name: "delete_account",
+                    body: EmptyRequest()
+                )
+                if response.success {
+                    await MainActor.run {
+                        isDeletingAccount = false
+                    }
+                    try await authManager.signOut()
+                } else {
+                    await MainActor.run {
+                        isDeletingAccount = false
+                        deleteError = response.error ?? "Failed to delete account"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isDeletingAccount = false
+                    deleteError = error.localizedDescription
+                }
+            }
+        }
+    }
+}
+
+private struct EmptyRequest: Encodable {}
+private struct DeleteAccountResponse: Decodable {
+    let success: Bool
+    let error: String?
 }
 
 // MARK: - Profile Settings

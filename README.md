@@ -358,11 +358,16 @@ The app is **local-first** with cloud sync:
 ## Technical Details
 
 ### Tech Stack
-- **Platform**: iOS 17+
-- **Language**: Swift 5.9+
+- **Platform**: iOS 18.0+
+- **Language**: Swift 6.0 (strict concurrency enabled)
 - **UI Framework**: SwiftUI
 - **Local Storage**: SwiftData
-- **Cloud Backend**: Supabase (Postgres + Auth + Realtime)
+- **Cloud Backend**: Supabase (Postgres + Auth + Realtime + Edge Functions)
+- **Payments**: Stripe (subscription checkout, customer portal, webhooks)
+- **Transactional Email**: Resend (SMTP relay via `noreply@bookisports.com`)
+- **Edge Functions**: Deno/TypeScript (12+ functions for server-authoritative operations)
+- **Landing Page**: Static HTML/CSS/JS
+- **Domain**: bookisports.com (DNS via GoDaddy)
 - **Architecture**: MVVM with Services layer
 
 ### Styling System
@@ -440,4 +445,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 24, 2026 - Welcome screen animation, player tab header titles, change password, about page links, ToS redesign, bookie settings inline logout, dashboard reorder, badge positioning*
+*Last updated: February 25, 2026 - Stripe Pro subscription, account deletion, age gate, email verification (Resend), privacy manifest, dashboard time selector, player pick history, settings restructure, App Store prep*

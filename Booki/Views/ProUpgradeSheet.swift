@@ -15,14 +15,10 @@ struct ProUpgradeSheet: View {
                     VStack(spacing: 24) {
                         // Logo + heading
                         VStack(spacing: 12) {
-                            Image("BookiLogo")
+                            Image("BookiPro")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 120)
-
-                            Text("PRO")
-                                .font(Theme.font(size: 32, weight: .bold))
-                                .foregroundStyle(Theme.accent)
+                                .frame(maxWidth: 200)
 
                             Text("$49.99 / month")
                                 .font(Theme.bodyFont(size: 17, weight: .medium))
@@ -76,14 +72,6 @@ struct ProUpgradeSheet: View {
                                 .padding(.vertical, 16)
                                 .background(Theme.accent)
                                 .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
-                        }
-
-                        Button {
-                            // Restore purchase — placeholder
-                        } label: {
-                            Text("Already Pro? Restore Purchase")
-                                .font(Theme.bodyFont(size: 13))
-                                .foregroundStyle(Theme.textMuted)
                         }
 
                         HStack(spacing: 4) {

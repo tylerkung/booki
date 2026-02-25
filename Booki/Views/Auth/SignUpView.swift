@@ -16,6 +16,7 @@ struct SignUpView: View {
     @State private var isLoading: Bool = false
     @State private var showSuccessAlert: Bool = false
     @State private var errorMessage: String?
+    @State private var ageConfirmed: Bool = false
 
     // MARK: - Validation
 
@@ -40,7 +41,8 @@ struct SignUpView: View {
         !confirmPassword.isEmpty &&
         email.contains("@") &&
         password.count >= 8 &&
-        password == confirmPassword
+        password == confirmPassword &&
+        ageConfirmed
     }
 
     // MARK: - Actions
@@ -141,6 +143,23 @@ struct SignUpView: View {
                                 .font(Theme.caption)
                                 .foregroundStyle(Theme.danger)
                         }
+                    }
+                }
+                .padding(.horizontal, 24)
+
+                // Age Confirmation
+                Button {
+                    ageConfirmed.toggle()
+                } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: ageConfirmed ? "checkmark.square.fill" : "square")
+                            .foregroundStyle(ageConfirmed ? Theme.accent : Theme.textMuted)
+                            .font(.system(size: 20))
+
+                        Text("I confirm that I am at least 18 years of age")
+                            .font(Theme.bodyFont(size: 14))
+                            .foregroundStyle(Theme.textSecondary)
+                            .multilineTextAlignment(.leading)
                     }
                 }
                 .padding(.horizontal, 24)
