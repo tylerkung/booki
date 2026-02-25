@@ -172,7 +172,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "The settings view is in AccountView.swift (bookie section). Find the Pick Management toggles and wrap them in isPro checks. The replacement row for free tier should use Theme.textSecondary for the description and a small 'PRO' capsule badge similar to the subscription row. Keep Balance Alerts, Change Password, About, and Logout available on all tiers."
     },
     {

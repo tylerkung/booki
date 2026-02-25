@@ -113,3 +113,14 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - Tier blocking takes priority over futures blocking in the conditional chain (checked first)
   - No canSubmit guard needed for tier — user can't switch to parlay mode so it's never reachable
 ---
+
+## 2026-02-25 - US-009
+- What was implemented: Settings tier gating — Pick Management and Export Data rows hidden on free tier, replaced with single "Pick Management" locked row with lock.fill icon, PRO badge, description text, tapping presents ProUpgradeSheet. On Pro tier, all settings rows render normally.
+- Files changed:
+  - Booki/Views/SettingsView.swift — added `pickManagementProRow` computed property, wrapped Pick Management + Export Data in `if isPro` check
+- **Learnings for future iterations:**
+  - The `isPro` property is already available on SettingsView from US-004 — no new state needed
+  - The `showingProUpgrade` sheet binding is also already wired from the subscription row — reuse it for free tier locked rows
+  - Free tier replacement row uses lock.fill icon instead of hand.raised to visually distinguish it from the Pro version
+  - Export Data is simply hidden (not locked/teased) on free tier per acceptance criteria
+---
