@@ -15,6 +15,9 @@ Started: Tue Feb 24 21:16:16 PST 2026
 - Blog pages in `landing/blog/` use `../` prefix for root paths (../styles.css, ../assets/, ../features.html)
 - Blog CSS classes: `.blog-hero`, `.blog-grid`, `.blog-card`, `.blog-article`, `.blog-prose`, `.blog-related`
 - invite.html is standalone (no nav bar) — skip when updating nav across all pages
+- JSON-LD schema goes in `<head>` after stylesheet link, before `</head>` — use `<script type="application/ld+json">`
+- Blog Article schema: author + publisher both `@type: Organization`, `name: Booki`, datePublished: `2026-02-24`
+- FAQ schema on SEO landing pages: 3-4 Q&A pairs matching search intent for the target keyword
 ---
 
 ## 2026-02-24 - US-001
@@ -165,4 +168,19 @@ Started: Tue Feb 24 21:16:16 PST 2026
   - The "how to avoid it" bold pattern works well for listicle-style posts — gives each section a clear structure
   - Cross-linking to SEO landing pages (bookie-ledger-software, how-to-run-your-own-sportsbook) and other blog posts strengthens internal linking
   - Empathetic tone ("we've seen this") reads better than prescriptive ("you're doing it wrong") for mistake-style articles
+---
+
+## 2026-02-24 - US-010
+- Added Organization + WebSite JSON-LD schema to index.html
+- Added FAQPage JSON-LD schema to all 3 SEO landing pages (pph-software-alternative, how-to-run-your-own-sportsbook, bookie-ledger-software) with 4 Q&A pairs each
+- Added Article JSON-LD schema to all 4 blog posts with headline, description, datePublished, dateModified, author (Organization), and publisher with logo
+- All JSON-LD blocks placed in `<script type="application/ld+json">` tags in the `<head>` section
+- Validated all JSON with Python json.loads — no syntax errors
+- Files changed: landing/index.html, landing/pph-software-alternative.html, landing/how-to-run-your-own-sportsbook.html, landing/bookie-ledger-software.html, landing/blog/how-organizers-track-weekly-settlements.html, landing/blog/pph-vs-manual-ledger-systems.html, landing/blog/spreadsheet-template-tracking-picks.html, landing/blog/common-mistakes-independent-organizers.html
+- **Learnings for future iterations:**
+  - JSON-LD goes right before `</head>` — insert after the stylesheet link for consistent placement
+  - Blog posts use `@type: Article` with author/publisher as `@type: Organization` (not Person)
+  - FAQ schema needs 3-4 natural Q&A pairs that match search intent — don't just restate the page content
+  - Use `python3 -c "import json; json.loads(...)"` to validate JSON-LD blocks before committing
+  - All pages had `</head>` at consistent line numbers (31 or 33) making the edit pattern reliable
 ---

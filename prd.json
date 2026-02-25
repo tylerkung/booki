@@ -215,7 +215,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "JSON-LD is the preferred format for schema.org markup. Place all structured data in the <head> of each page. Organization schema on index.html: { '@context': 'https://schema.org', '@type': 'Organization', 'name': 'Booki', 'url': 'https://bookisports.com', 'logo': 'https://bookisports.com/assets/logo-booki-blk.svg', 'description': 'Modern pick management software for independent organizers.' }. For FAQ schema, write natural Q&A pairs that match what users might search — e.g., 'What is PPH software?', 'How do I track weekly settlements?'. For Article schema, use author: { '@type': 'Organization', 'name': 'Booki' }, publisher same. datePublished: '2026-02-24'."
     },
     {
