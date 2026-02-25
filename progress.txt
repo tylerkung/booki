@@ -127,3 +127,22 @@ Started: Tue Feb 24 21:16:16 PST 2026
   - Cross-linking to both SEO landing pages (pph-software-alternative, bookie-ledger-software) from blog posts strengthens internal linking
   - The "gap between the two" framing naturally positions Booki without being heavy-handed
 ---
+
+## 2026-02-24 - US-008
+- Created `landing/blog/spreadsheet-template-tracking-picks.html` — Spreadsheet Template for Tracking Picks blog post (~1000 words)
+- Article covers: why you need a tracking system, 8 essential columns explained, sample spreadsheet table with 6 rows of realistic NFL data, payout formulas for all 3 scenarios (win/loss/push), weekly settlement organization tips, 5 signs spreadsheets are breaking down, when/how to upgrade
+- Styled HTML table with 8 columns (Date, Member, Event, Pick, Odds, Stake, Result, Payout) and sample data for 3 members
+- Uses blog post template: nav, article header (title, date, 7 min read, author), prose body with h2 sections, related articles, CTA, footer
+- Proper heading hierarchy: h1 title, h2 section headings
+- Internal links to: `how-organizers-track-weekly-settlements.html` (×2), `common-mistakes-independent-organizers.html`, `../pph-software-alternative.html`, `../bookie-ledger-software.html`
+- Related articles section links to the other 3 blog posts
+- Added page to `landing/sitemap.xml` with monthly changefreq
+- Compliance-safe language throughout (organizer, members, picks, operation)
+- Unique Netlify form name: `waitlist-blog-spreadsheet`
+- Files changed: landing/blog/spreadsheet-template-tracking-picks.html (new), landing/sitemap.xml, prd.json
+- **Learnings for future iterations:**
+  - The `.blog-prose table` CSS from US-005 handles dark-themed tables with alternating rows out of the box — no extra CSS needed
+  - Sample data should be realistic: use actual team names, standard American odds (-110, +150, -135), and calculate payouts correctly
+  - The blockquote style works well for showing formulas — use it for any code/formula content that should stand out
+  - Blog index already had placeholder cards with correct URLs — no update needed to blog/index.html
+---
