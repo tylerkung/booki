@@ -124,3 +124,13 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - Free tier replacement row uses lock.fill icon instead of hand.raised to visually distinguish it from the Pro version
   - Export Data is simply hidden (not locked/teased) on free tier per acceptance criteria
 ---
+
+## 2026-02-25 - US-010
+- What was implemented: Transaction history gated to 30 entries on free tier in PlayerActivityView — `displayedEntries` computed property applies `.prefix(30)` on free tier, `isHistoryLimited` flag shows footer when entries exceed 30, footer shows "Showing last 30 transactions" + tappable "Upgrade to Pro for full history" text that presents ProUpgradeSheet with contextMessage. Pro tier shows all entries with no limit or footer.
+- Files changed:
+  - Booki/Views/AccountView.swift — added @AppStorage bookieTier + showingProUpgrade state to PlayerActivityView, displayedEntries/isHistoryLimited computed properties, historyLimitFooter view, ProUpgradeSheet .sheet modifier
+- **Learnings for future iterations:**
+  - PlayerActivityView receives ledgerEntries and playerBets as params — tier check uses @AppStorage("bookieTier") which is synced for both bookie and player accounts
+  - `filteredEntries` is the source of truth (sorted + filtered by type), `displayedEntries` wraps it with the 30-entry limit — keep them separate to allow `isHistoryLimited` to compare counts
+  - The footer goes after `.cardStyle()` but inside the else branch (when entries exist), not inside the LazyVStack
+---

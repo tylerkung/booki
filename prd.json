@@ -189,7 +189,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "PlayerActivityView is in AccountView.swift. The filteredEntries computed property is where the limit should be applied — use .prefix(30) on free tier. The footer can be a Section footer or an additional row at the bottom of the list."
     },
     {
