@@ -110,3 +110,20 @@ Started: Tue Feb 24 21:16:16 PST 2026
   - Each blog post has a unique Netlify form name (e.g., `waitlist-blog-settlements`) to track conversions per post
   - Back link (`← Back to Blog`) at top of article header for easy navigation
 ---
+
+## 2026-02-24 - US-007
+- Created `landing/blog/pph-vs-manual-ledger-systems.html` — PPH vs Manual Ledger Systems blog post (~1050 words)
+- Article covers: what PPH is, what manual tracking looks like, cost comparison ($5-15/head/week), feature comparison (5 dimensions), when to use each, the gap between the two, decision framework
+- Uses blog post template: nav, article header (title, date, 6 min read, author), prose body with h2/h3 sections, related articles, CTA, footer
+- Proper heading hierarchy: h1 title, h2 section headings, h3 subsections for "when to use" lists
+- Internal links to: `spreadsheet-template-tracking-picks.html`, `common-mistakes-independent-organizers.html`, `../pph-software-alternative.html`, `../bookie-ledger-software.html`, `how-organizers-track-weekly-settlements.html`
+- Related articles section links to the other 3 blog posts
+- Added page to `landing/sitemap.xml` with monthly changefreq
+- Compliance-safe language throughout (organizer, members, picks, operation)
+- Unique Netlify form name: `waitlist-blog-pph-vs-manual`
+- Files changed: landing/blog/pph-vs-manual-ledger-systems.html (new), landing/sitemap.xml, prd.json
+- **Learnings for future iterations:**
+  - Blog post ~1050 words hits the 800-1200 target comfortably with 7 h2 sections
+  - Cross-linking to both SEO landing pages (pph-software-alternative, bookie-ledger-software) from blog posts strengthens internal linking
+  - The "gap between the two" framing naturally positions Booki without being heavy-handed
+---
