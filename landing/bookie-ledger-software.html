@@ -28,6 +28,48 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "What is bookie ledger software?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Bookie ledger software is a tool that helps independent organizers track member balances, record settlements, manage credit limits, and maintain a complete transaction history. It replaces error-prone spreadsheets with automated, tamper-proof record-keeping."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "How does auto-settlement work in Booki?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "When a game finishes, Booki automatically grades the pick and creates a ledger entry that updates the member's balance. No manual calculations needed — settlements are instant, accurate, and recorded with a cryptographic audit trail."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Is the ledger tamper-proof?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes. Booki uses a hash-chain audit trail where each ledger entry is cryptographically linked to the previous one. This makes it impossible to alter past records without detection, providing dispute-proof transaction history for both organizers and members."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Can members see their own balance and history?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes. Members have their own app view where they can check their current balance, review pick history, and see all settlement transactions in real time. This transparency reduces disputes and builds trust."
+                }
+            }
+        ]
+    }
+    </script>
 </head>
 <body>
     <nav class="site-nav">
