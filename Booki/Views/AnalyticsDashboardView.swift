@@ -28,7 +28,7 @@ struct AnalyticsDashboardView: View {
     }
 
     private var bookieTier: BookieTier {
-        bookies.first?.tier ?? .default
+        bookies.first?.tier ?? .free
     }
 
     private var periodPL: Decimal {
@@ -111,6 +111,14 @@ struct AnalyticsDashboardView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
+        .refreshable {
+            await withCheckedContinuation { continuation in
+                Task.detached {
+                    await syncService.sync()
+                    continuation.resume()
+                }
+            }
+        }
         .navigationTitle("Dashboard")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -139,7 +147,7 @@ struct AnalyticsDashboardView: View {
         ScrollViewReader { scrollProxy in
             ScrollView {
                 VStack(spacing: 16) {
-                    if bookieTier == .chart {
+                    if bookieTier.isPro {
                         earningsHeader
                             .padding(.horizontal, 16)
 

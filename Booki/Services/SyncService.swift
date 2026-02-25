@@ -447,12 +447,14 @@ final class SyncService {
         try await MainActor.run {
             let bId = record.id
             let descriptor = FetchDescriptor<Bookie>(predicate: #Predicate { $0.id == bId })
+            let tierValue = BookieTier(rawValue: record.tier ?? "free") ?? .free
             if let existing = try context.fetch(descriptor).first {
                 existing.name = record.name
                 existing.email = record.email ?? existing.email
                 existing.manualBetAcceptance = record.manualBetAcceptance ?? false
                 existing.manualBetGrading = record.manualBetGrading ?? false
                 existing.allowFuturesParlays = record.allowFuturesParlays ?? true
+                existing.tier = tierValue
             } else {
                 let bookie = Bookie(
                     id: record.id,
@@ -462,10 +464,12 @@ final class SyncService {
                     updatedAt: record.updatedAt,
                     manualBetAcceptance: record.manualBetAcceptance ?? false,
                     manualBetGrading: record.manualBetGrading ?? false,
-                    allowFuturesParlays: record.allowFuturesParlays ?? true
+                    allowFuturesParlays: record.allowFuturesParlays ?? true,
+                    tier: tierValue
                 )
                 context.insert(bookie)
             }
+            TierService.syncTier(from: record)
             try context.save()
         }
     }
@@ -481,12 +485,14 @@ final class SyncService {
             try await MainActor.run {
                 let bId = bookieId
                 let descriptor = FetchDescriptor<Bookie>(predicate: #Predicate { $0.id == bId })
+                let tierValue = BookieTier(rawValue: record.tier ?? "free") ?? .free
                 if let existing = try context.fetch(descriptor).first {
                     existing.name = record.name
                     existing.email = record.email ?? existing.email
                     existing.manualBetAcceptance = record.manualBetAcceptance ?? false
                     existing.manualBetGrading = record.manualBetGrading ?? false
                     existing.allowFuturesParlays = record.allowFuturesParlays ?? true
+                    existing.tier = tierValue
                     try context.save()
                 } else {
                     let bookie = Bookie(
@@ -497,11 +503,13 @@ final class SyncService {
                         updatedAt: record.updatedAt,
                         manualBetAcceptance: record.manualBetAcceptance ?? false,
                         manualBetGrading: record.manualBetGrading ?? false,
-                        allowFuturesParlays: record.allowFuturesParlays ?? true
+                        allowFuturesParlays: record.allowFuturesParlays ?? true,
+                        tier: tierValue
                     )
                     context.insert(bookie)
                     try context.save()
                 }
+                TierService.syncTier(from: record)
             }
         } catch {
             // Settings refresh is best-effort; don't block sync

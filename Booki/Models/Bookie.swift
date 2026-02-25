@@ -14,8 +14,24 @@ enum SubscriptionStatus: String, Codable {
 
 /// Tier level controlling feature access
 enum BookieTier: String, Codable {
+    case free
+    case pro
+    // Legacy cases for migration
     case `default`
     case chart
+
+    /// Whether this tier grants Pro-level access
+    var isPro: Bool {
+        switch self {
+        case .pro, .chart: return true
+        case .free, .default: return false
+        }
+    }
+
+    /// Maximum number of active members allowed
+    var memberLimit: Int {
+        isPro ? 50 : 3
+    }
 }
 
 /// Bookie model representing a bookie account
@@ -49,7 +65,7 @@ final class Bookie {
         manualBetAcceptance: Bool = false,
         manualBetGrading: Bool = false,
         allowFuturesParlays: Bool = true,
-        tier: BookieTier = .default
+        tier: BookieTier = .free
     ) {
         self.id = id
         self.email = email
