@@ -1,237 +1,71 @@
 # Ralph Progress Log
-Started: Tue Feb 24 21:16:16 PST 2026
+Started: Wed Feb 25 02:44:29 PST 2026
 ---
 
 ## Codebase Patterns
-- Landing pages live in `landing/` directory — static HTML with shared `styles.css`
-- OG/Twitter tag pattern: copy from index.html, update title/description/url per page
-- Use `https://bookisports.com/assets/og-image.png` as og:image across all pages
-- Canonical URLs use `.html` extension (static HTML on Netlify, no URL rewriting for pages)
-- Nav bar pattern: copy from features.html for non-index pages (uses `index.html#pricing`, `index.html#waitlist`)
-- Footer pattern is consistent across all pages: logo, copyright, Privacy/Terms/Twitter links
-- Netlify config in `landing/netlify.toml` — only `/invite/*` has a redirect rule
-- SEO landing page CSS classes: `.seo-section`, `.seo-pain-grid`/`.seo-pain-card`, `.seo-solutions-grid`/`.seo-solution-item`, `.seo-comparison-table` — all reusable across SEO pages
-- Pain cards use `--accent-tertiary` (red icons), solutions use `.feature-number` (teal)
-- Blog pages in `landing/blog/` use `../` prefix for root paths (../styles.css, ../assets/, ../features.html)
-- Blog CSS classes: `.blog-hero`, `.blog-grid`, `.blog-card`, `.blog-article`, `.blog-prose`, `.blog-related`
-- invite.html is standalone (no nav bar) — skip when updating nav across all pages
-- JSON-LD schema goes in `<head>` after stylesheet link, before `</head>` — use `<script type="application/ld+json">`
-- Blog Article schema: author + publisher both `@type: Organization`, `name: Booki`, datePublished: `2026-02-24`
-- FAQ schema on SEO landing pages: 3-4 Q&A pairs matching search intent for the target keyword
+- BookieTier enum is in Bookie.swift (not a separate file) — legacy `.default`/`.chart` preserved for migration compatibility
+- SyncService has two bookie sync methods: `downloadBookieForPlayer` (for player accounts) and `refreshBookieSettings` (for bookie accounts) — both must be updated when adding bookie fields
+- BookieRecord in BookieService.swift is the Codable DTO for Supabase — add new columns here with CodingKeys mapping
+- SwiftData `#Predicate` doesn't work reliably with enum comparisons — fetch with simpler predicate then filter in-memory
+- TierService provides `@AppStorage`-backed tier cache via `TierService.currentTier` / `TierService.isPro` for instant UI reads
+- Use `BookieTier.isPro` for tier checks instead of comparing to specific enum values (future-proofs for new tiers)
+- New .swift files need manual pbxproj entries: PBXBuildFile, PBXFileReference, Views group children, and Sources build phase
+- ProUpgradeSheet accepts optional `contextMessage: String?` — pass context-specific upsell text from each entry point
+- Bookie Settings is SettingsView.swift; Player Account is AccountView.swift — don't confuse them
+- Settings row layout: HStack(spacing: 14) with icon (20pt, accent, 28w frame) + title + Spacer + value + chevron, padded (.horizontal 16, .vertical 14)
+
 ---
 
-## 2026-02-24 - US-001
-- Created `landing/sitemap.xml` with entries for all 5 existing pages (index, features, privacy, terms, invite)
-- Created `landing/robots.txt` with Allow all + sitemap reference
-- Added OG tags + Twitter card tags to privacy.html, terms.html, invite.html
-- Added missing Twitter card tags to features.html
-- Fixed features.html og:url to use `.html` extension (was `/features`)
-- Added `<link rel="canonical">` to all 5 pages
-- Updated meta descriptions to be unique and under 160 characters
-- Files changed: landing/sitemap.xml (new), landing/robots.txt (new), landing/index.html, landing/features.html, landing/privacy.html, landing/terms.html, landing/invite.html
+## 2026-02-25 - US-001
+- What was implemented: BookieTier enum expanded (free/pro + legacy default/chart), isPro computed property, memberLimit, TierService with @AppStorage cache + activeMemberCount helper, tier field added to BookieRecord, SyncService updated to sync tier from Supabase, Supabase migration 020 for bookies.tier column
+- Files changed:
+  - Booki/Models/Bookie.swift — BookieTier enum expanded with isPro/memberLimit, default changed to .free
+  - Booki/Services/BookieService.swift — tier field added to BookieRecord + CodingKeys
+  - Booki/Services/TierService.swift — NEW: centralized tier helpers with @AppStorage cache
+  - Booki/Services/SyncService.swift — downloadBookieForPlayer + refreshBookieSettings now sync tier
+  - Booki/Views/AnalyticsDashboardView.swift — .chart → .isPro, .default → .free
+  - supabase/migrations/020_bookies_tier_column.sql — NEW: adds tier column
 - **Learnings for future iterations:**
-  - features.html was missing Twitter card tags and canonical URL despite having OG tags
-  - privacy.html and terms.html had no OG/Twitter tags at all — invite.html also had none
-  - features.html og:url used `/features` without `.html` — inconsistent with static file hosting
-  - All pages already share the same nav/footer pattern, making bulk updates straightforward
+  - BookieTier has legacy cases (.default, .chart) — always use .isPro instead of == .pro
+  - TierService.syncTier(from:) must be called in both sync paths
+  - activeMemberCount counts players where bookieId matches AND authUserId is not nil AND status == .active
 ---
 
-## 2026-02-24 - US-002
-- Created `landing/pph-software-alternative.html` — PPH Software Alternative SEO landing page
-- Page includes: hero targeting "PPH software alternative" keyword, 4 pain point cards (fees, UI, privacy, manual grading), 4 solutions with numbered layout, 7-row comparison table (Booki vs Traditional PPH), waitlist CTA
-- Added SEO landing page CSS to `landing/styles.css`: `.seo-section`, `.seo-pain-grid`, `.seo-pain-card`, `.seo-solutions-grid`, `.seo-solution-item`, `.seo-comparison-table` with responsive breakpoints
-- Added page to `landing/sitemap.xml` with weekly changefreq
-- Complete OG/Twitter/canonical tags, compliance-safe language throughout (organizer, picks, members)
-- Files changed: landing/pph-software-alternative.html (new), landing/styles.css, landing/sitemap.xml
+## 2026-02-25 - US-002
+- What was implemented: ProUpgradeSheet (primary conversion screen) with logo, PRO heading, $49.99/mo subtitle, 11-item feature list card, Subscribe NavigationLink to ProCheckoutView, Restore Purchase button, ToS/Privacy links, optional contextMessage parameter, X dismiss button, .presentationDetents([.large]). Also created placeholder ProCheckoutView (to be fleshed out in US-003).
+- Files changed:
+  - Booki/Views/ProUpgradeSheet.swift — NEW: primary upsell sheet with NavigationStack, feature list, sticky bottom CTA
+  - Booki/Views/ProCheckoutView.swift — NEW: placeholder checkout view (skeleton for US-003)
+  - Booki.xcodeproj/project.pbxproj — added both files to project
 - **Learnings for future iterations:**
-  - Reuse `.seo-section`, `.seo-pain-grid`, `.seo-solutions-grid`, `.seo-comparison-table` CSS classes for the other 2 SEO landing pages
-  - Pain cards use `--accent-tertiary` (red) for warning color, solutions use `--accent` (teal) via `.feature-number`
-  - The comparison table CSS handles overflow-x for mobile — works well for 3-column layouts
-  - Keep meta descriptions under 160 chars — the PPH page description is 146 chars
+  - Sheets that need internal navigation must wrap content in NavigationStack
+  - Use NavigationLink inside the sheet's NavigationStack to push checkout/success views
+  - Sticky bottom content: use ZStack with VStack containing Spacer + content, apply LinearGradient background for fade effect
+  - New .swift files must be added to pbxproj in 3 places: PBXBuildFile, PBXFileReference, and group children + Sources build phase
 ---
 
-## 2026-02-24 - US-003
-- Created `landing/how-to-run-your-own-sportsbook.html` — How to Run Your Own Sportsbook SEO landing page
-- Page includes: hero with informational headline, 6-step guide (ledger, rules, onboarding, odds, grading, settlement), 4 common challenges (record-keeping, grading, scaling, disputes), 4 Booki solutions, waitlist CTA
-- Reused existing CSS classes: `.seo-section`, `.seo-solutions-grid`, `.seo-solution-item`, `.seo-pain-grid`, `.seo-pain-card` — no new CSS needed
-- Added page to `landing/sitemap.xml` with weekly changefreq
-- Complete OG/Twitter/canonical tags, compliance-safe language in body copy ("members", "picks", "organizer")
-- Files changed: landing/how-to-run-your-own-sportsbook.html (new), landing/sitemap.xml, prd.json
+## 2026-02-25 - US-003
+- What was implemented: ProCheckoutView fully built with summary card (Booki Pro, $49.99, billing, today's charge, next renewal date), Stripe placeholder card (lock icon, secure payment text, "coming soon"), disabled Pay button with 0.5 opacity, Terms/Privacy footer. ProSuccessView created with animated checkmark (spring animation on appear), "Welcome to Pro" headline, descriptive text, full-width "Get Started" dismiss button. ProSuccessView added to pbxproj in all 4 required locations.
+- Files changed:
+  - Booki/Views/ProCheckoutView.swift — expanded from placeholder to full checkout screen
+  - Booki/Views/ProSuccessView.swift — NEW: success confirmation view with animated checkmark
+  - Booki.xcodeproj/project.pbxproj — added ProSuccessView to PBXBuildFile, PBXFileReference, group children, Sources build phase
 - **Learnings for future iterations:**
-  - The CSS from US-002 is fully reusable — no new styles needed for additional SEO landing pages
-  - Informational pages work well with two `.seo-solutions-grid` sections (steps + solutions) and one `.seo-pain-grid` (challenges)
-  - Meta description is 148 chars — within the 160-char limit
-  - The h1/title uses "sportsbook" (the search keyword) while body copy uses compliance-safe language
+  - pbxproj IDs follow sequential pattern (A0, A1, A2, A3...) for recent additions — continue incrementing
+  - ProSuccessView uses .navigationBarBackButtonHidden(true) to prevent going back to checkout after success
+  - Calendar.current.date(byAdding: .month, value: 1, to: .now) for renewal date calculation
+  - Disabled buttons: use .disabled(true) + .opacity(0.5) pattern
 ---
 
-## 2026-02-24 - US-004
-- Created `landing/bookie-ledger-software.html` — Bookie Ledger Software SEO landing page
-- Page includes: hero targeting "bookie ledger software" keyword, 4 pain point cards (spreadsheets, settlement time, no audit trail, no credit controls), 4 ledger feature solutions (auto-settlement, real-time balances, credit limits, hash-chain audit trail), trust & transparency section (transaction history, analytics, member self-service, dispute-proof records), waitlist CTA
-- Reused existing CSS classes: `.seo-section`, `.seo-solutions-grid`, `.seo-solution-item`, `.seo-pain-grid`, `.seo-pain-card` — no new CSS needed
-- Added page to `landing/sitemap.xml` with weekly changefreq
-- Complete OG/Twitter/canonical tags, compliance-safe language in body copy ("members", "picks", "organizer")
-- Files changed: landing/bookie-ledger-software.html (new), landing/sitemap.xml, prd.json
+## 2026-02-25 - US-004
+- What was implemented: SubscriptionManagementView with Current Plan card (Booki Pro + Active green pill, $49.99/month, member since, next renewal, members X of 50), Manage on Stripe button (shows "Coming Soon" alert), footer text. Added Subscription row to SettingsView between Profile and Balance Alerts — free tier shows "Free" label + "PRO" badge pill (taps to ProUpgradeSheet), pro tier shows "Pro" in accent (navigates to SubscriptionManagementView). Both use crown icon.
+- Files changed:
+  - Booki/Views/SubscriptionManagementView.swift — NEW: subscription management screen for Pro bookies
+  - Booki/Views/SettingsView.swift — added subscription row (isPro check via @AppStorage), ProUpgradeSheet sheet
+  - Booki.xcodeproj/project.pbxproj — added SubscriptionManagementView to project (4 locations)
 - **Learnings for future iterations:**
-  - All 3 SEO landing pages follow identical structure: hero → pain grid → solutions grid → [optional extra section] → CTA
-  - The trust/transparency section uses SVG icons inside `.feature-number` spans instead of numbers — works well for non-sequential items
-  - Meta description is 145 chars — within the 160-char limit
-  - Ledger-specific keywords naturally included: "bookie ledger", "settlement tracking", "audit trail", "credit limits", "balance tracking"
----
-
-## 2026-02-24 - US-005
-- Created `landing/blog/` directory and `landing/blog/index.html` — blog listing page with 4 article preview cards
-- Added blog-specific CSS to `landing/styles.css`: blog hero, card grid, article post template (prose styling with ~700px max-width, 1.75 line-height), related articles, responsive breakpoints
-- Blog post template CSS includes: heading hierarchy, blockquote, code, list styling (ul with teal dots, ol with teal counters), dark-themed table styling with alternating rows
-- Updated nav bar on 7 pages (index, features, privacy, terms, pph, sportsbook, ledger) to include "Blog" link between Features and Pricing — both desktop and mobile menus
-- invite.html has no nav bar (standalone page) — skipped
-- Added `blog/index.html` to `landing/sitemap.xml` with weekly changefreq
-- Blog index cards have actual titles of 4 planned articles with excerpts, dates, and read times
-- Files changed: landing/blog/index.html (new), landing/styles.css, landing/sitemap.xml, landing/index.html, landing/features.html, landing/privacy.html, landing/terms.html, landing/pph-software-alternative.html, landing/how-to-run-your-own-sportsbook.html, landing/bookie-ledger-software.html
-- **Learnings for future iterations:**
-  - Blog pages live in `landing/blog/` — use `../` prefix for all root-relative paths (styles, assets, other pages)
-  - Blog nav bar uses `../features.html`, `../blog/`, `../index.html#pricing` pattern from blog/ subdirectory
-  - Blog CSS classes: `.blog-hero`, `.blog-grid`, `.blog-card`, `.blog-article`, `.blog-article-header`, `.blog-prose`, `.blog-related` — all reusable
-  - `.blog-prose` handles full article typography: h2/h3 headings, paragraphs, lists, blockquotes, code, tables
-  - invite.html is a standalone page with no nav bar — don't try to update it
-  - Blog card grid is 2 columns on desktop, 1 column on mobile
----
-
-## 2026-02-24 - US-006
-- Created `landing/blog/how-organizers-track-weekly-settlements.html` — first blog post (~1000 words)
-- Article covers: why weekly settlements matter, manual workflow (6 steps), common pitfalls (5), automated approach, building a routine
-- Uses blog post template: nav, article header (title, date, read time, author), prose body with h2 sections, related articles section, footer
-- Proper heading hierarchy: h1 title, h2 section headings
-- Internal links to: `common-mistakes-independent-organizers.html`, `../bookie-ledger-software.html`, `../features.html`, `../index.html#waitlist`, `spreadsheet-template-tracking-picks.html`
-- Related articles section links to the other 3 planned blog posts
-- Added page to `landing/sitemap.xml` with monthly changefreq
-- Compliance-safe language throughout (organizer, members, picks, operation)
-- Files changed: landing/blog/how-organizers-track-weekly-settlements.html (new), landing/sitemap.xml, prd.json
-- **Learnings for future iterations:**
-  - Blog post template structure: nav → article (header + prose) → related articles → CTA → footer
-  - Blog article uses `og:type` of `article` instead of `website` for OG tags
-  - Related articles section uses same `.blog-grid` and `.blog-card` classes as the blog index
-  - Each blog post has a unique Netlify form name (e.g., `waitlist-blog-settlements`) to track conversions per post
-  - Back link (`← Back to Blog`) at top of article header for easy navigation
----
-
-## 2026-02-24 - US-007
-- Created `landing/blog/pph-vs-manual-ledger-systems.html` — PPH vs Manual Ledger Systems blog post (~1050 words)
-- Article covers: what PPH is, what manual tracking looks like, cost comparison ($5-15/head/week), feature comparison (5 dimensions), when to use each, the gap between the two, decision framework
-- Uses blog post template: nav, article header (title, date, 6 min read, author), prose body with h2/h3 sections, related articles, CTA, footer
-- Proper heading hierarchy: h1 title, h2 section headings, h3 subsections for "when to use" lists
-- Internal links to: `spreadsheet-template-tracking-picks.html`, `common-mistakes-independent-organizers.html`, `../pph-software-alternative.html`, `../bookie-ledger-software.html`, `how-organizers-track-weekly-settlements.html`
-- Related articles section links to the other 3 blog posts
-- Added page to `landing/sitemap.xml` with monthly changefreq
-- Compliance-safe language throughout (organizer, members, picks, operation)
-- Unique Netlify form name: `waitlist-blog-pph-vs-manual`
-- Files changed: landing/blog/pph-vs-manual-ledger-systems.html (new), landing/sitemap.xml, prd.json
-- **Learnings for future iterations:**
-  - Blog post ~1050 words hits the 800-1200 target comfortably with 7 h2 sections
-  - Cross-linking to both SEO landing pages (pph-software-alternative, bookie-ledger-software) from blog posts strengthens internal linking
-  - The "gap between the two" framing naturally positions Booki without being heavy-handed
----
-
-## 2026-02-24 - US-008
-- Created `landing/blog/spreadsheet-template-tracking-picks.html` — Spreadsheet Template for Tracking Picks blog post (~1000 words)
-- Article covers: why you need a tracking system, 8 essential columns explained, sample spreadsheet table with 6 rows of realistic NFL data, payout formulas for all 3 scenarios (win/loss/push), weekly settlement organization tips, 5 signs spreadsheets are breaking down, when/how to upgrade
-- Styled HTML table with 8 columns (Date, Member, Event, Pick, Odds, Stake, Result, Payout) and sample data for 3 members
-- Uses blog post template: nav, article header (title, date, 7 min read, author), prose body with h2 sections, related articles, CTA, footer
-- Proper heading hierarchy: h1 title, h2 section headings
-- Internal links to: `how-organizers-track-weekly-settlements.html` (×2), `common-mistakes-independent-organizers.html`, `../pph-software-alternative.html`, `../bookie-ledger-software.html`
-- Related articles section links to the other 3 blog posts
-- Added page to `landing/sitemap.xml` with monthly changefreq
-- Compliance-safe language throughout (organizer, members, picks, operation)
-- Unique Netlify form name: `waitlist-blog-spreadsheet`
-- Files changed: landing/blog/spreadsheet-template-tracking-picks.html (new), landing/sitemap.xml, prd.json
-- **Learnings for future iterations:**
-  - The `.blog-prose table` CSS from US-005 handles dark-themed tables with alternating rows out of the box — no extra CSS needed
-  - Sample data should be realistic: use actual team names, standard American odds (-110, +150, -135), and calculate payouts correctly
-  - The blockquote style works well for showing formulas — use it for any code/formula content that should stand out
-  - Blog index already had placeholder cards with correct URLs — no update needed to blog/index.html
----
-
-## 2026-02-24 - US-009
-- Created `landing/blog/common-mistakes-independent-organizers.html` — Common Mistakes Independent Organizers Make blog post (~1050 words)
-- Article covers 7 numbered mistakes: sloppy records, no clear rules, skipping credit limits, manual grading, letting settlements slide, ignoring performance data, scaling too fast
-- Each mistake follows pattern: problem description → why it matters → "How to avoid it" solution
-- Uses blog post template: nav, article header (title, date, 6 min read, author), prose body with h2 sections, related articles, CTA, footer
-- Proper heading hierarchy: h1 title, h2 numbered sections, h2 conclusion
-- Internal links to: `spreadsheet-template-tracking-picks.html`, `../bookie-ledger-software.html`, `how-organizers-track-weekly-settlements.html`, `../features.html`, `../how-to-run-your-own-sportsbook.html`
-- Related articles section links to the other 3 blog posts
-- Added page to `landing/sitemap.xml` with monthly changefreq
-- Compliance-safe language throughout (organizer, members, picks, operation)
-- Unique Netlify form name: `waitlist-blog-mistakes`
-- Blog index already had placeholder card with correct URL — no update needed
-- Files changed: landing/blog/common-mistakes-independent-organizers.html (new), landing/sitemap.xml, prd.json
-- **Learnings for future iterations:**
-  - All 4 blog posts now complete — blog index cards all link to real articles
-  - The "how to avoid it" bold pattern works well for listicle-style posts — gives each section a clear structure
-  - Cross-linking to SEO landing pages (bookie-ledger-software, how-to-run-your-own-sportsbook) and other blog posts strengthens internal linking
-  - Empathetic tone ("we've seen this") reads better than prescriptive ("you're doing it wrong") for mistake-style articles
----
-
-## 2026-02-24 - US-010
-- Added Organization + WebSite JSON-LD schema to index.html
-- Added FAQPage JSON-LD schema to all 3 SEO landing pages (pph-software-alternative, how-to-run-your-own-sportsbook, bookie-ledger-software) with 4 Q&A pairs each
-- Added Article JSON-LD schema to all 4 blog posts with headline, description, datePublished, dateModified, author (Organization), and publisher with logo
-- All JSON-LD blocks placed in `<script type="application/ld+json">` tags in the `<head>` section
-- Validated all JSON with Python json.loads — no syntax errors
-- Files changed: landing/index.html, landing/pph-software-alternative.html, landing/how-to-run-your-own-sportsbook.html, landing/bookie-ledger-software.html, landing/blog/how-organizers-track-weekly-settlements.html, landing/blog/pph-vs-manual-ledger-systems.html, landing/blog/spreadsheet-template-tracking-picks.html, landing/blog/common-mistakes-independent-organizers.html
-- **Learnings for future iterations:**
-  - JSON-LD goes right before `</head>` — insert after the stylesheet link for consistent placement
-  - Blog posts use `@type: Article` with author/publisher as `@type: Organization` (not Person)
-  - FAQ schema needs 3-4 natural Q&A pairs that match search intent — don't just restate the page content
-  - Use `python3 -c "import json; json.loads(...)"` to validate JSON-LD blocks before committing
-  - All pages had `</head>` at consistent line numbers (31 or 33) making the edit pattern reliable
----
-
-## 2026-02-24 - US-011
-- Updated footer on all 12 pages (skip invite.html) to include Features, Blog, PPH Alternative, Privacy, Terms, and Twitter links
-- Added internal content links to index.html: PPH alternative link in positioning section, blog link in CTA
-- Added internal content links to features.html: bookie ledger software link in settlement section, blog link in CTA
-- Added internal content links to pph-software-alternative.html: PPH vs manual blog post link, bookie ledger software link
-- Added internal content links to how-to-run-your-own-sportsbook.html: spreadsheet template + bookie ledger software links in step 1, weekly settlements blog post in step 6
-- Added internal content links to bookie-ledger-software.html: spreadsheet template blog post link, common mistakes blog post link
-- Blog posts already had 2+ internal links in article body from previous stories — no changes needed
-- Sitemap already had all 13 pages — no changes needed
-- Files changed: landing/index.html, landing/features.html, landing/privacy.html, landing/terms.html, landing/pph-software-alternative.html, landing/how-to-run-your-own-sportsbook.html, landing/bookie-ledger-software.html, landing/blog/index.html, landing/blog/how-organizers-track-weekly-settlements.html, landing/blog/pph-vs-manual-ledger-systems.html, landing/blog/spreadsheet-template-tracking-picks.html, landing/blog/common-mistakes-independent-organizers.html
-- **Learnings for future iterations:**
-  - Footer is the most efficient way to add cross-page links — one consistent block across all pages
-  - Using inline `style="color: var(--accent); text-decoration: underline;"` keeps links visible on the dark theme without adding new CSS classes
-  - Blog posts had good internal linking from the start (each had 2-5 in-body links) — plan cross-linking when writing content, not as an afterthought
-  - invite.html is standalone (no nav, no footer) — always skip it for site-wide changes
----
-
-## 2026-02-24 - App Store Polish Pass
-- Restructured SettingsView into menu page with navigable rows (Profile, Balance Alerts, Pick Management, Export Data, About) + all detail pages use ScrollView + `.cardStyle()`
-- Updated subscription tiers: Free/Pro/Ultra (replacing active/inactive/trial), legacy cases preserved for migration
-- Cleaned up Events tab: removed plus CTA, Upcoming/Past picker, sport filter tabs; sport categories as individual cards
-- Hidden SyncStatusIndicator for all accounts except dev (tylerbkung@gmail.com)
-- Added player Account menu section with Activity and About rows, created PlayerActivityView with filter chips
-- Polished activity row indicators: `UnevenRoundedRectangle` with flush-left edges, compact padding, trailing badge spacing
-- History rows: larger fonts, bigger amount badges, taller indicator bars
-- Files changed: SettingsView.swift, AccountView.swift, EventsListView.swift, SearchView.swift, PlayerAnalyticsDetailView.swift, Bookie.swift, SyncService.swift, DashboardView.swift, PlayersListView.swift, AnalyticsDashboardView.swift
-- **Learnings:**
-  - Swift 6: free-standing functions returning SwiftUI views need `@MainActor`
-  - `UnevenRoundedRectangle` with 0 left radii + container `.padding(.leading, 0)` = flush edge indicators
-  - ScrollView + VStack + `.cardStyle()` is cleaner than List for settings-style pages
----
-
-## 2026-02-24 - UI Polish Pass 2
-- Welcome screen: pulsing ring animation behind logo using `TimelineView(.animation)`, removed period from "Be The House", flat teal CTA button
-- Player tab headers: `AppHeaderView` now supports optional centered `title` and `showBalance` toggle; all 4 player tabs (Games, Search, Track, Account) show centered titles
-- Account tab: wrapped in `PlayerTabView` matching other tabs, removed large nav title, removed balance from header (card shows it)
-- Bookie Settings: moved Log Out from fixed bottom button into card as inline row (matches player Account style)
-- Change Password: new `ChangePasswordView` using `supabase.auth.update(user:)`, added to both bookie Settings and player Account menus
-- About page: added Links section (Website, Terms of Service, Privacy Policy, Twitter) with `openURL` external links
-- Terms of Service: redesigned summary with icon-based key points instead of wall of text, added "Back" button for sign-out
-- Dashboard: moved Members section above Futures Activity
-- Badge positioning: adjusted tab bar badge offset from `(-24, 0)` to `(-8, -4)` for tighter icon overlap
-- Footer mobile fix: added `flex-wrap` and `justify-content: center` to `.footer-links`
-- Removed "By the numbers" section from features page
-- Files changed: LoginView.swift, AppHeaderView.swift, PlayerMainView.swift, ContentView.swift, AccountView.swift, SettingsView.swift, UserAgreementView.swift, AnalyticsDashboardView.swift, BookiApp.swift, features.html, styles.css
-- **Learnings:**
-  - `TimelineView(.animation)` is the correct way to drive continuous animations — `@State` with `.repeatForever` only interpolates start/end values
-  - Extract complex animated views into separate structs to avoid Swift type-checker timeouts
-  - `AppHeaderView` with optional title/showBalance params is flexible enough for all tab configurations
+  - Bookie Settings is in SettingsView.swift (not AccountView.swift — that's the player account)
+  - File-private helpers (sectionHeader, settingsDivider) in SettingsView.swift can't be used from other files — either inline or duplicate
+  - Use @AppStorage("bookieTier") + BookieTier(rawValue:) for tier checks in views, not TierService (which is for non-View contexts)
+  - Settings row pattern: icon (20pt, accent, 28w frame) + title (Theme.body, medium) + spacer + value + chevron, all in HStack(spacing: 14) with .padding(.horizontal, 16) .padding(.vertical, 14)
 ---
