@@ -11,6 +11,12 @@ struct SettingsView: View {
     @State private var showingLogoutConfirmation = false
     @State private var showingLogoutError = false
     @State private var logoutErrorMessage = ""
+    @State private var showingProUpgrade = false
+    @AppStorage("bookieTier") private var bookieTierRaw: String = BookieTier.free.rawValue
+
+    private var isPro: Bool {
+        (BookieTier(rawValue: bookieTierRaw) ?? .free).isPro
+    }
 
     private var currentBookie: Bookie? {
         bookies.first
@@ -23,6 +29,8 @@ struct SettingsView: View {
                     settingsMenuRow(icon: "person.circle", title: "Profile", subtitle: currentBookie?.name) {
                         ProfileSettingsView()
                     }
+                    menuDivider
+                    subscriptionRow
                     menuDivider
                     settingsMenuRow(icon: "bell.badge", title: "Balance Alerts") {
                         BalanceAlertsSettingsView()
@@ -83,6 +91,81 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(logoutErrorMessage)
+            }
+            .sheet(isPresented: $showingProUpgrade) {
+                ProUpgradeSheet()
+            }
+        }
+    }
+
+    // MARK: - Subscription Row
+
+    @ViewBuilder
+    private var subscriptionRow: some View {
+        if isPro {
+            NavigationLink {
+                SubscriptionManagementView()
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "crown")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 28, alignment: .center)
+
+                    Text("Subscription")
+                        .font(Theme.body)
+                        .fontWeight(.medium)
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Spacer()
+
+                    Text("Pro")
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.accent)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+            }
+        } else {
+            Button {
+                showingProUpgrade = true
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "crown")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 28, alignment: .center)
+
+                    Text("Subscription")
+                        .font(Theme.body)
+                        .fontWeight(.medium)
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Spacer()
+
+                    Text("Free")
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    Text("PRO")
+                        .font(Theme.caption)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.background)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Theme.accent)
+                        .clipShape(Capsule())
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
             }
         }
     }
