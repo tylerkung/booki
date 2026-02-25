@@ -1,8 +1,12 @@
 import Foundation
 import SwiftData
 
-/// Subscription status for a bookie account
+/// Subscription tier for a bookie account
 enum SubscriptionStatus: String, Codable {
+    case free
+    case pro
+    case ultra
+    // Legacy cases for migration
     case active
     case inactive
     case trial
@@ -39,7 +43,7 @@ final class Bookie {
         id: UUID = UUID(),
         email: String,
         name: String,
-        subscriptionStatus: SubscriptionStatus = .trial,
+        subscriptionStatus: SubscriptionStatus = .free,
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         manualBetAcceptance: Bool = false,

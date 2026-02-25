@@ -181,36 +181,37 @@ struct SearchView: View {
                 // SPORTS section header
                 Text("SPORTS")
                     .font(Theme.caption)
+                    .fontWeight(.semibold)
                     .tracking(1.0)
                     .foregroundStyle(Theme.textSecondary)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 20)
                     .padding(.top, 20)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 8)
 
                 // Sport rows
                 VStack(spacing: 8) {
                     ForEach(SportCategory.allCases) { category in
                         NavigationLink(value: category) {
-                            HStack(spacing: 12) {
+                            HStack(spacing: 14) {
                                 Image(systemName: category.iconName)
-                                    .font(.system(size: 18))
+                                    .font(.system(size: 20))
                                     .foregroundStyle(Theme.accent)
-                                    .frame(width: 28)
+                                    .frame(width: 28, alignment: .center)
 
                                 Text(category.displayName)
                                     .font(Theme.body)
+                                    .fontWeight(.medium)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 Spacer()
 
                                 Image(systemName: "chevron.right")
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(.system(size: 14, weight: .semibold))
                                     .foregroundStyle(Theme.textMuted)
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
-                            .background(Theme.cardBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .cardStyle()
                         }
                         .buttonStyle(.plain)
                     }

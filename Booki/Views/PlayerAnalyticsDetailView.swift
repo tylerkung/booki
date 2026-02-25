@@ -1017,6 +1017,7 @@ private struct RecentActivitySection: View {
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .tracking(1.0)
+                .padding(.leading, 16)
 
             if activities.isEmpty {
                 Text("No activity yet")
@@ -1024,6 +1025,7 @@ private struct RecentActivitySection: View {
                     .foregroundStyle(Theme.textSecondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
+                    .padding(.leading, 16)
             } else {
                 ForEach(Array(displayItems.enumerated()), id: \.element.id) { index, item in
                     activityRow(item)
@@ -1050,7 +1052,10 @@ private struct RecentActivitySection: View {
                 }
             }
         }
-        .padding(16)
+        .padding(.top, 12)
+        .padding(.trailing, 16)
+        .padding(.bottom, 4)
+        .padding(.leading, 0)
         .cardStyle()
     }
 
@@ -1071,88 +1076,86 @@ private struct BetHistoryRow: View {
     let bet: Bet
     let eventName: String
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(formatDate(bet.createdAt))
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                Spacer()
-                resultBadge
-            }
-
-            Text(eventName)
-                .font(Theme.bodyFont(size: 14, weight: .medium))
-                .foregroundStyle(Theme.textPrimary)
-                .lineLimit(1)
-
-            HStack {
-                Text("\(bet.side) \(formatOdds(bet.odds))")
-                    .font(Theme.bodyFont(size: 12))
-                    .foregroundStyle(Theme.textSecondary)
-                Spacer()
-                Text(formatCurrency(bet.stake))
-                    .font(Theme.bodyFont(size: 13, weight: .semibold))
-                    .foregroundStyle(Theme.textPrimary)
-            }
-        }
-        .padding(.vertical, 4)
+    private var description: String {
+        let side = "\(bet.side) \(formatOdds(bet.odds))"
+        return "\(eventName) · \(side)"
     }
 
-    private var resultBadge: some View {
-        Group {
-            switch bet.gradeResult {
-            case .win:
-                Text("W")
-                    .font(Theme.bodyFont(size: 11, weight: .bold))
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Theme.accent)
-                    .clipShape(Capsule())
-            case .loss:
-                Text("L")
-                    .font(Theme.bodyFont(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Theme.danger)
-                    .clipShape(Capsule())
-            case .push:
-                Text("P")
-                    .font(Theme.bodyFont(size: 11, weight: .bold))
-                    .foregroundStyle(Theme.textPrimary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Theme.textMuted)
-                    .clipShape(Capsule())
-            case nil:
-                Text("Pending")
-                    .font(Theme.bodyFont(size: 11, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Theme.elevatedBackground)
-                    .clipShape(Capsule())
-            }
+    private var amountColor: Color {
+        switch bet.gradeResult {
+        case .win: return Theme.danger   // Bookie lost money
+        case .loss: return Theme.accent   // Bookie won money
+        case .push, nil: return Theme.textSecondary
         }
+    }
+
+    private var formattedAmount: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        let formatted = formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
+        return formatted
+    }
+
+    private var typeLabel: String {
+        switch bet.gradeResult {
+        case .win: return "Won"
+        case .loss: return "Lost"
+        case .push: return "Push"
+        case nil: return "Pending"
+        }
+    }
+
+    private var tagColor: Color {
+        switch bet.gradeResult {
+        case .win: return Theme.accent
+        case .loss: return Theme.danger
+        case .push: return Theme.textMuted
+        case nil: return Theme.textSecondary
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 0) {
+            UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 0, bottomTrailingRadius: 2, topTrailingRadius: 2)
+                .fill(tagColor)
+                .frame(width: 4, height: 40)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(description)
+                    .font(Theme.body)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(2)
+
+                Text(formatDate(bet.createdAt))
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .padding(.leading, 12)
+
+            Spacer()
+
+            Text(formattedAmount)
+                .font(Theme.body)
+                .fontWeight(.bold)
+                .foregroundStyle(amountColor)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 8).fill(amountColor.opacity(0.15)))
+        }
+        .padding(.vertical, 8)
     }
 
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, h:mm a"
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
         return formatter.string(from: date)
     }
 
     private func formatOdds(_ odds: Int) -> String {
         odds > 0 ? "+\(odds)" : "\(odds)"
-    }
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 }
 
@@ -1161,92 +1164,89 @@ private struct BetHistoryRow: View {
 private struct LedgerHistoryRow: View {
     let entry: LedgerEntry
 
-    private var absAmount: String {
-        formatCurrency(entry.amount < 0 ? -entry.amount : entry.amount)
-    }
-
-    private var iconName: String {
-        switch entry.type {
-        case .adjustment: return "slider.horizontal.3"
-        case .paymentLogged: return "banknote"
-        case .reversal: return "arrow.uturn.backward"
-        case .settlement: return "checkmark.circle"
-        }
-    }
-
     private var description: String {
+        // Use entryDescription from server when available, with fallback
+        let desc = entry.entryDescription
+        if !desc.isEmpty && desc != "Balance adjustment" {
+            return desc
+        }
         switch entry.type {
-        case .adjustment:
-            if entry.amount > 0 {
-                return "Balance adjusted — owes \(absAmount) more"
-            } else {
-                return "Balance adjusted — \(absAmount) credited"
-            }
-        case .paymentLogged:
-            return "Payment received — \(absAmount)"
-        case .reversal:
-            return "Reversal — \(absAmount)"
-        case .settlement:
-            if entry.amount > 0 {
-                return "Pick settled — owes \(absAmount)"
-            } else if entry.amount < 0 {
-                return "Pick settled — won \(absAmount)"
-            } else {
-                return "Pick pushed"
-            }
+        case .adjustment: return "Balance Adjustment"
+        case .paymentLogged: return "Settled Up"
+        case .reversal: return "Reversal"
+        case .settlement: return "Pick Graded"
         }
     }
 
-    private var badgeInfo: (text: String, color: Color) {
+    private var amountColor: Color {
+        // Bookie convention: positive = player owes more (good), negative = bookie owes (bad)
+        entry.amount >= 0 ? Theme.accent : Theme.danger
+    }
+
+    private var formattedAmount: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        let absAmount = entry.amount < 0 ? -entry.amount : entry.amount
+        let formatted = formatter.string(from: absAmount as NSDecimalNumber) ?? "$\(absAmount)"
+        return entry.amount >= 0 ? "+\(formatted)" : "-\(formatted)"
+    }
+
+    private var typeLabel: String {
         switch entry.type {
-        case .adjustment: return ("ADJ", Theme.warning)
-        case .paymentLogged: return ("PAY", Theme.accent)
-        case .reversal: return ("REV", Theme.danger)
-        case .settlement: return ("SETTLE", Theme.textMuted)
+        case .adjustment: return "Adjustment"
+        case .paymentLogged: return "Settled"
+        case .reversal: return "Reversal"
+        case .settlement: return "Graded"
+        }
+    }
+
+    private var tagColor: Color {
+        switch entry.type {
+        case .settlement: return Theme.scheduled
+        case .adjustment: return Theme.warning
+        case .paymentLogged: return Theme.accent
+        case .reversal: return Color.purple
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(formatDate(entry.createdAt))
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                Spacer()
-                Text(badgeInfo.text)
-                    .font(Theme.bodyFont(size: 11, weight: .bold))
-                    .foregroundStyle(badgeInfo.color == Theme.textMuted ? Theme.textPrimary : .black)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(badgeInfo.color)
-                    .clipShape(Capsule())
-            }
+        HStack(alignment: .center, spacing: 0) {
+            UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 0, bottomTrailingRadius: 2, topTrailingRadius: 2)
+                .fill(tagColor)
+                .frame(width: 4, height: 40)
 
-            HStack(spacing: 8) {
-                Image(systemName: iconName)
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.accent)
-
+            VStack(alignment: .leading, spacing: 4) {
                 Text(description)
-                    .font(Theme.bodyFont(size: 14, weight: .medium))
+                    .font(Theme.body)
+                    .fontWeight(.semibold)
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
+
+                Text(formatDate(entry.createdAt))
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textMuted)
             }
+            .padding(.leading, 12)
+
+            Spacer()
+
+            Text(formattedAmount)
+                .font(Theme.body)
+                .fontWeight(.bold)
+                .foregroundStyle(amountColor)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 8).fill(amountColor.opacity(0.15)))
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
     }
 
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, h:mm a"
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
         return formatter.string(from: date)
-    }
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 }
 

@@ -1726,11 +1726,20 @@ extension Notification.Name {
 /// A compact sync status indicator for display in the toolbar
 struct SyncStatusIndicator: View {
     var syncService: SyncService
+    var bookieEmail: String = ""
 
     /// Whether to show the expanded progress view (default: false for compact toolbar display)
     var showProgress: Bool = false
 
+    /// Only show for dev account
+    private var isDev: Bool {
+        bookieEmail.lowercased() == "tylerbkung@gmail.com"
+    }
+
     var body: some View {
+        if !isDev {
+            EmptyView()
+        } else {
         HStack(spacing: 4) {
             Image(systemName: syncService.syncStatus.iconName)
                 .foregroundStyle(syncService.syncStatus.iconColor)
@@ -1754,6 +1763,7 @@ struct SyncStatusIndicator: View {
         .padding(.vertical, 4)
         .background(Theme.cardBackground.opacity(0.8))
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+        }
     }
 }
 

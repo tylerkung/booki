@@ -440,4 +440,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 24, 2026 - Member management polish, search/filter on Members tab, attention tags, merged activity feed*
+*Last updated: February 24, 2026 - App Store polish (settings restructure, events cleanup, activity rows, subscription tiers, dev-only sync indicator), SEO foundation (sitemap, robots.txt, OG tags, 3 SEO landing pages, blog with 4 posts, JSON-LD schema, internal linking)*

@@ -201,3 +201,18 @@ Started: Tue Feb 24 21:16:16 PST 2026
   - Blog posts had good internal linking from the start (each had 2-5 in-body links) — plan cross-linking when writing content, not as an afterthought
   - invite.html is standalone (no nav, no footer) — always skip it for site-wide changes
 ---
+
+## 2026-02-24 - App Store Polish Pass
+- Restructured SettingsView into menu page with navigable rows (Profile, Balance Alerts, Pick Management, Export Data, About) + all detail pages use ScrollView + `.cardStyle()`
+- Updated subscription tiers: Free/Pro/Ultra (replacing active/inactive/trial), legacy cases preserved for migration
+- Cleaned up Events tab: removed plus CTA, Upcoming/Past picker, sport filter tabs; sport categories as individual cards
+- Hidden SyncStatusIndicator for all accounts except dev (tylerbkung@gmail.com)
+- Added player Account menu section with Activity and About rows, created PlayerActivityView with filter chips
+- Polished activity row indicators: `UnevenRoundedRectangle` with flush-left edges, compact padding, trailing badge spacing
+- History rows: larger fonts, bigger amount badges, taller indicator bars
+- Files changed: SettingsView.swift, AccountView.swift, EventsListView.swift, SearchView.swift, PlayerAnalyticsDetailView.swift, Bookie.swift, SyncService.swift, DashboardView.swift, PlayersListView.swift, AnalyticsDashboardView.swift
+- **Learnings:**
+  - Swift 6: free-standing functions returning SwiftUI views need `@MainActor`
+  - `UnevenRoundedRectangle` with 0 left radii + container `.padding(.leading, 0)` = flush edge indicators
+  - ScrollView + VStack + `.cardStyle()` is cleaner than List for settings-style pages
+---

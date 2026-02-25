@@ -5,6 +5,7 @@ import MessageUI
 
 struct PlayersListView: View {
     @Environment(\.modelContext) private var modelContext
+    @Query private var bookies: [Bookie]
     @Query(sort: \Player.name) private var players: [Player]
     @Query private var bets: [Bet]
     @Query private var ledgerEntries: [LedgerEntry]
@@ -93,7 +94,7 @@ struct PlayersListView: View {
                             .frame(height: 20)
                     }
                     ToolbarItem(placement: .topBarTrailing) {
-                        SyncStatusIndicator(syncService: syncService)
+                        SyncStatusIndicator(syncService: syncService, bookieEmail: bookies.first?.email ?? "")
                     }
                 }
                 .navigationDestination(for: PlayerAnalyticsSummary.self) { summary in

@@ -121,7 +121,7 @@ struct AnalyticsDashboardView: View {
                     .frame(height: 20)
             }
             ToolbarItem(placement: .topBarTrailing) {
-                SyncStatusIndicator(syncService: syncService)
+                SyncStatusIndicator(syncService: syncService, bookieEmail: bookies.first?.email ?? "")
             }
         }
         .navigationDestination(for: PlayerAnalyticsSummary.self) { summary in

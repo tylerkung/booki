@@ -20,6 +20,7 @@ struct FlaggedPlayer: Identifiable {
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(SyncService.self) private var syncService
+    @Query private var bookies: [Bookie]
     @Query private var bets: [Bet]
     @Query private var events: [Event]
     @Query private var players: [Player]
@@ -391,7 +392,7 @@ struct DashboardView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    SyncStatusIndicator(syncService: syncService)
+                    SyncStatusIndicator(syncService: syncService, bookieEmail: bookies.first?.email ?? "")
                 }
             }
         }

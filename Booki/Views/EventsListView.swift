@@ -5,15 +5,6 @@ struct EventsListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Event.startTime) private var events: [Event]
 
-    @State private var showingAddEvent = false
-    @State private var showingSyncGames = false
-    @State private var showingImportEvents = false
-    @State private var showingFetchScores = false
-    @State private var showingRefreshOdds = false
-
-    /// Upcoming vs Past toggle
-    @State private var showPast = false
-
     /// Currently selected sport filter (nil = "All")
     @State private var selectedSport: String? = nil
 
@@ -49,17 +40,9 @@ struct EventsListView: View {
         .sorted { $0.startTime < $1.startTime }
     }
 
-    /// Past: finals older than 48h. Sorted startTime descending (newest first).
-    private var pastEvents: [Event] {
-        events.filter { event in
-            event.status == .final && event.startTime < recentFinalsCutoff
-        }
-        .sorted { $0.startTime > $1.startTime }
-    }
-
     /// Base events for current tab
     private var baseEvents: [Event] {
-        showPast ? pastEvents : upcomingEvents
+        upcomingEvents
     }
 
     /// Filtered by search text
@@ -107,14 +90,8 @@ struct EventsListView: View {
                 // Persistent search bar
                 searchBar
 
-                // Upcoming / Past picker
-                segmentedPicker
-
-                // Sport tabs
-                sportTabsHeader
-
                 // Content: sport categories when idle, or game rows, or empty state
-                if searchText.isEmpty && selectedSport == nil && !showPast {
+                if searchText.isEmpty && selectedSport == nil {
                     sportCategoriesView
                 } else if filteredEvents.isEmpty {
                     emptyStateView
@@ -138,81 +115,7 @@ struct EventsListView: View {
                         .scaledToFit()
                         .frame(height: 20)
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button {
-                            showingSyncGames = true
-                        } label: {
-                            Label("Sync Games", systemImage: "arrow.triangle.2.circlepath")
-                        }
-
-                        Divider()
-
-                        Button {
-                            showingAddEvent = true
-                        } label: {
-                            Label("Add Event Manually", systemImage: "plus")
-                        }
-
-                        Menu {
-                            Button {
-                                showingImportEvents = true
-                            } label: {
-                                Label("Import from Odds API", systemImage: "square.and.arrow.down")
-                            }
-
-                            Button {
-                                showingFetchScores = true
-                            } label: {
-                                Label("Fetch Scores", systemImage: "sportscourt")
-                            }
-
-                            Button {
-                                showingRefreshOdds = true
-                            } label: {
-                                Label("Refresh Odds", systemImage: "arrow.clockwise")
-                            }
-                        } label: {
-                            Label("Advanced", systemImage: "ellipsis.circle")
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                }
             }
-            .sheet(isPresented: $showingAddEvent) {
-                AddEventSheet()
-            }
-            .sheet(isPresented: $showingSyncGames) {
-                SyncGamesView()
-            }
-            .sheet(isPresented: $showingImportEvents) {
-                ImportEventsView()
-            }
-            .sheet(isPresented: $showingFetchScores) {
-                FetchScoresView()
-            }
-            .sheet(isPresented: $showingRefreshOdds) {
-                RefreshOddsView()
-            }
-        }
-    }
-
-    // MARK: - Segmented Picker
-
-    @ViewBuilder
-    private var segmentedPicker: some View {
-        Picker("", selection: $showPast) {
-            Text("Upcoming").tag(false)
-            Text("Past").tag(true)
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .onChange(of: showPast) {
-            // Reset sport filter when switching tabs
-            selectedSport = nil
-            searchText = ""
         }
     }
 
@@ -339,35 +242,36 @@ struct EventsListView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("SPORTS")
                     .font(Theme.caption)
+                    .fontWeight(.semibold)
                     .tracking(1.0)
                     .foregroundStyle(Theme.textSecondary)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 20)
                     .padding(.top, 20)
                     .padding(.bottom, 12)
 
                 VStack(spacing: 8) {
                     ForEach(SportCategory.allCases) { category in
                         NavigationLink(value: category) {
-                            HStack(spacing: 12) {
+                            HStack(spacing: 14) {
                                 Image(systemName: category.iconName)
-                                    .font(.system(size: 18))
+                                    .font(.system(size: 20))
                                     .foregroundStyle(Theme.accent)
-                                    .frame(width: 28)
+                                    .frame(width: 28, alignment: .center)
 
                                 Text(category.displayName)
                                     .font(Theme.body)
+                                    .fontWeight(.medium)
                                     .foregroundStyle(Theme.textPrimary)
 
                                 Spacer()
 
                                 Image(systemName: "chevron.right")
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(.system(size: 14, weight: .semibold))
                                     .foregroundStyle(Theme.textMuted)
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
-                            .background(Theme.cardBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .cardStyle()
                         }
                         .buttonStyle(.plain)
                     }
@@ -437,7 +341,7 @@ struct EventsListView: View {
             Spacer()
 
             ContentUnavailableView(
-                !searchText.isEmpty ? "No Results" : (showPast ? "No Past Events" : "No Events"),
+                !searchText.isEmpty ? "No Results" : "No Events",
                 systemImage: !searchText.isEmpty ? "magnifyingglass" : "sportscourt",
                 description: Text(emptyStateDescription)
             )
@@ -459,11 +363,7 @@ struct EventsListView: View {
         if !searchText.isEmpty {
             return "No events match '\(searchText)'."
         } else if let sport = selectedSport {
-            return showPast
-                ? "No past \(sport) events."
-                : "No upcoming \(sport) events."
-        } else if showPast {
-            return "No completed events yet."
+            return "No upcoming \(sport) events."
         }
         return "Add events to start managing your book."
     }

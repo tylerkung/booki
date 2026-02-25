@@ -206,4 +206,12 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Parlay auto-settlement**: `autoSettleParlays()` in auto_refresh_games grades legs to `'graded'`, then settles fully-graded tickets with combined odds and single ledger entry
 - **Spurious bookie cleanup**: `cleanUpSpuriousBookieRecord()` in AuthManager auto-deletes leftover bookie records when player is detected, fixing RLS `get_user_bookie_id()` COALESCE issue
 - **Invite UX**: Pending invite rows tappable (opens sheet with code), inline copy-code icon next to code, separate Copy Code / Copy Link actions
+- **Settings restructure**: Menu page with navigable rows (Profile, Balance Alerts, Pick Management, Export Data, About), all detail pages use ScrollView + `.cardStyle()`, Log Out fixed to bottom
+- **Subscription tiers**: Free/Pro/Ultra (replacing active/inactive/trial), legacy cases preserved
+- **Events tab cleanup**: Removed plus CTA button and Upcoming/Past segmented picker, sport categories as individual cards
+- **Sync status dev-only**: `SyncStatusIndicator` hidden for all accounts except `tylerbkung@gmail.com`
+- **Player Account menu**: Activity and About rows in `.cardStyle()` card, `PlayerActivityView` with filter chips
+- **Activity row polish**: `UnevenRoundedRectangle` flush-left color indicators, compact row padding, trailing badge spacing
+- **SEO foundation**: sitemap.xml, robots.txt, OG/Twitter/canonical tags on all pages, 3 SEO landing pages (PPH alternative, run your own sportsbook, bookie ledger software), blog with 4 posts, JSON-LD schema markup, internal linking pass
+- **Landing blog**: `landing/blog/` with index + 4 articles, blog nav link on all pages, Article schema markup
 - **iOS 26 app icon**: Liquid glass icon for iOS 26+ with legacy fallback via asset catalog `minimum-system-version`

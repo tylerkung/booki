@@ -7,190 +7,67 @@ struct SettingsView: View {
     @Environment(AuthManager.self) private var authManager
     @Query private var bookies: [Bookie]
 
-    @State private var showingEditProfile = false
     @State private var showingLogoutConfirmation = false
     @State private var showingLogoutError = false
     @State private var logoutErrorMessage = ""
-
-    // Alert Threshold settings
-    @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
-    @AppStorage("agingThreshold") private var agingThreshold: Int = 7
-
-    // Auto-pilot settings (US-010)
-    @State private var manualBetAcceptance = false
-    @State private var manualBetGrading = false
-    @State private var allowFuturesParlays = true
-    @State private var isSavingSettings = false
-    @State private var showingSettingsError = false
-    @State private var settingsErrorMessage = ""
 
     private var currentBookie: Bookie? {
         bookies.first
     }
 
-    private var appVersion: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-        return "\(version) (\(build))"
-    }
-
     var body: some View {
         NavigationStack {
-            List {
-                // MARK: - Bookie Profile Section
-                Section {
-                    if let bookie = currentBookie {
-                        LabeledContent("Name", value: bookie.name)
-                        LabeledContent("Email", value: bookie.email)
-                        LabeledContent("Status") {
-                            Text(bookie.subscriptionStatus.rawValue.capitalized)
-                                .foregroundStyle(subscriptionStatusColor(bookie.subscriptionStatus))
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        settingsMenuRow(icon: "person.circle", title: "Profile", subtitle: currentBookie?.name) {
+                            ProfileSettingsView()
                         }
-
-                        Button {
-                            showingEditProfile = true
-                        } label: {
-                            Label("Edit Profile", systemImage: "pencil")
+                        menuDivider
+                        settingsMenuRow(icon: "bell.badge", title: "Balance Alerts") {
+                            BalanceAlertsSettingsView()
                         }
-                    } else {
-                        Text("No profile configured")
-                            .foregroundStyle(Theme.textSecondary)
-                            .italic()
-
-                        Button {
-                            showingEditProfile = true
-                        } label: {
-                            Label("Create Profile", systemImage: "plus.circle")
+                        menuDivider
+                        settingsMenuRow(icon: "hand.raised", title: "Pick Management") {
+                            PickManagementSettingsView()
+                        }
+                        menuDivider
+                        settingsMenuRow(icon: "square.and.arrow.up", title: "Export Data") {
+                            ExportDataView()
+                        }
+                        menuDivider
+                        settingsMenuRow(icon: "info.circle", title: "About") {
+                            AboutSettingsView()
                         }
                     }
-                } header: {
-                    Text("Organizer Profile")
+                    .cardStyle()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
                 }
-                .listRowBackground(Theme.cardBackground)
 
-                // MARK: - Alert Thresholds Section
-                Section {
+                // Fixed logout at bottom
+                Button {
+                    showingLogoutConfirmation = true
+                } label: {
                     HStack {
-                        Text("Balance Threshold")
-                        Spacer()
-                        TextField("Amount", value: $balanceThreshold, format: .currency(code: "USD"))
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 100)
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                        Text("Log Out")
                     }
-
-                    Stepper("Aging Threshold: \(agingThreshold) days", value: $agingThreshold, in: 1...90)
-                } header: {
-                    Text("Balance Alerts")
-                } footer: {
-                    Text("Get alerted when members have balances above the threshold or aging balances older than the specified days.")
+                    .font(Theme.headline)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.background)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Theme.danger)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .listRowBackground(Theme.cardBackground)
-
-                // MARK: - Bet Management Section (US-010)
-                Section {
-                    // Auto-pilot mode toggles
-                    Toggle(isOn: $manualBetAcceptance) {
-                        Label("Require Manual Pick Approval", systemImage: "hand.raised")
-                    }
-                    .onChange(of: manualBetAcceptance) { _, newValue in
-                        Task {
-                            await saveAutoPilotSettings(manualBetAcceptance: newValue, manualBetGrading: nil)
-                        }
-                    }
-
-                    Toggle(isOn: $manualBetGrading) {
-                        Label("Grade Picks Manually", systemImage: "checkmark.circle")
-                    }
-                    .onChange(of: manualBetGrading) { _, newValue in
-                        Task {
-                            await saveAutoPilotSettings(manualBetAcceptance: nil, manualBetGrading: newValue)
-                        }
-                    }
-
-                    Toggle(isOn: $allowFuturesParlays) {
-                        Label("Allow Futures in Multi-Picks", systemImage: "chart.line.uptrend.xyaxis")
-                    }
-                    .onChange(of: allowFuturesParlays) { _, newValue in
-                        Task {
-                            await saveFuturesParlaysSetting(newValue)
-                        }
-                    }
-
-                    NavigationLink {
-                        AcceptancePolicySettingsView()
-                    } label: {
-                        Label("Acceptance Rules", systemImage: "checkmark.shield")
-                    }
-                } header: {
-                    Text("Pick Management")
-                } footer: {
-                    if manualBetAcceptance || manualBetGrading {
-                        Text("Manual mode enabled. You'll need to review picks and/or grade them yourself.")
-                    } else {
-                        Text("Auto-pilot mode: Picks are auto-accepted and auto-graded when games complete.")
-                    }
-                }
-                .listRowBackground(Theme.cardBackground)
-
-                // MARK: - Data Management Section
-                Section {
-                    NavigationLink {
-                        ExportDataView()
-                    } label: {
-                        Label("Export Data", systemImage: "square.and.arrow.up")
-                    }
-                } header: {
-                    Text("Data Management")
-                } footer: {
-                    Text("Export your data to CSV for external record-keeping.")
-                }
-                .listRowBackground(Theme.cardBackground)
-
-                // MARK: - Account Section
-                Section {
-                    Button(role: .destructive) {
-                        showingLogoutConfirmation = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                            Text("Log Out")
-                        }
-                        .font(Theme.headline)
-                        .textCase(.uppercase)
-                        .foregroundStyle(Theme.background)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Theme.danger)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
-                } header: {
-                    Text("Account")
-                } footer: {
-                    if let userId = authManager.currentUserId {
-                        Text("Signed in as \(userId)")
-                    }
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-
-                // MARK: - About Section
-                Section {
-                    LabeledContent("Version", value: appVersion)
-                    LabeledContent("Platform", value: "iOS")
-                } header: {
-                    Text("About")
-                }
-                .listRowBackground(Theme.cardBackground)
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
-            .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showingEditProfile) {
-                EditProfileSheet(existingBookie: currentBookie)
-            }
             .alert("Log Out", isPresented: $showingLogoutConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Log Out", role: .destructive) {
@@ -204,24 +81,301 @@ struct SettingsView: View {
             } message: {
                 Text(logoutErrorMessage)
             }
-            .alert("Settings Error", isPresented: $showingSettingsError) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(settingsErrorMessage)
-            }
-            .onAppear {
-                loadAutoPilotSettings()
-            }
-            .onChange(of: bookies.count) { _, _ in
-                loadAutoPilotSettings()
-            }
         }
     }
 
-    // MARK: - US-010: Auto-Pilot Settings
+    private func settingsMenuRow<Destination: View>(icon: String, title: String, subtitle: String? = nil, @ViewBuilder destination: () -> Destination) -> some View {
+        NavigationLink {
+            destination()
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 20))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 28, alignment: .center)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(Theme.body)
+                        .fontWeight(.medium)
+                        .foregroundStyle(Theme.textPrimary)
+
+                    if let subtitle, !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+        }
+    }
+
+    private var menuDivider: some View {
+        Divider()
+            .background(Theme.border)
+            .padding(.leading, 58)
+    }
+
+    private func performLogout() {
+        Task {
+            do {
+                try await authManager.signOut()
+            } catch {
+                logoutErrorMessage = error.localizedDescription
+                showingLogoutError = true
+            }
+        }
+    }
+}
+
+// MARK: - Profile Settings
+
+struct ProfileSettingsView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AuthManager.self) private var authManager
+    @Query private var bookies: [Bookie]
+
+    @State private var showingEditProfile = false
+
+    private var currentBookie: Bookie? {
+        bookies.first
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                sectionHeader("Organizer Profile")
+
+                VStack(spacing: 0) {
+                    if let bookie = currentBookie {
+                        settingsDetailRow(label: "Name", value: bookie.name)
+                        settingsDivider
+                        settingsDetailRow(label: "Email", value: bookie.email)
+                        settingsDivider
+                        settingsDetailRow(label: "Status") {
+                            Text(bookie.subscriptionStatus.rawValue.capitalized)
+                                .foregroundStyle(subscriptionStatusColor(bookie.subscriptionStatus))
+                        }
+                        settingsDivider
+                        Button {
+                            showingEditProfile = true
+                        } label: {
+                            Label("Edit Profile", systemImage: "pencil")
+                                .foregroundStyle(Theme.accent)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        Text("No profile configured")
+                            .foregroundStyle(Theme.textSecondary)
+                            .italic()
+                            .padding(16)
+
+                        Button {
+                            showingEditProfile = true
+                        } label: {
+                            Label("Create Profile", systemImage: "plus.circle")
+                                .foregroundStyle(Theme.accent)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                        }
+                    }
+                }
+                .cardStyle()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+        }
+        .background(Theme.background)
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingEditProfile) {
+            EditProfileSheet(existingBookie: currentBookie)
+        }
+    }
+
+    private func subscriptionStatusColor(_ status: SubscriptionStatus) -> Color {
+        switch status {
+        case .free: return Theme.textSecondary
+        case .pro: return Theme.accent
+        case .ultra: return Theme.gold
+        // Legacy
+        case .active: return Theme.accent
+        case .inactive: return Theme.danger
+        case .trial: return Theme.textSecondary
+        }
+    }
+}
+
+// MARK: - Balance Alerts Settings
+
+struct BalanceAlertsSettingsView: View {
+    @AppStorage("balanceThreshold") private var balanceThreshold: Double = 500.0
+    @AppStorage("agingThreshold") private var agingThreshold: Int = 7
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                sectionHeader("Thresholds")
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Balance Threshold")
+                            .foregroundStyle(Theme.textPrimary)
+                        Spacer()
+                        TextField("Amount", value: $balanceThreshold, format: .currency(code: "USD"))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundStyle(Theme.textSecondary)
+                            .frame(width: 100)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+
+                    settingsDivider
+
+                    Stepper("Aging Threshold: \(agingThreshold) days", value: $agingThreshold, in: 1...90)
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                }
+                .cardStyle()
+
+                Text("Get alerted when members have balances above the threshold or aging balances older than the specified days.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                    .padding(.horizontal, 4)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+        }
+        .background(Theme.background)
+        .navigationTitle("Balance Alerts")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Pick Management Settings
+
+struct PickManagementSettingsView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var bookies: [Bookie]
+
+    @State private var manualBetAcceptance = false
+    @State private var manualBetGrading = false
+    @State private var allowFuturesParlays = true
+    @State private var isSavingSettings = false
+    @State private var showingSettingsError = false
+    @State private var settingsErrorMessage = ""
+
+    private var currentBookie: Bookie? {
+        bookies.first
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                sectionHeader("Auto-Pilot")
+
+                VStack(spacing: 0) {
+                    Toggle(isOn: $manualBetAcceptance) {
+                        Label("Require Manual Pick Approval", systemImage: "hand.raised")
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.accent)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .onChange(of: manualBetAcceptance) { _, newValue in
+                        Task {
+                            await saveAutoPilotSettings(manualBetAcceptance: newValue, manualBetGrading: nil)
+                        }
+                    }
+
+                    settingsDivider
+
+                    Toggle(isOn: $manualBetGrading) {
+                        Label("Grade Picks Manually", systemImage: "checkmark.circle")
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.accent)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .onChange(of: manualBetGrading) { _, newValue in
+                        Task {
+                            await saveAutoPilotSettings(manualBetAcceptance: nil, manualBetGrading: newValue)
+                        }
+                    }
+
+                    settingsDivider
+
+                    Toggle(isOn: $allowFuturesParlays) {
+                        Label("Allow Futures in Multi-Picks", systemImage: "chart.line.uptrend.xyaxis")
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.accent)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .onChange(of: allowFuturesParlays) { _, newValue in
+                        Task {
+                            await saveFuturesParlaysSetting(newValue)
+                        }
+                    }
+
+                    settingsDivider
+
+                    NavigationLink {
+                        AcceptancePolicySettingsView()
+                    } label: {
+                        HStack {
+                            Label("Acceptance Rules", systemImage: "checkmark.shield")
+                                .foregroundStyle(Theme.textPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                }
+                .cardStyle()
+
+                Text(manualBetAcceptance || manualBetGrading
+                     ? "Manual mode enabled. You'll need to review picks and/or grade them yourself."
+                     : "Auto-pilot mode: Picks are auto-accepted and auto-graded when games complete.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                    .padding(.horizontal, 4)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+        }
+        .background(Theme.background)
+        .navigationTitle("Pick Management")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Settings Error", isPresented: $showingSettingsError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(settingsErrorMessage)
+        }
+        .onAppear {
+            loadAutoPilotSettings()
+        }
+        .onChange(of: bookies.count) { _, _ in
+            loadAutoPilotSettings()
+        }
+    }
 
     private func loadAutoPilotSettings() {
-        // Load from local Bookie model
         if let bookie = currentBookie {
             manualBetAcceptance = bookie.manualBetAcceptance
             manualBetGrading = bookie.manualBetGrading
@@ -235,7 +389,6 @@ struct SettingsView: View {
         isSavingSettings = true
         defer { isSavingSettings = false }
 
-        // Update local model
         if let acceptance = manualBetAcceptance {
             bookie.manualBetAcceptance = acceptance
         }
@@ -244,7 +397,6 @@ struct SettingsView: View {
         }
         bookie.updatedAt = Date()
 
-        // Sync to Supabase
         do {
             try await BookieService.updateSettings(
                 bookieId: bookie.id,
@@ -276,24 +428,35 @@ struct SettingsView: View {
             showingSettingsError = true
         }
     }
+}
 
-    private func performLogout() {
-        Task {
-            do {
-                try await authManager.signOut()
-            } catch {
-                logoutErrorMessage = error.localizedDescription
-                showingLogoutError = true
-            }
-        }
+// MARK: - About Settings
+
+struct AboutSettingsView: View {
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(version) (\(build))"
     }
 
-    private func subscriptionStatusColor(_ status: SubscriptionStatus) -> Color {
-        switch status {
-        case .active: return Theme.accent
-        case .inactive: return Theme.danger
-        case .trial: return Theme.warning
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                sectionHeader("App Info")
+
+                VStack(spacing: 0) {
+                    settingsDetailRow(label: "Version", value: appVersion)
+                    settingsDivider
+                    settingsDetailRow(label: "Platform", value: "iOS")
+                }
+                .cardStyle()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
         }
+        .background(Theme.background)
+        .navigationTitle("About")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -381,12 +544,10 @@ struct EditProfileSheet: View {
         let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
 
         if let bookie = existingBookie {
-            // Update existing local bookie
             bookie.name = trimmedName
             bookie.email = trimmedEmail
             bookie.updatedAt = Date()
 
-            // Sync to Supabase — use detached task so dismiss() doesn't cancel it
             let bookieId = bookie.id
             Task.detached {
                 do {
@@ -400,7 +561,6 @@ struct EditProfileSheet: View {
                 }
             }
         } else if let bookieId = authManager.currentBookieId {
-            // No local bookie but we have a Supabase record — create local and sync
             let newBookie = Bookie(
                 id: bookieId,
                 email: trimmedEmail,
@@ -566,35 +726,55 @@ struct ExportDataView: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                Button {
-                    if let url = exportBetsToFile() {
-                        betExportURL = url
-                        showingBetExportShare = true
-                    }
-                } label: {
-                    Label("Export Picks (\(bets.count))", systemImage: "list.bullet.rectangle")
-                }
-                .disabled(bets.isEmpty)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                sectionHeader("Export Options")
 
-                Button {
-                    if let url = exportLedgerToFile() {
-                        ledgerExportURL = url
-                        showingLedgerExportShare = true
+                VStack(spacing: 0) {
+                    Button {
+                        if let url = exportBetsToFile() {
+                            betExportURL = url
+                            showingBetExportShare = true
+                        }
+                    } label: {
+                        HStack {
+                            Label("Export Picks (\(bets.count))", systemImage: "list.bullet.rectangle")
+                                .foregroundStyle(bets.isEmpty ? Theme.textMuted : Theme.accent)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
                     }
-                } label: {
-                    Label("Export Ledger (\(ledgerEntries.count))", systemImage: "doc.text")
+                    .disabled(bets.isEmpty)
+
+                    settingsDivider
+
+                    Button {
+                        if let url = exportLedgerToFile() {
+                            ledgerExportURL = url
+                            showingLedgerExportShare = true
+                        }
+                    } label: {
+                        HStack {
+                            Label("Export Ledger (\(ledgerEntries.count))", systemImage: "doc.text")
+                                .foregroundStyle(ledgerEntries.isEmpty ? Theme.textMuted : Theme.accent)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                    .disabled(ledgerEntries.isEmpty)
                 }
-                .disabled(ledgerEntries.isEmpty)
-            } header: {
-                Text("Export Options")
-            } footer: {
+                .cardStyle()
+
                 Text("Export your data to CSV format for external record-keeping and analysis.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                    .padding(.horizontal, 4)
             }
-            .listRowBackground(Theme.cardBackground)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
         }
-        .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("Export Data")
         .navigationBarTitleDisplayMode(.inline)
@@ -625,6 +805,52 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Shared Settings Helpers
+
+@MainActor
+private func sectionHeader(_ title: String) -> some View {
+    Text(title.uppercased())
+        .font(Theme.caption)
+        .fontWeight(.semibold)
+        .tracking(1)
+        .foregroundStyle(Theme.textSecondary)
+        .padding(.horizontal, 4)
+        .padding(.top, 12)
+        .padding(.bottom, -8)
+}
+
+@MainActor
+private func settingsDetailRow(label: String, value: String) -> some View {
+    HStack {
+        Text(label)
+            .foregroundStyle(Theme.textPrimary)
+        Spacer()
+        Text(value)
+            .foregroundStyle(Theme.textSecondary)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
+}
+
+@MainActor
+private func settingsDetailRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
+    HStack {
+        Text(label)
+            .foregroundStyle(Theme.textPrimary)
+        Spacer()
+        content()
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
+}
+
+@MainActor
+private var settingsDivider: some View {
+    Divider()
+        .background(Theme.border)
+        .padding(.leading, 16)
 }
 
 #Preview {

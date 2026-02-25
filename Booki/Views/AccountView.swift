@@ -138,11 +138,7 @@ struct AccountView: View {
                 heroBalanceSection
                 profileAndPreferencesCard
                 performanceCard
-                transactionHistorySection
-
-                if authManager.userRole == .player {
-                    logoutSection
-                }
+                playerMenuSection
             }
             .padding()
         }
@@ -439,6 +435,68 @@ struct AccountView: View {
         else { return Theme.accent }
     }
 
+    // MARK: - Player Menu Section
+
+    private var playerMenuSection: some View {
+        VStack(spacing: 0) {
+            NavigationLink {
+                PlayerActivityView(
+                    ledgerEntries: playerLedgerEntries,
+                    selectedFilter: $selectedTransactionFilter
+                )
+            } label: {
+                playerMenuRow(icon: "clock.arrow.circlepath", title: "Activity")
+            }
+
+            Divider()
+                .background(Theme.border)
+                .padding(.leading, 58)
+
+            NavigationLink {
+                AboutSettingsView()
+            } label: {
+                playerMenuRow(icon: "info.circle", title: "About")
+            }
+
+            if authManager.userRole == .player {
+                Divider()
+                    .background(Theme.border)
+                    .padding(.leading, 58)
+
+                Button {
+                    showingLogoutConfirmation = true
+                } label: {
+                    playerMenuRow(icon: "rectangle.portrait.and.arrow.right", title: "Log Out", color: Theme.danger)
+                }
+            }
+        }
+        .cardStyle()
+    }
+
+    private func playerMenuRow(icon: String, title: String, color: Color = Theme.accent) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundStyle(color)
+                .frame(width: 28, alignment: .center)
+
+            Text(title)
+                .font(Theme.body)
+                .fontWeight(.medium)
+                .foregroundStyle(title == "Log Out" ? Theme.danger : Theme.textPrimary)
+
+            Spacer()
+
+            if title != "Log Out" {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.textMuted)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
     // MARK: - Transaction History Section
 
     private var transactionHistorySection: some View {
@@ -492,7 +550,7 @@ struct AccountView: View {
             }
             .font(Theme.headline)
             .textCase(.uppercase)
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.background)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
         }
@@ -583,6 +641,88 @@ struct AccountView: View {
     }
 }
 
+// MARK: - Player Activity View
+
+struct PlayerActivityView: View {
+    let ledgerEntries: [LedgerEntry]
+    @Binding var selectedFilter: TransactionFilter
+
+    private var filteredEntries: [LedgerEntry] {
+        guard let type = selectedFilter.entryType else {
+            return ledgerEntries
+        }
+        return ledgerEntries.filter { $0.type == type }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                segmentedPicker
+
+                if filteredEntries.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "doc.text")
+                            .font(Theme.font(size: 40))
+                            .foregroundStyle(Theme.textMuted)
+                        Text("No transactions")
+                            .font(Theme.headline)
+                            .foregroundStyle(Theme.textSecondary)
+                        if selectedFilter != .all {
+                            Text("Try changing the filter")
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredEntries) { entry in
+                            TransactionRowView(entry: entry)
+                            if entry.id != filteredEntries.last?.id {
+                                Divider().background(Theme.divider)
+                            }
+                        }
+                    }
+                    .cardStyle()
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+        }
+        .background(Theme.background)
+        .navigationTitle("Activity")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var segmentedPicker: some View {
+        HStack(spacing: 0) {
+            ForEach(TransactionFilter.allCases) { item in
+                let isSelected = selectedFilter.id == item.id
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedFilter = item
+                    }
+                } label: {
+                    Text(item.rawValue)
+                        .font(Theme.caption)
+                        .fontWeight(isSelected ? .semibold : .regular)
+                        .foregroundStyle(isSelected ? Theme.background : Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(isSelected ? AnyView(Theme.accent) : AnyView(Color.clear))
+                }
+            }
+        }
+        .background(Theme.elevatedBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Theme.border, lineWidth: 0.5)
+        )
+    }
+}
+
 // MARK: - Transaction Row View
 
 struct TransactionRowView: View {
@@ -650,41 +790,34 @@ struct TransactionRowView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 0) {
+            UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 0, bottomTrailingRadius: 2, topTrailingRadius: 2)
+                .fill(tagColor)
+                .frame(width: 4, height: 40)
+
+            VStack(alignment: .leading, spacing: 4) {
                 Text(displayDescription)
-                    .font(Theme.subheadline)
-                    .fontWeight(.medium)
+                    .font(Theme.body)
+                    .fontWeight(.semibold)
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
 
-                Spacer()
-
-                Text(formattedAmount)
-                    .font(Theme.subheadline)
-                    .fontWeight(.bold)
-                    .foregroundStyle(amountColor)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(amountColor.opacity(0.1)))
-            }
-
-            HStack {
-                Text(typeLabel)
-                    .font(Theme.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(tagColor)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(tagColor.opacity(0.1)))
-                    .lineLimit(1)
-
-                Spacer()
-
                 Text(formattedDate)
-                    .font(Theme.caption)
+                    .font(Theme.subheadline)
                     .foregroundStyle(Theme.textMuted)
             }
+            .padding(.leading, 12)
+
+            Spacer()
+
+            Text(formattedAmount)
+                .font(Theme.body)
+                .fontWeight(.bold)
+                .foregroundStyle(amountColor)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 8).fill(amountColor.opacity(0.15)))
+                .padding(.trailing, 16)
         }
         .padding(.vertical, 12)
     }
