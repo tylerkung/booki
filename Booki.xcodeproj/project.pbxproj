@@ -133,6 +133,7 @@
 		8A12345600A0 /* ShimmerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A0 /* ShimmerView.swift */; };
 		8A12345600A1 /* ProUpgradeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A1 /* ProUpgradeSheet.swift */; };
 		8A12345600A2 /* ProCheckoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A2 /* ProCheckoutView.swift */; };
+		8A12345600A3 /* ProSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A3 /* ProSuccessView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -275,6 +276,7 @@
 		8A12345500A0 /* ShimmerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShimmerView.swift; sourceTree = "<group>"; };
 		8A12345500A1 /* ProUpgradeSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProUpgradeSheet.swift; sourceTree = "<group>"; };
 		8A12345500A2 /* ProCheckoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProCheckoutView.swift; sourceTree = "<group>"; };
+		8A12345500A3 /* ProSuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProSuccessView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -421,6 +423,7 @@
 				8A1234550088 /* PlayerAnalyticsDetailView.swift */,
 				8A12345500A1 /* ProUpgradeSheet.swift */,
 				8A12345500A2 /* ProCheckoutView.swift */,
+				8A12345500A3 /* ProSuccessView.swift */,
 				8A1234530011 /* Onboarding */,
 				8A1234530012 /* Components */,
 			);
@@ -746,6 +749,7 @@
 				8A12345600A0 /* ShimmerView.swift in Sources */,
 				8A12345600A1 /* ProUpgradeSheet.swift in Sources */,
 				8A12345600A2 /* ProCheckoutView.swift in Sources */,
+				8A12345600A3 /* ProSuccessView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
