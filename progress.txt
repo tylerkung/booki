@@ -12,6 +12,9 @@ Started: Tue Feb 24 21:16:16 PST 2026
 - Netlify config in `landing/netlify.toml` — only `/invite/*` has a redirect rule
 - SEO landing page CSS classes: `.seo-section`, `.seo-pain-grid`/`.seo-pain-card`, `.seo-solutions-grid`/`.seo-solution-item`, `.seo-comparison-table` — all reusable across SEO pages
 - Pain cards use `--accent-tertiary` (red icons), solutions use `.feature-number` (teal)
+- Blog pages in `landing/blog/` use `../` prefix for root paths (../styles.css, ../assets/, ../features.html)
+- Blog CSS classes: `.blog-hero`, `.blog-grid`, `.blog-card`, `.blog-article`, `.blog-prose`, `.blog-related`
+- invite.html is standalone (no nav bar) — skip when updating nav across all pages
 ---
 
 ## 2026-02-24 - US-001
@@ -56,4 +59,36 @@ Started: Tue Feb 24 21:16:16 PST 2026
   - Informational pages work well with two `.seo-solutions-grid` sections (steps + solutions) and one `.seo-pain-grid` (challenges)
   - Meta description is 148 chars — within the 160-char limit
   - The h1/title uses "sportsbook" (the search keyword) while body copy uses compliance-safe language
+---
+
+## 2026-02-24 - US-004
+- Created `landing/bookie-ledger-software.html` — Bookie Ledger Software SEO landing page
+- Page includes: hero targeting "bookie ledger software" keyword, 4 pain point cards (spreadsheets, settlement time, no audit trail, no credit controls), 4 ledger feature solutions (auto-settlement, real-time balances, credit limits, hash-chain audit trail), trust & transparency section (transaction history, analytics, member self-service, dispute-proof records), waitlist CTA
+- Reused existing CSS classes: `.seo-section`, `.seo-solutions-grid`, `.seo-solution-item`, `.seo-pain-grid`, `.seo-pain-card` — no new CSS needed
+- Added page to `landing/sitemap.xml` with weekly changefreq
+- Complete OG/Twitter/canonical tags, compliance-safe language in body copy ("members", "picks", "organizer")
+- Files changed: landing/bookie-ledger-software.html (new), landing/sitemap.xml, prd.json
+- **Learnings for future iterations:**
+  - All 3 SEO landing pages follow identical structure: hero → pain grid → solutions grid → [optional extra section] → CTA
+  - The trust/transparency section uses SVG icons inside `.feature-number` spans instead of numbers — works well for non-sequential items
+  - Meta description is 145 chars — within the 160-char limit
+  - Ledger-specific keywords naturally included: "bookie ledger", "settlement tracking", "audit trail", "credit limits", "balance tracking"
+---
+
+## 2026-02-24 - US-005
+- Created `landing/blog/` directory and `landing/blog/index.html` — blog listing page with 4 article preview cards
+- Added blog-specific CSS to `landing/styles.css`: blog hero, card grid, article post template (prose styling with ~700px max-width, 1.75 line-height), related articles, responsive breakpoints
+- Blog post template CSS includes: heading hierarchy, blockquote, code, list styling (ul with teal dots, ol with teal counters), dark-themed table styling with alternating rows
+- Updated nav bar on 7 pages (index, features, privacy, terms, pph, sportsbook, ledger) to include "Blog" link between Features and Pricing — both desktop and mobile menus
+- invite.html has no nav bar (standalone page) — skipped
+- Added `blog/index.html` to `landing/sitemap.xml` with weekly changefreq
+- Blog index cards have actual titles of 4 planned articles with excerpts, dates, and read times
+- Files changed: landing/blog/index.html (new), landing/styles.css, landing/sitemap.xml, landing/index.html, landing/features.html, landing/privacy.html, landing/terms.html, landing/pph-software-alternative.html, landing/how-to-run-your-own-sportsbook.html, landing/bookie-ledger-software.html
+- **Learnings for future iterations:**
+  - Blog pages live in `landing/blog/` — use `../` prefix for all root-relative paths (styles, assets, other pages)
+  - Blog nav bar uses `../features.html`, `../blog/`, `../index.html#pricing` pattern from blog/ subdirectory
+  - Blog CSS classes: `.blog-hero`, `.blog-grid`, `.blog-card`, `.blog-article`, `.blog-article-header`, `.blog-prose`, `.blog-related` — all reusable
+  - `.blog-prose` handles full article typography: h2/h3 headings, paragraphs, lists, blockquotes, code, tables
+  - invite.html is a standalone page with no nav bar — don't try to update it
+  - Blog card grid is 2 columns on desktop, 1 column on mobile
 ---

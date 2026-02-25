@@ -109,7 +109,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "The blog index page should show 4 placeholder cards (one for each upcoming article) with titles, short excerpts, and dates. Use a 2-column grid on desktop, 1-column on mobile. Blog post template needs good typography for long-form reading: max-width ~700px for prose, 1.7 line-height, proper spacing between paragraphs and headings. The nav bar update affects ALL existing pages — add 'Blog' as a nav-link between Features and Pricing. Blog posts will live at landing/blog/[slug].html. Use relative paths from blog/ back to root: ../styles.css, ../assets/, etc. The blog index placeholder cards should have the actual titles of the 4 planned articles so they're ready to link when the posts are created."
     },
     {
