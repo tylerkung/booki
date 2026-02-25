@@ -146,3 +146,23 @@ Started: Tue Feb 24 21:16:16 PST 2026
   - The blockquote style works well for showing formulas — use it for any code/formula content that should stand out
   - Blog index already had placeholder cards with correct URLs — no update needed to blog/index.html
 ---
+
+## 2026-02-24 - US-009
+- Created `landing/blog/common-mistakes-independent-organizers.html` — Common Mistakes Independent Organizers Make blog post (~1050 words)
+- Article covers 7 numbered mistakes: sloppy records, no clear rules, skipping credit limits, manual grading, letting settlements slide, ignoring performance data, scaling too fast
+- Each mistake follows pattern: problem description → why it matters → "How to avoid it" solution
+- Uses blog post template: nav, article header (title, date, 6 min read, author), prose body with h2 sections, related articles, CTA, footer
+- Proper heading hierarchy: h1 title, h2 numbered sections, h2 conclusion
+- Internal links to: `spreadsheet-template-tracking-picks.html`, `../bookie-ledger-software.html`, `how-organizers-track-weekly-settlements.html`, `../features.html`, `../how-to-run-your-own-sportsbook.html`
+- Related articles section links to the other 3 blog posts
+- Added page to `landing/sitemap.xml` with monthly changefreq
+- Compliance-safe language throughout (organizer, members, picks, operation)
+- Unique Netlify form name: `waitlist-blog-mistakes`
+- Blog index already had placeholder card with correct URL — no update needed
+- Files changed: landing/blog/common-mistakes-independent-organizers.html (new), landing/sitemap.xml, prd.json
+- **Learnings for future iterations:**
+  - All 4 blog posts now complete — blog index cards all link to real articles
+  - The "how to avoid it" bold pattern works well for listicle-style posts — gives each section a clear structure
+  - Cross-linking to SEO landing pages (bookie-ledger-software, how-to-run-your-own-sportsbook) and other blog posts strengthens internal linking
+  - Empathetic tone ("we've seen this") reads better than prescriptive ("you're doing it wrong") for mistake-style articles
+---
