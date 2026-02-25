@@ -235,7 +235,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "This is a linking-only pass — minimal content changes, mainly adding <a> tags in existing content and updating footers. The footer update is the biggest change: ensure ALL pages (existing 5 + 3 SEO pages + blog index + 4 blog posts = 13 pages) have a consistent footer with links to key pages. For the homepage, add links naturally in existing sections — e.g., in the features section, link to the full features page; in the pricing section, link to the PPH alternative page. Use relative paths consistently: from landing/ root pages use 'blog/index.html', from blog/ pages use '../features.html'. Final sitemap.xml should have all 13 pages."
     }
   ]

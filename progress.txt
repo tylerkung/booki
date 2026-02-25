@@ -184,3 +184,20 @@ Started: Tue Feb 24 21:16:16 PST 2026
   - Use `python3 -c "import json; json.loads(...)"` to validate JSON-LD blocks before committing
   - All pages had `</head>` at consistent line numbers (31 or 33) making the edit pattern reliable
 ---
+
+## 2026-02-24 - US-011
+- Updated footer on all 12 pages (skip invite.html) to include Features, Blog, PPH Alternative, Privacy, Terms, and Twitter links
+- Added internal content links to index.html: PPH alternative link in positioning section, blog link in CTA
+- Added internal content links to features.html: bookie ledger software link in settlement section, blog link in CTA
+- Added internal content links to pph-software-alternative.html: PPH vs manual blog post link, bookie ledger software link
+- Added internal content links to how-to-run-your-own-sportsbook.html: spreadsheet template + bookie ledger software links in step 1, weekly settlements blog post in step 6
+- Added internal content links to bookie-ledger-software.html: spreadsheet template blog post link, common mistakes blog post link
+- Blog posts already had 2+ internal links in article body from previous stories — no changes needed
+- Sitemap already had all 13 pages — no changes needed
+- Files changed: landing/index.html, landing/features.html, landing/privacy.html, landing/terms.html, landing/pph-software-alternative.html, landing/how-to-run-your-own-sportsbook.html, landing/bookie-ledger-software.html, landing/blog/index.html, landing/blog/how-organizers-track-weekly-settlements.html, landing/blog/pph-vs-manual-ledger-systems.html, landing/blog/spreadsheet-template-tracking-picks.html, landing/blog/common-mistakes-independent-organizers.html
+- **Learnings for future iterations:**
+  - Footer is the most efficient way to add cross-page links — one consistent block across all pages
+  - Using inline `style="color: var(--accent); text-decoration: underline;"` keeps links visible on the dark theme without adding new CSS classes
+  - Blog posts had good internal linking from the start (each had 2-5 in-body links) — plan cross-linking when writing content, not as an afterthought
+  - invite.html is standalone (no nav, no footer) — always skip it for site-wide changes
+---
