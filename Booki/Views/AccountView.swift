@@ -36,6 +36,7 @@ struct AccountView: View {
     @Environment(AuthManager.self) private var authManager
     @Query private var allBets: [Bet]
     @Query private var allLedgerEntries: [LedgerEntry]
+    @Query private var events: [Event]
     let player: Player
 
     @State private var showingLogoutConfirmation = false
@@ -43,7 +44,7 @@ struct AccountView: View {
     @State private var logoutErrorMessage = ""
     @State private var selectedTransactionFilter: TransactionFilter = .all
     @AppStorage("playerOddsFormat") private var oddsFormat: String = OddsFormat.american.rawValue
-    @AppStorage("playerNotificationsEnabled") private var notificationsEnabled: Bool = true
+
 
     // MARK: - Computed Properties
 
@@ -59,6 +60,26 @@ struct AccountView: View {
         let sorted = playerLedgerEntries.sorted { $0.createdAt > $1.createdAt }
         guard let entryType = selectedTransactionFilter.entryType else { return sorted }
         return sorted.filter { $0.type == entryType }
+    }
+
+    private func ticketForEntry(_ entry: LedgerEntry) -> Ticket? {
+        guard let bet = entry.bet else { return nil }
+        let ticketBets = playerBets.filter { $0.ticketId == bet.ticketId }
+        guard !ticketBets.isEmpty else { return nil }
+        return Ticket(id: bet.ticketId, bets: ticketBets)
+    }
+
+    private func parlayTitle(for entry: LedgerEntry) -> String? {
+        guard let ticket = ticketForEntry(entry), ticket.isParlay else { return nil }
+        let outcome: String
+        switch entry.entryDescription.lowercased() {
+        case let d where d.contains("won"): outcome = "Won"
+        case let d where d.contains("lost"): outcome = "Lost"
+        case let d where d.contains("push"): outcome = "Push"
+        default: outcome = "Settled"
+        }
+        let oddsString = ticket.combinedAmericanOdds > 0 ? "+\(ticket.combinedAmericanOdds)" : "\(ticket.combinedAmericanOdds)"
+        return "\(outcome) · \(ticket.bets.count)-leg Multi-Pick (\(oddsString))"
     }
 
     private var balanceSummary: PlayerBalanceSummary {
@@ -237,23 +258,6 @@ struct AccountView: View {
             Divider().background(Theme.divider)
             profileRow(icon: "calendar", label: "Member Since", value: memberSinceDate)
 
-            Divider().background(Theme.divider).padding(.vertical, 4)
-
-            // Notifications
-            HStack(spacing: 12) {
-                Image(systemName: "bell.fill")
-                    .font(.body)
-                    .foregroundStyle(Theme.textMuted)
-                    .frame(width: 24)
-
-                Toggle(isOn: $notificationsEnabled) {
-                    Text("Pick Notifications")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textSecondary)
-                }
-                .tint(Theme.accent)
-            }
-            .padding(.vertical, 12)
         }
         .padding(20)
         .background(
@@ -441,6 +445,7 @@ struct AccountView: View {
             NavigationLink {
                 PlayerActivityView(
                     ledgerEntries: playerLedgerEntries,
+                    playerBets: playerBets,
                     selectedFilter: $selectedTransactionFilter
                 )
             } label: {
@@ -527,7 +532,21 @@ struct AccountView: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(filteredLedgerEntries) { entry in
-                        TransactionRowView(entry: entry)
+                        if entry.type == .settlement, let ticket = ticketForEntry(entry) {
+                            NavigationLink {
+                                TicketDetailView(ticket: ticket)
+                            } label: {
+                                TransactionRowView(entry: entry, parlayTitle: parlayTitle(for: entry))
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            NavigationLink {
+                                TransactionDetailView(entry: entry)
+                            } label: {
+                                TransactionRowView(entry: entry)
+                            }
+                            .buttonStyle(.plain)
+                        }
                         if entry.id != filteredLedgerEntries.last?.id {
                             Divider().background(Theme.divider)
                         }
@@ -654,13 +673,53 @@ struct AccountView: View {
 
 struct PlayerActivityView: View {
     let ledgerEntries: [LedgerEntry]
+    let playerBets: [Bet]
     @Binding var selectedFilter: TransactionFilter
+    @Query private var events: [Event]
+    @AppStorage("bookieTier") private var bookieTierRaw: String = BookieTier.free.rawValue
+    @State private var showingProUpgrade = false
+
+    private var bookieTier: BookieTier {
+        BookieTier(rawValue: bookieTierRaw) ?? .free
+    }
+
+    private var isHistoryLimited: Bool {
+        !bookieTier.isPro && filteredEntries.count > 30
+    }
+
+    private var displayedEntries: [LedgerEntry] {
+        if bookieTier.isPro {
+            return filteredEntries
+        }
+        return Array(filteredEntries.prefix(30))
+    }
 
     private var filteredEntries: [LedgerEntry] {
+        let sorted = ledgerEntries.sorted { $0.createdAt > $1.createdAt }
         guard let type = selectedFilter.entryType else {
-            return ledgerEntries
+            return sorted
         }
-        return ledgerEntries.filter { $0.type == type }
+        return sorted.filter { $0.type == type }
+    }
+
+    private func ticketForEntry(_ entry: LedgerEntry) -> Ticket? {
+        guard let bet = entry.bet else { return nil }
+        let ticketBets = playerBets.filter { $0.ticketId == bet.ticketId }
+        guard !ticketBets.isEmpty else { return nil }
+        return Ticket(id: bet.ticketId, bets: ticketBets)
+    }
+
+    private func parlayTitle(for entry: LedgerEntry) -> String? {
+        guard let ticket = ticketForEntry(entry), ticket.isParlay else { return nil }
+        let outcome: String
+        switch entry.entryDescription.lowercased() {
+        case let d where d.contains("won"): outcome = "Won"
+        case let d where d.contains("lost"): outcome = "Lost"
+        case let d where d.contains("push"): outcome = "Push"
+        default: outcome = "Settled"
+        }
+        let oddsString = ticket.combinedAmericanOdds > 0 ? "+\(ticket.combinedAmericanOdds)" : "\(ticket.combinedAmericanOdds)"
+        return "\(outcome) · \(ticket.bets.count)-leg Multi-Pick (\(oddsString))"
     }
 
     var body: some View {
@@ -686,14 +745,32 @@ struct PlayerActivityView: View {
                     .padding(.vertical, 40)
                 } else {
                     LazyVStack(spacing: 0) {
-                        ForEach(filteredEntries) { entry in
-                            TransactionRowView(entry: entry)
-                            if entry.id != filteredEntries.last?.id {
+                        ForEach(displayedEntries) { entry in
+                            if entry.type == .settlement, let ticket = ticketForEntry(entry) {
+                                NavigationLink {
+                                    TicketDetailView(ticket: ticket)
+                                } label: {
+                                    TransactionRowView(entry: entry, parlayTitle: parlayTitle(for: entry))
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                NavigationLink {
+                                    TransactionDetailView(entry: entry)
+                                } label: {
+                                    TransactionRowView(entry: entry)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            if entry.id != displayedEntries.last?.id {
                                 Divider().background(Theme.divider)
                             }
                         }
                     }
                     .cardStyle()
+
+                    if isHistoryLimited {
+                        historyLimitFooter
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -702,6 +779,28 @@ struct PlayerActivityView: View {
         .background(Theme.background)
         .navigationTitle("Activity")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingProUpgrade) {
+            ProUpgradeSheet(contextMessage: "See your full history")
+        }
+    }
+
+    private var historyLimitFooter: some View {
+        VStack(spacing: 6) {
+            Text("Showing last 30 transactions")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+
+            Button {
+                showingProUpgrade = true
+            } label: {
+                Text("Upgrade to Pro for full history")
+                    .font(Theme.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Theme.accent)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
     }
 
     private var segmentedPicker: some View {
@@ -736,13 +835,19 @@ struct PlayerActivityView: View {
 
 struct TransactionRowView: View {
     let entry: LedgerEntry
+    var parlayTitle: String? = nil
 
     private var tagColor: Color {
         switch entry.type {
-        case .settlement: return Theme.scheduled
+        case .settlement:
+            // Color by outcome: green for wins, red for losses
+            let desc = entry.entryDescription.lowercased()
+            if desc.contains("won") { return Theme.accent }
+            if desc.contains("lost") { return Theme.danger }
+            return Theme.textMuted
         case .adjustment: return Theme.warning
-        case .paymentLogged: return Theme.accent
-        case .reversal: return Color.purple
+        case .paymentLogged: return Color.purple
+        case .reversal: return Theme.textMuted
         }
     }
 
@@ -773,6 +878,9 @@ struct TransactionRowView: View {
 
     /// Enriched description using linked bet data when available
     private var displayDescription: String {
+        if let parlayTitle {
+            return parlayTitle
+        }
         if let bet = entry.bet {
             let outcome: String
             switch entry.entryDescription.lowercased() {
@@ -782,11 +890,7 @@ struct TransactionRowView: View {
             case let d where d.contains("void"): outcome = "Voided"
             default: return entry.entryDescription
             }
-            let side = bet.side
-            if let event = bet.eventDescription {
-                return "\(outcome) · \(side) — \(event)"
-            }
-            return "\(outcome) · \(side)"
+            return "\(outcome) · \(bet.side)"
         }
         return entry.entryDescription
     }
@@ -809,7 +913,7 @@ struct TransactionRowView: View {
                     .font(Theme.body)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(2)
+                    .lineLimit(1)
 
                 Text(formattedDate)
                     .font(Theme.subheadline)
@@ -829,6 +933,153 @@ struct TransactionRowView: View {
                 .padding(.trailing, 16)
         }
         .padding(.vertical, 12)
+    }
+}
+
+// MARK: - Transaction Detail View
+
+struct TransactionDetailView: View {
+    let entry: LedgerEntry
+
+    /// Player-facing: negate internal convention
+    private var displayAmount: Decimal { -entry.amount }
+
+    private var amountColor: Color {
+        displayAmount >= 0 ? Theme.accent : Theme.danger
+    }
+
+    private var typeLabel: String {
+        switch entry.type {
+        case .settlement: return "Graded"
+        case .adjustment: return "Balance Adjustment"
+        case .paymentLogged: return "Settled Up"
+        case .reversal: return "Reversal"
+        }
+    }
+
+    private var typeIcon: String {
+        switch entry.type {
+        case .settlement: return "checkmark.circle.fill"
+        case .adjustment: return "plusminus.circle.fill"
+        case .paymentLogged: return "banknote.fill"
+        case .reversal: return "arrow.uturn.backward.circle.fill"
+        }
+    }
+
+    private var typeColor: Color {
+        switch entry.type {
+        case .settlement: return Theme.scheduled
+        case .adjustment: return Theme.warning
+        case .paymentLogged: return Theme.accent
+        case .reversal: return Color.purple
+        }
+    }
+
+    private var formattedAmount: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        let absAmount = displayAmount < 0 ? -displayAmount : displayAmount
+        let formatted = formatter.string(from: absAmount as NSDecimalNumber) ?? "$\(absAmount)"
+        return displayAmount >= 0 ? "+\(formatted)" : "-\(formatted)"
+    }
+
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: entry.createdAt)
+    }
+
+    private var cardBackground: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Theme.cardBackground)
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Theme.border, lineWidth: 0.5)
+        }
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                // Amount hero
+                VStack(spacing: 8) {
+                    Image(systemName: typeIcon)
+                        .font(.system(size: 44))
+                        .foregroundStyle(typeColor)
+
+                    Text(formattedAmount)
+                        .font(Theme.font(size: 36, weight: .bold))
+                        .foregroundStyle(amountColor)
+
+                    Text(typeLabel)
+                        .font(Theme.bodyFont(size: 15, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .background(cardBackground)
+
+                // Details card
+                VStack(spacing: 0) {
+                    detailsHeader
+
+                    VStack(spacing: 10) {
+                        labeledRow(label: "Date", value: formattedDate)
+
+                        if !entry.entryDescription.isEmpty {
+                            labeledRow(label: "Description", value: entry.entryDescription)
+                        }
+
+                        labeledRow(label: "Type", value: typeLabel)
+
+                        Divider().background(Theme.divider)
+
+                        labeledRow(
+                            label: "Transaction ID",
+                            value: String(entry.id.uuidString.prefix(8)) + "...",
+                            valueColor: Theme.textMuted
+                        )
+                    }
+                    .padding(12)
+                }
+                .background(cardBackground)
+            }
+            .padding(16)
+        }
+        .background(Theme.background)
+        .navigationTitle("Transaction")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var detailsHeader: some View {
+        HStack {
+            Text("DETAILS")
+                .font(Theme.caption)
+                .fontWeight(.semibold)
+                .tracking(1)
+                .foregroundStyle(Theme.textMuted)
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private func labeledRow(label: String, value: String, valueColor: Color = Theme.textPrimary) -> some View {
+        HStack {
+            Text(label)
+                .font(Theme.bodyFont(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+            Spacer()
+            Text(value)
+                .font(Theme.bodyFont(size: 14, weight: .medium))
+                .foregroundStyle(valueColor)
+                .multilineTextAlignment(.trailing)
+        }
     }
 }
 
