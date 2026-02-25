@@ -117,7 +117,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "The members tab is in PlayersListView.swift. The filter chips, search bar, and attention tags were added in recent phases. Wrap them in if isPro { } checks. The capacity banner goes at the bottom of the list — use a Section footer or append to the list. Use Theme.elevatedBackground if it exists, otherwise Theme.cardBackground."
     },
     {

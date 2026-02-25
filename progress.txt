@@ -15,6 +15,7 @@ Started: Wed Feb 25 02:44:29 PST 2026
 - Settings row layout: HStack(spacing: 14) with icon (20pt, accent, 28w frame) + title + Spacer + value + chevron, padded (.horizontal 16, .vertical 14)
 - Dashboard tier gating: use `bookieTier.isPro` checks in dashboardContent VStack — wrap sections in `if bookieTier.isPro { }` for hide, use ZStack+blur+overlay for blurred teasers
 - Sport performance placeholder: use static placeholder rows for blur target (ensures content visible even with no data)
+- PlayerRowView has `showTags: Bool = true` param to control attention chip visibility per-caller
 
 ---
 
@@ -80,4 +81,14 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - Use `.ultraThinMaterial` for frosted overlays on blurred content — works well on dark theme
   - Always use placeholder data behind blur (not real data) — ensures the blurred area has visible content even for new bookies with no data
   - The `bookieTier` property on AnalyticsDashboardView reads from `bookies.first?.tier ?? .free` — no @AppStorage needed since @Query already provides the data
+---
+
+## 2026-02-25 - US-006
+- What was implemented: Members tab tier gating — search bar and filter chips hidden on free tier, attention tags hidden on member cards via `showTags` parameter on PlayerRowView, capacity banner shown at bottom of member list when free tier is at 3-member limit (taps to ProUpgradeSheet with context message)
+- Files changed:
+  - Booki/Views/PlayersListView.swift — added @AppStorage bookieTier, wrapped search/filters in isPro check, added showTags param to PlayerRowView, added capacityBanner method, added ProUpgradeSheet sheet
+- **Learnings for future iterations:**
+  - PlayerRowView has `showTags: Bool = true` parameter — pass `false` to hide attention chips without modifying the row's internal logic
+  - Capacity banner counts active members as `players.filter { $0.status != .archived && $0.authUserId != nil }.count`
+  - On free tier, search/filter state variables still exist but are unused since the UI is hidden — no need to reset them
 ---
