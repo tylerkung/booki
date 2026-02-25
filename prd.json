@@ -205,7 +205,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "BetDetailView is in BetsListView.swift (the bookie bet detail). Find the actions section and wrap override/reverse buttons in isPro checks. If the section becomes empty, hide the entire card."
     },
     {

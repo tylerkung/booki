@@ -134,3 +134,14 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - `filteredEntries` is the source of truth (sorted + filtered by type), `displayedEntries` wraps it with the 30-entry limit — keep them separate to allow `isHistoryLimited` to compare counts
   - The footer goes after `.cardStyle()` but inside the else branch (when entries exist), not inside the LazyVStack
 ---
+
+## 2026-02-25 - US-011
+- What was implemented: Override actions gated on free tier in BetDetailView — "Reverse Settlement" and "Override Grade" buttons wrapped in `isPro` checks, actions card hidden entirely on settled bets for free tier (since all settled actions are Pro-only), pending/accepted/graded still show non-Pro actions (accept, decline, void, settle)
+- Files changed:
+  - Booki/Views/BetsListView.swift — added @AppStorage bookieTier + isPro computed property, wrapped Override Grade and Reverse Settlement in `if isPro`, updated shouldShowActions to return false for .settled on free tier
+- **Learnings for future iterations:**
+  - BetDetailView is inside BetsListView.swift (not a separate file)
+  - `shouldShowActions` controls whether the entire Actions card renders — update it when hiding all actions for a given status
+  - Graded bets always have at least the settle action on free tier, so the card still shows — only settled bets have all actions gated
+  - Use `if isPro, condition` (comma-separated) for combined tier + state checks in @ViewBuilder
+---

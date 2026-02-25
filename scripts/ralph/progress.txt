@@ -1,16 +1,19 @@
 # Ralph Progress Log
-Started: Mon Feb 24 2026
+Started: Tue Feb 25 2026
 ---
 
 ## Codebase Patterns
-- Landing site is plain HTML/CSS/JS in landing/ directory — no build tools or frameworks
-- Dark theme: #0A0A12 background, #00F5D4 accent, Inter (body) + Space Grotesk (headings)
-- Nav bar pattern: copy from features.html <nav class="site-nav"> block
-- Footer pattern: copy from features.html footer block
-- OG tags pattern: see index.html <head> for complete example (og:type, og:url, og:title, og:description, og:image + Twitter card)
+- iOS 18+ / Swift 6.0 / SwiftUI / SwiftData + Supabase (strict concurrency)
+- Dark theme: always use Theme.swift — Theme.background, Theme.cardBackground, Theme.accent, Theme.textPrimary, Theme.textSecondary
+- Balance convention: internal positive = player owes bookie; negate for player display
 - Compliance language: organizer (not bookie), member (not player), pick (not bet), stake (not wager)
-- Base URL: https://bookisports.com/
-- Existing CSS classes: .container, .section, .btn-primary, .nav-link, .nav-content
-- Relative paths from blog/: use ../ prefix for root landing assets (../styles.css, ../assets/)
-- Sitemap lives at landing/sitemap.xml
+- Edge functions in supabase/functions/ — deployed with --no-verify-jwt, auth validated in function code
+- @AppStorage incompatible with @Observable — use UserDefaults wrapper functions
+- UUID case: iOS uppercase, PostgreSQL lowercase — always .lowercased() for comparison
+- BetSlipSheet: activeFieldId routes to single NumericKeypadView, field IDs like "parlay_stake", "{itemKey}"
+- Settings/Account view is AccountView.swift (bookie and player sections)
+- Dashboard is AnalyticsDashboardView.swift
+- Members list is PlayersListView.swift
+- Bookie bet detail is in BetsListView.swift
+- Player activity/history is PlayerActivityView in AccountView.swift
 ---
