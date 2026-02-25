@@ -131,6 +131,8 @@
 		8A1234560098 /* PickPresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550098 /* PickPresenterTests.swift */; };
 		8A1234560099 /* InviteClaimView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1234550099 /* InviteClaimView.swift */; };
 		8A12345600A0 /* ShimmerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A0 /* ShimmerView.swift */; };
+		8A12345600A1 /* ProUpgradeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A1 /* ProUpgradeSheet.swift */; };
+		8A12345600A2 /* ProCheckoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A2 /* ProCheckoutView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -271,6 +273,8 @@
 		8A1234550098 /* PickPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickPresenterTests.swift; sourceTree = "<group>"; };
 		8A1234550099 /* InviteClaimView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteClaimView.swift; sourceTree = "<group>"; };
 		8A12345500A0 /* ShimmerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShimmerView.swift; sourceTree = "<group>"; };
+		8A12345500A1 /* ProUpgradeSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProUpgradeSheet.swift; sourceTree = "<group>"; };
+		8A12345500A2 /* ProCheckoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProCheckoutView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -415,6 +419,8 @@
 				8A1234550078 /* TonightsExposureCard.swift */,
 				8A1234550087 /* AnalyticsDashboardView.swift */,
 				8A1234550088 /* PlayerAnalyticsDetailView.swift */,
+				8A12345500A1 /* ProUpgradeSheet.swift */,
+				8A12345500A2 /* ProCheckoutView.swift */,
 				8A1234530011 /* Onboarding */,
 				8A1234530012 /* Components */,
 			);
@@ -738,6 +744,8 @@
 				8A1234560093 /* PickCardCompact.swift in Sources */,
 				8A1234560094 /* PickDetailHeader.swift in Sources */,
 				8A12345600A0 /* ShimmerView.swift in Sources */,
+				8A12345600A1 /* ProUpgradeSheet.swift in Sources */,
+				8A12345600A2 /* ProCheckoutView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
