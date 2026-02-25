@@ -130,7 +130,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Target keywords: 'weekly settlements', 'settlement tracking', 'organizer settlements'. Tone: helpful, authoritative, practical. Structure: intro paragraph, 4-5 h2 sections, conclusion with CTA. Use compliance-safe language throughout — 'organizer' not 'bookie', 'picks' not 'bets', 'members' not 'players'. Internal links should use descriptive anchor text (not 'click here'). The related articles section at the bottom should link to the other 3 planned blog posts (can be placeholder links that will work once those posts exist)."
     },
     {
