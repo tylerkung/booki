@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booki - Join Invite</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .invite-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+        }
+        .invite-card {
+            max-width: 400px;
+            width: 100%;
+        }
+        .invite-logo {
+            height: 32px;
+            margin-bottom: 32px;
+        }
+        .invite-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .invite-sub {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+        .invite-code {
+            display: inline-block;
+            font-family: 'Space Grotesk', monospace;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 24px;
+            margin-bottom: 32px;
+        }
+        .invite-btn {
+            display: inline-block;
+            padding: 14px 32px;
+            background: var(--accent);
+            color: var(--bg);
+            font-weight: 700;
+            font-size: 1rem;
+            border-radius: 12px;
+            text-decoration: none;
+            margin-bottom: 16px;
+        }
+        .invite-fallback {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="invite-page">
+        <div class="invite-card">
+            <img src="/assets/logo-booki-blk.svg" alt="Booki" class="invite-logo">
+            <h1 class="invite-title">You've been invited</h1>
+            <p class="invite-sub">Open in the Booki app to join.</p>
+            <div class="invite-code" id="inviteCode"></div>
+            <br><br>
+            <a href="#" id="openAppBtn" class="invite-btn">Open in Booki</a>
+            <p class="invite-fallback">Don't have the app? Copy the code above and enter it after signing up.</p>
+        </div>
+    </div>
+    <script>
+        // Extract invite code from URL path: /invite/ABC123
+        var pathParts = window.location.pathname.split('/');
+        var code = pathParts[pathParts.length - 1] || '';
+
+        // Display the code
+        document.getElementById('inviteCode').textContent = code;
+
+        // Set deep link on button
+        var deepLink = 'booki://invite/' + code;
+        document.getElementById('openAppBtn').href = deepLink;
+
+        // Auto-attempt deep link redirect on iOS
+        if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+            window.location.href = deepLink;
+        }
+    </script>
+</body>
+</html>

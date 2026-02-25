@@ -20,9 +20,8 @@ struct EventsListView: View {
     /// Event navigation target (for CompactGameRow tap)
     @State private var selectedEvent: Event? = nil
 
-    /// Inline search text
+    /// Search text
     @State private var searchText: String = ""
-    @State private var isSearchExpanded: Bool = false
     @FocusState private var isSearchFocused: Bool
 
     // MARK: - Filtering
@@ -105,14 +104,19 @@ struct EventsListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // Persistent search bar
+                searchBar
+
                 // Upcoming / Past picker
                 segmentedPicker
 
-                // Sport tabs + inline search
+                // Sport tabs
                 sportTabsHeader
 
-                // Game rows or empty state
-                if filteredEvents.isEmpty {
+                // Content: sport categories when idle, or game rows, or empty state
+                if searchText.isEmpty && selectedSport == nil && !showPast {
+                    sportCategoriesView
+                } else if filteredEvents.isEmpty {
                     emptyStateView
                 } else {
                     gamesList
@@ -128,6 +132,12 @@ struct EventsListView: View {
                 SportPageView(category: category, isViewOnly: true)
             }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Image("BookiWordmark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 20)
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
@@ -203,75 +213,50 @@ struct EventsListView: View {
             // Reset sport filter when switching tabs
             selectedSport = nil
             searchText = ""
-            isSearchExpanded = false
         }
     }
 
-    // MARK: - Sport Tabs Header (with inline search)
+    // MARK: - Search Bar
+
+    @ViewBuilder
+    private var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16))
+                .foregroundStyle(Theme.textSecondary)
+
+            TextField("Search teams...", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(Theme.body)
+                .autocorrectionDisabled()
+                .focused($isSearchFocused)
+
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Theme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Theme.background)
+    }
+
+    // MARK: - Sport Tabs Header
 
     @ViewBuilder
     private var sportTabsHeader: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                // Inline expandable search
-                if isSearchExpanded {
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Theme.textSecondary)
-
-                        TextField("Search teams...", text: $searchText)
-                            .textFieldStyle(.plain)
-                            .font(Theme.subheadline)
-                            .autocorrectionDisabled()
-                            .focused($isSearchFocused)
-
-                        Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                searchText = ""
-                                isSearchExpanded = false
-                                isSearchFocused = false
-                            }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundStyle(Theme.textSecondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Theme.cardBackground)
-                    .clipShape(Capsule())
-                    .frame(width: 200)
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity),
-                        removal: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity)
-                    ))
-                } else {
-                    Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            isSearchExpanded = true
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            isSearchFocused = true
-                        }
-                    } label: {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Theme.textPrimary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Theme.cardBackground)
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity),
-                        removal: .scale(scale: 0.8, anchor: .leading).combined(with: .opacity)
-                    ))
-                }
-
                 // "All" tab
                 SportTabButton(
                     title: "All",
@@ -341,6 +326,53 @@ struct EventsListView: View {
                         }
                     }
                 }
+            }
+        }
+        .background(Theme.background)
+    }
+
+    // MARK: - Sport Categories (idle state)
+
+    @ViewBuilder
+    private var sportCategoriesView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("SPORTS")
+                    .font(Theme.caption)
+                    .tracking(1.0)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 12)
+
+                VStack(spacing: 8) {
+                    ForEach(SportCategory.allCases) { category in
+                        NavigationLink(value: category) {
+                            HStack(spacing: 12) {
+                                Image(systemName: category.iconName)
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(Theme.accent)
+                                    .frame(width: 28)
+
+                                Text(category.displayName)
+                                    .font(Theme.body)
+                                    .foregroundStyle(Theme.textPrimary)
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .background(Theme.cardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
             }
         }
         .background(Theme.background)

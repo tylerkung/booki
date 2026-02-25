@@ -68,3 +68,24 @@ Started: Mon Feb 24 2026
 ### Learnings
 - SwiftUI `Spacer()` inside a `Button` with `.buttonStyle(.plain)` doesn't register taps — need `.contentShape(Rectangle())`
 - `ITSAppUsesNonExemptEncryption = NO` in Info.plist skips App Store encryption compliance dialog on every upload
+
+---
+## Mon Feb 24 2026 - Bookie Events overhaul, invite web links, Picks wordmark
+
+### What was implemented
+- **Bookie Events tab overhaul**: Persistent search bar (replacing collapsible inline search), sport category links when idle (matching player Search tab), wordmark logo in nav bar
+- **Bookie Picks tab wordmark**: Added BookiWordmark to top-left toolbar, matching Dashboard/Members
+- **Web invite links**: Invite copy link now generates `https://bookisports.com/invite/[code]` instead of deep link; new `invite.html` landing page auto-redirects to `booki://` deep link on iOS, shows branded fallback with code for non-app users
+- **Netlify redirect**: `/invite/*` → `invite.html` via rewrite rule in `netlify.toml`
+
+### Key files changed
+- `Booki/Views/EventsListView.swift` — persistent search bar, sport categories idle view, wordmark toolbar
+- `Booki/Views/BetsListView.swift` — wordmark toolbar
+- `Booki/Views/PlayersListView.swift` — web URL for invite link copy
+- `landing/invite.html` — new invite redirect/landing page
+- `landing/netlify.toml` — redirect rule for `/invite/*`
+
+### Learnings
+- Netlify redirects with `status = 200` serve the target file while keeping the original URL (rewrite, not redirect)
+- Auto deep link on iOS: `window.location.href = 'booki://...'` triggers app open if installed, falls through silently if not
+- `ITSAppUsesNonExemptEncryption = NO` in Info.plist skips App Store encryption compliance dialog on every upload

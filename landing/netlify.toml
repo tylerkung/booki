@@ -1,6 +1,11 @@
 [build]
   publish = "."
 
+[[redirects]]
+  from = "/invite/*"
+  to = "/invite.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

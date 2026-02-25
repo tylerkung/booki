@@ -159,6 +159,14 @@ struct BetsListView: View {
             .background(Theme.background)
             .navigationTitle("Picks")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Image("BookiWordmark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 20)
+                }
+            }
             .navigationDestination(for: Bet.self) { bet in
                 BetDetailView(bet: bet)
             }

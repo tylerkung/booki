@@ -1727,7 +1727,7 @@ struct InviteMemberSheet: View {
     }
 
     private func copyInviteLink(code: String) {
-        UIPasteboard.general.string = "booki://invite/\(code)"
+        UIPasteboard.general.string = "https://bookisports.com/invite/\(code)"
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         linkCopied = true
         codeCopied = false
