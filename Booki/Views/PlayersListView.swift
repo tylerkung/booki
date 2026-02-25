@@ -1568,6 +1568,19 @@ struct InviteMemberSheet: View {
     var existingInvite: Invite? = nil
 
     @Query private var bookies: [Bookie]
+    @Query(sort: \Player.name) private var players: [Player]
+    @AppStorage("bookieTier") private var bookieTierRaw: String = BookieTier.free.rawValue
+    @State private var showProUpgrade = false
+
+    private var bookieTier: BookieTier {
+        BookieTier(rawValue: bookieTierRaw) ?? .free
+    }
+
+    private var isAtCapacity: Bool {
+        guard !bookieTier.isPro else { return false }
+        let activeCount = players.filter { $0.status != .archived && $0.authUserId != nil }.count
+        return activeCount >= bookieTier.memberLimit
+    }
 
     @State private var inviteState: InviteState = .idle
     @State private var codeCopied = false
@@ -1592,7 +1605,11 @@ struct InviteMemberSheet: View {
                 // Content based on state
                 switch inviteState {
                 case .idle:
-                    idleContent
+                    if isAtCapacity {
+                        atCapacityContent
+                    } else {
+                        idleContent
+                    }
                 case .loading:
                     loadingContent
                 case .generated(let code, _):
@@ -1641,10 +1658,49 @@ struct InviteMemberSheet: View {
             } message: {
                 Text("Mail is not configured — share the link manually.")
             }
+            .sheet(isPresented: $showProUpgrade) {
+                ProUpgradeSheet(contextMessage: "You've reached the \(bookieTier.memberLimit)-member limit")
+            }
         }
     }
 
     // MARK: - State Views
+
+    @ViewBuilder
+    private var atCapacityContent: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "person.crop.circle.badge.exclamationmark")
+                .font(.system(size: 48))
+                .foregroundStyle(Theme.warning)
+
+            Text("You've reached the \(bookieTier.memberLimit)-member limit on the Free plan.")
+                .font(Theme.title3)
+                .foregroundStyle(Theme.textPrimary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Text("Upgrade to Pro to invite up to 50 members.")
+                .font(Theme.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Button {
+                showProUpgrade = true
+            } label: {
+                Text("UPGRADE TO PRO")
+                    .font(Theme.font(size: 16, weight: .bold))
+                    .foregroundStyle(Theme.background)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Theme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 32)
+            .padding(.top, 8)
+        }
+    }
 
     @ViewBuilder
     private var idleContent: some View {
