@@ -14,6 +14,7 @@ struct AnalyticsDashboardView: View {
     @State private var scrollToPlayers = false
     @State private var selectedRange: String = "ALL"
     @State private var showSkeleton = true
+    @State private var showProUpgrade = false
 
     private static let timeRanges = ["1W", "1M", "3M", "1Y", "ALL"]
 
@@ -176,14 +177,18 @@ struct AnalyticsDashboardView: View {
                             .padding(.horizontal, 16)
                             .id("playerList")
 
-                        FuturesTrackingCard(bets: bets)
+                        if bookieTier.isPro {
+                            FuturesTrackingCard(bets: bets)
+                                .padding(.horizontal, 16)
+                        }
+
+                        sportPerformanceGated
                             .padding(.horizontal, 16)
 
-                        SportPerformanceSection(bets: bets)
-                            .padding(.horizontal, 16)
-
-                        RecentActivitySection(bets: bets, ledgerEntries: ledgerEntries)
-                            .padding(.horizontal, 16)
+                        if bookieTier.isPro {
+                            RecentActivitySection(bets: bets, ledgerEntries: ledgerEntries)
+                                .padding(.horizontal, 16)
+                        }
 
                         Text("Last updated \(lastUpdated.formatted(date: .omitted, time: .shortened))")
                             .font(Theme.caption)
@@ -204,6 +209,92 @@ struct AnalyticsDashboardView: View {
             }
         }
         .onAppear { lastUpdated = Date() }
+    }
+
+    // MARK: - Sport Performance (Tier-Gated)
+
+    private var sportPerformanceGated: some View {
+        Group {
+            if bookieTier.isPro {
+                SportPerformanceSection(bets: bets)
+            } else {
+                ZStack {
+                    sportPerformancePlaceholder
+                        .blur(radius: 8)
+                        .allowsHitTesting(false)
+
+                    VStack(spacing: 8) {
+                        Image(systemName: "chart.bar.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(Theme.accent)
+
+                        Text("Sport Breakdown")
+                            .font(Theme.font(size: 17, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+
+                        Text("See which sports are winning for you")
+                            .font(Theme.bodyFont(size: 13))
+                            .foregroundStyle(Theme.textSecondary)
+
+                        Button {
+                            showProUpgrade = true
+                        } label: {
+                            Text("Unlock with Pro")
+                                .font(Theme.bodyFont(size: 14, weight: .bold))
+                                .foregroundStyle(Theme.accent)
+                        }
+                        .padding(.top, 4)
+                    }
+                    .padding(20)
+                    .frame(maxWidth: .infinity)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                }
+            }
+        }
+        .sheet(isPresented: $showProUpgrade) {
+            ProUpgradeSheet(contextMessage: "Unlock analytics")
+        }
+    }
+
+    private var sportPerformancePlaceholder: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("PERFORMANCE BY SPORT")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .tracking(1.0)
+                .padding(.leading, 4)
+
+            ForEach(["Football", "Basketball", "Baseball"], id: \.self) { sport in
+                HStack(spacing: 12) {
+                    Image(systemName: "sportscourt.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 32)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(sport)
+                                .font(Theme.font(size: 15, weight: .bold))
+                                .foregroundStyle(Theme.textPrimary)
+                            Spacer()
+                            Text("+$0.00")
+                                .font(Theme.font(size: 15, weight: .bold))
+                                .foregroundStyle(Theme.accent)
+                        }
+                        HStack(spacing: 12) {
+                            Text("0 picks")
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.textSecondary)
+                            Spacer()
+                        }
+                    }
+                }
+                .padding(14)
+                .background(Theme.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            }
+        }
     }
 
     // MARK: - Skeleton Content
