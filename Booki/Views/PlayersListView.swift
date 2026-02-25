@@ -20,7 +20,13 @@ struct PlayersListView: View {
     @State private var showDeletedToast = false
     @State private var searchText = ""
     @State private var activeFilter = "All"
+    @State private var showProUpgrade = false
     @AppStorage("deletedInviteIds") private var deletedInviteIdsString: String = ""
+    @AppStorage("bookieTier") private var bookieTierRaw: String = BookieTier.free.rawValue
+
+    private var bookieTier: BookieTier {
+        BookieTier(rawValue: bookieTierRaw) ?? .free
+    }
 
     private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
 
@@ -84,6 +90,14 @@ struct PlayersListView: View {
         NavigationStack {
             scrollContent
                 .background(Theme.background)
+                .refreshable {
+                    await withCheckedContinuation { continuation in
+                        Task.detached {
+                            await syncService.sync()
+                            continuation.resume()
+                        }
+                    }
+                }
                 .navigationTitle("Members")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -110,6 +124,10 @@ struct PlayersListView: View {
                 }
                 .sheet(item: $selectedPendingInvite) { invite in
                     InviteMemberSheet(existingInvite: invite)
+                        .presentationBackground(Theme.background)
+                }
+                .sheet(isPresented: $showProUpgrade) {
+                    ProUpgradeSheet(contextMessage: "You've reached the 3-member limit")
                         .presentationBackground(Theme.background)
                 }
         }
@@ -188,13 +206,15 @@ struct PlayersListView: View {
             .padding(.top, 60)
         } else {
             VStack(spacing: 12) {
-                memberSearchBar
-                memberFilterChips
+                if bookieTier.isPro {
+                    memberSearchBar
+                    memberFilterChips
 
-                if activeFilter != "All" || !searchText.isEmpty {
-                    Text("\(filteredSummaries.count) of \(playerSummaries.count) members")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textSecondary)
+                    if activeFilter != "All" || !searchText.isEmpty {
+                        Text("\(filteredSummaries.count) of \(playerSummaries.count) members")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                 }
             }
             .padding(.horizontal)
@@ -216,7 +236,8 @@ struct PlayersListView: View {
                                 balance: balanceForPlayer(summary.player),
                                 utilization: utilizationForPlayer(summary.player),
                                 summary: summary,
-                                expanded: true
+                                expanded: true,
+                                showTags: bookieTier.isPro
                             )
                             .padding()
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -227,6 +248,14 @@ struct PlayersListView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top, 0)
+
+                // Capacity banner for free tier at member limit
+                if !bookieTier.isPro {
+                    let activeCount = players.filter { $0.status != .archived && $0.authUserId != nil }.count
+                    if activeCount >= bookieTier.memberLimit {
+                        capacityBanner(activeCount: activeCount)
+                    }
+                }
             }
         }
     }
@@ -247,6 +276,31 @@ struct PlayersListView: View {
         .padding(.horizontal)
         .padding(.top, 16)
         .padding(.bottom, 24)
+    }
+
+    private func capacityBanner(activeCount: Int) -> some View {
+        Button {
+            showProUpgrade = true
+        } label: {
+            HStack {
+                Image(systemName: "person.2.fill")
+                    .foregroundStyle(Theme.accent)
+                    .font(.system(size: 14))
+                Text("\(activeCount) of \(bookieTier.memberLimit) members · Upgrade for more")
+                    .font(Theme.bodyFont(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(Theme.accent)
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .padding()
+            .background(Theme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal)
+        .padding(.top, 12)
     }
 
     private var copiedToast: some View {
@@ -455,6 +509,7 @@ struct PlayerRowView: View {
     let utilization: Double
     var summary: PlayerAnalyticsSummary?
     var expanded: Bool = false
+    var showTags: Bool = true
 
     @State private var showingTagExplainer = false
 
@@ -562,8 +617,8 @@ struct PlayerRowView: View {
             metricColumn(label: "Avg Pick", value: formatCurrencyShort(summary.avgBetSize30d), color: Theme.textPrimary)
         }
 
-        // Row 3: Attention chips
-        if !summary.pas.reasonChips.isEmpty {
+        // Row 3: Attention chips (Pro only)
+        if showTags, !summary.pas.reasonChips.isEmpty {
             HStack(spacing: 6) {
                 ForEach(Array(summary.pas.reasonChips.prefix(3)), id: \.self) { chip in
                     Button {
