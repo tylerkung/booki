@@ -135,7 +135,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Find the InviteMemberSheet or invite creation view. The gate is INSIDE the sheet, not before it — the button to open the sheet is always visible. Count active members using the helper from US-001. Check bookie_id is not nil AND auth_user_id is not nil for active member count."
     },
     {

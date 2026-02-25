@@ -92,3 +92,13 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - Capacity banner counts active members as `players.filter { $0.status != .archived && $0.authUserId != nil }.count`
   - On free tier, search/filter state variables still exist but are unused since the UI is hidden — no need to reset them
 ---
+
+## 2026-02-25 - US-007
+- What was implemented: Invite creation gated at member capacity — InviteMemberSheet shows blocking message with upgrade CTA when free tier bookie is at 3-member limit, normal invite flow when under limit or on Pro
+- Files changed:
+  - Booki/Views/PlayersListView.swift — added @AppStorage bookieTier, @Query players, isAtCapacity computed property, atCapacityContent view with warning icon + message + "Upgrade to Pro" button, ProUpgradeSheet with context message
+- **Learnings for future iterations:**
+  - InviteMemberSheet already has @Query for bookies — adding @Query for players is safe alongside it
+  - Gate is inside the sheet (idle state), not on the button that opens it — preserves discoverability
+  - `isAtCapacity` reuses same active member counting logic as PlayersListView capacity banner
+---
