@@ -157,3 +157,13 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - Deno typecheck via `npx deno check` has pre-existing Deno namespace errors (no deno.ns lib) — these are not real issues for Supabase Edge Functions
   - Error responses for tier enforcement use short machine-readable strings (`member_limit_reached`, `pro_required`) not human-readable messages — client handles display
 ---
+
+## 2026-02-25 - US-013
+- What was implemented: Debug tier toggle in About Settings — triple-tapping version number toggles between free and pro tier, updates @AppStorage immediately, shows animated toast overlay "Debug: Tier set to Pro/Free" that auto-dismisses after 2 seconds
+- Files changed:
+  - Booki/Views/SettingsView.swift — added @AppStorage bookieTier + @State toast properties to AboutSettingsView, .onTapGesture(count: 3) on version row, toast overlay with capsule styling and transition animation
+- **Learnings for future iterations:**
+  - `.onTapGesture(count: 3)` works reliably on HStack rows — no need for custom gesture recognizers
+  - Toast pattern: use `.overlay(alignment: .top)` + `@State` bool + `DispatchQueue.main.asyncAfter` for auto-dismiss, `withAnimation` for enter/exit transitions
+  - Debug toggle updates @AppStorage which all tier-gated views read — changes propagate instantly across the app
+---

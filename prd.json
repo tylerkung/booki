@@ -239,7 +239,7 @@
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "Find the About section or version display in Settings (AccountView.swift). Add .onTapGesture(count: 3) to the version Text view. Toggle the @AppStorage value. The confirmation can be a simple withAnimation overlay or use a @State showDebugToast bool that auto-dismisses after 2 seconds. This is crucial for testing the entire tier system before Stripe is wired."
     }
   ]
