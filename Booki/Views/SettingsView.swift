@@ -36,12 +36,16 @@ struct SettingsView: View {
                         BalanceAlertsSettingsView()
                     }
                     menuDivider
-                    settingsMenuRow(icon: "hand.raised", title: "Pick Management") {
-                        PickManagementSettingsView()
-                    }
-                    menuDivider
-                    settingsMenuRow(icon: "square.and.arrow.up", title: "Export Data") {
-                        ExportDataView()
+                    if isPro {
+                        settingsMenuRow(icon: "hand.raised", title: "Pick Management") {
+                            PickManagementSettingsView()
+                        }
+                        menuDivider
+                        settingsMenuRow(icon: "square.and.arrow.up", title: "Export Data") {
+                            ExportDataView()
+                        }
+                    } else {
+                        pickManagementProRow
                     }
                     menuDivider
                     settingsMenuRow(icon: "lock.rotation", title: "Change Password") {
@@ -167,6 +171,52 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
             }
+        }
+    }
+
+    // MARK: - Pick Management Pro Row (Free Tier)
+
+    @ViewBuilder
+    private var pickManagementProRow: some View {
+        Button {
+            showingProUpgrade = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 28, alignment: .center)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 8) {
+                        Text("Pick Management")
+                            .font(Theme.body)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Theme.textPrimary)
+
+                        Text("PRO")
+                            .font(Theme.caption)
+                            .fontWeight(.bold)
+                            .foregroundStyle(Theme.background)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Theme.accent)
+                            .clipShape(Capsule())
+                    }
+
+                    Text("Manual approval, grading rules, and more")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
         }
     }
 
