@@ -10,6 +10,27 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - Player data cached in `playerMap` (keyed by id) for O(1) lookups
 ---
 
+## 2026-02-26 - US-006
+- Implemented member detail view with header card and action buttons
+- Member names in members table now clickable — navigate to `#/members/<playerId>`
+- Header card shows: display name, status badge, balance (color-coded with "Owes you"/"You owe"/"Settled" labels), credit limit, credit utilization progress bar
+- Action buttons: Settle Up and Adjust Balance reuse existing modals via `openSettleUp(memberDetail)` and `openAdjustBalance(memberDetail)`
+- Overflow menu (···) with Archive Member and Remove Member options
+- Archive: updates `players.status='archived'` via Supabase, shows confirmation modal
+- Remove: NULLs `bookie_id` and `auth_user_id` via Supabase update, shows warning modal, redirects to #/members on success
+- Loading shimmer state while member data fetches
+- `loadMemberDetail()` method: checks playerMap first, falls back to Supabase query, computes balance from ledger_entries
+- Credit utilization bar: green under 80%, red over 80%
+- Added `parseRoute()` trigger for member-detail route
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - `loadMemberDetail()` should compute balance from ledger_entries (not trust playerMap balance) for accuracy
+  - Archive/Remove modals are placed outside the `x-show="route === 'member-detail'"` section so they render at page level
+  - Overflow menu uses `@click.outside` to auto-close — standard Alpine.js pattern
+  - `getMemberCreditUtilization()` is a method (not computed) since Alpine doesn't cache method calls — acceptable for simple math
+  - The settle/adjust modals already exist and work with any player object — just pass `memberDetail` to reuse them
+---
+
 ## 2026-02-26 - US-005
 - Implemented override grade and reverse settlement actions on pick detail view (Pro only)
 - For 'graded' picks: added Override Grade button (Pro only) alongside existing Void button

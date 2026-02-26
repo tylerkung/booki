@@ -116,7 +116,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Add a new section in app.html with x-show=\"route === 'member-detail'\". Add loadMemberDetail() method. The settle/adjust modals already exist — just set this.settlePlayer or this.adjustPlayer to the loaded player and open the modal. For archive/remove, add new state vars (showArchiveModal, showRemoveModal, isArchiving, isRemoving). Credit utilization bar: use a div with percentage width and accent color background."
     },
     {
