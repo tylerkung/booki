@@ -1,123 +1,30 @@
 # Ralph Progress Log
-Started: Wed Feb 25 17:19:57 PST 2026
-
-## Codebase Patterns
-- Player upsert logic exists in BOTH SyncService AND RealtimeService — update both when adding new Player fields
-- PlayerRecord (download DTO) and PlayerUpsert (upload DTO) are both in SyncModels.swift — update both
-- Supabase migrations go in supabase/migrations/ with sequential numbering (024 is next)
-- PostgreSQL BEFORE UPDATE triggers run alphabetically — `trg_*` runs after `update_*` so `updated_at` is already modified
-- Column-level RLS isn't supported in PostgreSQL — use a BEFORE UPDATE trigger to restrict which columns non-bookies can change
-- CollectionStatus.displayName is a computed property on an enum — Player.displayName is a separate stored property, no conflict
+Started: Wed Feb 25 18:55:49 PST 2026
 ---
 
 ## 2026-02-25 - US-001
-- What was implemented: Added `display_name TEXT DEFAULT NULL` column to players table via migration 023, added `displayName: String?` to Player SwiftData model, added to PlayerRecord/PlayerUpsert DTOs with CodingKeys, updated upsertPlayer in both SyncService and RealtimeService
-- Files changed: supabase/migrations/023_players_display_name.sql, Booki/Models/Player.swift, Booki/Services/SyncModels.swift, Booki/Services/SyncService.swift, Booki/Services/RealtimeService.swift
+- Replaced '$49.99 / month' price line with 'Coming Soon' in Theme.textSecondary
+- Removed NavigationLink to ProCheckoutView from sticky bottom CTA
+- Replaced subscribe button with non-tappable muted text: 'Coming Soon' in Theme.textMuted on Theme.elevatedBackground
+- Added notification note below button: 'We'll notify you when Booki Pro is available.'
+- Preserved BookiPro logo, feature list card, contextMessage, dismiss X button, Terms/Privacy links
+- ProCheckoutView.swift left untouched (just unreachable)
+- Files changed: Booki/Views/ProUpgradeSheet.swift
 - **Learnings for future iterations:**
-  - RealtimeService has its own `upsertPlayer()` duplicate of SyncService's — must update both
-  - PlayerRecord and PlayerUpsert are separate structs with separate CodingKeys — both need updating for new fields
-  - Player init has explicit parameters (not synthesized) — must add new params there too
+  - ProUpgradeSheet is presented via .sheet from multiple places in the app — changes here affect all upsell entry points
+  - Theme.textMuted and Theme.elevatedBackground are the standard muted/disabled styling
+  - ProCheckoutView still exists in the project but is now unreachable — can be cleaned up later
 ---
 
 ## 2026-02-25 - US-002
-- What was implemented: Added `bookieDisplayName` computed property to Player model (`displayName ?? name`). Replaced all `player.name` references in 13 bookie-facing views with `player.bookieDisplayName`. Updated name edit flow in PlayerAnalyticsDetailView to write to `display_name` column (not `name`). Player-facing views (AccountView, PlayerLoginView) still use `player.name`.
-- Files changed: Player.swift, BetsListView.swift, AnalyticsDashboardView.swift, PlayersListView.swift, PlayerAnalyticsDetailView.swift, DashboardView.swift, AttentionFeedView.swift, SettlementSnapshotCard.swift, PaymentSheet.swift, WeeklySettlementView.swift, PlayerRiskWatchlistCard.swift, GradingView.swift, PlayerPicksListView.swift, PlayerPickHistoryView.swift
+- Verified downgrade enforcement already implemented in create_invite/index.ts
+- Constants MEMBER_LIMIT_FREE=3, MEMBER_LIMIT_PRO=50 at lines 17-18
+- Bookie tier read via `.select('id, tier')` at line 74
+- Active player count query filters `auth_user_id IS NOT NULL` (archived/removed don't count)
+- Returns 403 with `{ success: false, error: 'member_limit_reached', limit, current }` when at capacity
+- Files changed: none (already implemented)
 - **Learnings for future iterations:**
-  - `player.name` appears in ~30+ locations across bookie views — thorough search required
-  - Name edit flow (saveName) in PlayerAnalyticsDetailView updates Supabase directly, then SwiftData locally
-  - Player-facing views: AccountView, PlayerLoginView. Everything else is bookie-facing.
-  - CSV export in WeeklySettlementView uses player name with comma escaping — must update those too
----
-
-## 2026-02-25 - US-003
-- What was implemented: Added RLS policy `players_update_self` allowing players to update their own record (`auth_user_id = auth.uid()`). Added trigger `enforce_player_self_update_columns` that restricts non-bookie users to only modifying `name` and `email` columns — all other columns (id, bookie_id, auth_user_id, credit_limit, status, display_name, created_at) must remain unchanged.
-- Files changed: supabase/migrations/024_players_self_update.sql
-- **Learnings for future iterations:**
-  - PostgreSQL doesn't support column-level RLS policies — use BEFORE UPDATE triggers to enforce column restrictions
-  - The `update_players_updated_at` trigger runs before `trg_enforce_*` (alphabetical ordering), so `updated_at` is already modified by the time enforcement runs — must exclude it from the check
-  - `IS DISTINCT FROM` handles NULL comparisons correctly (unlike `!=` which returns NULL for NULL comparisons)
-  - `is_bookie()` helper function already exists and can be called from triggers (SECURITY DEFINER)
----
-
-## 2026-02-25 - US-004
-- What was implemented: Created `PlayerProfileEditView.swift` with editable Name and Email fields, read-only Organizer and Member Since rows. Name saves directly to Supabase `players` table via the US-003 RLS policy, then updates SwiftData locally. Email change calls `supabase.auth.update(user: .init(email:))` triggering confirmation email, with inline message shown. Added "Edit Profile" NavigationLink with pencil icon in AccountView's profile card.
-- Files changed: Booki/Views/PlayerProfileEditView.swift (new), Booki/Views/AccountView.swift (added Edit Profile nav link)
-- **Learnings for future iterations:**
-  - Supabase Swift email update: `supabase.auth.update(user: .init(email: newEmail))` — triggers confirmation flow automatically
-  - AccountView profile card uses custom `profileRow()` helper with icons — add new rows in same pattern
-  - Player-facing views should use `player.name` (not `bookieDisplayName`) since that's the player's self-chosen name
-  - Use `@preconcurrency import Supabase` in any view that directly accesses Supabase client
----
-
-## 2026-02-25 - US-005
-- What was implemented: Added `Bookie.isPro` computed property that checks both `tier.isPro` and `subscriptionStatus` (.active or .pro). Updated ProfileSettingsView status row to show "Pro"/"Free" based on unified logic. Updated all 8 views that checked `tier.isPro` to use `bookie.isPro` instead: SettingsView, BetsListView, BetSlipSheet, AnalyticsDashboardView, PlayersListView (2 structs), AccountView. Left debug toggle in SettingsView using `tier.isPro` since it intentionally toggles the tier value.
-- Files changed: Bookie.swift, SettingsView.swift, BetsListView.swift, BetSlipSheet.swift, AnalyticsDashboardView.swift, PlayersListView.swift, AccountView.swift, TierService.swift
-- **Learnings for future iterations:**
-  - `bookieTier` pattern is used in multiple views — some views define it locally as `BookieTier` for member limit access, so keep it alongside the new `bookieIsPro` bool
-  - PlayersListView has TWO structs with separate `bookieTier` properties (main view + InviteMemberSheet) — update both
-  - TierService.isPro only checks tier (no subscriptionStatus available) — it's a cache-based check for non-View contexts
-  - Debug toggle in SettingsView intentionally uses `tier.isPro` to determine toggle direction — don't change that
----
-
-## 2026-02-25 - US-006
-- What was implemented: The create_invite edge function already had tier-based member limit enforcement (added in a previous iteration). Updated the error response to include `limit` and `current` fields as required by the acceptance criteria (`{ success: false, error: 'member_limit_reached', limit: <number>, current: <count> }`).
-- Files changed: supabase/functions/create_invite/index.ts
-- **Learnings for future iterations:**
-  - create_invite already selects `tier` from bookies table and counts active players — the enforcement logic was pre-existing
-  - Constants MEMBER_LIMIT_FREE=3 and MEMBER_LIMIT_PRO=50 are at the top of the file
-  - Active members are counted with `.not('auth_user_id', 'is', null)` — archived/removed members don't count
-  - The client needs `limit` and `current` in the error response to show meaningful upgrade messages
----
-
-## 2026-02-25 - US-007
-- What was implemented: Already fully implemented from previous iterations — InviteMemberSheet has `isAtCapacity` check with blocking message + Upgrade CTA, PlayersListView has `capacityBanner` with tappable upgrade link. Marked as passing.
-- Files changed: prd.json (marked passes: true)
-- **Learnings for future iterations:**
-  - Check existing code before implementing — features may have been added in earlier PRD iterations
----
-
-## 2026-02-25 - US-008
-- What was implemented: Replaced player name chips in BetsListView with a Menu-based member dropdown. Dropdown shows person.fill icon + chevron.down when no member selected, member name + chevron.down when selected. Menu lists "All Members" (default) + all active members with checkmark on selected item. Added @Query for players to get all bookie members (not just those with bets). Removed old `availablePlayers` tuple-based computed property.
-- Files changed: Booki/Views/BetsListView.swift
-- **Learnings for future iterations:**
-  - BetsListView previously used a tuple array `availablePlayers` for player chips — replaced with direct @Query on Player model
-  - Menu picker auto-dismisses on selection, no need for manual dismiss logic
-  - Active members filter: `status != .archived && authUserId != nil`
-  - The old chip code had a bug referencing `player.bookieDisplayName` on a tuple type — Menu approach uses Player model directly
----
-
-## 2026-02-25 - US-009
-- What was implemented: Added `BetTypeFilter` enum (Singles, Multi-Pick, Futures) and filter chips to the Picks tab filter bar alongside the member dropdown. Chips are in a horizontally scrollable row, mutually exclusive (tapping active chip deselects), with Theme.accent/cardBackground styling matching the member dropdown. Filtering: Singles = `!isParlay && market != "outright"`, Multi-Pick = `isParlay`, Futures = `market == "outright"`. Filters stack additively with member dropdown and Open/Past segmented picker.
-- Files changed: Booki/Views/BetsListView.swift
-- **Learnings for future iterations:**
-  - `bet.market` stores the MarketType raw value string (e.g., "h2h", "spreads", "totals", "outright") — set from `market.type` in submit_bets edge function
-  - Futures/outrights identified by `bet.market == "outright"` — reliable since it comes from the Market model's type
-  - Parlays identified by `bet.isParlay == true`
-  - Singles are non-parlay, non-outright bets
----
-
-## 2026-02-25 - Post-Ralph polish and bug fixes
-- What was implemented:
-  - **Build fixes**: Corrected Player init argument order in RealtimeService and SyncService (displayName before email), added PlayerProfileEditView to Xcode project, replaced Theme.success with Theme.accent, fixed Decimal.rounded()
-  - **Dashboard balance fix**: balanceForPlayer now uses BalanceService.balanceOwed() directly instead of creditLimit - availableCredit (which incorrectly included open stakes as money owed)
-  - **Picks tab refresh fix**: Moved .refreshable from outer VStack to inner ScrollView so filter chips don't trigger pull-to-refresh
-  - **Player profile alignment**: Email confirmation icon aligned with Name/Email row labels using fixed-width frame
-  - **Removed debug tier toggle**: Triple-tap on version number removed from AboutSettingsView
-  - **Email change template**: Created landing/email-change.html for Supabase email change confirmation
-  - **Pulsing hero animation**: CSS pulsing rings behind landing page hero phones (on ralph branch)
-- Files changed:
-  - Booki/Services/RealtimeService.swift, SyncService.swift — Player init argument order
-  - Booki/Views/SettingsView.swift — Theme.success fix, Decimal.rounded fix, debug toggle removal
-  - Booki/Views/AnalyticsDashboardView.swift — balance calculation fix
-  - Booki/Views/BetsListView.swift — refreshable placement fix
-  - Booki/Views/PlayerProfileEditView.swift — icon alignment
-  - Booki.xcodeproj/project.pbxproj — added PlayerProfileEditView
-  - landing/email-change.html — NEW: email change template
-  - landing/styles.css — pulsing hero rings
-- **Learnings for future iterations:**
-  - Ralph consistently puts displayName before email in Player init calls — always audit init argument ordering after Ralph runs
-  - Theme.swift has no `success` color — use Theme.accent or Theme.win for green
-  - Decimal has no .rounded() in Swift — convert through NSDecimalNumber.doubleValue first
-  - Dashboard "Owes $X" should use balanceOwed (ledger only), not creditLimit - availableCredit (which includes open stakes)
-  - .refreshable on a VStack makes the entire area pull-to-refreshable including non-scrollable children — put it on the ScrollView only
+  - create_invite already selects bookie.tier — no need to add it
+  - Member count filter uses `.not('auth_user_id', 'is', null)` to exclude archived members
+  - No Deno or Docker available locally for edge function typecheck — verify syntax manually
 ---
