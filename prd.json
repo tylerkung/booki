@@ -348,7 +348,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 19,
-      "passes": false,
+      "passes": true,
       "notes": "Use CSS @media (max-width: 768px) rules in dashboard.css. Tables can be converted by setting display:block on rows and display:flex on cells with labels via ::before pseudo-elements using data-label attributes, OR by duplicating the layout with x-show for mobile vs desktop. The CSS-only approach with display:block on <tr> and ::before content is cleanest."
     },
     {

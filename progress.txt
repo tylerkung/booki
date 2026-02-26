@@ -11,6 +11,27 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - `allLedgerEntries` stores all ledger entries (with type/created_at) for per-player analysis (tags, overdue detection)
 - `allBets` query in `loadDashboard` includes `player_id, bet_type, created_at` — use for per-player grouping
 - Loading skeleton pattern: `template x-if="isLoadingX"` with shimmer divs, `template x-if="!isLoadingX"` with real content
+- Responsive table-to-card: add `data-label` attrs to `<td>` elements, CSS `::before` with `content: attr(data-label)` for labels
+---
+
+## 2026-02-26 - US-019
+- Added responsive table-to-card layout for all data tables at viewport < 768px
+- Tables affected: members, picks, recent activity, invites, sport performance
+- CSS-only solution: `data-label` attributes on `<td>` elements + `::before` pseudo-elements for labels
+- Each table row becomes a stacked card with label:value pairs
+- Table headers hidden on mobile via `display: none` on `<thead>`
+- Rows styled as elevated cards with border-radius and consistent padding
+- Modals become near-full-screen on mobile (max-width: 100%, 16px margin, overflow-y auto)
+- Dashboard members grid goes single column on mobile
+- Filter chips get smaller padding/font on mobile for better fit
+- Stats grid: 2 columns at 768px (existing), 1 column at 480px (existing)
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.css`
+- **Learnings for future iterations:**
+  - `data-label` + `::before` is the cleanest CSS-only table-to-card pattern — no JS needed
+  - `display: flex; justify-content: space-between` on `<td>` puts label left, value right
+  - Must hide `<thead>` separately since it's not a `<tr>` child
+  - Inline styles on `<td>` (like `style="display:flex"`) may need `!important` overrides — avoided by not conflicting
+  - `tr:hover td` background needs to be reset to `none` in card mode to prevent highlighting individual cells
 ---
 
 ## 2026-02-26 - US-018
