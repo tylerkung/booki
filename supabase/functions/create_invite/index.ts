@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
 
     if ((playerCount ?? 0) >= memberLimit) {
       return new Response(
-        JSON.stringify({ success: false, error: 'member_limit_reached' }),
+        JSON.stringify({ success: false, error: 'member_limit_reached', limit: memberLimit, current: playerCount ?? 0 }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
