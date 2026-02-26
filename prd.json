@@ -76,7 +76,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Use the existing callEdgeFunction('grade_bet', body) pattern from dashboard.js. The grade_bet edge function is at supabase/functions/grade_bet/index.ts. After success, call loadPickDetail() to refresh. Add grading state variables (isGrading, gradingOutcome) to Alpine data. Void is just grade_bet with outcome='void'. Style grade buttons: Win=green, Loss=red, Push=gray, Void=outlined/destructive."
     },
     {

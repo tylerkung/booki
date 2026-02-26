@@ -10,6 +10,25 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - Player data cached in `playerMap` (keyed by id) for O(1) lookups
 ---
 
+## 2026-02-26 - US-004
+- Implemented grading and void actions on pick detail view
+- For 'accepted' picks: Win, Loss, Push grade buttons + Void button displayed in Actions card
+- For 'graded' picks: only Void button shown
+- Buttons hidden for all other statuses (pending, settled, void, declined)
+- Grade confirmation modal asks "Grade this pick as [Win/Loss/Push]?"
+- Void confirmation modal warns "This will cancel it with no balance impact"
+- Both actions call `grade_bet` edge function with proper idempotency key
+- Loading state on buttons during edge function calls, error toast on failure
+- After successful grade/void, `loadPickDetail()` reloads to show updated status
+- Added CSS: `.btn-grade-win` (green), `.btn-grade-loss` (red), `.btn-grade-push` (gray), `.btn-void` (outlined red)
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- **Learnings for future iterations:**
+  - `grade_bet` only accepts bets with status `'accepted'` — not pending, graded, or settled
+  - Void is just `grade_bet` with `outcome: 'void'` — same edge function, different outcome
+  - Use `x-show` on the actions card to conditionally show grade vs void buttons by status
+  - Confirmation modals follow existing pattern: overlay + modal + actions row
+---
+
 ## 2026-02-26 - US-003
 - Implemented parlay legs card and activity timeline card on pick detail view
 - Parlay legs card: shows each leg with team name, market type, odds, and status badge; combined odds at top
