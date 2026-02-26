@@ -259,7 +259,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 14,
-      "passes": false,
+      "passes": true,
       "notes": "Add invites loading to dashboard.js — loadInvites() method. Add state: invites array, isDeletingInvite. The capacity banner uses activeMemberCount (already computed) vs tier limit. Copy Link format could be something like 'Download Booki and use code: XXXX' or a bookisports.com URL. For delete, only allow deleting unclaimed invites (claimed_at IS NULL)."
     },
     {

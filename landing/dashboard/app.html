@@ -144,8 +144,59 @@
                         <h1>Members</h1>
                         <p x-text="players.length + ' total members'"></p>
                     </div>
-                    <button class="btn btn-accent" @click="showInviteModal = true">+ Invite</button>
+                    <button class="btn btn-accent" @click="showInviteModal = true"
+                            :disabled="isAtMemberCapacity"
+                            :title="isAtMemberCapacity ? 'Member limit reached — upgrade to Pro' : 'Invite a new member'">+ Invite</button>
                 </div>
+
+                <!-- Capacity Banner -->
+                <div class="capacity-banner" :class="{ 'capacity-warning': isAtMemberCapacity }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                        <span style="font-size:13px;font-weight:600;color:var(--text-primary);" x-text="activeMemberCount + ' of ' + memberCapacityLimit + ' members'"></span>
+                        <span style="font-size:12px;color:var(--text-muted);" x-text="isPro ? 'Pro' : 'Free tier'"></span>
+                    </div>
+                    <div class="capacity-bar">
+                        <div class="capacity-fill" :class="{ 'capacity-fill-warning': isAtMemberCapacity }" :style="{ width: memberCapacityPercent + '%' }"></div>
+                    </div>
+                </div>
+
+                <!-- Pending Invites -->
+                <template x-if="invites.length > 0">
+                    <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden;">
+                        <div class="card-header" style="padding:16px 20px 0;">
+                            <span class="card-title">Pending Invites</span>
+                            <span style="font-size:12px;color:var(--text-muted);" x-text="invites.length + ' pending'"></span>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Code</th><th>Email</th><th>Credit Limit</th><th>Created</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="inv in invites" :key="inv.id">
+                                    <tr>
+                                        <td><code style="font-size:13px;color:var(--accent);" x-text="inv.code"></code></td>
+                                        <td x-text="inv.email || '—'"></td>
+                                        <td x-text="formatCurrency(inv.credit_limit || 1000)"></td>
+                                        <td x-text="formatDate(inv.created_at)"></td>
+                                        <td style="display:flex;gap:4px;">
+                                            <button class="btn btn-ghost" title="Copy Code" @click="copyInviteCodeValue(inv.code)">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                            </button>
+                                            <button class="btn btn-ghost" title="Copy Link" @click="copyInviteLink(inv.code)">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                            </button>
+                                            <button class="btn btn-ghost" title="Delete" style="color:var(--danger);"
+                                                    @click="if(confirm('Delete this invite?')) deleteInvite(inv.id)"
+                                                    :disabled="isDeletingInvite === inv.id">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </template>
 
                 <div class="filter-bar">
                     <input class="search-input" type="text" placeholder="Search members..." x-model="memberSearch">

@@ -194,6 +194,10 @@ function dashboardApp() {
         showReverseModal: false,
         isReversing: false,
 
+        // ── Invites ──
+        invites: [],
+        isDeletingInvite: null,
+
         // ── Modals ──
         showInviteModal: false,
         inviteEmail: '',
@@ -287,6 +291,7 @@ function dashboardApp() {
             // Load route-specific data
             if (this.route === 'picks') this.loadPicks();
             if (this.route === 'pick-detail') this.loadPickDetail();
+            if (this.route === 'members') this.loadInvites();
             if (this.route === 'member-detail') this.loadMemberDetail();
             if (this.route === 'settings') this.loadSettings();
         },
@@ -860,6 +865,7 @@ function dashboardApp() {
                 } else {
                     this.inviteCode = response.code;
                     this.toast('Invite created', 'success');
+                    this.loadInvites();
                 }
             } catch (e) {
                 this.inviteError = e.message || 'Failed to create invite';
@@ -871,6 +877,65 @@ function dashboardApp() {
         copyInviteCode() {
             navigator.clipboard.writeText(this.inviteCode);
             this.toast('Code copied', 'success');
+        },
+
+        copyInviteCodeValue(code) {
+            navigator.clipboard.writeText(code);
+            this.toast('Code copied', 'success');
+        },
+
+        copyInviteLink(code) {
+            navigator.clipboard.writeText(`Download Booki and use invite code: ${code}`);
+            this.toast('Link copied', 'success');
+        },
+
+        async loadInvites() {
+            if (!this.bookie) return;
+
+            const { data, error } = await this.supabase
+                .from('invites')
+                .select('*')
+                .eq('bookie_id', this.bookie.id)
+                .is('claimed_at', null)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Failed to load invites:', error);
+                return;
+            }
+
+            this.invites = data || [];
+        },
+
+        async deleteInvite(inviteId) {
+            this.isDeletingInvite = inviteId;
+
+            const { error } = await this.supabase
+                .from('invites')
+                .delete()
+                .eq('id', inviteId);
+
+            if (error) {
+                this.toast('Failed to delete invite', 'error');
+                console.error('Delete invite error:', error);
+            } else {
+                this.invites = this.invites.filter(i => i.id !== inviteId);
+                this.toast('Invite deleted', 'success');
+            }
+
+            this.isDeletingInvite = null;
+        },
+
+        get memberCapacityLimit() {
+            return this.isPro ? 50 : 3;
+        },
+
+        get memberCapacityPercent() {
+            return Math.min(100, Math.round((this.activeMemberCount / this.memberCapacityLimit) * 100));
+        },
+
+        get isAtMemberCapacity() {
+            return this.activeMemberCount >= this.memberCapacityLimit;
         },
 
         // ── Settle Up ──

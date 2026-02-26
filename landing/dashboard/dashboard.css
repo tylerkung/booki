@@ -799,6 +799,37 @@ input, button, select, textarea { font: inherit; }
     border-color: rgba(255,77,106,0.3);
 }
 
+/* ── Capacity Banner ── */
+.capacity-banner {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    margin-bottom: 16px;
+}
+
+.capacity-banner.capacity-warning {
+    border-color: var(--warning);
+}
+
+.capacity-bar {
+    height: 6px;
+    background: var(--bg-elevated);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.capacity-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.3s;
+}
+
+.capacity-fill.capacity-fill-warning {
+    background: var(--warning);
+}
+
 .badge-pro {
     background: var(--accent);
     color: #fff;
