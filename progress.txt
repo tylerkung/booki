@@ -182,3 +182,68 @@ Started: Thu Feb 26 14:57:41 PST 2026
   - Routes use simple hash matching — parameterized routes need regex or string splitting
   - Query params stripped before route matching (`hash.replace(/\?.*$/, '')`)
 ---
+
+## 2026-02-26 - US-011
+- Added Member Settings section to settings page: default credit limit number input with description text, save button
+- Added Pick Management section: "Allow Futures Multi-Picks" toggle switch
+- Free tier: toggle disabled with 0.5 opacity + "Upgrade to Pro" badge shown
+- Pro tier: toggle functional, saves immediately on change via Supabase
+- Default credit limit saves via `saveDefaultCreditLimit()` with validation (non-negative integer)
+- Futures parlays toggle saves via `toggleAllowFuturesParlays()` — updates both Alpine state and bookie object
+- Added toggle switch CSS component (`.toggle-switch`, `.toggle-slider`, `.toggle-row`) and `.badge-pro` style
+- `loadSettings()` now loads `default_credit_limit` and `allow_futures_parlays` from bookie data
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- **Learnings for future iterations:**
+  - Toggle switches: CSS-only with hidden checkbox + sibling selector (`input:checked + .toggle-slider`)
+  - Pro gating pattern for toggles: `:disabled="!isPro"` on input + `.disabled` class on wrapper for opacity + separate Pro badge
+  - `toggleAllowFuturesParlays()` flips the boolean and saves — no separate save button needed for toggles
+  - Bookie columns `default_credit_limit` and `allow_futures_parlays` are loaded via `select('*')` in `loadBookie()`
+---
+
+## 2026-02-26 - US-012
+- Added Danger Zone section to settings page with red-tinted border styling
+- Step Down as Organizer: confirmation modal, calls `step_down_organizer` edge function, handles `has_members_or_invites` error with user-friendly message
+- Delete Account: two-step confirmation (first: "Are you sure?", second: type "DELETE" to confirm)
+- Delete calls `delete_account` edge function, redirects to index.html on success
+- Both actions sign out and redirect after success
+- Loading states on buttons during edge function calls, error toasts on failure
+- Added `.btn-danger-outline` CSS class and `.danger-zone` card border styling
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`, `prd.json`
+- **Learnings for future iterations:**
+  - `step_down_organizer` returns error if bookie has active members or pending invites — check error message for keywords
+  - Two-step delete pattern: Step 1 modal → "Continue" → Step 2 modal with text confirmation input
+  - Danger zone modals placed outside `x-show="route === 'settings'"` so they render at page level (same pattern as archive/remove modals)
+  - `deleteConfirmText` must be reset when opening step 2 to prevent stale state
+---
+
+## 2026-02-26 - US-013
+- Added About section to settings page between Pick Management and Danger Zone
+- Three links: Website (bookisports.com), Terms of Service, Privacy Policy — all open in new tab
+- Each link has an inline SVG icon (globe, document, lock) with btn-ghost styling
+- Copyright line: "Booki Sports 2026. All rights reserved." below links with divider
+- Pure HTML addition — no JS changes needed
+- Files changed: `landing/dashboard/app.html`
+- **Learnings for future iterations:**
+  - Static content sections need no JS state — just HTML within the existing `x-show` route block
+  - Use `rel="noopener noreferrer"` on all `target="_blank"` links for security
+  - Inline SVG icons with `stroke="currentColor"` inherit text color from parent
+---
+
+## 2026-02-26 - US-014
+- Added pending invites list and member capacity banner to members page
+- Capacity banner shows "X of Y members" with progress bar (3 free / 50 pro)
+- Banner turns warning color (orange border + fill) when at capacity
+- Invite button disabled with tooltip when at member limit
+- Pending invites section: table with code, email, credit limit, created date
+- Each invite has: Copy Code (clipboard), Copy Link (text with code), Delete (with confirm)
+- `loadInvites()` fetches unclaimed invites ordered by created_at desc
+- Invites auto-refresh after creating a new invite
+- Added `memberCapacityLimit`, `memberCapacityPercent`, `isAtMemberCapacity` computed properties
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- **Learnings for future iterations:**
+  - Invites table: `invites.select('*').eq('bookie_id', id).is('claimed_at', null)` for pending only
+  - `isDeletingInvite` stores the invite ID (not boolean) to disable the specific row's delete button
+  - `confirm()` browser dialog is sufficient for invite deletion (simple, non-destructive for unclaimed)
+  - Capacity bar reuses the same pattern as member detail credit utilization (fill div with % width)
+  - Alpine `get` properties work well for derived capacity values (limit, percent, isAtCapacity)
+---
