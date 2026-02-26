@@ -245,7 +245,7 @@ main {
     align-items: center;
     justify-content: center;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     padding-top: 64px;
 }
 
@@ -333,6 +333,43 @@ main {
     width: 480px;
     min-width: 360px;
     height: 786px;
+}
+
+/* Pulsing rings behind hero phones */
+.hero-phones::before,
+.hero-phones::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1px solid rgba(0, 245, 212, 0.15);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.hero-phones::before {
+    width: 600px;
+    height: 600px;
+    animation: hero-pulse 4s ease-in-out infinite;
+}
+
+.hero-phones::after {
+    width: 800px;
+    height: 800px;
+    animation: hero-pulse 4s ease-in-out infinite 1.5s;
+}
+
+@keyframes hero-pulse {
+    0%, 100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.85);
+    }
+    50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
 }
 
 .phone-frame {
@@ -1169,6 +1206,13 @@ html, body {
         transition: none;
         animation: none;
     }
+
+    .hero-phones::before,
+    .hero-phones::after {
+        animation: none;
+        opacity: 0.3;
+        transform: translate(-50%, -50%) scale(1);
+    }
 }
 
 /* Features Page — Hero */
@@ -1424,6 +1468,16 @@ html, body {
         width: 300px;
         min-width: 0;
         height: 460px;
+    }
+
+    .hero-phones::before {
+        width: 380px;
+        height: 380px;
+    }
+
+    .hero-phones::after {
+        width: 500px;
+        height: 500px;
     }
 
     .phone-frame--front {
