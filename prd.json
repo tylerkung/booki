@@ -62,7 +62,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "AccountView is in Booki/Views/AccountView.swift. The profile section shows name, email, organizer, member since. Add a NavigationLink or button that presents PlayerProfileEditView. Follow the same styling patterns as ProfileSettingsView (sectionHeader, settingsDetailRow, cardStyle). The player's SwiftData model should be updated locally after successful Supabase save."
     },
     {
@@ -78,7 +78,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "ProfileSettingsView is in SettingsView.swift around line 392. It currently shows `bookie.subscriptionStatus.rawValue.capitalized`. The Bookie model is in Booki/Models/Bookie.swift. BookieTier.isPro is currently `switch self { case .pro, .chart: return true }`. A Bookie-level computed property `var isPro: Bool { tier.isPro || subscriptionStatus == .active || subscriptionStatus == .pro }` would be cleanest. Then update all `bookies.first?.tier.isPro` references to use `bookies.first?.isPro`."
     },
     {
@@ -94,7 +94,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "create_invite is in supabase/functions/create_invite/index.ts. Add the check after invite code validation but before the insert. The bookie_id is available from the authenticated user lookup. Use service client to count players. Return limit and current count in error response so the client can show a meaningful message."
     },
     {
@@ -112,7 +112,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "PlayersListView is in Booki/Views/PlayersListView.swift. The invite sheet is likely presented from this view. Count active members with bookie_id match AND auth_user_id not nil. Edge case: bookie has 10 members, downgrades, archives 8 → now at 2/3 → can invite again."
     },
     {

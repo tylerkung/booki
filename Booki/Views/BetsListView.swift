@@ -40,6 +40,7 @@ struct BetsListView: View {
     @Environment(SyncService.self) private var syncService
     @Query private var bets: [Bet]
     @Query private var events: [Event]
+    @Query(sort: \Player.name) private var players: [Player]
 
     @State private var selectedFilter: BetFilter = .open
     @State private var selectedPlayerId: UUID? = nil
@@ -49,17 +50,15 @@ struct BetsListView: View {
         bets.filter { selectedFilter.matchingStatuses.contains($0.status) }
     }
 
-    /// Players who have bets in the current status filter
-    private var availablePlayers: [(id: UUID, name: String)] {
-        var seen = Set<UUID>()
-        var result: [(id: UUID, name: String)] = []
-        for bet in statusFilteredBets {
-            if let player = bet.player, !seen.contains(player.id) {
-                seen.insert(player.id)
-                result.append((id: player.id, name: player.bookieDisplayName))
-            }
-        }
-        return result.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    /// All active members for the member dropdown
+    private var activeMembers: [Player] {
+        players.filter { $0.status != .archived && $0.authUserId != nil }
+    }
+
+    /// Display name for the currently selected member
+    private var selectedMemberName: String? {
+        guard let id = selectedPlayerId else { return nil }
+        return activeMembers.first { $0.id == id }?.bookieDisplayName
     }
 
     /// Filtered bets based on selected filter + player
@@ -92,34 +91,11 @@ struct BetsListView: View {
                     }
                 }
 
-                // MARK: - Player Filter Chips
-                if !availablePlayers.isEmpty {
+                // MARK: - Member Dropdown
+                if !activeMembers.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(availablePlayers, id: \.id) { player in
-                                Button {
-                                    if selectedPlayerId == player.id {
-                                        selectedPlayerId = nil
-                                    } else {
-                                        selectedPlayerId = player.id
-                                    }
-                                } label: {
-                                    Text(player.bookieDisplayName)
-                                        .font(Theme.bodyFont(size: 13, weight: .medium))
-                                        .foregroundStyle(selectedPlayerId == player.id ? Theme.background : Theme.textSecondary)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            Capsule()
-                                                .fill(selectedPlayerId == player.id ? Theme.accent : Theme.cardBackground)
-                                        )
-                                        .overlay(
-                                            Capsule()
-                                                .stroke(selectedPlayerId == player.id ? Theme.accent : Theme.border, lineWidth: 0.5)
-                                        )
-                                }
-                                .buttonStyle(.plain)
-                            }
+                            memberDropdown
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 8)
@@ -179,6 +155,59 @@ struct BetsListView: View {
             .navigationDestination(for: Bet.self) { bet in
                 BetDetailView(bet: bet)
             }
+        }
+    }
+
+    // MARK: - Member Dropdown
+
+    private var memberDropdown: some View {
+        Menu {
+            Button {
+                selectedPlayerId = nil
+            } label: {
+                if selectedPlayerId == nil {
+                    Label("All Members", systemImage: "checkmark")
+                } else {
+                    Text("All Members")
+                }
+            }
+            Divider()
+            ForEach(activeMembers) { player in
+                Button {
+                    selectedPlayerId = player.id
+                } label: {
+                    if selectedPlayerId == player.id {
+                        Label(player.bookieDisplayName, systemImage: "checkmark")
+                    } else {
+                        Text(player.bookieDisplayName)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                if let name = selectedMemberName {
+                    Text(name)
+                        .font(Theme.bodyFont(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.background)
+                } else {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(selectedPlayerId != nil ? Theme.background : Theme.textSecondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(selectedPlayerId != nil ? Theme.accent : Theme.cardBackground)
+            )
+            .overlay(
+                Capsule()
+                    .stroke(selectedPlayerId != nil ? Theme.accent : Theme.border, lineWidth: 0.5)
+            )
         }
     }
 
