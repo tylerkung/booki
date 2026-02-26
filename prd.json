@@ -311,7 +311,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 17,
-      "passes": false,
+      "passes": true,
       "notes": "Add computeAttentionTags() to dashboard.js. It needs the player's bets (sorted by created_at) and ledger entries. Consecutive wins/losses: look at the last N graded bets in order. Group average stake: compute across all players' bets. 24h window for Degen: sliding window check. Cache computed tags to avoid recalculating on every render."
     },
     {

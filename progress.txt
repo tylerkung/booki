@@ -8,6 +8,8 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - State variables (e.g. `selectedPlayerId`) live in the Alpine data object returned by `dashboardApp()`
 - Edge functions called via `callEdgeFunction(name, body)` helper with auth headers
 - Player data cached in `playerMap` (keyed by id) for O(1) lookups
+- `allLedgerEntries` stores all ledger entries (with type/created_at) for per-player analysis (tags, overdue detection)
+- `allBets` query in `loadDashboard` includes `player_id, bet_type, created_at` — use for per-player grouping
 ---
 
 ## 2026-02-26 - US-010
@@ -278,4 +280,24 @@ Started: Thu Feb 26 14:57:41 PST 2026
   - Bookie win rate = player losses / (player wins + losses) — inverse of player win rate
   - `allBets` query reused for both sport performance and futures activity to avoid duplicate Supabase calls
   - Sport PnL from bookie perspective: player wins → bookie loses (stake - potentialReturn), player losses → bookie gains (stake)
+---
+
+## 2026-02-26 - US-017
+- Added `computeAttentionTags()` method to dashboard.js — computes 7 behavioral tags per member
+- Tags: Picks Pending (yellow), Overdue (red), On Heater (green), Cold Streak (blue), Whale (purple), Degen (orange), Parlay Demon (pink)
+- Tags displayed as colored chips on dashboard member cards and member detail header
+- Click/hover on tags shows tooltip popover with explanation of each tag
+- Tags computed during `loadDashboard()` (attached to `dashboardMembers`) and `loadMemberDetail()` (attached to `memberDetail`)
+- Extended `loadPlayerBalances()` to fetch `type` and `created_at` fields, stored as `allLedgerEntries` for tag computation
+- Extended `allBets` query with `player_id, bet_type, created_at` columns for streak and behavior detection
+- Group average stake computed from all bets for Whale tag comparison
+- Added attention tag CSS with color-coded chip styles and fixed-position tooltip
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- **Learnings for future iterations:**
+  - `allBets` query in `loadDashboard` now includes `player_id, bet_type, created_at` — available for any per-player analysis
+  - `allLedgerEntries` stores full ledger data (with type/date) on the Alpine instance for reuse
+  - Consecutive streak detection: sort by date descending, count from most recent, break on first non-matching status
+  - Degen sliding window: sort by date ascending, check if 5th bet timestamp minus 1st bet timestamp <= 24h
+  - Tag tooltip uses fixed positioning from `getBoundingClientRect()` + `transform: translateX(-50%)` for centering
+  - `computeAttentionTags` is reusable across dashboard and member detail — just needs player object, their bets, their ledger, and group avg stake
 ---
