@@ -617,6 +617,18 @@ input, button, select, textarea { font: inherit; }
     height: 80px;
 }
 
+.skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--divider);
+}
+
+.skeleton-row:last-child {
+    border-bottom: none;
+}
+
 /* ── Time Filter ── */
 .time-filter {
     display: inline-flex;

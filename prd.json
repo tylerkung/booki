@@ -330,7 +330,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 18,
-      "passes": false,
+      "passes": true,
       "notes": "Add shimmer CSS to dashboard.css: @keyframes shimmer with background gradient animation. Skeleton elements use .skeleton class with fixed height and border-radius. Add isLoading flags that are set true before fetch and false after. Use x-show with the loading flags to toggle between skeleton and real content. Empty states replace the existing basic 'No X found' text with styled cards."
     },
     {

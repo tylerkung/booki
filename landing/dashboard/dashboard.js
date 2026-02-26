@@ -52,6 +52,11 @@ function dashboardApp() {
         subscriptionSuccess: false,
         subscriptionCanceled: false,
 
+        // ── Loading States ──
+        isLoadingDashboard: true,
+        isLoadingPlayers: true,
+        isLoadingPicks: false,
+
         // ── Pick Detail ──
         pickDetail: null,
         pickDetailLegs: [],
@@ -329,6 +334,7 @@ function dashboardApp() {
         // ── Load Players ──
         async loadPlayers() {
             if (!this.bookie) return;
+            this.isLoadingPlayers = true;
 
             const { data, error } = await this.supabase
                 .from('players')
@@ -338,6 +344,7 @@ function dashboardApp() {
 
             if (error) {
                 console.error('Failed to load players:', error);
+                this.isLoadingPlayers = false;
                 return;
             }
 
@@ -351,6 +358,7 @@ function dashboardApp() {
 
             // Load balances
             await this.loadPlayerBalances();
+            this.isLoadingPlayers = false;
         },
 
         async loadPlayerBalances() {
@@ -379,6 +387,7 @@ function dashboardApp() {
         // ── Dashboard Data ──
         async loadDashboard() {
             if (!this.bookie) return;
+            this.isLoadingDashboard = true;
 
             // PnL from ledger entries (exclude paymentLogged)
             let query = this.supabase
@@ -516,11 +525,13 @@ function dashboardApp() {
                 const playerLedger = this.allLedgerEntries.filter(e => e.player_id === member.id);
                 member.attentionTags = this.computeAttentionTags(member, playerBets, playerLedger, groupAvgStake);
             }
+            this.isLoadingDashboard = false;
         },
 
         // ── Picks Data ──
         async loadPicks() {
             if (!this.bookie) return;
+            this.isLoadingPicks = true;
 
             let query = this.supabase
                 .from('bets')
@@ -551,10 +562,12 @@ function dashboardApp() {
 
             if (error) {
                 console.error('Failed to load picks:', error);
+                this.isLoadingPicks = false;
                 return;
             }
 
             this.bets = data || [];
+            this.isLoadingPicks = false;
         },
 
         // ── Pick Detail ──

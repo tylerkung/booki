@@ -100,7 +100,20 @@
                     </div>
                 </div>
 
-                <div class="stats-grid">
+                <!-- Stats Grid: Skeleton -->
+                <template x-if="isLoadingDashboard">
+                    <div class="stats-grid">
+                        <template x-for="i in 6" :key="i">
+                            <div class="stat-tile">
+                                <div class="shimmer shimmer-line" style="width:60%;height:12px;margin-bottom:12px;"></div>
+                                <div class="shimmer" style="width:80%;height:32px;"></div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- Stats Grid: Loaded -->
+                <div class="stats-grid" x-show="!isLoadingDashboard" x-cloak>
                     <div class="stat-tile">
                         <div class="stat-label">Net PnL</div>
                         <div class="stat-value" :class="pnl >= 0 ? 'positive' : 'negative'" x-text="formatCurrency(pnl)"></div>
@@ -191,7 +204,7 @@
                                 </tbody>
                             </table>
                         </template>
-                        <template x-if="sportPerformance.length === 0">
+                        <template x-if="sportPerformance.length === 0 && !isLoadingDashboard">
                             <div class="empty-state"><p>No pick data yet</p></div>
                         </template>
                     </div>
@@ -241,8 +254,11 @@
                     <div class="card-header">
                         <span class="card-title">Recent Activity</span>
                     </div>
-                    <template x-if="recentActivity.length === 0">
-                        <div class="empty-state"><p>No recent activity</p></div>
+                    <template x-if="recentActivity.length === 0 && !isLoadingDashboard">
+                        <div class="empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <p>Activity will show up as members place picks and balances change.</p>
+                        </div>
                     </template>
                     <table class="data-table" x-show="recentActivity.length > 0">
                         <thead>
@@ -328,29 +344,55 @@
                 </div>
 
                 <div class="card" style="padding:0;overflow:hidden;">
-                    <table class="data-table">
-                        <thead>
-                            <tr><th>Name</th><th>Balance</th><th>Credit</th><th>Status</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="p in filteredPlayers" :key="p.id">
-                                <tr>
-                                    <td class="name"><a :href="'#/members/' + p.id" style="color:var(--text-primary);" x-text="p.display_name || p.name"></a></td>
-                                    <td :class="p.balance > 0 ? 'positive' : p.balance < 0 ? 'negative' : ''"
-                                        :style="{ color: p.balance > 0 ? 'var(--success)' : p.balance < 0 ? 'var(--danger)' : '' }"
-                                        x-text="formatCurrency(p.balance || 0)"></td>
-                                    <td x-text="formatCurrency(p.credit_limit || 0)"></td>
-                                    <td><span class="badge" :class="p.auth_user_id ? 'badge-success' : 'badge-muted'" x-text="p.auth_user_id ? 'Active' : 'Pending'"></span></td>
-                                    <td>
-                                        <button class="btn btn-ghost" title="Settle Up" @click="openSettleUp(p)">$</button>
-                                        <button class="btn btn-ghost" title="Adjust" @click="openAdjustBalance(p)">+/-</button>
-                                    </td>
-                                </tr>
+                    <!-- Members Table: Skeleton -->
+                    <template x-if="isLoadingPlayers">
+                        <div style="padding:16px;">
+                            <template x-for="i in 3" :key="i">
+                                <div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--divider);">
+                                    <div class="shimmer" style="width:120px;height:16px;"></div>
+                                    <div class="shimmer" style="width:80px;height:16px;"></div>
+                                    <div class="shimmer" style="width:80px;height:16px;"></div>
+                                    <div class="shimmer" style="width:60px;height:22px;border-radius:999px;"></div>
+                                </div>
                             </template>
-                        </tbody>
-                    </table>
-                    <template x-if="filteredPlayers.length === 0">
-                        <div class="empty-state"><p>No members found</p></div>
+                        </div>
+                    </template>
+
+                    <!-- Members Table: Loaded -->
+                    <template x-if="!isLoadingPlayers">
+                        <div>
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Name</th><th>Balance</th><th>Credit</th><th>Status</th><th>Actions</th></tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="p in filteredPlayers" :key="p.id">
+                                        <tr>
+                                            <td class="name"><a :href="'#/members/' + p.id" style="color:var(--text-primary);" x-text="p.display_name || p.name"></a></td>
+                                            <td :class="p.balance > 0 ? 'positive' : p.balance < 0 ? 'negative' : ''"
+                                                :style="{ color: p.balance > 0 ? 'var(--success)' : p.balance < 0 ? 'var(--danger)' : '' }"
+                                                x-text="formatCurrency(p.balance || 0)"></td>
+                                            <td x-text="formatCurrency(p.credit_limit || 0)"></td>
+                                            <td><span class="badge" :class="p.auth_user_id ? 'badge-success' : 'badge-muted'" x-text="p.auth_user_id ? 'Active' : 'Pending'"></span></td>
+                                            <td>
+                                                <button class="btn btn-ghost" title="Settle Up" @click="openSettleUp(p)">$</button>
+                                                <button class="btn btn-ghost" title="Adjust" @click="openAdjustBalance(p)">+/-</button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                            <template x-if="filteredPlayers.length === 0 && !memberSearch">
+                                <div class="empty-state">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    <p style="margin-bottom:12px;">Invite your first member to get started</p>
+                                    <button class="btn btn-accent" @click="showInviteModal = true">+ Invite Member</button>
+                                </div>
+                            </template>
+                            <template x-if="filteredPlayers.length === 0 && memberSearch">
+                                <div class="empty-state"><p>No members found</p></div>
+                            </template>
+                        </div>
                     </template>
                 </div>
             </div>
@@ -379,26 +421,51 @@
                 </div>
 
                 <div class="card" style="padding:0;overflow:hidden;">
-                    <table class="data-table">
-                        <thead>
-                            <tr><th>Date</th><th>Member</th><th>Type</th><th>Pick</th><th>Odds</th><th>Stake</th><th>Status</th></tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="bet in bets" :key="bet.id">
-                                <tr style="cursor:pointer;" @click="window.location.hash = '#/picks/' + bet.id">
-                                    <td x-text="formatDate(bet.created_at)"></td>
-                                    <td class="name" x-text="getPlayerName(bet.player_id)"></td>
-                                    <td><span class="badge badge-muted" x-text="bet.bet_type || 'single'"></span></td>
-                                    <td x-text="bet.team_name || bet.selection || '—'"></td>
-                                    <td x-text="formatOdds(bet.odds)"></td>
-                                    <td x-text="formatCurrency(bet.stake)"></td>
-                                    <td><span class="badge" :class="statusBadgeClass(bet.status)" x-text="bet.status"></span></td>
-                                </tr>
+                    <!-- Picks Table: Skeleton -->
+                    <template x-if="isLoadingPicks">
+                        <div style="padding:16px;">
+                            <template x-for="i in 3" :key="i">
+                                <div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--divider);">
+                                    <div class="shimmer" style="width:70px;height:16px;"></div>
+                                    <div class="shimmer" style="width:90px;height:16px;"></div>
+                                    <div class="shimmer" style="width:50px;height:22px;border-radius:999px;"></div>
+                                    <div class="shimmer" style="width:100px;height:16px;"></div>
+                                    <div class="shimmer" style="width:50px;height:16px;"></div>
+                                    <div class="shimmer" style="width:60px;height:16px;"></div>
+                                    <div class="shimmer" style="width:60px;height:22px;border-radius:999px;"></div>
+                                </div>
                             </template>
-                        </tbody>
-                    </table>
-                    <template x-if="bets.length === 0">
-                        <div class="empty-state"><p>No picks found</p></div>
+                        </div>
+                    </template>
+
+                    <!-- Picks Table: Loaded -->
+                    <template x-if="!isLoadingPicks">
+                        <div>
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Date</th><th>Member</th><th>Type</th><th>Pick</th><th>Odds</th><th>Stake</th><th>Status</th></tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="bet in bets" :key="bet.id">
+                                        <tr style="cursor:pointer;" @click="window.location.hash = '#/picks/' + bet.id">
+                                            <td x-text="formatDate(bet.created_at)"></td>
+                                            <td class="name" x-text="getPlayerName(bet.player_id)"></td>
+                                            <td><span class="badge badge-muted" x-text="bet.bet_type || 'single'"></span></td>
+                                            <td x-text="bet.team_name || bet.selection || '—'"></td>
+                                            <td x-text="formatOdds(bet.odds)"></td>
+                                            <td x-text="formatCurrency(bet.stake)"></td>
+                                            <td><span class="badge" :class="statusBadgeClass(bet.status)" x-text="bet.status"></span></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                            <template x-if="bets.length === 0">
+                                <div class="empty-state">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                    <p>No picks yet. Members will appear here once they start placing picks.</p>
+                                </div>
+                            </template>
+                        </div>
                     </template>
                 </div>
             </div>
