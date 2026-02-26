@@ -165,6 +165,16 @@ function dashboardApp() {
             this.isEditingCredit = false;
         },
 
+        // ── Settings ──
+        settingsName: '',
+        settingsEmail: '',
+        isSavingProfile: false,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+        isChangingPassword: false,
+        passwordError: '',
+
         // ── Override / Reverse ──
         showOverrideModal: false,
         overrideOutcome: 'won',
@@ -267,6 +277,7 @@ function dashboardApp() {
             if (this.route === 'picks') this.loadPicks();
             if (this.route === 'pick-detail') this.loadPickDetail();
             if (this.route === 'member-detail') this.loadMemberDetail();
+            if (this.route === 'settings') this.loadSettings();
         },
 
         // ── Auth ──
@@ -969,6 +980,88 @@ function dashboardApp() {
             }
 
             this.isOpeningPortal = false;
+        },
+
+        // ── Settings ──
+        loadSettings() {
+            if (!this.bookie) return;
+            this.settingsName = this.bookie.name || '';
+            this.settingsEmail = this.session?.user?.email || '';
+            this.currentPassword = '';
+            this.newPassword = '';
+            this.confirmPassword = '';
+            this.passwordError = '';
+        },
+
+        async saveProfile() {
+            if (!this.bookie) return;
+            const name = this.settingsName.trim();
+            if (!name) {
+                this.toast('Name cannot be empty', 'error');
+                return;
+            }
+            if (name === this.bookie.name) return;
+
+            this.isSavingProfile = true;
+            const { error } = await this.supabase
+                .from('bookies')
+                .update({ name })
+                .eq('id', this.bookie.id);
+
+            if (error) {
+                this.toast('Failed to update name', 'error');
+            } else {
+                this.bookie.name = name;
+                this.toast('Profile updated', 'success');
+            }
+            this.isSavingProfile = false;
+        },
+
+        async changePassword() {
+            this.passwordError = '';
+
+            if (!this.currentPassword) {
+                this.passwordError = 'Current password is required';
+                return;
+            }
+            if (this.newPassword.length < 6) {
+                this.passwordError = 'New password must be at least 6 characters';
+                return;
+            }
+            if (this.newPassword !== this.confirmPassword) {
+                this.passwordError = 'Passwords do not match';
+                return;
+            }
+
+            this.isChangingPassword = true;
+
+            // Re-authenticate with current password
+            const { error: signInError } = await this.supabase.auth.signInWithPassword({
+                email: this.session.user.email,
+                password: this.currentPassword,
+            });
+
+            if (signInError) {
+                this.passwordError = 'Current password is incorrect';
+                this.isChangingPassword = false;
+                return;
+            }
+
+            // Update password
+            const { error } = await this.supabase.auth.updateUser({
+                password: this.newPassword,
+            });
+
+            if (error) {
+                this.passwordError = error.message || 'Failed to update password';
+            } else {
+                this.toast('Password updated', 'success');
+                this.currentPassword = '';
+                this.newPassword = '';
+                this.confirmPassword = '';
+            }
+
+            this.isChangingPassword = false;
         },
 
         // ── Helpers ──

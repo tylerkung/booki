@@ -10,6 +10,57 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - Player data cached in `playerMap` (keyed by id) for O(1) lookups
 ---
 
+## 2026-02-26 - US-010
+- Implemented settings page with profile editing and password change
+- Added Settings nav item to sidebar with gear icon (between Subscription and Log Out)
+- Profile section: editable organizer name (saves to bookies.name via Supabase), read-only email display
+- Change Password section: current password, new password, confirm new password fields
+- Password change re-authenticates via `signInWithPassword()` before calling `updateUser()`
+- Validation: new password must be 6+ chars, must match confirmation, current password required
+- Success/error toasts after operations, loading states on buttons
+- Added `loadSettings()` method triggered on `#/settings` route
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - Supabase JS v2 password change: `supabase.auth.updateUser({ password })` — no separate re-auth API needed, but `signInWithPassword()` first verifies current password
+  - Settings state (settingsName, passwords) reset on each load via `loadSettings()` to prevent stale values
+  - Email is read-only (disabled input with opacity) — email changes require Supabase email confirmation flow
+  - Form inputs use `@keydown.enter` on last field to submit on Enter key
+---
+
+## 2026-02-26 - US-009
+- Implemented recent activity section on member detail view
+- Merges bets and ledger entries chronologically, sorted by created_at descending
+- Shows last 10 entries by default, "View All" / "Show Less" toggle for more
+- Each row shows: type badge (Pick/Won/Lost/Settlement/Adjustment), description, date, color-coded amount
+- Bet entries show team name + odds; ledger entries show reason or type description
+- Empty state: "Activity will show up as members place picks and balances change."
+- Updated `loadMemberBetsAndLedger()` to fetch full ledger entry records (`select('*')`) instead of just `amount, type`
+- Added `memberRecentActivity` computed property (Alpine `get`) and `activityTypeBadge()` helper
+- Added `memberActivityExpanded` state variable, reset on member detail load
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - `memberRecentActivity` uses `get` so Alpine auto-recomputes when bets/ledger data changes
+  - Ledger entries need `select('*')` to access `created_at` and `reason` fields for activity display
+  - Type badge mapping uses a helper method returning `{ label, cls }` — cleaner than inline ternaries
+  - Amount display: bets show negative stake for placements, PnL for won/lost; ledger entries show amount directly
+---
+
+## 2026-02-26 - US-008
+- Implemented inline editing for member display name and credit limit on member detail view
+- Display name: pencil icon toggles to text input, saves on Enter/blur, reverts on Escape
+- Credit limit: pencil icon toggles to number input, same save/revert behavior
+- Both fields save directly to Supabase `players` table via RLS (bookie can update own players)
+- After save, syncs updated value to `memberDetail`, `playerMap`, and `players` array so all views stay consistent
+- Success/error toasts shown after save attempts
+- Editing state reset when navigating to a different member
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - Use `$nextTick` for focus/select on dynamically shown inputs in Alpine.js
+  - Sync updated values to all data sources (memberDetail, playerMap, players array) to keep list views consistent
+  - `@blur` and `@keydown.enter` both trigger save — the method handles duplicate calls gracefully by checking if value changed
+  - Number input with `min="0" step="100"` provides good UX for credit limits
+---
+
 ## 2026-02-26 - US-007
 - Implemented performance card and picks section on member detail view
 - Performance card shows: W-L-P record, Net P&L (excludes paymentLogged ledger entries), Win Rate %

@@ -61,6 +61,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                     Subscription
                 </a></li>
+                <li><a href="#/settings" :class="{ active: route === 'settings' }" @click="sidebarOpen = false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Settings
+                </a></li>
             </ul>
             <div class="sidebar-bottom">
                 <a href="#" @click.prevent="logout()">
@@ -682,6 +686,58 @@
                     </div>
                 </template>
             </div>
+            <!-- ── Settings View ── -->
+            <div x-show="route === 'settings'" x-cloak>
+                <div class="page-header">
+                    <h1>Settings</h1>
+                    <p>Manage your account</p>
+                </div>
+
+                <!-- Profile Section -->
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header"><span class="card-title">Profile</span></div>
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" x-model="settingsName" placeholder="Your name"
+                               @keydown.enter="saveProfile()">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" :value="settingsEmail" disabled
+                               style="opacity:0.6;cursor:not-allowed;">
+                    </div>
+                    <button class="btn btn-accent" @click="saveProfile()" :disabled="isSavingProfile">
+                        <span x-text="isSavingProfile ? 'Saving...' : 'Save Profile'"></span>
+                    </button>
+                </div>
+
+                <!-- Change Password Section -->
+                <div class="card">
+                    <div class="card-header"><span class="card-title">Change Password</span></div>
+
+                    <template x-if="passwordError">
+                        <div class="form-error" x-text="passwordError"></div>
+                    </template>
+
+                    <div class="form-group">
+                        <label>Current Password</label>
+                        <input type="password" x-model="currentPassword" placeholder="Enter current password">
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" x-model="newPassword" placeholder="Minimum 6 characters">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" x-model="confirmPassword" placeholder="Re-enter new password"
+                               @keydown.enter="changePassword()">
+                    </div>
+                    <button class="btn btn-accent" @click="changePassword()" :disabled="isChangingPassword">
+                        <span x-text="isChangingPassword ? 'Updating...' : 'Change Password'"></span>
+                    </button>
+                </div>
+            </div>
+
         </main>
     </div>
 

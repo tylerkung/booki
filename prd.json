@@ -152,7 +152,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Add state: isEditingName, isEditingCredit, editNameValue, editCreditValue. Use x-show to toggle between display text and input field. Save directly via Supabase client (not an edge function — RLS allows bookie to update their own players). After save, also update the player in this.playerMap and this.players array so other views stay in sync."
     },
     {
@@ -170,7 +170,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Fetch bets and ledger entries for the player, merge into a single array sorted by created_at. Each item needs a normalized shape: { date, type, description, amount, source: 'bet'|'ledger' }. For bets: amount is stake (negative from bookie perspective) for placement, or payout for settlement. For ledger entries: use the entry amount directly. Type badges use the existing statusBadgeClass pattern."
     },
     {
@@ -189,7 +189,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "Add settings section to app.html with x-show=\"route === 'settings'\". Add sidebar nav item in the <ul> before the Log Out link. For password change, Supabase JS v2 uses supabase.auth.updateUser({ password }). The current password re-auth may need supabase.auth.signInWithPassword() first to verify. Add state: settingsName, currentPassword, newPassword, confirmPassword, isSavingProfile, isChangingPassword."
     },
     {
