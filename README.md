@@ -445,4 +445,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 25, 2026 - Stripe Pro subscription, account deletion, age gate, email verification (Resend), privacy manifest, dashboard time selector, player pick history, settings restructure, App Store prep*
+*Last updated: February 25, 2026 - Verification pending screen, Resend invite emails, email templates, verify landing page, settings polish*

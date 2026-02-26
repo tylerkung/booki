@@ -70,30 +70,21 @@ struct SettingsView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                     }
-                    menuDivider
-                    Button {
-                        showingDeleteConfirmation = true
-                    } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 20))
-                                .foregroundStyle(Theme.danger.opacity(0.7))
-                                .frame(width: 28, alignment: .center)
-
-                            Text("Delete Account")
-                                .font(Theme.body)
-                                .fontWeight(.medium)
-                                .foregroundStyle(Theme.danger.opacity(0.7))
-
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                    }
                 }
                 .cardStyle()
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
+
+                // Delete Account — separate, at bottom
+                Button {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Text("Delete Account")
+                        .font(Theme.bodyFont(size: 14))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .padding(.top, 32)
+                .padding(.bottom, 16)
             }
             .background(Theme.background)
             .navigationTitle("Settings")

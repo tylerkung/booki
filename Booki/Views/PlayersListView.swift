@@ -1943,16 +1943,7 @@ struct InviteMemberSheet: View {
                 await MainActor.run {
                     saveInviteLocally(response: response, email: trimmedEmail)
                     emailInviteCode = response.inviteCode
-
-                    if MFMailComposeViewController.canSendMail() {
-                        showingMailCompose = true
-                    } else {
-                        // Copy link to clipboard as fallback
-                        UIPasteboard.general.string = "booki://invite/\(response.inviteCode)"
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                        impactFeedback.impactOccurred()
-                        showingMailFallbackAlert = true
-                    }
+                    inviteState = .emailSent
                 }
             } catch {
                 await MainActor.run {

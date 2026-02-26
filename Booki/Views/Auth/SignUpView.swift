@@ -14,9 +14,11 @@ struct SignUpView: View {
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
     @State private var isLoading: Bool = false
-    @State private var showSuccessAlert: Bool = false
+    @State private var showVerificationPending: Bool = false
     @State private var errorMessage: String?
     @State private var ageConfirmed: Bool = false
+    @State private var isResending: Bool = false
+    @State private var resendMessage: String?
 
     // MARK: - Validation
 
@@ -52,6 +54,92 @@ struct SignUpView: View {
     // MARK: - Body
 
     var body: some View {
+        if showVerificationPending {
+            verificationPendingView
+        } else {
+            signUpFormView
+        }
+    }
+
+    // MARK: - Verification Pending View
+
+    private var verificationPendingView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            VStack(spacing: 16) {
+                Image(systemName: "envelope.badge")
+                    .font(.system(size: 56))
+                    .foregroundStyle(Theme.accent)
+
+                Text("Check Your Inbox")
+                    .font(Theme.title1)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Theme.textPrimary)
+
+                Text("We sent a verification link to")
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+
+                Text(email)
+                    .font(Theme.bodyFont(size: 16, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+
+                Text("Tap the link in the email to verify your account, then come back here to log in.")
+                    .font(Theme.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 4)
+            }
+
+            Spacer()
+
+            VStack(spacing: 12) {
+                // Resend button
+                Button {
+                    resendVerification()
+                } label: {
+                    Group {
+                        if isResending {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.accent))
+                        } else {
+                            Text("Resend Email")
+                                .font(Theme.bodyFont(size: 15, weight: .medium))
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+                }
+                .disabled(isResending)
+
+                if let resendMessage {
+                    Text(resendMessage)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+
+                // Back to Login button
+                Button(action: onNavigateToLogin) {
+                    Text("Back to Login")
+                        .font(Theme.headline)
+                        .fontWeight(.bold)
+                        .textCase(.uppercase)
+                        .tracking(1)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.horizontal, 24)
+            }
+            .padding(.bottom, 32)
+        }
+        .background(Theme.backgroundGradient)
+    }
+
+    // MARK: - Sign Up Form View
+
+    private var signUpFormView: some View {
         ScrollView {
             VStack(spacing: 24) {
                 // Header
@@ -219,13 +307,6 @@ struct SignUpView: View {
             .padding(.horizontal, 24)
             .padding(.top, 12)
         }
-        .alert("Check Your Email", isPresented: $showSuccessAlert) {
-            Button("OK", role: .cancel) {
-                onNavigateToLogin()
-            }
-        } message: {
-            Text("Check your email to verify your account")
-        }
     }
 
     // MARK: - Sign Up
@@ -244,7 +325,7 @@ struct SignUpView: View {
                 )
                 await MainActor.run {
                     isLoading = false
-                    showSuccessAlert = true
+                    withAnimation { showVerificationPending = true }
                 }
             } catch let error as AuthError {
                 await MainActor.run {
@@ -278,6 +359,29 @@ struct SignUpView: View {
         }
 
         return "Sign up failed. Please try again."
+    }
+
+    private func resendVerification() {
+        isResending = true
+        resendMessage = nil
+
+        Task {
+            do {
+                try await SupabaseClientManager.shared.client.auth.resend(
+                    email: email,
+                    type: .signup
+                )
+                await MainActor.run {
+                    isResending = false
+                    resendMessage = "Verification email sent"
+                }
+            } catch {
+                await MainActor.run {
+                    isResending = false
+                    resendMessage = "Failed to resend. Try again later."
+                }
+            }
+        }
     }
 }
 

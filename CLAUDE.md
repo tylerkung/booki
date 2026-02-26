@@ -246,3 +246,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Settings reorder**: Profile, Change Password, Subscription, Pick Management, About, Log Out (removed Balance Alerts + Export Data)
 - **ProUpgradeSheet**: Uses `BookiPro` image asset, removed Restore Purchase placeholder
 - **Terms/Privacy updates**: Subscription billing section, Stripe references, pro-rated refund clause, payment data handling
+- **Verification pending screen**: Full-screen post-signup view with email display, resend button, back-to-login CTA (replaces alert)
+- **Invite emails via Resend**: `create_invite` sends branded HTML email via Resend API when email provided — no more iOS native mail composer
+- **Email templates**: `landing/email-confirm.html` (verification), `landing/email-invite.html` (invite) — dark theme, Booki branding
+- **Verify landing page**: `landing/verify.html` handles email confirmation token, branded loading/success states, "Open Booki" deep link
+- **Delete Account UI**: Separated from main settings card, standalone muted text button at page bottom

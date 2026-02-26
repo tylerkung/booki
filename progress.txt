@@ -229,3 +229,24 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - GoDaddy auto-appends domain to CNAME/TXT host fields — only enter the subdomain part
   - PrivacyInfo.xcprivacy is required for App Store — declares API usage reasons and collected data types
   - Account deletion must cancel Stripe subscription before deleting data, and delete in FK dependency order
+---
+
+## 2026-02-25 - Email verification flow, invite emails via Resend, settings polish
+- What was implemented:
+  - **Verification pending screen**: Replaced alert-based "Check your email" with full-screen verification pending view showing email address, resend button, and back-to-login CTA
+  - **Resend invite emails**: `create_invite` edge function now sends branded HTML invite email via Resend API when email is provided — replaces iOS native mail composer
+  - **Invite email template**: Dark-themed email with bookie name, invite code in teal monospace, "Join Now" CTA linking to `bookisports.com/invite/{code}`
+  - **Delete Account separation**: Moved delete account out of main settings card to standalone muted text button at page bottom
+  - **Email templates**: Created `landing/email-confirm.html` and `landing/email-invite.html` reference templates
+  - **Verify page**: `landing/verify.html` — branded loading → success → "Open Booki" deep link flow
+- Files changed:
+  - Booki/Views/Auth/SignUpView.swift — verification pending screen, resend function
+  - Booki/Views/PlayersListView.swift — removed native mail composer, server sends email
+  - Booki/Views/SettingsView.swift — delete account moved to bottom as muted text
+  - supabase/functions/create_invite/index.ts — Resend API email sending, HTML template
+  - landing/email-invite.html — NEW: invite email template reference
+- **Learnings for future iterations:**
+  - Resend API is simple: POST to `https://api.resend.com/emails` with Bearer token, `from`, `to`, `subject`, `html`
+  - Email sending is non-blocking in edge functions — wrap in try/catch so invite creation succeeds even if email fails
+  - Data URI SVGs don't work in email clients — use hosted images or Unicode characters for icons
+  - Supabase `{{ .ConfirmationURL }}` points to Supabase domain by default — use `{{ .TokenHash }}` to construct custom URLs through your own domain

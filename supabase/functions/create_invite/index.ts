@@ -175,6 +175,39 @@ Deno.serve(async (req) => {
       newState: invite as unknown as Record<string, unknown>,
     });
 
+    // Send invite email via Resend if email provided
+    if (body.email) {
+      const resendApiKey = Deno.env.get('RESEND_API_KEY');
+      if (resendApiKey) {
+        // Fetch bookie name for the email
+        const { data: bookieRecord } = await client
+          .from('bookies')
+          .select('name')
+          .eq('id', bookieId)
+          .single();
+        const bookieName = bookieRecord?.name || 'Your organizer';
+
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${resendApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: 'Booki <noreply@bookisports.com>',
+              to: [body.email],
+              subject: `${bookieName} invited you to join Booki`,
+              html: getInviteEmailHtml(bookieName, inviteCode),
+            }),
+          });
+        } catch (emailError) {
+          // Non-blocking — invite still created even if email fails
+          console.error('Failed to send invite email:', emailError);
+        }
+      }
+    }
+
     // Prepare success response
     const response = JSON.stringify({
       success: true,
@@ -199,3 +232,64 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+function getInviteEmailHtml(bookieName: string, inviteCode: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#0A0A12;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0A0A12;min-height:100vh;">
+<tr><td align="center" style="padding:40px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+<tr><td align="center" style="padding-bottom:32px;">
+  <img src="https://bookisports.com/assets/logo-booki-wh.svg" alt="Booki" width="140" style="display:block;" />
+</td></tr>
+<tr><td style="background-color:#14141F;border-radius:16px;border:1px solid #2A2A3A;padding:40px 32px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr><td align="center" style="padding-bottom:12px;">
+  <h1 style="margin:0;font-size:24px;font-weight:700;color:#F8F8F8;letter-spacing:-0.3px;">You're Invited</h1>
+</td></tr>
+<tr><td align="center" style="padding-bottom:28px;">
+  <p style="margin:0;font-size:15px;line-height:1.6;color:#A8A8B8;">
+    <strong style="color:#F8F8F8;">${escapeHtml(bookieName)}</strong> invited you to join their group on Booki.
+  </p>
+</td></tr>
+<tr><td align="center" style="padding-bottom:28px;">
+  <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+    <td style="background-color:#0A0A12;border:1px solid #2A2A3A;border-radius:10px;padding:16px 32px;text-align:center;">
+      <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#6B6B7B;font-weight:600;">Your Invite Code</p>
+      <p style="margin:0;font-size:28px;font-weight:700;color:#00F5D4;letter-spacing:4px;font-family:'SF Mono','Menlo','Courier New',monospace;">${inviteCode}</p>
+    </td>
+  </tr></table>
+</td></tr>
+<tr><td align="center" style="padding-bottom:24px;">
+  <a href="https://bookisports.com/invite/${inviteCode}" style="display:inline-block;background-color:#00F5D4;color:#0A0A12;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:10px;letter-spacing:0.5px;text-transform:uppercase;">Join Now</a>
+</td></tr>
+<tr><td align="center" style="padding-bottom:8px;">
+  <p style="margin:0;font-size:13px;line-height:1.6;color:#6B6B7B;">Already have Booki? Open the app and enter the code above.</p>
+</td></tr>
+<tr><td style="padding:20px 0;"><div style="height:1px;background-color:#2A2A3A;"></div></td></tr>
+<tr><td align="center">
+  <p style="margin:0;font-size:12px;color:#6B6B7B;">This invite expires in 24 hours.</p>
+</td></tr>
+</table>
+</td></tr>
+<tr><td align="center" style="padding-top:32px;">
+  <p style="margin:0 0 8px;font-size:13px;color:#6B6B7B;">If you weren't expecting this invite, you can safely ignore this email.</p>
+  <p style="margin:0;font-size:12px;color:#4A4A5A;">
+    <a href="https://bookisports.com" style="color:#4A4A5A;text-decoration:none;">bookisports.com</a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://bookisports.com/terms.html" style="color:#4A4A5A;text-decoration:none;">Terms</a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://bookisports.com/privacy.html" style="color:#4A4A5A;text-decoration:none;">Privacy</a>
+  </p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
