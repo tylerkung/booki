@@ -287,14 +287,14 @@ struct PlayersListView: View {
         } label: {
             HStack {
                 Image(systemName: "person.2.fill")
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.warning)
                     .font(.system(size: 14))
                 Text("\(activeCount) of \(bookieTier.memberLimit) members · Upgrade for more")
                     .font(Theme.bodyFont(size: 14, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.warning)
                     .font(.system(size: 12, weight: .semibold))
             }
             .padding()

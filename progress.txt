@@ -28,3 +28,16 @@ Started: Wed Feb 25 18:55:49 PST 2026
   - Member count filter uses `.not('auth_user_id', 'is', null)` to exclude archived members
   - No Deno or Docker available locally for edge function typecheck — verify syntax manually
 ---
+
+## 2026-02-25 - US-003
+- Verified InviteMemberSheet already has capacity blocking: `isAtCapacity` check, `atCapacityContent` with warning icon, limit message, and Upgrade CTA
+- Verified PlayersListView already has `capacityBanner` shown when free tier is at member limit
+- Fixed banner accent color from Theme.accent (teal) to Theme.warning (orange/yellow) per AC requirement
+- Banner uses Theme.cardBackground background with Theme.warning icon and chevron
+- Banner tappable → presents ProUpgradeSheet with contextMessage
+- Files changed: Booki/Views/PlayersListView.swift (2 color changes in capacityBanner)
+- **Learnings for future iterations:**
+  - InviteMemberSheet is defined inside PlayersListView.swift (line ~1558), not a separate file
+  - `isAtCapacity` filters by `$0.status != .archived && $0.authUserId != nil` — matches edge function logic
+  - `bookieTier.memberLimit` is a computed property on BookieTier enum
+---

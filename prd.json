@@ -52,7 +52,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "PlayersListView is in Booki/Views/PlayersListView.swift. The invite sheet is presented from this view. Count active members: bookie_id match AND auth_user_id IS NOT NULL. Edge case: bookie downgrades with 10 members, archives 8 → now at 2/3 → can invite again."
     },
     {
