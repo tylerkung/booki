@@ -70,6 +70,100 @@ function dashboardApp() {
         memberDetailLedger: [],
         memberPickFilter: 'open',
 
+        // ── Inline Editing ──
+        isEditingName: false,
+        isEditingCredit: false,
+        editNameValue: '',
+        editCreditValue: '',
+
+        startEditingName() {
+            this.editNameValue = this.memberDetail.display_name || this.memberDetail.name || '';
+            this.isEditingName = true;
+            this.$nextTick(() => {
+                const el = document.getElementById('edit-name-input');
+                if (el) { el.focus(); el.select(); }
+            });
+        },
+
+        startEditingCredit() {
+            this.editCreditValue = String(this.memberDetail.credit_limit || 0);
+            this.isEditingCredit = true;
+            this.$nextTick(() => {
+                const el = document.getElementById('edit-credit-input');
+                if (el) { el.focus(); el.select(); }
+            });
+        },
+
+        async saveMemberName() {
+            if (!this.memberDetail) return;
+            const newName = this.editNameValue.trim();
+            if (!newName) {
+                this.isEditingName = false;
+                return;
+            }
+
+            const oldName = this.memberDetail.display_name || this.memberDetail.name;
+            if (newName === oldName) {
+                this.isEditingName = false;
+                return;
+            }
+
+            const { error } = await this.supabase
+                .from('players')
+                .update({ display_name: newName })
+                .eq('id', this.memberDetail.id);
+
+            if (error) {
+                this.toast('Failed to update name', 'error');
+            } else {
+                this.memberDetail.display_name = newName;
+                // Sync playerMap and players array
+                if (this.playerMap[this.memberDetail.id]) {
+                    this.playerMap[this.memberDetail.id].display_name = newName;
+                }
+                const idx = this.players.findIndex(p => p.id === this.memberDetail.id);
+                if (idx >= 0) this.players[idx].display_name = newName;
+                this.toast('Name updated', 'success');
+            }
+
+            this.isEditingName = false;
+        },
+
+        async saveMemberCredit() {
+            if (!this.memberDetail) return;
+            const newLimit = parseFloat(this.editCreditValue);
+            if (isNaN(newLimit) || newLimit < 0) {
+                this.toast('Invalid credit limit', 'error');
+                this.isEditingCredit = false;
+                return;
+            }
+
+            if (newLimit === (this.memberDetail.credit_limit || 0)) {
+                this.isEditingCredit = false;
+                return;
+            }
+
+            const { error } = await this.supabase
+                .from('players')
+                .update({ credit_limit: newLimit })
+                .eq('id', this.memberDetail.id);
+
+            if (error) {
+                this.toast('Failed to update credit limit', 'error');
+            } else {
+                this.memberDetail.credit_limit = newLimit;
+                // Sync playerMap and players array
+                if (this.playerMap[this.memberDetail.id]) {
+                    this.playerMap[this.memberDetail.id].credit_limit = newLimit;
+                }
+                const idx = this.players.findIndex(p => p.id === this.memberDetail.id);
+                if (idx >= 0) this.players[idx].credit_limit = newLimit;
+                this.toast('Credit limit updated', 'success');
+            }
+
+            this.isEditingCredit = false;
+        },
+
         // ── Override / Reverse ──
         showOverrideModal: false,
         overrideOutcome: 'won',
@@ -392,6 +486,8 @@ function dashboardApp() {
             this.isLoadingMemberDetail = true;
             this.memberDetail = null;
             this.showMemberOverflow = false;
+            this.isEditingName = false;
+            this.isEditingCredit = false;
 
             // Look up from playerMap first, then fetch from Supabase
             let player = this.playerMap[this.selectedPlayerId];

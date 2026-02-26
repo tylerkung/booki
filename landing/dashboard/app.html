@@ -391,7 +391,18 @@
                         <div class="card" style="margin-bottom:16px;">
                             <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
                                 <div>
-                                    <h2 style="font-size:22px;margin-bottom:4px;" x-text="memberDetail.display_name || memberDetail.name"></h2>
+                                    <!-- Display name: view/edit toggle -->
+                                    <div x-show="!isEditingName" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                                        <h2 style="font-size:22px;margin:0;" x-text="memberDetail.display_name || memberDetail.name"></h2>
+                                        <button @click="startEditingName()" class="btn btn-ghost" style="padding:2px 4px;font-size:14px;color:var(--text-muted);" title="Edit name">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        </button>
+                                    </div>
+                                    <div x-show="isEditingName" style="margin-bottom:4px;">
+                                        <input id="edit-name-input" type="text" x-model="editNameValue"
+                                               @keydown.enter="saveMemberName()" @keydown.escape="isEditingName = false" @blur="saveMemberName()"
+                                               class="input" style="font-size:18px;font-weight:700;padding:4px 8px;width:220px;">
+                                    </div>
                                     <span class="badge" :class="memberDetail.auth_user_id ? 'badge-success' : 'badge-muted'" style="font-size:11px;" x-text="memberDetail.auth_user_id ? 'Active' : 'Pending'"></span>
                                 </div>
                                 <!-- Overflow menu -->
@@ -425,7 +436,17 @@
                                 </div>
                                 <div>
                                     <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Credit Limit</div>
-                                    <div style="font-size:22px;font-weight:700;color:var(--text-primary);" x-text="formatCurrency(memberDetail.credit_limit || 0)"></div>
+                                    <div x-show="!isEditingCredit" style="display:flex;align-items:center;gap:6px;">
+                                        <div style="font-size:22px;font-weight:700;color:var(--text-primary);" x-text="formatCurrency(memberDetail.credit_limit || 0)"></div>
+                                        <button @click="startEditingCredit()" class="btn btn-ghost" style="padding:2px 4px;font-size:14px;color:var(--text-muted);" title="Edit credit limit">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        </button>
+                                    </div>
+                                    <div x-show="isEditingCredit">
+                                        <input id="edit-credit-input" type="number" x-model="editCreditValue"
+                                               @keydown.enter="saveMemberCredit()" @keydown.escape="isEditingCredit = false" @blur="saveMemberCredit()"
+                                               class="input" style="font-size:18px;font-weight:700;padding:4px 8px;width:140px;" min="0" step="100">
+                                    </div>
                                 </div>
                             </div>
 
