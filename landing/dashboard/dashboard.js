@@ -58,6 +58,14 @@ function dashboardApp() {
         showVoidModal: false,
         isVoiding: false,
 
+        // ── Override / Reverse ──
+        showOverrideModal: false,
+        overrideOutcome: 'won',
+        overrideReason: '',
+        isOverriding: false,
+        showReverseModal: false,
+        isReversing: false,
+
         // ── Modals ──
         showInviteModal: false,
         inviteEmail: '',
@@ -446,6 +454,68 @@ function dashboardApp() {
             }
 
             this.isVoiding = false;
+        },
+
+        // ── Override Grade ──
+        openOverrideModal() {
+            this.overrideOutcome = 'won';
+            this.overrideReason = '';
+            this.showOverrideModal = true;
+        },
+
+        async overrideGrade() {
+            if (!this.pickDetail || !this.overrideReason.trim()) return;
+            this.isOverriding = true;
+
+            try {
+                const response = await this.callEdgeFunction('override_grade', {
+                    bet_id: this.pickDetail.id,
+                    new_outcome: this.overrideOutcome,
+                    reason: this.overrideReason.trim(),
+                    idempotency_key: crypto.randomUUID(),
+                });
+
+                if (response.error) {
+                    this.toast(response.error, 'error');
+                } else {
+                    this.toast('Grade overridden successfully', 'success');
+                    this.showOverrideModal = false;
+                    await this.loadPickDetail();
+                }
+            } catch (e) {
+                this.toast(e.message || 'Failed to override grade', 'error');
+            }
+
+            this.isOverriding = false;
+        },
+
+        // ── Reverse Settlement ──
+        confirmReverse() {
+            this.showReverseModal = true;
+        },
+
+        async reverseSettlement() {
+            if (!this.pickDetail) return;
+            this.isReversing = true;
+
+            try {
+                const response = await this.callEdgeFunction('reverse_settlement', {
+                    bet_id: this.pickDetail.id,
+                    idempotency_key: crypto.randomUUID(),
+                });
+
+                if (response.error) {
+                    this.toast(response.error, 'error');
+                } else {
+                    this.toast('Settlement reversed', 'success');
+                    this.showReverseModal = false;
+                    await this.loadPickDetail();
+                }
+            } catch (e) {
+                this.toast(e.message || 'Failed to reverse settlement', 'error');
+            }
+
+            this.isReversing = false;
         },
 
         // ── Invite ──

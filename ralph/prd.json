@@ -1,214 +1,391 @@
 {
   "project": "Booki",
-  "branchName": "ralph/default-ux-organizer-upsell",
-  "description": "Default user experience as standalone bet tracker, 'Be an Organizer' upsell flow, step-down from organizer, Pro upgrade blocked as Coming Soon, and downgrade enforcement on invites.",
+  "branchName": "ralph/web-dashboard-parity",
+  "description": "Bring the web dashboard (landing/dashboard/) to full feature parity with the iOS organizer experience — pick detail, grading/voiding, member detail, settings, invites management, enhanced dashboard, and UX polish.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Block Pro upgrade — Coming Soon on ProUpgradeSheet",
-      "description": "As a free-tier bookie, I see the Pro feature list but the upgrade is marked Coming Soon since Pro isn't available yet.",
+      "title": "Add parameterized hash routing to dashboard SPA",
+      "description": "As a developer, I need the Alpine.js router to support parameterized routes like #/members/:id and #/picks/:id so detail views can be navigated to.",
       "acceptanceCriteria": [
-        "In ProUpgradeSheet.swift, replace the price line '$49.99 / month' with 'Coming Soon' text in Theme.textSecondary",
-        "Remove the NavigationLink to ProCheckoutView",
-        "Replace the subscribe CTA button with a non-tappable muted button: text 'Coming Soon' in Theme.textMuted on Theme.elevatedBackground background, full width, same padding as current CTA",
-        "Add a note below the button: 'We'll notify you when Booki Pro is available.' in Theme.textMuted, font size 12",
-        "Keep the BookiPro logo, feature list card, and optional contextMessage exactly as they are",
-        "Keep the dismiss X button in toolbar",
-        "ProCheckoutView.swift file remains untouched (just unreachable)",
+        "parseRoute() in dashboard.js handles #/members/<uuid> and extracts the player ID into a reactive property (e.g. selectedPlayerId)",
+        "parseRoute() handles #/picks/<uuid> and extracts the bet ID into a reactive property (e.g. selectedBetId)",
+        "parseRoute() handles #/settings as a new route",
+        "Navigating to #/members/abc-123 sets route='member-detail' and selectedPlayerId='abc-123'",
+        "Navigating to #/picks/abc-123 sets route='pick-detail' and selectedBetId='abc-123'",
+        "Existing routes (#/dashboard, #/members, #/picks, #/subscription) continue working unchanged",
+        "Back navigation (browser back button) works correctly between list and detail views",
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "ProUpgradeSheet.swift is in Booki/Views/ProUpgradeSheet.swift. The existing sticky bottom VStack has the NavigationLink + CTA + Terms links. Replace just that bottom section. Keep the Terms of Service and Privacy Policy links below the muted button. All existing .sheet presentations of ProUpgradeSheet throughout the app continue working unchanged."
+      "passes": true,
+      "notes": "dashboard.js is at landing/dashboard/dashboard.js. The current parseRoute() at line 115 uses a simple hash match. Extend it with regex or string splitting to detect /members/<id> and /picks/<id> patterns. Add selectedPlayerId and selectedBetId to the Alpine data object. Add 'member-detail', 'pick-detail', 'settings' to the routes concept."
     },
     {
       "id": "US-002",
-      "title": "Add downgrade enforcement to create_invite edge function",
-      "description": "As a developer, I need the create_invite edge function to enforce member limits based on the bookie's tier so downgraded bookies can't invite past the free limit.",
+      "title": "Add pick detail view — hero and financials cards",
+      "description": "As an organizer, I want to click a pick row to see its full details including status, team, odds, stake, and potential return.",
       "acceptanceCriteria": [
-        "In create_invite/index.ts, after auth validation, count active players for the bookie (where bookie_id matches AND auth_user_id IS NOT NULL)",
-        "Read bookie.tier from bookies table",
-        "Set limit: 3 for free tier, 50 for pro tier",
-        "If active member count >= limit, return 403 with JSON { success: false, error: 'member_limit_reached', limit: <number>, current: <count> }",
-        "Archived/removed members (auth_user_id IS NULL) do NOT count toward limit",
-        "Typecheck passes"
+        "Pick rows in the picks table are clickable — clicking navigates to #/picks/<betId>",
+        "Pick detail view loads the bet from Supabase: bets.select('*').eq('id', selectedBetId)",
+        "Hero card shows: large colored status badge, team/selection name (bet.team_name or bet.selection), event name, market type",
+        "Financials card shows: odds (American format with +/- prefix), stake amount, potential return (calculated from stake and odds), actual P/L if status is 'settled'",
+        "Back button at top navigates to #/picks",
+        "Member name is shown and clickable — navigates to #/members/<playerId>",
+        "Loading state while bet data fetches",
+        "View styled with existing dashboard.css card patterns (dark theme)",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "create_invite is in supabase/functions/create_invite/index.ts. Add the check after invite code validation but before the insert. The bookie_id is available from the authenticated user lookup. Use service client to count players."
+      "passes": true,
+      "notes": "Add a new section in app.html with x-show=\"route === 'pick-detail'\". Add loadPickDetail() method to dashboard.js that fetches the single bet. Potential return calculation: for positive American odds, return = stake * (odds/100); for negative, return = stake * (100/Math.abs(odds)). Use the existing formatCurrency() and formatOdds() helpers. The member name can be looked up from playerMap."
     },
     {
       "id": "US-003",
-      "title": "Add member limit UI on invite sheet and members tab banner",
-      "description": "As a free bookie at the 3-member limit, I see a clear message when trying to invite and an informational banner on the Members tab.",
+      "title": "Add parlay legs and activity timeline to pick detail",
+      "description": "As an organizer, I want to see parlay leg breakdowns and audit history on the pick detail view.",
       "acceptanceCriteria": [
-        "In InviteMemberSheet (or equivalent invite creation UI), check active member count vs tier limit before showing invite form",
-        "If at capacity: show blocking message 'You've reached the 3-member limit on the Free plan.' with 'Upgrade to Pro to invite up to 50 members.' and Upgrade CTA that presents ProUpgradeSheet",
-        "If at capacity: hide the actual invite creation form",
-        "On Members tab (PlayersListView), when at or over capacity on free tier, show inline banner: 'X of 3 members - Upgrade for more'",
-        "Banner is tappable and presents ProUpgradeSheet with contextMessage",
-        "Banner uses Theme.cardBackground with Theme.warning accent",
-        "When under limit or on pro tier, no banner and invite flow works normally",
-        "Typecheck passes"
+        "If bet.bet_type === 'parlay', fetch legs: bet_legs.select('*').eq('ticket_id', bet.ticket_id)",
+        "Parlay legs card shows each leg: team name, market type, odds, individual status badge",
+        "Combined odds displayed at top of legs card",
+        "Activity timeline card fetches: settlement_events.select('*').eq('bet_id', betId).order('created_at')",
+        "Timeline shows key events: created, accepted, graded, settled timestamps with descriptions",
+        "If no settlement_events, show bet.created_at as the only timeline entry",
+        "Cards use existing dashboard.css styling",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "PlayersListView is in Booki/Views/PlayersListView.swift. The invite sheet is presented from this view. Count active members: bookie_id match AND auth_user_id IS NOT NULL. Edge case: bookie downgrades with 10 members, archives 8 → now at 2/3 → can invite again."
+      "passes": true,
+      "notes": "Add to the pick detail view created in US-002. The bet_legs table has columns: team_name, market_type, odds, status, ticket_id. Use x-show to conditionally render the parlay section. Settlement events may not exist for all bets — only those that have been settled/reversed/overridden. Gracefully handle empty results."
     },
     {
       "id": "US-004",
-      "title": "Stop auto-creating bookie record on sign-up",
-      "description": "As a developer, I need sign-up to NOT auto-create a bookie record so new users land as standalone trackers.",
+      "title": "Add grading and void actions to pick detail",
+      "description": "As an organizer, I want to grade accepted picks (Win/Loss/Push) and void accepted/graded picks directly from the pick detail view.",
       "acceptanceCriteria": [
-        "In AuthManager, find where bookie record is auto-created after sign-up/login and disable that behavior",
-        "New users who sign up without an invite should have userRole == nil after authentication",
-        "Add computed property `var isStandaloneUser: Bool` on AuthManager — true when authenticated but no bookie record and no player-bookie link (player.bookie == nil or no player record)",
-        "Existing bookie accounts are NOT affected — if a bookie record already exists, it loads normally",
-        "Existing player accounts are NOT affected — they continue loading their bookie association",
-        "Typecheck passes"
+        "For picks with status 'accepted': show Win, Loss, Push grade buttons and a separate Void button",
+        "For picks with status 'graded': show Void button only",
+        "Clicking a grade button shows confirmation modal: 'Grade this pick as [Win/Loss/Push]?'",
+        "On confirm, calls grade_bet edge function: { bet_id, outcome: 'won'|'lost'|'push', idempotency_key: crypto.randomUUID() }",
+        "Clicking Void shows confirmation modal: 'Void this pick? This will cancel it with no balance impact.'",
+        "On confirm void, calls grade_bet edge function with outcome: 'void'",
+        "After successful grade/void, pick detail reloads to show updated status",
+        "Loading state on buttons during edge function call",
+        "Error toast on failure",
+        "Grade/void buttons hidden for status: pending, settled, void, declined",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "AuthManager is in Booki/Managers/AuthManager.swift. Look for ensureBookie(), createBookieRecord(), or similar methods that fire during the auth flow. The key is to stop creating a bookie row when the user has no invite and no existing bookie record. isStandaloneUser should check: isAuthenticated && userRole == nil (no bookie, no linked player). Also check if there's a player record with bookie == nil."
+      "passes": true,
+      "notes": "Use the existing callEdgeFunction('grade_bet', body) pattern from dashboard.js. The grade_bet edge function is at supabase/functions/grade_bet/index.ts. After success, call loadPickDetail() to refresh. Add grading state variables (isGrading, gradingOutcome) to Alpine data. Void is just grade_bet with outcome='void'. Style grade buttons: Win=green, Loss=red, Push=gray, Void=outlined/destructive."
     },
     {
       "id": "US-005",
-      "title": "Route standalone users to PlayerMainView",
-      "description": "As a new user without an invite, I land in the player experience (Games, Search, Track, Account) instead of the bookie dashboard.",
+      "title": "Add override grade and reverse settlement to pick detail (Pro only)",
+      "description": "As a Pro organizer, I want to override grades on graded/settled picks and reverse settlements from the pick detail view.",
       "acceptanceCriteria": [
-        "In AuthGateView.swift, change the routing so userRole == nil goes to PlayerMainView instead of ContentView",
-        "The switch statement should be: .player → PlayerMainView, .bookie → ContentView, nil → PlayerMainView",
-        "Remove or skip the onboarding flow trigger for nil role (onboarding is bookie-only)",
-        "Standalone users see the player tabs: Games, Search, Track, Account",
-        "Typecheck passes"
+        "For 'graded' status picks: show Override Grade button (Pro only)",
+        "For 'settled' status picks: show Override Grade button AND Reverse Settlement button (both Pro only)",
+        "Override Grade opens modal with: outcome dropdown (Win/Loss/Push/Void), required reason text input, confirm button",
+        "Override calls override_grade edge function: { bet_id, new_outcome, reason, idempotency_key }",
+        "Reverse Settlement opens confirmation modal with warning: 'This will reverse the ledger entry for this pick.'",
+        "Reverse calls reverse_settlement edge function: { bet_id, idempotency_key }",
+        "Free tier: buttons shown but disabled with tooltip 'Upgrade to Pro'",
+        "isPro check uses bookie.tier === 'pro' (already available in Alpine data)",
+        "After success, pick detail reloads",
+        "Error toast on failure",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "AuthGateView.swift line 62-70 has the routing switch. Currently `case .bookie, nil:` goes to ContentView. Split this: `.bookie` → ContentView with onboarding, `nil` → PlayerMainView without onboarding. The .onChange(of: authManager.userRole) at line 84 triggers onboarding for bookie — make sure nil doesn't trigger it."
+      "passes": true,
+      "notes": "Add override/reverse modals to app.html. Add state: showOverrideModal, overrideOutcome, overrideReason, isOverriding, showReverseModal, isReversing. Edge functions: override_grade at supabase/functions/override_grade/index.ts, reverse_settlement at supabase/functions/reverse_settlement/index.ts. For free tier, use :disabled=\"!isPro\" and show a Pro badge or tooltip."
     },
     {
       "id": "US-006",
-      "title": "Handle standalone sync and default credit",
-      "description": "As a standalone user, I need events/games to sync and a default $10,000 credit limit so I can place bets.",
+      "title": "Add member detail view — header and actions",
+      "description": "As an organizer, I want to click a member row to see their full profile with balance, credit limit, and action buttons.",
       "acceptanceCriteria": [
-        "SyncService handles standalone users: syncs events/games even when no bookie_id exists",
-        "AuthGateView triggers sync for standalone users (userRole == nil) — currently only triggers for bookie and player roles",
-        "Standalone users get a virtual/default credit limit of 10000 — either via a self-referencing player record or hardcoded in the client when player.bookie == nil",
-        "Account tab credit bar works against the $10,000 default for standalone users",
-        "BetSlipSheet allows standalone users to enter wagers normally with full stake/to-win fields",
-        "Typecheck passes"
+        "Member name in members table is clickable — clicking navigates to #/members/<playerId>",
+        "Member detail view loads player data from Supabase and from the existing playerMap",
+        "Header card shows: display name (or name), balance with color coding (green=positive/owes you, red=negative/you owe), credit limit, credit utilization progress bar (balance / credit_limit as percentage)",
+        "Action buttons row: Settle Up button, Adjust Balance button (reuse existing modals by setting settlePlayer/adjustPlayer)",
+        "Overflow menu (three dots) with: Archive Member, Remove Member options",
+        "Archive shows confirmation modal, on confirm updates players.status='archived' via Supabase",
+        "Remove shows confirmation modal with warning, on confirm NULLs bookie_id and auth_user_id via Supabase update",
+        "Back button navigates to #/members",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
       "passes": false,
-      "notes": "SyncService.swift sync() likely requires a bookie_id. For standalone users, we still need to sync shared events (bookie_id IS NULL). Check how currentBookieId triggers sync in AuthGateView onChange handlers — standalone users won't have currentBookieId set. The credit limit could be a constant in the Player model or a computed property that returns 10000 when bookie is nil. PlayerMainView needs to work without a player record having a bookie association."
+      "notes": "Add a new section in app.html with x-show=\"route === 'member-detail'\". Add loadMemberDetail() method. The settle/adjust modals already exist — just set this.settlePlayer or this.adjustPlayer to the loaded player and open the modal. For archive/remove, add new state vars (showArchiveModal, showRemoveModal, isArchiving, isRemoving). Credit utilization bar: use a div with percentage width and accent color background."
     },
     {
       "id": "US-007",
-      "title": "Enforce 25 open bet limit for standalone users",
-      "description": "As a standalone user, I'm limited to 25 open bets to prevent runaway activity without an organizer.",
+      "title": "Add performance card and picks section to member detail",
+      "description": "As an organizer, I want to see a member's win/loss record, PnL, and their picks on the member detail page.",
       "acceptanceCriteria": [
-        "In BetSlipSheet, count open bets (status == .accepted or .pending) for the current user",
-        "If standalone user (no bookie) and open bet count >= 25, disable the Place Bet button",
-        "Show message: 'You've reached the open pick limit (25). Wait for picks to settle or grade before placing more.'",
-        "In submit_bets edge function, add server-side check: if player has no bookie_id (standalone), count open bets and reject if >= 25 with error 'open_bet_limit_reached'",
-        "In submit_parlay edge function, same server-side check for standalone users",
-        "Linked players (with a bookie) have no open bet limit",
-        "Typecheck passes"
+        "Performance card shows: W-L-P record (count bets by status won/lost/push), Net PnL (sum ledger_entries excluding paymentLogged type), Win rate percentage (wins / (wins+losses) * 100)",
+        "Picks section with Open/Graded filter chips",
+        "Open filter shows bets with status in ['pending', 'accepted']",
+        "Graded filter shows bets with status in ['won', 'lost', 'push', 'void', 'settled', 'graded']",
+        "Pick rows are clickable — navigate to #/picks/<betId>",
+        "Shows up to 10 picks with 'See All' link that navigates to #/picks with member filter pre-set",
+        "Data queries: bets.select('*').eq('player_id', playerId), ledger_entries.select('amount,type').eq('player_id', playerId)",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 7,
       "passes": false,
-      "notes": "BetSlipSheet is in Booki/Views/Components/BetSlipSheet.swift. submit_bets is in supabase/functions/submit_bets/index.ts, submit_parlay in supabase/functions/submit_parlay/index.ts. Check for standalone by looking at the player's bookie_id — if NULL, they're standalone. The client-side check prevents unnecessary network calls, server-side check is the real enforcement."
+      "notes": "Add to the member detail view created in US-006. Performance data is computed client-side from the fetched bets and ledger entries. PnL excludes paymentLogged entries. Win rate: if (wins+losses) === 0, show '—' instead of NaN. Picks section reuses the pick row layout from the main picks table but in a compact card format."
     },
     {
       "id": "US-008",
-      "title": "Build BecomeOrganizerView upsell landing page",
-      "description": "As a standalone user, I want to see an attractive landing page explaining the benefits of becoming an organizer.",
+      "title": "Add inline editing for member display name and credit limit",
+      "description": "As an organizer, I want to edit a member's display name and credit limit directly on their detail page.",
       "acceptanceCriteria": [
-        "Create BecomeOrganizerView.swift as a new view in Booki/Views/",
-        "Header: 'Ready to run your group?' title with subtitle 'Turn your bet tracking into a full management platform.'",
-        "Benefits section with 5 icon rows: person.3.fill/Invite Members, chart.bar.fill/Live Dashboard, dollarsign.circle.fill/Balance Management, gearshape.2.fill/Full Control, bolt.fill/Auto-Pilot — each with a subtitle line",
-        "Free tier callout card with highlighted background: 'Start free — no credit card required', 'Free plan includes: 3 members, singles tracking, auto-grading, dashboard'",
-        "Primary teal CTA button: 'Get Started' — full width, Theme.accent background, Theme.background text",
-        "View uses Theme.background, Theme.cardBackground, standard app styling patterns",
-        "CTA button action is a placeholder (prints 'become organizer tapped') — wired in next story",
-        "Typecheck passes"
+        "Display name in header has a pencil icon — clicking turns it into an editable text input",
+        "On blur or Enter, saves to Supabase: players.update({ display_name: newValue }).eq('id', playerId)",
+        "Credit limit has a pencil icon — clicking turns it into an editable number input",
+        "On blur or Enter, saves to Supabase: players.update({ credit_limit: newValue }).eq('id', playerId)",
+        "Show brief success toast after save",
+        "If save fails, revert to previous value and show error toast",
+        "Updated values reflect immediately in the header card and utilization bar",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
       "passes": false,
-      "notes": "Follow existing view patterns: ScrollView with VStack, .cardStyle() for cards, Theme colors throughout. The benefits rows should use HStack with icon (system image, 24pt, Theme.accent) + VStack(alignment: .leading) with title (font semibold) + subtitle (Theme.textSecondary). Free tier callout uses Theme.elevatedBackground or similar highlight. No navigation — this is a destination view pushed from Account."
+      "notes": "Add state: isEditingName, isEditingCredit, editNameValue, editCreditValue. Use x-show to toggle between display text and input field. Save directly via Supabase client (not an edge function — RLS allows bookie to update their own players). After save, also update the player in this.playerMap and this.players array so other views stay in sync."
     },
     {
       "id": "US-009",
-      "title": "Wire 'Be an Organizer' in Account menu and create bookie on tap",
-      "description": "As a standalone user, I see 'Be an Organizer' in my Account menu and tapping Get Started creates my organizer account.",
+      "title": "Add recent activity section to member detail",
+      "description": "As an organizer, I want to see a member's recent activity (bets + ledger entries merged chronologically) on their detail page.",
       "acceptanceCriteria": [
-        "In AccountView playerMenuSection, add 'Be an Organizer' NavigationLink row above the 'About' row",
-        "Row uses crown.fill icon in Theme.gold color with chevron.right trailing",
-        "Row only visible when user is standalone (player.bookie == nil or authManager.isStandaloneUser)",
-        "Row is hidden for players linked to a bookie",
-        "NavigationLink pushes BecomeOrganizerView",
-        "BecomeOrganizerView 'Get Started' button creates a bookie record for the user via AuthManager (reuse existing bookie creation logic)",
-        "After bookie creation, userRole switches to .bookie and app routes to ContentView (bookie dashboard)",
-        "Typecheck passes"
+        "Recent Activity card below performance card",
+        "Merges bets and ledger_entries for this player, sorted by created_at descending",
+        "Shows last 10 entries by default",
+        "Each row shows: date, type badge (bet_placed, won, lost, settlement, adjustment, paymentLogged), description text, amount",
+        "Bet entries show: team name and odds in description",
+        "Ledger entries show: type and reason (if any) in description",
+        "'View All' toggle expands to show all entries",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
       "passes": false,
-      "notes": "AccountView is in Booki/Views/AccountView.swift. The playerMenuSection starts around line 513. Add the new row before the About NavigationLink. For bookie creation, AuthManager likely has an ensureBookie() or createBookieRecord() method that was disabled in US-004 — expose it as a callable method. After creation, AuthManager.userRole should become .bookie which triggers AuthGateView re-routing. May need to also trigger sync after bookie creation."
+      "notes": "Fetch bets and ledger entries for the player, merge into a single array sorted by created_at. Each item needs a normalized shape: { date, type, description, amount, source: 'bet'|'ledger' }. For bets: amount is stake (negative from bookie perspective) for placement, or payout for settlement. For ledger entries: use the entry amount directly. Type badges use the existing statusBadgeClass pattern."
     },
     {
       "id": "US-010",
-      "title": "Add step_down_organizer edge function",
-      "description": "As a developer, I need a server-side function to safely remove the bookie role after validating no members or invites exist.",
+      "title": "Add settings page — profile and password",
+      "description": "As an organizer, I want to edit my profile name and change my password from the web dashboard settings page.",
       "acceptanceCriteria": [
-        "Create supabase/functions/step_down_organizer/index.ts",
-        "Validate JWT auth — get user ID from auth header",
-        "Look up bookie record for the authenticated user",
-        "Count active players with bookie_id matching (auth_user_id IS NOT NULL)",
-        "Count open invites for the bookie (unclaimed invite records)",
-        "If active members > 0 OR open invites > 0, return 403 with { success: false, error: 'has_members_or_invites', members: <count>, invites: <count> }",
-        "If both are 0, delete the bookie record from bookies table",
-        "Return 200 with { success: true }",
-        "Use shared helpers: cors.ts, supabase.ts for service client",
-        "Typecheck passes"
+        "Settings nav item added to sidebar (below Subscription, above Log Out)",
+        "Settings icon: gear/cog SVG",
+        "#/settings route shows settings page",
+        "Profile section: editable organizer name input (saves to bookies.name), read-only email display",
+        "Change Password section: current password input, new password input, confirm new password input, Save button",
+        "Password change uses Supabase auth.updateUser({ password: newPassword }) — requires re-authentication first",
+        "Validation: new password must match confirmation, minimum 6 characters",
+        "Success/error toasts after operations",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 10,
       "passes": false,
-      "notes": "Follow the pattern of other edge functions in supabase/functions/. Import getUserIdFromAuthHeader from _shared/supabase.ts. Use the service role client for the delete operation. The bookie's associated data (if any) should be considered — but since we require 0 members and 0 invites, there shouldn't be dependent data. Check for any bets/ledger entries tied to this bookie and decide if they should prevent step-down or be preserved."
+      "notes": "Add settings section to app.html with x-show=\"route === 'settings'\". Add sidebar nav item in the <ul> before the Log Out link. For password change, Supabase JS v2 uses supabase.auth.updateUser({ password }). The current password re-auth may need supabase.auth.signInWithPassword() first to verify. Add state: settingsName, currentPassword, newPassword, confirmPassword, isSavingProfile, isChangingPassword."
     },
     {
       "id": "US-011",
-      "title": "Add Step Down as Organizer UI in bookie Settings",
-      "description": "As a bookie with no members or invites, I can step down to return to standalone bet tracking.",
+      "title": "Add settings page — member settings and pick management",
+      "description": "As an organizer, I want to configure default credit limit and pick management toggles from settings.",
       "acceptanceCriteria": [
-        "In SettingsView, add 'Step Down as Organizer' row in the settings menu (near bottom, before About or Log Out)",
-        "Row uses person.crop.circle.badge.minus icon in Theme.danger color, red text",
-        "Tapping shows confirmation alert: 'Are you sure? Your organizer dashboard and settings will be removed. Your personal pick history will be preserved.'",
-        "On confirm, call step_down_organizer edge function via EdgeFunctionService",
-        "On success (200), clear the local bookie record and set userRole to nil — app routes to PlayerMainView",
-        "On failure with 'has_members_or_invites' error, show alert: 'You still have active members or open invites. Archive all members and delete invites before stepping down.'",
-        "Show loading state during the edge function call",
-        "Typecheck passes"
+        "Member Settings section: default credit limit number input (saves to bookies.default_credit_limit)",
+        "Pick Management section with toggle switches (Pro only): Allow futures multi-picks (bookies.allow_futures_parlays)",
+        "Free tier: toggles shown but disabled with 'Upgrade to Pro' label",
+        "Toggles save immediately on change via Supabase: bookies.update({ column: value }).eq('id', bookie.id)",
+        "Success toast after save",
+        "Settings page loads current bookie values on mount",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 11,
       "passes": false,
-      "notes": "SettingsView is in Booki/Views/SettingsView.swift. The settings menu has navigable rows (Profile, Balance Alerts, Pick Management, Export Data, About). Add the step-down row as a destructive action near the bottom. EdgeFunctionService is in Booki/Services/EdgeFunctionService.swift — follow the existing invoke() pattern. After successful step-down, AuthManager needs to clear bookie state (currentBookieId = nil, userRole = nil)."
+      "notes": "Add to the settings page created in US-010. Toggle switches can be styled checkboxes or custom CSS toggle components. The bookies table has columns: default_credit_limit, allow_futures_parlays. Load current values in loadBookie() or a dedicated loadSettings() method. For Pro gating, use the existing isPro property."
     },
     {
       "id": "US-012",
-      "title": "Hide standalone-irrelevant UI in Account and player views",
-      "description": "As a standalone user, I don't see settlement, balance clearing, or organizer-specific info that doesn't apply to me.",
+      "title": "Add settings page — danger zone (step down, delete account)",
+      "description": "As an organizer, I want to step down from organizer role or delete my account from the web dashboard settings.",
       "acceptanceCriteria": [
-        "In AccountView, hide the credit utilization bar when user is standalone (no bookie)",
-        "In AccountView profileAndPreferencesCard, show 'Organizer' row as 'None' or hide it entirely for standalone users",
-        "In AccountView, hide any settle up / adjust balance actions for standalone users",
-        "Performance card still shows: Record, Open Picks, Win Rate, Performance, ROI — these all work for standalone",
-        "Activity row still accessible — shows graded picks in history",
-        "Standalone Account view is clean and focused on personal bet tracking stats",
-        "Typecheck passes"
+        "Danger Zone section at bottom of settings page with red-tinted styling",
+        "Step Down as Organizer button: calls step_down_organizer edge function",
+        "Step Down shows confirmation modal: 'Your organizer dashboard and settings will be removed. Your personal pick history will be preserved.'",
+        "Step Down validates: if error 'has_members_or_invites', show alert about removing members/invites first",
+        "On successful step down, redirect to index.html (log out)",
+        "Delete Account button: two-step confirmation (first: 'Are you sure?', second: 'Type DELETE to confirm')",
+        "Delete calls delete_account edge function",
+        "On successful delete, redirect to index.html",
+        "Both buttons show loading state during edge function call",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 12,
       "passes": false,
-      "notes": "AccountView is in Booki/Views/AccountView.swift. The credit bar is in the performanceCard section. Check player.bookie == nil or authManager.isStandaloneUser to determine visibility. The profileAndPreferencesCard has an Organizer row at line ~303. Balance-related actions may be in the menu section or elsewhere. Keep the view functional — just hide what doesn't apply."
+      "notes": "Add to the settings page. Step down edge function: supabase/functions/step_down_organizer/index.ts. Delete account edge function: supabase/functions/delete_account/index.ts. For the two-step delete confirmation, add state: showDeleteStep1, showDeleteStep2, deleteConfirmText. Only enable final delete button when deleteConfirmText === 'DELETE'. After either operation succeeds, sign out and redirect."
+    },
+    {
+      "id": "US-013",
+      "title": "Add about section and links to settings page",
+      "description": "As an organizer, I want to see app info and legal links on the settings page.",
+      "acceptanceCriteria": [
+        "About section on settings page with: Website link (bookisports.com), Terms of Service link (bookisports.com/terms), Privacy Policy link (bookisports.com/privacy)",
+        "Links open in new tab (target='_blank')",
+        "Copyright line: 'Booki Sports 2026. All rights reserved.'",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "Simple static section at the bottom of settings (above danger zone). Use anchor tags with the existing btn-ghost styling or plain text links."
+    },
+    {
+      "id": "US-014",
+      "title": "Add pending invites list and capacity banner to members page",
+      "description": "As an organizer, I want to see and manage pending invites and my member capacity on the members page.",
+      "acceptanceCriteria": [
+        "Pending Invites section shown above the members table (only if unclaimed invites exist)",
+        "Each invite row shows: code (truncated), email (if set, or '—'), credit limit, created date",
+        "Each invite has: Copy Code button, Copy Link button (copies bookisports.com deep link), Delete button",
+        "Delete shows confirmation, then calls supabase.from('invites').delete().eq('id', inviteId)",
+        "Member Capacity banner below page header: 'X of Y members' with progress bar",
+        "Y = 3 for free tier, 50 for pro tier",
+        "When at capacity: banner turns warning color, invite button disabled with tooltip",
+        "Data query: invites.select('*').eq('bookie_id', bookie.id).is('claimed_at', null).order('created_at', desc)",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "Add invites loading to dashboard.js — loadInvites() method. Add state: invites array, isDeletingInvite. The capacity banner uses activeMemberCount (already computed) vs tier limit. Copy Link format could be something like 'Download Booki and use code: XXXX' or a bookisports.com URL. For delete, only allow deleting unclaimed invites (claimed_at IS NULL)."
+    },
+    {
+      "id": "US-015",
+      "title": "Add exposure stats and members section to dashboard",
+      "description": "As an organizer, I want to see net exposure, top risk member, and member risk cards on my dashboard.",
+      "acceptanceCriteria": [
+        "Stats grid expanded from 4 tiles to 6 (2x3 on desktop, 2x2+2 on mobile)",
+        "New tile: Net Exposure — sum of potential payouts on open bets (status in ['pending','accepted'])",
+        "New tile: Top Risk — name of member with highest open exposure, clickable → navigates to member detail",
+        "Members section below stats: compact cards for each member showing name, balance, utilization bar, open picks count",
+        "Members sorted by open exposure descending (highest risk first)",
+        "Open exposure per member: sum of potential payouts on their open bets",
+        "Data query: bets.select('stake,odds,player_id,status').eq('bookie_id', bookie.id).in('status', ['pending','accepted'])",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "Extend loadDashboard() to also fetch open bets for exposure calculation. Potential payout = stake * (decimal odds - 1) for each open bet. Group by player_id to find per-member exposure. The member cards can be a new 'dashboard-members' section in app.html. Utilization bar reuses the credit bar pattern from member detail."
+    },
+    {
+      "id": "US-016",
+      "title": "Add pro-gated analytics sections to dashboard",
+      "description": "As a Pro organizer, I want to see sport performance breakdown and futures activity on my dashboard.",
+      "acceptanceCriteria": [
+        "Sport Performance section: table with sport name, picks count, total staked, net PnL, bookie win rate per sport",
+        "Data derived from bets table: group by sport column, aggregate stats",
+        "Futures Activity section: open futures count, total staked on futures, top 3 popular selections",
+        "Data query: bets with market_type='outright' and status in ['pending','accepted']",
+        "Free tier: both sections shown with blur/opacity overlay and centered 'Upgrade to Pro' button",
+        "Pro tier: sections shown normally without overlay",
+        "Upgrade button navigates to #/subscription",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "Add sections to the dashboard view in app.html. For the blur overlay, use CSS: filter: blur(4px) + pointer-events: none on the content, with an absolutely positioned upgrade CTA on top. Sport data comes from bets.sport column. Futures use market_type='outright'. Top 3 popular = most common team_name/selection among open futures."
+    },
+    {
+      "id": "US-017",
+      "title": "Add attention tags to member cards",
+      "description": "As an organizer, I want to see behavioral tags (Overdue, On Heater, Whale, etc.) on member cards across dashboard and member detail.",
+      "acceptanceCriteria": [
+        "computeAttentionTags(player, playerBets, playerLedger) function returns array of tag objects",
+        "Tags computed: Picks Pending (has pending bets), Overdue (negative balance older than 7 days), On Heater (3+ consecutive wins), Cold Streak (3+ consecutive losses), Whale (avg stake > 2x group average), Degen (5+ bets in any 24h window), Parlay Demon (60%+ of bets are parlays)",
+        "Tags displayed as colored chips: Picks Pending=yellow, Overdue=red, On Heater=green, Cold Streak=blue, Whale=purple, Degen=orange, Parlay Demon=pink",
+        "Tags shown on dashboard member cards (US-015) and member detail header (US-006)",
+        "Clicking a tag shows tooltip/popover with explanation",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "Add computeAttentionTags() to dashboard.js. It needs the player's bets (sorted by created_at) and ledger entries. Consecutive wins/losses: look at the last N graded bets in order. Group average stake: compute across all players' bets. 24h window for Degen: sliding window check. Cache computed tags to avoid recalculating on every render."
+    },
+    {
+      "id": "US-018",
+      "title": "Add loading skeletons and empty states",
+      "description": "As an organizer, I want to see shimmer placeholders while data loads and helpful empty states when no data exists.",
+      "acceptanceCriteria": [
+        "Dashboard stat tiles show shimmer animation while loadDashboard() is in progress",
+        "Members table shows 3 skeleton rows while loadPlayers() is in progress",
+        "Picks table shows 3 skeleton rows while loadPicks() is in progress",
+        "Skeleton CSS: animated gradient sweep (left-to-right shimmer) on placeholder divs",
+        "Empty state for no members: 'Invite your first member' with invite button",
+        "Empty state for no picks: 'No picks yet. Members will appear here once they start placing picks.'",
+        "Empty state for no activity: 'Activity will show up as members place picks and balances change.'",
+        "Add isLoading state variables: isLoadingDashboard, isLoadingPlayers, isLoadingPicks",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "Add shimmer CSS to dashboard.css: @keyframes shimmer with background gradient animation. Skeleton elements use .skeleton class with fixed height and border-radius. Add isLoading flags that are set true before fetch and false after. Use x-show with the loading flags to toggle between skeleton and real content. Empty states replace the existing basic 'No X found' text with styled cards."
+    },
+    {
+      "id": "US-019",
+      "title": "Add responsive table-to-card layout for mobile",
+      "description": "As an organizer on mobile, I want tables to display as stacked cards instead of horizontal tables.",
+      "acceptanceCriteria": [
+        "At viewport < 768px, members table converts to stacked cards (each member is a card with label:value rows)",
+        "At viewport < 768px, picks table converts to stacked cards",
+        "At viewport < 768px, recent activity table converts to stacked cards",
+        "Cards show all the same data as table rows but in vertical layout",
+        "Stats grid: 2 columns on mobile (2x2 then 2x1 for 6 tiles)",
+        "Modals become near-full-screen on mobile (max-width: 100%, height: auto, margin: 16px)",
+        "CSS-only solution using @media queries and CSS grid/flexbox — no JS changes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "Use CSS @media (max-width: 768px) rules in dashboard.css. Tables can be converted by setting display:block on rows and display:flex on cells with labels via ::before pseudo-elements using data-label attributes, OR by duplicating the layout with x-show for mobile vs desktop. The CSS-only approach with display:block on <tr> and ::before content is cleanest."
+    },
+    {
+      "id": "US-020",
+      "title": "Add Supabase Realtime subscriptions for live updates",
+      "description": "As an organizer, I want the dashboard to update in real-time when members place picks or balances change.",
+      "acceptanceCriteria": [
+        "On init, subscribe to Supabase Realtime channel for bookie-scoped changes",
+        "Listen for changes on bets table (filter: bookie_id=eq.<bookieId>) — triggers loadPicks() and loadDashboard()",
+        "Listen for changes on players table (filter: bookie_id=eq.<bookieId>) — triggers loadPlayers()",
+        "Listen for changes on ledger_entries table (filter: bookie_id=eq.<bookieId>) — triggers loadPlayers() and loadDashboard()",
+        "Unsubscribe on logout to prevent memory leaks",
+        "Debounce reload calls to prevent rapid-fire updates (300ms debounce)",
+        "No visual indicator needed — data just refreshes silently"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": "Supabase JS v2 Realtime: this.supabase.channel('bookie-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'bets', filter: `bookie_id=eq.${this.bookie.id}` }, callback).subscribe(). Add the subscription in init() after loadBookie(). Store the channel reference for cleanup. Debounce: use a simple setTimeout pattern that clears previous timeout before setting new one."
+    },
+    {
+      "id": "US-021",
+      "title": "Add pagination for picks and sortable columns for members",
+      "description": "As an organizer, I want to load more picks beyond the initial batch and sort the members table by different columns.",
+      "acceptanceCriteria": [
+        "Picks: initial load fetches 50 (changed from 100), 'Load More' button at bottom fetches next 50",
+        "Load More appends to existing bets array (not replaces)",
+        "Load More button hidden when fewer than 50 results returned (no more data)",
+        "Members table: column headers (Name, Balance, Credit, Status) are clickable for sorting",
+        "Clicking a column header toggles ascending/descending sort",
+        "Sort indicator (arrow up/down) shown on active sort column",
+        "Default sort: by name ascending (existing behavior)",
+        "Client-side sorting (all players already loaded)",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": "For pagination, add picksOffset state variable. loadPicks() uses .range(offset, offset+49). Load More increments offset by 50 and appends results. For sorting, add memberSortColumn and memberSortAsc state. The filteredPlayers computed property should apply sorting after search filtering. Column headers get @click handlers and sort indicator spans."
     }
   ]
 }

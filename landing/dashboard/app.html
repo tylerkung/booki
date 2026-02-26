@@ -299,6 +299,22 @@
                             <div class="card-header"><span class="card-title">Actions</span></div>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                                 <button class="btn btn-void" @click="confirmVoid()" :disabled="isVoiding">Void</button>
+                                <button class="btn btn-secondary" @click="openOverrideModal()" :disabled="!isPro || isOverriding" :title="isPro ? 'Override grade' : 'Upgrade to Pro'">
+                                    <span x-text="isPro ? 'Override Grade' : 'Override Grade (Pro)'"></span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Pro Actions for settled picks -->
+                        <div class="card" style="margin-bottom:16px;" x-show="pickDetail.status === 'settled'">
+                            <div class="card-header"><span class="card-title">Actions</span></div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="btn btn-secondary" @click="openOverrideModal()" :disabled="!isPro || isOverriding" :title="isPro ? 'Override grade' : 'Upgrade to Pro'">
+                                    <span x-text="isPro ? 'Override Grade' : 'Override Grade (Pro)'"></span>
+                                </button>
+                                <button class="btn btn-void" @click="confirmReverse()" :disabled="!isPro || isReversing" :title="isPro ? 'Reverse settlement' : 'Upgrade to Pro'">
+                                    <span x-text="isPro ? 'Reverse Settlement' : 'Reverse Settlement (Pro)'"></span>
+                                </button>
                             </div>
                         </div>
 
@@ -516,6 +532,47 @@
                 <button class="btn btn-secondary" @click="showVoidModal = false">Cancel</button>
                 <button class="btn btn-danger" @click="voidPick()" :disabled="isVoiding">
                     <span x-text="isVoiding ? 'Voiding...' : 'Void Pick'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Override Grade Modal ── -->
+    <div class="modal-overlay" x-show="showOverrideModal" x-cloak @click.self="showOverrideModal = false" x-transition>
+        <div class="modal">
+            <h2>Override Grade</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">Change the grade for this pick.</p>
+            <div class="form-group">
+                <label>New Outcome</label>
+                <select x-model="overrideOutcome" style="width:100%;padding:10px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:14px;outline:none;">
+                    <option value="won">Win</option>
+                    <option value="lost">Loss</option>
+                    <option value="push">Push</option>
+                    <option value="void">Void</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Reason (required)</label>
+                <input type="text" x-model="overrideReason" placeholder="e.g. Incorrect initial grade">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showOverrideModal = false">Cancel</button>
+                <button class="btn btn-accent" @click="overrideGrade()" :disabled="isOverriding || !overrideReason.trim()">
+                    <span x-text="isOverriding ? 'Overriding...' : 'Confirm Override'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Reverse Settlement Modal ── -->
+    <div class="modal-overlay" x-show="showReverseModal" x-cloak @click.self="showReverseModal = false" x-transition>
+        <div class="modal">
+            <h2>Reverse Settlement</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">This will reverse the ledger entry for this pick. The pick will return to graded status.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showReverseModal = false">Cancel</button>
+                <button class="btn btn-danger" @click="reverseSettlement()" :disabled="isReversing">
+                    <span x-text="isReversing ? 'Reversing...' : 'Reverse Settlement'"></span>
                 </button>
             </div>
         </div>

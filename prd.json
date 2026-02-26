@@ -97,7 +97,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Add override/reverse modals to app.html. Add state: showOverrideModal, overrideOutcome, overrideReason, isOverriding, showReverseModal, isReversing. Edge functions: override_grade at supabase/functions/override_grade/index.ts, reverse_settlement at supabase/functions/reverse_settlement/index.ts. For free tier, use :disabled=\"!isPro\" and show a Pro badge or tooltip."
     },
     {
