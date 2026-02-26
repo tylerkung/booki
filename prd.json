@@ -295,7 +295,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 16,
-      "passes": false,
+      "passes": true,
       "notes": "Add sections to the dashboard view in app.html. For the blur overlay, use CSS: filter: blur(4px) + pointer-events: none on the content, with an absolutely positioned upgrade CTA on top. Sport data comes from bets.sport column. Futures use market_type='outright'. Top 3 popular = most common team_name/selection among open futures."
     },
     {

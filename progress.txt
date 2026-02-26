@@ -263,3 +263,19 @@ Started: Thu Feb 26 14:57:41 PST 2026
   - `dashboardMembers` is a regular array (not Alpine `get`) since it's rebuilt on each `loadDashboard()` call
   - Top Risk is null when no member has exposure > 0 — template shows "—"
 ---
+
+## 2026-02-26 - US-016
+- Added Sport Performance section to dashboard: table with sport name, picks count, total staked, net PnL, bookie win rate
+- Added Futures Activity section: open futures count, total staked, top 3 popular selections
+- Both sections pro-gated: free tier shows blur overlay with centered "Upgrade to Pro" button linking to #/subscription
+- Pro tier shows sections normally with PRO badge
+- Sport data derived from bets table grouped by `sport` column; PnL calculated from bookie perspective
+- Futures filtered by `market_type === 'outright'` and open status
+- Added CSS: `.pro-blur` (filter + pointer-events), `.pro-upgrade-overlay` (centered absolute CTA)
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- **Learnings for future iterations:**
+  - Pro-gating pattern: wrap content in `div :class="{ 'pro-blur': !isPro }"`, add sibling `.pro-upgrade-overlay` with `x-show="!isPro"`
+  - Bookie win rate = player losses / (player wins + losses) — inverse of player win rate
+  - `allBets` query reused for both sport performance and futures activity to avoid duplicate Supabase calls
+  - Sport PnL from bookie perspective: player wins → bookie loses (stake - potentialReturn), player losses → bookie gains (stake)
+---
