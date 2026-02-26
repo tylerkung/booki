@@ -134,7 +134,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Add to the member detail view created in US-006. Performance data is computed client-side from the fetched bets and ledger entries. PnL excludes paymentLogged entries. Win rate: if (wins+losses) === 0, show '—' instead of NaN. Picks section reuses the pick row layout from the main picks table but in a compact card format."
     },
     {

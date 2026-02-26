@@ -10,6 +10,24 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - Player data cached in `playerMap` (keyed by id) for O(1) lookups
 ---
 
+## 2026-02-26 - US-007
+- Implemented performance card and picks section on member detail view
+- Performance card shows: W-L-P record, Net P&L (excludes paymentLogged ledger entries), Win Rate %
+- Picks section with Open/Graded filter chips, showing up to 10 picks with "See All" link
+- Pick rows are clickable — navigate to `#/picks/<betId>`
+- "See All" pre-sets `pickMemberFilter` and navigates to #/picks with the member filter active
+- Added `loadMemberBetsAndLedger()` method that fetches bets and ledger in parallel via `Promise.all`
+- Added computed properties: `memberRecord`, `memberPnl`, `memberWinRate`, `memberFilteredPicks`
+- Empty states for no open/graded picks
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - Alpine.js `get` properties (computed) work well for derived data like win rates and records
+  - `Promise.all` is used to parallelize bets + ledger fetches within `loadMemberDetail()`
+  - `memberFilteredPicks` uses `get` so it auto-updates when `memberPickFilter` changes
+  - Win rate returns `null` (not 0) when no wins+losses exist, so template shows "—" via ternary
+  - "See All" link uses `@click.prevent` to set filters before navigation
+---
+
 ## 2026-02-26 - US-006
 - Implemented member detail view with header card and action buttons
 - Member names in members table now clickable — navigate to `#/members/<playerId>`

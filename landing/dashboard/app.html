@@ -450,6 +450,70 @@
                                 <button class="btn btn-secondary" @click="openAdjustBalance(memberDetail)">Adjust Balance</button>
                             </div>
                         </div>
+
+                        <!-- Performance Card -->
+                        <div class="card" style="margin-bottom:16px;">
+                            <div class="card-header"><span class="card-title">Performance</span></div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Record</div>
+                                    <div style="font-size:18px;font-weight:700;color:var(--text-primary);" x-text="memberRecord.wins + '-' + memberRecord.losses + '-' + memberRecord.pushes"></div>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Net P&amp;L</div>
+                                    <div style="font-size:18px;font-weight:700;"
+                                         :style="{ color: memberPnl > 0 ? 'var(--success)' : memberPnl < 0 ? 'var(--danger)' : 'var(--text-primary)' }"
+                                         x-text="formatCurrency(memberPnl)"></div>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Win Rate</div>
+                                    <div style="font-size:18px;font-weight:700;color:var(--text-primary);" x-text="memberWinRate !== null ? memberWinRate + '%' : '—'"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Picks Section -->
+                        <div class="card" style="margin-bottom:16px;">
+                            <div class="card-header" style="margin-bottom:12px;">
+                                <span class="card-title">Picks</span>
+                            </div>
+                            <div style="display:flex;gap:6px;margin-bottom:12px;">
+                                <span class="chip" :class="{ active: memberPickFilter === 'open' }" @click="memberPickFilter = 'open'" style="cursor:pointer;">Open</span>
+                                <span class="chip" :class="{ active: memberPickFilter === 'graded' }" @click="memberPickFilter = 'graded'" style="cursor:pointer;">Graded</span>
+                            </div>
+
+                            <template x-if="memberFilteredPicks.length > 0">
+                                <div>
+                                    <template x-for="bet in memberFilteredPicks.slice(0, 10)" :key="bet.id">
+                                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;"
+                                             @click="window.location.hash = '#/picks/' + bet.id">
+                                            <div style="flex:1;min-width:0;">
+                                                <div style="font-size:14px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="bet.team_name || bet.selection || '—'"></div>
+                                                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                                                    <span x-text="formatDate(bet.created_at)"></span>
+                                                    <span style="margin:0 4px;">·</span>
+                                                    <span x-text="formatOdds(bet.odds)"></span>
+                                                    <span style="margin:0 4px;">·</span>
+                                                    <span x-text="formatCurrency(bet.stake)"></span>
+                                                </div>
+                                            </div>
+                                            <span class="badge" :class="statusBadgeClass(bet.status)" style="margin-left:8px;flex-shrink:0;" x-text="bet.status"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="memberFilteredPicks.length > 10">
+                                        <div style="padding-top:12px;text-align:center;">
+                                            <a :href="'#/picks?member=' + memberDetail.id" class="btn btn-ghost" style="font-size:13px;"
+                                               @click.prevent="pickMemberFilter = memberDetail.id; pickFilter = (memberPickFilter === 'open' ? 'open' : 'past'); window.location.hash = '#/picks';">
+                                                See All (<span x-text="memberFilteredPicks.length"></span>)
+                                            </a>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="memberFilteredPicks.length === 0">
+                                <div class="empty-state" style="padding:20px 0;"><p x-text="memberPickFilter === 'open' ? 'No open picks' : 'No graded picks'"></p></div>
+                            </template>
+                        </div>
                     </div>
                 </template>
             </div>

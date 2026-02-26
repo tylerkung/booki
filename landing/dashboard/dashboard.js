@@ -66,6 +66,9 @@ function dashboardApp() {
         isArchiving: false,
         isRemoving: false,
         showMemberOverflow: false,
+        memberDetailBets: [],
+        memberDetailLedger: [],
+        memberPickFilter: 'open',
 
         // ── Override / Reverse ──
         showOverrideModal: false,
@@ -419,7 +422,60 @@ function dashboardApp() {
             player.balance = balance;
 
             this.memberDetail = player;
+
+            // Load bets and ledger for performance/picks
+            await this.loadMemberBetsAndLedger();
+
             this.isLoadingMemberDetail = false;
+        },
+
+        async loadMemberBetsAndLedger() {
+            if (!this.selectedPlayerId || !this.bookie) return;
+
+            const [betsRes, ledgerRes] = await Promise.all([
+                this.supabase
+                    .from('bets')
+                    .select('*')
+                    .eq('player_id', this.selectedPlayerId)
+                    .eq('bookie_id', this.bookie.id)
+                    .order('created_at', { ascending: false }),
+                this.supabase
+                    .from('ledger_entries')
+                    .select('amount, type')
+                    .eq('player_id', this.selectedPlayerId)
+                    .eq('bookie_id', this.bookie.id),
+            ]);
+
+            this.memberDetailBets = betsRes.data || [];
+            this.memberDetailLedger = ledgerRes.data || [];
+        },
+
+        get memberRecord() {
+            const bets = this.memberDetailBets;
+            const wins = bets.filter(b => b.status === 'won' || b.status === 'settled').length;
+            const losses = bets.filter(b => b.status === 'lost').length;
+            const pushes = bets.filter(b => b.status === 'push').length;
+            return { wins, losses, pushes };
+        },
+
+        get memberPnl() {
+            return this.memberDetailLedger
+                .filter(e => e.type !== 'paymentLogged')
+                .reduce((sum, e) => sum + (e.amount || 0), 0);
+        },
+
+        get memberWinRate() {
+            const { wins, losses } = this.memberRecord;
+            const total = wins + losses;
+            if (total === 0) return null;
+            return Math.round((wins / total) * 100);
+        },
+
+        get memberFilteredPicks() {
+            if (this.memberPickFilter === 'open') {
+                return this.memberDetailBets.filter(b => ['pending', 'accepted'].includes(b.status));
+            }
+            return this.memberDetailBets.filter(b => ['won', 'lost', 'push', 'void', 'voided', 'settled', 'graded'].includes(b.status));
         },
 
         async archiveMember() {
