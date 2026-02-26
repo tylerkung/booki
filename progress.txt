@@ -97,3 +97,14 @@ Started: Wed Feb 25 18:55:49 PST 2026
   - stickyBottomSection has the validation warnings area before the keypad
   - Edge functions check `!player.bookie_id` to identify standalone users
 ---
+
+## 2026-02-25 - US-008
+- Created BecomeOrganizerView.swift with header, 5 benefit rows, free tier callout, and teal CTA
+- Benefits: Invite Members, Live Dashboard, Balance Management, Full Control, Auto-Pilot
+- Free tier callout with highlighted border and checkmark items
+- CTA button action is configurable via `onGetStarted` closure (placeholder prints if nil)
+- Files changed: Booki/Views/BecomeOrganizerView.swift (new file)
+- **Learnings for future iterations:**
+  - View follows standard pattern: ScrollView > VStack > sections, Theme colors
+  - `onGetStarted` closure allows parent to wire the bookie creation action (US-009)
+---

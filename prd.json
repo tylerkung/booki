@@ -134,7 +134,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Follow existing view patterns: ScrollView with VStack, .cardStyle() for cards, Theme colors throughout. The benefits rows should use HStack with icon (system image, 24pt, Theme.accent) + VStack(alignment: .leading) with title (font semibold) + subtitle (Theme.textSecondary). Free tier callout uses Theme.elevatedBackground or similar highlight. No navigation — this is a destination view pushed from Account."
     },
     {
