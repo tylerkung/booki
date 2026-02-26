@@ -137,6 +137,22 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Standalone open bet limit: 25 max for players without a bookie
+    if (!player.bookie_id) {
+      const { count: openBetCount } = await client
+        .from('bets')
+        .select('*', { count: 'exact', head: true })
+        .eq('player_id', normalizedPlayerId)
+        .in('status', ['pending', 'accepted']);
+
+      if ((openBetCount ?? 0) >= 25) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'open_bet_limit_reached', limit: 25, current: openBetCount ?? 0 }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // 3. Batch event lookup
     const normalizedEventIds = body.bets.map(b => b.event_id.toLowerCase());
     const uniqueEventIds = Array.from(new Set(normalizedEventIds));

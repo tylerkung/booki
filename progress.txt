@@ -82,3 +82,18 @@ Started: Wed Feb 25 18:55:49 PST 2026
   - `upsertEvent` uses `record.bookieId ?? bookieId` — shared events get a dummy bookieId locally (this is existing behavior)
   - PlayerMainView creates the standalone player and calls `setCurrentPlayerId()` so child views work
 ---
+
+## 2026-02-25 - US-007
+- Added `isAtStandaloneOpenBetLimit` computed property in BetSlipSheet — checks open bets (pending/accepted) for standalone players (no bookie)
+- Added limit check to `canSubmit` — blocks Place Bet when at 25 open bets
+- Added warning message in stickyBottomSection with warning icon and Theme.warning styling
+- Added server-side check in `submit_bets/index.ts` — if `!player.bookie_id`, counts open bets and returns 403 `open_bet_limit_reached` when >= 25
+- Added same server-side check in `submit_parlay/index.ts`
+- Linked players (with bookie) have no open bet limit — guard checks `player.bookie == nil` / `!player.bookie_id`
+- Files changed: Booki/Views/BetSlipSheet.swift, supabase/functions/submit_bets/index.ts, supabase/functions/submit_parlay/index.ts
+- **Learnings for future iterations:**
+  - BetSlipSheet is at Booki/Views/BetSlipSheet.swift (not in Components/)
+  - `canSubmit` is the single gate for the Place Bet button — add all validation guards there
+  - stickyBottomSection has the validation warnings area before the keypad
+  - Edge functions check `!player.bookie_id` to identify standalone users
+---

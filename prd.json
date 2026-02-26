@@ -116,7 +116,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "BetSlipSheet is in Booki/Views/Components/BetSlipSheet.swift. submit_bets is in supabase/functions/submit_bets/index.ts, submit_parlay in supabase/functions/submit_parlay/index.ts. Check for standalone by looking at the player's bookie_id — if NULL, they're standalone. The client-side check prevents unnecessary network calls, server-side check is the real enforcement."
     },
     {

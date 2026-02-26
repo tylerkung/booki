@@ -650,6 +650,21 @@ struct BetSlipSheet: View {
                 .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: -2)
 
             VStack(spacing: 16) {
+                // Open bet limit warning for standalone users
+                if isAtStandaloneOpenBetLimit {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(Theme.warning)
+                        Text("You've reached the open pick limit (\(Self.standaloneOpenBetLimit)). Wait for picks to settle or grade before placing more.")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.warning)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Theme.warning.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+
                 // Stake validation warnings (inline, no summary)
                 if betSlipManager.betMode == .parlay {
                     if betSlipManager.stake > 0 && !betSlipManager.isStakeValid(availableCredit: availableCredit) {
@@ -1009,9 +1024,22 @@ struct BetSlipSheet: View {
             && !bookieAllowsFuturesParlays
     }
 
+    /// Maximum open bets for standalone users (no bookie)
+    private static let standaloneOpenBetLimit = 25
+
+    /// Whether the standalone user has reached the open bet limit
+    private var isAtStandaloneOpenBetLimit: Bool {
+        guard let player = player, player.bookie == nil else { return false }
+        let openBetCount = bets.filter { bet in
+            bet.player?.id == player.id && (bet.status == .accepted || bet.status == .pending)
+        }.count
+        return openBetCount >= Self.standaloneOpenBetLimit
+    }
+
     private var canSubmit: Bool {
         guard !betSlipManager.isEmpty else { return false }
         guard player != nil else { return false }
+        guard !isAtStandaloneOpenBetLimit else { return false }
 
         // US-006: Different validation based on bet mode
         switch betSlipManager.betMode {
