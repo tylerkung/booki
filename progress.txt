@@ -121,3 +121,16 @@ Started: Wed Feb 25 18:55:49 PST 2026
   - Log Out / Delete Account gate was `authManager.userRole == .player` — standalone users also need these
   - After `becomeOrganizer()`, AuthManager sets `userRole = .bookie` which triggers AuthGateView `.onChange(of: authManager.userRole)` → shows onboarding
 ---
+
+## 2026-02-25 - US-010
+- Created supabase/functions/step_down_organizer/index.ts
+- Validates JWT, looks up bookie record, counts active members and open invites
+- Returns 403 with `has_members_or_invites` error if either > 0
+- Deletes bookie record if both are 0, returns 200 `{ success: true }`
+- Uses shared helpers: cors.ts, supabase.ts (service client for delete)
+- Files changed: supabase/functions/step_down_organizer/index.ts (new file)
+- **Learnings for future iterations:**
+  - Active members: `auth_user_id IS NOT NULL` (same filter as create_invite)
+  - Open invites: `claimed_by IS NULL AND expires_at > now()` (unclaimed + not expired)
+  - Bookie delete cascading is handled by FK constraints in the database
+---

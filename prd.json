@@ -172,7 +172,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "Follow the pattern of other edge functions in supabase/functions/. Import getUserIdFromAuthHeader from _shared/supabase.ts. Use the service role client for the delete operation. The bookie's associated data (if any) should be considered — but since we require 0 members and 0 invites, there shouldn't be dependent data. Check for any bets/ledger entries tied to this bookie and decide if they should prevent step-down or be preserved."
     },
     {
