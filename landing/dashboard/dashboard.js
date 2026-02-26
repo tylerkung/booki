@@ -45,6 +45,10 @@ function dashboardApp() {
         subscriptionSuccess: false,
         subscriptionCanceled: false,
 
+        // ── Pick Detail ──
+        pickDetail: null,
+        isLoadingPickDetail: false,
+
         // ── Modals ──
         showInviteModal: false,
         inviteEmail: '',
@@ -137,6 +141,7 @@ function dashboardApp() {
 
             // Load route-specific data
             if (this.route === 'picks') this.loadPicks();
+            if (this.route === 'pick-detail') this.loadPickDetail();
         },
 
         // ── Auth ──
@@ -294,6 +299,51 @@ function dashboardApp() {
             }
 
             this.bets = data || [];
+        },
+
+        // ── Pick Detail ──
+        async loadPickDetail() {
+            if (!this.selectedBetId || !this.bookie) return;
+            this.isLoadingPickDetail = true;
+            this.pickDetail = null;
+
+            const { data, error } = await this.supabase
+                .from('bets')
+                .select('*')
+                .eq('id', this.selectedBetId)
+                .limit(1);
+
+            if (error || !data?.length) {
+                console.error('Failed to load pick detail:', error);
+                this.toast('Failed to load pick', 'error');
+            } else {
+                this.pickDetail = data[0];
+            }
+
+            this.isLoadingPickDetail = false;
+        },
+
+        calcPotentialReturn(bet) {
+            if (!bet) return 0;
+            const odds = Number(bet.odds) || 0;
+            const stake = Number(bet.stake) || 0;
+            if (odds > 0) {
+                return stake + stake * (odds / 100);
+            } else if (odds < 0) {
+                return stake + stake * (100 / Math.abs(odds));
+            }
+            return stake;
+        },
+
+        calcPickPnl(bet) {
+            if (!bet) return 0;
+            const stake = Number(bet.stake) || 0;
+            if (bet.status === 'won' || bet.status === 'settled') {
+                return this.calcPotentialReturn(bet) - stake;
+            } else if (bet.status === 'lost') {
+                return -stake;
+            }
+            return 0;
         },
 
         // ── Invite ──

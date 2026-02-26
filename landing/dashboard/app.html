@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon_io/favicon-16x16.png">
+    <link rel="icon" type="image/x-icon" href="../assets/favicon_io/favicon.ico">
+    <title>Booki Dashboard</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body x-data="dashboardApp()" x-init="init()">
+
+    <!-- Toast Notifications -->
+    <div class="toast-container">
+        <template x-for="(toast, i) in toasts" :key="i">
+            <div class="toast" :class="'toast-' + toast.type" x-text="toast.message"
+                 x-transition x-show="toast.visible"></div>
+        </template>
+    </div>
+
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+        <a href="../index.html"><img src="../assets/logo-booki-blk.svg" alt="Booki"></a>
+        <button class="hamburger" @click="sidebarOpen = !sidebarOpen">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" :class="{ open: sidebarOpen }" @click="sidebarOpen = false"></div>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" :class="{ open: sidebarOpen }">
+            <a href="../index.html" class="sidebar-logo">
+                <img src="../assets/logo-booki-blk.svg" alt="Booki">
+            </a>
+            <ul class="sidebar-nav">
+                <li><a href="#/dashboard" :class="{ active: route === 'dashboard' }" @click="sidebarOpen = false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    Dashboard
+                </a></li>
+                <li><a href="#/members" :class="{ active: route === 'members' }" @click="sidebarOpen = false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Members
+                </a></li>
+                <li><a href="#/picks" :class="{ active: route === 'picks' }" @click="sidebarOpen = false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Picks
+                </a></li>
+                <li><a href="#/subscription" :class="{ active: route === 'subscription' }" @click="sidebarOpen = false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    Subscription
+                </a></li>
+            </ul>
+            <div class="sidebar-bottom">
+                <a href="#" @click.prevent="logout()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Log Out
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- ── Dashboard View ── -->
+            <div x-show="route === 'dashboard'" x-cloak>
+                <div class="page-header">
+                    <h1>Dashboard</h1>
+                    <p>Overview of your organization</p>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                    <span class="card-title">Performance</span>
+                    <div class="time-filter">
+                        <template x-for="tf in ['1D','1W','1M','All']">
+                            <button :class="{ active: timeFilter === tf }" @click="timeFilter = tf; loadDashboard()" x-text="tf"></button>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-tile">
+                        <div class="stat-label">Net PnL</div>
+                        <div class="stat-value" :class="pnl >= 0 ? 'positive' : 'negative'" x-text="formatCurrency(pnl)"></div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-label">Active Members</div>
+                        <div class="stat-value" x-text="activeMemberCount"></div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-label">Open Picks</div>
+                        <div class="stat-value" x-text="openPickCount"></div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-label">Total Volume</div>
+                        <div class="stat-value" x-text="formatCurrency(totalVolume)"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Recent Activity</span>
+                    </div>
+                    <template x-if="recentActivity.length === 0">
+                        <div class="empty-state"><p>No recent activity</p></div>
+                    </template>
+                    <table class="data-table" x-show="recentActivity.length > 0">
+                        <thead>
+                            <tr><th>Date</th><th>Type</th><th>Member</th><th>Amount</th></tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="entry in recentActivity" :key="entry.id">
+                                <tr>
+                                    <td x-text="formatDate(entry.created_at)"></td>
+                                    <td><span class="badge badge-muted" x-text="entry.type"></span></td>
+                                    <td class="name" x-text="getPlayerName(entry.player_id)"></td>
+                                    <td x-text="formatCurrency(entry.amount)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── Members View ── -->
+            <div x-show="route === 'members'" x-cloak>
+                <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
+                    <div>
+                        <h1>Members</h1>
+                        <p x-text="players.length + ' total members'"></p>
+                    </div>
+                    <button class="btn btn-accent" @click="showInviteModal = true">+ Invite</button>
+                </div>
+
+                <div class="filter-bar">
+                    <input class="search-input" type="text" placeholder="Search members..." x-model="memberSearch">
+                </div>
+
+                <div class="card" style="padding:0;overflow:hidden;">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Name</th><th>Balance</th><th>Credit</th><th>Status</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="p in filteredPlayers" :key="p.id">
+                                <tr>
+                                    <td class="name" x-text="p.display_name || p.name"></td>
+                                    <td :class="p.balance > 0 ? 'positive' : p.balance < 0 ? 'negative' : ''"
+                                        :style="{ color: p.balance > 0 ? 'var(--success)' : p.balance < 0 ? 'var(--danger)' : '' }"
+                                        x-text="formatCurrency(p.balance || 0)"></td>
+                                    <td x-text="formatCurrency(p.credit_limit || 0)"></td>
+                                    <td><span class="badge" :class="p.auth_user_id ? 'badge-success' : 'badge-muted'" x-text="p.auth_user_id ? 'Active' : 'Pending'"></span></td>
+                                    <td>
+                                        <button class="btn btn-ghost" title="Settle Up" @click="openSettleUp(p)">$</button>
+                                        <button class="btn btn-ghost" title="Adjust" @click="openAdjustBalance(p)">+/-</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <template x-if="filteredPlayers.length === 0">
+                        <div class="empty-state"><p>No members found</p></div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- ── Picks View ── -->
+            <div x-show="route === 'picks'" x-cloak>
+                <div class="page-header">
+                    <h1>Picks</h1>
+                    <p>All picks across your members</p>
+                </div>
+
+                <div class="filter-bar">
+                    <span class="chip" :class="{ active: pickFilter === 'open' }" @click="pickFilter = 'open'; loadPicks()">Open</span>
+                    <span class="chip" :class="{ active: pickFilter === 'past' }" @click="pickFilter = 'past'; loadPicks()">Past</span>
+                    <select style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);padding:6px 12px;font-size:13px;outline:none;"
+                            x-model="pickMemberFilter" @change="loadPicks()">
+                        <option value="">All Members</option>
+                        <template x-for="p in players" :key="p.id">
+                            <option :value="p.id" x-text="p.display_name || p.name"></option>
+                        </template>
+                    </select>
+                    <span class="chip" :class="{ active: pickTypeFilter === '' }" @click="pickTypeFilter = ''; loadPicks()">All Types</span>
+                    <span class="chip" :class="{ active: pickTypeFilter === 'single' }" @click="pickTypeFilter = 'single'; loadPicks()">Singles</span>
+                    <span class="chip" :class="{ active: pickTypeFilter === 'parlay' }" @click="pickTypeFilter = 'parlay'; loadPicks()">Multi-Pick</span>
+                    <span class="chip" :class="{ active: pickTypeFilter === 'futures' }" @click="pickTypeFilter = 'futures'; loadPicks()">Futures</span>
+                </div>
+
+                <div class="card" style="padding:0;overflow:hidden;">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Date</th><th>Member</th><th>Type</th><th>Pick</th><th>Odds</th><th>Stake</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="bet in bets" :key="bet.id">
+                                <tr style="cursor:pointer;" @click="window.location.hash = '#/picks/' + bet.id">
+                                    <td x-text="formatDate(bet.created_at)"></td>
+                                    <td class="name" x-text="getPlayerName(bet.player_id)"></td>
+                                    <td><span class="badge badge-muted" x-text="bet.bet_type || 'single'"></span></td>
+                                    <td x-text="bet.team_name || bet.selection || '—'"></td>
+                                    <td x-text="formatOdds(bet.odds)"></td>
+                                    <td x-text="formatCurrency(bet.stake)"></td>
+                                    <td><span class="badge" :class="statusBadgeClass(bet.status)" x-text="bet.status"></span></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <template x-if="bets.length === 0">
+                        <div class="empty-state"><p>No picks found</p></div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- ── Pick Detail View ── -->
+            <div x-show="route === 'pick-detail'" x-cloak>
+                <div style="margin-bottom:20px;">
+                    <a href="#/picks" class="btn btn-ghost" style="gap:6px;padding-left:0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Back to Picks
+                    </a>
+                </div>
+
+                <!-- Loading state -->
+                <template x-if="isLoadingPickDetail">
+                    <div>
+                        <div class="card" style="margin-bottom:16px;"><div class="shimmer" style="height:120px;"></div></div>
+                        <div class="card"><div class="shimmer" style="height:100px;"></div></div>
+                    </div>
+                </template>
+
+                <!-- Loaded state -->
+                <template x-if="!isLoadingPickDetail && pickDetail">
+                    <div>
+                        <!-- Hero Card -->
+                        <div class="card" style="margin-bottom:16px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                                <span class="badge" :class="statusBadgeClass(pickDetail.status)" style="font-size:13px;padding:5px 14px;" x-text="pickDetail.status"></span>
+                                <span style="font-size:12px;color:var(--text-muted);" x-text="formatDate(pickDetail.created_at)"></span>
+                            </div>
+                            <h2 style="font-size:20px;margin-bottom:4px;" x-text="pickDetail.team_name || pickDetail.selection || '—'"></h2>
+                            <p style="color:var(--text-secondary);font-size:14px;margin-bottom:4px;" x-text="pickDetail.event_name || '—'"></p>
+                            <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px;" x-text="pickDetail.market_type || '—'"></p>
+                            <div>
+                                <span style="font-size:13px;color:var(--text-muted);">Member: </span>
+                                <a :href="'#/members/' + pickDetail.player_id" style="color:var(--accent);font-size:13px;font-weight:500;" x-text="getPlayerName(pickDetail.player_id)"></a>
+                            </div>
+                        </div>
+
+                        <!-- Financials Card -->
+                        <div class="card">
+                            <div class="card-header"><span class="card-title">Financials</span></div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Odds</div>
+                                    <div style="font-size:18px;font-weight:700;color:var(--text-primary);" x-text="formatOdds(pickDetail.odds)"></div>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Stake</div>
+                                    <div style="font-size:18px;font-weight:700;color:var(--text-primary);" x-text="formatCurrency(pickDetail.stake)"></div>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Potential Return</div>
+                                    <div style="font-size:18px;font-weight:700;color:var(--accent);" x-text="formatCurrency(calcPotentialReturn(pickDetail))"></div>
+                                </div>
+                                <div x-show="pickDetail.status === 'settled' || pickDetail.status === 'won' || pickDetail.status === 'lost'">
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">P/L</div>
+                                    <div style="font-size:18px;font-weight:700;"
+                                         :class="calcPickPnl(pickDetail) >= 0 ? 'positive' : 'negative'"
+                                         :style="{ color: calcPickPnl(pickDetail) >= 0 ? 'var(--success)' : 'var(--danger)' }"
+                                         x-text="formatCurrency(calcPickPnl(pickDetail))"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- ── Subscription View ── -->
+            <div x-show="route === 'subscription'" x-cloak>
+                <div class="page-header">
+                    <h1>Subscription</h1>
+                    <p>Manage your Booki plan</p>
+                </div>
+
+                <!-- Success/Cancel messages from Stripe redirect -->
+                <template x-if="subscriptionSuccess">
+                    <div class="form-success" style="margin-bottom:16px;">Welcome to Booki Pro! Your subscription is now active.</div>
+                </template>
+                <template x-if="subscriptionCanceled">
+                    <div class="form-error" style="margin-bottom:16px;">Checkout was canceled. No charges were made.</div>
+                </template>
+
+                <!-- Free Tier -->
+                <template x-if="!isPro">
+                    <div>
+                        <div class="card" style="margin-bottom:16px;">
+                            <div class="plan-card">
+                                <div>
+                                    <h3>Free Plan</h3>
+                                    <p style="color:var(--text-muted);margin-top:4px;">Up to 3 members</p>
+                                </div>
+                                <span class="badge badge-muted">Current</span>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="plan-card">
+                                <div>
+                                    <h3>Booki Pro</h3>
+                                    <p style="color:var(--text-muted);margin-top:4px;">$49.99/month</p>
+                                </div>
+                                <button class="btn btn-accent" @click="startCheckout()" :disabled="isCheckingOut">
+                                    <span x-text="isCheckingOut ? 'Loading...' : 'Upgrade to Pro'"></span>
+                                </button>
+                            </div>
+                            <div class="plan-features">
+                                <div class="plan-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> 50 members</div>
+                                <div class="plan-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Multi-Pick</div>
+                                <div class="plan-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Full analytics</div>
+                                <div class="plan-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Futures tracking</div>
+                                <div class="plan-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Manual approval</div>
+                                <div class="plan-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> CSV export</div>
+                            </div>
+                        </div>
+                        <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">Member capacity: <strong x-text="activeMemberCount + '/' + (isPro ? 50 : 3)"></strong></p>
+                    </div>
+                </template>
+
+                <!-- Pro Tier -->
+                <template x-if="isPro">
+                    <div>
+                        <div class="card" style="margin-bottom:16px;">
+                            <div class="plan-card">
+                                <div>
+                                    <h3>Booki Pro</h3>
+                                    <p style="color:var(--text-muted);margin-top:4px;">$49.99/month</p>
+                                </div>
+                                <span class="badge badge-success">Active</span>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><span class="card-title">Billing</span></div>
+                            <button class="btn btn-secondary" @click="openPortal()" :disabled="isOpeningPortal">
+                                <span x-text="isOpeningPortal ? 'Loading...' : 'Manage Billing'"></span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                            </button>
+                            <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">Cancel anytime. Your existing members and data are preserved.</p>
+                        </div>
+                        <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">Members: <strong x-text="activeMemberCount + '/50'"></strong></p>
+                    </div>
+                </template>
+            </div>
+        </main>
+    </div>
+
+    <!-- ── Invite Modal ── -->
+    <div class="modal-overlay" x-show="showInviteModal" x-cloak @click.self="showInviteModal = false" x-transition>
+        <div class="modal">
+            <h2>Invite Member</h2>
+            <div class="form-group">
+                <label>Email (optional)</label>
+                <input type="email" x-model="inviteEmail" placeholder="member@example.com">
+            </div>
+            <div class="form-group">
+                <label>Credit Limit</label>
+                <input type="number" x-model="inviteCreditLimit" placeholder="1000">
+            </div>
+            <div x-show="inviteError" class="form-error" x-text="inviteError"></div>
+            <div x-show="inviteCode" class="form-success">
+                Invite code: <strong x-text="inviteCode"></strong>
+                <button class="btn btn-ghost" style="margin-left:8px;" @click="copyInviteCode()">Copy</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showInviteModal = false; inviteCode = ''; inviteError = '';">Close</button>
+                <button class="btn btn-accent" @click="createInvite()" :disabled="isCreatingInvite" x-show="!inviteCode">
+                    <span x-text="isCreatingInvite ? 'Creating...' : 'Create Invite'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Settle Up Modal ── -->
+    <div class="modal-overlay" x-show="showSettleModal" x-cloak @click.self="showSettleModal = false" x-transition>
+        <div class="modal">
+            <h2>Settle Up</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">Settle balance for <strong x-text="settlePlayer?.name"></strong></p>
+            <p style="margin-bottom:16px;">Current balance: <strong :style="{ color: (settlePlayer?.balance||0) > 0 ? 'var(--success)' : 'var(--danger)' }" x-text="formatCurrency(settlePlayer?.balance || 0)"></strong></p>
+            <div x-show="settleError" class="form-error" x-text="settleError"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showSettleModal = false">Cancel</button>
+                <button class="btn btn-accent" @click="settleUp()" :disabled="isSettling">
+                    <span x-text="isSettling ? 'Settling...' : 'Settle to $0'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Adjust Balance Modal ── -->
+    <div class="modal-overlay" x-show="showAdjustModal" x-cloak @click.self="showAdjustModal = false" x-transition>
+        <div class="modal">
+            <h2>Adjust Balance</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">Adjust for <strong x-text="adjustPlayer?.name"></strong></p>
+            <div class="form-group">
+                <label>Amount (positive = owes you, negative = you owe)</label>
+                <input type="number" x-model="adjustAmount" placeholder="0.00" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Reason (optional)</label>
+                <input type="text" x-model="adjustReason" placeholder="Payment received">
+            </div>
+            <div x-show="adjustError" class="form-error" x-text="adjustError"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showAdjustModal = false">Cancel</button>
+                <button class="btn btn-accent" @click="adjustBalance()" :disabled="isAdjusting">
+                    <span x-text="isAdjusting ? 'Adjusting...' : 'Apply Adjustment'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
