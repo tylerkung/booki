@@ -771,6 +771,27 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Danger Zone Section -->
+                <div class="card danger-zone" style="margin-bottom:24px;">
+                    <div class="card-header"><span class="card-title" style="color:var(--danger);">Danger Zone</span></div>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--divider);">
+                        <div>
+                            <div style="font-size:14px;font-weight:500;color:var(--text-primary);">Step Down as Organizer</div>
+                            <div style="font-size:13px;color:var(--text-secondary);">Remove your organizer dashboard. Your personal pick history will be preserved.</div>
+                        </div>
+                        <button class="btn btn-danger-outline" @click="showStepDownModal = true">Step Down</button>
+                    </div>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;">
+                        <div>
+                            <div style="font-size:14px;font-weight:500;color:var(--text-primary);">Delete Account</div>
+                            <div style="font-size:13px;color:var(--text-secondary);">Permanently delete your account and all associated data. This cannot be undone.</div>
+                        </div>
+                        <button class="btn btn-danger" @click="showDeleteStep1 = true">Delete Account</button>
+                    </div>
+                </div>
             </div>
 
         </main>
@@ -905,6 +926,50 @@
                 <button class="btn btn-secondary" @click="showReverseModal = false">Cancel</button>
                 <button class="btn btn-danger" @click="reverseSettlement()" :disabled="isReversing">
                     <span x-text="isReversing ? 'Reversing...' : 'Reverse Settlement'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Step Down Modal ── -->
+    <div class="modal-overlay" x-show="showStepDownModal" x-cloak @click.self="showStepDownModal = false" x-transition>
+        <div class="modal">
+            <h2>Step Down as Organizer</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">Your organizer dashboard and settings will be removed. Your personal pick history will be preserved.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showStepDownModal = false">Cancel</button>
+                <button class="btn btn-danger" @click="stepDown()" :disabled="isSteppingDown">
+                    <span x-text="isSteppingDown ? 'Stepping down...' : 'Step Down'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Delete Account Step 1 Modal ── -->
+    <div class="modal-overlay" x-show="showDeleteStep1" x-cloak @click.self="showDeleteStep1 = false" x-transition>
+        <div class="modal">
+            <h2>Delete Account</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">Are you sure you want to delete your account? This will permanently remove all your data including members, picks, and ledger history.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showDeleteStep1 = false">Cancel</button>
+                <button class="btn btn-danger" @click="showDeleteStep1 = false; showDeleteStep2 = true; deleteConfirmText = '';">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Delete Account Step 2 Modal ── -->
+    <div class="modal-overlay" x-show="showDeleteStep2" x-cloak @click.self="showDeleteStep2 = false" x-transition>
+        <div class="modal">
+            <h2 style="color:var(--danger);">Confirm Deletion</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">This action is irreversible. Type <strong style="color:var(--danger);">DELETE</strong> to confirm.</p>
+            <div class="form-group">
+                <input type="text" x-model="deleteConfirmText" placeholder="Type DELETE to confirm"
+                       @keydown.enter="deleteAccount()" autocomplete="off">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showDeleteStep2 = false; deleteConfirmText = '';">Cancel</button>
+                <button class="btn btn-danger" @click="deleteAccount()" :disabled="isDeleting || deleteConfirmText !== 'DELETE'">
+                    <span x-text="isDeleting ? 'Deleting...' : 'Delete My Account'"></span>
                 </button>
             </div>
         </div>

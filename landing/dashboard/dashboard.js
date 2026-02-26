@@ -178,6 +178,14 @@ function dashboardApp() {
         isSavingCreditLimit: false,
         settingsAllowFuturesParlays: false,
 
+        // ── Danger Zone ──
+        showStepDownModal: false,
+        isSteppingDown: false,
+        showDeleteStep1: false,
+        showDeleteStep2: false,
+        deleteConfirmText: '',
+        isDeleting: false,
+
         // ── Override / Reverse ──
         showOverrideModal: false,
         overrideOutcome: 'won',
@@ -1106,6 +1114,58 @@ function dashboardApp() {
             }
 
             this.isChangingPassword = false;
+        },
+
+        // ── Danger Zone ──
+        async stepDown() {
+            this.isSteppingDown = true;
+
+            try {
+                const response = await this.callEdgeFunction('step_down_organizer', {
+                    idempotency_key: crypto.randomUUID(),
+                });
+
+                if (response.error) {
+                    if (response.error.includes('has_members_or_invites') || response.error.includes('members') || response.error.includes('invites')) {
+                        this.toast('Please remove all members and invites before stepping down.', 'error');
+                    } else {
+                        this.toast(response.error, 'error');
+                    }
+                } else {
+                    this.toast('Stepped down from organizer', 'success');
+                    this.showStepDownModal = false;
+                    await this.supabase.auth.signOut();
+                    window.location.href = 'index.html';
+                }
+            } catch (e) {
+                this.toast(e.message || 'Failed to step down', 'error');
+            }
+
+            this.isSteppingDown = false;
+        },
+
+        async deleteAccount() {
+            if (this.deleteConfirmText !== 'DELETE') return;
+            this.isDeleting = true;
+
+            try {
+                const response = await this.callEdgeFunction('delete_account', {
+                    idempotency_key: crypto.randomUUID(),
+                });
+
+                if (response.error) {
+                    this.toast(response.error, 'error');
+                } else {
+                    this.toast('Account deleted', 'success');
+                    this.showDeleteStep2 = false;
+                    await this.supabase.auth.signOut();
+                    window.location.href = 'index.html';
+                }
+            } catch (e) {
+                this.toast(e.message || 'Failed to delete account', 'error');
+            }
+
+            this.isDeleting = false;
         },
 
         // ── Helpers ──

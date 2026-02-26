@@ -206,7 +206,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "Add to the settings page created in US-010. Toggle switches can be styled checkboxes or custom CSS toggle components. The bookies table has columns: default_credit_limit, allow_futures_parlays. Load current values in loadBookie() or a dedicated loadSettings() method. For Pro gating, use the existing isPro property."
     },
     {
@@ -226,7 +226,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "Add to the settings page. Step down edge function: supabase/functions/step_down_organizer/index.ts. Delete account edge function: supabase/functions/delete_account/index.ts. For the two-step delete confirmation, add state: showDeleteStep1, showDeleteStep2, deleteConfirmText. Only enable final delete button when deleteConfirmText === 'DELETE'. After either operation succeeds, sign out and redirect."
     },
     {

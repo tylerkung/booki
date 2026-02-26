@@ -504,6 +504,8 @@ input, button, select, textarea { font: inherit; }
 .btn-danger { background: var(--danger); color: white; }
 .btn-ghost { background: none; color: var(--text-secondary); padding: 8px; }
 .btn-ghost:hover { color: var(--text-primary); }
+.btn-danger-outline { background: none; color: var(--danger); border: 1px solid var(--danger); }
+.btn-danger-outline:hover { background: rgba(255,77,106,0.1); }
 
 .btn-grade { font-weight: 700; padding: 10px 20px; font-size: 14px; }
 .btn-grade-win { background: rgba(0,245,212,0.15); color: var(--success); border: 1px solid var(--success); }
@@ -790,6 +792,11 @@ input, button, select, textarea { font: inherit; }
 .toggle-switch.disabled {
     opacity: 0.5;
     pointer-events: none;
+}
+
+/* ── Danger Zone ── */
+.danger-zone {
+    border-color: rgba(255,77,106,0.3);
 }
 
 .badge-pro {
