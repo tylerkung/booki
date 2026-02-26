@@ -130,7 +130,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "BetsListView.swift has the Picks tab. It currently uses selectedPlayerId state and renders player name chips in a horizontal ScrollView. Replace the chip section with a Menu button. The @Query for players is likely already available. Use bookie's players list for the dropdown options. Show player.bookieDisplayName in the dropdown (from US-002)."
     },
     {
@@ -150,7 +150,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Add to BetsListView.swift alongside the member dropdown from US-008. Determine bet type from the Bet model — check for parlay/ticket associations, market type for futures/outrights. The filter state can be an optional enum: `@State private var selectedBetType: BetTypeFilter?` with cases .singles, .multiPick, .futures."
     }
   ]

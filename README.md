@@ -445,4 +445,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 25, 2026 - Member settings (default credit limit), credit limit editing, dashboard credit fix, BetSlip navigation arrows, OG image update*
+*Last updated: February 25, 2026 - Player profile editing, bookie display names, Picks tab filters (member dropdown + bet type chips), downgrade enforcement, isPro unified logic, email change template*

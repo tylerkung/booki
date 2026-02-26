@@ -256,3 +256,12 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Dashboard credit fix**: Uses `BalanceService.playerSummary()` (includes open stakes) instead of raw ledger sums
 - **BetSlip navigation**: Up/down arrows for navigating singles fields, quick stakes +$1/+$5/+$25 with equal width
 - **OG image**: All landing pages use `bookie-og.jpg` for og:image and twitter:image
+- **Player profile editing**: `PlayerProfileEditView` — players edit name (Supabase RLS) and email (auth confirmation flow), CTA on AccountView
+- **Bookie display_name**: `display_name` column on players table — bookie-only override, `bookieDisplayName` computed property falls back to player's name
+- **isPro unified logic**: `Bookie.isPro` checks both `tier == .pro` and `subscriptionStatus in [.active, .pro]`
+- **Picks tab filters**: Member dropdown (`.menu` picker) + Singles/Multi-Pick/Futures type chips, replacing player name chips
+- **Downgrade enforcement**: `create_invite` checks active member count vs tier limit (3 free / 50 pro), returns `member_limit_reached`
+- **Member limit UI**: Capacity banner on Members tab, blocking message in invite sheet when at limit
+- **Email change template**: `landing/email-change.html` — branded Supabase email change confirmation
+- **Debug tier toggle removed**: Triple-tap on version number no longer toggles tier
+- **Dashboard balance fix**: Shows `balanceOwed` (ledger only) not credit used (which included open stakes)
