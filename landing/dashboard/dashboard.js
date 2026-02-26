@@ -52,6 +52,10 @@ function dashboardApp() {
         subscriptionSuccess: false,
         subscriptionCanceled: false,
 
+        // ── Realtime ──
+        realtimeChannel: null,
+        _realtimeDebounceTimers: {},
+
         // ── Loading States ──
         isLoadingDashboard: true,
         isLoadingPlayers: true,
@@ -264,6 +268,9 @@ function dashboardApp() {
                 return;
             }
 
+            // Subscribe to realtime updates
+            this.subscribeToRealtime();
+
             // Parse route
             this.parseRoute();
             window.addEventListener('hashchange', () => this.parseRoute());
@@ -310,8 +317,74 @@ function dashboardApp() {
 
         // ── Auth ──
         async logout() {
+            this.unsubscribeFromRealtime();
             await this.supabase.auth.signOut();
             window.location.href = 'index.html';
+        },
+
+        // ── Realtime Subscriptions ──
+        _debouncedReload(key, fn, delay = 300) {
+            if (this._realtimeDebounceTimers[key]) {
+                clearTimeout(this._realtimeDebounceTimers[key]);
+            }
+            this._realtimeDebounceTimers[key] = setTimeout(() => {
+                fn();
+                delete this._realtimeDebounceTimers[key];
+            }, delay);
+        },
+
+        subscribeToRealtime() {
+            if (!this.bookie || this.realtimeChannel) return;
+
+            const bookieId = this.bookie.id;
+
+            this.realtimeChannel = this.supabase
+                .channel('bookie-changes')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'bets',
+                    filter: `bookie_id=eq.${bookieId}`
+                }, () => {
+                    this._debouncedReload('bets', () => {
+                        this.loadDashboard();
+                        if (this.route === 'picks') this.loadPicks();
+                    });
+                })
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'players',
+                    filter: `bookie_id=eq.${bookieId}`
+                }, () => {
+                    this._debouncedReload('players', () => {
+                        this.loadPlayers();
+                    });
+                })
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'ledger_entries',
+                    filter: `bookie_id=eq.${bookieId}`
+                }, () => {
+                    this._debouncedReload('ledger', () => {
+                        this.loadPlayers();
+                        this.loadDashboard();
+                    });
+                })
+                .subscribe();
+        },
+
+        unsubscribeFromRealtime() {
+            if (this.realtimeChannel) {
+                this.supabase.removeChannel(this.realtimeChannel);
+                this.realtimeChannel = null;
+            }
+            // Clear any pending debounce timers
+            for (const key in this._realtimeDebounceTimers) {
+                clearTimeout(this._realtimeDebounceTimers[key]);
+            }
+            this._realtimeDebounceTimers = {};
         },
 
         // ── Load Bookie ──
