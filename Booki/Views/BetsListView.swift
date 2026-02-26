@@ -152,17 +152,17 @@ struct BetsListView: View {
                         }
                         .padding()
                     }
-                }
-            }
-            .background(Theme.background)
-            .refreshable {
-                await withCheckedContinuation { continuation in
-                    Task.detached {
-                        await syncService.sync()
-                        continuation.resume()
+                    .refreshable {
+                        await withCheckedContinuation { continuation in
+                            Task.detached {
+                                await syncService.sync()
+                                continuation.resume()
+                            }
+                        }
                     }
                 }
             }
+            .background(Theme.background)
             .navigationTitle("Picks")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
