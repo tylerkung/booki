@@ -247,3 +247,19 @@ Started: Thu Feb 26 14:57:41 PST 2026
   - Capacity bar reuses the same pattern as member detail credit utilization (fill div with % width)
   - Alpine `get` properties work well for derived capacity values (limit, percent, isAtCapacity)
 ---
+
+## 2026-02-26 - US-015
+- Added Net Exposure and Top Risk stat tiles to dashboard (6 tiles total now)
+- Net Exposure: sum of potential payouts (profit portion) on open bets
+- Top Risk: member with highest open exposure, clickable → navigates to member detail
+- Dashboard Members section: compact cards for each active member showing name, balance, utilization bar, open picks count, exposure
+- Members sorted by open exposure descending (highest risk first)
+- Exposure calculated per-member by grouping open bets by player_id
+- Added `dashboardMembers-grid` CSS for responsive card layout
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- **Learnings for future iterations:**
+  - Exposure = potential profit (calcPotentialReturn - stake), not total payout — this is what the bookie risks
+  - `loadDashboard()` depends on `this.players` being populated — must run after `loadPlayers()` (already the case in init)
+  - `dashboardMembers` is a regular array (not Alpine `get`) since it's rebuilt on each `loadDashboard()` call
+  - Top Risk is null when no member has exposure > 0 — template shows "—"
+---

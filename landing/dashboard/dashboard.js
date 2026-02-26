@@ -26,6 +26,9 @@ function dashboardApp() {
         openPickCount: 0,
         totalVolume: 0,
         recentActivity: [],
+        netExposure: 0,
+        topRiskMember: null,
+        dashboardMembers: [],
 
         // ── Members ──
         players: [],
@@ -412,6 +415,47 @@ function dashboardApp() {
                 .limit(10);
 
             this.recentActivity = recent || [];
+
+            // Exposure: fetch open bets for potential payout calculation
+            const { data: openBets } = await this.supabase
+                .from('bets')
+                .select('stake, odds, player_id, status')
+                .eq('bookie_id', this.bookie.id)
+                .in('status', ['pending', 'accepted']);
+
+            const openBetsList = openBets || [];
+            // Net exposure = sum of potential payouts (what bookie would pay out)
+            this.netExposure = openBetsList.reduce((sum, b) => {
+                const payout = this.calcPotentialReturn(b) - (Number(b.stake) || 0);
+                return sum + payout;
+            }, 0);
+
+            // Per-member exposure
+            const memberExposureMap = {};
+            for (const b of openBetsList) {
+                if (!b.player_id) continue;
+                if (!memberExposureMap[b.player_id]) {
+                    memberExposureMap[b.player_id] = { exposure: 0, openPicks: 0 };
+                }
+                const payout = this.calcPotentialReturn(b) - (Number(b.stake) || 0);
+                memberExposureMap[b.player_id].exposure += payout;
+                memberExposureMap[b.player_id].openPicks += 1;
+            }
+
+            // Build dashboard members list sorted by exposure desc
+            this.dashboardMembers = this.players
+                .map(p => ({
+                    ...p,
+                    exposure: memberExposureMap[p.id]?.exposure || 0,
+                    openPicks: memberExposureMap[p.id]?.openPicks || 0,
+                }))
+                .filter(p => p.status !== 'archived')
+                .sort((a, b) => b.exposure - a.exposure);
+
+            // Top risk member
+            this.topRiskMember = this.dashboardMembers.length > 0 && this.dashboardMembers[0].exposure > 0
+                ? this.dashboardMembers[0]
+                : null;
         },
 
         // ── Picks Data ──

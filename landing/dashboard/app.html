@@ -110,7 +110,44 @@
                         <div class="stat-label">Total Volume</div>
                         <div class="stat-value" x-text="formatCurrency(totalVolume)"></div>
                     </div>
+                    <div class="stat-tile">
+                        <div class="stat-label">Net Exposure</div>
+                        <div class="stat-value" :class="netExposure > 0 ? 'negative' : ''" x-text="formatCurrency(netExposure)"></div>
+                    </div>
+                    <div class="stat-tile" :style="topRiskMember ? 'cursor:pointer' : ''" @click="topRiskMember && (location.hash = '#/members/' + topRiskMember.id)">
+                        <div class="stat-label">Top Risk</div>
+                        <div class="stat-value" style="font-size:20px;" x-text="topRiskMember ? (topRiskMember.display_name || topRiskMember.name || '—') : '—'"></div>
+                        <div x-show="topRiskMember" style="font-size:12px;color:var(--text-muted);margin-top:4px;" x-text="topRiskMember ? formatCurrency(topRiskMember.exposure) + ' exposure' : ''"></div>
+                    </div>
                 </div>
+
+                <!-- Dashboard Members -->
+                <template x-if="dashboardMembers.length > 0">
+                    <div class="card" style="margin-bottom:24px;">
+                        <div class="card-header">
+                            <span class="card-title">Members</span>
+                            <a href="#/members" style="font-size:12px;color:var(--accent);cursor:pointer;">View All</a>
+                        </div>
+                        <div class="dashboard-members-grid">
+                            <template x-for="member in dashboardMembers" :key="member.id">
+                                <div class="dashboard-member-card" @click="location.hash = '#/members/' + member.id" style="cursor:pointer;">
+                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                                        <span style="font-weight:600;color:var(--text-primary);font-size:14px;" x-text="member.display_name || member.name || 'Unknown'"></span>
+                                        <span style="font-size:12px;color:var(--text-muted);" x-text="member.openPicks + ' open'"></span>
+                                    </div>
+                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                                        <span style="font-size:13px;" :style="{ color: (member.balance || 0) >= 0 ? 'var(--success)' : 'var(--danger)' }" x-text="formatCurrency(member.balance || 0)"></span>
+                                        <span style="font-size:12px;color:var(--text-muted);" x-text="member.exposure > 0 ? formatCurrency(member.exposure) + ' exp.' : '—'"></span>
+                                    </div>
+                                    <div class="capacity-bar" style="height:4px;">
+                                        <div class="capacity-fill" :class="{ 'capacity-fill-warning': ((Math.abs(member.balance || 0)) / (member.credit_limit || 1000)) > 0.8 }"
+                                             :style="{ width: Math.min(100, ((Math.abs(member.balance || 0)) / (member.credit_limit || 1000)) * 100) + '%' }"></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
 
                 <div class="card">
                     <div class="card-header">

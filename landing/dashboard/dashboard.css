@@ -830,6 +830,25 @@ input, button, select, textarea { font: inherit; }
     background: var(--warning);
 }
 
+/* ── Dashboard Members Grid ── */
+.dashboard-members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.dashboard-member-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    transition: border-color 0.15s;
+}
+
+.dashboard-member-card:hover {
+    border-color: var(--accent);
+}
+
 .badge-pro {
     background: var(--accent);
     color: #fff;

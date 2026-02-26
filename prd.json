@@ -277,7 +277,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 15,
-      "passes": false,
+      "passes": true,
       "notes": "Extend loadDashboard() to also fetch open bets for exposure calculation. Potential payout = stake * (decimal odds - 1) for each open bet. Group by player_id to find per-member exposure. The member cards can be a new 'dashboard-members' section in app.html. Utilization bar reuses the credit bar pattern from member detail."
     },
     {
