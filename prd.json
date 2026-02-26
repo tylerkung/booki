@@ -207,7 +207,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "AccountView is in Booki/Views/AccountView.swift. The credit bar is in the performanceCard section. Check player.bookie == nil or authManager.isStandaloneUser to determine visibility. The profileAndPreferencesCard has an Organizer row at line ~303. Balance-related actions may be in the menu section or elsewhere. Keep the view functional — just hide what doesn't apply."
     }
   ]

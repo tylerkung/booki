@@ -301,7 +301,9 @@ struct AccountView: View {
             Divider().background(Theme.divider)
             profileRow(icon: "envelope.fill", label: "Email", value: player.email ?? "—")
             Divider().background(Theme.divider)
-            profileRow(icon: "link.circle.fill", label: "Organizer", value: player.bookie?.name ?? "—")
+            if !authManager.isStandaloneUser {
+                profileRow(icon: "link.circle.fill", label: "Organizer", value: player.bookie?.name ?? "—")
+            }
             Divider().background(Theme.divider)
             profileRow(icon: "calendar", label: "Member Since", value: memberSinceDate)
 
@@ -435,10 +437,11 @@ struct AccountView: View {
                 )
             }
 
-            // Credit utilization bar
-            Divider().background(Theme.divider)
-
-            creditBar
+            // Credit utilization bar — hidden for standalone users
+            if !authManager.isStandaloneUser {
+                Divider().background(Theme.divider)
+                creditBar
+            }
         }
         .padding(20)
         .background(
