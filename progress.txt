@@ -1,5 +1,17 @@
 # Ralph Progress Log
 Started: Wed Feb 25 18:55:49 PST 2026
+
+## Codebase Patterns
+- `authManager.isStandaloneUser` gates all standalone-specific UI (no bookie, no linked player)
+- `authManager.becomeOrganizer()` creates bookie record on demand — counterpart to disabled auto-creation
+- `authManager.clearBookieState()` reverts to standalone (userRole = nil)
+- Edge functions check `!player.bookie_id` to identify standalone users (server-side)
+- Standalone sync: `syncService.syncStandalone()` for events-only (bookie_id IS NULL)
+- BetSlipSheet `canSubmit` is the single gate for validation — add all new checks there
+- `Theme.textMuted` + `Theme.elevatedBackground` for disabled/coming-soon styling
+- `playerMenuRow(icon:title:color:)` in AccountView for menu rows — pass Theme.gold for upgrade, Theme.danger for destructive
+- Active member count filter: `$0.status != .archived && $0.authUserId != nil`
+- Edge function error responses use specific error strings (`member_limit_reached`, `has_members_or_invites`, `open_bet_limit_reached`) for client-side handling
 ---
 
 ## 2026-02-25 - US-001
