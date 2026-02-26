@@ -69,6 +69,7 @@ function dashboardApp() {
         memberDetailBets: [],
         memberDetailLedger: [],
         memberPickFilter: 'open',
+        memberActivityExpanded: false,
 
         // ── Inline Editing ──
         isEditingName: false,
@@ -488,6 +489,7 @@ function dashboardApp() {
             this.showMemberOverflow = false;
             this.isEditingName = false;
             this.isEditingCredit = false;
+            this.memberActivityExpanded = false;
 
             // Look up from playerMap first, then fetch from Supabase
             let player = this.playerMap[this.selectedPlayerId];
@@ -537,7 +539,7 @@ function dashboardApp() {
                     .order('created_at', { ascending: false }),
                 this.supabase
                     .from('ledger_entries')
-                    .select('amount, type')
+                    .select('*')
                     .eq('player_id', this.selectedPlayerId)
                     .eq('bookie_id', this.bookie.id),
             ]);
@@ -572,6 +574,51 @@ function dashboardApp() {
                 return this.memberDetailBets.filter(b => ['pending', 'accepted'].includes(b.status));
             }
             return this.memberDetailBets.filter(b => ['won', 'lost', 'push', 'void', 'voided', 'settled', 'graded'].includes(b.status));
+        },
+
+        get memberRecentActivity() {
+            const items = [];
+
+            // Normalize bets into activity items
+            for (const bet of this.memberDetailBets) {
+                items.push({
+                    date: bet.created_at,
+                    type: bet.status === 'won' || bet.status === 'settled' ? 'won'
+                        : bet.status === 'lost' ? 'lost'
+                        : 'bet_placed',
+                    description: (bet.team_name || bet.selection || 'Pick') + ' ' + this.formatOdds(bet.odds),
+                    amount: bet.status === 'lost' ? -(Number(bet.stake) || 0)
+                        : (bet.status === 'won' || bet.status === 'settled') ? this.calcPickPnl(bet)
+                        : -(Number(bet.stake) || 0),
+                    source: 'bet',
+                });
+            }
+
+            // Normalize ledger entries into activity items
+            for (const entry of this.memberDetailLedger) {
+                items.push({
+                    date: entry.created_at,
+                    type: entry.type || 'adjustment',
+                    description: entry.reason || (entry.type === 'paymentLogged' ? 'Settlement' : 'Balance adjustment'),
+                    amount: entry.amount || 0,
+                    source: 'ledger',
+                });
+            }
+
+            // Sort by date descending
+            items.sort((a, b) => new Date(b.date) - new Date(a.date));
+            return items;
+        },
+
+        activityTypeBadge(type) {
+            switch (type) {
+                case 'bet_placed': return { label: 'Pick', cls: 'badge-warning' };
+                case 'won': return { label: 'Won', cls: 'badge-success' };
+                case 'lost': return { label: 'Lost', cls: 'badge-danger' };
+                case 'paymentLogged': return { label: 'Settlement', cls: 'badge-success' };
+                case 'adjustment': return { label: 'Adjustment', cls: 'badge-muted' };
+                default: return { label: type, cls: 'badge-muted' };
+            }
         },
 
         async archiveMember() {

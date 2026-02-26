@@ -493,6 +493,46 @@
                             </div>
                         </div>
 
+                        <!-- Recent Activity Card -->
+                        <div class="card" style="margin-bottom:16px;">
+                            <div class="card-header">
+                                <span class="card-title">Recent Activity</span>
+                            </div>
+
+                            <template x-if="memberRecentActivity.length > 0">
+                                <div>
+                                    <template x-for="(item, idx) in (memberActivityExpanded ? memberRecentActivity : memberRecentActivity.slice(0, 10))" :key="idx">
+                                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+                                            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+                                                <span class="badge" :class="activityTypeBadge(item.type).cls"
+                                                      x-text="activityTypeBadge(item.type).label" style="flex-shrink:0;"></span>
+                                                <div style="flex:1;min-width:0;">
+                                                    <div style="font-size:13px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="item.description"></div>
+                                                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;" x-text="formatDate(item.date)"></div>
+                                                </div>
+                                            </div>
+                                            <div style="font-size:14px;font-weight:600;flex-shrink:0;margin-left:12px;"
+                                                 :style="{ color: item.amount > 0 ? 'var(--success)' : item.amount < 0 ? 'var(--danger)' : 'var(--text-primary)' }"
+                                                 x-text="(item.amount > 0 ? '+' : '') + formatCurrency(item.amount)"></div>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="memberRecentActivity.length > 10">
+                                        <div style="padding-top:12px;text-align:center;">
+                                            <button class="btn btn-ghost" style="font-size:13px;"
+                                                    @click="memberActivityExpanded = !memberActivityExpanded"
+                                                    x-text="memberActivityExpanded ? 'Show Less' : 'View All (' + memberRecentActivity.length + ')'"></button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="memberRecentActivity.length === 0">
+                                <div class="empty-state" style="padding:20px 0;">
+                                    <p>Activity will show up as members place picks and balances change.</p>
+                                </div>
+                            </template>
+                        </div>
+
                         <!-- Picks Section -->
                         <div class="card" style="margin-bottom:16px;">
                             <div class="card-header" style="margin-bottom:12px;">
