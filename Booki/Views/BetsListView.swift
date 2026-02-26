@@ -56,7 +56,7 @@ struct BetsListView: View {
         for bet in statusFilteredBets {
             if let player = bet.player, !seen.contains(player.id) {
                 seen.insert(player.id)
-                result.append((id: player.id, name: player.name))
+                result.append((id: player.id, name: player.bookieDisplayName))
             }
         }
         return result.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
@@ -104,7 +104,7 @@ struct BetsListView: View {
                                         selectedPlayerId = player.id
                                     }
                                 } label: {
-                                    Text(player.name)
+                                    Text(player.bookieDisplayName)
                                         .font(Theme.bodyFont(size: 13, weight: .medium))
                                         .foregroundStyle(selectedPlayerId == player.id ? Theme.background : Theme.textSecondary)
                                         .padding(.horizontal, 12)
@@ -297,7 +297,7 @@ struct BetRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             // Canonical pick card display
-            PickCardCompact(presenter: presenter, playerName: bet.player?.name)
+            PickCardCompact(presenter: presenter, playerName: bet.player?.bookieDisplayName)
 
             // Parlay partial grading badge (only when still in play, not already determined to lose)
             if let info = parlayInfo, info.isPartiallyGraded, !info.willLose {
@@ -798,7 +798,7 @@ struct BetDetailView: View {
             }
 
             if let player = bet.player {
-                Text(player.name)
+                Text(player.bookieDisplayName)
                     .font(Theme.bodyFont(size: 14, weight: .semibold))
                     .foregroundStyle(Theme.accent)
             }
@@ -927,7 +927,7 @@ struct BetDetailView: View {
                 )
 
                 if let player = bet.player {
-                    detailLabeledRow(label: "Member", value: player.name)
+                    detailLabeledRow(label: "Member", value: player.bookieDisplayName)
                 }
 
                 if let player = bet.player {

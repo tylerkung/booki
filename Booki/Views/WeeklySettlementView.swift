@@ -103,7 +103,7 @@ struct WeeklySettlementView: View {
             if let prevReport = previousReport {
                 // Check if starting balance matches previous ending balance
                 if report.startingBalance != prevReport.endingBalance {
-                    mismatches.append(report.player.name)
+                    mismatches.append(report.player.bookieDisplayName)
                 }
             }
         }
@@ -196,7 +196,7 @@ struct WeeklySettlementView: View {
     private func generateCSVContent() -> String {
         var csvContent = "Member Name,Starting Balance,Net Results,Payments,Adjustments,Ending Balance,Settled\n"
 
-        for report in playerReports.sorted(by: { $0.player.name < $1.player.name }) {
+        for report in playerReports.sorted(by: { $0.player.bookieDisplayName < $1.player.bookieDisplayName }) {
             let settled = isPlayerSettled(report.player) ? "Yes" : "No"
             // Format currency values without $ symbol for CSV compatibility
             let startingBalance = formatDecimalForCSV(report.startingBalance)
@@ -206,7 +206,7 @@ struct WeeklySettlementView: View {
             let endingBalance = formatDecimalForCSV(report.endingBalance)
 
             // Escape player name if it contains commas
-            let playerName = report.player.name.contains(",") ? "\"\(report.player.name)\"" : report.player.name
+            let playerName = report.player.bookieDisplayName.contains(",") ? "\"\(report.player.bookieDisplayName)\"" : report.player.bookieDisplayName
 
             csvContent += "\(playerName),\(startingBalance),\(netResults),\(payments),\(adjustments),\(endingBalance),\(settled)\n"
         }
@@ -575,7 +575,7 @@ struct PlayerSettlementRowView: View {
             // Player name and settled indicator
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Text(report.player.name)
+                    Text(report.player.bookieDisplayName)
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
 
@@ -936,12 +936,12 @@ struct PlayerSettlementDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle(player.name)
+        .navigationTitle(player.bookieDisplayName)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 VStack {
-                    Text(player.name)
+                    Text(player.bookieDisplayName)
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Text(dateRangeDescription)
@@ -1262,7 +1262,7 @@ struct QuickPaymentSheet: View {
 
     private var paymentDescription: String {
         let methodText = selectedMethod.rawValue
-        var description = "Payment received from \(player.name) via \(methodText)"
+        var description = "Payment received from \(player.bookieDisplayName) via \(methodText)"
         if !note.trimmingCharacters(in: .whitespaces).isEmpty {
             description += " - \(note.trimmingCharacters(in: .whitespaces))"
         }

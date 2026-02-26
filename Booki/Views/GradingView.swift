@@ -876,7 +876,7 @@ struct ParlayGradingGroupView: View {
 
             // Player name
             if let player = group.bets.first?.player {
-                Text(player.name)
+                Text(player.bookieDisplayName)
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }

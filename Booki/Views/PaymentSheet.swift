@@ -60,7 +60,7 @@ struct PaymentSheet: View {
     private var paymentDescription: String {
         let methodText = paymentMethod.rawValue
         let directionText = direction == .playerPaidBookie ? "received from" : "paid to"
-        var description = "Payment \(directionText) \(player.name) via \(methodText)"
+        var description = "Payment \(directionText) \(player.bookieDisplayName) via \(methodText)"
         if !note.trimmingCharacters(in: .whitespaces).isEmpty {
             description += " - \(note.trimmingCharacters(in: .whitespaces))"
         }
@@ -115,8 +115,8 @@ struct PaymentSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
 
                     Text(direction == .playerPaidBookie
-                        ? "\(player.name) is paying you"
-                        : "You are paying \(player.name)")
+                        ? "\(player.bookieDisplayName) is paying you"
+                        : "You are paying \(player.bookieDisplayName)")
                         .font(Theme.bodyFont(size: 12))
                         .foregroundStyle(Theme.textSecondary)
 

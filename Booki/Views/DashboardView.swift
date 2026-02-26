@@ -447,7 +447,7 @@ struct DashboardView: View {
                     ForEach(playersOweYou) { item in
                         NavigationLink(value: item.player) {
                             PlayerBalanceRow(
-                                name: item.player.name,
+                                name: item.player.bookieDisplayName,
                                 balance: item.balance,
                                 daysSinceLastActivity: item.daysSinceLastActivity,
                                 isOwedToYou: true
@@ -486,7 +486,7 @@ struct DashboardView: View {
                     ForEach(youOwePlayers) { item in
                         NavigationLink(value: item.player) {
                             PlayerBalanceRow(
-                                name: item.player.name,
+                                name: item.player.bookieDisplayName,
                                 balance: item.balance,
                                 daysSinceLastActivity: item.daysSinceLastActivity,
                                 isOwedToYou: false
@@ -920,7 +920,7 @@ struct FlaggedPlayerRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(flaggedPlayer.player.name)
+                    Text(flaggedPlayer.player.bookieDisplayName)
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
 

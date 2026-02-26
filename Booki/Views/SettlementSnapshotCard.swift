@@ -237,7 +237,7 @@ struct SettlementSnapshotCard: View {
 
                         HStack(spacing: 10) {
                             // Player name
-                            Text(item.report.player.name)
+                            Text(item.report.player.bookieDisplayName)
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(Theme.textPrimary)
                                 .lineLimit(1)
@@ -332,7 +332,7 @@ struct SettlementSnapshotCard: View {
         let ledgerEntry = LedgerEntry(
             amount: paymentAmount,
             type: .paymentLogged,
-            entryDescription: "Full payment – \(player.name) (quick action)",
+            entryDescription: "Full payment – \(player.bookieDisplayName) (quick action)",
             player: player
         )
         modelContext.insert(ledgerEntry)

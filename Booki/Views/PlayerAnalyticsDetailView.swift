@@ -80,7 +80,7 @@ struct PlayerAnalyticsDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle(summary.player.name)
+        .navigationTitle(summary.player.bookieDisplayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -124,7 +124,7 @@ struct PlayerAnalyticsDetailView: View {
             Text("Archived members retain their history but are hidden from the active members list.")
         }
         .confirmationDialog(
-            "Remove \(player.name)?",
+            "Remove \(player.bookieDisplayName)?",
             isPresented: $showingDeleteConfirmation,
             titleVisibility: .visible
         ) {
@@ -170,7 +170,7 @@ struct PlayerAnalyticsDetailView: View {
 
     private func saveName() {
         let trimmed = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed != player.name else { return }
+        guard !trimmed.isEmpty, trimmed != player.bookieDisplayName else { return }
 
         let newName = trimmed
         let playerId = player.id.uuidString.lowercased()
@@ -180,12 +180,12 @@ struct PlayerAnalyticsDetailView: View {
                 let supabase = SupabaseClientManager.shared.client
                 try await supabase
                     .from("players")
-                    .update(["name": newName])
+                    .update(["display_name": newName])
                     .eq("id", value: playerId)
                     .execute()
 
                 await MainActor.run {
-                    player.name = newName
+                    player.displayName = newName
                 }
             } catch {
                 print("Failed to update player name: \(error)")
@@ -265,12 +265,12 @@ struct PlayerAnalyticsDetailView: View {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Text(summary.player.name)
+                Text(summary.player.bookieDisplayName)
                     .font(Theme.title1)
                     .foregroundStyle(Theme.textPrimary)
 
                 Button {
-                    editedName = player.name
+                    editedName = player.bookieDisplayName
                     showingEditName = true
                 } label: {
                     Image(systemName: "pencil")
@@ -740,7 +740,7 @@ private struct SettleUpSheet: View {
                             .font(.system(size: 48))
                             .foregroundStyle(Theme.accent)
 
-                        Text("Settle \(player.name)'s balance?")
+                        Text("Settle \(player.bookieDisplayName)'s balance?")
                             .font(Theme.font(size: 20, weight: .bold))
                             .foregroundStyle(Theme.textPrimary)
                             .multilineTextAlignment(.center)
@@ -907,8 +907,8 @@ private struct AdjustBalanceSheet: View {
                             .foregroundStyle(Theme.textPrimary)
 
                         Text(isCredit
-                            ? "This will reduce what \(player.name) owes"
-                            : "This will increase what \(player.name) owes")
+                            ? "This will reduce what \(player.bookieDisplayName) owes"
+                            : "This will increase what \(player.bookieDisplayName) owes")
                             .font(Theme.bodyFont(size: 12))
                             .foregroundStyle(Theme.textSecondary)
                     }

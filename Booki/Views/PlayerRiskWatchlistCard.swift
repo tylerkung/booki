@@ -23,7 +23,7 @@ struct PlayerRiskWatchlistCard: View {
                 if $0.signals.count != $1.signals.count {
                     return $0.signals.count > $1.signals.count
                 }
-                return $0.player.name < $1.player.name
+                return $0.player.bookieDisplayName < $1.player.bookieDisplayName
             }
     }
 
@@ -104,7 +104,7 @@ private struct PlayerRiskRow: View {
         VStack(alignment: .leading, spacing: 8) {
             // Top: name + badges
             HStack(spacing: 6) {
-                Text(player.name)
+                Text(player.bookieDisplayName)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)

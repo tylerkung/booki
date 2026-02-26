@@ -79,7 +79,7 @@ struct PlayerPicksListView: View {
                 .padding(.top, 8)
             }
         }
-        .navigationTitle("\(player.name) — Picks")
+        .navigationTitle("\(player.bookieDisplayName) — Picks")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             picksFilter = initialFilter

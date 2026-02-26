@@ -85,7 +85,7 @@ struct PlayerPickHistoryView: View {
                 }
             }
         }
-        .navigationTitle("\(player.name) — History")
+        .navigationTitle("\(player.bookieDisplayName) — History")
         .navigationBarTitleDisplayMode(.inline)
     }
 

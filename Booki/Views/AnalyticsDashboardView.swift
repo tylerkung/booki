@@ -474,7 +474,7 @@ struct AnalyticsDashboardView: View {
                 NavigationLink(value: top) {
                     SummaryCard(
                         label: "Top Risk",
-                        value: top.player.name,
+                        value: top.player.bookieDisplayName,
                         subtitle: formatCurrency(top.exposure.grossExposure) + " exposure",
                         valueColor: top.pas.label == "High" ? Theme.danger : Theme.warning
                     )

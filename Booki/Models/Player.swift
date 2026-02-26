@@ -71,6 +71,9 @@ final class Player: Syncable {
     /// Bookie-set custom display name (only bookie sees this)
     var displayName: String?
 
+    /// Returns display_name if set, otherwise falls back to player's self-chosen name
+    var bookieDisplayName: String { displayName ?? name }
+
     /// Collection status for tracking outstanding balance follow-ups
     var collectionStatus: CollectionStatus?
 

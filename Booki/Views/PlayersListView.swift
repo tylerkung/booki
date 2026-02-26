@@ -59,7 +59,7 @@ struct PlayersListView: View {
 
         // Apply search
         if !searchText.isEmpty {
-            result = result.filter { $0.player.name.localizedCaseInsensitiveContains(searchText) }
+            result = result.filter { $0.player.bookieDisplayName.localizedCaseInsensitiveContains(searchText) }
         }
 
         // Apply filter
@@ -564,7 +564,7 @@ struct PlayerRowView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(player.name)
+                        Text(player.bookieDisplayName)
                             .font(Theme.headline)
 
                         Text(statusText)
@@ -1036,7 +1036,7 @@ struct PlayerDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle(player.name)
+        .navigationTitle(player.bookieDisplayName)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingAdjustmentSheet) {
             BalanceAdjustmentSheet(player: player)
@@ -1101,7 +1101,7 @@ struct PlayerDetailView: View {
             Text("The member will no longer be able to use this code to claim their account.")
         }
         .confirmationDialog(
-            "Delete \(player.name)?",
+            "Delete \(player.bookieDisplayName)?",
             isPresented: $showingDeleteConfirmation,
             titleVisibility: .visible
         ) {
@@ -1432,8 +1432,8 @@ struct BalanceAdjustmentSheet: View {
                             .foregroundStyle(Theme.textPrimary)
 
                         Text(isNegative
-                            ? "This will reduce what \(player.name) owes"
-                            : "This will increase what \(player.name) owes")
+                            ? "This will reduce what \(player.bookieDisplayName) owes"
+                            : "This will increase what \(player.bookieDisplayName) owes")
                             .font(Theme.bodyFont(size: 12))
                             .foregroundStyle(Theme.textSecondary)
                     }

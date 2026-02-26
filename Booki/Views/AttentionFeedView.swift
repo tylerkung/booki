@@ -32,9 +32,9 @@ enum AttentionItemType {
     var description: String {
         switch self {
         case .overdueSettlement(let player):
-            return "\(player.name) has overdue settlement"
+            return "\(player.bookieDisplayName) has overdue settlement"
         case .nearCreditLimit(let player, let percent):
-            return "\(player.name) at \(percent)% of credit limit"
+            return "\(player.bookieDisplayName) at \(percent)% of credit limit"
         case .highExposureGame(let event, let exposure):
             let formatted = Self.formatCurrency(exposure)
             return "\(event.awayTeam) @ \(event.homeTeam) — \(formatted) activity"
