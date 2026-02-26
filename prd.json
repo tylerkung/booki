@@ -83,7 +83,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "AuthGateView.swift line 62-70 has the routing switch. Currently `case .bookie, nil:` goes to ContentView. Split this: `.bookie` → ContentView with onboarding, `nil` → PlayerMainView without onboarding. The .onChange(of: authManager.userRole) at line 84 triggers onboarding for bookie — make sure nil doesn't trigger it."
     },
     {

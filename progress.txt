@@ -53,3 +53,15 @@ Started: Wed Feb 25 18:55:49 PST 2026
   - `BookieService.fetchOrCreateBookie` is the actual bookie creation call — preserved in `becomeOrganizer()`
   - `isClaimingPlayerAccount` flag prevents auth listener from calling ensureBookieRecord during invite claim flow
 ---
+
+## 2026-02-25 - US-005
+- Split `case .bookie, nil:` in AuthGateView routing: `.bookie` → ContentView, `nil` → PlayerMainView
+- Standalone users now see player tabs (Games, Search, Track, Account) instead of bookie dashboard
+- Onboarding only triggers for `.bookie` role — standalone users skip it
+- Agreement view already returns early for `nil` role
+- Files changed: Booki/Views/AuthGateView.swift
+- **Learnings for future iterations:**
+  - AuthGateView routing is at line 62 in the `switch authManager.userRole` block
+  - `.onChange(of: authManager.userRole)` triggers onboarding only for `.bookie` — no change needed
+  - Sync handlers in AuthGateView trigger on `currentBookieId` and `currentPlayerId` changes — standalone users have neither, so need separate sync trigger (US-006)
+---

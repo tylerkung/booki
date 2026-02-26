@@ -63,9 +63,13 @@ struct AuthGateView: View {
                     case .player:
                         PlayerMainView()
                             .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                    case .bookie, nil:
+                    case .bookie:
                         ContentView()
                             .environment(onboardingManager)
+                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    case nil:
+                        // Standalone user — show player experience
+                        PlayerMainView()
                             .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     }
                 }
