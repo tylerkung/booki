@@ -240,7 +240,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "Simple static section at the bottom of settings (above danger zone). Use anchor tags with the existing btn-ghost styling or plain text links."
     },
     {
