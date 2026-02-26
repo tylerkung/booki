@@ -13,6 +13,13 @@ struct ParlayPartialInfo {
     }
 }
 
+/// Filter options for bet type (singles, multi-pick, futures)
+enum BetTypeFilter: String, CaseIterable {
+    case singles = "Singles"
+    case multiPick = "Multi-Pick"
+    case futures = "Futures"
+}
+
 /// Filter options for bets list
 enum BetFilter: String, CaseIterable {
     case open = "Open"
@@ -44,6 +51,7 @@ struct BetsListView: View {
 
     @State private var selectedFilter: BetFilter = .open
     @State private var selectedPlayerId: UUID? = nil
+    @State private var selectedBetType: BetTypeFilter? = nil
 
     /// Bets matching the current status filter (before player filter)
     private var statusFilteredBets: [Bet] {
@@ -61,11 +69,21 @@ struct BetsListView: View {
         return activeMembers.first { $0.id == id }?.bookieDisplayName
     }
 
-    /// Filtered bets based on selected filter + player
+    /// Filtered bets based on selected filter + player + bet type
     private var filteredBets: [Bet] {
         var result = statusFilteredBets
         if let playerId = selectedPlayerId {
             result = result.filter { $0.player?.id == playerId }
+        }
+        if let betType = selectedBetType {
+            switch betType {
+            case .singles:
+                result = result.filter { !$0.isParlay && $0.market != "outright" }
+            case .multiPick:
+                result = result.filter { $0.isParlay }
+            case .futures:
+                result = result.filter { $0.market == "outright" }
+            }
         }
         return result.sorted { $0.createdAt > $1.createdAt }
     }
@@ -91,15 +109,18 @@ struct BetsListView: View {
                     }
                 }
 
-                // MARK: - Member Dropdown
-                if !activeMembers.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
+                // MARK: - Filter Bar (Member Dropdown + Bet Type Chips)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        if !activeMembers.isEmpty {
                             memberDropdown
                         }
-                        .padding(.horizontal)
-                        .padding(.bottom, 8)
+                        ForEach(BetTypeFilter.allCases, id: \.self) { betType in
+                            betTypeChip(betType)
+                        }
                     }
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
                 }
 
                 // MARK: - Bets List
@@ -208,6 +229,29 @@ struct BetsListView: View {
                 Capsule()
                     .stroke(selectedPlayerId != nil ? Theme.accent : Theme.border, lineWidth: 0.5)
             )
+        }
+    }
+
+    // MARK: - Bet Type Chip
+
+    private func betTypeChip(_ betType: BetTypeFilter) -> some View {
+        let isActive = selectedBetType == betType
+        return Button {
+            selectedBetType = isActive ? nil : betType
+        } label: {
+            Text(betType.rawValue)
+                .font(Theme.bodyFont(size: 13, weight: .medium))
+                .foregroundStyle(isActive ? Theme.background : Theme.textSecondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(isActive ? Theme.accent : Theme.cardBackground)
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(isActive ? Theme.accent : Theme.border, lineWidth: 0.5)
+                )
         }
     }
 
