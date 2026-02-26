@@ -250,3 +250,33 @@ Started: Wed Feb 25 02:44:29 PST 2026
   - Email sending is non-blocking in edge functions — wrap in try/catch so invite creation succeeds even if email fails
   - Data URI SVGs don't work in email clients — use hosted images or Unicode characters for icons
   - Supabase `{{ .ConfirmationURL }}` points to Supabase domain by default — use `{{ .TokenHash }}` to construct custom URLs through your own domain
+
+---
+
+## 2026-02-25 - Member settings, credit limit management, BetSlip navigation, OG image update
+- What was implemented:
+  - **Member Settings page**: New `MemberSettingsView` in Settings where bookies set default credit limit for new invitees, saves to Supabase `bookies.default_credit_limit`
+  - **Default credit limit**: Added `defaultCreditLimit` property to `Bookie` model, `BookieRecord` DTO, and `SyncService` sync methods
+  - **claim_invite reads bookie default**: Edge function now fetches bookie's `default_credit_limit` instead of hardcoded 10000, falls back to 1000
+  - **Supabase migration 022**: `default_credit_limit NUMERIC DEFAULT 1000` on bookies table
+  - **Credit limit editing**: Tappable credit line with pencil icon on member detail, "Set Credit Limit" in overflow menu, saves to Supabase + local SwiftData
+  - **Dashboard credit fix**: `balanceForPlayer()` now uses `BalanceService.playerSummary()` to account for open stakes (was showing $0)
+  - **BetSlip navigation arrows**: Up/down chevrons for navigating between singles fields, maintains field type (stake vs to-win)
+  - **Quick stake buttons**: Reduced to +$1, +$5, +$25 with equal-width layout
+  - **OG image update**: All 14 landing pages updated from `og-image.png` to `bookie-og.jpg` (og:image + twitter:image), added OG tags to verify.html
+  - **Delete Account UI**: Moved to separate card at bottom of Settings, icon+text matching Log Out style
+- Files changed:
+  - Booki/Models/Bookie.swift — defaultCreditLimit property
+  - Booki/Services/BookieService.swift — BookieRecord DTO update
+  - Booki/Services/SyncService.swift — sync defaultCreditLimit
+  - Booki/Views/SettingsView.swift — MemberSettingsView, Delete Account card
+  - Booki/Views/PlayerAnalyticsDetailView.swift — credit limit editing UI
+  - Booki/Views/AnalyticsDashboardView.swift — balanceForPlayer fix
+  - Booki/Views/BetSlipSheet.swift — navigation arrows, quick stakes
+  - supabase/functions/claim_invite/index.ts — read bookie default_credit_limit
+  - supabase/migrations/022_bookies_default_credit_limit.sql — NEW
+  - landing/**/*.html — OG image update to bookie-og.jpg
+- **Learnings for future iterations:**
+  - `BalanceService.playerSummary()` includes open stakes + balance owed — use it for dashboard credit display, not raw ledger sums
+  - BetSlip field ID convention: `"{marketId}_{sideIndicator}"` for stake, `+ "_towin"` for to-win — navigation arrows preserve suffix
+  - Supabase `.update().execute()` returns success even when RLS blocks (0 rows affected) — use service role for critical writes

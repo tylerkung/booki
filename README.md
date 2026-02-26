@@ -445,4 +445,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 25, 2026 - Verification pending screen, Resend invite emails, email templates, verify landing page, settings polish*
+*Last updated: February 25, 2026 - Member settings (default credit limit), credit limit editing, dashboard credit fix, BetSlip navigation arrows, OG image update*

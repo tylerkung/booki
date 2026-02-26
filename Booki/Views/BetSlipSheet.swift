@@ -528,12 +528,59 @@ struct BetSlipSheet: View {
             Text("+$\(amount)")
                 .font(Theme.font(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
-                .padding(.horizontal, 10)
+                .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
                 .background(Theme.elevatedBackground)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Field Navigation
+
+    private enum NavigationDirection {
+        case previous, next
+    }
+
+    /// Ordered list of item keys matching betSlipManager.items order
+    private var orderedItemKeys: [String] {
+        betSlipManager.items.map {
+            betSlipManager.itemStakeKey(marketId: $0.marketId, sideIndicator: $0.sideIndicator)
+        }
+    }
+
+    /// Whether navigation is possible in the given direction
+    private func canNavigateField(_ direction: NavigationDirection) -> Bool {
+        guard let fieldId = activeFieldId else { return false }
+        let baseKey = fieldId.replacingOccurrences(of: "_towin", with: "")
+        let keys = orderedItemKeys
+        guard let currentIndex = keys.firstIndex(of: baseKey) else { return false }
+        switch direction {
+        case .previous: return currentIndex > 0
+        case .next: return currentIndex < keys.count - 1
+        }
+    }
+
+    /// Navigate to the previous or next item's field, maintaining field type (stake vs to-win)
+    private func navigateField(direction: NavigationDirection) {
+        guard let fieldId = activeFieldId else { return }
+        let isToWin = fieldId.hasSuffix("_towin")
+        let baseKey = fieldId.replacingOccurrences(of: "_towin", with: "")
+        let keys = orderedItemKeys
+        guard let currentIndex = keys.firstIndex(of: baseKey) else { return }
+
+        let newIndex: Int
+        switch direction {
+        case .previous:
+            guard currentIndex > 0 else { return }
+            newIndex = currentIndex - 1
+        case .next:
+            guard currentIndex < keys.count - 1 else { return }
+            newIndex = currentIndex + 1
+        }
+
+        let newKey = keys[newIndex]
+        activeFieldId = isToWin ? "\(newKey)_towin" : newKey
     }
 
     private func warningBanner(icon: String, text: String, color: Color) -> some View {
@@ -617,14 +664,42 @@ struct BetSlipSheet: View {
                 // Custom numeric keypad (shown when a field is active)
                 if activeFieldId != nil {
                     VStack(spacing: 4) {
-                        // Quick stakes + Done row
+                        // Quick stakes + navigation arrows + Done row
                         HStack(spacing: 8) {
+                            quickStakeButton(1)
                             quickStakeButton(5)
                             quickStakeButton(25)
-                            quickStakeButton(50)
-                            quickStakeButton(100)
 
-                            Spacer()
+                            // Field navigation arrows (singles mode with 2+ items)
+                            if betSlipManager.betMode == .singles && betSlipManager.count > 1,
+                               let fieldId = activeFieldId,
+                               fieldId != "parlay_stake" && fieldId != "parlay_towin" {
+                                HStack(spacing: 4) {
+                                    Button {
+                                        navigateField(direction: .previous)
+                                    } label: {
+                                        Image(systemName: "chevron.up")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundStyle(canNavigateField(.previous) ? Theme.textPrimary : Theme.textMuted)
+                                            .frame(width: 36, height: 32)
+                                            .background(Theme.elevatedBackground)
+                                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    }
+                                    .disabled(!canNavigateField(.previous))
+
+                                    Button {
+                                        navigateField(direction: .next)
+                                    } label: {
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundStyle(canNavigateField(.next) ? Theme.textPrimary : Theme.textMuted)
+                                            .frame(width: 36, height: 32)
+                                            .background(Theme.elevatedBackground)
+                                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    }
+                                    .disabled(!canNavigateField(.next))
+                                }
+                            }
 
                             Button("Done") {
                                 withAnimation(.easeInOut(duration: 0.2)) {

@@ -39,6 +39,10 @@ struct SettingsView: View {
                     menuDivider
                     subscriptionRow
                     menuDivider
+                    settingsMenuRow(icon: "person.2", title: "Member Settings") {
+                        MemberSettingsView()
+                    }
+                    menuDivider
                     if isPro {
                         settingsMenuRow(icon: "hand.raised", title: "Pick Management") {
                             PickManagementSettingsView()
@@ -75,16 +79,31 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
 
-                // Delete Account — separate, at bottom
-                Button {
-                    showingDeleteConfirmation = true
-                } label: {
-                    Text("Delete Account")
-                        .font(Theme.bodyFont(size: 14))
-                        .foregroundStyle(Theme.textMuted)
+                // Delete Account — separate card at bottom
+                VStack(spacing: 0) {
+                    Button {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 20))
+                                .foregroundStyle(Theme.danger)
+                                .frame(width: 28, alignment: .center)
+
+                            Text("Delete Account")
+                                .font(Theme.body)
+                                .fontWeight(.medium)
+                                .foregroundStyle(Theme.danger)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
                 }
-                .padding(.top, 32)
-                .padding(.bottom, 16)
+                .cardStyle()
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
             }
             .background(Theme.background)
             .navigationTitle("Settings")
@@ -1258,6 +1277,137 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Member Settings
+
+struct MemberSettingsView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var bookies: [Bookie]
+
+    @State private var creditLimitText: String = ""
+    @State private var isSaving = false
+    @State private var saveMessage: String?
+
+    private var currentBookie: Bookie? {
+        bookies.first
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                sectionHeader("Default Credit Limit")
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Credit Limit")
+                            .foregroundStyle(Theme.textPrimary)
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Text("$")
+                                .foregroundStyle(Theme.textSecondary)
+                            TextField("1000", text: $creditLimitText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .foregroundStyle(Theme.textPrimary)
+                                .frame(width: 100)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+
+                    settingsDivider
+
+                    Button {
+                        saveCreditLimit()
+                    } label: {
+                        HStack {
+                            if isSaving {
+                                ProgressView()
+                                    .tint(Theme.accent)
+                            } else {
+                                Label("Save", systemImage: "checkmark.circle")
+                                    .foregroundStyle(Theme.accent)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .disabled(isSaving)
+                }
+                .cardStyle()
+
+                Text("This credit limit will be applied to all new members who join via invite. Existing members are not affected.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                    .padding(.horizontal, 4)
+
+                if let message = saveMessage {
+                    Text(message)
+                        .font(Theme.caption)
+                        .foregroundStyle(message.contains("Failed") ? Theme.danger : Theme.success)
+                        .padding(.horizontal, 4)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+        }
+        .background(Theme.background)
+        .navigationTitle("Member Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if let bookie = currentBookie {
+                let value = bookie.defaultCreditLimit
+                if value == value.rounded() {
+                    creditLimitText = "\(Int(truncating: NSDecimalNumber(decimal: value.rounded())))"
+                } else {
+                    creditLimitText = "\(value)"
+                }
+            }
+        }
+    }
+
+    private func saveCreditLimit() {
+        let cleaned = creditLimitText.replacingOccurrences(of: ",", with: "")
+        guard let value = Decimal(string: cleaned), value >= 0 else {
+            saveMessage = "Please enter a valid amount"
+            return
+        }
+
+        guard let bookie = currentBookie else { return }
+        isSaving = true
+        saveMessage = nil
+
+        Task {
+            do {
+                let supabase = SupabaseClientManager.shared.client
+                try await supabase
+                    .from("bookies")
+                    .update([
+                        "default_credit_limit": "\(value)",
+                        "updated_at": ISO8601DateFormatter().string(from: Date())
+                    ])
+                    .eq("id", value: bookie.id.uuidString.lowercased())
+                    .execute()
+
+                await MainActor.run {
+                    bookie.defaultCreditLimit = value
+                    isSaving = false
+                    saveMessage = "Saved successfully"
+                }
+
+                // Clear success message after a delay
+                try? await Task.sleep(for: .seconds(2))
+                await MainActor.run { saveMessage = nil }
+            } catch {
+                await MainActor.run {
+                    isSaving = false
+                    saveMessage = "Failed to save: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Shared Settings Helpers

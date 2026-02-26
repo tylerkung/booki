@@ -55,6 +55,9 @@ final class Bookie {
     // Feature tier
     var tier: BookieTier
 
+    // Default credit limit for new members
+    var defaultCreditLimit: Decimal
+
     init(
         id: UUID = UUID(),
         email: String,
@@ -65,7 +68,8 @@ final class Bookie {
         manualBetAcceptance: Bool = false,
         manualBetGrading: Bool = false,
         allowFuturesParlays: Bool = true,
-        tier: BookieTier = .free
+        tier: BookieTier = .free,
+        defaultCreditLimit: Decimal = 1000
     ) {
         self.id = id
         self.email = email
@@ -77,5 +81,6 @@ final class Bookie {
         self.manualBetGrading = manualBetGrading
         self.allowFuturesParlays = allowFuturesParlays
         self.tier = tier
+        self.defaultCreditLimit = defaultCreditLimit
     }
 }

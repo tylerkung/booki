@@ -455,6 +455,7 @@ final class SyncService {
                 existing.manualBetGrading = record.manualBetGrading ?? false
                 existing.allowFuturesParlays = record.allowFuturesParlays ?? true
                 existing.tier = tierValue
+                existing.defaultCreditLimit = Decimal(record.defaultCreditLimit ?? 1000)
             } else {
                 let bookie = Bookie(
                     id: record.id,
@@ -465,7 +466,8 @@ final class SyncService {
                     manualBetAcceptance: record.manualBetAcceptance ?? false,
                     manualBetGrading: record.manualBetGrading ?? false,
                     allowFuturesParlays: record.allowFuturesParlays ?? true,
-                    tier: tierValue
+                    tier: tierValue,
+                    defaultCreditLimit: Decimal(record.defaultCreditLimit ?? 1000)
                 )
                 context.insert(bookie)
             }
@@ -493,6 +495,7 @@ final class SyncService {
                     existing.manualBetGrading = record.manualBetGrading ?? false
                     existing.allowFuturesParlays = record.allowFuturesParlays ?? true
                     existing.tier = tierValue
+                    existing.defaultCreditLimit = Decimal(record.defaultCreditLimit ?? 1000)
                     try context.save()
                 } else {
                     let bookie = Bookie(
@@ -504,7 +507,8 @@ final class SyncService {
                         manualBetAcceptance: record.manualBetAcceptance ?? false,
                         manualBetGrading: record.manualBetGrading ?? false,
                         allowFuturesParlays: record.allowFuturesParlays ?? true,
-                        tier: tierValue
+                        tier: tierValue,
+                        defaultCreditLimit: Decimal(record.defaultCreditLimit ?? 1000)
                     )
                     context.insert(bookie)
                     try context.save()

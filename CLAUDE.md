@@ -251,3 +251,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Email templates**: `landing/email-confirm.html` (verification), `landing/email-invite.html` (invite) — dark theme, Booki branding
 - **Verify landing page**: `landing/verify.html` handles email confirmation token, branded loading/success states, "Open Booki" deep link
 - **Delete Account UI**: Separated from main settings card, standalone muted text button at page bottom
+- **Member Settings**: `MemberSettingsView` — bookies set `default_credit_limit` for new invitees, `claim_invite` reads it (fallback 1000). Migration 022.
+- **Credit limit editing**: Tappable credit line + overflow menu on member detail, saves to Supabase + SwiftData
+- **Dashboard credit fix**: Uses `BalanceService.playerSummary()` (includes open stakes) instead of raw ledger sums
+- **BetSlip navigation**: Up/down arrows for navigating singles fields, quick stakes +$1/+$5/+$25 with equal width
+- **OG image**: All landing pages use `bookie-og.jpg` for og:image and twitter:image

@@ -119,6 +119,18 @@ Deno.serve(async (req) => {
     const authEmail = authUser.user.email ?? '';
     const playerName = authEmail.includes('@') ? authEmail.split('@')[0] : authEmail || 'Member';
 
+    // Fetch bookie's default credit limit
+    let creditLimit = 1000; // fallback default
+    const { data: bookieRecord } = await client
+      .from('bookies')
+      .select('default_credit_limit')
+      .eq('id', invite.bookie_id)
+      .single();
+
+    if (bookieRecord?.default_credit_limit != null) {
+      creditLimit = Number(bookieRecord.default_credit_limit);
+    }
+
     // Create new Player record
     const { data: newPlayer, error: playerError } = await client
       .from('players')
@@ -128,7 +140,7 @@ Deno.serve(async (req) => {
         name: playerName,
         email: authEmail || null,
         status: 'active',
-        credit_limit: 10000,
+        credit_limit: creditLimit,
         claimed_at: new Date().toISOString(),
       })
       .select('id, name, bookie_id')

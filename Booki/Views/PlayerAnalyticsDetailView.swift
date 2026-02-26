@@ -28,6 +28,10 @@ struct PlayerAnalyticsDetailView: View {
     @State private var showingEditName = false
     @State private var editedName = ""
 
+    // Edit credit limit
+    @State private var showingEditCreditLimit = false
+    @State private var creditLimitText = ""
+
     // Picks filter
     @State private var picksFilter: PicksFilter = .open
 
@@ -81,6 +85,15 @@ struct PlayerAnalyticsDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button {
+                        let formatter = NumberFormatter()
+                        formatter.numberStyle = .decimal
+                        formatter.maximumFractionDigits = 0
+                        creditLimitText = formatter.string(from: player.creditLimit as NSDecimalNumber) ?? "0"
+                        showingEditCreditLimit = true
+                    } label: {
+                        Label("Set Credit Limit", systemImage: "creditcard")
+                    }
                     Button(role: .destructive) {
                         showingArchiveConfirmation = true
                     } label: {
@@ -141,6 +154,16 @@ struct PlayerAnalyticsDetailView: View {
         } message: {
             Text("This name is only visible to you.")
         }
+        .alert("Credit Limit", isPresented: $showingEditCreditLimit) {
+            TextField("Amount", text: $creditLimitText)
+                .keyboardType(.numberPad)
+            Button("Save") {
+                saveCreditLimit()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Set the maximum credit for this member.")
+        }
     }
 
     // MARK: - Actions
@@ -166,6 +189,29 @@ struct PlayerAnalyticsDetailView: View {
                 }
             } catch {
                 print("Failed to update player name: \(error)")
+            }
+        }
+    }
+
+    private func saveCreditLimit() {
+        let cleaned = creditLimitText.replacingOccurrences(of: ",", with: "")
+        guard let value = Decimal(string: cleaned), value >= 0 else { return }
+        let playerId = player.id.uuidString.lowercased()
+
+        Task {
+            do {
+                let supabase = SupabaseClientManager.shared.client
+                try await supabase
+                    .from("players")
+                    .update(["credit_limit": "\(value)"])
+                    .eq("id", value: playerId)
+                    .execute()
+
+                await MainActor.run {
+                    player.creditLimit = value
+                }
+            } catch {
+                print("Failed to update credit limit: \(error)")
             }
         }
     }
@@ -250,10 +296,23 @@ struct PlayerAnalyticsDetailView: View {
                     .clipShape(Capsule())
             }
 
-            // Credit limit utilization
-            Text("Credit: \(formatCurrency(player.creditLimit - balanceSummary.availableCredit)) / \(formatCurrency(player.creditLimit)) · \(Int(utilization))%")
-                .font(Theme.bodyFont(size: 13))
-                .foregroundStyle(Theme.textSecondary)
+            // Credit limit utilization (tappable to edit)
+            Button {
+                let formatter = NumberFormatter()
+                formatter.numberStyle = .decimal
+                formatter.maximumFractionDigits = 0
+                creditLimitText = formatter.string(from: player.creditLimit as NSDecimalNumber) ?? "0"
+                showingEditCreditLimit = true
+            } label: {
+                HStack(spacing: 4) {
+                    Text("Credit: \(formatCurrency(player.creditLimit - balanceSummary.availableCredit)) / \(formatCurrency(player.creditLimit)) · \(Int(utilization))%")
+                        .font(Theme.bodyFont(size: 13))
+                        .foregroundStyle(Theme.textSecondary)
+                    Image(systemName: "pencil")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Theme.textMuted)
+                }
+            }
 
             // Reason chips
             if !summary.pas.reasonChips.isEmpty {

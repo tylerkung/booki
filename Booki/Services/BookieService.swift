@@ -39,6 +39,7 @@ struct BookieRecord: Codable {
     let manualBetGrading: Bool?
     let allowFuturesParlays: Bool?
     let tier: String?
+    let defaultCreditLimit: Double?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -52,6 +53,7 @@ struct BookieRecord: Codable {
         case manualBetGrading = "manual_bet_grading"
         case allowFuturesParlays = "allow_futures_parlays"
         case tier
+        case defaultCreditLimit = "default_credit_limit"
     }
 }
 

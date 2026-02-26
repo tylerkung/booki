@@ -517,8 +517,10 @@ struct AnalyticsDashboardView: View {
     }
 
     private func balanceForPlayer(_ player: Player) -> Decimal {
+        let playerBets = bets.filter { $0.player?.id == player.id }
         let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
-        return BalanceService.calculateBalance(from: playerLedgerEntries)
+        let summary = BalanceService.playerSummary(for: player, bets: playerBets, ledgerEntries: playerLedgerEntries)
+        return player.creditLimit - summary.availableCredit
     }
 
     private func utilizationForPlayer(_ player: Player) -> Double {
