@@ -68,6 +68,9 @@ final class Player: Syncable {
     /// Links to Supabase auth user after player claims account
     var authUserId: UUID?
 
+    /// Bookie-set custom display name (only bookie sees this)
+    var displayName: String?
+
     /// Collection status for tracking outstanding balance follow-ups
     var collectionStatus: CollectionStatus?
 
@@ -108,6 +111,7 @@ final class Player: Syncable {
         inviteCodeExpiresAt: Date? = nil,
         claimedAt: Date? = nil,
         authUserId: UUID? = nil,
+        displayName: String? = nil,
         collectionStatus: CollectionStatus? = nil,
         collectionStatusDate: Date? = nil,
         promisedPaymentDate: Date? = nil,
@@ -131,6 +135,7 @@ final class Player: Syncable {
         self.inviteCodeExpiresAt = inviteCodeExpiresAt
         self.claimedAt = claimedAt
         self.authUserId = authUserId
+        self.displayName = displayName
         self.collectionStatus = collectionStatus
         self.collectionStatusDate = collectionStatusDate
         self.promisedPaymentDate = promisedPaymentDate

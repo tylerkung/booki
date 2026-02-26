@@ -796,6 +796,7 @@ final class SyncService {
             // Update if server is newer
             if record.updatedAt > (existing.lastSyncedAt ?? .distantPast) {
                 existing.name = record.name
+                existing.displayName = record.displayName
                 existing.email = record.email
                 existing.creditLimit = record.creditLimit
                 existing.status = PlayerStatus(rawValue: record.status) ?? .active
@@ -815,6 +816,7 @@ final class SyncService {
             let player = Player(
                 id: record.id,
                 name: record.name,
+                displayName: record.displayName,
                 email: record.email,
                 creditLimit: record.creditLimit,
                 status: PlayerStatus(rawValue: record.status) ?? .active,

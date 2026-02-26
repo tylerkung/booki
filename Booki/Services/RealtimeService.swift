@@ -334,6 +334,7 @@ final class RealtimeService {
         if let existing = existingPlayers.first {
             // Update existing record (realtime updates are always newer)
             existing.name = record.name
+            existing.displayName = record.displayName
             existing.email = record.email
             existing.creditLimit = record.creditLimit
             existing.status = PlayerStatus(rawValue: record.status) ?? .active
@@ -352,6 +353,7 @@ final class RealtimeService {
             let player = Player(
                 id: record.id,
                 name: record.name,
+                displayName: record.displayName,
                 email: record.email,
                 creditLimit: record.creditLimit,
                 status: PlayerStatus(rawValue: record.status) ?? .active,

@@ -8,6 +8,7 @@ struct PlayerRecord: Codable, Identifiable {
     let bookieId: UUID
     let authUserId: UUID?
     let name: String
+    let displayName: String?
     let email: String?
     let creditLimit: Decimal
     let status: String
@@ -24,6 +25,7 @@ struct PlayerRecord: Codable, Identifiable {
         case bookieId = "bookie_id"
         case authUserId = "auth_user_id"
         case name
+        case displayName = "display_name"
         case email
         case creditLimit = "credit_limit"
         case status
@@ -43,6 +45,7 @@ struct PlayerUpsert: Codable {
     let bookieId: UUID
     let authUserId: UUID?
     let name: String
+    let displayName: String?
     let email: String?
     let creditLimit: Decimal
     let status: String
@@ -64,6 +67,7 @@ struct PlayerUpsert: Codable {
         case bookieId = "bookie_id"
         case authUserId = "auth_user_id"
         case name
+        case displayName = "display_name"
         case email
         case creditLimit = "credit_limit"
         case status
@@ -87,6 +91,7 @@ struct PlayerUpsert: Codable {
         self.bookieId = bookieId
         self.authUserId = player.authUserId
         self.name = player.name
+        self.displayName = player.displayName
         self.email = player.email
         self.creditLimit = player.creditLimit
         self.status = player.status.rawValue
