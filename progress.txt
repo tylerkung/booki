@@ -10,6 +10,25 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - Player data cached in `playerMap` (keyed by id) for O(1) lookups
 ---
 
+## 2026-02-26 - US-002
+- Implemented pick detail view with hero and financials cards
+- Pick rows in picks table now clickable — navigate to `#/picks/<betId>`
+- Hero card shows: status badge, team/selection name, event name, market type, clickable member name link
+- Financials card shows: odds (American format), stake, potential return, P/L for settled/won/lost picks
+- Added `loadPickDetail()` method that fetches single bet from Supabase
+- Added `calcPotentialReturn()` and `calcPickPnl()` helper functions
+- Added `pickDetail` and `isLoadingPickDetail` state variables
+- Loading state with shimmer placeholders while data fetches
+- Back button navigates to `#/picks`
+- `parseRoute()` triggers `loadPickDetail()` on pick-detail route
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - Pick detail section uses `x-show="route === 'pick-detail'"` pattern (same as other views)
+  - Potential return = stake + stake*(odds/100) for positive odds, stake + stake*(100/|odds|) for negative
+  - P/L: won/settled = potential return - stake, lost = -stake
+  - The `pickDetail` object holds the full bet row from Supabase
+---
+
 ## 2026-02-26 - US-001
 - Implemented parameterized hash routing in dashboard.js
 - Added `selectedPlayerId` and `selectedBetId` reactive properties

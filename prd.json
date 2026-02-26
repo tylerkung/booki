@@ -37,7 +37,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Add a new section in app.html with x-show=\"route === 'pick-detail'\". Add loadPickDetail() method to dashboard.js that fetches the single bet. Potential return calculation: for positive American odds, return = stake * (odds/100); for negative, return = stake * (100/Math.abs(odds)). Use the existing formatCurrency() and formatOdds() helpers. The member name can be looked up from playerMap."
     },
     {
