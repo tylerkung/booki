@@ -55,7 +55,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Add to the pick detail view created in US-002. The bet_legs table has columns: team_name, market_type, odds, status, ticket_id. Use x-show to conditionally render the parlay section. Settlement events may not exist for all bets — only those that have been settled/reversed/overridden. Gracefully handle empty results."
     },
     {

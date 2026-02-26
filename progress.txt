@@ -10,6 +10,21 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - Player data cached in `playerMap` (keyed by id) for O(1) lookups
 ---
 
+## 2026-02-26 - US-003
+- Implemented parlay legs card and activity timeline card on pick detail view
+- Parlay legs card: shows each leg with team name, market type, odds, and status badge; combined odds at top
+- Activity timeline card: fetches settlement_events for the bet, falls back to created_at if none exist
+- Timeline uses dot-and-line visual with event type, description, and date
+- Added `pickDetailLegs` and `pickDetailTimeline` state variables
+- Updated `loadPickDetail()` to fetch bet_legs (for parlays) and settlement_events
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - `bet_legs` are queried by `ticket_id` (not `bet_id`) — parlays have a shared ticket_id across legs
+  - `settlement_events` may be empty for bets that haven't been settled/reversed/overridden — always provide a fallback
+  - Financials card needed `margin-bottom:16px` added since new cards follow it now
+  - The card-header with flex layout (title left, meta right) is a reusable pattern: `display:flex;align-items:center;justify-content:space-between`
+---
+
 ## 2026-02-26 - US-002
 - Implemented pick detail view with hero and financials cards
 - Pick rows in picks table now clickable — navigate to `#/picks/<betId>`
