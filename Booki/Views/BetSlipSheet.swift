@@ -996,7 +996,7 @@ struct BetSlipSheet: View {
             let predicate = #Predicate<Bookie> { $0.id == bookieId }
             let descriptor = FetchDescriptor<Bookie>(predicate: predicate)
             if let bookie = try? modelContext.fetch(descriptor).first {
-                return bookie.tier.isPro
+                return bookie.isPro
             }
         }
         return true // Default to allowing if bookie not found

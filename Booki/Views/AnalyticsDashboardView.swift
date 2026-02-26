@@ -44,6 +44,10 @@ struct AnalyticsDashboardView: View {
         bookies.first?.tier ?? .free
     }
 
+    private var bookieIsPro: Bool {
+        bookies.first?.isPro ?? false
+    }
+
     private var lifetimePL: Decimal {
         ledgerEntries
             .filter { $0.type != .paymentLogged }
@@ -165,7 +169,7 @@ struct AnalyticsDashboardView: View {
                             .padding(.horizontal, 16)
                             .id("playerList")
 
-                        if bookieTier.isPro {
+                        if bookieIsPro {
                             FuturesTrackingCard(bets: bets)
                                 .padding(.horizontal, 16)
                         }
@@ -173,7 +177,7 @@ struct AnalyticsDashboardView: View {
                         sportPerformanceGated
                             .padding(.horizontal, 16)
 
-                        if bookieTier.isPro {
+                        if bookieIsPro {
                             RecentActivitySection(bets: bets, ledgerEntries: ledgerEntries)
                                 .padding(.horizontal, 16)
                         }
@@ -203,7 +207,7 @@ struct AnalyticsDashboardView: View {
 
     private var sportPerformanceGated: some View {
         Group {
-            if bookieTier.isPro {
+            if bookieIsPro {
                 SportPerformanceSection(bets: bets)
             } else {
                 ZStack {

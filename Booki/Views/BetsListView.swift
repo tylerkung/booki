@@ -337,7 +337,7 @@ struct BetDetailView: View {
     let bet: Bet
 
     private var isPro: Bool {
-        bookies.first?.tier.isPro ?? false
+        bookies.first?.isPro ?? false
     }
 
     /// Get the current parlay push/void policy

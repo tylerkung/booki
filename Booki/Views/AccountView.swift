@@ -786,16 +786,16 @@ struct PlayerActivityView: View {
     @Query private var bookies: [Bookie]
     @State private var showingProUpgrade = false
 
-    private var bookieTier: BookieTier {
-        bookies.first?.tier ?? .free
+    private var bookieIsPro: Bool {
+        bookies.first?.isPro ?? false
     }
 
     private var isHistoryLimited: Bool {
-        !bookieTier.isPro && filteredEntries.count > 30
+        !bookieIsPro && filteredEntries.count > 30
     }
 
     private var displayedEntries: [LedgerEntry] {
-        if bookieTier.isPro {
+        if bookieIsPro {
             return filteredEntries
         }
         return Array(filteredEntries.prefix(30))

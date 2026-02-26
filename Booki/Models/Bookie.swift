@@ -58,6 +58,11 @@ final class Bookie {
     // Default credit limit for new members
     var defaultCreditLimit: Decimal
 
+    /// Whether this bookie has Pro-level access via tier OR subscription status
+    var isPro: Bool {
+        tier.isPro || subscriptionStatus == .active || subscriptionStatus == .pro
+    }
+
     init(
         id: UUID = UUID(),
         email: String,

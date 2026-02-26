@@ -17,7 +17,7 @@ enum TierService {
         return BookieTier(rawValue: raw) ?? .free
     }
 
-    /// Whether the cached tier is Pro
+    /// Whether the cached tier is Pro (tier-only check for non-View contexts)
     static var isPro: Bool {
         currentTier.isPro
     }

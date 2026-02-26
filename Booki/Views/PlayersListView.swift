@@ -27,6 +27,10 @@ struct PlayersListView: View {
         bookies.first?.tier ?? .free
     }
 
+    private var bookieIsPro: Bool {
+        bookies.first?.isPro ?? false
+    }
+
     private static let filterOptions = ["All", "Attention needed", "Overdue", "High exposure", "Big winners", "Big losers"]
 
     private var deletedInviteIds: Set<String> {
@@ -205,7 +209,7 @@ struct PlayersListView: View {
             .padding(.top, 60)
         } else {
             VStack(spacing: 12) {
-                if bookieTier.isPro {
+                if bookieIsPro {
                     memberSearchBar
                     memberFilterChips
 
@@ -236,7 +240,7 @@ struct PlayersListView: View {
                                 utilization: utilizationForPlayer(summary.player),
                                 summary: summary,
                                 expanded: true,
-                                showTags: bookieTier.isPro
+                                showTags: bookieIsPro
                             )
                             .padding()
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -249,7 +253,7 @@ struct PlayersListView: View {
                 .padding(.top, 0)
 
                 // Capacity banner for free tier at member limit
-                if !bookieTier.isPro {
+                if !bookieIsPro {
                     let activeCount = players.filter { $0.status != .archived && $0.authUserId != nil }.count
                     if activeCount >= bookieTier.memberLimit {
                         capacityBanner(activeCount: activeCount)
@@ -1574,8 +1578,12 @@ struct InviteMemberSheet: View {
         bookies.first?.tier ?? .free
     }
 
+    private var bookieIsPro: Bool {
+        bookies.first?.isPro ?? false
+    }
+
     private var isAtCapacity: Bool {
-        guard !bookieTier.isPro else { return false }
+        guard !bookieIsPro else { return false }
         let activeCount = players.filter { $0.status != .archived && $0.authUserId != nil }.count
         return activeCount >= bookieTier.memberLimit
     }

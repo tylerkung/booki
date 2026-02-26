@@ -18,7 +18,7 @@ struct SettingsView: View {
     @State private var deleteError: String?
 
     private var isPro: Bool {
-        bookies.first?.tier.isPro ?? false
+        bookies.first?.isPro ?? false
     }
 
     private var currentBookie: Bookie? {
@@ -389,8 +389,8 @@ struct ProfileSettingsView: View {
                         settingsDetailRow(label: "Email", value: bookie.email)
                         settingsDivider
                         settingsDetailRow(label: "Status") {
-                            Text(bookie.subscriptionStatus.rawValue.capitalized)
-                                .foregroundStyle(subscriptionStatusColor(bookie.subscriptionStatus))
+                            Text(bookie.isPro ? "Pro" : "Free")
+                                .foregroundStyle(bookie.isPro ? Theme.accent : Theme.textSecondary)
                         }
                         settingsDivider
                         Button {
