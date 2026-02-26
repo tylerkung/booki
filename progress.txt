@@ -1,176 +1,24 @@
 # Ralph Progress Log
-Started: Wed Feb 25 18:55:49 PST 2026
+Started: Thu Feb 26 14:57:41 PST 2026
+---
 
 ## Codebase Patterns
-- `authManager.isStandaloneUser` gates all standalone-specific UI (no bookie, no linked player)
-- `authManager.becomeOrganizer()` creates bookie record on demand — counterpart to disabled auto-creation
-- `authManager.clearBookieState()` reverts to standalone (userRole = nil)
-- Edge functions check `!player.bookie_id` to identify standalone users (server-side)
-- Standalone sync: `syncService.syncStandalone()` for events-only (bookie_id IS NULL)
-- BetSlipSheet `canSubmit` is the single gate for validation — add all new checks there
-- `Theme.textMuted` + `Theme.elevatedBackground` for disabled/coming-soon styling
-- `playerMenuRow(icon:title:color:)` in AccountView for menu rows — pass Theme.gold for upgrade, Theme.danger for destructive
-- Active member count filter: `$0.status != .archived && $0.authUserId != nil`
-- Edge function error responses use specific error strings (`member_limit_reached`, `has_members_or_invites`, `open_bet_limit_reached`) for client-side handling
+- Dashboard SPA uses Alpine.js with hash-based routing in `landing/dashboard/dashboard.js`
+- Routes parsed via `parseRoute()` on `hashchange` events — use regex for parameterized routes
+- State variables (e.g. `selectedPlayerId`) live in the Alpine data object returned by `dashboardApp()`
+- Edge functions called via `callEdgeFunction(name, body)` helper with auth headers
+- Player data cached in `playerMap` (keyed by id) for O(1) lookups
 ---
 
-## 2026-02-25 - US-001
-- Replaced '$49.99 / month' price line with 'Coming Soon' in Theme.textSecondary
-- Removed NavigationLink to ProCheckoutView from sticky bottom CTA
-- Replaced subscribe button with non-tappable muted text: 'Coming Soon' in Theme.textMuted on Theme.elevatedBackground
-- Added notification note below button: 'We'll notify you when Booki Pro is available.'
-- Preserved BookiPro logo, feature list card, contextMessage, dismiss X button, Terms/Privacy links
-- ProCheckoutView.swift left untouched (just unreachable)
-- Files changed: Booki/Views/ProUpgradeSheet.swift
+## 2026-02-26 - US-001
+- Implemented parameterized hash routing in dashboard.js
+- Added `selectedPlayerId` and `selectedBetId` reactive properties
+- `parseRoute()` now uses regex to detect `#/members/<id>` and `#/picks/<id>` patterns
+- Added `settings` to supported routes, `member-detail` and `pick-detail` as parameterized routes
+- Existing routes unchanged, back navigation works via existing `hashchange` listener
+- Files changed: `landing/dashboard/dashboard.js`
 - **Learnings for future iterations:**
-  - ProUpgradeSheet is presented via .sheet from multiple places in the app — changes here affect all upsell entry points
-  - Theme.textMuted and Theme.elevatedBackground are the standard muted/disabled styling
-  - ProCheckoutView still exists in the project but is now unreachable — can be cleaned up later
----
-
-## 2026-02-25 - US-002
-- Verified downgrade enforcement already implemented in create_invite/index.ts
-- Constants MEMBER_LIMIT_FREE=3, MEMBER_LIMIT_PRO=50 at lines 17-18
-- Bookie tier read via `.select('id, tier')` at line 74
-- Active player count query filters `auth_user_id IS NOT NULL` (archived/removed don't count)
-- Returns 403 with `{ success: false, error: 'member_limit_reached', limit, current }` when at capacity
-- Files changed: none (already implemented)
-- **Learnings for future iterations:**
-  - create_invite already selects bookie.tier — no need to add it
-  - Member count filter uses `.not('auth_user_id', 'is', null)` to exclude archived members
-  - No Deno or Docker available locally for edge function typecheck — verify syntax manually
----
-
-## 2026-02-25 - US-003
-- Verified InviteMemberSheet already has capacity blocking: `isAtCapacity` check, `atCapacityContent` with warning icon, limit message, and Upgrade CTA
-- Verified PlayersListView already has `capacityBanner` shown when free tier is at member limit
-- Fixed banner accent color from Theme.accent (teal) to Theme.warning (orange/yellow) per AC requirement
-- Banner uses Theme.cardBackground background with Theme.warning icon and chevron
-- Banner tappable → presents ProUpgradeSheet with contextMessage
-- Files changed: Booki/Views/PlayersListView.swift (2 color changes in capacityBanner)
-- **Learnings for future iterations:**
-  - InviteMemberSheet is defined inside PlayersListView.swift (line ~1558), not a separate file
-  - `isAtCapacity` filters by `$0.status != .archived && $0.authUserId != nil` — matches edge function logic
-  - `bookieTier.memberLimit` is a computed property on BookieTier enum
----
-
-## 2026-02-25 - US-004
-- Removed auto-creation of bookie record in `ensureBookieRecord()` — new users without player/bookie records stay as standalone (userRole == nil)
-- Added `isStandaloneUser` computed property: true when `isAuthenticated && userRole == nil`
-- Added `becomeOrganizer(name:)` public method for on-demand bookie creation (used by US-009)
-- Existing bookie and player accounts unaffected — ensureBookieRecord still fetches existing records
-- Files changed: Booki/Services/AuthManager.swift
-- **Learnings for future iterations:**
-  - `ensureBookieRecord` is called from `checkCurrentSession`, auth state listener `.signedIn`, and `completePlayerClaimFlow` — all paths now handle standalone
-  - `BookieService.fetchOrCreateBookie` is the actual bookie creation call — preserved in `becomeOrganizer()`
-  - `isClaimingPlayerAccount` flag prevents auth listener from calling ensureBookieRecord during invite claim flow
----
-
-## 2026-02-25 - US-005
-- Split `case .bookie, nil:` in AuthGateView routing: `.bookie` → ContentView, `nil` → PlayerMainView
-- Standalone users now see player tabs (Games, Search, Track, Account) instead of bookie dashboard
-- Onboarding only triggers for `.bookie` role — standalone users skip it
-- Agreement view already returns early for `nil` role
-- Files changed: Booki/Views/AuthGateView.swift
-- **Learnings for future iterations:**
-  - AuthGateView routing is at line 62 in the `switch authManager.userRole` block
-  - `.onChange(of: authManager.userRole)` triggers onboarding only for `.bookie` — no change needed
-  - Sync handlers in AuthGateView trigger on `currentBookieId` and `currentPlayerId` changes — standalone users have neither, so need separate sync trigger (US-006)
----
-
-## 2026-02-25 - US-006
-- Added `syncStandalone()` to SyncService — syncs only shared events/markets (bookie_id IS NULL)
-- Modified `sync()` to fallback to `syncStandalone()` when user is standalone
-- Added `.onChange(of: authManager.isStandaloneUser)` trigger in AuthGateView for initial sync
-- Updated foreground sync handler to also call `syncStandalone()` for standalone users
-- Created synthetic local-only Player in PlayerMainView with $10,000 credit limit
-- Added `setCurrentPlayerId()` method to AuthManager so PlayerMainView can register the synthetic player
-- Added `ensureStandalonePlayer()` in PlayerMainView `.onAppear` — creates player, sets needsSync=false
-- Files changed: Booki/Services/SyncService.swift, Booki/Views/AuthGateView.swift, Booki/Views/PlayerMainView.swift, Booki/Services/AuthManager.swift
-- **Learnings for future iterations:**
-  - SyncService.sync() requires `currentBookieId` — standalone users need separate `syncStandalone()` path
-  - `downloadSharedEventsAndMarkets` queries `.is("bookie_id", value: nil)` for shared data
-  - Synthetic player must have `needsSync = false` to prevent upload attempts
-  - `upsertEvent` uses `record.bookieId ?? bookieId` — shared events get a dummy bookieId locally (this is existing behavior)
-  - PlayerMainView creates the standalone player and calls `setCurrentPlayerId()` so child views work
----
-
-## 2026-02-25 - US-007
-- Added `isAtStandaloneOpenBetLimit` computed property in BetSlipSheet — checks open bets (pending/accepted) for standalone players (no bookie)
-- Added limit check to `canSubmit` — blocks Place Bet when at 25 open bets
-- Added warning message in stickyBottomSection with warning icon and Theme.warning styling
-- Added server-side check in `submit_bets/index.ts` — if `!player.bookie_id`, counts open bets and returns 403 `open_bet_limit_reached` when >= 25
-- Added same server-side check in `submit_parlay/index.ts`
-- Linked players (with bookie) have no open bet limit — guard checks `player.bookie == nil` / `!player.bookie_id`
-- Files changed: Booki/Views/BetSlipSheet.swift, supabase/functions/submit_bets/index.ts, supabase/functions/submit_parlay/index.ts
-- **Learnings for future iterations:**
-  - BetSlipSheet is at Booki/Views/BetSlipSheet.swift (not in Components/)
-  - `canSubmit` is the single gate for the Place Bet button — add all validation guards there
-  - stickyBottomSection has the validation warnings area before the keypad
-  - Edge functions check `!player.bookie_id` to identify standalone users
----
-
-## 2026-02-25 - US-008
-- Created BecomeOrganizerView.swift with header, 5 benefit rows, free tier callout, and teal CTA
-- Benefits: Invite Members, Live Dashboard, Balance Management, Full Control, Auto-Pilot
-- Free tier callout with highlighted border and checkmark items
-- CTA button action is configurable via `onGetStarted` closure (placeholder prints if nil)
-- Files changed: Booki/Views/BecomeOrganizerView.swift (new file)
-- **Learnings for future iterations:**
-  - View follows standard pattern: ScrollView > VStack > sections, Theme colors
-  - `onGetStarted` closure allows parent to wire the bookie creation action (US-009)
----
-
-## 2026-02-25 - US-009
-- Added "Be an Organizer" NavigationLink row in AccountView playerMenuSection, above About
-- Row uses crown.fill icon in Theme.gold, only visible when `authManager.isStandaloneUser`
-- NavigationLink pushes BecomeOrganizerView with `onGetStarted` wired to `authManager.becomeOrganizer()`
-- After bookie creation, `userRole` switches to `.bookie` which triggers AuthGateView re-routing to ContentView
-- Added Log Out and Delete Account rows for standalone users (was gated to `.player` only)
-- Files changed: Booki/Views/AccountView.swift
-- **Learnings for future iterations:**
-  - `playerMenuRow` helper has color parameter defaulting to Theme.accent — pass Theme.gold for upgrade rows
-  - Log Out / Delete Account gate was `authManager.userRole == .player` — standalone users also need these
-  - After `becomeOrganizer()`, AuthManager sets `userRole = .bookie` which triggers AuthGateView `.onChange(of: authManager.userRole)` → shows onboarding
----
-
-## 2026-02-25 - US-010
-- Created supabase/functions/step_down_organizer/index.ts
-- Validates JWT, looks up bookie record, counts active members and open invites
-- Returns 403 with `has_members_or_invites` error if either > 0
-- Deletes bookie record if both are 0, returns 200 `{ success: true }`
-- Uses shared helpers: cors.ts, supabase.ts (service client for delete)
-- Files changed: supabase/functions/step_down_organizer/index.ts (new file)
-- **Learnings for future iterations:**
-  - Active members: `auth_user_id IS NOT NULL` (same filter as create_invite)
-  - Open invites: `claimed_by IS NULL AND expires_at > now()` (unclaimed + not expired)
-  - Bookie delete cascading is handled by FK constraints in the database
----
-
-## 2026-02-25 - US-011
-- Added "Step Down as Organizer" row in SettingsView before Log Out — danger color, person.crop.circle.badge.minus icon
-- Confirmation alert explains dashboard/settings removal and pick history preservation
-- On confirm, calls `step_down_organizer` edge function via EdgeFunctionService
-- On success, calls `authManager.clearBookieState()` → userRole = nil → routes to PlayerMainView
-- On `has_members_or_invites` error, shows blocking alert with instructions
-- Added loading overlay during edge function call
-- Added `clearBookieState()` method to AuthManager
-- Files changed: Booki/Views/SettingsView.swift, Booki/Services/AuthManager.swift
-- **Learnings for future iterations:**
-  - SettingsView uses inline HStack rows (not settingsMenuRow helper) for non-navigable actions (Log Out, Step Down)
-  - StepDownResponse needs to decode `error` field to check for specific error types
-  - `clearBookieState()` sets userRole to nil which triggers AuthGateView re-routing
----
-
-## 2026-02-25 - US-012
-- Hidden "Organizer" row in profileAndPreferencesCard for standalone users
-- Hidden credit utilization bar in performanceCard for standalone users
-- No settle up / adjust balance actions exist in player AccountView (bookie-only) — no changes needed
-- Performance card (Record, Open Picks, Win Rate, Performance, ROI) still visible for standalone
-- Activity row still accessible for standalone users
-- Files changed: Booki/Views/AccountView.swift
-- **Learnings for future iterations:**
-  - `authManager.isStandaloneUser` is the gate for all standalone-specific UI hiding
-  - Player AccountView doesn't have settle/adjust actions — those are in PlayerAnalyticsDetailView (bookie view)
-  - Credit bar is inside performanceCard, not a separate section
+  - The dashboard.js is a single Alpine.js data object — all state goes in `dashboardApp()` return object
+  - Routes use simple hash matching — parameterized routes need regex or string splitting
+  - Query params stripped before route matching (`hash.replace(/\?.*$/, '')`)
 ---
