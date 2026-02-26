@@ -174,6 +174,9 @@ function dashboardApp() {
         confirmPassword: '',
         isChangingPassword: false,
         passwordError: '',
+        settingsDefaultCreditLimit: 1000,
+        isSavingCreditLimit: false,
+        settingsAllowFuturesParlays: false,
 
         // ── Override / Reverse ──
         showOverrideModal: false,
@@ -991,6 +994,8 @@ function dashboardApp() {
             this.newPassword = '';
             this.confirmPassword = '';
             this.passwordError = '';
+            this.settingsDefaultCreditLimit = this.bookie.default_credit_limit ?? 1000;
+            this.settingsAllowFuturesParlays = this.bookie.allow_futures_parlays ?? false;
         },
 
         async saveProfile() {
@@ -1015,6 +1020,45 @@ function dashboardApp() {
                 this.toast('Profile updated', 'success');
             }
             this.isSavingProfile = false;
+        },
+
+        async saveDefaultCreditLimit() {
+            if (!this.bookie) return;
+            const val = parseInt(this.settingsDefaultCreditLimit, 10);
+            if (isNaN(val) || val < 0) {
+                this.toast('Credit limit must be a positive number', 'error');
+                return;
+            }
+            this.isSavingCreditLimit = true;
+            const { error } = await this.supabase
+                .from('bookies')
+                .update({ default_credit_limit: val })
+                .eq('id', this.bookie.id);
+
+            if (error) {
+                this.toast('Failed to update default credit limit', 'error');
+            } else {
+                this.bookie.default_credit_limit = val;
+                this.toast('Default credit limit updated', 'success');
+            }
+            this.isSavingCreditLimit = false;
+        },
+
+        async toggleAllowFuturesParlays() {
+            if (!this.bookie || !this.isPro) return;
+            const newVal = !this.settingsAllowFuturesParlays;
+            const { error } = await this.supabase
+                .from('bookies')
+                .update({ allow_futures_parlays: newVal })
+                .eq('id', this.bookie.id);
+
+            if (error) {
+                this.toast('Failed to update setting', 'error');
+            } else {
+                this.settingsAllowFuturesParlays = newVal;
+                this.bookie.allow_futures_parlays = newVal;
+                this.toast('Setting updated', 'success');
+            }
         },
 
         async changePassword() {
