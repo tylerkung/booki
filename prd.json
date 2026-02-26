@@ -99,7 +99,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "SyncService.swift sync() likely requires a bookie_id. For standalone users, we still need to sync shared events (bookie_id IS NULL). Check how currentBookieId triggers sync in AuthGateView onChange handlers — standalone users won't have currentBookieId set. The credit limit could be a constant in the Player model or a computed property that returns 10000 when bookie is nil. PlayerMainView needs to work without a player record having a bookie association."
     },
     {

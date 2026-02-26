@@ -65,3 +65,20 @@ Started: Wed Feb 25 18:55:49 PST 2026
   - `.onChange(of: authManager.userRole)` triggers onboarding only for `.bookie` — no change needed
   - Sync handlers in AuthGateView trigger on `currentBookieId` and `currentPlayerId` changes — standalone users have neither, so need separate sync trigger (US-006)
 ---
+
+## 2026-02-25 - US-006
+- Added `syncStandalone()` to SyncService — syncs only shared events/markets (bookie_id IS NULL)
+- Modified `sync()` to fallback to `syncStandalone()` when user is standalone
+- Added `.onChange(of: authManager.isStandaloneUser)` trigger in AuthGateView for initial sync
+- Updated foreground sync handler to also call `syncStandalone()` for standalone users
+- Created synthetic local-only Player in PlayerMainView with $10,000 credit limit
+- Added `setCurrentPlayerId()` method to AuthManager so PlayerMainView can register the synthetic player
+- Added `ensureStandalonePlayer()` in PlayerMainView `.onAppear` — creates player, sets needsSync=false
+- Files changed: Booki/Services/SyncService.swift, Booki/Views/AuthGateView.swift, Booki/Views/PlayerMainView.swift, Booki/Services/AuthManager.swift
+- **Learnings for future iterations:**
+  - SyncService.sync() requires `currentBookieId` — standalone users need separate `syncStandalone()` path
+  - `downloadSharedEventsAndMarkets` queries `.is("bookie_id", value: nil)` for shared data
+  - Synthetic player must have `needsSync = false` to prevent upload attempts
+  - `upsertEvent` uses `record.bookieId ?? bookieId` — shared events get a dummy bookieId locally (this is existing behavior)
+  - PlayerMainView creates the standalone player and calls `setCurrentPlayerId()` so child views work
+---

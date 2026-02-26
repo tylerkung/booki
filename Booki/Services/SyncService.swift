@@ -223,8 +223,113 @@ final class SyncService {
 
     /// Performs a full sync cycle: download from server, then upload pending changes
     /// This is the primary method for syncing all data
+    /// Sync only shared events for standalone users (no bookie/player record)
+    func syncStandalone() async {
+        guard let context = modelContext else {
+            syncStatus = .error("Database not configured")
+            return
+        }
+        guard syncStatus != .syncing else { return }
+
+        syncStatus = .syncing
+
+        await withCheckedContinuation { continuation in
+            Task.detached { [weak self] in
+                guard let self else {
+                    continuation.resume()
+                    return
+                }
+                do {
+                    await MainActor.run {
+                        if !self.hasCompletedInitialSync, let context = self.modelContext {
+                            SyncService.clearLocalData(context: context)
+                        }
+                    }
+
+                    // Only download shared events and markets (bookie_id IS NULL)
+                    let dummyBookieId = UUID()
+                    try await self.downloadSharedEventsAndMarkets(bookieId: dummyBookieId)
+
+                    await MainActor.run {
+                        self.hasCompletedInitialSync = true
+                        self.lastSyncedAt = Date()
+                        self.syncStatus = .idle
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.syncStatus = .error(error.localizedDescription)
+                    }
+                    print("Standalone sync failed: \(error)")
+                }
+                continuation.resume()
+            }
+        }
+    }
+
+    /// Download only shared events and markets (bookie_id IS NULL) for standalone users
+    private func downloadSharedEventsAndMarkets(bookieId: UUID) async throws {
+        guard let context = modelContext else { return }
+
+        // Download shared events
+        var offset = 0
+        var hasMore = true
+
+        while hasMore {
+            let records: [EventRecord] = try await supabase
+                .from("events")
+                .select()
+                .is("bookie_id", value: nil)
+                .order("created_at")
+                .range(from: offset, to: offset + pageLimit - 1)
+                .execute()
+                .value
+
+            await MainActor.run {
+                for record in records {
+                    try? upsertEvent(record, bookieId: bookieId, context: context)
+                }
+            }
+
+            hasMore = records.count == pageLimit
+            offset += pageLimit
+        }
+
+        // Download shared markets
+        offset = 0
+        hasMore = true
+
+        while hasMore {
+            let records: [MarketRecord] = try await supabase
+                .from("markets")
+                .select()
+                .is("bookie_id", value: nil)
+                .order("created_at")
+                .range(from: offset, to: offset + pageLimit - 1)
+                .execute()
+                .value
+
+            await MainActor.run {
+                for record in records {
+                    try? upsertMarket(record, context: context)
+                }
+            }
+
+            hasMore = records.count == pageLimit
+            offset += pageLimit
+        }
+
+        await MainActor.run {
+            try? context.save()
+        }
+    }
+
     func sync() async {
         guard let bookieId = authManager?.currentBookieId else {
+            // If standalone user, use standalone sync
+            if authManager?.isStandaloneUser == true {
+                await syncStandalone()
+                return
+            }
             syncStatus = .error("Not authenticated")
             return
         }

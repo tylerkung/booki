@@ -251,6 +251,11 @@ final class AuthManager {
         await checkAgreementRequired(for: authUserId)
     }
 
+    /// Sets the current player ID directly (used for standalone synthetic player)
+    func setCurrentPlayerId(_ playerId: UUID) {
+        currentPlayerId = playerId
+    }
+
     /// Sets the current bookie ID directly (used when bookie record is already known)
     func setCurrentBookieId(_ bookieId: UUID) {
         currentBookieId = bookieId

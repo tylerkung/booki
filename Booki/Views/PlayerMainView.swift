@@ -13,12 +13,26 @@ struct PlayerMainView: View {
     @Query private var players: [Player]
     @Query private var ledgerEntries: [LedgerEntry]
 
+    // MARK: - State
+
+    /// Synthetic player for standalone users (no bookie, no player record)
+    @State private var standalonePlayer: Player?
+
     // MARK: - Computed Properties
 
-    /// Get the current player based on player ID
+    /// Default credit limit for standalone users
+    private static let standaloneCredit: Decimal = 10_000
+
+    /// Get the current player based on player ID, or standalone synthetic player
     private var currentPlayer: Player? {
-        guard let playerId = authManager.currentPlayerId else { return nil }
-        return players.first { $0.id == playerId }
+        if let playerId = authManager.currentPlayerId {
+            return players.first { $0.id == playerId }
+        }
+        // Standalone user — use synthetic player
+        if authManager.isStandaloneUser {
+            return standalonePlayer
+        }
+        return nil
     }
 
     /// Calculate display balance for the player
@@ -29,8 +43,6 @@ struct PlayerMainView: View {
         let internalBalance = BalanceService.balanceOwed(from: playerLedger)
         return -internalBalance  // Negate for display: positive = credit, negative = debt
     }
-
-    // MARK: - State
 
     @State private var selectedTab = 0
 
@@ -86,6 +98,24 @@ struct PlayerMainView: View {
                 .background(Theme.background)
             }
         }
+        .onAppear {
+            ensureStandalonePlayer()
+        }
+    }
+
+    /// Create a synthetic local-only player for standalone users
+    private func ensureStandalonePlayer() {
+        guard authManager.isStandaloneUser, standalonePlayer == nil else { return }
+        let player = Player(
+            name: "Standalone",
+            creditLimit: Self.standaloneCredit,
+            status: .active
+        )
+        player.needsSync = false
+        modelContext.insert(player)
+        standalonePlayer = player
+        // Set the player ID on AuthManager so views that check currentPlayerId work
+        authManager.setCurrentPlayerId(player.id)
     }
 }
 

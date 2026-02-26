@@ -132,6 +132,15 @@ struct AuthGateView: View {
                 }
             }
         }
+        .onChange(of: authManager.isStandaloneUser) { _, isStandalone in
+            // Sync shared events for standalone users (no bookie/player record)
+            if isStandalone && !hasTriggeredInitialSync {
+                hasTriggeredInitialSync = true
+                Task {
+                    await syncService.syncStandalone()
+                }
+            }
+        }
         .onChange(of: authManager.isAuthenticated) { _, isAuthenticated in
             // Reset sync flag and unsubscribe from realtime when user logs out
             if !isAuthenticated {
@@ -168,10 +177,14 @@ struct AuthGateView: View {
         .onChange(of: scenePhase) { oldPhase, newPhase in
             // Sync when app comes to foreground (active)
             if newPhase == .active && oldPhase != .active {
-                // Only sync if authenticated and has bookie ID
+                // Only sync if authenticated and has bookie ID or is standalone
                 if authManager.currentBookieId != nil {
                     Task {
                         await syncService.sync()
+                    }
+                } else if authManager.isStandaloneUser {
+                    Task {
+                        await syncService.syncStandalone()
                     }
                 }
             }
