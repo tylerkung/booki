@@ -20,7 +20,7 @@ struct ProUpgradeSheet: View {
                                 .scaledToFit()
                                 .frame(maxWidth: 200)
 
-                            Text("$49.99 / month")
+                            Text("Coming Soon")
                                 .font(Theme.bodyFont(size: 17, weight: .medium))
                                 .foregroundStyle(Theme.textSecondary)
                         }
@@ -62,17 +62,17 @@ struct ProUpgradeSheet: View {
                     Spacer()
 
                     VStack(spacing: 12) {
-                        NavigationLink {
-                            ProCheckoutView()
-                        } label: {
-                            Text("Subscribe — $49.99/mo")
-                                .font(Theme.font(size: 17, weight: .bold))
-                                .foregroundStyle(Theme.background)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Theme.accent)
-                                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
-                        }
+                        Text("Coming Soon")
+                            .font(Theme.font(size: 17, weight: .bold))
+                            .foregroundStyle(Theme.textMuted)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Theme.elevatedBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+
+                        Text("We'll notify you when Booki Pro is available.")
+                            .font(Theme.bodyFont(size: 12))
+                            .foregroundStyle(Theme.textMuted)
 
                         HStack(spacing: 4) {
                             Text("Terms of Service")
