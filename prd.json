@@ -68,7 +68,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "AuthManager is in Booki/Managers/AuthManager.swift. Look for ensureBookie(), createBookieRecord(), or similar methods that fire during the auth flow. The key is to stop creating a bookie row when the user has no invite and no existing bookie record. isStandaloneUser should check: isAuthenticated && userRole == nil (no bookie, no linked player). Also check if there's a player record with bookie == nil."
     },
     {

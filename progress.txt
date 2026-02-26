@@ -41,3 +41,15 @@ Started: Wed Feb 25 18:55:49 PST 2026
   - `isAtCapacity` filters by `$0.status != .archived && $0.authUserId != nil` — matches edge function logic
   - `bookieTier.memberLimit` is a computed property on BookieTier enum
 ---
+
+## 2026-02-25 - US-004
+- Removed auto-creation of bookie record in `ensureBookieRecord()` — new users without player/bookie records stay as standalone (userRole == nil)
+- Added `isStandaloneUser` computed property: true when `isAuthenticated && userRole == nil`
+- Added `becomeOrganizer(name:)` public method for on-demand bookie creation (used by US-009)
+- Existing bookie and player accounts unaffected — ensureBookieRecord still fetches existing records
+- Files changed: Booki/Services/AuthManager.swift
+- **Learnings for future iterations:**
+  - `ensureBookieRecord` is called from `checkCurrentSession`, auth state listener `.signedIn`, and `completePlayerClaimFlow` — all paths now handle standalone
+  - `BookieService.fetchOrCreateBookie` is the actual bookie creation call — preserved in `becomeOrganizer()`
+  - `isClaimingPlayerAccount` flag prevents auth listener from calling ensureBookieRecord during invite claim flow
+---

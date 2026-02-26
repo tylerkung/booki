@@ -55,6 +55,11 @@ final class AuthManager {
     /// Whether bookie record is being loaded
     private(set) var isLoadingBookie: Bool = false
 
+    /// Whether the user is a standalone tracker (authenticated but no bookie or linked player)
+    var isStandaloneUser: Bool {
+        isAuthenticated && userRole == nil
+    }
+
     /// Whether user agreement is required before accessing the app
     var agreementRequired: Bool = false
 
@@ -150,18 +155,9 @@ final class AuthManager {
             // Continue to try creating one
         }
 
-        // Try to create a bookie record (for new bookie signups)
-        do {
-            let bookie = try await BookieService.fetchOrCreateBookie(name: name)
-            currentBookieId = bookie.id
-            currentPlayerId = nil
-            userRole = .bookie
-            // Check agreement status using auth user ID (not bookie record ID)
-            await checkAgreementRequired(for: authUserId)
-        } catch {
-            bookieError = error.localizedDescription
-            print("Failed to determine user role: \(error)")
-        }
+        // No player or bookie record found — user is a standalone tracker
+        // Don't auto-create a bookie record; userRole stays nil (standalone)
+        print("No player or bookie record found for \(authUserId) — standalone user")
 
         isLoadingBookie = false
     }
@@ -239,6 +235,20 @@ final class AuthManager {
             print("Failed to complete player claim flow: \(error)")
             updateAuthState(userId: nil, isAuthenticated: false)
         }
+    }
+
+    /// Creates a bookie record for the current standalone user (used by "Be an Organizer" flow)
+    /// - Parameter name: Optional display name for the bookie
+    func becomeOrganizer(name: String? = nil) async throws {
+        guard let userId = currentUserId, let authUserId = UUID(uuidString: userId) else {
+            throw NSError(domain: "AuthManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "No authenticated user found"])
+        }
+
+        let bookie = try await BookieService.fetchOrCreateBookie(name: name)
+        currentBookieId = bookie.id
+        currentPlayerId = nil
+        userRole = .bookie
+        await checkAgreementRequired(for: authUserId)
     }
 
     /// Sets the current bookie ID directly (used when bookie record is already known)
