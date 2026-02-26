@@ -242,7 +242,7 @@ function getInviteEmailHtml(bookieName: string, inviteCode: string): string {
 <tr><td align="center" style="padding:40px 16px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
 <tr><td align="center" style="padding-bottom:32px;">
-  <img src="https://bookisports.com/assets/logo-booki-wh.svg" alt="Booki" width="140" style="display:block;" />
+  <img src="https://bookisports.com/assets/logo-booki-wh.png" alt="Booki" width="140" style="display:block;" />
 </td></tr>
 <tr><td style="background-color:#14141F;border-radius:16px;border:1px solid #2A2A3A;padding:40px 32px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
