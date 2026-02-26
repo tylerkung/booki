@@ -36,6 +36,8 @@ function dashboardApp() {
         players: [],
         playerMap: {},
         memberSearch: '',
+        allLedgerEntries: [],
+        tagTooltip: null,
 
         // ── Picks ──
         bets: [],
@@ -356,14 +358,16 @@ function dashboardApp() {
 
             const { data, error } = await this.supabase
                 .from('ledger_entries')
-                .select('player_id, amount')
+                .select('player_id, amount, type, created_at')
                 .eq('bookie_id', this.bookie.id);
 
             if (error) return;
 
+            this.allLedgerEntries = data || [];
+
             // Sum balances per player
             const balances = {};
-            for (const entry of (data || [])) {
+            for (const entry of this.allLedgerEntries) {
                 balances[entry.player_id] = (balances[entry.player_id] || 0) + (entry.amount || 0);
             }
 
@@ -459,10 +463,10 @@ function dashboardApp() {
                 ? this.dashboardMembers[0]
                 : null;
 
-            // Sport Performance breakdown
+            // Sport Performance breakdown + attention tags data
             const { data: allBets } = await this.supabase
                 .from('bets')
-                .select('sport, stake, odds, status, market_type, team_name, selection')
+                .select('sport, stake, odds, status, market_type, team_name, selection, player_id, bet_type, created_at')
                 .eq('bookie_id', this.bookie.id);
 
             const sportMap = {};
@@ -501,6 +505,17 @@ function dashboardApp() {
                 totalStaked: futureBets.reduce((s, b) => s + (Number(b.stake) || 0), 0),
                 topSelections,
             };
+
+            // Compute attention tags for dashboard members
+            const allBetsList = allBets || [];
+            const groupAvgStake = allBetsList.length > 0
+                ? allBetsList.reduce((s, b) => s + (Number(b.stake) || 0), 0) / allBetsList.length
+                : 0;
+            for (const member of this.dashboardMembers) {
+                const playerBets = allBetsList.filter(b => b.player_id === member.id);
+                const playerLedger = this.allLedgerEntries.filter(e => e.player_id === member.id);
+                member.attentionTags = this.computeAttentionTags(member, playerBets, playerLedger, groupAvgStake);
+            }
         },
 
         // ── Picks Data ──
@@ -639,6 +654,30 @@ function dashboardApp() {
 
             // Load bets and ledger for performance/picks
             await this.loadMemberBetsAndLedger();
+
+            // Compute attention tags for member detail
+            const allBetsForAvg = this.allLedgerEntries.length > 0 ? this.memberDetailBets : [];
+            // Use group avg from all bets if available, otherwise just this player
+            let groupAvgStake = 0;
+            if (this.dashboardMembers.length > 0 && this.bets.length > 0) {
+                // Approximate: use already loaded data
+                const totalStake = this.dashboardMembers.reduce((s, m) => s + (m.exposure || 0), 0);
+                groupAvgStake = totalStake > 0 ? totalStake / this.dashboardMembers.length : 0;
+            }
+            // Fetch group average stake from all bets for accurate tag computation
+            const { data: avgData } = await this.supabase
+                .from('bets')
+                .select('stake')
+                .eq('bookie_id', this.bookie.id);
+            if (avgData && avgData.length > 0) {
+                groupAvgStake = avgData.reduce((s, b) => s + (Number(b.stake) || 0), 0) / avgData.length;
+            }
+            this.memberDetail.attentionTags = this.computeAttentionTags(
+                this.memberDetail,
+                this.memberDetailBets,
+                this.memberDetailLedger,
+                groupAvgStake
+            );
 
             this.isLoadingMemberDetail = false;
         },
@@ -812,6 +851,108 @@ function dashboardApp() {
                 return -stake;
             }
             return 0;
+        },
+
+        // ── Attention Tags ──
+        computeAttentionTags(player, playerBets, playerLedger, groupAvgStake) {
+            const tags = [];
+            const now = Date.now();
+            const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+            // Picks Pending: has pending bets
+            if (playerBets.some(b => b.status === 'pending')) {
+                tags.push({ key: 'pending', label: 'Picks Pending', color: 'yellow', desc: 'Has unreviewed picks waiting for acceptance.' });
+            }
+
+            // Overdue: positive balance (player owes bookie) with no payment in 7+ days
+            if ((player.balance || 0) > 0) {
+                const lastPayment = playerLedger
+                    .filter(e => e.type === 'paymentLogged')
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                const isOverdue = !lastPayment || (now - new Date(lastPayment.created_at).getTime()) > sevenDaysMs;
+                if (isOverdue) {
+                    tags.push({ key: 'overdue', label: 'Overdue', color: 'red', desc: 'Owes a balance with no payment in 7+ days.' });
+                }
+            }
+
+            // Graded bets sorted by date for streak detection
+            const gradedBets = playerBets
+                .filter(b => ['won', 'lost', 'settled'].includes(b.status))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            // On Heater: 3+ consecutive wins (most recent)
+            if (gradedBets.length >= 3) {
+                let winStreak = 0;
+                for (const b of gradedBets) {
+                    if (b.status === 'won' || b.status === 'settled') winStreak++;
+                    else break;
+                }
+                if (winStreak >= 3) {
+                    tags.push({ key: 'heater', label: 'On Heater', color: 'green', desc: winStreak + ' consecutive wins — this member is on a hot streak.' });
+                }
+            }
+
+            // Cold Streak: 3+ consecutive losses (most recent)
+            if (gradedBets.length >= 3) {
+                let lossStreak = 0;
+                for (const b of gradedBets) {
+                    if (b.status === 'lost') lossStreak++;
+                    else break;
+                }
+                if (lossStreak >= 3) {
+                    tags.push({ key: 'cold', label: 'Cold Streak', color: 'blue', desc: lossStreak + ' consecutive losses — this member is struggling.' });
+                }
+            }
+
+            // Whale: avg stake > 2x group average
+            if (groupAvgStake > 0 && playerBets.length >= 3) {
+                const playerAvgStake = playerBets.reduce((s, b) => s + (Number(b.stake) || 0), 0) / playerBets.length;
+                if (playerAvgStake > 2 * groupAvgStake) {
+                    tags.push({ key: 'whale', label: 'Whale', color: 'purple', desc: 'Average stake is 2x+ higher than the group average.' });
+                }
+            }
+
+            // Degen: 5+ bets in any 24h window
+            if (playerBets.length >= 5) {
+                const sortedByDate = [...playerBets].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                const dayMs = 24 * 60 * 60 * 1000;
+                let isDegen = false;
+                for (let i = 0; i <= sortedByDate.length - 5; i++) {
+                    const windowStart = new Date(sortedByDate[i].created_at).getTime();
+                    const windowEnd = new Date(sortedByDate[i + 4].created_at).getTime();
+                    if (windowEnd - windowStart <= dayMs) {
+                        isDegen = true;
+                        break;
+                    }
+                }
+                if (isDegen) {
+                    tags.push({ key: 'degen', label: 'Degen', color: 'orange', desc: 'Placed 5+ picks within a 24-hour window.' });
+                }
+            }
+
+            // Parlay Demon: 60%+ of bets are parlays
+            if (playerBets.length >= 5) {
+                const parlayCount = playerBets.filter(b => b.bet_type === 'parlay').length;
+                if (parlayCount / playerBets.length >= 0.6) {
+                    tags.push({ key: 'parlay', label: 'Parlay Demon', color: 'pink', desc: Math.round(parlayCount / playerBets.length * 100) + '% of picks are multi-picks.' });
+                }
+            }
+
+            return tags;
+        },
+
+        showTagTooltip(tag, event) {
+            const rect = event.target.getBoundingClientRect();
+            this.tagTooltip = {
+                label: tag.label,
+                desc: tag.desc,
+                x: rect.left + rect.width / 2,
+                y: rect.bottom + 8,
+            };
+        },
+
+        hideTagTooltip() {
+            this.tagTooltip = null;
         },
 
         // ── Grading Actions ──

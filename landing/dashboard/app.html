@@ -19,6 +19,13 @@
 </head>
 <body x-data="dashboardApp()" x-init="init()">
 
+    <!-- Tag Tooltip -->
+    <div x-show="tagTooltip" x-cloak class="tag-tooltip"
+         :style="{ left: (tagTooltip?.x || 0) + 'px', top: (tagTooltip?.y || 0) + 'px' }">
+        <div class="tag-tooltip-title" x-text="tagTooltip?.label"></div>
+        <div class="tag-tooltip-desc" x-text="tagTooltip?.desc"></div>
+    </div>
+
     <!-- Toast Notifications -->
     <div class="toast-container">
         <template x-for="(toast, i) in toasts" :key="i">
@@ -143,6 +150,16 @@
                                         <div class="capacity-fill" :class="{ 'capacity-fill-warning': ((Math.abs(member.balance || 0)) / (member.credit_limit || 1000)) > 0.8 }"
                                              :style="{ width: Math.min(100, ((Math.abs(member.balance || 0)) / (member.credit_limit || 1000)) * 100) + '%' }"></div>
                                     </div>
+                                    <template x-if="member.attentionTags && member.attentionTags.length > 0">
+                                        <div class="attention-tags">
+                                            <template x-for="tag in member.attentionTags" :key="tag.key">
+                                                <span class="attention-tag" :class="'attention-tag-' + tag.color"
+                                                      x-text="tag.label"
+                                                      @mouseenter="showTagTooltip(tag, $event)"
+                                                      @mouseleave="hideTagTooltip()"></span>
+                                            </template>
+                                        </div>
+                                    </template>
                                 </div>
                             </template>
                         </div>
@@ -567,6 +584,16 @@
                                                class="input" style="font-size:18px;font-weight:700;padding:4px 8px;width:220px;">
                                     </div>
                                     <span class="badge" :class="memberDetail.auth_user_id ? 'badge-success' : 'badge-muted'" style="font-size:11px;" x-text="memberDetail.auth_user_id ? 'Active' : 'Pending'"></span>
+                                    <template x-if="memberDetail.attentionTags && memberDetail.attentionTags.length > 0">
+                                        <div class="attention-tags">
+                                            <template x-for="tag in memberDetail.attentionTags" :key="tag.key">
+                                                <span class="attention-tag" :class="'attention-tag-' + tag.color"
+                                                      x-text="tag.label"
+                                                      @mouseenter="showTagTooltip(tag, $event)"
+                                                      @mouseleave="hideTagTooltip()"></span>
+                                            </template>
+                                        </div>
+                                    </template>
                                 </div>
                                 <!-- Overflow menu -->
                                 <div style="position:relative;">

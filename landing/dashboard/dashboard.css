@@ -874,6 +874,63 @@ input, button, select, textarea { font: inherit; }
     white-space: nowrap;
 }
 
+/* ── Attention Tags ── */
+.attention-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.attention-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.attention-tag:hover { opacity: 0.8; }
+
+.attention-tag-yellow { background: rgba(255,179,71,0.15); color: var(--warning); }
+.attention-tag-red { background: rgba(255,77,106,0.15); color: var(--danger); }
+.attention-tag-green { background: rgba(0,245,212,0.15); color: var(--success); }
+.attention-tag-blue { background: rgba(100,149,237,0.15); color: #6495ED; }
+.attention-tag-purple { background: rgba(157,78,221,0.15); color: var(--accent-secondary); }
+.attention-tag-orange { background: rgba(255,140,0,0.15); color: #FF8C00; }
+.attention-tag-pink { background: rgba(255,0,110,0.15); color: var(--accent-tertiary); }
+
+/* Tag Tooltip */
+.tag-tooltip {
+    position: fixed;
+    z-index: 250;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    max-width: 240px;
+    pointer-events: none;
+    transform: translateX(-50%);
+}
+
+.tag-tooltip-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.tag-tooltip-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
 @media (max-width: 480px) {
     .stats-grid {
         grid-template-columns: 1fr;
