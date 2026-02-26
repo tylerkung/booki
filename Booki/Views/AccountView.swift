@@ -304,6 +304,30 @@ struct AccountView: View {
             Divider().background(Theme.divider)
             profileRow(icon: "calendar", label: "Member Since", value: memberSinceDate)
 
+            Divider().background(Theme.divider)
+
+            NavigationLink {
+                PlayerProfileEditView(player: player)
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.body)
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 24)
+
+                    Text("Edit Profile")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(Theme.accent)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .padding(.vertical, 12)
+            }
         }
         .padding(20)
         .background(
