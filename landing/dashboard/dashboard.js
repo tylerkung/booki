@@ -29,6 +29,8 @@ function dashboardApp() {
         netExposure: 0,
         topRiskMember: null,
         dashboardMembers: [],
+        sportPerformance: [],
+        futuresActivity: { openCount: 0, totalStaked: 0, topSelections: [] },
 
         // ── Members ──
         players: [],
@@ -456,6 +458,49 @@ function dashboardApp() {
             this.topRiskMember = this.dashboardMembers.length > 0 && this.dashboardMembers[0].exposure > 0
                 ? this.dashboardMembers[0]
                 : null;
+
+            // Sport Performance breakdown
+            const { data: allBets } = await this.supabase
+                .from('bets')
+                .select('sport, stake, odds, status, market_type, team_name, selection')
+                .eq('bookie_id', this.bookie.id);
+
+            const sportMap = {};
+            for (const b of (allBets || [])) {
+                const sport = b.sport || 'Unknown';
+                if (!sportMap[sport]) {
+                    sportMap[sport] = { sport, picks: 0, staked: 0, pnl: 0, wins: 0, losses: 0 };
+                }
+                sportMap[sport].picks += 1;
+                sportMap[sport].staked += Number(b.stake) || 0;
+                if (b.status === 'won' || b.status === 'settled') {
+                    const returnAmt = this.calcPotentialReturn(b);
+                    sportMap[sport].pnl += (Number(b.stake) || 0) - returnAmt; // bookie perspective
+                    sportMap[sport].wins += 1;
+                } else if (b.status === 'lost') {
+                    sportMap[sport].pnl += Number(b.stake) || 0;
+                    sportMap[sport].losses += 1;
+                }
+            }
+            this.sportPerformance = Object.values(sportMap).sort((a, b) => b.picks - a.picks);
+
+            // Futures Activity
+            const futureBets = (allBets || []).filter(b => b.market_type === 'outright' && ['pending', 'accepted'].includes(b.status));
+            const selectionCount = {};
+            for (const b of futureBets) {
+                const sel = b.team_name || b.selection || 'Unknown';
+                selectionCount[sel] = (selectionCount[sel] || 0) + 1;
+            }
+            const topSelections = Object.entries(selectionCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([name, count]) => ({ name, count }));
+
+            this.futuresActivity = {
+                openCount: futureBets.length,
+                totalStaked: futureBets.reduce((s, b) => s + (Number(b.stake) || 0), 0),
+                topSelections,
+            };
         },
 
         // ── Picks Data ──

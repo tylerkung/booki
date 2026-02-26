@@ -849,6 +849,22 @@ input, button, select, textarea { font: inherit; }
     border-color: var(--accent);
 }
 
+/* ── Pro-gated Sections ── */
+.pro-blur {
+    filter: blur(4px);
+    pointer-events: none;
+    user-select: none;
+}
+
+.pro-upgrade-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
 .badge-pro {
     background: var(--accent);
     color: #fff;

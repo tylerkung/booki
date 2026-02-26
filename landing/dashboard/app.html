@@ -149,6 +149,77 @@
                     </div>
                 </template>
 
+                <!-- Sport Performance (Pro-gated) -->
+                <div class="card pro-gated-section" style="margin-bottom:24px;position:relative;overflow:hidden;">
+                    <div class="card-header">
+                        <span class="card-title">Sport Performance</span>
+                        <span x-show="isPro" class="badge badge-success" style="font-size:10px;">PRO</span>
+                    </div>
+                    <div :class="{ 'pro-blur': !isPro }">
+                        <template x-if="sportPerformance.length > 0">
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Sport</th><th>Picks</th><th>Staked</th><th>Net PnL</th><th>Win Rate</th></tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="sp in sportPerformance" :key="sp.sport">
+                                        <tr>
+                                            <td class="name" x-text="sp.sport"></td>
+                                            <td x-text="sp.picks"></td>
+                                            <td x-text="formatCurrency(sp.staked)"></td>
+                                            <td :style="{ color: sp.pnl >= 0 ? 'var(--success)' : 'var(--danger)' }" x-text="formatCurrency(sp.pnl)"></td>
+                                            <td x-text="(sp.wins + sp.losses) > 0 ? Math.round(sp.losses / (sp.wins + sp.losses) * 100) + '%' : '—'"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </template>
+                        <template x-if="sportPerformance.length === 0">
+                            <div class="empty-state"><p>No pick data yet</p></div>
+                        </template>
+                    </div>
+                    <div x-show="!isPro" class="pro-upgrade-overlay">
+                        <a href="#/subscription" class="btn btn-accent">Upgrade to Pro</a>
+                    </div>
+                </div>
+
+                <!-- Futures Activity (Pro-gated) -->
+                <div class="card pro-gated-section" style="margin-bottom:24px;position:relative;overflow:hidden;">
+                    <div class="card-header">
+                        <span class="card-title">Futures Activity</span>
+                        <span x-show="isPro" class="badge badge-success" style="font-size:10px;">PRO</span>
+                    </div>
+                    <div :class="{ 'pro-blur': !isPro }">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                            <div>
+                                <div class="stat-label">Open Futures</div>
+                                <div class="stat-value" style="font-size:24px;" x-text="futuresActivity.openCount"></div>
+                            </div>
+                            <div>
+                                <div class="stat-label">Total Staked</div>
+                                <div class="stat-value" style="font-size:24px;" x-text="formatCurrency(futuresActivity.totalStaked)"></div>
+                            </div>
+                        </div>
+                        <template x-if="futuresActivity.topSelections.length > 0">
+                            <div>
+                                <div class="stat-label" style="margin-bottom:8px;">Top Selections</div>
+                                <template x-for="sel in futuresActivity.topSelections" :key="sel.name">
+                                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--divider);">
+                                        <span style="color:var(--text-primary);font-size:14px;" x-text="sel.name"></span>
+                                        <span class="badge badge-muted" x-text="sel.count + ' pick' + (sel.count !== 1 ? 's' : '')"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <template x-if="futuresActivity.topSelections.length === 0">
+                            <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">No open futures</div>
+                        </template>
+                    </div>
+                    <div x-show="!isPro" class="pro-upgrade-overlay">
+                        <a href="#/subscription" class="btn btn-accent">Upgrade to Pro</a>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-header">
                         <span class="card-title">Recent Activity</span>
