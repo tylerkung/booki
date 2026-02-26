@@ -1,282 +1,40 @@
 # Ralph Progress Log
-Started: Wed Feb 25 02:44:29 PST 2026
----
+Started: Wed Feb 25 17:19:57 PST 2026
 
 ## Codebase Patterns
-- BookieTier enum is in Bookie.swift (not a separate file) — legacy `.default`/`.chart` preserved for migration compatibility
-- SyncService has two bookie sync methods: `downloadBookieForPlayer` (for player accounts) and `refreshBookieSettings` (for bookie accounts) — both must be updated when adding bookie fields
-- BookieRecord in BookieService.swift is the Codable DTO for Supabase — add new columns here with CodingKeys mapping
-- SwiftData `#Predicate` doesn't work reliably with enum comparisons — fetch with simpler predicate then filter in-memory
-- TierService provides `@AppStorage`-backed tier cache via `TierService.currentTier` / `TierService.isPro` for instant UI reads
-- Use `BookieTier.isPro` for tier checks instead of comparing to specific enum values (future-proofs for new tiers)
-- New .swift files need manual pbxproj entries: PBXBuildFile, PBXFileReference, Views group children, and Sources build phase
-- ProUpgradeSheet accepts optional `contextMessage: String?` — pass context-specific upsell text from each entry point
-- Bookie Settings is SettingsView.swift; Player Account is AccountView.swift — don't confuse them
-- Settings row layout: HStack(spacing: 14) with icon (20pt, accent, 28w frame) + title + Spacer + value + chevron, padded (.horizontal 16, .vertical 14)
-- Dashboard tier gating: use `bookieTier.isPro` checks in dashboardContent VStack — wrap sections in `if bookieTier.isPro { }` for hide, use ZStack+blur+overlay for blurred teasers
-- Sport performance placeholder: use static placeholder rows for blur target (ensures content visible even with no data)
-- PlayerRowView has `showTags: Bool = true` param to control attention chip visibility per-caller
-
+- Player upsert logic exists in BOTH SyncService AND RealtimeService — update both when adding new Player fields
+- PlayerRecord (download DTO) and PlayerUpsert (upload DTO) are both in SyncModels.swift — update both
+- Supabase migrations go in supabase/migrations/ with sequential numbering (024 is next)
+- PostgreSQL BEFORE UPDATE triggers run alphabetically — `trg_*` runs after `update_*` so `updated_at` is already modified
+- Column-level RLS isn't supported in PostgreSQL — use a BEFORE UPDATE trigger to restrict which columns non-bookies can change
+- CollectionStatus.displayName is a computed property on an enum — Player.displayName is a separate stored property, no conflict
 ---
 
 ## 2026-02-25 - US-001
-- What was implemented: BookieTier enum expanded (free/pro + legacy default/chart), isPro computed property, memberLimit, TierService with @AppStorage cache + activeMemberCount helper, tier field added to BookieRecord, SyncService updated to sync tier from Supabase, Supabase migration 020 for bookies.tier column
-- Files changed:
-  - Booki/Models/Bookie.swift — BookieTier enum expanded with isPro/memberLimit, default changed to .free
-  - Booki/Services/BookieService.swift — tier field added to BookieRecord + CodingKeys
-  - Booki/Services/TierService.swift — NEW: centralized tier helpers with @AppStorage cache
-  - Booki/Services/SyncService.swift — downloadBookieForPlayer + refreshBookieSettings now sync tier
-  - Booki/Views/AnalyticsDashboardView.swift — .chart → .isPro, .default → .free
-  - supabase/migrations/020_bookies_tier_column.sql — NEW: adds tier column
+- What was implemented: Added `display_name TEXT DEFAULT NULL` column to players table via migration 023, added `displayName: String?` to Player SwiftData model, added to PlayerRecord/PlayerUpsert DTOs with CodingKeys, updated upsertPlayer in both SyncService and RealtimeService
+- Files changed: supabase/migrations/023_players_display_name.sql, Booki/Models/Player.swift, Booki/Services/SyncModels.swift, Booki/Services/SyncService.swift, Booki/Services/RealtimeService.swift
 - **Learnings for future iterations:**
-  - BookieTier has legacy cases (.default, .chart) — always use .isPro instead of == .pro
-  - TierService.syncTier(from:) must be called in both sync paths
-  - activeMemberCount counts players where bookieId matches AND authUserId is not nil AND status == .active
+  - RealtimeService has its own `upsertPlayer()` duplicate of SyncService's — must update both
+  - PlayerRecord and PlayerUpsert are separate structs with separate CodingKeys — both need updating for new fields
+  - Player init has explicit parameters (not synthesized) — must add new params there too
 ---
 
 ## 2026-02-25 - US-002
-- What was implemented: ProUpgradeSheet (primary conversion screen) with logo, PRO heading, $49.99/mo subtitle, 11-item feature list card, Subscribe NavigationLink to ProCheckoutView, Restore Purchase button, ToS/Privacy links, optional contextMessage parameter, X dismiss button, .presentationDetents([.large]). Also created placeholder ProCheckoutView (to be fleshed out in US-003).
-- Files changed:
-  - Booki/Views/ProUpgradeSheet.swift — NEW: primary upsell sheet with NavigationStack, feature list, sticky bottom CTA
-  - Booki/Views/ProCheckoutView.swift — NEW: placeholder checkout view (skeleton for US-003)
-  - Booki.xcodeproj/project.pbxproj — added both files to project
+- What was implemented: Added `bookieDisplayName` computed property to Player model (`displayName ?? name`). Replaced all `player.name` references in 13 bookie-facing views with `player.bookieDisplayName`. Updated name edit flow in PlayerAnalyticsDetailView to write to `display_name` column (not `name`). Player-facing views (AccountView, PlayerLoginView) still use `player.name`.
+- Files changed: Player.swift, BetsListView.swift, AnalyticsDashboardView.swift, PlayersListView.swift, PlayerAnalyticsDetailView.swift, DashboardView.swift, AttentionFeedView.swift, SettlementSnapshotCard.swift, PaymentSheet.swift, WeeklySettlementView.swift, PlayerRiskWatchlistCard.swift, GradingView.swift, PlayerPicksListView.swift, PlayerPickHistoryView.swift
 - **Learnings for future iterations:**
-  - Sheets that need internal navigation must wrap content in NavigationStack
-  - Use NavigationLink inside the sheet's NavigationStack to push checkout/success views
-  - Sticky bottom content: use ZStack with VStack containing Spacer + content, apply LinearGradient background for fade effect
-  - New .swift files must be added to pbxproj in 3 places: PBXBuildFile, PBXFileReference, and group children + Sources build phase
+  - `player.name` appears in ~30+ locations across bookie views — thorough search required
+  - Name edit flow (saveName) in PlayerAnalyticsDetailView updates Supabase directly, then SwiftData locally
+  - Player-facing views: AccountView, PlayerLoginView. Everything else is bookie-facing.
+  - CSV export in WeeklySettlementView uses player name with comma escaping — must update those too
 ---
 
 ## 2026-02-25 - US-003
-- What was implemented: ProCheckoutView fully built with summary card (Booki Pro, $49.99, billing, today's charge, next renewal date), Stripe placeholder card (lock icon, secure payment text, "coming soon"), disabled Pay button with 0.5 opacity, Terms/Privacy footer. ProSuccessView created with animated checkmark (spring animation on appear), "Welcome to Pro" headline, descriptive text, full-width "Get Started" dismiss button. ProSuccessView added to pbxproj in all 4 required locations.
-- Files changed:
-  - Booki/Views/ProCheckoutView.swift — expanded from placeholder to full checkout screen
-  - Booki/Views/ProSuccessView.swift — NEW: success confirmation view with animated checkmark
-  - Booki.xcodeproj/project.pbxproj — added ProSuccessView to PBXBuildFile, PBXFileReference, group children, Sources build phase
+- What was implemented: Added RLS policy `players_update_self` allowing players to update their own record (`auth_user_id = auth.uid()`). Added trigger `enforce_player_self_update_columns` that restricts non-bookie users to only modifying `name` and `email` columns — all other columns (id, bookie_id, auth_user_id, credit_limit, status, display_name, created_at) must remain unchanged.
+- Files changed: supabase/migrations/024_players_self_update.sql
 - **Learnings for future iterations:**
-  - pbxproj IDs follow sequential pattern (A0, A1, A2, A3...) for recent additions — continue incrementing
-  - ProSuccessView uses .navigationBarBackButtonHidden(true) to prevent going back to checkout after success
-  - Calendar.current.date(byAdding: .month, value: 1, to: .now) for renewal date calculation
-  - Disabled buttons: use .disabled(true) + .opacity(0.5) pattern
+  - PostgreSQL doesn't support column-level RLS policies — use BEFORE UPDATE triggers to enforce column restrictions
+  - The `update_players_updated_at` trigger runs before `trg_enforce_*` (alphabetical ordering), so `updated_at` is already modified by the time enforcement runs — must exclude it from the check
+  - `IS DISTINCT FROM` handles NULL comparisons correctly (unlike `!=` which returns NULL for NULL comparisons)
+  - `is_bookie()` helper function already exists and can be called from triggers (SECURITY DEFINER)
 ---
-
-## 2026-02-25 - US-004
-- What was implemented: SubscriptionManagementView with Current Plan card (Booki Pro + Active green pill, $49.99/month, member since, next renewal, members X of 50), Manage on Stripe button (shows "Coming Soon" alert), footer text. Added Subscription row to SettingsView between Profile and Balance Alerts — free tier shows "Free" label + "PRO" badge pill (taps to ProUpgradeSheet), pro tier shows "Pro" in accent (navigates to SubscriptionManagementView). Both use crown icon.
-- Files changed:
-  - Booki/Views/SubscriptionManagementView.swift — NEW: subscription management screen for Pro bookies
-  - Booki/Views/SettingsView.swift — added subscription row (isPro check via @AppStorage), ProUpgradeSheet sheet
-  - Booki.xcodeproj/project.pbxproj — added SubscriptionManagementView to project (4 locations)
-- **Learnings for future iterations:**
-  - Bookie Settings is in SettingsView.swift (not AccountView.swift — that's the player account)
-  - File-private helpers (sectionHeader, settingsDivider) in SettingsView.swift can't be used from other files — either inline or duplicate
-  - Use @AppStorage("bookieTier") + BookieTier(rawValue:) for tier checks in views, not TierService (which is for non-View contexts)
-  - Settings row pattern: icon (20pt, accent, 28w frame) + title (Theme.body, medium) + spacer + value + chevron, all in HStack(spacing: 14) with .padding(.horizontal, 16) .padding(.vertical, 14)
----
-
-## 2026-02-25 - US-005
-- What was implemented: Dashboard tier gating — SportPerformanceSection blurred with frosted overlay + "Unlock with Pro" CTA on free tier, FuturesTrackingCard and RecentActivitySection completely hidden on free tier, placeholder sport rows for blur target
-- Files changed:
-  - Booki/Views/AnalyticsDashboardView.swift — added `showProUpgrade` state, `sportPerformanceGated` computed property with ZStack blur+overlay, `sportPerformancePlaceholder` with 3 static sport rows, wrapped FuturesTrackingCard and RecentActivitySection in `if bookieTier.isPro`
-- **Learnings for future iterations:**
-  - Use `.ultraThinMaterial` for frosted overlays on blurred content — works well on dark theme
-  - Always use placeholder data behind blur (not real data) — ensures the blurred area has visible content even for new bookies with no data
-  - The `bookieTier` property on AnalyticsDashboardView reads from `bookies.first?.tier ?? .free` — no @AppStorage needed since @Query already provides the data
----
-
-## 2026-02-25 - US-006
-- What was implemented: Members tab tier gating — search bar and filter chips hidden on free tier, attention tags hidden on member cards via `showTags` parameter on PlayerRowView, capacity banner shown at bottom of member list when free tier is at 3-member limit (taps to ProUpgradeSheet with context message)
-- Files changed:
-  - Booki/Views/PlayersListView.swift — added @AppStorage bookieTier, wrapped search/filters in isPro check, added showTags param to PlayerRowView, added capacityBanner method, added ProUpgradeSheet sheet
-- **Learnings for future iterations:**
-  - PlayerRowView has `showTags: Bool = true` parameter — pass `false` to hide attention chips without modifying the row's internal logic
-  - Capacity banner counts active members as `players.filter { $0.status != .archived && $0.authUserId != nil }.count`
-  - On free tier, search/filter state variables still exist but are unused since the UI is hidden — no need to reset them
----
-
-## 2026-02-25 - US-007
-- What was implemented: Invite creation gated at member capacity — InviteMemberSheet shows blocking message with upgrade CTA when free tier bookie is at 3-member limit, normal invite flow when under limit or on Pro
-- Files changed:
-  - Booki/Views/PlayersListView.swift — added @AppStorage bookieTier, @Query players, isAtCapacity computed property, atCapacityContent view with warning icon + message + "Upgrade to Pro" button, ProUpgradeSheet with context message
-- **Learnings for future iterations:**
-  - InviteMemberSheet already has @Query for bookies — adding @Query for players is safe alongside it
-  - Gate is inside the sheet (idle state), not on the button that opens it — preserves discoverability
-  - `isAtCapacity` reuses same active member counting logic as PlayersListView capacity banner
----
-
-## 2026-02-25 - US-008
-- What was implemented: Multi-pick gated on player-side BetSlipSheet for free tier bookies — Multi-Pick tab visible but grayed out (reduced opacity via isDisabled), tapping shows inline message below selector: "Multi-Picks aren't available yet. Ask your organizer to upgrade." in Theme.textSecondary. Singles mode unaffected.
-- Files changed:
-  - Booki/Views/BetSlipSheet.swift — added `bookieIsPro` computed property (fetches bookie tier via player's bookieId + FetchDescriptor), `showMultiPickTierMessage` state, `isTierBlocked` check in betModeToggle, inline message in selectionsHeaderSection
-- **Learnings for future iterations:**
-  - Player-side bookie data access pattern: use `player?.bookieId` → `FetchDescriptor<Bookie>` → read property. Same pattern as `bookieAllowsFuturesParlays`
-  - BetSlipSheet uses `.disabled(isDisabled && !isFuturesBlocked && !isTierBlocked)` to keep blocked buttons tappable for showing feedback
-  - Tier blocking takes priority over futures blocking in the conditional chain (checked first)
-  - No canSubmit guard needed for tier — user can't switch to parlay mode so it's never reachable
----
-
-## 2026-02-25 - US-009
-- What was implemented: Settings tier gating — Pick Management and Export Data rows hidden on free tier, replaced with single "Pick Management" locked row with lock.fill icon, PRO badge, description text, tapping presents ProUpgradeSheet. On Pro tier, all settings rows render normally.
-- Files changed:
-  - Booki/Views/SettingsView.swift — added `pickManagementProRow` computed property, wrapped Pick Management + Export Data in `if isPro` check
-- **Learnings for future iterations:**
-  - The `isPro` property is already available on SettingsView from US-004 — no new state needed
-  - The `showingProUpgrade` sheet binding is also already wired from the subscription row — reuse it for free tier locked rows
-  - Free tier replacement row uses lock.fill icon instead of hand.raised to visually distinguish it from the Pro version
-  - Export Data is simply hidden (not locked/teased) on free tier per acceptance criteria
----
-
-## 2026-02-25 - US-010
-- What was implemented: Transaction history gated to 30 entries on free tier in PlayerActivityView — `displayedEntries` computed property applies `.prefix(30)` on free tier, `isHistoryLimited` flag shows footer when entries exceed 30, footer shows "Showing last 30 transactions" + tappable "Upgrade to Pro for full history" text that presents ProUpgradeSheet with contextMessage. Pro tier shows all entries with no limit or footer.
-- Files changed:
-  - Booki/Views/AccountView.swift — added @AppStorage bookieTier + showingProUpgrade state to PlayerActivityView, displayedEntries/isHistoryLimited computed properties, historyLimitFooter view, ProUpgradeSheet .sheet modifier
-- **Learnings for future iterations:**
-  - PlayerActivityView receives ledgerEntries and playerBets as params — tier check uses @AppStorage("bookieTier") which is synced for both bookie and player accounts
-  - `filteredEntries` is the source of truth (sorted + filtered by type), `displayedEntries` wraps it with the 30-entry limit — keep them separate to allow `isHistoryLimited` to compare counts
-  - The footer goes after `.cardStyle()` but inside the else branch (when entries exist), not inside the LazyVStack
----
-
-## 2026-02-25 - US-011
-- What was implemented: Override actions gated on free tier in BetDetailView — "Reverse Settlement" and "Override Grade" buttons wrapped in `isPro` checks, actions card hidden entirely on settled bets for free tier (since all settled actions are Pro-only), pending/accepted/graded still show non-Pro actions (accept, decline, void, settle)
-- Files changed:
-  - Booki/Views/BetsListView.swift — added @AppStorage bookieTier + isPro computed property, wrapped Override Grade and Reverse Settlement in `if isPro`, updated shouldShowActions to return false for .settled on free tier
-- **Learnings for future iterations:**
-  - BetDetailView is inside BetsListView.swift (not a separate file)
-  - `shouldShowActions` controls whether the entire Actions card renders — update it when hiding all actions for a given status
-  - Graded bets always have at least the settle action on free tier, so the card still shows — only settled bets have all actions gated
-  - Use `if isPro, condition` (comma-separated) for combined tier + state checks in @ViewBuilder
----
-
-## 2026-02-25 - US-012
-- What was implemented: Server-side tier enforcement in two edge functions. create_invite: reads bookie.tier, counts active members (auth_user_id IS NOT NULL), enforces 3 for free / 50 for pro limit, returns 403 `member_limit_reached`. submit_parlay: reads bookie.tier, blocks non-pro with 403 `pro_required`.
-- Files changed:
-  - supabase/functions/create_invite/index.ts — added tier to bookie select, replaced hardcoded MAX_PLAYERS with tier-based MEMBER_LIMIT_FREE/PRO, added auth_user_id NOT NULL filter to player count, changed error to 403 `member_limit_reached`
-  - supabase/functions/submit_parlay/index.ts — added tier to bookie select, added tier check returning 403 `pro_required` before processing
-- **Learnings for future iterations:**
-  - create_invite already had a player count check — modify existing logic rather than adding duplicate checks
-  - submit_parlay already fetches bookie for manual_bet_acceptance — just add `tier` to the same select query
-  - Deno typecheck via `npx deno check` has pre-existing Deno namespace errors (no deno.ns lib) — these are not real issues for Supabase Edge Functions
-  - Error responses for tier enforcement use short machine-readable strings (`member_limit_reached`, `pro_required`) not human-readable messages — client handles display
----
-
-## 2026-02-25 - US-013
-- What was implemented: Debug tier toggle in About Settings — triple-tapping version number toggles between free and pro tier, updates @AppStorage immediately, shows animated toast overlay "Debug: Tier set to Pro/Free" that auto-dismisses after 2 seconds
-- Files changed:
-  - Booki/Views/SettingsView.swift — added @AppStorage bookieTier + @State toast properties to AboutSettingsView, .onTapGesture(count: 3) on version row, toast overlay with capsule styling and transition animation
-- **Learnings for future iterations:**
-  - `.onTapGesture(count: 3)` works reliably on HStack rows — no need for custom gesture recognizers
-  - Toast pattern: use `.overlay(alignment: .top)` + `@State` bool + `DispatchQueue.main.asyncAfter` for auto-dismiss, `withAnimation` for enter/exit transitions
-  - Debug toggle updates @AppStorage which all tier-gated views read — changes propagate instantly across the app
----
-
-## 2026-02-25 - Tier fixes, duplicate ledger fix, dashboard PnL, landing polish
-- What was implemented:
-  - **Tier source of truth fix**: Consolidated all tier reads from @AppStorage to SwiftData `bookies.first?.tier` across 5 view files. Debug toggle now writes to SwiftData Bookie model instead of UserDefaults.
-  - **Duplicate ledger fix**: Removed optimistic local inserts from SettleUpSheet, AdjustBalanceSheet, and GradingService (settleBet/settleParlay). Local inserts with auto-generated UUIDs caused duplicates when sync brought server entries with different UUIDs. Now triggers `syncService.syncTable(.ledgerEntries)` after edge function success for immediate UI updates.
-  - **Dashboard PnL**: Changed from bet-outcome-based PnL to ledger-entry-based net balance, excluding `paymentLogged` entries (settle ups don't affect PnL).
-  - **Change Password**: Added current password requirement with re-authentication, disabled button matches login CTA styling.
-  - **Landing page**: Updated pricing to Free/Pro + faded Traditional PPH column, compliance-friendly copy throughout, new mockup images (for-bookies-2, for-players-2, rossy), scroll-reveal animations (IntersectionObserver), larger hero phones (360x786 ratio), responsive breakpoints.
-  - **Pro tier spec**: Created docs/pro-tier-spec.md reference document.
-  - **sync_games fix**: Removed alternate_spreads/alternate_totals markets (require higher API tier).
-- Files changed:
-  - Booki/Views/SettingsView.swift, PlayersListView.swift, BetsListView.swift, AccountView.swift — tier source of truth
-  - Booki/Views/PlayerAnalyticsDetailView.swift — removed optimistic inserts, added sync after edge function
-  - Booki/Services/GradingService.swift — removed optimistic ledger inserts
-  - Booki/Services/SyncService.swift, RealtimeService.swift — debug logs for ledger sync
-  - Booki/Views/AnalyticsDashboardView.swift — ledger-based PnL excluding payments
-  - landing/index.html, styles.css, features.html — pricing, copy, animations, mockups
-  - docs/pro-tier-spec.md — new file
-  - supabase/functions/sync_games/index.ts — removed alternate markets
-- **Learnings for future iterations:**
-  - Never create local optimistic inserts with auto-generated UUIDs when server creates the canonical entry — sync will duplicate them. Either use the server-returned ID or let sync/realtime handle it.
-  - @AppStorage and SwiftData are two separate sources of truth — pick one and stick with it. SwiftData is the production source since it syncs with Supabase.
-  - Odds API alternate markets (alternate_spreads, alternate_totals) require a paid tier — stick to h2h,spreads,totals on the free plan.
-  - `paymentLogged` ledger entries represent balance clearing (collecting payment), not PnL — exclude from performance metrics.
----
-
-## 2026-02-25 - App Store prep, Stripe integration, account deletion, age gate, email verification
-- What was implemented:
-  - **Stripe checkout**: `create_checkout_session` reads `STRIPE_PROMO_COUPON_ID` from env (optional promo support), `ProCheckoutView` opens Stripe-hosted checkout, `stripe_webhook` syncs tier on payment events
-  - **Account deletion**: `delete_account` edge function (cancels Stripe, deletes data in FK order, unlinks players, deletes auth user), two-step confirmation UI on bookie Settings + player Account
-  - **Privacy manifest**: `PrivacyInfo.xcprivacy` with collected data types (email, name, userID, purchase history) + UserDefaults API reason
-  - **Age gate**: 18+ confirmation checkbox on SignUpView, required for form submission
-  - **Email verification**: Resend SMTP configured for `noreply@bookisports.com` with SPF/DKIM/DMARC DNS records on GoDaddy, Supabase custom SMTP enabled
-  - **Dashboard time selector**: 1D/1W/1M/All tabs filtering headline PnL, dynamic subtitle label
-  - **Player pick history**: PlayerPickHistoryView + PlayerPicksListView with open/graded toggle
-  - **Member detail**: Recent Activity as single navigable row, picks section with filter + "See All" (max 5 shown)
-  - **Settings reorder**: Profile → Change Password → Subscription → Pick Management → About → Log Out
-  - **ProUpgradeSheet**: BookiPro image asset, removed Restore Purchase placeholder
-  - **Terms/Privacy**: Added subscription billing sections, Stripe references, payment data handling
-  - **Landing**: Updated pricing, scroll-reveal animations
-- Files changed:
-  - Booki/Views/Auth/SignUpView.swift — age confirmation checkbox
-  - Booki/Views/SettingsView.swift — reorder, account deletion, removed Balance Alerts/Export Data
-  - Booki/Views/AccountView.swift — player account deletion
-  - Booki/Views/AnalyticsDashboardView.swift — Timeframe enum, time selector tabs, filteredPL
-  - Booki/Views/PlayerAnalyticsDetailView.swift — recent activity row, picks section with toggle
-  - Booki/Views/PlayerPickHistoryView.swift — NEW: full pick history view
-  - Booki/Views/PlayerPicksListView.swift — NEW: picks list with open/graded filter
-  - Booki/Views/ProUpgradeSheet.swift — BookiPro image, removed restore purchase
-  - Booki/Views/ProCheckoutView.swift — Stripe checkout integration
-  - Booki/Views/SubscriptionManagementView.swift — Stripe portal link
-  - Booki/PrivacyInfo.xcprivacy — NEW: privacy manifest
-  - supabase/functions/delete_account/index.ts — NEW: account deletion edge function
-  - supabase/functions/create_checkout_session/index.ts — NEW: Stripe checkout session
-  - supabase/functions/stripe_webhook/index.ts — NEW: Stripe webhook handler
-  - landing/terms.html, privacy.html — subscription/billing sections
-- **Learnings for future iterations:**
-  - Resend provides SMTP relay for Supabase auth emails — configure custom SMTP in Supabase dashboard with Resend API key as password
-  - DNS records for email: SPF (merge into existing TXT), DKIM (new TXT on subdomain), DMARC (new TXT on `_dmarc`) — don't overwrite existing records
-  - GoDaddy auto-appends domain to CNAME/TXT host fields — only enter the subdomain part
-  - PrivacyInfo.xcprivacy is required for App Store — declares API usage reasons and collected data types
-  - Account deletion must cancel Stripe subscription before deleting data, and delete in FK dependency order
----
-
-## 2026-02-25 - Email verification flow, invite emails via Resend, settings polish
-- What was implemented:
-  - **Verification pending screen**: Replaced alert-based "Check your email" with full-screen verification pending view showing email address, resend button, and back-to-login CTA
-  - **Resend invite emails**: `create_invite` edge function now sends branded HTML invite email via Resend API when email is provided — replaces iOS native mail composer
-  - **Invite email template**: Dark-themed email with bookie name, invite code in teal monospace, "Join Now" CTA linking to `bookisports.com/invite/{code}`
-  - **Delete Account separation**: Moved delete account out of main settings card to standalone muted text button at page bottom
-  - **Email templates**: Created `landing/email-confirm.html` and `landing/email-invite.html` reference templates
-  - **Verify page**: `landing/verify.html` — branded loading → success → "Open Booki" deep link flow
-- Files changed:
-  - Booki/Views/Auth/SignUpView.swift — verification pending screen, resend function
-  - Booki/Views/PlayersListView.swift — removed native mail composer, server sends email
-  - Booki/Views/SettingsView.swift — delete account moved to bottom as muted text
-  - supabase/functions/create_invite/index.ts — Resend API email sending, HTML template
-  - landing/email-invite.html — NEW: invite email template reference
-- **Learnings for future iterations:**
-  - Resend API is simple: POST to `https://api.resend.com/emails` with Bearer token, `from`, `to`, `subject`, `html`
-  - Email sending is non-blocking in edge functions — wrap in try/catch so invite creation succeeds even if email fails
-  - Data URI SVGs don't work in email clients — use hosted images or Unicode characters for icons
-  - Supabase `{{ .ConfirmationURL }}` points to Supabase domain by default — use `{{ .TokenHash }}` to construct custom URLs through your own domain
-
----
-
-## 2026-02-25 - Member settings, credit limit management, BetSlip navigation, OG image update
-- What was implemented:
-  - **Member Settings page**: New `MemberSettingsView` in Settings where bookies set default credit limit for new invitees, saves to Supabase `bookies.default_credit_limit`
-  - **Default credit limit**: Added `defaultCreditLimit` property to `Bookie` model, `BookieRecord` DTO, and `SyncService` sync methods
-  - **claim_invite reads bookie default**: Edge function now fetches bookie's `default_credit_limit` instead of hardcoded 10000, falls back to 1000
-  - **Supabase migration 022**: `default_credit_limit NUMERIC DEFAULT 1000` on bookies table
-  - **Credit limit editing**: Tappable credit line with pencil icon on member detail, "Set Credit Limit" in overflow menu, saves to Supabase + local SwiftData
-  - **Dashboard credit fix**: `balanceForPlayer()` now uses `BalanceService.playerSummary()` to account for open stakes (was showing $0)
-  - **BetSlip navigation arrows**: Up/down chevrons for navigating between singles fields, maintains field type (stake vs to-win)
-  - **Quick stake buttons**: Reduced to +$1, +$5, +$25 with equal-width layout
-  - **OG image update**: All 14 landing pages updated from `og-image.png` to `bookie-og.jpg` (og:image + twitter:image), added OG tags to verify.html
-  - **Delete Account UI**: Moved to separate card at bottom of Settings, icon+text matching Log Out style
-- Files changed:
-  - Booki/Models/Bookie.swift — defaultCreditLimit property
-  - Booki/Services/BookieService.swift — BookieRecord DTO update
-  - Booki/Services/SyncService.swift — sync defaultCreditLimit
-  - Booki/Views/SettingsView.swift — MemberSettingsView, Delete Account card
-  - Booki/Views/PlayerAnalyticsDetailView.swift — credit limit editing UI
-  - Booki/Views/AnalyticsDashboardView.swift — balanceForPlayer fix
-  - Booki/Views/BetSlipSheet.swift — navigation arrows, quick stakes
-  - supabase/functions/claim_invite/index.ts — read bookie default_credit_limit
-  - supabase/migrations/022_bookies_default_credit_limit.sql — NEW
-  - landing/**/*.html — OG image update to bookie-og.jpg
-- **Learnings for future iterations:**
-  - `BalanceService.playerSummary()` includes open stakes + balance owed — use it for dashboard credit display, not raw ledger sums
-  - BetSlip field ID convention: `"{marketId}_{sideIndicator}"` for stake, `+ "_towin"` for to-win — navigation arrows preserve suffix
-  - Supabase `.update().execute()` returns success even when RLS blocks (0 rows affected) — use service role for critical writes

@@ -1,246 +1,157 @@
 {
   "project": "Booki",
-  "branchName": "ralph/freemium-tier-system",
-  "description": "Freemium Tier System — Gate features into Free (3 members, no multi-picks) and Pro ($49.99/mo, 50 members) tiers with 7 upsell entry points, 4 payment screens (Stripe placeholder), and server-side enforcement.",
+  "branchName": "ralph/profile-filters-downgrade",
+  "description": "Downgrade enforcement (soft lock invites), standardized profile editing for players & bookies, and Picks tab filter bar redesign with member dropdown + bet type chips.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add BookieTier data model and tier sync infrastructure",
-      "description": "As a developer, I need a BookieTier enum, Supabase migration, and local tier caching so all views can check the bookie's tier.",
+      "title": "Add display_name column to players table",
+      "description": "As a developer, I need a display_name column on the players table so bookies can set a custom name that only they see.",
       "acceptanceCriteria": [
-        "Create BookieTier enum (free, pro) as String/Codable in a new file or alongside Bookie model",
-        "Add `tier` property to Bookie SwiftData model with default 'free' if not already present",
-        "Add @AppStorage('bookieTier') local cache in a shared location (e.g., TierService or extension) for instant UI reads",
-        "Create `isPro` computed property accessible from views (reads from @AppStorage or bookie query)",
-        "Create `activeMemberCount` helper that counts players with non-nil bookie_id for the current bookie",
-        "Create `memberLimit` computed property: 3 for free, 50 for pro",
-        "On login/sync, read bookie.tier from Supabase and update @AppStorage cache",
-        "Supabase migration: ensure bookies.tier column exists as text with default 'free'",
+        "Create Supabase migration adding `display_name TEXT DEFAULT NULL` to players table",
+        "Add `displayName: String?` property to Player SwiftData model with default nil",
+        "Add `display_name` to PlayerRecord DTO and CodingKeys in relevant service files",
+        "Update SyncService player download to sync display_name field",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Check if bookies table already has a `tier` column — it may exist from earlier work. The Bookie SwiftData model is in Booki/Models/. @AppStorage cache avoids async lookups on every view render. The activeMemberCount should count players where bookie_id matches AND auth_user_id is not nil (active, claimed players). SyncService is where tier sync should happen — read bookie record and update @AppStorage."
+      "notes": "Player model is in Booki/Models/Player.swift. PlayerRecord DTO may be in a service file. SyncService.downloadPlayers() and upsertPlayer() need the new field. Migration goes in supabase/migrations/ with next sequence number."
     },
     {
       "id": "US-002",
-      "title": "Build ProUpgradeSheet (Screen 1 - primary conversion screen)",
-      "description": "As a bookie on the free tier, I want to see a compelling Pro upgrade sheet so I can understand what I'm getting.",
+      "title": "Use display_name on all bookie-facing views",
+      "description": "As a bookie, I want to see my custom display_name for members wherever member names appear, falling back to the player's self-chosen name.",
       "acceptanceCriteria": [
-        "Create ProUpgradeSheet.swift in Views/Components/ or Views/",
-        "Sheet shows: Booki logo, 'PRO' heading in Theme.accent, '$49.99 / month' subtitle",
-        "Feature list card with 11 items (50 members, Multi-Pick, Performance by sport, Futures tracking, Recent activity, Smart filters & tags, Manual approval, Acceptance rules, Override & reverse, CSV export, Full history) each with checkmark.circle.fill icon in Theme.accent",
-        "Full-width 'Subscribe — $49.99/mo' button in Theme.accent at bottom",
-        "'Already Pro? Restore Purchase' tappable text in Theme.textMuted",
-        "Terms of Service and Privacy Policy links in Theme.textMuted",
-        "Optional contextMessage parameter shown above feature list when provided (e.g., 'You've reached the 3-member limit')",
-        "Sheet uses presentationDetents([.large]) and dark theme styling",
-        "Subscribe button navigates to ProCheckoutView (can be placeholder NavigationLink for now)",
-        "Dismiss via swipe-down or X button top-right",
+        "Add computed property on Player model: `var bookieDisplayName: String { displayName ?? name }`",
+        "Replace all bookie-side references to `player.name` with `player.bookieDisplayName` in: BetsListView, AnalyticsDashboardView, PlayersListView, PlayerAnalyticsDetailView",
+        "Player-side views (AccountView, BetSlipSheet, TicketDetailView) continue using `player.name` directly",
+        "Bookie's existing name edit flow on member detail writes to `display_name` (not `name`)",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "This sheet is presented from 7 different places in the app. Use @Environment(\\.dismiss) for the X button. The contextMessage is nil by default — only some entry points provide it. Use Theme.cardBackground for the feature list card, Theme.background for sheet background. Follow existing dark theme patterns from the codebase."
+      "notes": "Search for `player.name` across all bookie-facing views. The existing name edit on PlayerAnalyticsDetailView should save to display_name column in Supabase and displayName in SwiftData. Player-side views should NOT use bookieDisplayName."
     },
     {
       "id": "US-003",
-      "title": "Build ProCheckoutView and ProSuccessView (Screens 2 & 3)",
-      "description": "As a bookie, I want to see a checkout flow and success confirmation so the payment experience feels complete.",
+      "title": "Add RLS policy for players to update own name",
+      "description": "As a developer, I need an RLS policy so players can update their own name and email on the players table.",
       "acceptanceCriteria": [
-        "Create ProCheckoutView.swift — pushed from ProUpgradeSheet's Subscribe button",
-        "Checkout has: back button, 'Checkout' title, summary card (Booki Pro $49.99, billed monthly, today's charge, next renewal date)",
-        "Stripe placeholder area: Theme.cardBackground card with lock icon, 'Secure payment powered by Stripe', 'Payment integration coming soon' text",
-        "Full-width 'Pay $49.99 / month' button present but disabled with .opacity(0.5)",
-        "'Cancel anytime from Settings' + Terms/Privacy links at bottom",
-        "Create ProSuccessView.swift — shown after successful payment",
-        "Success view has: large animated checkmark (use Image(systemName: 'checkmark.circle.fill') scaled large with Theme.accent), 'Welcome to Pro' headline, descriptive text about 50 members and full features",
-        "Full-width 'Get Started' button that dismisses all sheets and returns to app",
-        "Both views follow dark theme with Theme.background and Theme.cardBackground",
-        "Wire ProUpgradeSheet Subscribe button to navigate to ProCheckoutView",
+        "Create Supabase migration adding UPDATE RLS policy on players table: allow update of `name` and `email` columns where `auth.uid()::text = auth_user_id::text`",
+        "Policy should only allow updating name and email — not credit_limit, bookie_id, status, or other fields",
         "Typecheck passes"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "ProCheckoutView is a NavigationLink destination pushed within a NavigationStack (the ProUpgradeSheet should wrap content in NavigationStack). Next renewal date: calculate 1 month from today using Calendar. ProSuccessView won't be reachable in production until Stripe is wired — for now it exists as a built screen. The 'Get Started' button should dismiss using @Environment(\\.dismiss) on the sheet's root."
+      "notes": "RLS policies are in supabase/migrations/. Check existing player RLS policies to avoid conflicts. The current players_update policy requires is_bookie() — this new policy is specifically for players updating their own record. Use column-level security if Supabase supports it, otherwise validate in the update logic."
     },
     {
       "id": "US-004",
-      "title": "Build SubscriptionManagementView and Settings subscription row",
-      "description": "As a Pro bookie, I want to manage my subscription from Settings so I can view my plan details and manage billing.",
+      "title": "Create PlayerProfileEditView",
+      "description": "As a player, I want to edit my name and email from my Account tab so my profile stays up to date.",
       "acceptanceCriteria": [
-        "Create SubscriptionManagementView.swift with: 'Current Plan' card showing 'Booki Pro' + 'Active' green pill, $49.99/month, member since date, next renewal date, members X of 50 usage",
-        "'Manage on Stripe' row that opens placeholder URL (will be Stripe Customer Portal)",
-        "Footer text: 'Cancel anytime. Your existing members and data are preserved.'",
-        "Add 'Subscription' row to bookie Settings between Profile and Balance Alerts sections",
-        "Free users: row shows 'Subscription' label, 'Free' value, small 'PRO' badge pill in Theme.accent — tapping presents ProUpgradeSheet",
-        "Pro users: row shows 'Subscription' label, 'Pro' value in Theme.accent — tapping pushes SubscriptionManagementView",
-        "Uses dark theme styling consistent with other Settings sections",
+        "Create PlayerProfileEditView.swift mirroring bookie's EditProfileSheet pattern (ScrollView + cardStyle)",
+        "Show editable Name text field, pre-populated with current player.name",
+        "Show editable Email text field, pre-populated with current player.email",
+        "Show read-only fields: Organizer name, Member Since date",
+        "Save button updates player.name directly in Supabase via `supabase.from('players').update()` using the new RLS policy",
+        "Email change calls `supabase.auth.updateUser(email:)` which triggers Supabase email confirmation",
+        "After email change request, show inline message: 'A confirmation email has been sent to [new email]. Your email will update once confirmed.'",
+        "Add 'Edit Profile' CTA (pencil icon or tappable row) in AccountView profile section, navigating to PlayerProfileEditView",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "The Settings view is likely in AccountView.swift or a dedicated SettingsView. Find the bookie settings section and add the subscription row. The 'Active' pill should use the same StatusPill pattern or a simple green capsule. Member since date can be placeholder or read from bookie.createdAt. The 'Manage on Stripe' row is non-functional for now — it can show an alert saying 'Coming soon' or simply not navigate."
+      "passes": false,
+      "notes": "AccountView is in Booki/Views/AccountView.swift. The profile section shows name, email, organizer, member since. Add a NavigationLink or button that presents PlayerProfileEditView. Follow the same styling patterns as ProfileSettingsView (sectionHeader, settingsDetailRow, cardStyle). The player's SwiftData model should be updated locally after successful Supabase save."
     },
     {
       "id": "US-005",
-      "title": "Gate dashboard: blur sport breakdown, hide futures and activity on free",
-      "description": "As a free bookie, I see a clean dashboard with summary cards, and the sport breakdown is blurred to tease Pro.",
+      "title": "Fix bookie profile status to check tier OR subscription",
+      "description": "As a bookie with Pro tier, I want to see 'Pro' on my profile status even if I got Pro through a direct DB grant.",
       "acceptanceCriteria": [
-        "Dashboard summary metric cards (Net Exposure, Pending Picks, Top Risk, Outstanding) remain fully functional on all tiers",
-        "SportPerformanceCard: on free tier, render with placeholder data, apply .blur(radius: 8) and .allowsHitTesting(false)",
-        "Overlay a frosted card centered on the blurred section: chart.bar.fill icon + 'Sport Breakdown' title + 'See which sports are winning for you' subtitle + 'Unlock with Pro' teal text button",
-        "Tapping 'Unlock with Pro' presents ProUpgradeSheet with contextMessage 'Unlock analytics'",
-        "Futures Tracking Card: completely hidden on free tier (not blurred, just absent)",
-        "Recent Activity Feed: completely hidden on free tier",
-        "On Pro tier, all dashboard sections render normally (no blur, no hiding)",
-        "Dashboard feels clean on free — simpler, not broken",
+        "In ProfileSettingsView, status row checks both `bookie.tier` and `bookie.subscriptionStatus`",
+        "Display 'Pro' with Theme.accent color if `tier == .pro` OR `subscriptionStatus` is `.active` or `.pro`",
+        "Display 'Free' with Theme.textSecondary only if both tier is free AND subscriptionStatus is not active/pro",
+        "Update `BookieTier.isPro` computed property to also accept when subscriptionStatus is .active or .pro (or create a new `Bookie.isPro` computed property that checks both)",
+        "All views that check isPro use this unified logic",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "The dashboard is in AnalyticsDashboardView.swift. The blur overlay is the ONE blurred section in the entire app — keep it tasteful. Use ZStack for the blur + overlay card. The frosted overlay card should use .ultraThinMaterial or Theme.cardBackground with some opacity. Read isPro from the tier infrastructure built in US-001. Only ONE blur on the entire dashboard."
+      "passes": false,
+      "notes": "ProfileSettingsView is in SettingsView.swift around line 392. It currently shows `bookie.subscriptionStatus.rawValue.capitalized`. The Bookie model is in Booki/Models/Bookie.swift. BookieTier.isPro is currently `switch self { case .pro, .chart: return true }`. A Bookie-level computed property `var isPro: Bool { tier.isPro || subscriptionStatus == .active || subscriptionStatus == .pro }` would be cleanest. Then update all `bookies.first?.tier.isPro` references to use `bookies.first?.isPro`."
     },
     {
       "id": "US-006",
-      "title": "Gate members tab: hide smart filters, tags, and search on free",
-      "description": "As a free bookie, I see a simple member list without smart filters or attention tags.",
+      "title": "Add downgrade enforcement to create_invite edge function",
+      "description": "As a developer, I need the create_invite edge function to enforce member limits based on the bookie's tier.",
       "acceptanceCriteria": [
-        "Free tier: search bar is hidden on Members tab",
-        "Free tier: filter chips bar (All, Attention needed, Overdue, etc.) is completely hidden",
-        "Free tier: attention tags (On Heater, Whale, Degen, etc.) are NOT rendered on member cards",
-        "Free tier: member list shows all members sorted by name with basic info (name, balance, record, credit utilization)",
-        "Pro tier: search bar, filter chips, and attention tags all render normally",
-        "Add capacity banner below last member card when at member limit on free: 'X of 3 members · Upgrade for more' on Theme.elevatedBackground or Theme.cardBackground card",
-        "Capacity banner is tappable → presents ProUpgradeSheet with contextMessage 'You've reached the 3-member limit'",
-        "Capacity banner only shows on free tier at capacity (3 members)",
+        "In create_invite/index.ts, after auth validation, count active players for the bookie (where bookie_id matches AND auth_user_id IS NOT NULL)",
+        "Read bookie.tier from bookies table",
+        "Set limit: 3 for free tier, 50 for pro tier",
+        "If active member count >= limit, return 403 with JSON `{ success: false, error: 'member_limit_reached', limit: <number>, current: <count> }`",
+        "Archived/removed members (auth_user_id IS NULL) do NOT count toward limit",
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "The members tab is in PlayersListView.swift. The filter chips, search bar, and attention tags were added in recent phases. Wrap them in if isPro { } checks. The capacity banner goes at the bottom of the list — use a Section footer or append to the list. Use Theme.elevatedBackground if it exists, otherwise Theme.cardBackground."
+      "passes": false,
+      "notes": "create_invite is in supabase/functions/create_invite/index.ts. Add the check after invite code validation but before the insert. The bookie_id is available from the authenticated user lookup. Use service client to count players. Return limit and current count in error response so the client can show a meaningful message."
     },
     {
       "id": "US-007",
-      "title": "Gate invite creation at member capacity",
-      "description": "As a free bookie at the 3-member limit, I see a clear upgrade prompt when trying to invite more members.",
+      "title": "Add member limit UI enforcement on invite sheet and members tab",
+      "description": "As a free bookie at the 3-member limit, I see a clear message when trying to invite and an informational banner on the Members tab.",
       "acceptanceCriteria": [
-        "When a free bookie at member limit taps 'Invite Member', the InviteMemberSheet still opens",
-        "Inside the sheet, show blocking message: 'You've reached the 3-member limit on the Free plan.'",
-        "Show 'Upgrade to Pro to invite up to 50 members.' description text",
-        "Show 'Upgrade to Pro' CTA button in Theme.accent → presents ProUpgradeSheet with contextMessage",
-        "The actual invite creation form/button is hidden when at capacity on free",
-        "When NOT at capacity (under 3 members on free, or on Pro under 50), invite flow works normally",
-        "Archived/removed members (no bookie_id link) do NOT count toward the limit",
+        "In InviteMemberSheet (or equivalent invite creation UI), check active member count vs tier limit",
+        "If at capacity: show blocking message 'You've reached the 3-member limit on the Free plan.' with 'Upgrade to Pro to invite up to 50 members.' and Upgrade CTA that presents ProUpgradeSheet",
+        "If at capacity: hide the actual invite creation form",
+        "On Members tab (PlayersListView), when at or over capacity on free tier, show inline banner below member list: 'X of 3 members · Upgrade for more'",
+        "Banner is tappable → presents ProUpgradeSheet with contextMessage",
+        "Banner uses Theme.cardBackground styling",
+        "When under limit or on pro tier, no banner and invite flow works normally",
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Find the InviteMemberSheet or invite creation view. The gate is INSIDE the sheet, not before it — the button to open the sheet is always visible. Count active members using the helper from US-001. Check bookie_id is not nil AND auth_user_id is not nil for active member count."
+      "passes": false,
+      "notes": "PlayersListView is in Booki/Views/PlayersListView.swift. The invite sheet is likely presented from this view. Count active members with bookie_id match AND auth_user_id not nil. Edge case: bookie has 10 members, downgrades, archives 8 → now at 2/3 → can invite again."
     },
     {
       "id": "US-008",
-      "title": "Gate multi-pick on player-side BetSlipSheet",
-      "description": "As a player whose bookie is on the free tier, I see that Multi-Pick is disabled with a message to ask my organizer to upgrade.",
+      "title": "Redesign Picks tab filter bar with member dropdown",
+      "description": "As a bookie, I want a member dropdown on the Picks tab so I can filter picks by specific member.",
       "acceptanceCriteria": [
-        "In BetSlipSheet, the 'Multi-Pick' tab in the mode selector is visible but grayed out (reduced opacity) on free tier",
-        "Tapping the disabled Multi-Pick tab shows inline message below selector: 'Multi-Picks aren't available yet. Ask your organizer to upgrade.'",
-        "Message uses Theme.textSecondary, small font size",
-        "Singles mode works identically on both tiers",
-        "The check is based on the bookie's tier (not the player's account) — read via the player's linked bookie record",
-        "When bookie upgrades to Pro, multi-pick becomes available immediately for all players (no app update needed)",
-        "On Pro tier, Multi-Pick tab works normally with no message",
+        "Replace current player name chips in BetsListView with a member dropdown button as first filter item",
+        "Member button shows person.fill icon + chevron.down when no member selected",
+        "Tapping opens a .menu picker listing 'All Members' (default) plus all members tied to the bookie",
+        "Selecting a member filters the picks list to only their bets",
+        "When a member is selected, button shows their name + chevron.down instead of icon",
+        "Selecting 'All Members' clears the filter (shows all picks)",
+        "Filter works with both Open and Past segments",
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "BetSlipSheet.swift has a mode selector for Singles vs Multi-Pick. The player needs to know their bookie's tier. This is available through the player's bookie_id → bookie record (check if there's a @Query for the bookie or if it comes through environment). The player may need to read the bookie's tier from the synced Bookie model via SwiftData query. If the bookie's tier isn't synced to the player's device, it may need to be added to the player sync or stored in @AppStorage during claim_player. This is the intentional social pressure mechanism — players asking 'why can't I do multi-picks?' drives bookie upgrades."
+      "passes": false,
+      "notes": "BetsListView.swift has the Picks tab. It currently uses selectedPlayerId state and renders player name chips in a horizontal ScrollView. Replace the chip section with a Menu button. The @Query for players is likely already available. Use bookie's players list for the dropdown options. Show player.bookieDisplayName in the dropdown (from US-002)."
     },
     {
       "id": "US-009",
-      "title": "Gate settings: pick management and export on free tier",
-      "description": "As a free bookie, I see simplified settings with pick management locked behind Pro.",
+      "title": "Add bet type filter chips to Picks tab",
+      "description": "As a bookie, I want to filter picks by Singles, Multi-Pick, or Futures to quickly find specific bet types.",
       "acceptanceCriteria": [
-        "Free tier: hide 'Require Manual Pick Approval' toggle",
-        "Free tier: hide 'Grade Picks Manually' toggle",
-        "Free tier: hide 'Allow Futures in Multi-Picks' toggle",
-        "Free tier: hide 'Acceptance Rules' navigation link",
-        "Free tier: show single replacement row: 'Pick Management' label with lock.fill icon, 'Pro' badge, and brief description 'Manual approval, grading rules, and more'",
-        "Tapping the Pick Management Pro row presents ProUpgradeSheet (no contextMessage needed)",
-        "Free tier: hide Export Data row entirely",
-        "Pro tier: all settings toggles and rows render normally, Pick Management Pro row is hidden",
+        "Add three filter chips next to the member dropdown: Singles, Multi-Pick, Futures",
+        "Chips are horizontally scrollable in the same row as the member dropdown",
+        "Singles filters to single bets (not parlays, not futures/outrights)",
+        "Multi-Pick filters to parlay/multi-pick tickets only",
+        "Futures filters to outright/futures bets only",
+        "Chips are mutually exclusive — tapping an active chip deselects it (shows all types)",
+        "Active chip uses Theme.accent background with Theme.background text, inactive uses Theme.cardBackground with Theme.textSecondary text",
+        "Bet type filter is additive with member dropdown — e.g., 'Tyler' + 'Multi-Pick' = Tyler's multi-picks",
+        "Filters apply on top of Open/Past segmented picker",
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "The settings view is in AccountView.swift (bookie section). Find the Pick Management toggles and wrap them in isPro checks. The replacement row for free tier should use Theme.textSecondary for the description and a small 'PRO' capsule badge similar to the subscription row. Keep Balance Alerts, Change Password, About, and Logout available on all tiers."
-    },
-    {
-      "id": "US-010",
-      "title": "Gate transaction history to last 30 entries on free",
-      "description": "As a free bookie, I see the 30 most recent transactions with a footer prompting upgrade for full history.",
-      "acceptanceCriteria": [
-        "In PlayerActivityView (and any inline history sections), limit displayed entries to 30 on free tier",
-        "After the 30th entry, show a footer row: 'Showing last 30 transactions' in Theme.textSecondary",
-        "Below that, 'Upgrade to Pro for full history' as tappable text in Theme.accent",
-        "Tapping the upgrade text presents ProUpgradeSheet with contextMessage 'See your full history'",
-        "Pro tier: show all entries with no footer/limit",
-        "The 30 entries should be the most recent (sorted by date descending, take first 30)",
-        "Typecheck passes"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "PlayerActivityView is in AccountView.swift. The filteredEntries computed property is where the limit should be applied — use .prefix(30) on free tier. The footer can be a Section footer or an additional row at the bottom of the list."
-    },
-    {
-      "id": "US-011",
-      "title": "Gate override actions in BetDetailView on free tier",
-      "description": "As a free bookie, I don't see override or reverse settlement actions on bet details.",
-      "acceptanceCriteria": [
-        "Free tier: 'Reverse Settlement' button is hidden in bookie BetDetailView",
-        "Free tier: 'Override Grade' button is hidden in bookie BetDetailView",
-        "Free tier: if no actions are available (all hidden), the Actions card section is completely hidden",
-        "Pro tier: Actions card shows all available actions based on bet state (same as current behavior)",
-        "No upsell placement in this view — actions are simply absent on free",
-        "Typecheck passes"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "BetDetailView is in BetsListView.swift (the bookie bet detail). Find the actions section and wrap override/reverse buttons in isPro checks. If the section becomes empty, hide the entire card."
-    },
-    {
-      "id": "US-012",
-      "title": "Add tier enforcement to create_invite and submit_parlay edge functions",
-      "description": "As a developer, I need server-side tier checks so limits can't be bypassed by API calls.",
-      "acceptanceCriteria": [
-        "create_invite edge function: before creating invite, count active players (bookie_id matches AND auth_user_id is not null)",
-        "create_invite: read bookie.tier, set limit to 3 for free, 50 for pro",
-        "create_invite: if count >= limit, return 403 with JSON { error: 'member_limit_reached' }",
-        "submit_parlay edge function: read bookie.tier before processing",
-        "submit_parlay: if tier !== 'pro', return 403 with JSON { error: 'pro_required' }",
-        "Both functions read tier from bookies table using the authenticated bookie's ID",
-        "Typecheck passes"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": "Edge functions are in supabase/functions/. create_invite may be in create_invite/ or a similar directory. submit_parlay is in submit_parlay/. Both already have auth validation — add tier check after auth but before business logic. Use the service role client to read bookie.tier. The member count should match the client-side logic: players where bookie_id = bookieId AND auth_user_id IS NOT NULL."
-    },
-    {
-      "id": "US-013",
-      "title": "Add debug tier toggle via triple-tap on version number",
-      "description": "As a developer, I want a hidden debug toggle to test tier gating without payment.",
-      "acceptanceCriteria": [
-        "In Settings, triple-tapping the version number (in About section) toggles between free and pro tier",
-        "Toggle updates @AppStorage('bookieTier') immediately",
-        "Show a brief confirmation: 'Debug: Tier set to Pro' or 'Debug: Tier set to Free' (use a toast or temporary overlay)",
-        "All tier-gated UI updates immediately when debug toggle fires",
-        "This is for development/testing only — does NOT sync to Supabase",
-        "The gesture should be non-obvious (triple-tap, not visible button)",
-        "Typecheck passes"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": "Find the About section or version display in Settings (AccountView.swift). Add .onTapGesture(count: 3) to the version Text view. Toggle the @AppStorage value. The confirmation can be a simple withAnimation overlay or use a @State showDebugToast bool that auto-dismisses after 2 seconds. This is crucial for testing the entire tier system before Stripe is wired."
+      "passes": false,
+      "notes": "Add to BetsListView.swift alongside the member dropdown from US-008. Determine bet type from the Bet model — check for parlay/ticket associations, market type for futures/outrights. The filter state can be an optional enum: `@State private var selectedBetType: BetTypeFilter?` with cases .singles, .multiPick, .futures."
     }
   ]
 }
