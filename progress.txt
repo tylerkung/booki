@@ -134,3 +134,18 @@ Started: Wed Feb 25 18:55:49 PST 2026
   - Open invites: `claimed_by IS NULL AND expires_at > now()` (unclaimed + not expired)
   - Bookie delete cascading is handled by FK constraints in the database
 ---
+
+## 2026-02-25 - US-011
+- Added "Step Down as Organizer" row in SettingsView before Log Out — danger color, person.crop.circle.badge.minus icon
+- Confirmation alert explains dashboard/settings removal and pick history preservation
+- On confirm, calls `step_down_organizer` edge function via EdgeFunctionService
+- On success, calls `authManager.clearBookieState()` → userRole = nil → routes to PlayerMainView
+- On `has_members_or_invites` error, shows blocking alert with instructions
+- Added loading overlay during edge function call
+- Added `clearBookieState()` method to AuthManager
+- Files changed: Booki/Views/SettingsView.swift, Booki/Services/AuthManager.swift
+- **Learnings for future iterations:**
+  - SettingsView uses inline HStack rows (not settingsMenuRow helper) for non-navigable actions (Log Out, Step Down)
+  - StepDownResponse needs to decode `error` field to check for specific error types
+  - `clearBookieState()` sets userRole to nil which triggers AuthGateView re-routing
+---

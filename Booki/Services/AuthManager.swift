@@ -251,6 +251,14 @@ final class AuthManager {
         await checkAgreementRequired(for: authUserId)
     }
 
+    /// Clears the bookie state, reverting to standalone user
+    /// Called after step_down_organizer edge function succeeds
+    func clearBookieState() {
+        currentBookieId = nil
+        currentPlayerId = nil
+        userRole = nil
+    }
+
     /// Sets the current player ID directly (used for standalone synthetic player)
     func setCurrentPlayerId(_ playerId: UUID) {
         currentPlayerId = playerId

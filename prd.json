@@ -190,7 +190,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "SettingsView is in Booki/Views/SettingsView.swift. The settings menu has navigable rows (Profile, Balance Alerts, Pick Management, Export Data, About). Add the step-down row as a destructive action near the bottom. EdgeFunctionService is in Booki/Services/EdgeFunctionService.swift — follow the existing invoke() pattern. After successful step-down, AuthManager needs to clear bookie state (currentBookieId = nil, userRole = nil)."
     },
     {

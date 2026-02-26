@@ -16,6 +16,9 @@ struct SettingsView: View {
     @State private var showingDeleteFinalConfirmation = false
     @State private var isDeletingAccount = false
     @State private var deleteError: String?
+    @State private var showingStepDownConfirmation = false
+    @State private var isSteppingDown = false
+    @State private var stepDownError: String?
 
     private var isPro: Bool {
         bookies.first?.isPro ?? false
@@ -53,6 +56,27 @@ struct SettingsView: View {
                     menuDivider
                     settingsMenuRow(icon: "info.circle", title: "About") {
                         AboutSettingsView()
+                    }
+                    menuDivider
+                    // Step Down as Organizer
+                    Button {
+                        showingStepDownConfirmation = true
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "person.crop.circle.badge.minus")
+                                .font(.system(size: 20))
+                                .foregroundStyle(Theme.danger)
+                                .frame(width: 28, alignment: .center)
+
+                            Text("Step Down as Organizer")
+                                .font(Theme.body)
+                                .fontWeight(.medium)
+                                .foregroundStyle(Theme.danger)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
                     }
                     menuDivider
                     Button {
@@ -148,8 +172,39 @@ struct SettingsView: View {
             } message: {
                 Text(deleteError ?? "")
             }
+            .alert("Step Down as Organizer", isPresented: $showingStepDownConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Step Down", role: .destructive) {
+                    performStepDown()
+                }
+            } message: {
+                Text("Are you sure? Your organizer dashboard and settings will be removed. Your personal pick history will be preserved.")
+            }
+            .alert("Cannot Step Down", isPresented: Binding(
+                get: { stepDownError != nil },
+                set: { if !$0 { stepDownError = nil } }
+            )) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(stepDownError ?? "")
+            }
             .overlay {
-                if isDeletingAccount {
+                if isSteppingDown {
+                    ZStack {
+                        Color.black.opacity(0.5).ignoresSafeArea()
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .tint(Theme.accent)
+                                .scaleEffect(1.5)
+                            Text("Stepping down...")
+                                .font(Theme.bodyFont(size: 15, weight: .medium))
+                                .foregroundStyle(Theme.textPrimary)
+                        }
+                        .padding(32)
+                        .background(Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                } else if isDeletingAccount {
                     ZStack {
                         Color.black.opacity(0.5).ignoresSafeArea()
                         VStack(spacing: 16) {
@@ -329,6 +384,40 @@ struct SettingsView: View {
         }
     }
 
+    private func performStepDown() {
+        isSteppingDown = true
+        Task {
+            do {
+                let response: StepDownResponse = try await EdgeFunctionService.shared.callFunction(
+                    name: "step_down_organizer",
+                    body: EmptyRequest()
+                )
+                if response.success {
+                    await MainActor.run {
+                        isSteppingDown = false
+                        // Clear bookie state — app will route to PlayerMainView
+                        authManager.clearBookieState()
+                    }
+                } else if response.error == "has_members_or_invites" {
+                    await MainActor.run {
+                        isSteppingDown = false
+                        stepDownError = "You still have active members or open invites. Archive all members and delete invites before stepping down."
+                    }
+                } else {
+                    await MainActor.run {
+                        isSteppingDown = false
+                        stepDownError = response.error ?? "Failed to step down"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isSteppingDown = false
+                    stepDownError = error.localizedDescription
+                }
+            }
+        }
+    }
+
     private func performAccountDeletion() {
         isDeletingAccount = true
         Task {
@@ -360,6 +449,10 @@ struct SettingsView: View {
 
 private struct EmptyRequest: Encodable {}
 private struct DeleteAccountResponse: Decodable {
+    let success: Bool
+    let error: String?
+}
+private struct StepDownResponse: Decodable {
     let success: Bool
     let error: String?
 }
