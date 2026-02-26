@@ -353,10 +353,10 @@ final class RealtimeService {
             let player = Player(
                 id: record.id,
                 name: record.name,
-                displayName: record.displayName,
                 email: record.email,
                 creditLimit: record.creditLimit,
                 status: PlayerStatus(rawValue: record.status) ?? .active,
+                displayName: record.displayName,
                 collectionStatus: record.collectionStatus.flatMap { CollectionStatus(rawValue: $0) },
                 collectionStatusDate: record.collectionStatusDate,
                 promisedPaymentDate: record.promisedPaymentDate,
