@@ -155,7 +155,7 @@
                         <tbody>
                             <template x-for="p in filteredPlayers" :key="p.id">
                                 <tr>
-                                    <td class="name" x-text="p.display_name || p.name"></td>
+                                    <td class="name"><a :href="'#/members/' + p.id" style="color:var(--text-primary);" x-text="p.display_name || p.name"></a></td>
                                     <td :class="p.balance > 0 ? 'positive' : p.balance < 0 ? 'negative' : ''"
                                         :style="{ color: p.balance > 0 ? 'var(--success)' : p.balance < 0 ? 'var(--danger)' : '' }"
                                         x-text="formatCurrency(p.balance || 0)"></td>
@@ -365,6 +365,122 @@
                         </div>
                     </div>
                 </template>
+            </div>
+
+            <!-- ── Member Detail View ── -->
+            <div x-show="route === 'member-detail'" x-cloak>
+                <div style="margin-bottom:20px;">
+                    <a href="#/members" class="btn btn-ghost" style="gap:6px;padding-left:0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Back to Members
+                    </a>
+                </div>
+
+                <!-- Loading state -->
+                <template x-if="isLoadingMemberDetail">
+                    <div>
+                        <div class="card" style="margin-bottom:16px;"><div class="shimmer" style="height:160px;"></div></div>
+                        <div class="card"><div class="shimmer" style="height:60px;"></div></div>
+                    </div>
+                </template>
+
+                <!-- Loaded state -->
+                <template x-if="!isLoadingMemberDetail && memberDetail">
+                    <div>
+                        <!-- Header Card -->
+                        <div class="card" style="margin-bottom:16px;">
+                            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
+                                <div>
+                                    <h2 style="font-size:22px;margin-bottom:4px;" x-text="memberDetail.display_name || memberDetail.name"></h2>
+                                    <span class="badge" :class="memberDetail.auth_user_id ? 'badge-success' : 'badge-muted'" style="font-size:11px;" x-text="memberDetail.auth_user_id ? 'Active' : 'Pending'"></span>
+                                </div>
+                                <!-- Overflow menu -->
+                                <div style="position:relative;">
+                                    <button class="btn btn-ghost" @click="showMemberOverflow = !showMemberOverflow" style="font-size:18px;padding:4px 8px;">···</button>
+                                    <div x-show="showMemberOverflow" @click.outside="showMemberOverflow = false"
+                                         style="position:absolute;right:0;top:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);min-width:160px;z-index:50;overflow:hidden;">
+                                        <button @click="showMemberOverflow = false; showArchiveModal = true;"
+                                                style="display:block;width:100%;text-align:left;padding:10px 16px;background:none;border:none;color:var(--text-secondary);font-size:13px;cursor:pointer;"
+                                                onmouseover="this.style.background='var(--bg-card)'" onmouseout="this.style.background='none'">
+                                            Archive Member
+                                        </button>
+                                        <button @click="showMemberOverflow = false; showRemoveModal = true;"
+                                                style="display:block;width:100%;text-align:left;padding:10px 16px;background:none;border:none;color:var(--danger);font-size:13px;cursor:pointer;"
+                                                onmouseover="this.style.background='var(--bg-card)'" onmouseout="this.style.background='none'">
+                                            Remove Member
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Balance -->
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Balance</div>
+                                    <div style="font-size:22px;font-weight:700;"
+                                         :style="{ color: (memberDetail.balance || 0) > 0 ? 'var(--success)' : (memberDetail.balance || 0) < 0 ? 'var(--danger)' : 'var(--text-primary)' }"
+                                         x-text="formatCurrency(memberDetail.balance || 0)"></div>
+                                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;"
+                                         x-text="(memberDetail.balance || 0) > 0 ? 'Owes you' : (memberDetail.balance || 0) < 0 ? 'You owe' : 'Settled'"></div>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Credit Limit</div>
+                                    <div style="font-size:22px;font-weight:700;color:var(--text-primary);" x-text="formatCurrency(memberDetail.credit_limit || 0)"></div>
+                                </div>
+                            </div>
+
+                            <!-- Credit Utilization Bar -->
+                            <div>
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                    <span style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Credit Utilization</span>
+                                    <span style="font-size:12px;color:var(--text-secondary);" x-text="Math.round(getMemberCreditUtilization()) + '%'"></span>
+                                </div>
+                                <div style="width:100%;height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden;">
+                                    <div style="height:100%;border-radius:3px;transition:width 0.3s;"
+                                         :style="{ width: getMemberCreditUtilization() + '%', background: getMemberCreditUtilization() > 80 ? 'var(--danger)' : 'var(--accent)' }"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions Card -->
+                        <div class="card" style="margin-bottom:16px;">
+                            <div class="card-header"><span class="card-title">Actions</span></div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="btn btn-accent" @click="openSettleUp(memberDetail)">Settle Up</button>
+                                <button class="btn btn-secondary" @click="openAdjustBalance(memberDetail)">Adjust Balance</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- ── Archive Member Modal ── -->
+            <div class="modal-overlay" x-show="showArchiveModal" x-cloak @click.self="showArchiveModal = false" x-transition>
+                <div class="modal">
+                    <h2>Archive Member</h2>
+                    <p style="color:var(--text-secondary);margin-bottom:16px;">Archive <strong x-text="memberDetail?.display_name || memberDetail?.name"></strong>? They will no longer appear in your active members list.</p>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" @click="showArchiveModal = false">Cancel</button>
+                        <button class="btn btn-accent" @click="archiveMember()" :disabled="isArchiving">
+                            <span x-text="isArchiving ? 'Archiving...' : 'Archive'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Remove Member Modal ── -->
+            <div class="modal-overlay" x-show="showRemoveModal" x-cloak @click.self="showRemoveModal = false" x-transition>
+                <div class="modal">
+                    <h2>Remove Member</h2>
+                    <p style="color:var(--text-secondary);margin-bottom:8px;">Remove <strong x-text="memberDetail?.display_name || memberDetail?.name"></strong> from your organization?</p>
+                    <p style="color:var(--danger);font-size:13px;margin-bottom:16px;">This will sever their link to your organization. Their pick history will be preserved but they will no longer be associated with your account.</p>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" @click="showRemoveModal = false">Cancel</button>
+                        <button class="btn btn-danger" @click="removeMember()" :disabled="isRemoving">
+                            <span x-text="isRemoving ? 'Removing...' : 'Remove Member'"></span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- ── Subscription View ── -->

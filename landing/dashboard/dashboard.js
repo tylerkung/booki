@@ -58,6 +58,15 @@ function dashboardApp() {
         showVoidModal: false,
         isVoiding: false,
 
+        // ── Member Detail ──
+        memberDetail: null,
+        isLoadingMemberDetail: false,
+        showArchiveModal: false,
+        showRemoveModal: false,
+        isArchiving: false,
+        isRemoving: false,
+        showMemberOverflow: false,
+
         // ── Override / Reverse ──
         showOverrideModal: false,
         overrideOutcome: 'won',
@@ -159,6 +168,7 @@ function dashboardApp() {
             // Load route-specific data
             if (this.route === 'picks') this.loadPicks();
             if (this.route === 'pick-detail') this.loadPickDetail();
+            if (this.route === 'member-detail') this.loadMemberDetail();
         },
 
         // ── Auth ──
@@ -371,6 +381,99 @@ function dashboardApp() {
             }
 
             this.isLoadingPickDetail = false;
+        },
+
+        // ── Member Detail ──
+        async loadMemberDetail() {
+            if (!this.selectedPlayerId || !this.bookie) return;
+            this.isLoadingMemberDetail = true;
+            this.memberDetail = null;
+            this.showMemberOverflow = false;
+
+            // Look up from playerMap first, then fetch from Supabase
+            let player = this.playerMap[this.selectedPlayerId];
+            if (!player) {
+                const { data, error } = await this.supabase
+                    .from('players')
+                    .select('*')
+                    .eq('id', this.selectedPlayerId)
+                    .limit(1);
+
+                if (error || !data?.length) {
+                    console.error('Failed to load member detail:', error);
+                    this.toast('Failed to load member', 'error');
+                    this.isLoadingMemberDetail = false;
+                    return;
+                }
+                player = data[0];
+            }
+
+            // Load balance from ledger entries
+            const { data: ledger } = await this.supabase
+                .from('ledger_entries')
+                .select('amount')
+                .eq('player_id', this.selectedPlayerId)
+                .eq('bookie_id', this.bookie.id);
+
+            const balance = (ledger || []).reduce((sum, e) => sum + (e.amount || 0), 0);
+            player.balance = balance;
+
+            this.memberDetail = player;
+            this.isLoadingMemberDetail = false;
+        },
+
+        async archiveMember() {
+            if (!this.memberDetail) return;
+            this.isArchiving = true;
+
+            const { error } = await this.supabase
+                .from('players')
+                .update({ status: 'archived' })
+                .eq('id', this.memberDetail.id);
+
+            if (error) {
+                this.toast('Failed to archive member', 'error');
+            } else {
+                this.toast(`${this.memberDetail.display_name || this.memberDetail.name} archived`, 'success');
+                this.showArchiveModal = false;
+                this.memberDetail.status = 'archived';
+                // Update playerMap
+                if (this.playerMap[this.memberDetail.id]) {
+                    this.playerMap[this.memberDetail.id].status = 'archived';
+                }
+                await this.loadPlayers();
+            }
+
+            this.isArchiving = false;
+        },
+
+        async removeMember() {
+            if (!this.memberDetail) return;
+            this.isRemoving = true;
+
+            const { error } = await this.supabase
+                .from('players')
+                .update({ bookie_id: null, auth_user_id: null })
+                .eq('id', this.memberDetail.id);
+
+            if (error) {
+                this.toast('Failed to remove member', 'error');
+            } else {
+                this.toast(`${this.memberDetail.display_name || this.memberDetail.name} removed`, 'success');
+                this.showRemoveModal = false;
+                await this.loadPlayers();
+                window.location.hash = '#/members';
+            }
+
+            this.isRemoving = false;
+        },
+
+        getMemberCreditUtilization() {
+            if (!this.memberDetail) return 0;
+            const balance = this.memberDetail.balance || 0;
+            const limit = this.memberDetail.credit_limit || 1;
+            // Utilization: how much of credit is used (balance as % of limit)
+            return Math.min(100, Math.max(0, (Math.abs(balance) / limit) * 100));
         },
 
         calcPotentialReturn(bet) {
