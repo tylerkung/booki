@@ -143,12 +143,20 @@ struct PlayersListView: View {
         }
     }
 
+    private var isAtMemberCapacity: Bool {
+        guard !bookieIsPro else { return false }
+        let activeCount = players.filter { $0.status != .archived && $0.authUserId != nil }.count
+        return activeCount >= bookieTier.memberLimit
+    }
+
     private var scrollContent: some View {
         ScrollView {
             VStack(spacing: 0) {
                 pendingInvitesSection
                 membersSection
-                inviteButton
+                if !isAtMemberCapacity {
+                    inviteButton
+                }
             }
         }
     }

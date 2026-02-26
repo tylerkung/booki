@@ -547,6 +547,11 @@ struct AccountView: View {
                         Task {
                             isBecomingOrganizer = true
                             do {
+                                // Delete the synthetic standalone player before switching roles
+                                if player.bookie == nil && player.name == "Standalone" {
+                                    modelContext.delete(player)
+                                    try? modelContext.save()
+                                }
                                 try await authManager.becomeOrganizer()
                             } catch {
                                 print("Failed to become organizer: \(error)")
@@ -761,6 +766,12 @@ struct AccountView: View {
         isDeletingAccount = true
         Task {
             do {
+                // Clean up synthetic standalone player if present
+                if authManager.isStandaloneUser && player.bookie == nil {
+                    modelContext.delete(player)
+                    try? modelContext.save()
+                }
+
                 let response: PlayerDeleteAccountResponse = try await EdgeFunctionService.shared.callFunction(
                     name: "delete_account",
                     body: PlayerEmptyRequest()

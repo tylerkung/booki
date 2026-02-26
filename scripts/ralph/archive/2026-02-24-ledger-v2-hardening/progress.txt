@@ -1,0 +1,218 @@
+# Ralph Progress Log
+Started: Tue Feb 24 11:05:08 PST 2026
+
+## Codebase Patterns
+- SQL migrations follow style in `006_audit_events.sql`: CREATE TABLE → indexes → RLS → policies → COMMENTS
+- Payout math (American odds): win positive = -(stake * odds/100), win negative = -(stake * 100/abs(odds)), loss = +stake, push/void = 0
+- Internal balance convention: positive = player owes bookie, negative = bookie owes player
+- Edge functions use service role for DB writes; RLS policies are SELECT-only for most financial tables
+- Immutability triggers on ledger_entries, settlement_events, audit_events prevent UPDATE/DELETE
+- settle_bet_tx RPC is SECURITY DEFINER — callable via `.rpc('settle_bet_tx', { params })`
+- RPC functions return `{ success: false, error }` for business rule violations (not Postgres errors) — check `data.success` after `rpcError`
+- Reversal/override RPCs follow same pattern as settle_bet_tx: FOR UPDATE lock → validate → mutate → audit → return JSONB
+- Edge function RPC refactor pattern: keep CORS + JWT + idempotency + ownership check, replace inline DB ops with single RPC call
+- iOS edge function calls: UUID must be `.lowercased()` before sending to server (iOS uppercase vs PostgreSQL lowercase)
+- ParlayPushVoidPolicy mapping: `.treatAsPush` → `"treatAsPush"`, `.reduceLegReprice` → `"reduceLegReprice"`
+---
+
+## 2026-02-24 - US-001
+- Created `supabase/migrations/015_ledger_v2_atomic_settlement.sql`
+- settlement_events table with RLS (SELECT-only for bookie's own records)
+- prevent_mutation() trigger function applied to ledger_entries, settlement_events, audit_events
+- settle_bet_tx() atomic RPC: validates bet → calculates payout → updates bet → inserts ledger entry → inserts settlement_event → inserts audit events → returns JSONB
+- Files changed: `supabase/migrations/015_ledger_v2_atomic_settlement.sql` (new)
+- **Learnings for future iterations:**
+  - The settle_bet edge function currently does separate update+insert queries — US-002 will replace with single RPC call
+  - The bets table does NOT have an immutability trigger (only financial history tables do)
+  - Use `FOR UPDATE` row locking when reading bet in the RPC to prevent concurrent settlement
+  - UNIQUE(bet_id, settlement_version) prevents duplicate settlements for the same version
+---
+
+## 2026-02-24 - US-002
+- Refactored `supabase/functions/settle_bet/index.ts` to use `settle_bet_tx` RPC
+- Removed inline `calculatePayout()` function, separate bet update, ledger insert, and audit emit calls
+- RPC handles all atomically: bet status update, ledger entry, settlement_events, audit events
+- Edge function now: CORS → JWT → idempotency check → bookie validation → RPC → idempotency store → respond
+- Kept same response shape: `{ success: true, bet: {...}, ledger_entry: {...} }`
+- Removed `emitAuditEvent` import (no longer needed)
+- Files changed: `supabase/functions/settle_bet/index.ts`
+- **Learnings for future iterations:**
+  - `client.rpc('settle_bet_tx', { params })` returns `{ data: JSONB, error }` — data is already parsed object
+  - RPC returns `{ success: false, error: '...' }` for business rule violations (not a Postgres error) — handle as 400
+  - BetRecord and LedgerEntry interfaces kept for documentation even though RPC returns untyped JSONB
+  - Deploy: `npx supabase functions deploy settle_bet --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+---
+
+## 2026-02-24 - US-003
+- Fixed `supabase/functions/auto_refresh_games/index.ts` to always create ledger entries for push/void outcomes ($0 amount)
+- Two code paths fixed: (1) catch-up grading in `runCatchupGrading()` ~line 443, (2) main grading loop ~line 1294
+- Removed `if (payoutAmount !== 0)` guards — ledger entries now created for ALL settlement outcomes
+- Added `descriptionMap` for consistent descriptions: win='Bet won', loss='Bet lost', push='Bet pushed', void='Bet voided'
+- Files changed: `supabase/functions/auto_refresh_games/index.ts`
+- **Learnings for future iterations:**
+  - auto_refresh_games has TWO settlement code paths: `runCatchupGrading()` (catch-up) and main `Deno.serve` handler (live grading) — both need identical ledger logic
+  - The catch-up path doesn't capture ledger insert errors (no `.select()` return) — US-004 will need to add `.select().single()` there
+  - Deploy: `npx supabase functions deploy auto_refresh_games --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+---
+
+## 2026-02-24 - US-004
+- Added settlement_events row insertion to both auto_refresh_games settlement paths
+- Catch-up grading path (~line 445): added `.select().single()` to ledger insert to get returned ID, then inserts settlement_events row
+- Main grading loop (~line 1314): same — added `.select().single()` and settlement_events insert
+- Both paths: mode='auto', non-blocking (try/catch around settlement_events insert, logs error but doesn't fail bet settlement)
+- Idempotency keys: `auto_settle_catchup_{betId}_{timestamp}` (catch-up) and `auto_settle_{betId}_{timestamp}` (main loop)
+- actor_user_id sourced from bookie in catch-up path (`bookie?.auth_user_id`) and from game in main path (`game.bookie_auth_user_id`)
+- Files changed: `supabase/functions/auto_refresh_games/index.ts`
+- **Learnings for future iterations:**
+  - Catch-up grading uses `bookie?.auth_user_id` for actor; main loop uses `game.bookie_auth_user_id` — different variable names for same concept
+  - The catch-up path's ledger insert previously had no `.select()` — needed to add it to retrieve the inserted row's ID
+  - settlement_events insert is wrapped in try/catch to be non-blocking — if it fails, bet settlement still succeeds
+  - No Deno installed locally — can't run `deno check` for typechecking edge functions
+---
+
+## 2026-02-24 - US-005
+- Created `supabase/migrations/016_ledger_v2_reversal_rpcs.sql` with two SECURITY DEFINER RPC functions
+- `reverse_settlement_tx(p_bet_id, p_actor_user_id, p_reason, p_idempotency_key)`: validates bet is settled, finds most recent settlement ledger entry, creates reversal entry with negated amount (type='reversal'), updates bet to 'graded', emits 2 audit events (bet reverse + ledger create)
+- `override_grade_tx(p_bet_id, p_actor_user_id, p_new_outcome, p_reason, p_idempotency_key)`: handles two paths — (A) settled bet: reverses settlement first (same logic as reverse_settlement_tx), then updates grade_result; (B) graded bet: just updates grade_result. Both paths emit override audit event.
+- Both functions use `FOR UPDATE` row locking on bet fetch to prevent concurrent modification
+- Both return JSONB with success flag, bet data, and reversal entry data where applicable
+- Files changed: `supabase/migrations/016_ledger_v2_reversal_rpcs.sql` (new)
+- **Learnings for future iterations:**
+  - override_grade_tx has an internal reversal path — the edge function refactor (US-007) can remove ALL inline reversal logic and just call the RPC
+  - Both RPCs validate bet state before proceeding — edge functions only need to validate JWT, ownership, and idempotency
+  - The reversal entry description differentiates: "Settlement reversal: {reason}" vs "Settlement reversal for grade override: {reason}"
+  - override_grade_tx returns `settlement_reversed` boolean and optional `reversal_entry` — edge function can forward these directly
+---
+
+## 2026-02-24 - US-006
+- Refactored `supabase/functions/reverse_settlement/index.ts` to use `reverse_settlement_tx` RPC
+- Removed inline DB operations: bet status update, reversal ledger entry insert, 2x audit event emits
+- Removed `emitAuditEvent` import (no longer needed — RPC handles audit atomically)
+- RPC handles all atomically: validates bet is settled, finds original settlement entry, creates reversal, updates bet to graded, emits audit events
+- Kept same response shape: `{ success: true, bet: {...}, reversal_entry: {...} }`
+- Edge function now: CORS → JWT → input validation → idempotency check → bookie validation → RPC → idempotency store → respond
+- Files changed: `supabase/functions/reverse_settlement/index.ts`
+- **Learnings for future iterations:**
+  - Same refactor pattern as US-002 (settle_bet): keep CORS + JWT + idempotency + ownership, replace inline ops with single RPC call
+  - The bet fetch + bookie ownership check is kept in the edge function (pre-RPC validation) even though the RPC also validates — defense in depth
+  - BetRecord and LedgerEntry interfaces retained for documentation even though RPC returns untyped JSONB
+  - Deploy: `npx supabase functions deploy reverse_settlement --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+---
+
+## 2026-02-24 - US-007
+- Refactored `supabase/functions/override_grade/index.ts` to use `override_grade_tx` RPC
+- Removed entire inline reversal block (find settlement entry, create reversal, 3x audit emits), bet update, and grade override audit emit
+- Removed `emitAuditEvent` import (no longer needed — RPC handles all audit events atomically)
+- RPC handles all atomically: validates bet state, reverses settlement if needed, updates grade_result, emits audit events
+- Kept same response shape: `{ success: true, bet: {...}, settlement_reversed: boolean }`
+- Edge function now: CORS → JWT → input validation → idempotency check → bookie validation → grade_result check → RPC → idempotency store → respond
+- Files changed: `supabase/functions/override_grade/index.ts`
+- **Learnings for future iterations:**
+  - This was the most complex refactor — removed ~85 lines of inline reversal+update+audit logic, replaced with single RPC call
+  - Same pattern as US-002 and US-006: keep CORS + JWT + idempotency + ownership + business rule pre-checks, replace inline ops with RPC
+  - The grade_result null check is kept in the edge function even though RPC validates too — defense in depth
+  - Deploy: `npx supabase functions deploy override_grade --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+---
+
+## 2026-02-24 - US-008
+- Created `supabase/functions/settle_parlay/index.ts` — new edge function for server-authoritative parlay settlement
+- Computes combined parlay odds server-side (multiply decimal odds of active legs)
+- Supports two push/void policies: `treatAsPush` (entire parlay pushes) and `reduceLegReprice` (exclude push/void legs, recalculate with winners)
+- Creates exactly ONE ledger entry for the whole parlay instead of per-leg entries
+- Batch updates all legs to `settled` status in a single query
+- Writes `settlement_events` row (non-blocking) and emits audit event with combined odds/payout
+- Full validation: JWT, bookie ownership, same player on all legs, all legs graded
+- Idempotency check/store following existing pattern
+- Files changed: `supabase/functions/settle_parlay/index.ts` (new)
+- **Learnings for future iterations:**
+  - Parlay legs are grouped by `ticket_id` — all bets with same ticket_id are one parlay
+  - American to decimal conversion: positive → 1 + odds/100, negative → 1 + 100/abs(odds)
+  - Combined decimal odds = product of all active leg decimal odds
+  - Payout: win = -(stake * combinedDecimalOdds - stake), loss = +stake, push = 0
+  - No RPC needed for parlay settlement — simpler than per-bet case (one ledger row + batch bet update)
+  - Deploy: `npx supabase functions deploy settle_parlay --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+---
+
+## 2026-02-24 - US-009
+- Updated `Booki/Services/GradingService.swift` to call `settle_parlay` edge function instead of per-leg `settle_bet` calls
+- Added `SettleParlayRequest` struct: `ticket_id`, `parlay_policy`, `idempotency_key`
+- Added `SettleParlayResponse` struct: `success`, `outcome`, `payout`, `ledger_entry`, `legs_settled`, `error`
+- `settleParlayBets()` now makes single edge function call with ticket ID and policy string
+- On success: updates all parlay legs to `.settled` locally, creates single `LedgerEntry` from response
+- Removed per-leg `settle_bet` loop — replaced by single `settle_parlay` call
+- Files changed: `Booki/Services/GradingService.swift`
+- **Learnings for future iterations:**
+  - `ParlayPushVoidPolicy` enum maps to string values: `.treatAsPush` → `"treatAsPush"`, `.reduceLegReprice` → `"reduceLegReprice"`
+  - `Bet.ticketId` is a `UUID` — must call `.uuidString.lowercased()` before sending to edge function
+  - The `settle_parlay` response has different shape than `settle_bet` — includes `outcome`, `payout`, and `legs_settled` fields
+  - The single-bet `settleBet()` method is unchanged — still calls `settle_bet` for individual bets
+  - `EdgeLedgerData` struct is reused between `settle_bet` and `settle_parlay` responses — same ledger entry fields
+---
+
+## 2026-02-24 - US-010
+- Created `supabase/migrations/017_ledger_v2_hash_chain.sql` with tamper-evident hash chaining
+- Added `prev_hash` (TEXT, nullable) and `entry_hash` (TEXT, NOT NULL) columns to ledger_entries
+- `compute_ledger_hash()` trigger fires BEFORE INSERT: looks up most recent entry_hash for same (bookie_id, player_id) chain with FOR UPDATE lock, computes SHA-256 hash of key fields
+- Hash formula: `encode(sha256(concat(coalesce(prev_hash,''), bookie_id, player_id, amount, type, created_at, id)::bytea), 'hex')`
+- Backfill DO block: disables `prevent_mutation_ledger_entries` trigger, iterates each (bookie_id, player_id) pair, computes chain in created_at ASC order, re-enables trigger
+- NOT NULL constraint added to `entry_hash` after backfill (prev_hash stays nullable for chain heads)
+- Files changed: `supabase/migrations/017_ledger_v2_hash_chain.sql` (new)
+- **Learnings for future iterations:**
+  - The immutability trigger must be temporarily disabled for backfill — use `ALTER TABLE ... DISABLE TRIGGER <trigger_name>` / `ENABLE TRIGGER`
+  - Hash chain is per (bookie_id, player_id) — not global, not per-bookie
+  - FOR UPDATE lock on the previous entry lookup prevents race conditions with concurrent inserts
+  - The validate_ledger_chain function (US-011) must use the exact same hash formula for verification
+---
+
+## 2026-02-24 - US-011
+- Created `supabase/migrations/018_ledger_v2_validate_chain.sql` with `validate_ledger_chain` RPC function
+- SECURITY DEFINER function takes (p_bookie_id UUID, p_player_id UUID) and returns JSONB
+- Iterates all ledger_entries for the chain in created_at ASC order
+- For each entry: (1) verifies prev_hash matches running chain value, (2) recomputes expected hash using exact same formula as compute_ledger_hash trigger, (3) compares against stored entry_hash
+- Returns `{ valid: true, entries_checked: N }` on success
+- Returns `{ valid: false, first_invalid_entry_id: UUID, error_message: '...', entries_checked: N }` on mismatch
+- Chain head validation: first entry must have prev_hash IS NULL
+- Files changed: `supabase/migrations/018_ledger_v2_validate_chain.sql` (new)
+- **Learnings for future iterations:**
+  - The hash formula must exactly match the trigger in 017 — concat order: coalesce(prev_hash,''), bookie_id, player_id, amount, type, created_at, id
+  - `IS DISTINCT FROM` handles NULL comparison correctly (unlike `!=` which returns NULL for NULL comparisons)
+  - This is read-only — no locking needed, safe to call concurrently
+  - Can be called via `client.rpc('validate_ledger_chain', { p_bookie_id, p_player_id })`
+---
+
+## 2026-02-24 - US-012
+- Created `supabase/migrations/019_ledger_v2_canonical_balances.sql` with canonical server-side balances
+- `player_balances_view`: security_barrier view aggregating `SUM(amount)` from ledger_entries per (bookie_id, player_id)
+- `get_player_balance(p_bookie_id, p_player_id)`: SECURITY DEFINER RPC returning JSONB with balance_owed, open_stakes, credit_limit, available_credit
+- balance_owed = SUM of ledger entries, open_stakes = SUM of stake for pending+accepted bets, available_credit = credit_limit - open_stakes - balance_owed
+- Player not found returns `{ success: false, error: '...' }` — same error pattern as other RPCs
+- Files changed: `supabase/migrations/019_ledger_v2_canonical_balances.sql` (new)
+- **Learnings for future iterations:**
+  - Views don't support `ENABLE ROW LEVEL SECURITY` directly — use `security_barrier = true` and rely on RLS of underlying tables
+  - `NOT FOUND` is the correct way to check if a SELECT INTO returned no rows in plpgsql (not checking for NULL after COALESCE)
+  - players.credit_limit has `NOT NULL DEFAULT 0` so COALESCE is technically redundant, but good defensive practice
+  - Can be called via `client.rpc('get_player_balance', { p_bookie_id, p_player_id })`
+  - The view provides dashboard/report convenience; the RPC is the canonical balance endpoint for reconciliation
+---
+
+## 2026-02-24 - Bookie Member Management Polish
+- Wired up SETTLE UP and ADJUST BALANCE buttons on member detail page with edge function calls
+- Settle Up: simplified to one-tap confirmation (zeroes balance), Adjust Balance: custom NumericKeypadView
+- Custom NumericKeypadView added to all money input screens (AdjustBalance, PaymentSheet, WeeklySettlement)
+- Balance display overhaul: replaced +/- currency with "Owes $X" / "You owe $X" / "Settled" labels
+- Fixed stale data: added @Query for live ledger/bet data instead of snapshot properties
+- Fixed overdue logic: negative adjustments (credits) now reset the overdue clock
+- adjust_balance edge function: reason now optional, accepts `type` param for paymentLogged vs adjustment
+- Members tab: added search bar + filter chips (moved from Dashboard), expanded cards with metrics row + attention tags
+- Dashboard: simplified member section to compact PlayerRowView cards (no search/filter)
+- Attention tags renamed: Picks Pending, Whale, Degen, Parlay Demon, On Heater, Cold Streak
+- TagExplainerSheet: tappable tags open modal explaining all 7 tag types
+- Recent Activity on member detail: merged bets + ledger entries chronologically with View All toggle
+- Editable member names (persisted to Supabase), credit utilization in header + list rows
+- Favicons added to all 5 landing pages
+- Files changed: PlayerAnalyticsDetailView, PlayersListView, AnalyticsDashboardView, PlayerAttentionService, PaymentSheet, WeeklySettlementView, adjust_balance edge function, landing HTML files
+- **Learnings:**
+  - Ledger table is immutable (prevent_mutation trigger) — can't fix old data, must handle both old and new formats in UI
+  - SettleUpSheet local entry type must match server type — mismatch caused "ADJ" appearing after sync
+  - `@Query` live data vs `let` snapshot: always use @Query computed properties for data that changes during the session
+---

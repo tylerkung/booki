@@ -1316,6 +1316,18 @@ struct BetSlipSheet: View {
         return lockedNames
     }
 
+    /// Map known server error codes to user-friendly messages
+    static func friendlyErrorMessage(from message: String?) -> String? {
+        guard let message else { return nil }
+        if message.contains("open_bet_limit_reached") {
+            return "You've reached the open pick limit (25). Wait for picks to settle or grade before placing more."
+        }
+        if message.contains("member_limit_reached") {
+            return "Your organizer has reached their member limit."
+        }
+        return nil
+    }
+
     /// US-013: Parse locked event IDs from server error message format "Events locked: [id1, id2]"
     static func parseLockedEventIds(from message: String) -> [String] {
         guard let range = message.range(of: "Events locked: [") else { return [] }
@@ -1438,14 +1450,14 @@ struct BetSlipSheet: View {
                         case .notAuthenticated:
                             errorMessage = "Not authenticated - please sign in again"
                         case .serverError(_, let message):
-                            errorMessage = message ?? "Server error submitting multi-pick"
+                            errorMessage = Self.friendlyErrorMessage(from: message) ?? "Server error submitting multi-pick"
                         default:
-                            errorMessage = edgeFunctionError.localizedDescription
+                            errorMessage = Self.friendlyErrorMessage(from: edgeFunctionError.localizedDescription) ?? edgeFunctionError.localizedDescription
                         }
                     } else if let betError = error as? BetServiceError {
                         switch betError {
                         case .edgeFunctionError(let message):
-                            errorMessage = message
+                            errorMessage = Self.friendlyErrorMessage(from: message) ?? message
                         default:
                             break
                         }
@@ -1531,14 +1543,14 @@ struct BetSlipSheet: View {
                             case .notAuthenticated:
                                 errors.append("Not authenticated - please sign in again")
                             case .serverError(_, let message):
-                                errors.append(message ?? "Server error")
+                                errors.append(Self.friendlyErrorMessage(from: message) ?? message ?? "Server error")
                             default:
-                                errors.append(edgeFunctionError.localizedDescription)
+                                errors.append(Self.friendlyErrorMessage(from: edgeFunctionError.localizedDescription) ?? edgeFunctionError.localizedDescription)
                             }
                         } else if let betError = error as? BetServiceError {
                             switch betError {
                             case .edgeFunctionError(let message):
-                                errors.append(message)
+                                errors.append(Self.friendlyErrorMessage(from: message) ?? message)
                             default:
                                 errors.append("Failed to submit picks")
                             }

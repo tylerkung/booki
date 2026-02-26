@@ -1,157 +1,214 @@
 {
   "project": "Booki",
-  "branchName": "ralph/profile-filters-downgrade",
-  "description": "Downgrade enforcement (soft lock invites), standardized profile editing for players & bookies, and Picks tab filter bar redesign with member dropdown + bet type chips.",
+  "branchName": "ralph/default-ux-organizer-upsell",
+  "description": "Default user experience as standalone bet tracker, 'Be an Organizer' upsell flow, step-down from organizer, Pro upgrade blocked as Coming Soon, and downgrade enforcement on invites.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add display_name column to players table",
-      "description": "As a developer, I need a display_name column on the players table so bookies can set a custom name that only they see.",
+      "title": "Block Pro upgrade — Coming Soon on ProUpgradeSheet",
+      "description": "As a free-tier bookie, I see the Pro feature list but the upgrade is marked Coming Soon since Pro isn't available yet.",
       "acceptanceCriteria": [
-        "Create Supabase migration adding `display_name TEXT DEFAULT NULL` to players table",
-        "Add `displayName: String?` property to Player SwiftData model with default nil",
-        "Add `display_name` to PlayerRecord DTO and CodingKeys in relevant service files",
-        "Update SyncService player download to sync display_name field",
+        "In ProUpgradeSheet.swift, replace the price line '$49.99 / month' with 'Coming Soon' text in Theme.textSecondary",
+        "Remove the NavigationLink to ProCheckoutView",
+        "Replace the subscribe CTA button with a non-tappable muted button: text 'Coming Soon' in Theme.textMuted on Theme.elevatedBackground background, full width, same padding as current CTA",
+        "Add a note below the button: 'We'll notify you when Booki Pro is available.' in Theme.textMuted, font size 12",
+        "Keep the BookiPro logo, feature list card, and optional contextMessage exactly as they are",
+        "Keep the dismiss X button in toolbar",
+        "ProCheckoutView.swift file remains untouched (just unreachable)",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": false,
-      "notes": "Player model is in Booki/Models/Player.swift. PlayerRecord DTO may be in a service file. SyncService.downloadPlayers() and upsertPlayer() need the new field. Migration goes in supabase/migrations/ with next sequence number."
+      "notes": "ProUpgradeSheet.swift is in Booki/Views/ProUpgradeSheet.swift. The existing sticky bottom VStack has the NavigationLink + CTA + Terms links. Replace just that bottom section. Keep the Terms of Service and Privacy Policy links below the muted button. All existing .sheet presentations of ProUpgradeSheet throughout the app continue working unchanged."
     },
     {
       "id": "US-002",
-      "title": "Use display_name on all bookie-facing views",
-      "description": "As a bookie, I want to see my custom display_name for members wherever member names appear, falling back to the player's self-chosen name.",
-      "acceptanceCriteria": [
-        "Add computed property on Player model: `var bookieDisplayName: String { displayName ?? name }`",
-        "Replace all bookie-side references to `player.name` with `player.bookieDisplayName` in: BetsListView, AnalyticsDashboardView, PlayersListView, PlayerAnalyticsDetailView",
-        "Player-side views (AccountView, BetSlipSheet, TicketDetailView) continue using `player.name` directly",
-        "Bookie's existing name edit flow on member detail writes to `display_name` (not `name`)",
-        "Typecheck passes"
-      ],
-      "priority": 2,
-      "passes": false,
-      "notes": "Search for `player.name` across all bookie-facing views. The existing name edit on PlayerAnalyticsDetailView should save to display_name column in Supabase and displayName in SwiftData. Player-side views should NOT use bookieDisplayName."
-    },
-    {
-      "id": "US-003",
-      "title": "Add RLS policy for players to update own name",
-      "description": "As a developer, I need an RLS policy so players can update their own name and email on the players table.",
-      "acceptanceCriteria": [
-        "Create Supabase migration adding UPDATE RLS policy on players table: allow update of `name` and `email` columns where `auth.uid()::text = auth_user_id::text`",
-        "Policy should only allow updating name and email — not credit_limit, bookie_id, status, or other fields",
-        "Typecheck passes"
-      ],
-      "priority": 3,
-      "passes": true,
-      "notes": "RLS policies are in supabase/migrations/. Check existing player RLS policies to avoid conflicts. The current players_update policy requires is_bookie() — this new policy is specifically for players updating their own record. Use column-level security if Supabase supports it, otherwise validate in the update logic."
-    },
-    {
-      "id": "US-004",
-      "title": "Create PlayerProfileEditView",
-      "description": "As a player, I want to edit my name and email from my Account tab so my profile stays up to date.",
-      "acceptanceCriteria": [
-        "Create PlayerProfileEditView.swift mirroring bookie's EditProfileSheet pattern (ScrollView + cardStyle)",
-        "Show editable Name text field, pre-populated with current player.name",
-        "Show editable Email text field, pre-populated with current player.email",
-        "Show read-only fields: Organizer name, Member Since date",
-        "Save button updates player.name directly in Supabase via `supabase.from('players').update()` using the new RLS policy",
-        "Email change calls `supabase.auth.updateUser(email:)` which triggers Supabase email confirmation",
-        "After email change request, show inline message: 'A confirmation email has been sent to [new email]. Your email will update once confirmed.'",
-        "Add 'Edit Profile' CTA (pencil icon or tappable row) in AccountView profile section, navigating to PlayerProfileEditView",
-        "Typecheck passes"
-      ],
-      "priority": 4,
-      "passes": false,
-      "notes": "AccountView is in Booki/Views/AccountView.swift. The profile section shows name, email, organizer, member since. Add a NavigationLink or button that presents PlayerProfileEditView. Follow the same styling patterns as ProfileSettingsView (sectionHeader, settingsDetailRow, cardStyle). The player's SwiftData model should be updated locally after successful Supabase save."
-    },
-    {
-      "id": "US-005",
-      "title": "Fix bookie profile status to check tier OR subscription",
-      "description": "As a bookie with Pro tier, I want to see 'Pro' on my profile status even if I got Pro through a direct DB grant.",
-      "acceptanceCriteria": [
-        "In ProfileSettingsView, status row checks both `bookie.tier` and `bookie.subscriptionStatus`",
-        "Display 'Pro' with Theme.accent color if `tier == .pro` OR `subscriptionStatus` is `.active` or `.pro`",
-        "Display 'Free' with Theme.textSecondary only if both tier is free AND subscriptionStatus is not active/pro",
-        "Update `BookieTier.isPro` computed property to also accept when subscriptionStatus is .active or .pro (or create a new `Bookie.isPro` computed property that checks both)",
-        "All views that check isPro use this unified logic",
-        "Typecheck passes"
-      ],
-      "priority": 5,
-      "passes": false,
-      "notes": "ProfileSettingsView is in SettingsView.swift around line 392. It currently shows `bookie.subscriptionStatus.rawValue.capitalized`. The Bookie model is in Booki/Models/Bookie.swift. BookieTier.isPro is currently `switch self { case .pro, .chart: return true }`. A Bookie-level computed property `var isPro: Bool { tier.isPro || subscriptionStatus == .active || subscriptionStatus == .pro }` would be cleanest. Then update all `bookies.first?.tier.isPro` references to use `bookies.first?.isPro`."
-    },
-    {
-      "id": "US-006",
       "title": "Add downgrade enforcement to create_invite edge function",
-      "description": "As a developer, I need the create_invite edge function to enforce member limits based on the bookie's tier.",
+      "description": "As a developer, I need the create_invite edge function to enforce member limits based on the bookie's tier so downgraded bookies can't invite past the free limit.",
       "acceptanceCriteria": [
         "In create_invite/index.ts, after auth validation, count active players for the bookie (where bookie_id matches AND auth_user_id IS NOT NULL)",
         "Read bookie.tier from bookies table",
         "Set limit: 3 for free tier, 50 for pro tier",
-        "If active member count >= limit, return 403 with JSON `{ success: false, error: 'member_limit_reached', limit: <number>, current: <count> }`",
+        "If active member count >= limit, return 403 with JSON { success: false, error: 'member_limit_reached', limit: <number>, current: <count> }",
         "Archived/removed members (auth_user_id IS NULL) do NOT count toward limit",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "create_invite is in supabase/functions/create_invite/index.ts. Add the check after invite code validation but before the insert. The bookie_id is available from the authenticated user lookup. Use service client to count players."
+    },
+    {
+      "id": "US-003",
+      "title": "Add member limit UI on invite sheet and members tab banner",
+      "description": "As a free bookie at the 3-member limit, I see a clear message when trying to invite and an informational banner on the Members tab.",
+      "acceptanceCriteria": [
+        "In InviteMemberSheet (or equivalent invite creation UI), check active member count vs tier limit before showing invite form",
+        "If at capacity: show blocking message 'You've reached the 3-member limit on the Free plan.' with 'Upgrade to Pro to invite up to 50 members.' and Upgrade CTA that presents ProUpgradeSheet",
+        "If at capacity: hide the actual invite creation form",
+        "On Members tab (PlayersListView), when at or over capacity on free tier, show inline banner: 'X of 3 members - Upgrade for more'",
+        "Banner is tappable and presents ProUpgradeSheet with contextMessage",
+        "Banner uses Theme.cardBackground with Theme.warning accent",
+        "When under limit or on pro tier, no banner and invite flow works normally",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "PlayersListView is in Booki/Views/PlayersListView.swift. The invite sheet is presented from this view. Count active members: bookie_id match AND auth_user_id IS NOT NULL. Edge case: bookie downgrades with 10 members, archives 8 → now at 2/3 → can invite again."
+    },
+    {
+      "id": "US-004",
+      "title": "Stop auto-creating bookie record on sign-up",
+      "description": "As a developer, I need sign-up to NOT auto-create a bookie record so new users land as standalone trackers.",
+      "acceptanceCriteria": [
+        "In AuthManager, find where bookie record is auto-created after sign-up/login and disable that behavior",
+        "New users who sign up without an invite should have userRole == nil after authentication",
+        "Add computed property `var isStandaloneUser: Bool` on AuthManager — true when authenticated but no bookie record and no player-bookie link (player.bookie == nil or no player record)",
+        "Existing bookie accounts are NOT affected — if a bookie record already exists, it loads normally",
+        "Existing player accounts are NOT affected — they continue loading their bookie association",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "AuthManager is in Booki/Managers/AuthManager.swift. Look for ensureBookie(), createBookieRecord(), or similar methods that fire during the auth flow. The key is to stop creating a bookie row when the user has no invite and no existing bookie record. isStandaloneUser should check: isAuthenticated && userRole == nil (no bookie, no linked player). Also check if there's a player record with bookie == nil."
+    },
+    {
+      "id": "US-005",
+      "title": "Route standalone users to PlayerMainView",
+      "description": "As a new user without an invite, I land in the player experience (Games, Search, Track, Account) instead of the bookie dashboard.",
+      "acceptanceCriteria": [
+        "In AuthGateView.swift, change the routing so userRole == nil goes to PlayerMainView instead of ContentView",
+        "The switch statement should be: .player → PlayerMainView, .bookie → ContentView, nil → PlayerMainView",
+        "Remove or skip the onboarding flow trigger for nil role (onboarding is bookie-only)",
+        "Standalone users see the player tabs: Games, Search, Track, Account",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "AuthGateView.swift line 62-70 has the routing switch. Currently `case .bookie, nil:` goes to ContentView. Split this: `.bookie` → ContentView with onboarding, `nil` → PlayerMainView without onboarding. The .onChange(of: authManager.userRole) at line 84 triggers onboarding for bookie — make sure nil doesn't trigger it."
+    },
+    {
+      "id": "US-006",
+      "title": "Handle standalone sync and default credit",
+      "description": "As a standalone user, I need events/games to sync and a default $10,000 credit limit so I can place bets.",
+      "acceptanceCriteria": [
+        "SyncService handles standalone users: syncs events/games even when no bookie_id exists",
+        "AuthGateView triggers sync for standalone users (userRole == nil) — currently only triggers for bookie and player roles",
+        "Standalone users get a virtual/default credit limit of 10000 — either via a self-referencing player record or hardcoded in the client when player.bookie == nil",
+        "Account tab credit bar works against the $10,000 default for standalone users",
+        "BetSlipSheet allows standalone users to enter wagers normally with full stake/to-win fields",
         "Typecheck passes"
       ],
       "priority": 6,
       "passes": false,
-      "notes": "create_invite is in supabase/functions/create_invite/index.ts. Add the check after invite code validation but before the insert. The bookie_id is available from the authenticated user lookup. Use service client to count players. Return limit and current count in error response so the client can show a meaningful message."
+      "notes": "SyncService.swift sync() likely requires a bookie_id. For standalone users, we still need to sync shared events (bookie_id IS NULL). Check how currentBookieId triggers sync in AuthGateView onChange handlers — standalone users won't have currentBookieId set. The credit limit could be a constant in the Player model or a computed property that returns 10000 when bookie is nil. PlayerMainView needs to work without a player record having a bookie association."
     },
     {
       "id": "US-007",
-      "title": "Add member limit UI enforcement on invite sheet and members tab",
-      "description": "As a free bookie at the 3-member limit, I see a clear message when trying to invite and an informational banner on the Members tab.",
+      "title": "Enforce 25 open bet limit for standalone users",
+      "description": "As a standalone user, I'm limited to 25 open bets to prevent runaway activity without an organizer.",
       "acceptanceCriteria": [
-        "In InviteMemberSheet (or equivalent invite creation UI), check active member count vs tier limit",
-        "If at capacity: show blocking message 'You've reached the 3-member limit on the Free plan.' with 'Upgrade to Pro to invite up to 50 members.' and Upgrade CTA that presents ProUpgradeSheet",
-        "If at capacity: hide the actual invite creation form",
-        "On Members tab (PlayersListView), when at or over capacity on free tier, show inline banner below member list: 'X of 3 members · Upgrade for more'",
-        "Banner is tappable → presents ProUpgradeSheet with contextMessage",
-        "Banner uses Theme.cardBackground styling",
-        "When under limit or on pro tier, no banner and invite flow works normally",
+        "In BetSlipSheet, count open bets (status == .accepted or .pending) for the current user",
+        "If standalone user (no bookie) and open bet count >= 25, disable the Place Bet button",
+        "Show message: 'You've reached the open pick limit (25). Wait for picks to settle or grade before placing more.'",
+        "In submit_bets edge function, add server-side check: if player has no bookie_id (standalone), count open bets and reject if >= 25 with error 'open_bet_limit_reached'",
+        "In submit_parlay edge function, same server-side check for standalone users",
+        "Linked players (with a bookie) have no open bet limit",
         "Typecheck passes"
       ],
       "priority": 7,
       "passes": false,
-      "notes": "PlayersListView is in Booki/Views/PlayersListView.swift. The invite sheet is likely presented from this view. Count active members with bookie_id match AND auth_user_id not nil. Edge case: bookie has 10 members, downgrades, archives 8 → now at 2/3 → can invite again."
+      "notes": "BetSlipSheet is in Booki/Views/Components/BetSlipSheet.swift. submit_bets is in supabase/functions/submit_bets/index.ts, submit_parlay in supabase/functions/submit_parlay/index.ts. Check for standalone by looking at the player's bookie_id — if NULL, they're standalone. The client-side check prevents unnecessary network calls, server-side check is the real enforcement."
     },
     {
       "id": "US-008",
-      "title": "Redesign Picks tab filter bar with member dropdown",
-      "description": "As a bookie, I want a member dropdown on the Picks tab so I can filter picks by specific member.",
+      "title": "Build BecomeOrganizerView upsell landing page",
+      "description": "As a standalone user, I want to see an attractive landing page explaining the benefits of becoming an organizer.",
       "acceptanceCriteria": [
-        "Replace current player name chips in BetsListView with a member dropdown button as first filter item",
-        "Member button shows person.fill icon + chevron.down when no member selected",
-        "Tapping opens a .menu picker listing 'All Members' (default) plus all members tied to the bookie",
-        "Selecting a member filters the picks list to only their bets",
-        "When a member is selected, button shows their name + chevron.down instead of icon",
-        "Selecting 'All Members' clears the filter (shows all picks)",
-        "Filter works with both Open and Past segments",
+        "Create BecomeOrganizerView.swift as a new view in Booki/Views/",
+        "Header: 'Ready to run your group?' title with subtitle 'Turn your bet tracking into a full management platform.'",
+        "Benefits section with 5 icon rows: person.3.fill/Invite Members, chart.bar.fill/Live Dashboard, dollarsign.circle.fill/Balance Management, gearshape.2.fill/Full Control, bolt.fill/Auto-Pilot — each with a subtitle line",
+        "Free tier callout card with highlighted background: 'Start free — no credit card required', 'Free plan includes: 3 members, singles tracking, auto-grading, dashboard'",
+        "Primary teal CTA button: 'Get Started' — full width, Theme.accent background, Theme.background text",
+        "View uses Theme.background, Theme.cardBackground, standard app styling patterns",
+        "CTA button action is a placeholder (prints 'become organizer tapped') — wired in next story",
         "Typecheck passes"
       ],
       "priority": 8,
       "passes": false,
-      "notes": "BetsListView.swift has the Picks tab. It currently uses selectedPlayerId state and renders player name chips in a horizontal ScrollView. Replace the chip section with a Menu button. The @Query for players is likely already available. Use bookie's players list for the dropdown options. Show player.bookieDisplayName in the dropdown (from US-002)."
+      "notes": "Follow existing view patterns: ScrollView with VStack, .cardStyle() for cards, Theme colors throughout. The benefits rows should use HStack with icon (system image, 24pt, Theme.accent) + VStack(alignment: .leading) with title (font semibold) + subtitle (Theme.textSecondary). Free tier callout uses Theme.elevatedBackground or similar highlight. No navigation — this is a destination view pushed from Account."
     },
     {
       "id": "US-009",
-      "title": "Add bet type filter chips to Picks tab",
-      "description": "As a bookie, I want to filter picks by Singles, Multi-Pick, or Futures to quickly find specific bet types.",
+      "title": "Wire 'Be an Organizer' in Account menu and create bookie on tap",
+      "description": "As a standalone user, I see 'Be an Organizer' in my Account menu and tapping Get Started creates my organizer account.",
       "acceptanceCriteria": [
-        "Add three filter chips next to the member dropdown: Singles, Multi-Pick, Futures",
-        "Chips are horizontally scrollable in the same row as the member dropdown",
-        "Singles filters to single bets (not parlays, not futures/outrights)",
-        "Multi-Pick filters to parlay/multi-pick tickets only",
-        "Futures filters to outright/futures bets only",
-        "Chips are mutually exclusive — tapping an active chip deselects it (shows all types)",
-        "Active chip uses Theme.accent background with Theme.background text, inactive uses Theme.cardBackground with Theme.textSecondary text",
-        "Bet type filter is additive with member dropdown — e.g., 'Tyler' + 'Multi-Pick' = Tyler's multi-picks",
-        "Filters apply on top of Open/Past segmented picker",
+        "In AccountView playerMenuSection, add 'Be an Organizer' NavigationLink row above the 'About' row",
+        "Row uses crown.fill icon in Theme.gold color with chevron.right trailing",
+        "Row only visible when user is standalone (player.bookie == nil or authManager.isStandaloneUser)",
+        "Row is hidden for players linked to a bookie",
+        "NavigationLink pushes BecomeOrganizerView",
+        "BecomeOrganizerView 'Get Started' button creates a bookie record for the user via AuthManager (reuse existing bookie creation logic)",
+        "After bookie creation, userRole switches to .bookie and app routes to ContentView (bookie dashboard)",
         "Typecheck passes"
       ],
       "priority": 9,
       "passes": false,
-      "notes": "Add to BetsListView.swift alongside the member dropdown from US-008. Determine bet type from the Bet model — check for parlay/ticket associations, market type for futures/outrights. The filter state can be an optional enum: `@State private var selectedBetType: BetTypeFilter?` with cases .singles, .multiPick, .futures."
+      "notes": "AccountView is in Booki/Views/AccountView.swift. The playerMenuSection starts around line 513. Add the new row before the About NavigationLink. For bookie creation, AuthManager likely has an ensureBookie() or createBookieRecord() method that was disabled in US-004 — expose it as a callable method. After creation, AuthManager.userRole should become .bookie which triggers AuthGateView re-routing. May need to also trigger sync after bookie creation."
+    },
+    {
+      "id": "US-010",
+      "title": "Add step_down_organizer edge function",
+      "description": "As a developer, I need a server-side function to safely remove the bookie role after validating no members or invites exist.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/step_down_organizer/index.ts",
+        "Validate JWT auth — get user ID from auth header",
+        "Look up bookie record for the authenticated user",
+        "Count active players with bookie_id matching (auth_user_id IS NOT NULL)",
+        "Count open invites for the bookie (unclaimed invite records)",
+        "If active members > 0 OR open invites > 0, return 403 with { success: false, error: 'has_members_or_invites', members: <count>, invites: <count> }",
+        "If both are 0, delete the bookie record from bookies table",
+        "Return 200 with { success: true }",
+        "Use shared helpers: cors.ts, supabase.ts for service client",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Follow the pattern of other edge functions in supabase/functions/. Import getUserIdFromAuthHeader from _shared/supabase.ts. Use the service role client for the delete operation. The bookie's associated data (if any) should be considered — but since we require 0 members and 0 invites, there shouldn't be dependent data. Check for any bets/ledger entries tied to this bookie and decide if they should prevent step-down or be preserved."
+    },
+    {
+      "id": "US-011",
+      "title": "Add Step Down as Organizer UI in bookie Settings",
+      "description": "As a bookie with no members or invites, I can step down to return to standalone bet tracking.",
+      "acceptanceCriteria": [
+        "In SettingsView, add 'Step Down as Organizer' row in the settings menu (near bottom, before About or Log Out)",
+        "Row uses person.crop.circle.badge.minus icon in Theme.danger color, red text",
+        "Tapping shows confirmation alert: 'Are you sure? Your organizer dashboard and settings will be removed. Your personal pick history will be preserved.'",
+        "On confirm, call step_down_organizer edge function via EdgeFunctionService",
+        "On success (200), clear the local bookie record and set userRole to nil — app routes to PlayerMainView",
+        "On failure with 'has_members_or_invites' error, show alert: 'You still have active members or open invites. Archive all members and delete invites before stepping down.'",
+        "Show loading state during the edge function call",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "SettingsView is in Booki/Views/SettingsView.swift. The settings menu has navigable rows (Profile, Balance Alerts, Pick Management, Export Data, About). Add the step-down row as a destructive action near the bottom. EdgeFunctionService is in Booki/Services/EdgeFunctionService.swift — follow the existing invoke() pattern. After successful step-down, AuthManager needs to clear bookie state (currentBookieId = nil, userRole = nil)."
+    },
+    {
+      "id": "US-012",
+      "title": "Hide standalone-irrelevant UI in Account and player views",
+      "description": "As a standalone user, I don't see settlement, balance clearing, or organizer-specific info that doesn't apply to me.",
+      "acceptanceCriteria": [
+        "In AccountView, hide the credit utilization bar when user is standalone (no bookie)",
+        "In AccountView profileAndPreferencesCard, show 'Organizer' row as 'None' or hide it entirely for standalone users",
+        "In AccountView, hide any settle up / adjust balance actions for standalone users",
+        "Performance card still shows: Record, Open Picks, Win Rate, Performance, ROI — these all work for standalone",
+        "Activity row still accessible — shows graded picks in history",
+        "Standalone Account view is clean and focused on personal bet tracking stats",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "AccountView is in Booki/Views/AccountView.swift. The credit bar is in the performanceCard section. Check player.bookie == nil or authManager.isStandaloneUser to determine visibility. The profileAndPreferencesCard has an Organizer row at line ~303. Balance-related actions may be in the menu section or elsewhere. Keep the view functional — just hide what doesn't apply."
     }
   ]
 }

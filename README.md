@@ -345,6 +345,20 @@ The app is **local-first** with cloud sync:
   - "All Markets" tab filtered to main lines only (no alternate clutter)
   - Alternate markets selectable and addable to bet slip
 
+### Phase 17: Default UX & Organizer Upsell
+- **Standalone user experience**: New users land in PlayerMainView (no bookie record created)
+- **Synthetic player**: $10,000 default credit, 25 open bet limit for standalone users
+- **"Be an Organizer" upsell**: `BecomeOrganizerView` with feature highlights and CTA
+- **Step down**: Organizers can revert to standalone via Settings (if no active members/invites)
+- **Pro upgrade blocked**: ProUpgradeSheet shows "Coming Soon" instead of checkout flow
+- **Account deletion**: `delete_bookie_data` RPC for atomic cleanup with immutability trigger handling
+
+### Phase 18: API Optimization & Live Scores
+- **Hourly auto-refresh**: Cron runs every hour (was every 2 hours), 50 game cap
+- **Smart live scores**: `refresh_live_scores` edge function runs every 5 min
+- **Sport duration estimates**: Only fetches scores when games are near ending (finishing window)
+- **Odds API upgrade**: 20,000 calls/month paid tier
+
 ### Branding & Design System
 - **App Icon**: Custom Booki wordmark on electric cyan background (1024x1024)
 - **Launch Screen**: Electric cyan background → SwiftUI loading view with logo and spinner
@@ -414,8 +428,10 @@ Server-authoritative functions running on Supabase (Deno/TypeScript):
 | `adjust_balance` | Bookie adjusts player balance with reason |
 | `reverse_settlement` | Bookie undoes a settlement (creates reversal entry) |
 | `override_grade` | Bookie changes a grade (auto-reverses if settled) |
-| `auto_refresh_games` | Cron job: fetches scores and auto-grades bets when games finalize |
+| `auto_refresh_games` | Cron job: fetches scores and auto-grades bets when games finalize (hourly) |
+| `refresh_live_scores` | Smart scores-only refresh every 5 min with sport duration estimation |
 | `sync_games` | Fetches odds/events from The Odds API, updates markets |
+| `delete_account` | Cancels Stripe subscription, deletes bookie data atomically, removes auth user |
 
 All functions validate JWT auth, check idempotency, and emit audit events.
 
@@ -445,4 +461,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 25, 2026 - Player profile editing, bookie display names, Picks tab filters (member dropdown + bet type chips), downgrade enforcement, isPro unified logic, email change template*
+*Last updated: February 26, 2026 - Default standalone UX, organizer upsell, step-down flow, smart live scores refresh, hourly auto-refresh, delete_bookie_data RPC, Pro upgrade blocked as Coming Soon*

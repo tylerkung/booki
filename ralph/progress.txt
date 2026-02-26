@@ -1,5 +1,5 @@
 # Ralph Progress Log
-Started: Mon Feb 24 2026
+Started: Tue Feb 25 2026
 
 ## Codebase Patterns
 - `.refreshable` cancels its task on view re-render — always use `Task.detached` + `withCheckedContinuation` pattern
@@ -7,42 +7,35 @@ Started: Mon Feb 24 2026
 - TrackView groups bets into Ticket structs by ticketId — work with tickets not raw bets for display
 - Bet.gradeResult is `GradeResult?` enum (.win/.loss/.push), not a String — use enum comparison
 - LiabilityService.calculatePayout(stake:odds:) returns profit only (not stake + profit)
+- Player init argument order: name, email, creditLimit, status, ..., displayName (position 14) — do NOT misorder
+- Theme.swift has no `success` color — use `Theme.accent` for green
+- Decimal has no `.rounded()` in Swift — convert through `NSDecimalNumber(decimal:).doubleValue` then `Double.rounded()`
+- ProUpgradeSheet is presented via `.sheet` from multiple views — all entry points must continue working
 
 ---
 
-## 2026-02-24 - US-002
-- Added pull-to-refresh to TrackView with `@Environment(SyncService.self)` and `.refreshable`
-- Updated GamesView's two existing `.refreshable` blocks to use cancellation-safe `Task.detached` + `withCheckedContinuation` pattern
-- Files changed: Booki/Views/TrackView.swift, Booki/Views/GamesView.swift
-- **Learnings for future iterations:**
-  - GamesView already had `.refreshable` but used the naive `await syncService.sync()` form — upgraded to safe pattern
-  - TrackView didn't have SyncService in environment — needed to add `@Environment(SyncService.self)`
-  - GamesView has two ScrollViews with `.refreshable` (main games list + empty state) — both need the pattern
----
+## 2026-02-26: Post-Ralph Audit & Fixes
 
-## 2026-02-24 - US-003
-- Added TrackSummaryCard showing W-L-P record, total staked, and net performance
-- Card placed at top of ticket list in TrackView, extracted as private struct to avoid type-checker timeouts
-- Net performance calculated from settled bets: wins add payout (via LiabilityService.calculatePayout), losses subtract stake, pushes are neutral
-- Files changed: Booki/Views/TrackView.swift
-- **Learnings for future iterations:**
-  - Bet model uses `gradeResult: GradeResult?` (enum .win/.loss/.push), not `result: String?` as PRD suggested
-  - LiabilityService.calculatePayout(stake:odds:) returns profit (not total return), so it's the right amount for net performance wins
-  - Stats computed properties (settledBets, wins, losses, etc.) live on TrackView struct, card is a separate private struct taking values as parameters
----
+### Audit Fixes (US-001 through US-012)
+- **US-003 fix**: Hide invite button when at member capacity (PlayersListView `isAtMemberCapacity`)
+- **US-007 fix**: Parse server error codes to friendly messages in BetSlipSheet (`friendlyErrorMessage()`)
+- **BecomeOrganizerView**: Added to Xcode project.pbxproj (Ralph created file but missed project reference)
+- **ProfileSettingsView**: Fixed card margin — changed `VStack(alignment: .leading)` to default alignment
+- **Standalone player cleanup**: Delete synthetic "Standalone" player before `becomeOrganizer()` in AccountView
+- **Delete account**: Always calls edge function (even for standalone users) to delete auth user from Supabase
 
-## 2026-02-24 - Language overhaul: Reconciliation → Settlement/Graded
-- Replaced all user-facing "Reconcile/Reconciliation" strings with "Settle/Settlement" across 14 Swift view files + 2 landing pages
-- Split terminology: "Settle/Settlement" for balance clearing, "Graded/Pick Graded" for bet resolution
-- Fixed parlay partial grading: suppressed "Partial (X/Y)" badge and "will lose" warning when parlay already has losing leg
-- Fixed reliability section: "Payment Status" and "Last Payment" now only track `paymentLogged` entries, not auto-grading settlements
-- Fixed overdue detection in PlayerAttentionService to only consider bookie-initiated payments
-- Renamed "RECONCILE" CTA to "SETTLE UP" on PlayerAnalyticsDetailView
-- Updated activity feed: "Settlement for X" → "Pick graded for X" for auto-graded ledger entries
-- Updated CLAUDE.md compliance table
-- Files changed: BetsListView, GradingView, DashboardView, WeeklySettlementView, SettlementSnapshotCard, TicketDetailView, AccountView, AcceptancePolicySettingsView, BetHistoryView, AttentionFeedView, OnboardingWelcomeView, AnalyticsDashboardView, PlayerAnalyticsDetailView, PlayerAttentionService, landing/index.html, landing/features.html
-- **Learnings for future iterations:**
-  - `EntryType.settlement` = auto-grading ledger entries (bet resolved), `EntryType.paymentLogged` = bookie-initiated payment — never conflate the two
-  - Reliability/overdue tracking must filter on `.paymentLogged` only, not all ledger entries
-  - David's $0.00 balance = zero ledger entries in Supabase (events haven't reached final status for auto-grading)
----
+### Account Deletion RPC (Migration 025)
+- `delete_bookie_data(target_bookie_id)` SECURITY DEFINER function
+- Atomically disables immutability triggers, deletes in FK order, re-enables triggers
+- Called by `delete_account` edge function instead of individual table deletes
+
+### Auto-Refresh & Live Scores Optimization
+- Hourly auto-refresh (was every 2 hours), 50 game cap (was 25)
+- New `refresh_live_scores` edge function: runs every 5 min, smart fetching based on sport duration estimates
+- Sport duration map: NBA 150min, NFL 210min, MLB 180min, etc.
+- Only calls Odds API when games are in "finishing window" (last 30 min of estimated duration)
+- Full auto-grading and parlay settlement when events finalize
+
+### Documentation
+- Updated Odds API from 500 free calls/month to 20,000 paid tier
+- Updated cron schedule documentation

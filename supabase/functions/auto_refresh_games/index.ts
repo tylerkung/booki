@@ -23,7 +23,7 @@ function generateIdempotencyKey(): string {
  * auto_refresh_games Edge Function
  *
  * Automatically refreshes odds and scores for up to 50 games with accepted bets.
- * Called every 2 hours via cron (9 runs/day, 8AM-midnight PT).
+ * Called every hour via cron (16 runs/day, 8AM-midnight PT).
  *
  * Game selection criteria:
  * - Has at least one accepted bet
@@ -839,7 +839,7 @@ Deno.serve(async (req) => {
     // We use a raw query to aggregate bet data and filter properly
     const { data: selectedGames, error: queryError } = await client.rpc(
       'select_games_for_auto_refresh',
-      { max_games: 25 }
+      { max_games: 50 }
     );
 
     // If RPC doesn't exist yet, fall back to a manual query approach

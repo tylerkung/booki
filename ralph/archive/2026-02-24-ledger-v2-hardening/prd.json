@@ -1,0 +1,256 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/ledger-v2-hardening",
+  "description": "Ledger V2 Hardening — Atomic settlement transactions, consistent push/void ledger entries, server-authoritative parlay math, tamper-evident hash chain, and canonical server-side balances. Makes the financial engine watertight and replayable.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Migration: settle_bet_tx RPC + settlement_events table + immutability triggers",
+      "description": "As a developer, I need the database primitives for atomic settlement: a transactional RPC function, a settlement_events audit table, and triggers preventing mutation of financial history.",
+      "acceptanceCriteria": [
+        "Create migration file supabase/migrations/015_ledger_v2_atomic_settlement.sql",
+        "Create settle_bet_tx(p_bet_id UUID, p_actor_user_id UUID, p_idempotency_key TEXT, p_mode TEXT) Postgres function that runs in a single transaction",
+        "settle_bet_tx validates bet status is 'graded' with non-null grade_result, returns error otherwise",
+        "settle_bet_tx calculates payout using same American odds math as current settle_bet: win = -(stake * odds/100) for positive odds, -(stake * 100/abs(odds)) for negative odds; loss = +stake; push/void = 0",
+        "settle_bet_tx atomically: (1) updates bet status to 'settled', (2) inserts ledger_entries row with correct amount/type/description, (3) inserts settlement_events row, (4) inserts audit_events row for bet settle + ledger create",
+        "settle_bet_tx returns JSON with success, bet data, ledger_entry data, and settlement_event id",
+        "If any step fails, entire transaction rolls back — no partial state possible",
+        "Create settlement_events table: id UUID PK default gen_random_uuid(), bookie_id UUID NOT NULL references bookies, bet_id UUID NOT NULL references bets, settlement_version INT NOT NULL DEFAULT 1, mode TEXT NOT NULL CHECK (mode IN ('manual','auto')), actor_user_id UUID references auth.users, idempotency_key TEXT, ledger_entry_ids UUID[] NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+        "Add UNIQUE constraint on settlement_events(bet_id, settlement_version)",
+        "Enable RLS on settlement_events — SELECT policy for bookie's own records only, no INSERT/UPDATE/DELETE policies (service role only)",
+        "Create immutability trigger function prevent_mutation() that raises exception on UPDATE or DELETE",
+        "Apply prevent_mutation trigger to ledger_entries (BEFORE UPDATE OR DELETE)",
+        "Apply prevent_mutation trigger to settlement_events (BEFORE UPDATE OR DELETE)",
+        "Apply prevent_mutation trigger to audit_events (BEFORE UPDATE OR DELETE)",
+        "Add index on settlement_events(bet_id)",
+        "Add index on settlement_events(bookie_id, created_at)",
+        "Migration file follows existing pattern (see 006_audit_events.sql for style)",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "This is SQL only — no edge function or Swift changes. Follow the style in supabase/migrations/006_audit_events.sql. The settle_bet_tx function should be SECURITY DEFINER so edge functions can call it via service role. Use LANGUAGE plpgsql. The payout calculation must exactly match the TypeScript in settle_bet/index.ts: win with positive odds = -(stake * (odds / 100.0)), win with negative odds = -(stake * (100.0 / abs(odds))), loss = stake, push/void = 0. Settlement description: 'Bet won', 'Bet lost', 'Bet pushed', 'Bet voided'. The settlement_events.ledger_entry_ids is a UUID array containing the single ledger entry ID created. Return JSONB from the function. See existing RPC pattern: Supabase client calls via `.rpc('settle_bet_tx', { params })`. Audit events should have entity_type='bet', action_type='settle' for the bet, and entity_type='ledger_entry', action_type='create' for the ledger row."
+    },
+    {
+      "id": "US-002",
+      "title": "Update settle_bet edge function to use transactional RPC",
+      "description": "As a developer, I want the settle_bet edge function to call the new settle_bet_tx RPC so settlement is always atomic.",
+      "acceptanceCriteria": [
+        "Modify supabase/functions/settle_bet/index.ts to call client.rpc('settle_bet_tx', { p_bet_id, p_actor_user_id, p_idempotency_key, p_mode: 'manual' }) instead of separate update+insert queries",
+        "Keep existing JWT validation and bookie ownership check BEFORE calling RPC",
+        "Keep existing idempotency check (checkIdempotency) BEFORE calling RPC",
+        "Remove the separate bet update, ledger insert, and audit emit calls — RPC handles all of these atomically",
+        "Parse RPC response JSON to extract bet data, ledger_entry data for the HTTP response",
+        "Return same response shape as before: { success: true, bet: {...}, ledger_entry: {...} }",
+        "Store idempotency key AFTER successful RPC call (same as current behavior)",
+        "Error handling: if RPC returns error, return appropriate HTTP error status with message",
+        "Deploy command documented in notes",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "The RPC call syntax is: `const { data, error } = await client.rpc('settle_bet_tx', { p_bet_id: body.bet_id, p_actor_user_id: userId, p_idempotency_key: body.idempotency_key, p_mode: 'manual' })`. The function returns JSONB, so `data` will be a parsed object. The edge function still handles: (1) CORS, (2) JWT extraction, (3) idempotency cache check/store, (4) bookie validation. But the actual settlement (bet update + ledger insert + audit + settlement_events) is now a single RPC call. Deploy: `npx supabase functions deploy settle_bet --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`. Keep the existing BetRecord and LedgerEntry TypeScript interfaces for response typing."
+    },
+    {
+      "id": "US-003",
+      "title": "Fix auto_refresh_games to always create $0 ledger entries for push/void",
+      "description": "As a developer, I want auto_refresh_games to create settlement ledger entries for ALL outcomes including push/void so the ledger is consistent regardless of settlement mode.",
+      "acceptanceCriteria": [
+        "In supabase/functions/auto_refresh_games/index.ts main grading loop: remove the `if (payoutAmount !== 0)` conditional around ledger entry creation",
+        "Always create a ledger entry for every settled bet, including push (amount=0, description='Bet pushed') and void (amount=0, description='Bet voided')",
+        "Same fix in the catch-up grading section (runCatchupGrading function): remove the `if (payoutAmount !== 0)` conditional",
+        "Always create ledger entry in catch-up grading for every settled bet regardless of outcome",
+        "Description for push outcomes: 'Bet pushed', for void: 'Bet voided', matching settle_bet convention",
+        "Verify: main flow settles with description based on gradeOutcome.result: win='Bet won', loss='Bet lost', push='Bet pushed'",
+        "Deploy command documented in notes",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "There are TWO code paths that need this fix — both in auto_refresh_games/index.ts: (1) The main grading loop around line 1294 has `if (payoutAmount !== 0) { ... create ledger entry ... }`. Change to always create the entry, using a description map: { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed' }. (2) The catch-up grading in runCatchupGrading() around line 443 has the same `if (payoutAmount !== 0)` guard. Apply the same fix. After this change, auto-settle and manual settle produce identical ledger behavior. Deploy: `npx supabase functions deploy auto_refresh_games --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`."
+    },
+    {
+      "id": "US-004",
+      "title": "Update auto_refresh_games to write settlement_events rows",
+      "description": "As a developer, I want auto_refresh_games to write settlement_events rows for every auto-settled bet so all settlement paths are tracked in the same table.",
+      "acceptanceCriteria": [
+        "In the main grading loop: after creating the ledger entry, insert a settlement_events row with mode='auto', actor_user_id from bookie, ledger_entry_ids array containing the new ledger entry ID",
+        "In the catch-up grading loop: same — insert settlement_events row with mode='auto' after ledger entry creation",
+        "settlement_events.bet_id comes from the bet being settled",
+        "settlement_events.bookie_id comes from bet.bookie_id",
+        "settlement_events.settlement_version defaults to 1 (first settlement)",
+        "settlement_events.idempotency_key uses the same key format as the auto_refresh run",
+        "If settlement_events insert fails, log error but don't fail the bet settlement (non-blocking for V1)",
+        "Deploy command documented in notes",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "The ledger entry insert currently returns data via `.select().single()` in some places but not others. For the main loop (around line 1296), the insert returns data — grab the id. For catch-up (around line 445), it does `.insert({...})` without `.select()` — add `.select().single()` to get the returned id. Insert settlement_events via `client.from('settlement_events').insert({ bookie_id, bet_id: bet.id, mode: 'auto', actor_user_id: bookie?.auth_user_id, idempotency_key: <run_key>, ledger_entry_ids: [ledgerEntry.id] })`. Deploy: `npx supabase functions deploy auto_refresh_games --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`."
+    },
+    {
+      "id": "US-005",
+      "title": "Migration: reverse_settlement_tx and override_grade_tx RPC functions",
+      "description": "As a developer, I need transactional RPC functions for reversal and grade override so these correction flows cannot produce partial state.",
+      "acceptanceCriteria": [
+        "Create migration file supabase/migrations/016_ledger_v2_reversal_rpcs.sql",
+        "Create reverse_settlement_tx(p_bet_id UUID, p_actor_user_id UUID, p_reason TEXT, p_idempotency_key TEXT) Postgres function",
+        "reverse_settlement_tx validates bet status is 'settled', finds most recent settlement ledger entry for the bet, then atomically: (1) creates reversal ledger entry with negated amount and type='reversal', (2) updates bet status back to 'graded', (3) inserts 2 audit_events (bet reversal + ledger entry creation), (4) returns JSON with bet, reversal_entry",
+        "Create override_grade_tx(p_bet_id UUID, p_actor_user_id UUID, p_new_outcome TEXT, p_reason TEXT, p_idempotency_key TEXT) Postgres function",
+        "override_grade_tx validates bet has non-null grade_result and new_outcome is in ('win','loss','push','void')",
+        "If bet is 'settled': override_grade_tx first performs internal reversal (same logic as reverse_settlement_tx), then updates grade_result to new_outcome, status to 'graded', emits audit events for both reversal and override",
+        "If bet is 'graded' (not settled): override_grade_tx just updates grade_result and emits override audit event",
+        "Both functions return JSONB with success flag, bet data, and any reversal entry data",
+        "Both functions are SECURITY DEFINER",
+        "If any step fails in either function, entire transaction rolls back",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Follow the same pattern as settle_bet_tx from migration 015. The reversal amount is: -1 * (original settlement entry amount). Find the original entry via: SELECT * FROM ledger_entries WHERE bet_id = p_bet_id AND type = 'settlement' ORDER BY created_at DESC LIMIT 1. For override_grade_tx, the settled-bet path does: (1) find+reverse original settlement, (2) update bet grade_result+status, (3) audit events. The graded-only path does: (1) update bet grade_result, (2) audit event. The override does NOT re-settle — bookie must call settle_bet again."
+    },
+    {
+      "id": "US-006",
+      "title": "Update reverse_settlement edge function to use transactional RPC",
+      "description": "As a developer, I want the reverse_settlement edge function to call the new RPC so reversals are always atomic.",
+      "acceptanceCriteria": [
+        "Modify supabase/functions/reverse_settlement/index.ts to call client.rpc('reverse_settlement_tx', { p_bet_id, p_actor_user_id, p_reason, p_idempotency_key })",
+        "Keep existing JWT validation, bookie ownership check, and idempotency check before RPC call",
+        "Remove separate bet update, ledger insert, and audit emit calls — RPC handles all atomically",
+        "Parse RPC response to extract bet and reversal_entry for HTTP response",
+        "Return same response shape: { success: true, bet: {...}, reversal_entry: {...} }",
+        "Error handling: RPC error returns appropriate HTTP status",
+        "Deploy command documented in notes",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Same refactor pattern as US-002 for settle_bet. The edge function keeps: CORS, JWT extraction, idempotency, bookie validation. The RPC handles: bet status change, reversal ledger entry, audit events — all atomic. Deploy: `npx supabase functions deploy reverse_settlement --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`."
+    },
+    {
+      "id": "US-007",
+      "title": "Update override_grade edge function to use transactional RPC",
+      "description": "As a developer, I want the override_grade edge function to call the new RPC so grade overrides (including auto-reversal of settlements) are always atomic.",
+      "acceptanceCriteria": [
+        "Modify supabase/functions/override_grade/index.ts to call client.rpc('override_grade_tx', { p_bet_id, p_actor_user_id, p_new_outcome, p_reason, p_idempotency_key })",
+        "Keep existing JWT validation, bookie ownership check, outcome validation, and idempotency check before RPC call",
+        "Remove the entire inline reversal block (finding settlement entry, creating reversal, etc.) — RPC handles it",
+        "Remove the bet update and audit emit calls — RPC handles them",
+        "Parse RPC response to extract bet, settlement_reversed flag, and any reversal entry data",
+        "Return same response shape: { success: true, bet: {...}, settlement_reversed: boolean }",
+        "Deploy command documented in notes",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "This is the most complex refactor because the current override_grade has inline reversal logic. After this change, the edge function is thin: validate → RPC → respond. Deploy: `npx supabase functions deploy override_grade --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`."
+    },
+    {
+      "id": "US-008",
+      "title": "Create settle_parlay edge function for server-authoritative parlay math",
+      "description": "As a developer, I want a dedicated settle_parlay edge function that computes combined parlay odds and payout server-side, writing a single ledger entry for the entire parlay instead of per-leg entries.",
+      "acceptanceCriteria": [
+        "Create new edge function at supabase/functions/settle_parlay/index.ts",
+        "Request: { ticket_id: string, parlay_policy: 'treatAsPush' | 'reduceLegReprice', idempotency_key: string }",
+        "Validate JWT, extract bookie, verify all bets in ticket belong to bookie",
+        "Fetch all bets with matching ticket_id, verify they share the same player_id and stake",
+        "Determine parlay outcome server-side: (1) any leg lost → LOSS, (2) all legs won → WIN, (3) apply push/void policy for mixed results",
+        "For treatAsPush policy: any push/void leg → entire parlay PUSH",
+        "For reduceLegReprice policy: exclude push/void legs, recalculate with remaining winners",
+        "Combined odds calculation: multiply decimal odds of all active legs. American to decimal: positive odds → 1 + odds/100, negative odds → 1 + 100/abs(odds)",
+        "Payout for WIN: profit = stake * combinedDecimalOdds - stake, ledger amount = -profit (bookie owes player)",
+        "Payout for LOSS: ledger amount = +stake (player owes bookie)",
+        "Payout for PUSH: ledger amount = 0",
+        "Create exactly ONE ledger entry for the whole parlay (type='settlement', description includes leg count and outcome)",
+        "Update ALL legs to status='settled' in a single batch update",
+        "Write settlement_events row with ledger_entry_ids containing the single entry ID",
+        "Emit audit event for parlay settlement with combined odds and payout in new_state",
+        "Return: { success: true, outcome: string, payout: number, ledger_entry: {...}, legs_settled: number }",
+        "Idempotency check at start, cache response at end",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Create the function directory and index.ts. Import shared helpers: cors.ts, supabase.ts, idempotency.ts, audit.ts. The ticket_id groups parlay legs — all bets with the same ticket_id are one parlay. Stake is identical on all legs (parlay convention). The key insight: instead of calling settle_bet per leg (which writes N ledger entries with per-leg odds), this writes ONE entry with the real combined payout. The description should be like 'Multi-Pick (3 legs) won' or 'Multi-Pick (3 legs) lost'. Use batch update for legs: `client.from('bets').update({ status: 'settled', updated_at: now }).in('id', legIds)`. For the settlement_events entry, use the ticket_id as a reference. This function does NOT need an RPC — it can use the single-ledger-entry approach directly since the entire operation is simpler than the per-bet case (one ledger row, one batch bet update). Deploy: `npx supabase functions deploy settle_parlay --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`."
+    },
+    {
+      "id": "US-009",
+      "title": "Update iOS GradingService to call settle_parlay for parlays",
+      "description": "As a developer, I want the iOS client to call the new settle_parlay edge function instead of settling parlay legs individually, so ledger reflects actual parlay payout.",
+      "acceptanceCriteria": [
+        "In Booki/Services/GradingService.swift, modify settleParlayBets() to call the 'settle_parlay' edge function instead of calling settle_bet per leg",
+        "Create SettleParlayRequest struct: ticket_id (String), parlay_policy (String: 'treatAsPush' or 'reduceLegReprice'), idempotency_key (String)",
+        "Create SettleParlayResponse struct: success (Bool), outcome (String), payout (Double), ledger_entry (EdgeLedgerData?), legs_settled (Int), error (String?)",
+        "Build request with ticketId from first bet's ticketId, policy mapped to string, idempotency_key = 'settle_parlay_{ticketId}_{timestamp}'",
+        "On success: update all parlay bet statuses to .settled locally",
+        "On success: create single local LedgerEntry from response ledger_entry data using first bet's player",
+        "Remove the per-leg settle loop — replaced by single edge function call",
+        "Keep the existing single-bet settleBet() method unchanged (still uses settle_bet for singles)",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "GradingService.swift is at Booki/Services/GradingService.swift. The current settleParlayBets() loops through legs calling settle_bet per leg. Replace the loop with one call to settle_parlay. The ParlayPushVoidPolicy enum has .treatAsPush and .reduceLegReprice — map to the string values the edge function expects. The ticketId is on bet.ticketId (UUID). Use EdgeFunctionService.shared.callFunction(name: 'settle_parlay', body: request). All bets in the parlay share the same player relationship. UUID must be lowercased for the edge function call."
+    },
+    {
+      "id": "US-010",
+      "title": "Migration: hash chain columns on ledger_entries + auto-compute trigger",
+      "description": "As a developer, I want tamper-evident hash chaining on ledger entries so any direct database mutation is detectable.",
+      "acceptanceCriteria": [
+        "Create migration file supabase/migrations/017_ledger_v2_hash_chain.sql",
+        "Add prev_hash TEXT column to ledger_entries (nullable for first entry in a chain)",
+        "Add entry_hash TEXT NOT NULL column to ledger_entries",
+        "Create compute_ledger_hash() trigger function that fires BEFORE INSERT on ledger_entries",
+        "Trigger looks up the most recent entry_hash for the same (bookie_id, player_id) pair ordered by created_at DESC",
+        "Sets prev_hash to that value (NULL if no previous entry exists)",
+        "Computes entry_hash = encode(sha256(concat(coalesce(prev_hash,''), bookie_id::text, player_id::text, amount::text, type, created_at::text, NEW.id::text)::bytea), 'hex')",
+        "The trigger sets NEW.prev_hash and NEW.entry_hash before the row is inserted",
+        "Backfill existing ledger_entries: run a DO block that iterates entries per (bookie_id, player_id) ordered by created_at ASC and computes the chain",
+        "After backfill, add NOT NULL constraint to entry_hash (prev_hash stays nullable for chain heads)",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "The hash chain is scoped per (bookie_id, player_id) — each player under each bookie has their own independent chain. The trigger must use FOR UPDATE locking on the previous entry lookup to prevent race conditions with concurrent inserts. Use: SELECT entry_hash FROM ledger_entries WHERE bookie_id = NEW.bookie_id AND player_id = NEW.player_id ORDER BY created_at DESC LIMIT 1 FOR UPDATE. For the backfill, iterate with a cursor or nested loop: FOR each distinct (bookie_id, player_id), FOR each entry ordered by created_at ASC, compute and UPDATE. This is the one time we update ledger_entries — the immutability trigger from US-001 must be temporarily disabled during backfill (use ALTER TABLE ... DISABLE TRIGGER prevent_mutation_ledger_entries, then re-enable)."
+    },
+    {
+      "id": "US-011",
+      "title": "Create validate_ledger_chain RPC function",
+      "description": "As a developer, I want a Postgres function that validates the hash chain for any player's ledger so tampering is detectable on demand.",
+      "acceptanceCriteria": [
+        "Create Postgres function validate_ledger_chain(p_bookie_id UUID, p_player_id UUID) in migration 017 or a new 018 migration",
+        "Function iterates all ledger_entries for (bookie_id, player_id) ordered by created_at ASC",
+        "For each entry, recomputes expected hash using same formula as the insertion trigger",
+        "Verifies: (1) entry_hash matches recomputed hash, (2) prev_hash matches previous entry's entry_hash, (3) chain head has prev_hash IS NULL",
+        "Returns JSONB: { valid: boolean, entries_checked: integer, first_invalid_entry_id: uuid | null, error_message: text | null }",
+        "If all entries match, returns { valid: true, entries_checked: N }",
+        "If mismatch found, returns { valid: false, first_invalid_entry_id: <id>, error_message: 'Hash mismatch at entry <id>' }",
+        "Function is SECURITY DEFINER so edge functions can call it",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "This is a read-only validation function. Use a FOR loop over the cursor with a running prev_hash variable. Start with prev_hash = NULL. For each row: compute expected_hash using the same concat+sha256+hex formula, compare with stored entry_hash, compare prev_hash with running value. If any mismatch, record the entry ID and break. This can be called on-demand from an edge function or as a scheduled job. No edge function wrapper needed yet — direct RPC call from client or admin tools."
+    },
+    {
+      "id": "US-012",
+      "title": "Create player_balances_view and get_player_balance RPC",
+      "description": "As a developer, I want a canonical server-side balance computation so reports and reconciliation use authoritative values rather than client-derived math.",
+      "acceptanceCriteria": [
+        "Create migration file supabase/migrations/018_ledger_v2_canonical_balances.sql (or append to 017)",
+        "Create VIEW player_balances_view AS SELECT bookie_id, player_id, COALESCE(SUM(amount), 0) as balance_owed FROM ledger_entries GROUP BY bookie_id, player_id",
+        "Create get_player_balance(p_bookie_id UUID, p_player_id UUID) Postgres function",
+        "Function returns JSONB: { balance_owed: numeric, open_stakes: numeric, available_credit: numeric }",
+        "balance_owed = SUM of all ledger_entries.amount for (bookie_id, player_id)",
+        "open_stakes = SUM of stake from bets WHERE bookie_id matches AND player_id matches AND status IN ('pending', 'accepted')",
+        "available_credit = player.credit_limit - open_stakes - balance_owed (lookup credit_limit from players table)",
+        "Function is SECURITY DEFINER",
+        "Enable RLS on the view — bookies can only see their own players' balances",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "The view is a convenience for dashboards and reports. The RPC function is the canonical balance endpoint. The balance formula mirrors BalanceService.swift exactly: availableCredit = creditLimit - openStakes - balanceOwed. Internal convention: positive balance_owed = player owes bookie. The players table has a credit_limit column. Open stakes only include pending + accepted bets (not graded, settled, void, declined). This provides the 'server says' value that the iOS client can reconcile against."
+    }
+  ]
+}

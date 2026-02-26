@@ -472,8 +472,9 @@ struct ProfileSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(spacing: 16) {
                 sectionHeader("Organizer Profile")
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(spacing: 0) {
                     if let bookie = currentBookie {

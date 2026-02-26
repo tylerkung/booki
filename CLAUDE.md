@@ -72,7 +72,7 @@ List {
 
 ## Odds API Integration
 
-- **Manual triggers only** - Import/Fetch/Refresh are manual to conserve API quota (500 free calls/month)
+- **Automated via cron** - Auto-refresh hourly, live scores every 30 min, sync_games twice daily. Odds API paid tier (20,000 calls/month)
 - **OddsAPIService.shared** - Singleton with @Published quota tracking
 - **API key stored in @AppStorage** - Settings > Odds API section
 - **Event.externalId** - Links imported events to API for score updates
@@ -162,19 +162,19 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (February 25, 2026)
+## Current State (February 26, 2026)
 
-- **Branch**: `main`
+- **Branch**: `ralph/default-ux-organizer-upsell`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
-- **Phases complete**: 1-17 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration)
-- **Supabase migrations**: All applied (see SUPABASE_MIGRATIONS.md)
-- **Edge Functions**: 12 functions for server-authoritative operations (including `submit_bets`, `submit_parlay`, `sync_games`, `claim_player`, `create_invite`, `claim_invite`)
+- **Phases complete**: 1-18 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration, Default UX & Organizer Upsell, API Optimization & Live Scores)
+- **Supabase migrations**: All applied through 025 (see SUPABASE_MIGRATIONS.md)
+- **Edge Functions**: 14+ functions for server-authoritative operations (including `submit_bets`, `submit_parlay`, `sync_games`, `claim_player`, `create_invite`, `claim_invite`, `refresh_live_scores`, `delete_account`)
 - **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
 - **Settings**: Streamlined — removed Odds API config, sample data, and sync button
 - **Auto-pilot mode**: Singles and parlays auto-accepted, auto-graded, and auto-settled (ledger entries created automatically). Parlays graded per-leg then settled as ticket with combined odds.
 - **Auto-refresh**: Processes up to 50 games per run, catch-up grading for missed events, auto-void for stale pending bets, `force` flag for manual triggers
-- **Cron jobs**: Auto-refresh runs every 2 hours (9 runs/day, 8 AM–midnight PT)
+- **Cron jobs**: Auto-refresh hourly (16 runs/day), live scores every 30 min, sync_games twice daily
 - **Branding**: App icon and in-app logo (`BookiLogo` image set), dark launch screen, `DESIGN_SYSTEM.md` restored
 - **Landing page**: `landing/` directory with 8-section homepage (Hero, Positioning, Pillars, Product, Comparison, Pricing, Compliance, Final CTA), Features page with 6 alternating sections + capabilities grid, fixed top nav bar across all pages
 - **Compliance**: All user-facing strings use approved vocabulary; disclaimers on auth and pick entry screens
@@ -202,7 +202,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Parlay display**: Suppressed "Partial (X/Y)" badge and "will lose" warning when parlay already has a losing leg — shows normal Lost appearance
 - **Player bookie RLS**: Migration 013 adds `get_player_bookie_id()` SECURITY DEFINER function + RLS policy so players can read their bookie's settings
 - **Golf sport page**: League tabs render outrights directly (no separate Futures tab), "Updated X ago" in section headers, all outcomes shown without show more
-- **Auto-refresh**: Every 2 hours (9 runs/day), 50 games per run, hourly idempotency keys so each run executes
+- **Auto-refresh**: Hourly (16 runs/day), 50 games per run, hourly idempotency keys so each run executes
+- **Live scores**: `refresh_live_scores` runs every 5 min — estimates game end times by sport, only calls API when games are in finishing window (last 30 min of estimated duration). Most runs = 0 API calls. Auto-grades on finalization, settles parlays.
 - **Member management polish**: Settle Up (one-tap confirmation), Adjust Balance (custom NumericKeypadView), editable names, credit utilization display, "Owes $X"/"You owe $X"/"Settled" balance labels
 - **Members tab**: Search bar + filter chips (All, Attention needed, Overdue, High exposure, Big winners, Big losers), expanded cards with metrics + attention tags
 - **Attention tags**: Picks Pending, Overdue, On Heater, Cold Streak, Whale, Degen, Parlay Demon — tappable with explainer modal
@@ -265,3 +266,11 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Email change template**: `landing/email-change.html` — branded Supabase email change confirmation
 - **Debug tier toggle removed**: Triple-tap on version number no longer toggles tier
 - **Dashboard balance fix**: Shows `balanceOwed` (ledger only) not credit used (which included open stakes)
+- **Default standalone UX**: New users route to PlayerMainView (no bookie record), synthetic player with $10K credit and 25 open bet limit
+- **Organizer upsell**: `BecomeOrganizerView` in Account menu, creates bookie record on tap
+- **Step down organizer**: `step_down_organizer` edge function, available in Settings when no active members/invites
+- **Pro upgrade blocked**: ProUpgradeSheet shows "Coming Soon" instead of Stripe checkout
+- **Delete bookie data RPC**: Migration 025, `delete_bookie_data()` SECURITY DEFINER atomically disables immutability triggers and deletes in FK order
+- **Hourly auto-refresh**: Cron runs every hour (was 2h), 50 game cap (was 25)
+- **Smart live scores**: `refresh_live_scores` edge function every 5 min, sport duration estimation, only fetches when games near ending
+- **Odds API**: Upgraded to 20,000 calls/month paid tier

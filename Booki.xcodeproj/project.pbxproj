@@ -140,6 +140,7 @@
 		8A12345600A5 /* PlayerPickHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A5 /* PlayerPickHistoryView.swift */; };
 		8A12345600A6 /* PlayerPicksListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A6 /* PlayerPicksListView.swift */; };
 		8AE1C2D400B1 /* PlayerProfileEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AE1C2D300B1 /* PlayerProfileEditView.swift */; };
+		8AE1C2D400B2 /* BecomeOrganizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AE1C2D300B2 /* BecomeOrganizerView.swift */; };
 		8A12345600A7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A12345500A7 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -290,6 +291,7 @@
 		8A12345500A5 /* PlayerPickHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPickHistoryView.swift; sourceTree = "<group>"; };
 		8A12345500A6 /* PlayerPicksListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPicksListView.swift; sourceTree = "<group>"; };
 		8AE1C2D300B1 /* PlayerProfileEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfileEditView.swift; sourceTree = "<group>"; };
+		8AE1C2D300B2 /* BecomeOrganizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BecomeOrganizerView.swift; sourceTree = "<group>"; };
 		8A12345500A7 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -444,6 +446,7 @@
 				8A12345500A5 /* PlayerPickHistoryView.swift */,
 				8A12345500A6 /* PlayerPicksListView.swift */,
 				8AE1C2D300B1 /* PlayerProfileEditView.swift */,
+				8AE1C2D300B2 /* BecomeOrganizerView.swift */,
 				8A1234530011 /* Onboarding */,
 				8A1234530012 /* Components */,
 			);
@@ -778,6 +781,7 @@
 				8A12345600A5 /* PlayerPickHistoryView.swift in Sources */,
 				8A12345600A6 /* PlayerPicksListView.swift in Sources */,
 				8AE1C2D400B1 /* PlayerProfileEditView.swift in Sources */,
+				8AE1C2D400B2 /* BecomeOrganizerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

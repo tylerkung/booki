@@ -57,29 +57,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Delete user data in order (respecting foreign key constraints)
-
+    // Delete all bookie data atomically via RPC (handles immutability triggers)
     if (bookie) {
-      // Delete ledger entries for this bookie
-      await client.from('ledger_entries').delete().eq('bookie_id', bookie.id);
+      const { error: rpcError } = await client.rpc('delete_bookie_data', {
+        target_bookie_id: bookie.id,
+      });
 
-      // Delete bets for this bookie
-      await client.from('bets').delete().eq('bookie_id', bookie.id);
-
-      // Delete audit events for this bookie
-      await client.from('audit_events').delete().eq('bookie_id', bookie.id);
-
-      // Delete settlement events for this bookie
-      await client.from('settlement_events').delete().eq('bookie_id', bookie.id);
-
-      // Delete invites for this bookie
-      await client.from('invites').delete().eq('bookie_id', bookie.id);
-
-      // Delete players for this bookie
-      await client.from('players').delete().eq('bookie_id', bookie.id);
-
-      // Delete the bookie record itself
-      await client.from('bookies').delete().eq('id', bookie.id);
+      if (rpcError) {
+        console.error('delete_account: RPC delete_bookie_data failed:', rpcError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to delete account data' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       console.log(`delete_account: Deleted bookie data for ${bookie.id}`);
     }
