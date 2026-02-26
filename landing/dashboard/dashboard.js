@@ -51,6 +51,13 @@ function dashboardApp() {
         pickDetailTimeline: [],
         isLoadingPickDetail: false,
 
+        // ── Grading ──
+        showGradeModal: false,
+        gradingOutcome: '',
+        isGrading: false,
+        showVoidModal: false,
+        isVoiding: false,
+
         // ── Modals ──
         showInviteModal: false,
         inviteEmail: '',
@@ -379,6 +386,66 @@ function dashboardApp() {
                 return -stake;
             }
             return 0;
+        },
+
+        // ── Grading Actions ──
+        confirmGrade(outcome) {
+            this.gradingOutcome = outcome;
+            this.showGradeModal = true;
+        },
+
+        async gradePick() {
+            if (!this.pickDetail || !this.gradingOutcome) return;
+            this.isGrading = true;
+
+            try {
+                const response = await this.callEdgeFunction('grade_bet', {
+                    bet_id: this.pickDetail.id,
+                    outcome: this.gradingOutcome,
+                    idempotency_key: crypto.randomUUID(),
+                });
+
+                if (response.error) {
+                    this.toast(response.error, 'error');
+                } else {
+                    this.toast(`Pick graded as ${this.gradingOutcome}`, 'success');
+                    this.showGradeModal = false;
+                    await this.loadPickDetail();
+                }
+            } catch (e) {
+                this.toast(e.message || 'Failed to grade pick', 'error');
+            }
+
+            this.isGrading = false;
+        },
+
+        confirmVoid() {
+            this.showVoidModal = true;
+        },
+
+        async voidPick() {
+            if (!this.pickDetail) return;
+            this.isVoiding = true;
+
+            try {
+                const response = await this.callEdgeFunction('grade_bet', {
+                    bet_id: this.pickDetail.id,
+                    outcome: 'void',
+                    idempotency_key: crypto.randomUUID(),
+                });
+
+                if (response.error) {
+                    this.toast(response.error, 'error');
+                } else {
+                    this.toast('Pick voided', 'success');
+                    this.showVoidModal = false;
+                    await this.loadPickDetail();
+                }
+            } catch (e) {
+                this.toast(e.message || 'Failed to void pick', 'error');
+            }
+
+            this.isVoiding = false;
         },
 
         // ── Invite ──

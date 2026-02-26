@@ -284,6 +284,24 @@
                             </div>
                         </div>
 
+                        <!-- Grade / Void Actions -->
+                        <div class="card" style="margin-bottom:16px;" x-show="pickDetail.status === 'accepted'">
+                            <div class="card-header"><span class="card-title">Actions</span></div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="btn btn-grade btn-grade-win" @click="confirmGrade('win')" :disabled="isGrading">Win</button>
+                                <button class="btn btn-grade btn-grade-loss" @click="confirmGrade('loss')" :disabled="isGrading">Loss</button>
+                                <button class="btn btn-grade btn-grade-push" @click="confirmGrade('push')" :disabled="isGrading">Push</button>
+                                <button class="btn btn-void" @click="confirmVoid()" :disabled="isVoiding">Void</button>
+                            </div>
+                        </div>
+
+                        <div class="card" style="margin-bottom:16px;" x-show="pickDetail.status === 'graded'">
+                            <div class="card-header"><span class="card-title">Actions</span></div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="btn btn-void" @click="confirmVoid()" :disabled="isVoiding">Void</button>
+                            </div>
+                        </div>
+
                         <!-- Parlay Legs Card (only for parlays) -->
                         <div class="card" style="margin-bottom:16px;" x-show="pickDetail.bet_type === 'parlay' && pickDetailLegs.length > 0">
                             <div class="card-header">
@@ -470,6 +488,34 @@
                 <button class="btn btn-secondary" @click="showAdjustModal = false">Cancel</button>
                 <button class="btn btn-accent" @click="adjustBalance()" :disabled="isAdjusting">
                     <span x-text="isAdjusting ? 'Adjusting...' : 'Apply Adjustment'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Grade Confirmation Modal ── -->
+    <div class="modal-overlay" x-show="showGradeModal" x-cloak @click.self="showGradeModal = false" x-transition>
+        <div class="modal">
+            <h2>Grade Pick</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">Grade this pick as <strong x-text="gradingOutcome" style="text-transform:capitalize;"></strong>?</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showGradeModal = false">Cancel</button>
+                <button class="btn btn-accent" @click="gradePick()" :disabled="isGrading">
+                    <span x-text="isGrading ? 'Grading...' : 'Confirm'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Void Confirmation Modal ── -->
+    <div class="modal-overlay" x-show="showVoidModal" x-cloak @click.self="showVoidModal = false" x-transition>
+        <div class="modal">
+            <h2>Void Pick</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">Void this pick? This will cancel it with no balance impact.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showVoidModal = false">Cancel</button>
+                <button class="btn btn-danger" @click="voidPick()" :disabled="isVoiding">
+                    <span x-text="isVoiding ? 'Voiding...' : 'Void Pick'"></span>
                 </button>
             </div>
         </div>
