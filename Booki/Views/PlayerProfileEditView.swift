@@ -60,12 +60,15 @@ struct PlayerProfileEditView: View {
                     if let message = emailConfirmationMessage {
                         settingsDivider
 
-                        HStack(spacing: 8) {
+                        HStack(alignment: .top, spacing: 0) {
                             Image(systemName: "envelope.badge")
                                 .foregroundStyle(Theme.accent)
+                                .frame(width: 50, alignment: .leading)
+                                .padding(.top, 2)
                             Text(message)
                                 .font(Theme.caption)
                                 .foregroundStyle(Theme.textSecondary)
+                            Spacer()
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
