@@ -47,6 +47,8 @@ function dashboardApp() {
 
         // ── Pick Detail ──
         pickDetail: null,
+        pickDetailLegs: [],
+        pickDetailTimeline: [],
         isLoadingPickDetail: false,
 
         // ── Modals ──
@@ -306,6 +308,8 @@ function dashboardApp() {
             if (!this.selectedBetId || !this.bookie) return;
             this.isLoadingPickDetail = true;
             this.pickDetail = null;
+            this.pickDetailLegs = [];
+            this.pickDetailTimeline = [];
 
             const { data, error } = await this.supabase
                 .from('bets')
@@ -316,8 +320,39 @@ function dashboardApp() {
             if (error || !data?.length) {
                 console.error('Failed to load pick detail:', error);
                 this.toast('Failed to load pick', 'error');
+                this.isLoadingPickDetail = false;
+                return;
+            }
+
+            this.pickDetail = data[0];
+
+            // Fetch parlay legs if applicable
+            if (this.pickDetail.bet_type === 'parlay' && this.pickDetail.ticket_id) {
+                const { data: legs } = await this.supabase
+                    .from('bet_legs')
+                    .select('*')
+                    .eq('ticket_id', this.pickDetail.ticket_id)
+                    .order('created_at');
+                this.pickDetailLegs = legs || [];
+            }
+
+            // Fetch activity timeline from settlement_events
+            const { data: events } = await this.supabase
+                .from('settlement_events')
+                .select('*')
+                .eq('bet_id', this.selectedBetId)
+                .order('created_at');
+
+            if (events && events.length > 0) {
+                this.pickDetailTimeline = events;
             } else {
-                this.pickDetail = data[0];
+                // Fallback: show created_at as the only timeline entry
+                this.pickDetailTimeline = [{
+                    id: 'created',
+                    event_type: 'created',
+                    description: 'Pick placed',
+                    created_at: this.pickDetail.created_at,
+                }];
             }
 
             this.isLoadingPickDetail = false;
