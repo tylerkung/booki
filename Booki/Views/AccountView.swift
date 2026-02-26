@@ -44,6 +44,7 @@ struct AccountView: View {
     @State private var logoutErrorMessage = ""
     @State private var showingDeleteConfirmation = false
     @State private var showingDeleteFinalConfirmation = false
+    @State private var isBecomingOrganizer = false
     @State private var isDeletingAccount = false
     @State private var deleteError: String?
     @State private var selectedTransactionFilter: TransactionFilter = .all
@@ -532,6 +533,29 @@ struct AccountView: View {
                 playerMenuRow(icon: "lock.rotation", title: "Change Password")
             }
 
+            // "Be an Organizer" row for standalone users
+            if authManager.isStandaloneUser {
+                Divider()
+                    .background(Theme.border)
+                    .padding(.leading, 58)
+
+                NavigationLink {
+                    BecomeOrganizerView(onGetStarted: {
+                        Task {
+                            isBecomingOrganizer = true
+                            do {
+                                try await authManager.becomeOrganizer()
+                            } catch {
+                                print("Failed to become organizer: \(error)")
+                            }
+                            isBecomingOrganizer = false
+                        }
+                    })
+                } label: {
+                    playerMenuRow(icon: "crown.fill", title: "Be an Organizer", color: Theme.gold)
+                }
+            }
+
             Divider()
                 .background(Theme.border)
                 .padding(.leading, 58)
@@ -542,7 +566,7 @@ struct AccountView: View {
                 playerMenuRow(icon: "info.circle", title: "About")
             }
 
-            if authManager.userRole == .player {
+            if authManager.userRole == .player || authManager.isStandaloneUser {
                 Divider()
                     .background(Theme.border)
                     .padding(.leading, 58)

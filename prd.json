@@ -152,7 +152,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "AccountView is in Booki/Views/AccountView.swift. The playerMenuSection starts around line 513. Add the new row before the About NavigationLink. For bookie creation, AuthManager likely has an ensureBookie() or createBookieRecord() method that was disabled in US-004 — expose it as a callable method. After creation, AuthManager.userRole should become .bookie which triggers AuthGateView re-routing. May need to also trigger sync after bookie creation."
     },
     {

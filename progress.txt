@@ -108,3 +108,16 @@ Started: Wed Feb 25 18:55:49 PST 2026
   - View follows standard pattern: ScrollView > VStack > sections, Theme colors
   - `onGetStarted` closure allows parent to wire the bookie creation action (US-009)
 ---
+
+## 2026-02-25 - US-009
+- Added "Be an Organizer" NavigationLink row in AccountView playerMenuSection, above About
+- Row uses crown.fill icon in Theme.gold, only visible when `authManager.isStandaloneUser`
+- NavigationLink pushes BecomeOrganizerView with `onGetStarted` wired to `authManager.becomeOrganizer()`
+- After bookie creation, `userRole` switches to `.bookie` which triggers AuthGateView re-routing to ContentView
+- Added Log Out and Delete Account rows for standalone users (was gated to `.player` only)
+- Files changed: Booki/Views/AccountView.swift
+- **Learnings for future iterations:**
+  - `playerMenuRow` helper has color parameter defaulting to Theme.accent — pass Theme.gold for upgrade rows
+  - Log Out / Delete Account gate was `authManager.userRole == .player` — standalone users also need these
+  - After `becomeOrganizer()`, AuthManager sets `userRole = .bookie` which triggers AuthGateView `.onChange(of: authManager.userRole)` → shows onboarding
+---
