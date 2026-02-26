@@ -1346,7 +1346,7 @@ struct MemberSettingsView: View {
                 if let message = saveMessage {
                     Text(message)
                         .font(Theme.caption)
-                        .foregroundStyle(message.contains("Failed") ? Theme.danger : Theme.success)
+                        .foregroundStyle(message.contains("Failed") ? Theme.danger : Theme.accent)
                         .padding(.horizontal, 4)
                 }
             }
@@ -1359,8 +1359,9 @@ struct MemberSettingsView: View {
         .onAppear {
             if let bookie = currentBookie {
                 let value = bookie.defaultCreditLimit
-                if value == value.rounded() {
-                    creditLimitText = "\(Int(truncating: NSDecimalNumber(decimal: value.rounded())))"
+                let rounded = NSDecimalNumber(decimal: value).doubleValue
+                if rounded == rounded.rounded() {
+                    creditLimitText = "\(Int(rounded))"
                 } else {
                     creditLimitText = "\(value)"
                 }
