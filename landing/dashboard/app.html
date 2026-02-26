@@ -194,11 +194,11 @@
                                 <tbody>
                                     <template x-for="sp in sportPerformance" :key="sp.sport">
                                         <tr>
-                                            <td class="name" x-text="sp.sport"></td>
-                                            <td x-text="sp.picks"></td>
-                                            <td x-text="formatCurrency(sp.staked)"></td>
-                                            <td :style="{ color: sp.pnl >= 0 ? 'var(--success)' : 'var(--danger)' }" x-text="formatCurrency(sp.pnl)"></td>
-                                            <td x-text="(sp.wins + sp.losses) > 0 ? Math.round(sp.losses / (sp.wins + sp.losses) * 100) + '%' : '—'"></td>
+                                            <td class="name" data-label="Sport" x-text="sp.sport"></td>
+                                            <td data-label="Picks" x-text="sp.picks"></td>
+                                            <td data-label="Staked" x-text="formatCurrency(sp.staked)"></td>
+                                            <td data-label="Net PnL" :style="{ color: sp.pnl >= 0 ? 'var(--success)' : 'var(--danger)' }" x-text="formatCurrency(sp.pnl)"></td>
+                                            <td data-label="Win Rate" x-text="(sp.wins + sp.losses) > 0 ? Math.round(sp.losses / (sp.wins + sp.losses) * 100) + '%' : '—'"></td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -267,10 +267,10 @@
                         <tbody>
                             <template x-for="entry in recentActivity" :key="entry.id">
                                 <tr>
-                                    <td x-text="formatDate(entry.created_at)"></td>
-                                    <td><span class="badge badge-muted" x-text="entry.type"></span></td>
-                                    <td class="name" x-text="getPlayerName(entry.player_id)"></td>
-                                    <td x-text="formatCurrency(entry.amount)"></td>
+                                    <td data-label="Date" x-text="formatDate(entry.created_at)"></td>
+                                    <td data-label="Type"><span class="badge badge-muted" x-text="entry.type"></span></td>
+                                    <td class="name" data-label="Member" x-text="getPlayerName(entry.player_id)"></td>
+                                    <td data-label="Amount" x-text="formatCurrency(entry.amount)"></td>
                                 </tr>
                             </template>
                         </tbody>
@@ -315,11 +315,11 @@
                             <tbody>
                                 <template x-for="inv in invites" :key="inv.id">
                                     <tr>
-                                        <td><code style="font-size:13px;color:var(--accent);" x-text="inv.code"></code></td>
-                                        <td x-text="inv.email || '—'"></td>
-                                        <td x-text="formatCurrency(inv.credit_limit || 1000)"></td>
-                                        <td x-text="formatDate(inv.created_at)"></td>
-                                        <td style="display:flex;gap:4px;">
+                                        <td data-label="Code"><code style="font-size:13px;color:var(--accent);" x-text="inv.code"></code></td>
+                                        <td data-label="Email" x-text="inv.email || '—'"></td>
+                                        <td data-label="Credit Limit" x-text="formatCurrency(inv.credit_limit || 1000)"></td>
+                                        <td data-label="Created" x-text="formatDate(inv.created_at)"></td>
+                                        <td data-label="Actions" style="display:flex;gap:4px;">
                                             <button class="btn btn-ghost" title="Copy Code" @click="copyInviteCodeValue(inv.code)">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                             </button>
@@ -368,13 +368,13 @@
                                 <tbody>
                                     <template x-for="p in filteredPlayers" :key="p.id">
                                         <tr>
-                                            <td class="name"><a :href="'#/members/' + p.id" style="color:var(--text-primary);" x-text="p.display_name || p.name"></a></td>
-                                            <td :class="p.balance > 0 ? 'positive' : p.balance < 0 ? 'negative' : ''"
+                                            <td class="name" data-label="Name"><a :href="'#/members/' + p.id" style="color:var(--text-primary);" x-text="p.display_name || p.name"></a></td>
+                                            <td data-label="Balance" :class="p.balance > 0 ? 'positive' : p.balance < 0 ? 'negative' : ''"
                                                 :style="{ color: p.balance > 0 ? 'var(--success)' : p.balance < 0 ? 'var(--danger)' : '' }"
                                                 x-text="formatCurrency(p.balance || 0)"></td>
-                                            <td x-text="formatCurrency(p.credit_limit || 0)"></td>
-                                            <td><span class="badge" :class="p.auth_user_id ? 'badge-success' : 'badge-muted'" x-text="p.auth_user_id ? 'Active' : 'Pending'"></span></td>
-                                            <td>
+                                            <td data-label="Credit" x-text="formatCurrency(p.credit_limit || 0)"></td>
+                                            <td data-label="Status"><span class="badge" :class="p.auth_user_id ? 'badge-success' : 'badge-muted'" x-text="p.auth_user_id ? 'Active' : 'Pending'"></span></td>
+                                            <td data-label="Actions">
                                                 <button class="btn btn-ghost" title="Settle Up" @click="openSettleUp(p)">$</button>
                                                 <button class="btn btn-ghost" title="Adjust" @click="openAdjustBalance(p)">+/-</button>
                                             </td>
@@ -448,13 +448,13 @@
                                 <tbody>
                                     <template x-for="bet in bets" :key="bet.id">
                                         <tr style="cursor:pointer;" @click="window.location.hash = '#/picks/' + bet.id">
-                                            <td x-text="formatDate(bet.created_at)"></td>
-                                            <td class="name" x-text="getPlayerName(bet.player_id)"></td>
-                                            <td><span class="badge badge-muted" x-text="bet.bet_type || 'single'"></span></td>
-                                            <td x-text="bet.team_name || bet.selection || '—'"></td>
-                                            <td x-text="formatOdds(bet.odds)"></td>
-                                            <td x-text="formatCurrency(bet.stake)"></td>
-                                            <td><span class="badge" :class="statusBadgeClass(bet.status)" x-text="bet.status"></span></td>
+                                            <td data-label="Date" x-text="formatDate(bet.created_at)"></td>
+                                            <td class="name" data-label="Member" x-text="getPlayerName(bet.player_id)"></td>
+                                            <td data-label="Type"><span class="badge badge-muted" x-text="bet.bet_type || 'single'"></span></td>
+                                            <td data-label="Pick" x-text="bet.team_name || bet.selection || '—'"></td>
+                                            <td data-label="Odds" x-text="formatOdds(bet.odds)"></td>
+                                            <td data-label="Stake" x-text="formatCurrency(bet.stake)"></td>
+                                            <td data-label="Status"><span class="badge" :class="statusBadgeClass(bet.status)" x-text="bet.status"></span></td>
                                         </tr>
                                     </template>
                                 </tbody>
