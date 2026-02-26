@@ -10,6 +10,29 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - Player data cached in `playerMap` (keyed by id) for O(1) lookups
 - `allLedgerEntries` stores all ledger entries (with type/created_at) for per-player analysis (tags, overdue detection)
 - `allBets` query in `loadDashboard` includes `player_id, bet_type, created_at` — use for per-player grouping
+- Loading skeleton pattern: `template x-if="isLoadingX"` with shimmer divs, `template x-if="!isLoadingX"` with real content
+---
+
+## 2026-02-26 - US-018
+- Added loading skeleton shimmer states for dashboard stat tiles, members table, and picks table
+- Added `isLoadingDashboard`, `isLoadingPlayers`, `isLoadingPicks` state variables to dashboard.js
+- Loading flags set true before fetch, false after (including on error paths)
+- Dashboard: 6 shimmer stat tiles during `loadDashboard()`, hidden when loaded
+- Members: 3 shimmer skeleton rows during `loadPlayers()`, table appears when loaded
+- Picks: 3 shimmer skeleton rows during `loadPicks()`, table appears when loaded
+- Improved empty states with SVG icons and helpful messages:
+  - Members: "Invite your first member" with invite button (when no search active)
+  - Picks: "No picks yet. Members will appear here once they start placing picks."
+  - Recent Activity: "Activity will show up as members place picks and balances change." with clock icon
+- Pro-gated sections (Sport Performance, Futures) hide empty states during loading
+- Added `.skeleton-row` CSS class for consistent skeleton row styling
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- **Learnings for future iterations:**
+  - Use `template x-if` (not `x-show`) for skeleton/loaded toggle — prevents both rendering simultaneously
+  - `isLoadingPicks` starts as `false` since picks aren't loaded on init (only when navigating to picks route)
+  - `isLoadingDashboard` and `isLoadingPlayers` start as `true` since they're loaded in `init()`
+  - Error paths must also set loading flag to false, otherwise skeleton shows forever
+  - Empty states differentiated by context: search-filtered "not found" vs truly empty "invite first member"
 ---
 
 ## 2026-02-26 - US-010
