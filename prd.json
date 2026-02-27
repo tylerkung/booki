@@ -106,7 +106,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "The booki:// URL scheme is already registered. Check ContentView.swift for existing tab selection logic. Use .onOpenURL or similar pattern for cold start deep links."
     },
     {
@@ -123,7 +123,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "auto_refresh_games already tracks graded bets in its logic. Add notification calls after the grading loop completes. Use the existing bet data (team names, amounts, results) to build notification bodies. Fire-and-forget pattern."
     },
     {
