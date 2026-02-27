@@ -166,11 +166,11 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 
 ## Current State (February 27, 2026)
 
-- **Branch**: `main`
+- **Branch**: `ralph/push-notifications`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
-- **Phases complete**: 1-19 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration, Default UX & Organizer Upsell, API Optimization & Live Scores, Apple IAP & Web Dashboard)
-- **Supabase migrations**: All applied through 026 (see SUPABASE_MIGRATIONS.md)
+- **Phases complete**: 1-20 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration, Default UX & Organizer Upsell, API Optimization & Live Scores, Apple IAP & Web Dashboard, Push Notifications)
+- **Supabase migrations**: All applied through 028 (see SUPABASE_MIGRATIONS.md)
 - **Edge Functions**: 15+ functions for server-authoritative operations (including `submit_bets`, `submit_parlay`, `sync_games`, `claim_player`, `create_invite`, `claim_invite`, `refresh_live_scores`, `delete_account`, `apple_iap_webhook`)
 - **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
 - **Settings**: Streamlined — removed Odds API config, sample data, and sync button
@@ -293,3 +293,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Nav login link**: "Log In" → `/dashboard/` added to all 16 landing pages (desktop `nav-actions` wrapper + mobile nav-link)
 - **Nav CTA fix**: `.btn-nav` overflow fixed with `justify-self: end; width: fit-content`
 - **Tweet bank**: `tweets.json` with 100 pre-written tweets, `/tweet` skill for random pick + remove
+- **Push notifications**: APNs HTTP/2 direct delivery via `_shared/notifications.ts`, `send_notification` edge function, `NotificationService.swift` (permission, token registration, badge, deep link routing), `device_tokens` + `notification_preferences` tables (migration 028), notification integrations in auto_refresh_games/adjust_balance/claim_invite/submit_bet/submit_bets/decline_bet, member + organizer notification preferences UI
+- **NotificationService pattern**: `@unchecked Sendable` with per-property `@MainActor` isolation — `@MainActor` on the whole class crashes because UNUserNotificationCenterDelegate methods are called on a private serial queue
+- **APNs auth**: Token-based `.p8` key, ES256 JWT cached 50 min, secrets: `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_ENVIRONMENT`
+- **Multi-Pick card layout fix**: Chevron inline with title/status pill, leg dots inline with stake/profit line

@@ -9,7 +9,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
-        Task { await NotificationService.shared.registerToken(deviceToken) }
+        Task { @MainActor in
+            await NotificationService.shared.registerToken(deviceToken)
+        }
     }
 
     func application(

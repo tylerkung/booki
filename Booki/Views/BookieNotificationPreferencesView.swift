@@ -25,6 +25,7 @@ struct BookieNotificationPreferencesView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .onChange(of: newMembers) { _, newValue in
+                        guard !isLoading else { return }
                         Task { await savePreference("new_members", value: newValue) }
                     }
 
@@ -38,6 +39,7 @@ struct BookieNotificationPreferencesView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .onChange(of: pickSubmissions) { _, newValue in
+                        guard !isLoading else { return }
                         Task { await savePreference("pick_submissions", value: newValue) }
                     }
 
@@ -51,6 +53,7 @@ struct BookieNotificationPreferencesView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .onChange(of: riskAlerts) { _, newValue in
+                        guard !isLoading else { return }
                         Task { await savePreference("risk_alerts", value: newValue) }
                     }
 
@@ -64,6 +67,7 @@ struct BookieNotificationPreferencesView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .onChange(of: gameResults) { _, newValue in
+                        guard !isLoading else { return }
                         Task { await savePreference("game_results", value: newValue) }
                     }
                 }

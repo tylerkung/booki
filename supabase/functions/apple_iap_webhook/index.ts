@@ -121,7 +121,15 @@ async function handleClientTransaction(
     );
   }
 
-  const originalTransactionId = String(payload.originalTransactionId ?? payload.transactionId);
+  const originalTransactionId = String(payload.originalTransactionId ?? payload.transactionId ?? '');
+
+  if (!originalTransactionId || originalTransactionId === '0' || originalTransactionId === 'undefined') {
+    console.error('Invalid original transaction ID:', originalTransactionId);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Invalid transaction ID' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
   // Look up bookie by auth_user_id
   const { data: bookie, error: bookieError } = await client
@@ -186,7 +194,8 @@ async function handleServerNotification(
   const subtype = outerPayload.subtype as string | undefined;
 
   // Decode the inner signed transaction data
-  const signedTransactionInfo = (outerPayload.data as Record<string, unknown>)?.signedTransactionInfo as string;
+  const dataField = outerPayload.data as Record<string, unknown> | undefined;
+  const signedTransactionInfo = dataField?.signedTransactionInfo as string | undefined;
   if (!signedTransactionInfo) {
     console.error('Missing signedTransactionInfo in notification');
     return new Response(

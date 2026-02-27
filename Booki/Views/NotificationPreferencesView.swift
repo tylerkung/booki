@@ -24,6 +24,7 @@ struct NotificationPreferencesView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .onChange(of: picksGraded) { _, newValue in
+                        guard !isLoading else { return }
                         Task { await savePreference("picks_graded", value: newValue) }
                     }
 
@@ -37,6 +38,7 @@ struct NotificationPreferencesView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .onChange(of: balanceChanges) { _, newValue in
+                        guard !isLoading else { return }
                         Task { await savePreference("balance_changes", value: newValue) }
                     }
 
@@ -50,6 +52,7 @@ struct NotificationPreferencesView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .onChange(of: gameResults) { _, newValue in
+                        guard !isLoading else { return }
                         Task { await savePreference("game_results", value: newValue) }
                     }
                 }

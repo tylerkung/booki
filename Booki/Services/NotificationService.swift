@@ -5,8 +5,7 @@ import UIKit
 
 /// Service for managing push notifications — permission, token registration, and foreground handling.
 @Observable
-@MainActor
-final class NotificationService: NSObject {
+final class NotificationService: NSObject, @unchecked Sendable {
 
     // MARK: - Singleton
 
@@ -14,10 +13,10 @@ final class NotificationService: NSObject {
 
     // MARK: - Published State
 
-    private(set) var isPermissionGranted: Bool = false
+    @MainActor private(set) var isPermissionGranted: Bool = false
 
     /// Pending deep link from a notification tap, consumed by the UI after navigation.
-    var pendingDeepLink: String?
+    @MainActor var pendingDeepLink: String?
 
     // MARK: - Private
 
@@ -31,6 +30,7 @@ final class NotificationService: NSObject {
     // MARK: - Permission
 
     /// Request notification permission and register for remote notifications if granted.
+    @MainActor
     func requestPermission() async {
         do {
             let granted = try await UNUserNotificationCenter.current()
@@ -117,7 +117,7 @@ private struct DeviceTokenRecord: Codable {
 
 // MARK: - UNUserNotificationCenterDelegate
 
-extension NotificationService: @preconcurrency UNUserNotificationCenterDelegate {
+extension NotificationService: UNUserNotificationCenterDelegate {
 
     /// Handle foreground notification — show banner and sound.
     func userNotificationCenter(
@@ -135,7 +135,7 @@ extension NotificationService: @preconcurrency UNUserNotificationCenterDelegate 
         let userInfo = response.notification.request.content.userInfo
         if let deepLink = userInfo["deep_link"] as? String {
             print("NotificationService: Deep link tapped: \(deepLink)")
-            pendingDeepLink = deepLink
+            await MainActor.run { self.pendingDeepLink = deepLink }
         }
     }
 }

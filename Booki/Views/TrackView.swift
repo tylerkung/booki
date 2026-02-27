@@ -374,49 +374,43 @@ struct TicketCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header section: title, status, stake, profit, chevron
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    // Title + Status Pill
-                    HStack(alignment: .top) {
-                        Text(presenter.title)
-                            .font(Theme.headline)
-                            .foregroundStyle(Theme.textPrimary)
-                            .lineLimit(2)
-                        Spacer()
-                        StatusPill(
-                            settlementStatus: presenter.settlementStatus,
-                            workflowStatus: presenter.workflowStatus
-                        )
-                    }
-
-                    // Context line
-                    if !presenter.contextLine.isEmpty {
-                        Text(presenter.contextLine)
-                            .font(Theme.bodyFont(size: 13))
-                            .foregroundStyle(Theme.textSecondary)
-                            .lineLimit(1)
-                    }
-
-                    // Stake + Profit
-                    HStack(spacing: 8) {
-                        Text(presenter.stakeLine)
-                            .font(Theme.bodyFont(size: 13))
-                            .foregroundStyle(Theme.textSecondary)
-                        Text(presenter.profitLine)
-                            .font(Theme.bodyFont(size: 13, weight: .medium))
-                            .foregroundStyle(presenter.profitColor)
-                    }
-
-                }
-
-                VStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
+                // Title + Status Pill + Chevron
+                HStack(alignment: .center) {
+                    Text(presenter.title)
+                        .font(Theme.headline)
+                        .foregroundStyle(Theme.textPrimary)
+                        .lineLimit(2)
+                    Spacer()
+                    StatusPill(
+                        settlementStatus: presenter.settlementStatus,
+                        workflowStatus: presenter.workflowStatus
+                    )
                     Image(systemName: "chevron.right")
                         .font(Theme.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textMuted)
+                }
 
-                    // Mini status dots for parlay legs
+                // Context line
+                if !presenter.contextLine.isEmpty {
+                    Text(presenter.contextLine)
+                        .font(Theme.bodyFont(size: 13))
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1)
+                }
+
+                // Stake + Profit + Mini status dots
+                HStack(spacing: 8) {
+                    Text(presenter.stakeLine)
+                        .font(Theme.bodyFont(size: 13))
+                        .foregroundStyle(Theme.textSecondary)
+                    Text(presenter.profitLine)
+                        .font(Theme.bodyFont(size: 13, weight: .medium))
+                        .foregroundStyle(presenter.profitColor)
+
                     if ticket.isParlay {
+                        Spacer()
                         HStack(spacing: 4) {
                             ForEach(ticket.bets) { bet in
                                 Circle()

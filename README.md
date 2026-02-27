@@ -461,4 +461,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 27, 2026 - Features page redesign, dashboard login polish, blog publish scheduling*
+*Last updated: February 27, 2026 - Push notifications (APNs), notification preferences UI, apple_iap_webhook fix, multi-pick card layout fix*

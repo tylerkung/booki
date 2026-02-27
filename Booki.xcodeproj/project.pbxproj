@@ -12,8 +12,6 @@
 		507360752F4F6A56000350CE /* TierService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507360742F4F6A56000350CE /* TierService.swift */; };
 		507360762F4D2C47000350CE /* SportPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507360772F4D2C47000350CE /* SportPageView.swift */; };
 		507360772F4FDE34000350CE /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507360762F4FDE34000350CE /* AccountView.swift */; };
-		B3FF56C9C5DC243993E8BFD9 /* NotificationPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6643110645437E335AFF795 /* NotificationPreferencesView.swift */; };
-		B3FF56CAC5DC243993E8BFD0 /* BookieNotificationPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6643110645437E335AFF796 /* BookieNotificationPreferencesView.swift */; };
 		50C083EF2F25F8B0001A0FE5 /* CompactOddsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083ED2F25F8B0001A0FE5 /* CompactOddsButton.swift */; };
 		50C083F02F25F8B0001A0FE5 /* CompactGameRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */; };
 		50C083F12F25F8B0001A0FE5 /* GameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C083EE2F25F8B0001A0FE5 /* GameDetailView.swift */; };
@@ -145,6 +143,8 @@
 		8A99887700D1 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A99887600D1 /* NotificationService.swift */; };
 		8AE1C2D400B1 /* PlayerProfileEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AE1C2D300B1 /* PlayerProfileEditView.swift */; };
 		8AE1C2D400B2 /* BecomeOrganizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AE1C2D300B2 /* BecomeOrganizerView.swift */; };
+		B3FF56C9C5DC243993E8BFD9 /* NotificationPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6643110645437E335AFF795 /* NotificationPreferencesView.swift */; };
+		B3FF56CAC5DC243993E8BFD0 /* BookieNotificationPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6643110645437E335AFF796 /* BookieNotificationPreferencesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -162,8 +162,6 @@
 		507360742F4F6A56000350CE /* TierService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TierService.swift; sourceTree = "<group>"; };
 		507360752F4D2C46000350CE /* SportCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SportCategory.swift; sourceTree = "<group>"; };
 		507360762F4FDE34000350CE /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
-		B6643110645437E335AFF795 /* NotificationPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPreferencesView.swift; sourceTree = "<group>"; };
-		B6643110645437E335AFF796 /* BookieNotificationPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookieNotificationPreferencesView.swift; sourceTree = "<group>"; };
 		507360772F4D2C47000350CE /* SportPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SportPageView.swift; sourceTree = "<group>"; };
 		507360782F505F1F000350CE /* Booki.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Booki.storekit; sourceTree = "<group>"; };
 		50C083EC2F25F8B0001A0FE5 /* CompactGameRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactGameRow.swift; sourceTree = "<group>"; };
@@ -300,6 +298,8 @@
 		8A99887600D1 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		8AE1C2D300B1 /* PlayerProfileEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfileEditView.swift; sourceTree = "<group>"; };
 		8AE1C2D300B2 /* BecomeOrganizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BecomeOrganizerView.swift; sourceTree = "<group>"; };
+		B6643110645437E335AFF795 /* NotificationPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPreferencesView.swift; sourceTree = "<group>"; };
+		B6643110645437E335AFF796 /* BookieNotificationPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookieNotificationPreferencesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */

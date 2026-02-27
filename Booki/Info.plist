@@ -26,8 +26,10 @@
 		<string>IBMPlexSans-Medium.ttf</string>
 		<string>IBMPlexSans-Bold.ttf</string>
 	</array>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
