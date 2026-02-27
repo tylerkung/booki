@@ -461,4 +461,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 26, 2026 - Apple IAP integration, IBM Plex Sans global font, web dashboard, expired invite cleanup, subscription member count fix*
+*Last updated: February 26, 2026 - Primary button style, ProUpgradeSheet redesign, Apple IAP integration, IBM Plex Sans global font, web dashboard*

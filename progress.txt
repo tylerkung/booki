@@ -420,3 +420,12 @@ Started: Thu Feb 26 14:57:41 PST 2026
   - `.font(Theme.body)` on root view cascades to all SwiftUI Text views via environment
   - UIKit nav bar titles need separate font configuration via UINavigationBarAppearance
 ---
+
+## 2026-02-26 - Primary Button Style, ProUpgradeSheet Redesign
+- **Primary button style**: Created `.primaryButtonStyle()` modifier in Theme.swift with subtle skeuomorphic shadow (bottom shadow layer + top-to-bottom gradient fill). Applied across 8 files replacing flat teal CTA buttons.
+- **ProUpgradeSheet redesign**: Removed ScrollView — feature list now fades out toward bottom with gradient mask. Logo enlarged (200→260) with accent glow background (blurred circle). No more scrollbar issue.
+- Files changed: `Theme.swift`, `ProUpgradeSheet.swift`, `LoginView.swift`, `BecomeOrganizerView.swift`, `BetSlipSheet.swift`, `GradeEventSheet.swift`, `PlayersListView.swift`, `ProSuccessView.swift`, `WeeklySettlementView.swift`
+- **Learnings:**
+  - `.mask(LinearGradient(...))` is a clean way to fade content out without clipping
+  - `.background(Circle().fill(...).blur().scaleEffect())` creates a glow behind an element without affecting siblings (unlike `.shadow()` which bleeds)
+---

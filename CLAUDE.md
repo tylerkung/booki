@@ -247,7 +247,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Player pick history**: `PlayerPickHistoryView` + `PlayerPicksListView` with open/graded toggle, max 5 shown on member detail with "See All"
 - **Member detail restructure**: Recent Activity as single navigable row, picks section with open/graded filter below
 - **Settings reorder**: Profile, Change Password, Subscription, Pick Management, About, Log Out (removed Balance Alerts + Export Data)
-- **ProUpgradeSheet**: Uses `BookiPro` image asset, removed Restore Purchase placeholder
+- **ProUpgradeSheet**: Non-scrolling layout — enlarged logo with accent glow, feature list fades out via gradient mask, sticky CTA bottom area
+- **Primary button style**: `.primaryButtonStyle()` modifier in Theme.swift — subtle skeuomorphic shadow, applied to all CTA buttons
 - **Terms/Privacy updates**: Subscription billing section, Stripe references, pro-rated refund clause, payment data handling
 - **Verification pending screen**: Full-screen post-signup view with email display, resend button, back-to-login CTA (replaces alert)
 - **Invite emails via Resend**: `create_invite` sends branded HTML email via Resend API when email provided — no more iOS native mail composer

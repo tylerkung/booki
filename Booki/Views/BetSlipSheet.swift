@@ -1286,13 +1286,8 @@ struct BetSlipSheet: View {
                     dismiss()
                 }) {
                     Text("Done")
-                        .font(Theme.headline)
                         .textCase(.uppercase)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Theme.accent)
-                        .foregroundStyle(Theme.background)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .primaryButtonStyle()
                 }
             }
             .padding()

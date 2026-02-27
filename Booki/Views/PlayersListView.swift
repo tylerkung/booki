@@ -283,12 +283,7 @@ struct PlayersListView: View {
             showingInviteSheet = true
         } label: {
             Text("INVITE MEMBER")
-                .font(Theme.font(size: 16, weight: .bold))
-                .foregroundStyle(Theme.background)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Theme.accent)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                .primaryButtonStyle()
         }
         .buttonStyle(.plain)
         .padding(.horizontal)
@@ -1741,12 +1736,7 @@ struct InviteMemberSheet: View {
                 showProUpgrade = true
             } label: {
                 Text("UPGRADE TO PRO")
-                    .font(Theme.font(size: 16, weight: .bold))
-                    .foregroundStyle(Theme.background)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .primaryButtonStyle()
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 32)
@@ -1775,12 +1765,7 @@ struct InviteMemberSheet: View {
                 generateInvite()
             } label: {
                 Text("GENERATE LINK")
-                    .font(Theme.font(size: 16, weight: .bold))
-                    .foregroundStyle(Theme.background)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .primaryButtonStyle()
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 32)
@@ -1886,12 +1871,7 @@ struct InviteMemberSheet: View {
                         Image(systemName: linkCopied ? "checkmark" : "link")
                         Text(linkCopied ? "LINK COPIED!" : "COPY LINK")
                     }
-                    .font(Theme.font(size: 16, weight: .bold))
-                    .foregroundStyle(Theme.background)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .primaryButtonStyle()
                 }
                 .buttonStyle(.plain)
 
@@ -1941,12 +1921,7 @@ struct InviteMemberSheet: View {
                 generateInvite()
             } label: {
                 Text("TRY AGAIN")
-                    .font(Theme.font(size: 16, weight: .bold))
-                    .foregroundStyle(Theme.background)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .primaryButtonStyle()
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 32)

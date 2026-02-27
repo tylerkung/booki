@@ -113,15 +113,9 @@ struct LoginView: View {
         VStack(spacing: 16) {
             Button(action: onNavigateToSignUp) {
                 Text("Get Started")
-                    .font(Theme.headline)
-                    .fontWeight(.bold)
                     .textCase(.uppercase)
                     .tracking(1)
-                    .foregroundStyle(Theme.background)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                    .primaryButtonStyle()
             }
             .padding(.horizontal, 24)
 

@@ -432,12 +432,7 @@ struct GradeEventSheet: View {
                 dismiss()
             } label: {
                 Text("Done")
-                    .font(Theme.headline)
-                    .foregroundStyle(Theme.background)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .primaryButtonStyle()
             }
             .padding(.horizontal)
         }

@@ -39,12 +39,7 @@ struct ProSuccessView: View {
                     dismiss()
                 } label: {
                     Text("Get Started")
-                        .font(Theme.font(size: 17, weight: .bold))
-                        .foregroundStyle(Theme.background)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Theme.accent)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                        .primaryButtonStyle()
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)

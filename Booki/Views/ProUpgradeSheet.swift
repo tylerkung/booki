@@ -17,50 +17,61 @@ struct ProUpgradeSheet: View {
             ZStack {
                 Theme.background.ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Logo + heading
-                        VStack(spacing: 12) {
-                            Image("BookiPro")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: 200)
+                VStack(spacing: 24) {
+                    // Logo + heading
+                    VStack(spacing: 12) {
+                        Image("BookiPro")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 260)
+                            .background(
+                                Circle()
+                                    .fill(Theme.accent.opacity(0.3))
+                                    .blur(radius: 70)
+                                    .scaleEffect(1.8)
+                            )
 
-                            Text("\(storeKit.product?.displayPrice ?? "$59.99") / month")
-                                .font(Theme.bodyFont(size: 17, weight: .medium))
-                                .foregroundStyle(Theme.textSecondary)
-                        }
-                        .padding(.top, 16)
-
-                        // Context message (optional)
-                        if let contextMessage {
-                            Text(contextMessage)
-                                .font(Theme.bodyFont(size: 15, weight: .medium))
-                                .foregroundStyle(Theme.warning)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 24)
-                        }
-
-                        // Feature list card
-                        VStack(alignment: .leading, spacing: 14) {
-                            featureRow("50 members")
-                            featureRow("Multi-Pick")
-                            featureRow("Performance by sport")
-                            featureRow("Futures tracking")
-                            featureRow("Recent activity")
-                            featureRow("Smart filters & tags")
-                            featureRow("Manual approval")
-                            featureRow("Acceptance rules")
-                            featureRow("Override & reverse")
-                            featureRow("CSV export")
-                            featureRow("Full history")
-                        }
-                        .padding(20)
-                        .cardStyle()
-                        .padding(.horizontal, 16)
-
-                        Spacer(minLength: 200)
+                        Text("\(storeKit.product?.displayPrice ?? "$59.99") / month")
+                            .font(Theme.bodyFont(size: 17, weight: .medium))
+                            .foregroundStyle(Theme.textSecondary)
                     }
+                    .padding(.top, 16)
+
+                    // Context message (optional)
+                    if let contextMessage {
+                        Text(contextMessage)
+                            .font(Theme.bodyFont(size: 15, weight: .medium))
+                            .foregroundStyle(Theme.warning)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                    }
+
+                    // Feature list card — fades out toward bottom
+                    VStack(alignment: .leading, spacing: 14) {
+                        featureRow("50 members")
+                        featureRow("Multi-Pick")
+                        featureRow("Performance by sport")
+                        featureRow("Futures tracking")
+                        featureRow("Recent activity")
+                        featureRow("Smart filters & tags")
+                        featureRow("Manual approval")
+                        featureRow("Acceptance rules")
+                        featureRow("Override & reverse")
+                        featureRow("CSV export")
+                        featureRow("Full history")
+                    }
+                    .padding(20)
+                    .cardStyle()
+                    .padding(.horizontal, 16)
+                    .mask(
+                        LinearGradient(
+                            colors: [.white, .white, .white, .clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                    Spacer()
                 }
 
                 // Sticky bottom area

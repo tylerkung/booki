@@ -130,12 +130,7 @@ struct BecomeOrganizerView: View {
             }
         } label: {
             Text("GET STARTED")
-                .font(Theme.font(size: 16, weight: .bold))
-                .foregroundStyle(Theme.background)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Theme.accent)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                .primaryButtonStyle()
         }
         .buttonStyle(.plain)
     }

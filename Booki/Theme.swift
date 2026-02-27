@@ -219,6 +219,34 @@ extension View {
             )
     }
 
+    /// Apply the standard primary CTA button style — subtle skeuomorphic shadow
+    func primaryButtonStyle() -> some View {
+        self
+            .font(Theme.font(size: 16, weight: .bold))
+            .foregroundStyle(Theme.background)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                ZStack {
+                    // Bottom shadow layer — subtle depth
+                    RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                        .fill(Theme.accent.opacity(0.4))
+                        .offset(y: 2)
+                    // Main fill with subtle top-to-bottom gradient
+                    RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                        .fill(
+                            LinearGradient(
+                                colors: [Theme.accent.opacity(1), Theme.accent.opacity(0.85)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            .shadow(color: Theme.accent.opacity(0.2), radius: 4, x: 0, y: 2)
+    }
+
     /// Apply the elevated card style with colored glow
     func elevatedCardStyle() -> some View {
         self

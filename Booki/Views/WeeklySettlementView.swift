@@ -919,12 +919,7 @@ struct PlayerSettlementDetailView: View {
                                 Image(systemName: "checkmark.circle")
                                 Text("Mark as Settled")
                             }
-                            .font(Theme.headline)
-                            .foregroundStyle(Theme.background)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Theme.accent)
-                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                            .primaryButtonStyle()
                         }
                     }
                     .padding(.vertical, 8)
