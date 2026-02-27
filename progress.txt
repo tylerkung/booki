@@ -163,3 +163,18 @@ Started: Fri Feb 27 02:10:26 PST 2026
   - Supabase `.update([column: value])` works for single-column updates with string key
   - Member toggles are a subset of all preferences — organizers see different ones (new_members, pick_submissions, risk_alerts, game_results)
 ---
+
+## 2026-02-27 - US-011
+- Implemented: `Booki/Views/BookieNotificationPreferencesView.swift` — organizer notification preferences UI
+- Four toggles: "New members" (new_members), "Pick submissions" (pick_submissions), "Risk alerts" (risk_alerts), "Game results" (game_results)
+- On appear, fetches `notification_preferences` for current user; inserts default row if none exists
+- Each toggle saves immediately via Supabase `.update()` (save-on-toggle, no save button)
+- Added "Notifications" row to SettingsView between "Change Password" and "Subscription" using existing `settingsMenuRow` helper
+- Added file to Xcode project (`project.pbxproj`)
+- Follows exact pattern from US-010's `NotificationPreferencesView.swift` with organizer-specific columns
+- Files changed: `Booki/Views/BookieNotificationPreferencesView.swift` (new), `Booki/Views/SettingsView.swift`, `Booki.xcodeproj/project.pbxproj`
+- **Learnings for future iterations:**
+  - SettingsView uses `settingsMenuRow(icon:title:)` helper with `menuDivider` between rows — just insert new row + divider at desired position
+  - Codable row structs should be `private` and named uniquely to avoid conflicts with member version (e.g., `BookieNotificationPreferenceRow` vs `NotificationPreferenceRow`)
+  - Default values for organizer preferences: `new_members=true`, `pick_submissions=false` (opt-in), `risk_alerts=true`, `game_results=true`
+---
