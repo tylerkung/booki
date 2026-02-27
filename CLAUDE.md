@@ -164,9 +164,9 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (February 26, 2026)
+## Current State (February 27, 2026)
 
-- **Branch**: `ralph/web-dashboard-parity`
+- **Branch**: `main`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
 - **Phases complete**: 1-19 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration, Default UX & Organizer Upsell, API Optimization & Live Scores, Apple IAP & Web Dashboard)
@@ -286,3 +286,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **IBM Plex Sans global font**: Fixed font files (were HTML, re-downloaded as real TTF binaries), fixed PostScript name mismatches (`IBMPlexSans` not `-Regular`, `IBMPlexSans-Medm` not `-Medium`), set as global default via `.font(Theme.body)` on root view. Nav bar titles use Space Grotesk Bold via UIKit appearance.
 - **Expired invites auto-delete**: PlayersListView cleans up expired invites from Supabase + SwiftData on appear
 - **Subscription member count fix**: `upsertPlayer` now syncs `authUserId` from server; `activeMemberCount` uses `status != .archived`
+- **Bottom-funnel blog posts**: 4 new posts (how-to-be-a-bookie-for-friends, wagerlab-vs-booki, best-bookie-software-small-books, best-pph-software-small-bookies), FAQPage schema on 2 posts, staggered publish dates (2/week)
+- **Nav login link**: "Log In" → `/dashboard/` added to all 16 landing pages (desktop `nav-actions` wrapper + mobile nav-link)
+- **Nav CTA fix**: `.btn-nav` overflow fixed with `justify-self: end; width: fit-content`
+- **Tweet bank**: `tweets.json` with 100 pre-written tweets, `/tweet` skill for random pick + remove

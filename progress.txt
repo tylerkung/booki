@@ -429,3 +429,23 @@ Started: Thu Feb 26 14:57:41 PST 2026
   - `.mask(LinearGradient(...))` is a clean way to fade content out without clipping
   - `.background(Circle().fill(...).blur().scaleEffect())` creates a glow behind an element without affecting siblings (unlike `.shadow()` which bleeds)
 ---
+
+## 2026-02-27 - Bottom-Funnel SEO Blog Posts, Nav Login Link, Tweet Bank
+- **4 new blog posts** targeting bottom-funnel keywords:
+  - `how-to-be-a-bookie-for-friends.html` — step-by-step guide (7 min)
+  - `wagerlab-vs-booki.html` — comparison post with feature table (6 min)
+  - `best-bookie-software-small-books.html` — small book software comparison + FAQPage schema (7 min)
+  - `best-pph-software-small-bookies.html` — neutral listicle with real PPH providers + FAQPage schema (8 min)
+- **Blog index**: 8 cards total (was 4)
+- **Sitemap**: 4 new URLs added
+- **Staggered publish dates**: Feb 27, Mar 1, Mar 5, Mar 6 (2/week cadence)
+- **Cross-links**: Updated related articles on existing posts (pph-vs-manual, spreadsheet-template)
+- **Nav login link**: Added "Log In" → `/dashboard/` across all 14 pages missing it (5 root + 9 blog). Desktop uses `nav-actions` wrapper, mobile uses `nav-link`.
+- **Nav CTA overflow fix**: Added `justify-self: end; width: fit-content; white-space: nowrap` to `.btn-nav` to prevent stretching in grid column
+- **Tweet bank**: 100 tweets in `tweets.json`, `/tweet` skill picks random + removes
+- Files changed: 16 modified + 5 new HTML files + tweets.json
+- **Learnings:**
+  - 3-column grid `1fr auto 1fr` causes children in the right `1fr` to stretch — need `justify-self: end` + `width: fit-content`
+  - Neutral listicle format ("7 Best X") ranks better for AI overviews than hard comparison pages
+  - FAQPage schema on posts with FAQ sections targets featured snippet / AI summary slots
+---
