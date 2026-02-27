@@ -3,6 +3,7 @@ import { createServiceClient } from '../_shared/supabase.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { gradeBet, type BetInfo, type EventScores } from '../_shared/grading.ts';
+import { sendNotification } from '../_shared/notifications.ts';
 
 /**
  * Generates an idempotency key for auto-refresh operations.
@@ -49,6 +50,146 @@ interface SelectedGame {
   bookie_auth_user_id: string | null;
   total_wagered: number;
   accepted_bet_count: number;
+}
+
+/**
+ * Tracks a graded bet for notification purposes.
+ */
+interface GradedBetNotification {
+  betId: string;
+  playerId: string;
+  bookieId: string;
+  side: string;
+  gradeResult: string;
+  payoutAmount: number;
+  isParlay: boolean;
+  ticketId?: string;
+}
+
+/**
+ * Sends push notifications for graded bets, grouped by player.
+ * Single bet: individual result notification.
+ * Multiple bets: summary notification.
+ * Also notifies the bookie about game results.
+ */
+async function sendGradingNotifications(
+  client: ReturnType<typeof createServiceClient>,
+  gradedBets: GradedBetNotification[],
+  bookieAuthUserId: string | null,
+  eventsCount: number,
+): Promise<void> {
+  if (gradedBets.length === 0) return;
+
+  try {
+    // Look up player auth_user_ids
+    const playerIds = [...new Set(gradedBets.map((b) => b.playerId))];
+    const { data: players } = await client
+      .from('players')
+      .select('id, auth_user_id')
+      .in('id', playerIds)
+      .not('auth_user_id', 'is', null);
+
+    const playerAuthMap = new Map<string, string>();
+    if (players) {
+      for (const p of players) {
+        if (p.auth_user_id) playerAuthMap.set(p.id, p.auth_user_id);
+      }
+    }
+
+    // Group graded bets by player auth_user_id
+    const betsByPlayer = new Map<string, GradedBetNotification[]>();
+    for (const bet of gradedBets) {
+      const authId = playerAuthMap.get(bet.playerId);
+      if (!authId) continue;
+      const existing = betsByPlayer.get(authId) ?? [];
+      existing.push(bet);
+      betsByPlayer.set(authId, existing);
+    }
+
+    // Send notification to each player
+    for (const [authUserId, bets] of betsByPlayer.entries()) {
+      try {
+        if (bets.length === 1) {
+          const bet = bets[0];
+          const resultLabel = bet.gradeResult === 'win' ? 'Won' : bet.gradeResult === 'loss' ? 'Lost' : bet.gradeResult === 'push' ? 'Pushed' : 'Settled';
+          const amountStr = bet.gradeResult === 'win'
+            ? `(+$${Math.abs(bet.payoutAmount).toFixed(2)})`
+            : bet.gradeResult === 'loss'
+            ? `(-$${Math.abs(bet.payoutAmount).toFixed(2)})`
+            : '';
+          await sendNotification({
+            event: 'pick_graded',
+            recipientUserIds: [authUserId],
+            title: 'Your pick was graded',
+            body: `${bet.side} — ${resultLabel} ${amountStr}`.trim(),
+            data: { deep_link: `booki://bet/${bet.betId}` },
+          });
+        } else {
+          await sendNotification({
+            event: 'pick_graded',
+            recipientUserIds: [authUserId],
+            title: `${bets.length} picks graded`,
+            body: `${bets.length} picks graded — see results`,
+            data: { deep_link: 'booki://picks' },
+          });
+        }
+      } catch (playerNotifError) {
+        console.error(`Error sending pick_graded notification to ${authUserId}:`, playerNotifError);
+      }
+    }
+
+    // Notify bookie(s) about game results
+    if (bookieAuthUserId) {
+      // Single bookie known (inline grading path)
+      try {
+        const totalGraded = gradedBets.length;
+        await sendNotification({
+          event: 'game_results',
+          recipientUserIds: [bookieAuthUserId],
+          title: 'Games finalized',
+          body: `${eventsCount} game${eventsCount !== 1 ? 's' : ''} finalized — ${totalGraded} pick${totalGraded !== 1 ? 's' : ''} graded`,
+          data: { deep_link: 'booki://picks' },
+        });
+      } catch (bookieNotifError) {
+        console.error(`Error sending game_results notification to bookie:`, bookieNotifError);
+      }
+    } else {
+      // Catch-up path: look up bookie auth_user_ids from graded bets
+      const bookieIds = [...new Set(gradedBets.map((b) => b.bookieId))];
+      if (bookieIds.length > 0) {
+        try {
+          const { data: bookies } = await client
+            .from('bookies')
+            .select('id, auth_user_id')
+            .in('id', bookieIds)
+            .not('auth_user_id', 'is', null);
+
+          if (bookies) {
+            for (const bookie of bookies) {
+              const bookieBets = gradedBets.filter((b) => b.bookieId === bookie.id);
+              if (bookieBets.length > 0 && bookie.auth_user_id) {
+                try {
+                  await sendNotification({
+                    event: 'game_results',
+                    recipientUserIds: [bookie.auth_user_id],
+                    title: 'Games finalized',
+                    body: `${bookieBets.length} pick${bookieBets.length !== 1 ? 's' : ''} graded`,
+                    data: { deep_link: 'booki://picks' },
+                  });
+                } catch (err) {
+                  console.error(`Error sending game_results notification to bookie ${bookie.id}:`, err);
+                }
+              }
+            }
+          }
+        } catch (bookieLookupError) {
+          console.error('Error looking up bookies for notifications:', bookieLookupError);
+        }
+      }
+    }
+  } catch (notifError) {
+    console.error('Error sending grading notifications:', notifError);
+  }
 }
 
 /**
@@ -356,11 +497,13 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
   catchupBetsSettled: number;
   catchupEventsProcessed: number;
   catchupBetsVoided: number;
+  gradedBets: GradedBetNotification[];
   debug: Record<string, unknown>;
 }> {
   let catchupBetsSettled = 0;
   let catchupEventsProcessed = 0;
   let catchupBetsVoided = 0;
+  const catchupGradedBets: GradedBetNotification[] = [];
   const debug: Record<string, unknown> = {};
 
   // 1. Grade accepted bets on final events
@@ -425,6 +568,16 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
                   })
                   .eq('id', bet.id);
                 if (!gradeError) {
+                  catchupGradedBets.push({
+                    betId: bet.id,
+                    playerId: bet.player_id,
+                    bookieId: bet.bookie_id,
+                    side: bet.side,
+                    gradeResult: gradeOutcome.result,
+                    payoutAmount: 0,
+                    isParlay: true,
+                    ticketId: bet.ticket_id,
+                  });
                   console.log(`Catch-up: graded parlay leg ${bet.id}: ${gradeOutcome.result} (ticket ${bet.ticket_id})`);
                 }
                 continue;
@@ -523,6 +676,15 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
               }
 
               catchupBetsSettled++;
+              catchupGradedBets.push({
+                betId: bet.id,
+                playerId: bet.player_id,
+                bookieId: bet.bookie_id,
+                side: bet.side,
+                gradeResult: gradeOutcome.result,
+                payoutAmount: payoutAmount,
+                isParlay: false,
+              });
               console.log(`Catch-up: settled bet ${bet.id}: ${gradeOutcome.result}`);
             } catch (betError) {
               console.error(`Catch-up: error grading bet ${bet.id}:`, betError);
@@ -627,7 +789,7 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
     debug.voidError = voidError instanceof Error ? voidError.message : 'Unknown';
   }
 
-  return { catchupBetsSettled, catchupEventsProcessed, catchupBetsVoided, debug };
+  return { catchupBetsSettled, catchupEventsProcessed, catchupBetsVoided, gradedBets: catchupGradedBets, debug };
 }
 
 /**
@@ -880,6 +1042,14 @@ Deno.serve(async (req) => {
       if (!eventsWithBets || eventsWithBets.length === 0) {
         // Still run catch-up grading for already-final events
         const catchup = await runCatchupGrading(client);
+        // Send notifications for catch-up graded bets (fire-and-forget)
+        if (catchup.gradedBets.length > 0) {
+          try {
+            await sendGradingNotifications(client, catchup.gradedBets, null, catchup.catchupEventsProcessed);
+          } catch (notifErr) {
+            console.error('Error sending catch-up grading notifications:', notifErr);
+          }
+        }
         const responseBody = {
           success: true,
           message: 'No games with open bets found',
@@ -946,6 +1116,14 @@ Deno.serve(async (req) => {
       if (!events || events.length === 0) {
         // Still run catch-up grading for already-final events
         const catchup = await runCatchupGrading(client);
+        // Send notifications for catch-up graded bets (fire-and-forget)
+        if (catchup.gradedBets.length > 0) {
+          try {
+            await sendGradingNotifications(client, catchup.gradedBets, null, catchup.catchupEventsProcessed);
+          } catch (notifErr) {
+            console.error('Error sending catch-up grading notifications:', notifErr);
+          }
+        }
         const responseBody = {
           success: true,
           message: 'No eligible games found for refresh',
@@ -1462,6 +1640,7 @@ Deno.serve(async (req) => {
 
                     let gradedCount = 0;
                     const gradingErrors: string[] = [];
+                    const gradedBetsForNotif: GradedBetNotification[] = [];
 
                     // Grade each bet individually
                     for (const bet of acceptedBets) {
@@ -1487,6 +1666,16 @@ Deno.serve(async (req) => {
                             .eq('id', bet.id);
                           if (!gradeError) {
                             gradedCount++;
+                            gradedBetsForNotif.push({
+                              betId: bet.id,
+                              playerId: bet.player_id,
+                              bookieId: bet.bookie_id,
+                              side: bet.side,
+                              gradeResult: gradeOutcome.result,
+                              payoutAmount: 0,
+                              isParlay: true,
+                              ticketId: bet.ticket_id,
+                            });
                             console.log(`Graded parlay leg ${bet.id}: ${gradeOutcome.result} (ticket ${bet.ticket_id})`);
                           }
                           continue;
@@ -1596,6 +1785,15 @@ Deno.serve(async (req) => {
 
                         gradedCount++;
                         betsSettled++;
+                        gradedBetsForNotif.push({
+                          betId: bet.id,
+                          playerId: bet.player_id,
+                          bookieId: bet.bookie_id,
+                          side: bet.side,
+                          gradeResult: gradeOutcome.result,
+                          payoutAmount: payoutAmount,
+                          isParlay: false,
+                        });
                         console.log(`Settled bet ${bet.id}: ${gradeOutcome.result} - ${gradeOutcome.gradeDetails}`);
                       } catch (betGradeError) {
                         console.error(`Error grading bet ${bet.id}:`, betGradeError);
@@ -1625,6 +1823,13 @@ Deno.serve(async (req) => {
                           grading_errors: gradingErrors.length > 0 ? gradingErrors : null,
                         },
                       });
+                    }
+
+                    // Send push notifications for graded bets (fire-and-forget)
+                    try {
+                      await sendGradingNotifications(client, gradedBetsForNotif, game.bookie_auth_user_id, 1);
+                    } catch (notifErr) {
+                      console.error(`Error sending grading notifications for event ${game.id}:`, notifErr);
                     }
                   } else {
                     // Event finalized but no accepted bets
@@ -1709,6 +1914,15 @@ Deno.serve(async (req) => {
 
       // Run catch-up grading for any accepted bets on already-final events
       const catchup = await runCatchupGrading(client);
+
+      // Send notifications for catch-up graded bets (fire-and-forget)
+      if (catchup.gradedBets.length > 0) {
+        try {
+          await sendGradingNotifications(client, catchup.gradedBets, null, catchup.catchupEventsProcessed);
+        } catch (notifErr) {
+          console.error('Error sending catch-up grading notifications:', notifErr);
+        }
+      }
 
       // Auto-settle any parlays where all legs are now graded
       const parlaysAutoSettled = await autoSettleParlays(client);
