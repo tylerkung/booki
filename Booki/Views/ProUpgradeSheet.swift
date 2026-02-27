@@ -26,11 +26,9 @@ struct ProUpgradeSheet: View {
                                 .scaledToFit()
                                 .frame(maxWidth: 200)
 
-                            if let product = storeKit.product {
-                                Text("\(product.displayPrice) / month")
-                                    .font(Theme.bodyFont(size: 17, weight: .medium))
-                                    .foregroundStyle(Theme.textSecondary)
-                            }
+                            Text("\(storeKit.product?.displayPrice ?? "$59.99") / month")
+                                .font(Theme.bodyFont(size: 17, weight: .medium))
+                                .foregroundStyle(Theme.textSecondary)
                         }
                         .padding(.top, 16)
 
@@ -122,15 +120,9 @@ struct ProUpgradeSheet: View {
                             ProgressView()
                                 .tint(Theme.background)
                         }
-                        if let product = storeKit.product {
-                            Text("Subscribe for \(product.displayPrice)/mo")
-                                .font(Theme.font(size: 17, weight: .bold))
-                                .foregroundStyle(Theme.background)
-                        } else {
-                            Text("Loading...")
-                                .font(Theme.font(size: 17, weight: .bold))
-                                .foregroundStyle(Theme.background)
-                        }
+                        Text("Subscribe for \(storeKit.product?.displayPrice ?? "$59.99")/mo")
+                            .font(Theme.font(size: 17, weight: .bold))
+                            .foregroundStyle(Theme.background)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
