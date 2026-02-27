@@ -102,6 +102,8 @@ final class AuthManager {
 
     /// Signs out the current user
     func signOut() async throws {
+        // Remove push notification device token before signing out
+        await NotificationService.shared.removeToken()
         try await supabase.auth.signOut()
         // Auth state listener will handle updating the published properties
     }
@@ -311,6 +313,8 @@ final class AuthManager {
             updateAuthState(userId: session.user.id.uuidString, isAuthenticated: true)
             // Fetch bookie record for existing session
             await ensureBookieRecord()
+            // Request push notification permission after successful auth
+            await NotificationService.shared.requestPermission()
         } catch {
             // No valid session or error checking session
             updateAuthState(userId: nil, isAuthenticated: false)
@@ -340,6 +344,8 @@ final class AuthManager {
                         }
                         updateAuthState(userId: session.user.id.uuidString, isAuthenticated: true)
                         await ensureBookieRecord()
+                        // Request push notification permission after sign-in
+                        await NotificationService.shared.requestPermission()
                     }
                 case .signedOut:
                     updateAuthState(userId: nil, isAuthenticated: false)

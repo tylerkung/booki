@@ -1,8 +1,28 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
+
+// MARK: - App Delegate for Remote Notifications
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        Task { await NotificationService.shared.registerToken(deviceToken) }
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        print("AppDelegate: Failed to register for remote notifications: \(error)")
+    }
+}
 
 @main
 struct BookiApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var authManager = AuthManager()
     @State private var syncService = SyncService()
     @State private var realtimeService = RealtimeService()
@@ -62,6 +82,9 @@ struct BookiApp: App {
                     // Start StoreKit transaction listener + check entitlements
                     StoreKitService.shared.startTransactionListener()
                     Task { await StoreKitService.shared.checkCurrentEntitlement() }
+
+                    // Set up push notification delegate
+                    UNUserNotificationCenter.current().delegate = NotificationService.shared
                 }
                 .onOpenURL { url in
                     handleIncomingURL(url)
