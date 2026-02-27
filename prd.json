@@ -200,7 +200,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "Simple badge: always 1 when there's a notification, clear to 0 on foreground. No need to track exact unread count for v1."
     }
   ]

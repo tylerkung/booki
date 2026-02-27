@@ -178,3 +178,14 @@ Started: Fri Feb 27 02:10:26 PST 2026
   - Codable row structs should be `private` and named uniquely to avoid conflicts with member version (e.g., `BookieNotificationPreferenceRow` vs `NotificationPreferenceRow`)
   - Default values for organizer preferences: `new_members=true`, `pick_submissions=false` (opt-in), `risk_alerts=true`, `game_results=true`
 ---
+
+## 2026-02-27 - US-012
+- Implemented: Badge count management — set badge on specific notification events, clear on foreground
+- iOS: Added `clearBadge()` method to `NotificationService` using `setBadgeCount(0)`, wired via `scenePhase` `.active` in `BookiApp.swift`
+- Server: APNs payload now only sets `badge: 1` for `pick_graded`, `parlay_graded`, and `balance_adjusted` events (other events omit badge)
+- Files changed: `Booki/Services/NotificationService.swift`, `Booki/BookiApp.swift`, `supabase/functions/_shared/notifications.ts`
+- **Learnings for future iterations:**
+  - `setBadgeCount(0)` is the modern API (iOS 16+) — replaces deprecated `applicationIconBadgeNumber`
+  - `@Environment(\.scenePhase)` on the `App` struct body works for detecting foreground transitions
+  - APNs `badge` key is optional — omitting it leaves the existing badge unchanged; setting to 0 clears it
+---
