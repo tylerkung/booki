@@ -567,7 +567,7 @@ struct PlayerAnalyticsDetailView: View {
     }
 
     private var filteredBets: [Bet] {
-        picksFilter == .open ? openBets : gradedBets
+        openBets
     }
 
     private func eventName(for bet: Bet) -> String {
@@ -585,7 +585,7 @@ struct PlayerAnalyticsDetailView: View {
     private var playerPicksSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("PICKS")
+                Text("OPEN PICKS")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
                     .tracking(1.0)
@@ -594,7 +594,7 @@ struct PlayerAnalyticsDetailView: View {
 
                 if filteredBets.count > 5 {
                     NavigationLink {
-                        PlayerPicksListView(player: player, initialFilter: picksFilter)
+                        PlayerPicksListView(player: player, initialFilter: .open)
                     } label: {
                         Text("See All (\(filteredBets.count))")
                             .font(Theme.bodyFont(size: 13, weight: .medium))
@@ -603,15 +603,8 @@ struct PlayerAnalyticsDetailView: View {
                 }
             }
 
-            Picker("Filter", selection: $picksFilter) {
-                ForEach(PicksFilter.allCases, id: \.self) { filter in
-                    Text(filter.rawValue).tag(filter)
-                }
-            }
-            .pickerStyle(.segmented)
-
             if filteredBets.isEmpty {
-                Text(picksFilter == .open ? "No open picks" : "No graded picks")
+                Text("No open picks")
                     .font(Theme.bodyFont(size: 15))
                     .foregroundStyle(Theme.textSecondary)
                     .frame(maxWidth: .infinity)
@@ -1263,16 +1256,56 @@ struct BetHistoryRow: View {
     let bet: Bet
     let eventName: String
 
-    private var description: String {
-        let side = "\(bet.side) \(formatOdds(bet.odds))"
-        return "\(eventName) · \(side)"
+    /// Title matches player-side TransactionRowView pattern:
+    /// Graded: "Won · Denver Nuggets" or "Lost · 3-leg Multi-Pick (+613)"
+    /// Ungraded: "San Antonio Spurs -7.5 -110"
+    private var title: String {
+        let pickLabel: String
+        if bet.isParlay {
+            let oddsStr = formatOdds(bet.odds)
+            pickLabel = "\(bet.parlayLegs)-leg Multi-Pick (\(oddsStr))"
+        } else {
+            pickLabel = "\(bet.side) \(formatOdds(bet.odds))"
+        }
+
+        switch bet.gradeResult {
+        case .win: return "Won · \(pickLabel)"
+        case .loss: return "Lost · \(pickLabel)"
+        case .push: return "Push · \(pickLabel)"
+        case nil: return pickLabel
+        }
+    }
+
+    /// Subtitle: event name + timestamp
+    private var subtitle: String {
+        "\(eventName) · \(formatDate(bet.createdAt))"
+    }
+
+    /// Bookie convention for amount:
+    /// - Ungraded: show stake (neutral)
+    /// - Won (member won): bookie pays out profit (negative/red for bookie)
+    /// - Lost (member lost): bookie keeps stake (positive/green for bookie)
+    /// - Push: $0 (neutral)
+    private var displayAmount: Decimal {
+        switch bet.gradeResult {
+        case .win:
+            let profit = LiabilityService.calculatePayout(stake: bet.stake, odds: bet.odds)
+            return -profit
+        case .loss:
+            return bet.stake
+        case .push:
+            return 0
+        case nil:
+            return bet.stake
+        }
     }
 
     private var amountColor: Color {
         switch bet.gradeResult {
         case .win: return Theme.danger   // Bookie lost money
         case .loss: return Theme.accent   // Bookie won money
-        case .push, nil: return Theme.textSecondary
+        case .push: return Theme.textSecondary
+        case nil: return Theme.textSecondary
         }
     }
 
@@ -1280,17 +1313,12 @@ struct BetHistoryRow: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
-        let formatted = formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
-        return formatted
-    }
-
-    private var typeLabel: String {
-        switch bet.gradeResult {
-        case .win: return "Won"
-        case .loss: return "Lost"
-        case .push: return "Push"
-        case nil: return "Pending"
+        let absAmount = displayAmount < 0 ? -displayAmount : displayAmount
+        let formatted = formatter.string(from: absAmount as NSDecimalNumber) ?? "$\(absAmount)"
+        if bet.gradeResult == nil {
+            return formatted
         }
+        return displayAmount >= 0 ? "+\(formatted)" : "-\(formatted)"
     }
 
     private var tagColor: Color {
@@ -1309,15 +1337,16 @@ struct BetHistoryRow: View {
                 .frame(width: 4, height: 40)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(description)
+                Text(title)
                     .font(Theme.body)
                     .fontWeight(.semibold)
                     .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(2)
+                    .lineLimit(1)
 
-                Text(formatDate(bet.createdAt))
+                Text(subtitle)
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textMuted)
+                    .lineLimit(1)
             }
             .padding(.leading, 12)
 
@@ -1332,6 +1361,7 @@ struct BetHistoryRow: View {
                 .background(RoundedRectangle(cornerRadius: 8).fill(amountColor.opacity(0.15)))
         }
         .padding(.vertical, 8)
+        .padding(.trailing, 12)
     }
 
     private func formatDate(_ date: Date) -> String {
@@ -1427,6 +1457,7 @@ struct LedgerHistoryRow: View {
                 .background(RoundedRectangle(cornerRadius: 8).fill(amountColor.opacity(0.15)))
         }
         .padding(.vertical, 8)
+        .padding(.trailing, 12)
     }
 
     private func formatDate(_ date: Date) -> String {

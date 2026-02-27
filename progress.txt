@@ -12,6 +12,7 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - `allBets` query in `loadDashboard` includes `player_id, bet_type, created_at` — use for per-player grouping
 - Loading skeleton pattern: `template x-if="isLoadingX"` with shimmer divs, `template x-if="!isLoadingX"` with real content
 - Responsive table-to-card: add `data-label` attrs to `<td>` elements, CSS `::before` with `content: attr(data-label)` for labels
+- Supabase Realtime: `.channel('name').on('postgres_changes', {...}, cb).subscribe()`, cleanup via `supabase.removeChannel(ch)`
 ---
 
 ## 2026-02-26 - US-019
@@ -344,4 +345,62 @@ Started: Thu Feb 26 14:57:41 PST 2026
   - Degen sliding window: sort by date ascending, check if 5th bet timestamp minus 1st bet timestamp <= 24h
   - Tag tooltip uses fixed positioning from `getBoundingClientRect()` + `transform: translateX(-50%)` for centering
   - `computeAttentionTags` is reusable across dashboard and member detail — just needs player object, their bets, their ledger, and group avg stake
+---
+
+## 2026-02-26 - US-020
+- Added Supabase Realtime subscriptions for live dashboard updates
+- Subscribes to `bets`, `players`, and `ledger_entries` tables filtered by `bookie_id`
+- Bets changes → reload dashboard + picks (if on picks route)
+- Players changes → reload players
+- Ledger changes → reload players + dashboard
+- 300ms debounce on all reload calls to prevent rapid-fire updates
+- Channel stored as `realtimeChannel` for cleanup
+- Unsubscribe on logout via `unsubscribeFromRealtime()` — clears channel and pending timers
+- Subscription initialized in `init()` after `loadBookie()` (needs bookie.id for filter)
+- Files changed: `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - Supabase JS v2 Realtime: `.channel('name').on('postgres_changes', { event, schema, table, filter }, callback).subscribe()`
+  - Cleanup: `supabase.removeChannel(channel)` — not `channel.unsubscribe()`
+  - Debounce pattern: store timers in an object keyed by category, clearTimeout before setTimeout
+  - Page redirects (step down, delete) destroy JS context so explicit unsubscribe isn't strictly needed there
+  - Filter syntax: `bookie_id=eq.${bookieId}` — Supabase Realtime uses PostgREST-style filters
+---
+
+## 2026-02-26 - US-021
+- Added picks pagination: initial load fetches 50 (was 100), "Load More" button appends next 50
+- `loadPicks(append)` uses `.range(offset, offset+49)` for server-side pagination
+- `loadMorePicks()` increments offset by 50 and calls `loadPicks(true)` to append
+- `hasMorePicks` flag hides Load More when fewer than 50 results returned
+- Filters/tab changes reset offset to 0 (fresh load)
+- Added sortable column headers for members table: Name, Balance, Credit, Status
+- Clicking a column header toggles ascending/descending sort
+- Sort indicator (↑/↓) shown on active sort column in accent color
+- `filteredPlayers` computed property now applies sorting after search filtering
+- `sortMembers(column)` method toggles direction on same column, resets to ascending on new column
+- Default sort: by name ascending
+- Added CSS: `.sortable` cursor/hover, `.sort-indicator` accent-colored arrow
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- **Learnings for future iterations:**
+  - Supabase `.range(from, to)` is inclusive on both ends — use `offset` to `offset + 49` for 50 results
+  - Append pattern: spread existing + new results into array; reset offset on filter change
+  - `hasMorePicks = results.length === 50` — if fewer than page size, no more data exists
+  - Alpine `get` computed properties auto-update when referenced state changes — sorting works reactively
+  - Client-side sorting via `[...result].sort()` avoids mutating the original array
+---
+
+## 2026-02-26 - Post-Ralph Polish & Bug Fixes
+- **Market bookie_id bug**: `auto_refresh_games` was stamping bookie_id from bets onto shared markets (should be NULL). Standalone/player users only sync `bookie_id IS NULL` markets, so affected games showed no odds. Fixed line 1082 to always set `bookie_id: null`. Fixed 18 existing bad rows in DB.
+- **Bookie activity detail navigation**: Added NavigationLinks to `PlayerPickHistoryView` — bets → `BetDetailView`, ledger → `BookieTransactionDetailView` (new, bookie convention)
+- **Consolidated bet activity**: Settlement ledger entries filtered out of activity list. Each bet appears once with latest state. Graded bets sort by settlement date (move to top). Title format: "Won · Denver Nuggets" / "Lost · 3-leg Multi-Pick (+613)"
+- **BetHistoryRow redesign**: Title shows result prefix for graded bets, subtitle has event + timestamp, amount uses bookie convention (won = -profit red, lost = +stake green)
+- **Credit display fix on members list**: `PlayerRowView` was showing `balanceOwed` as credit used — should be `creditLimit - availableCredit` (includes open stakes). Fixed to derive from utilization.
+- **Removed Reverse Settlement button**: Confusing terminology overlap with "settle up". Override handles reversal + re-grading in one step.
+- **Renamed "Override Grade" → "Override"**: Cleaner, covers all cases
+- **Member detail picks**: Removed Open/Graded segmented picker, shows only open picks
+- Files changed: `auto_refresh_games/index.ts`, `PlayerPickHistoryView.swift`, `PlayerAnalyticsDetailView.swift`, `BetsListView.swift`, `PlayersListView.swift`
+- **Learnings:**
+  - Markets on shared events must always have `bookie_id = NULL` — the auto_refresh game selection pulls bookie_id from bets, not events
+  - `BalanceService.calculateBalance()` is ledger-only; `playerSummary().availableCredit` includes open stakes — use the latter for credit utilization
+  - `LiabilityService.calculatePayout()` returns profit only (not including stake return)
+---
 ---

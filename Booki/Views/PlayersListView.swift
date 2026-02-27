@@ -546,6 +546,16 @@ struct PlayerRowView: View {
         return formatter.string(from: balance as NSDecimalNumber) ?? "$\(balance)"
     }
 
+    private var formattedCreditUsed: String {
+        // Credit used = utilization% × creditLimit (matches detail view calculation)
+        let used = player.creditLimit * Decimal(utilization) / 100
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: used as NSDecimalNumber) ?? "$\(used)"
+    }
+
     private var formattedCreditLimit: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -598,7 +608,7 @@ struct PlayerRowView: View {
                         }
                     }
 
-                    Text("Credit: \(formattedBalance) / \(formattedCreditLimit) · \(Int(utilization))%")
+                    Text("Credit: \(formattedCreditUsed) / \(formattedCreditLimit) · \(Int(utilization))%")
                         .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }

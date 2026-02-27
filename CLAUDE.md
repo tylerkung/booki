@@ -69,6 +69,8 @@ List {
 - `EdgeFunctionService.swift` - Calls Supabase Edge Functions with retry logic
 - `AgreementService.swift` - ToS acceptance checking and submission
 - `AuditService.swift` - Fetches audit trail history
+- `StoreKitService.swift` - Apple IAP subscription management (StoreKit 2)
+- `landing/dashboard/` - Web dashboard SPA (Alpine.js + Supabase JS)
 
 ## Odds API Integration
 
@@ -164,12 +166,12 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 
 ## Current State (February 26, 2026)
 
-- **Branch**: `ralph/default-ux-organizer-upsell`
+- **Branch**: `ralph/web-dashboard-parity`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
-- **Phases complete**: 1-18 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration, Default UX & Organizer Upsell, API Optimization & Live Scores)
-- **Supabase migrations**: All applied through 025 (see SUPABASE_MIGRATIONS.md)
-- **Edge Functions**: 14+ functions for server-authoritative operations (including `submit_bets`, `submit_parlay`, `sync_games`, `claim_player`, `create_invite`, `claim_invite`, `refresh_live_scores`, `delete_account`)
+- **Phases complete**: 1-19 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration, Default UX & Organizer Upsell, API Optimization & Live Scores, Apple IAP & Web Dashboard)
+- **Supabase migrations**: All applied through 026 (see SUPABASE_MIGRATIONS.md)
+- **Edge Functions**: 15+ functions for server-authoritative operations (including `submit_bets`, `submit_parlay`, `sync_games`, `claim_player`, `create_invite`, `claim_invite`, `refresh_live_scores`, `delete_account`, `apple_iap_webhook`)
 - **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
 - **Settings**: Streamlined — removed Odds API config, sample data, and sync button
 - **Auto-pilot mode**: Singles and parlays auto-accepted, auto-graded, and auto-settled (ledger entries created automatically). Parlays graded per-leg then settled as ticket with combined odds.
@@ -269,8 +271,14 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Default standalone UX**: New users route to PlayerMainView (no bookie record), synthetic player with $10K credit and 25 open bet limit
 - **Organizer upsell**: `BecomeOrganizerView` in Account menu, creates bookie record on tap
 - **Step down organizer**: `step_down_organizer` edge function, available in Settings when no active members/invites
-- **Pro upgrade blocked**: ProUpgradeSheet shows "Coming Soon" instead of Stripe checkout
+- **Apple IAP**: StoreKitService (StoreKit 2), `apple_iap_webhook` edge function, `subscription_source` column prevents cross-platform conflicts, ProUpgradeSheet uses live IAP ($59.99/mo), ProCheckoutView deleted
+- **Web Dashboard**: `landing/dashboard/` — Alpine.js SPA with auth, dashboard, members, picks, subscription views. Stripe checkout ($49.99/mo) for web users. Hash-based routing, dark theme CSS, responsive sidebar.
 - **Delete bookie data RPC**: Migration 025, `delete_bookie_data()` SECURITY DEFINER atomically disables immutability triggers and deletes in FK order
 - **Hourly auto-refresh**: Cron runs every hour (was 2h), 50 game cap (was 25)
 - **Smart live scores**: `refresh_live_scores` edge function every 5 min, sport duration estimation, only fetches when games near ending
 - **Odds API**: Upgraded to 20,000 calls/month paid tier
+- **Market bookie_id fix**: `auto_refresh_games` now always sets `bookie_id: null` on shared markets (was incorrectly stamping bookie_id from bets)
+- **Bookie activity navigation**: `PlayerPickHistoryView` rows are tappable — bets → `BetDetailView`, ledger → `BookieTransactionDetailView`. Settlement entries consolidated into bet rows.
+- **Override simplified**: Removed "Reverse Settlement" button (terminology conflict with settle up). "Override Grade" renamed to "Override" — handles reversal + re-grading in one step.
+- **Member detail picks**: Shows only open picks (removed Open/Graded segmented picker)
+- **Members list credit fix**: Shows actual credit used (including open stakes) instead of just balance owed

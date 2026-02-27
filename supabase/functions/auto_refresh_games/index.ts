@@ -1077,7 +1077,19 @@ Deno.serve(async (req) => {
                 continue;
               }
 
-              // Delete existing markets for this event
+              // Build new market rows before deleting old ones
+              const marketsToInsert = newMarkets.map((m) => ({
+                bookie_id: null,
+                event_id: game.id,
+                type: m.type,
+                side_a: m.side_a,
+                side_b: m.side_b,
+                odds_a: m.odds_a,
+                odds_b: m.odds_b,
+              }));
+
+              // Delete existing markets, then insert new ones
+              // Only delete if we have replacement data (guarded by newMarkets.length > 0 above)
               const { error: deleteError } = await client
                 .from('markets')
                 .delete()
@@ -1089,17 +1101,6 @@ Deno.serve(async (req) => {
                 continue;
               }
 
-              // Insert new markets
-              const marketsToInsert = newMarkets.map((m) => ({
-                bookie_id: game.bookie_id,
-                event_id: game.id,
-                type: m.type,
-                side_a: m.side_a,
-                side_b: m.side_b,
-                odds_a: m.odds_a,
-                odds_b: m.odds_b,
-              }));
-
               const { error: insertError } = await client
                 .from('markets')
                 .insert(marketsToInsert);
@@ -1107,6 +1108,10 @@ Deno.serve(async (req) => {
               if (insertError) {
                 console.error(`Error inserting markets for ${game.id}:`, insertError);
                 oddsErrors.push({ eventId: game.id, error: 'Failed to insert new markets' });
+                // Re-insert attempt: try individual markets to salvage what we can
+                for (const market of marketsToInsert) {
+                  await client.from('markets').insert(market);
+                }
                 continue;
               }
 

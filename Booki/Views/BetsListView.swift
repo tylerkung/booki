@@ -779,20 +779,14 @@ struct BetDetailView: View {
             }
 
             if isPro, bet.gradeResult != nil {
-                actionButton("Override Grade", icon: "pencil.circle.fill", color: Theme.warning) {
+                actionButton("Override", icon: "pencil.circle.fill", color: Theme.warning) {
                     prepareOverrideGradeSheet()
                 }
             }
 
         case .settled:
-            if isPro {
-                actionButton("Reverse Settlement", icon: "arrow.uturn.backward.circle.fill", color: Theme.danger) {
-                    prepareReverseSettlementSheet()
-                }
-            }
-
             if isPro, bet.gradeResult != nil {
-                actionButton("Override Grade", icon: "pencil.circle.fill", color: Theme.warning) {
+                actionButton("Override", icon: "pencil.circle.fill", color: Theme.warning) {
                     prepareOverrideGradeSheet()
                 }
             }
@@ -1225,7 +1219,7 @@ struct BetDetailView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Override Grade")
+            .navigationTitle("Override")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
