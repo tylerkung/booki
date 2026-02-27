@@ -148,3 +148,18 @@ Started: Fri Feb 27 02:10:26 PST 2026
   - Bet records store resolved `side` (team name) and `market` (type) — use directly in notification body, no need to re-resolve from market table
   - `pick_declined` event maps to `picks_graded` preference in the notification helper's event-to-preference mapping
 ---
+
+## 2026-02-27 - US-010
+- Implemented: `Booki/Views/NotificationPreferencesView.swift` — member notification preferences UI
+- Three toggles: "Pick results" (picks_graded), "Balance changes" (balance_changes), "Game results" (game_results)
+- On appear, fetches `notification_preferences` for current user; inserts default row if none exists
+- Each toggle saves immediately via Supabase `.update()` (save-on-toggle, no save button)
+- Added "Notifications" row to AccountView `playerMenuSection` between "Change Password" and the organizer/About rows
+- Added file to Xcode project (`project.pbxproj`)
+- Follows PickManagementSettingsView pattern: ScrollView + VStack + toggles with `.cardStyle()` card
+- Files changed: `Booki/Views/NotificationPreferencesView.swift` (new), `Booki/Views/AccountView.swift`, `Booki.xcodeproj/project.pbxproj`
+- **Learnings for future iterations:**
+  - `sectionHeader` and `settingsDivider` are file-private in SettingsView.swift — must duplicate in new files (see PlayerProfileEditView.swift for precedent)
+  - Supabase `.update([column: value])` works for single-column updates with string key
+  - Member toggles are a subset of all preferences — organizers see different ones (new_members, pick_submissions, risk_alerts, game_results)
+---

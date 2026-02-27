@@ -170,7 +170,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "Follow the pattern of other settings sub-views. Use existing Supabase client. Debounce or save-on-toggle (no save button needed)."
     },
     {
