@@ -500,15 +500,44 @@ function dashboardApp() {
 
             this.totalVolume = (volumeData || []).reduce((sum, b) => sum + (b.stake || 0), 0);
 
-            // Recent activity (last 10 ledger entries)
-            const { data: recent } = await this.supabase
+            // Recent activity: merge ledger entries + bet placements chronologically
+            const { data: recentLedger } = await this.supabase
                 .from('ledger_entries')
                 .select('*')
                 .eq('bookie_id', this.bookie.id)
                 .order('created_at', { ascending: false })
                 .limit(10);
 
-            this.recentActivity = recent || [];
+            const { data: recentBets } = await this.supabase
+                .from('bets')
+                .select('id, player_id, stake, status, market, side, event_description, is_parlay, parlay_legs, created_at')
+                .eq('bookie_id', this.bookie.id)
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            // Normalize both into a common shape and merge
+            const ledgerItems = (recentLedger || []).map(e => ({
+                id: 'ledger-' + e.id,
+                created_at: e.created_at,
+                type: e.type || 'settlement',
+                player_id: e.player_id,
+                amount: e.amount,
+                _source: 'ledger',
+            }));
+            const betItems = (recentBets || []).map(b => ({
+                id: 'bet-' + b.id,
+                created_at: b.created_at,
+                type: b.is_parlay ? 'multi-pick' : 'pick placed',
+                player_id: b.player_id,
+                amount: b.stake,
+                _source: 'bet',
+            }));
+
+            const merged = [...ledgerItems, ...betItems]
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, 10);
+
+            this.recentActivity = merged;
 
             // Exposure: fetch open bets for potential payout calculation
             const { data: openBets } = await this.supabase
@@ -554,7 +583,7 @@ function dashboardApp() {
             // Sport Performance breakdown + attention tags data
             const { data: allBets } = await this.supabase
                 .from('bets')
-                .select('sport, stake, odds, status, market_type, team_name, selection, player_id, bet_type, created_at')
+                .select('sport, stake, odds, status, market, team_name, selection, player_id, is_parlay, created_at')
                 .eq('bookie_id', this.bookie.id);
 
             const sportMap = {};
@@ -577,7 +606,7 @@ function dashboardApp() {
             this.sportPerformance = Object.values(sportMap).sort((a, b) => b.picks - a.picks);
 
             // Futures Activity
-            const futureBets = (allBets || []).filter(b => b.market_type === 'outright' && ['pending', 'accepted'].includes(b.status));
+            const futureBets = (allBets || []).filter(b => b.market === 'outright' && ['pending', 'accepted'].includes(b.status));
             const selectionCount = {};
             for (const b of futureBets) {
                 const sel = b.team_name || b.selection || 'Unknown';
