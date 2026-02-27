@@ -33,6 +33,10 @@ struct SettingsView: View {
                         ChangePasswordView()
                     }
                     menuDivider
+                    settingsMenuRow(icon: "bell", title: "Notifications") {
+                        BookieNotificationPreferencesView()
+                    }
+                    menuDivider
                     subscriptionRow
                     menuDivider
                     settingsMenuRow(icon: "person.2", title: "Member Settings") {
