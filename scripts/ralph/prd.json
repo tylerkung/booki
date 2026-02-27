@@ -1,391 +1,207 @@
 {
   "project": "Booki",
-  "branchName": "ralph/web-dashboard-parity",
-  "description": "Bring the web dashboard (landing/dashboard/) to full feature parity with the iOS organizer experience — pick detail, grading/voiding, member detail, settings, invites management, enhanced dashboard, and UX polish.",
+  "branchName": "ralph/push-notifications",
+  "description": "Push notification infrastructure — APNs integration, Supabase device token storage, send_notification edge function, iOS NotificationService, deep link routing, notification preferences UI, and integration with existing edge functions.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add parameterized hash routing to dashboard SPA",
-      "description": "As a developer, I need the Alpine.js router to support parameterized routes like #/members/:id and #/picks/:id so detail views can be navigated to.",
+      "title": "Add device_tokens and notification_preferences tables",
+      "description": "As a developer, I need database tables to store APNs device tokens and per-user notification preferences so the server can send targeted push notifications.",
       "acceptanceCriteria": [
-        "parseRoute() in dashboard.js handles #/members/<uuid> and extracts the player ID into a reactive property (e.g. selectedPlayerId)",
-        "parseRoute() handles #/picks/<uuid> and extracts the bet ID into a reactive property (e.g. selectedBetId)",
-        "parseRoute() handles #/settings as a new route",
-        "Navigating to #/members/abc-123 sets route='member-detail' and selectedPlayerId='abc-123'",
-        "Navigating to #/picks/abc-123 sets route='pick-detail' and selectedBetId='abc-123'",
-        "Existing routes (#/dashboard, #/members, #/picks, #/subscription) continue working unchanged",
-        "Back navigation (browser back button) works correctly between list and detail views",
+        "Create migration file in supabase/migrations/ with next sequence number",
+        "device_tokens table: id (uuid PK default gen_random_uuid()), user_id (uuid FK auth.users NOT NULL), token (text NOT NULL), platform (text NOT NULL default 'ios'), app_version (text), created_at (timestamptz default now()), updated_at (timestamptz default now())",
+        "device_tokens has UNIQUE constraint on (user_id, token)",
+        "device_tokens has index on user_id",
+        "notification_preferences table: id (uuid PK default gen_random_uuid()), user_id (uuid FK auth.users UNIQUE NOT NULL), picks_graded (boolean default true), balance_changes (boolean default true), new_members (boolean default true), pick_submissions (boolean default false), game_results (boolean default true), risk_alerts (boolean default true), marketing (boolean default false), created_at (timestamptz default now())",
+        "RLS enabled on both tables",
+        "device_tokens RLS: users can SELECT, INSERT, UPDATE, DELETE their own rows (auth.uid() = user_id)",
+        "notification_preferences RLS: users can SELECT and UPDATE their own row, INSERT if not exists (auth.uid() = user_id)",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "dashboard.js is at landing/dashboard/dashboard.js. The current parseRoute() at line 115 uses a simple hash match. Extend it with regex or string splitting to detect /members/<id> and /picks/<id> patterns. Add selectedPlayerId and selectedBetId to the Alpine data object. Add 'member-detail', 'pick-detail', 'settings' to the routes concept."
+      "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Add pick detail view — hero and financials cards",
-      "description": "As an organizer, I want to click a pick row to see its full details including status, team, odds, stake, and potential return.",
+      "title": "Create send_notification shared helper",
+      "description": "As a developer, I need a shared helper module in supabase/functions/_shared/ that handles APNs JWT generation and HTTP/2 push delivery, so edge functions can send notifications with a single function call.",
       "acceptanceCriteria": [
-        "Pick rows in the picks table are clickable — clicking navigates to #/picks/<betId>",
-        "Pick detail view loads the bet from Supabase: bets.select('*').eq('id', selectedBetId)",
-        "Hero card shows: large colored status badge, team/selection name (bet.team_name or bet.selection), event name, market type",
-        "Financials card shows: odds (American format with +/- prefix), stake amount, potential return (calculated from stake and odds), actual P/L if status is 'settled'",
-        "Back button at top navigates to #/picks",
-        "Member name is shown and clickable — navigates to #/members/<playerId>",
-        "Loading state while bet data fetches",
-        "View styled with existing dashboard.css card patterns (dark theme)",
-        "Verify in browser using dev-browser skill"
+        "Create supabase/functions/_shared/notifications.ts",
+        "Export async function sendNotification({ event, recipientUserIds, title, body, data }) that: (1) queries notification_preferences to filter out opted-out users based on event-to-preference mapping, (2) queries device_tokens for remaining users, (3) sends APNs HTTP/2 POST to api.push.apple.com for each token, (4) deletes tokens that return 410 Gone or BadDeviceToken",
+        "Event-to-preference mapping: pick_graded/parlay_graded -> picks_graded, balance_adjusted -> balance_changes, new_member -> new_members, pick_submitted -> pick_submissions, game_results -> game_results, risk_alert -> risk_alerts",
+        "APNs JWT generation using ES256 with APNS_KEY_P8, APNS_KEY_ID, APNS_TEAM_ID from Deno.env. JWT cached in module-level variable, regenerated when older than 50 minutes",
+        "APNs payload format: { aps: { alert: { title, body }, sound: 'default', badge: 1 }, deep_link: data.deep_link }",
+        "APNs headers: authorization Bearer JWT, apns-topic com.bookiapp.booki, apns-push-type alert, apns-priority 10",
+        "Function is fire-and-forget safe — all errors caught and logged, never throws",
+        "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Add a new section in app.html with x-show=\"route === 'pick-detail'\". Add loadPickDetail() method to dashboard.js that fetches the single bet. Potential return calculation: for positive American odds, return = stake * (odds/100); for negative, return = stake * (100/Math.abs(odds)). Use the existing formatCurrency() and formatOdds() helpers. The member name can be looked up from playerMap."
+      "notes": "Reads APNS_KEY_P8, APNS_KEY_ID, APNS_TEAM_ID, APNS_ENVIRONMENT from Supabase secrets. APNS_ENVIRONMENT determines api.push.apple.com vs api.sandbox.push.apple.com. Use importKey with ECDSA P-256 for signing."
     },
     {
       "id": "US-003",
-      "title": "Add parlay legs and activity timeline to pick detail",
-      "description": "As an organizer, I want to see parlay leg breakdowns and audit history on the pick detail view.",
+      "title": "Create send_notification edge function endpoint",
+      "description": "As a developer, I need a standalone send_notification edge function that other functions can invoke via fetch, providing a clean API boundary for notification delivery.",
       "acceptanceCriteria": [
-        "If bet.bet_type === 'parlay', fetch legs: bet_legs.select('*').eq('ticket_id', bet.ticket_id)",
-        "Parlay legs card shows each leg: team name, market type, odds, individual status badge",
-        "Combined odds displayed at top of legs card",
-        "Activity timeline card fetches: settlement_events.select('*').eq('bet_id', betId).order('created_at')",
-        "Timeline shows key events: created, accepted, graded, settled timestamps with descriptions",
-        "If no settlement_events, show bet.created_at as the only timeline entry",
-        "Cards use existing dashboard.css styling",
-        "Verify in browser using dev-browser skill"
+        "Create supabase/functions/send_notification/index.ts",
+        "Accepts POST with JSON body: { event, recipient_user_ids, title, body, data }",
+        "Validates that request has service role key (internal-only, not user-facing)",
+        "Calls sendNotification from _shared/notifications.ts",
+        "Returns { success: true, sent: number } with count of notifications sent",
+        "Handles CORS preflight",
+        "Typecheck passes"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "Add to the pick detail view created in US-002. The bet_legs table has columns: team_name, market_type, odds, status, ticket_id. Use x-show to conditionally render the parlay section. Settlement events may not exist for all bets — only those that have been settled/reversed/overridden. Gracefully handle empty results."
+      "notes": "This function is called internally by other edge functions via fetch to the Supabase functions URL. Validates via service_role key in Authorization header, not user JWT."
     },
     {
       "id": "US-004",
-      "title": "Add grading and void actions to pick detail",
-      "description": "As an organizer, I want to grade accepted picks (Win/Loss/Push) and void accepted/graded picks directly from the pick detail view.",
+      "title": "Create NotificationService.swift for iOS",
+      "description": "As a developer, I need an iOS service that handles push notification permission, APNs token registration, and token storage in Supabase.",
       "acceptanceCriteria": [
-        "For picks with status 'accepted': show Win, Loss, Push grade buttons and a separate Void button",
-        "For picks with status 'graded': show Void button only",
-        "Clicking a grade button shows confirmation modal: 'Grade this pick as [Win/Loss/Push]?'",
-        "On confirm, calls grade_bet edge function: { bet_id, outcome: 'won'|'lost'|'push', idempotency_key: crypto.randomUUID() }",
-        "Clicking Void shows confirmation modal: 'Void this pick? This will cancel it with no balance impact.'",
-        "On confirm void, calls grade_bet edge function with outcome: 'void'",
-        "After successful grade/void, pick detail reloads to show updated status",
-        "Loading state on buttons during edge function call",
-        "Error toast on failure",
-        "Grade/void buttons hidden for status: pending, settled, void, declined",
-        "Verify in browser using dev-browser skill"
+        "Create Booki/Services/NotificationService.swift",
+        "Class is @Observable and @MainActor",
+        "Property: isPermissionGranted: Bool",
+        "Method: requestPermission() — calls UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]), updates isPermissionGranted, if granted calls UIApplication.shared.registerForRemoteNotifications()",
+        "Method: registerToken(_ deviceToken: Data) — converts token to hex string, upserts to device_tokens table via Supabase client (user_id from current session, platform 'ios', app_version from Bundle.main)",
+        "Method: removeToken() — deletes all device_tokens for current user_id (called on logout)",
+        "Add UNUserNotificationCenterDelegate conformance to handle foreground notifications (show banner unless already on that screen)",
+        "Add @preconcurrency import Supabase",
+        "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Use the existing callEdgeFunction('grade_bet', body) pattern from dashboard.js. The grade_bet edge function is at supabase/functions/grade_bet/index.ts. After success, call loadPickDetail() to refresh. Add grading state variables (isGrading, gradingOutcome) to Alpine data. Void is just grade_bet with outcome='void'. Style grade buttons: Win=green, Loss=red, Push=gray, Void=outlined/destructive."
+      "passes": false,
+      "notes": "Use existing SupabaseManager or sbClient pattern from the codebase. Token hex conversion: deviceToken.map { String(format: '%02x', $0) }.joined(). The delegate method userNotificationCenter(_:willPresent:) should return [.banner, .sound] for foreground display."
     },
     {
       "id": "US-005",
-      "title": "Add override grade and reverse settlement to pick detail (Pro only)",
-      "description": "As a Pro organizer, I want to override grades on graded/settled picks and reverse settlements from the pick detail view.",
+      "title": "Wire NotificationService into app lifecycle",
+      "description": "As a developer, I need the NotificationService connected to the app delegate and auth flow so tokens are registered on launch and cleaned up on logout.",
       "acceptanceCriteria": [
-        "For 'graded' status picks: show Override Grade button (Pro only)",
-        "For 'settled' status picks: show Override Grade button AND Reverse Settlement button (both Pro only)",
-        "Override Grade opens modal with: outcome dropdown (Win/Loss/Push/Void), required reason text input, confirm button",
-        "Override calls override_grade edge function: { bet_id, new_outcome, reason, idempotency_key }",
-        "Reverse Settlement opens confirmation modal with warning: 'This will reverse the ledger entry for this pick.'",
-        "Reverse calls reverse_settlement edge function: { bet_id, idempotency_key }",
-        "Free tier: buttons shown but disabled with tooltip 'Upgrade to Pro'",
-        "isPro check uses bookie.tier === 'pro' (already available in Alpine data)",
-        "After success, pick detail reloads",
-        "Error toast on failure",
-        "Verify in browser using dev-browser skill"
+        "Add NotificationService as @State property on BookiApp or inject via environment",
+        "In AppDelegate or BookiApp, implement application(_:didRegisterForRemoteNotificationsWithDeviceToken:) and call notificationService.registerToken()",
+        "In AppDelegate or BookiApp, implement application(_:didFailToRegisterForRemoteNotificationsWithError:) and log the error",
+        "On successful auth (in AuthManager or checkSession), call notificationService.requestPermission() if not already granted",
+        "On logout (in AuthManager.signOut), call notificationService.removeToken() before signing out of Supabase",
+        "Set UNUserNotificationCenter.current().delegate to NotificationService on app launch",
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Add override/reverse modals to app.html. Add state: showOverrideModal, overrideOutcome, overrideReason, isOverriding, showReverseModal, isReversing. Edge functions: override_grade at supabase/functions/override_grade/index.ts, reverse_settlement at supabase/functions/reverse_settlement/index.ts. For free tier, use :disabled=\"!isPro\" and show a Pro badge or tooltip."
+      "passes": false,
+      "notes": "Check existing BookiApp.swift and AuthManager.swift for the right injection points. If app uses SwiftUI lifecycle (no AppDelegate), use UIApplicationDelegateAdaptor."
     },
     {
       "id": "US-006",
-      "title": "Add member detail view — header and actions",
-      "description": "As an organizer, I want to click a member row to see their full profile with balance, credit limit, and action buttons.",
+      "title": "Add deep link routing from notification taps",
+      "description": "As a user, I want tapping a notification to take me directly to the relevant screen (bet detail, member detail, picks tab, etc.).",
       "acceptanceCriteria": [
-        "Member name in members table is clickable — clicking navigates to #/members/<playerId>",
-        "Member detail view loads player data from Supabase and from the existing playerMap",
-        "Header card shows: display name (or name), balance with color coding (green=positive/owes you, red=negative/you owe), credit limit, credit utilization progress bar (balance / credit_limit as percentage)",
-        "Action buttons row: Settle Up button, Adjust Balance button (reuse existing modals by setting settlePlayer/adjustPlayer)",
-        "Overflow menu (three dots) with: Archive Member, Remove Member options",
-        "Archive shows confirmation modal, on confirm updates players.status='archived' via Supabase",
-        "Remove shows confirmation modal with warning, on confirm NULLs bookie_id and auth_user_id via Supabase update",
-        "Back button navigates to #/members",
-        "Verify in browser using dev-browser skill"
+        "Add pendingDeepLink: String? property to a shared observable (ContentView or navigation state)",
+        "Implement userNotificationCenter(_:didReceive:) in NotificationService to extract deep_link from notification payload and set pendingDeepLink",
+        "In ContentView or root navigation, observe pendingDeepLink and route: booki://bet/{id} -> BetDetailView, booki://ticket/{id} -> TicketDetailView, booki://members/{id} -> PlayerAnalyticsDetailView, booki://picks -> Picks tab, booki://account -> Account tab",
+        "Deep link is consumed (set to nil) after navigation completes",
+        "Works when app is launched from killed state (cold start) and from background",
+        "Typecheck passes"
       ],
       "priority": 6,
       "passes": false,
-      "notes": "Add a new section in app.html with x-show=\"route === 'member-detail'\". Add loadMemberDetail() method. The settle/adjust modals already exist — just set this.settlePlayer or this.adjustPlayer to the loaded player and open the modal. For archive/remove, add new state vars (showArchiveModal, showRemoveModal, isArchiving, isRemoving). Credit utilization bar: use a div with percentage width and accent color background."
+      "notes": "The booki:// URL scheme is already registered. Check ContentView.swift for existing tab selection logic. Use .onOpenURL or similar pattern for cold start deep links."
     },
     {
       "id": "US-007",
-      "title": "Add performance card and picks section to member detail",
-      "description": "As an organizer, I want to see a member's win/loss record, PnL, and their picks on the member detail page.",
+      "title": "Integrate notifications into auto_refresh_games",
+      "description": "As a member, I want to receive a push notification when my picks are graded so I know the result without opening the app.",
       "acceptanceCriteria": [
-        "Performance card shows: W-L-P record (count bets by status won/lost/push), Net PnL (sum ledger_entries excluding paymentLogged type), Win rate percentage (wins / (wins+losses) * 100)",
-        "Picks section with Open/Graded filter chips",
-        "Open filter shows bets with status in ['pending', 'accepted']",
-        "Graded filter shows bets with status in ['won', 'lost', 'push', 'void', 'settled', 'graded']",
-        "Pick rows are clickable — navigate to #/picks/<betId>",
-        "Shows up to 10 picks with 'See All' link that navigates to #/picks with member filter pre-set",
-        "Data queries: bets.select('*').eq('player_id', playerId), ledger_entries.select('amount,type').eq('player_id', playerId)",
-        "Verify in browser using dev-browser skill"
+        "In auto_refresh_games/index.ts, after grading bets, collect graded bet results grouped by player auth_user_id",
+        "For each player with graded bets, call sendNotification with event 'pick_graded', title 'Your pick was graded', body showing team/result/amount (e.g. 'Lakers ML — Won (+$50)'), deep_link 'booki://bet/{betId}'",
+        "If multiple bets graded for same player in one run, send one summary notification: 'X picks graded — see results' with deep_link 'booki://picks'",
+        "Also notify the bookie with event 'game_results': 'X games finalized — Y picks graded'",
+        "Notification calls wrapped in try/catch — failures logged but do not affect grading",
+        "Import sendNotification from '../_shared/notifications.ts'",
+        "Typecheck passes"
       ],
       "priority": 7,
       "passes": false,
-      "notes": "Add to the member detail view created in US-006. Performance data is computed client-side from the fetched bets and ledger entries. PnL excludes paymentLogged entries. Win rate: if (wins+losses) === 0, show '—' instead of NaN. Picks section reuses the pick row layout from the main picks table but in a compact card format."
+      "notes": "auto_refresh_games already tracks graded bets in its logic. Add notification calls after the grading loop completes. Use the existing bet data (team names, amounts, results) to build notification bodies. Fire-and-forget pattern."
     },
     {
       "id": "US-008",
-      "title": "Add inline editing for member display name and credit limit",
-      "description": "As an organizer, I want to edit a member's display name and credit limit directly on their detail page.",
+      "title": "Integrate notifications into adjust_balance and claim_invite",
+      "description": "As a member, I want to be notified when my balance is adjusted. As an organizer, I want to know when someone joins my group.",
       "acceptanceCriteria": [
-        "Display name in header has a pencil icon — clicking turns it into an editable text input",
-        "On blur or Enter, saves to Supabase: players.update({ display_name: newValue }).eq('id', playerId)",
-        "Credit limit has a pencil icon — clicking turns it into an editable number input",
-        "On blur or Enter, saves to Supabase: players.update({ credit_limit: newValue }).eq('id', playerId)",
-        "Show brief success toast after save",
-        "If save fails, revert to previous value and show error toast",
-        "Updated values reflect immediately in the header card and utilization bar",
-        "Verify in browser using dev-browser skill"
+        "In adjust_balance/index.ts, after successful balance adjustment, call sendNotification with: recipient = player's auth_user_id, event = 'balance_adjusted', title = 'Balance updated' for adjustments or 'Payment recorded' for paymentLogged type, body showing amount and reason if provided, deep_link = 'booki://account'",
+        "In claim_invite/index.ts, after successful claim, call sendNotification with: recipient = bookie's auth_user_id, event = 'new_member', title = 'New member', body = '{playerName} joined your group', deep_link = 'booki://members/{playerId}'",
+        "Both wrapped in try/catch, fire-and-forget",
+        "Import sendNotification from '../_shared/notifications.ts'",
+        "Typecheck passes"
       ],
       "priority": 8,
       "passes": false,
-      "notes": "Add state: isEditingName, isEditingCredit, editNameValue, editCreditValue. Use x-show to toggle between display text and input field. Save directly via Supabase client (not an edge function — RLS allows bookie to update their own players). After save, also update the player in this.playerMap and this.players array so other views stay in sync."
+      "notes": "adjust_balance already has the player and bookie context. claim_invite already has player name and bookie ID. Just add the notification call at the end of the success path."
     },
     {
       "id": "US-009",
-      "title": "Add recent activity section to member detail",
-      "description": "As an organizer, I want to see a member's recent activity (bets + ledger entries merged chronologically) on their detail page.",
+      "title": "Integrate notifications into submit_bet, submit_bets, and decline_bet",
+      "description": "As an organizer, I want to know when members submit picks. As a member, I want to know if my pick is declined.",
       "acceptanceCriteria": [
-        "Recent Activity card below performance card",
-        "Merges bets and ledger_entries for this player, sorted by created_at descending",
-        "Shows last 10 entries by default",
-        "Each row shows: date, type badge (bet_placed, won, lost, settlement, adjustment, paymentLogged), description text, amount",
-        "Bet entries show: team name and odds in description",
-        "Ledger entries show: type and reason (if any) in description",
-        "'View All' toggle expands to show all entries",
-        "Verify in browser using dev-browser skill"
+        "In submit_bet/index.ts, after successful submission, call sendNotification with: recipient = bookie's auth_user_id, event = 'pick_submitted', title = 'New pick', body = '{playerName} — {teamName} {marketType} ${stake}', deep_link = 'booki://bet/{betId}'",
+        "In submit_bets/index.ts, after successful batch submission, send one summary notification to bookie: '{playerName} submitted {count} picks', deep_link = 'booki://picks'",
+        "In decline_bet/index.ts, after declining, call sendNotification with: recipient = player's auth_user_id, event = 'pick_declined' (maps to picks_graded preference), title = 'Pick declined', body = '{teamName} {marketType} was declined', deep_link = 'booki://bet/{betId}'",
+        "All wrapped in try/catch, fire-and-forget",
+        "Typecheck passes"
       ],
       "priority": 9,
       "passes": false,
-      "notes": "Fetch bets and ledger entries for the player, merge into a single array sorted by created_at. Each item needs a normalized shape: { date, type, description, amount, source: 'bet'|'ledger' }. For bets: amount is stake (negative from bookie perspective) for placement, or payout for settlement. For ledger entries: use the entry amount directly. Type badges use the existing statusBadgeClass pattern."
+      "notes": "pick_declined maps to the picks_graded preference key since it's a pick status change. The bet data (team name, market type, stake) is already available in these functions."
     },
     {
       "id": "US-010",
-      "title": "Add settings page — profile and password",
-      "description": "As an organizer, I want to edit my profile name and change my password from the web dashboard settings page.",
+      "title": "Add notification preferences UI for members",
+      "description": "As a member, I want to control which notifications I receive from the Account screen.",
       "acceptanceCriteria": [
-        "Settings nav item added to sidebar (below Subscription, above Log Out)",
-        "Settings icon: gear/cog SVG",
-        "#/settings route shows settings page",
-        "Profile section: editable organizer name input (saves to bookies.name), read-only email display",
-        "Change Password section: current password input, new password input, confirm new password input, Save button",
-        "Password change uses Supabase auth.updateUser({ password: newPassword }) — requires re-authentication first",
-        "Validation: new password must match confirmation, minimum 6 characters",
-        "Success/error toasts after operations",
-        "Verify in browser using dev-browser skill"
+        "Add 'Notifications' row to AccountView menu (between Activity and About)",
+        "Create NotificationPreferencesView.swift with toggle list in .cardStyle() card",
+        "Three toggles for members: 'Pick results' (picks_graded), 'Balance changes' (balance_changes), 'Game results' (game_results)",
+        "On appear, fetch notification_preferences for current user from Supabase. If no row exists, insert one with defaults",
+        "Each toggle updates the corresponding column in notification_preferences via Supabase",
+        "Match existing Settings visual style (ScrollView, .background(Theme.background), cardStyle sections)",
+        "Typecheck passes"
       ],
       "priority": 10,
       "passes": false,
-      "notes": "Add settings section to app.html with x-show=\"route === 'settings'\". Add sidebar nav item in the <ul> before the Log Out link. For password change, Supabase JS v2 uses supabase.auth.updateUser({ password }). The current password re-auth may need supabase.auth.signInWithPassword() first to verify. Add state: settingsName, currentPassword, newPassword, confirmPassword, isSavingProfile, isChangingPassword."
+      "notes": "Follow the pattern of other settings sub-views. Use existing Supabase client. Debounce or save-on-toggle (no save button needed)."
     },
     {
       "id": "US-011",
-      "title": "Add settings page — member settings and pick management",
-      "description": "As an organizer, I want to configure default credit limit and pick management toggles from settings.",
+      "title": "Add notification preferences UI for organizers",
+      "description": "As an organizer, I want to control which notifications I receive from the Settings screen.",
       "acceptanceCriteria": [
-        "Member Settings section: default credit limit number input (saves to bookies.default_credit_limit)",
-        "Pick Management section with toggle switches (Pro only): Allow futures multi-picks (bookies.allow_futures_parlays)",
-        "Free tier: toggles shown but disabled with 'Upgrade to Pro' label",
-        "Toggles save immediately on change via Supabase: bookies.update({ column: value }).eq('id', bookie.id)",
-        "Success toast after save",
-        "Settings page loads current bookie values on mount",
-        "Verify in browser using dev-browser skill"
+        "Add 'Notifications' row to organizer SettingsView menu (between Change Password and Subscription)",
+        "Create BookieNotificationPreferencesView.swift with toggle list in .cardStyle() card",
+        "Four toggles for organizers: 'New members' (new_members), 'Pick submissions' (pick_submissions), 'Risk alerts' (risk_alerts), 'Game results' (game_results)",
+        "On appear, fetch notification_preferences for current user from Supabase. If no row exists, insert one with defaults",
+        "Each toggle updates the corresponding column in notification_preferences via Supabase",
+        "Match existing Settings visual style",
+        "Typecheck passes"
       ],
       "priority": 11,
       "passes": false,
-      "notes": "Add to the settings page created in US-010. Toggle switches can be styled checkboxes or custom CSS toggle components. The bookies table has columns: default_credit_limit, allow_futures_parlays. Load current values in loadBookie() or a dedicated loadSettings() method. For Pro gating, use the existing isPro property."
+      "notes": "Organizers see different toggles than members since they care about different events. Follow the same pattern as US-010."
     },
     {
       "id": "US-012",
-      "title": "Add settings page — danger zone (step down, delete account)",
-      "description": "As an organizer, I want to step down from organizer role or delete my account from the web dashboard settings.",
+      "title": "Add badge count and clear on foreground",
+      "description": "As a user, I want to see a badge on the app icon when I have unread graded picks, and have it clear when I open the app.",
       "acceptanceCriteria": [
-        "Danger Zone section at bottom of settings page with red-tinted styling",
-        "Step Down as Organizer button: calls step_down_organizer edge function",
-        "Step Down shows confirmation modal: 'Your organizer dashboard and settings will be removed. Your personal pick history will be preserved.'",
-        "Step Down validates: if error 'has_members_or_invites', show alert about removing members/invites first",
-        "On successful step down, redirect to index.html (log out)",
-        "Delete Account button: two-step confirmation (first: 'Are you sure?', second: 'Type DELETE to confirm')",
-        "Delete calls delete_account edge function",
-        "On successful delete, redirect to index.html",
-        "Both buttons show loading state during edge function call",
-        "Verify in browser using dev-browser skill"
+        "In NotificationService, when app enters foreground (via scenePhase .active or NotificationCenter willEnterForeground), set UNUserNotificationCenter.current().setBadgeCount(0)",
+        "In send_notification APNs payload, set badge to 1 for pick_graded and balance_adjusted events",
+        "Typecheck passes"
       ],
       "priority": 12,
       "passes": false,
-      "notes": "Add to the settings page. Step down edge function: supabase/functions/step_down_organizer/index.ts. Delete account edge function: supabase/functions/delete_account/index.ts. For the two-step delete confirmation, add state: showDeleteStep1, showDeleteStep2, deleteConfirmText. Only enable final delete button when deleteConfirmText === 'DELETE'. After either operation succeeds, sign out and redirect."
-    },
-    {
-      "id": "US-013",
-      "title": "Add about section and links to settings page",
-      "description": "As an organizer, I want to see app info and legal links on the settings page.",
-      "acceptanceCriteria": [
-        "About section on settings page with: Website link (bookisports.com), Terms of Service link (bookisports.com/terms), Privacy Policy link (bookisports.com/privacy)",
-        "Links open in new tab (target='_blank')",
-        "Copyright line: 'Booki Sports 2026. All rights reserved.'",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 13,
-      "passes": false,
-      "notes": "Simple static section at the bottom of settings (above danger zone). Use anchor tags with the existing btn-ghost styling or plain text links."
-    },
-    {
-      "id": "US-014",
-      "title": "Add pending invites list and capacity banner to members page",
-      "description": "As an organizer, I want to see and manage pending invites and my member capacity on the members page.",
-      "acceptanceCriteria": [
-        "Pending Invites section shown above the members table (only if unclaimed invites exist)",
-        "Each invite row shows: code (truncated), email (if set, or '—'), credit limit, created date",
-        "Each invite has: Copy Code button, Copy Link button (copies bookisports.com deep link), Delete button",
-        "Delete shows confirmation, then calls supabase.from('invites').delete().eq('id', inviteId)",
-        "Member Capacity banner below page header: 'X of Y members' with progress bar",
-        "Y = 3 for free tier, 50 for pro tier",
-        "When at capacity: banner turns warning color, invite button disabled with tooltip",
-        "Data query: invites.select('*').eq('bookie_id', bookie.id).is('claimed_at', null).order('created_at', desc)",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 14,
-      "passes": false,
-      "notes": "Add invites loading to dashboard.js — loadInvites() method. Add state: invites array, isDeletingInvite. The capacity banner uses activeMemberCount (already computed) vs tier limit. Copy Link format could be something like 'Download Booki and use code: XXXX' or a bookisports.com URL. For delete, only allow deleting unclaimed invites (claimed_at IS NULL)."
-    },
-    {
-      "id": "US-015",
-      "title": "Add exposure stats and members section to dashboard",
-      "description": "As an organizer, I want to see net exposure, top risk member, and member risk cards on my dashboard.",
-      "acceptanceCriteria": [
-        "Stats grid expanded from 4 tiles to 6 (2x3 on desktop, 2x2+2 on mobile)",
-        "New tile: Net Exposure — sum of potential payouts on open bets (status in ['pending','accepted'])",
-        "New tile: Top Risk — name of member with highest open exposure, clickable → navigates to member detail",
-        "Members section below stats: compact cards for each member showing name, balance, utilization bar, open picks count",
-        "Members sorted by open exposure descending (highest risk first)",
-        "Open exposure per member: sum of potential payouts on their open bets",
-        "Data query: bets.select('stake,odds,player_id,status').eq('bookie_id', bookie.id).in('status', ['pending','accepted'])",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 15,
-      "passes": false,
-      "notes": "Extend loadDashboard() to also fetch open bets for exposure calculation. Potential payout = stake * (decimal odds - 1) for each open bet. Group by player_id to find per-member exposure. The member cards can be a new 'dashboard-members' section in app.html. Utilization bar reuses the credit bar pattern from member detail."
-    },
-    {
-      "id": "US-016",
-      "title": "Add pro-gated analytics sections to dashboard",
-      "description": "As a Pro organizer, I want to see sport performance breakdown and futures activity on my dashboard.",
-      "acceptanceCriteria": [
-        "Sport Performance section: table with sport name, picks count, total staked, net PnL, bookie win rate per sport",
-        "Data derived from bets table: group by sport column, aggregate stats",
-        "Futures Activity section: open futures count, total staked on futures, top 3 popular selections",
-        "Data query: bets with market_type='outright' and status in ['pending','accepted']",
-        "Free tier: both sections shown with blur/opacity overlay and centered 'Upgrade to Pro' button",
-        "Pro tier: sections shown normally without overlay",
-        "Upgrade button navigates to #/subscription",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 16,
-      "passes": false,
-      "notes": "Add sections to the dashboard view in app.html. For the blur overlay, use CSS: filter: blur(4px) + pointer-events: none on the content, with an absolutely positioned upgrade CTA on top. Sport data comes from bets.sport column. Futures use market_type='outright'. Top 3 popular = most common team_name/selection among open futures."
-    },
-    {
-      "id": "US-017",
-      "title": "Add attention tags to member cards",
-      "description": "As an organizer, I want to see behavioral tags (Overdue, On Heater, Whale, etc.) on member cards across dashboard and member detail.",
-      "acceptanceCriteria": [
-        "computeAttentionTags(player, playerBets, playerLedger) function returns array of tag objects",
-        "Tags computed: Picks Pending (has pending bets), Overdue (negative balance older than 7 days), On Heater (3+ consecutive wins), Cold Streak (3+ consecutive losses), Whale (avg stake > 2x group average), Degen (5+ bets in any 24h window), Parlay Demon (60%+ of bets are parlays)",
-        "Tags displayed as colored chips: Picks Pending=yellow, Overdue=red, On Heater=green, Cold Streak=blue, Whale=purple, Degen=orange, Parlay Demon=pink",
-        "Tags shown on dashboard member cards (US-015) and member detail header (US-006)",
-        "Clicking a tag shows tooltip/popover with explanation",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 17,
-      "passes": false,
-      "notes": "Add computeAttentionTags() to dashboard.js. It needs the player's bets (sorted by created_at) and ledger entries. Consecutive wins/losses: look at the last N graded bets in order. Group average stake: compute across all players' bets. 24h window for Degen: sliding window check. Cache computed tags to avoid recalculating on every render."
-    },
-    {
-      "id": "US-018",
-      "title": "Add loading skeletons and empty states",
-      "description": "As an organizer, I want to see shimmer placeholders while data loads and helpful empty states when no data exists.",
-      "acceptanceCriteria": [
-        "Dashboard stat tiles show shimmer animation while loadDashboard() is in progress",
-        "Members table shows 3 skeleton rows while loadPlayers() is in progress",
-        "Picks table shows 3 skeleton rows while loadPicks() is in progress",
-        "Skeleton CSS: animated gradient sweep (left-to-right shimmer) on placeholder divs",
-        "Empty state for no members: 'Invite your first member' with invite button",
-        "Empty state for no picks: 'No picks yet. Members will appear here once they start placing picks.'",
-        "Empty state for no activity: 'Activity will show up as members place picks and balances change.'",
-        "Add isLoading state variables: isLoadingDashboard, isLoadingPlayers, isLoadingPicks",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 18,
-      "passes": false,
-      "notes": "Add shimmer CSS to dashboard.css: @keyframes shimmer with background gradient animation. Skeleton elements use .skeleton class with fixed height and border-radius. Add isLoading flags that are set true before fetch and false after. Use x-show with the loading flags to toggle between skeleton and real content. Empty states replace the existing basic 'No X found' text with styled cards."
-    },
-    {
-      "id": "US-019",
-      "title": "Add responsive table-to-card layout for mobile",
-      "description": "As an organizer on mobile, I want tables to display as stacked cards instead of horizontal tables.",
-      "acceptanceCriteria": [
-        "At viewport < 768px, members table converts to stacked cards (each member is a card with label:value rows)",
-        "At viewport < 768px, picks table converts to stacked cards",
-        "At viewport < 768px, recent activity table converts to stacked cards",
-        "Cards show all the same data as table rows but in vertical layout",
-        "Stats grid: 2 columns on mobile (2x2 then 2x1 for 6 tiles)",
-        "Modals become near-full-screen on mobile (max-width: 100%, height: auto, margin: 16px)",
-        "CSS-only solution using @media queries and CSS grid/flexbox — no JS changes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 19,
-      "passes": false,
-      "notes": "Use CSS @media (max-width: 768px) rules in dashboard.css. Tables can be converted by setting display:block on rows and display:flex on cells with labels via ::before pseudo-elements using data-label attributes, OR by duplicating the layout with x-show for mobile vs desktop. The CSS-only approach with display:block on <tr> and ::before content is cleanest."
-    },
-    {
-      "id": "US-020",
-      "title": "Add Supabase Realtime subscriptions for live updates",
-      "description": "As an organizer, I want the dashboard to update in real-time when members place picks or balances change.",
-      "acceptanceCriteria": [
-        "On init, subscribe to Supabase Realtime channel for bookie-scoped changes",
-        "Listen for changes on bets table (filter: bookie_id=eq.<bookieId>) — triggers loadPicks() and loadDashboard()",
-        "Listen for changes on players table (filter: bookie_id=eq.<bookieId>) — triggers loadPlayers()",
-        "Listen for changes on ledger_entries table (filter: bookie_id=eq.<bookieId>) — triggers loadPlayers() and loadDashboard()",
-        "Unsubscribe on logout to prevent memory leaks",
-        "Debounce reload calls to prevent rapid-fire updates (300ms debounce)",
-        "No visual indicator needed — data just refreshes silently"
-      ],
-      "priority": 20,
-      "passes": false,
-      "notes": "Supabase JS v2 Realtime: this.supabase.channel('bookie-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'bets', filter: `bookie_id=eq.${this.bookie.id}` }, callback).subscribe(). Add the subscription in init() after loadBookie(). Store the channel reference for cleanup. Debounce: use a simple setTimeout pattern that clears previous timeout before setting new one."
-    },
-    {
-      "id": "US-021",
-      "title": "Add pagination for picks and sortable columns for members",
-      "description": "As an organizer, I want to load more picks beyond the initial batch and sort the members table by different columns.",
-      "acceptanceCriteria": [
-        "Picks: initial load fetches 50 (changed from 100), 'Load More' button at bottom fetches next 50",
-        "Load More appends to existing bets array (not replaces)",
-        "Load More button hidden when fewer than 50 results returned (no more data)",
-        "Members table: column headers (Name, Balance, Credit, Status) are clickable for sorting",
-        "Clicking a column header toggles ascending/descending sort",
-        "Sort indicator (arrow up/down) shown on active sort column",
-        "Default sort: by name ascending (existing behavior)",
-        "Client-side sorting (all players already loaded)",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 21,
-      "passes": false,
-      "notes": "For pagination, add picksOffset state variable. loadPicks() uses .range(offset, offset+49). Load More increments offset by 50 and appends results. For sorting, add memberSortColumn and memberSortAsc state. The filteredPlayers computed property should apply sorting after search filtering. Column headers get @click handlers and sort indicator spans."
+      "notes": "Simple badge: always 1 when there's a notification, clear to 0 on foreground. No need to track exact unread count for v1."
     }
   ]
 }
