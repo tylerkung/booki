@@ -708,6 +708,7 @@ private struct SettleUpSheet: View {
     let syncService: SyncService
     @Environment(\.dismiss) private var dismiss
 
+    @State private var amountString = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var idempotencyKey = UUID().uuidString
@@ -716,7 +717,22 @@ private struct SettleUpSheet: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
-        return formatter.string(from: balanceOwed as NSDecimalNumber) ?? "$\(balanceOwed)"
+        return formatter.string(from: abs(balanceOwed) as NSDecimalNumber) ?? "$\(abs(balanceOwed))"
+    }
+
+    /// Who owes whom — positive balanceOwed = player owes bookie
+    private var directionLabel: String {
+        balanceOwed > 0 ? "\(player.bookieDisplayName) owes you" : "You owe \(player.bookieDisplayName)"
+    }
+
+    private var enteredAmount: Decimal? {
+        guard !amountString.isEmpty else { return nil }
+        return Decimal(string: amountString)
+    }
+
+    private var isValid: Bool {
+        guard let amount = enteredAmount, amount > 0 else { return false }
+        return true
     }
 
     var body: some View {
@@ -724,24 +740,63 @@ private struct SettleUpSheet: View {
             ZStack {
                 Theme.background.ignoresSafeArea()
 
-                VStack(spacing: 24) {
-                    Spacer()
-
-                    // Confirmation message
-                    VStack(spacing: 16) {
-                        Image(systemName: "checkmark.circle")
-                            .font(.system(size: 48))
-                            .foregroundStyle(Theme.accent)
-
-                        Text("Settle \(player.bookieDisplayName)'s balance?")
-                            .font(Theme.font(size: 20, weight: .bold))
-                            .foregroundStyle(Theme.textPrimary)
-                            .multilineTextAlignment(.center)
-
-                        Text("This will zero out the outstanding balance of \(formattedBalanceOwed).")
+                VStack(spacing: 20) {
+                    // Balance summary
+                    VStack(spacing: 8) {
+                        Text(directionLabel)
                             .font(Theme.bodyFont(size: 15))
                             .foregroundStyle(Theme.textSecondary)
-                            .multilineTextAlignment(.center)
+
+                        Text(formattedBalanceOwed)
+                            .font(Theme.font(size: 32, weight: .bold))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .padding(.top, 24)
+
+                    // Amount input
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("PAYMENT AMOUNT")
+                            .font(Theme.caption)
+                            .fontWeight(.semibold)
+                            .tracking(1)
+                            .foregroundStyle(Theme.textSecondary)
+
+                        HStack {
+                            Text("$")
+                                .font(Theme.font(size: 24, weight: .bold))
+                                .foregroundStyle(Theme.textSecondary)
+
+                            TextField("0.00", text: $amountString)
+                                .font(Theme.font(size: 24, weight: .bold))
+                                .foregroundStyle(Theme.textPrimary)
+                                .keyboardType(.decimalPad)
+                        }
+                        .padding(14)
+                        .background(Theme.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                                .stroke(Theme.border, lineWidth: 0.5)
+                        )
+                    }
+                    .padding(.horizontal)
+
+                    // Pay in Full shortcut
+                    if abs(balanceOwed) > 0 {
+                        Button {
+                            let absBalance = abs(balanceOwed)
+                            amountString = "\(absBalance)"
+                        } label: {
+                            Text("Pay in Full (\(formattedBalanceOwed))")
+                                .font(Theme.bodyFont(size: 15, weight: .medium))
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+
+                    // Partial payment warning
+                    if let amount = enteredAmount, amount > 0, amount != abs(balanceOwed) {
+                        partialPaymentWarning(amount: amount)
+                            .padding(.horizontal)
                     }
 
                     Spacer()
@@ -762,16 +817,16 @@ private struct SettleUpSheet: View {
                                 .frame(maxWidth: .infinity)
                                 .padding()
                         } else {
-                            Text("CONFIRM SETTLED")
+                            Text("CONFIRM PAYMENT")
                                 .font(Theme.font(size: 16, weight: .bold))
                                 .foregroundStyle(.black)
                                 .frame(maxWidth: .infinity)
                                 .padding()
                         }
                     }
-                    .background(isLoading ? Theme.accent.opacity(0.5) : Theme.accent)
+                    .background(isValid && !isLoading ? Theme.accent : Theme.accent.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
-                    .disabled(isLoading)
+                    .disabled(!isValid || isLoading)
                 }
                 .padding()
             }
@@ -786,22 +841,63 @@ private struct SettleUpSheet: View {
         }
     }
 
+    private func partialPaymentWarning(amount: Decimal) -> some View {
+        let remaining = abs(balanceOwed) - amount
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        let remainingStr = formatter.string(from: abs(remaining) as NSDecimalNumber) ?? "$\(abs(remaining))"
+        let name = player.bookieDisplayName
+
+        let message: String
+        if amount > abs(balanceOwed) {
+            // Overpaying — balance flips direction
+            if balanceOwed > 0 {
+                message = "This is more than owed. You'll owe \(name) \(remainingStr) after this payment."
+            } else {
+                message = "This is more than owed. \(name) will owe you \(remainingStr) after this payment."
+            }
+        } else {
+            // Underpaying
+            if balanceOwed > 0 {
+                message = "\(name) will still owe you \(remainingStr) after this payment."
+            } else {
+                message = "You'll still owe \(name) \(remainingStr) after this payment."
+            }
+        }
+
+        return HStack(spacing: 8) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.warning)
+            Text(message)
+                .font(Theme.bodyFont(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .padding(12)
+        .background(Theme.warning.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+    }
+
     private func submitSettlement() async {
+        guard let amount = enteredAmount, amount > 0 else { return }
         isLoading = true
         errorMessage = nil
 
-        let amount = balanceOwed
+        // Negate: if player owes bookie (positive balance), payment reduces it (negative adjustment)
+        // If bookie owes player (negative balance), payment to player also reduces magnitude (positive adjustment)
+        let adjustmentAmount = balanceOwed > 0 ? -amount : amount
         let reason = "Settled up"
 
         var request = AdjustBalanceRequest(
             playerId: player.id.uuidString.lowercased(),
-            amount: "\(-amount)",
+            amount: "\(adjustmentAmount)",
             reason: reason,
             idempotencyKey: idempotencyKey
         )
         request.type = "paymentLogged"
 
-        print("[SettleUpSheet] Submitting settlement: player=\(player.id), amount=\(-amount), idempotencyKey=\(idempotencyKey)")
+        print("[SettleUpSheet] Submitting settlement: player=\(player.id), amount=\(adjustmentAmount), idempotencyKey=\(idempotencyKey)")
 
         do {
             let response: AdjustBalanceResponse = try await EdgeFunctionService.shared.callFunction(
@@ -811,7 +907,6 @@ private struct SettleUpSheet: View {
 
             print("[SettleUpSheet] Edge function returned: success=\(response.success)")
 
-            // Pull down the new ledger entry from server immediately
             print("[SettleUpSheet] Triggering ledger sync...")
             await syncService.syncTable(.ledgerEntries)
             print("[SettleUpSheet] Ledger sync complete")

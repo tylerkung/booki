@@ -139,6 +139,12 @@ struct BookiApp: App {
                 .font: navLargeTitleFont
             ]
 
+            // Back button font
+            let backButtonFont = UIFont(name: "IBMPlexSans-Medm", size: 17) ?? .systemFont(ofSize: 17, weight: .medium)
+            let backButtonAppearance = UIBarButtonItemAppearance()
+            backButtonAppearance.normal.titleTextAttributes = [.font: backButtonFont]
+            navBarAppearance.backButtonAppearance = backButtonAppearance
+
             UINavigationBar.appearance().standardAppearance = navBarAppearance
             UINavigationBar.appearance().scrollEdgeAppearance = navBarAppearance
             UINavigationBar.appearance().compactAppearance = navBarAppearance

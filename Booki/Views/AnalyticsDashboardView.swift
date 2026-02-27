@@ -13,7 +13,7 @@ struct AnalyticsDashboardView: View {
     @State private var scrollToPlayers = false
     @State private var showSkeleton = true
     @State private var showProUpgrade = false
-    @State private var timeframe: Timeframe = .all
+    @State private var timeframe: Timeframe = .day
 
     enum Timeframe: String, CaseIterable {
         case day = "1D"

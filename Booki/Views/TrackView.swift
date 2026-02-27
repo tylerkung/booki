@@ -407,6 +407,14 @@ struct TicketCardView: View {
                             .foregroundStyle(presenter.profitColor)
                     }
 
+                }
+
+                VStack(spacing: 6) {
+                    Image(systemName: "chevron.right")
+                        .font(Theme.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.textMuted)
+
                     // Mini status dots for parlay legs
                     if ticket.isParlay {
                         HStack(spacing: 4) {
@@ -418,12 +426,6 @@ struct TicketCardView: View {
                         }
                     }
                 }
-
-                Image(systemName: "chevron.right")
-                    .font(Theme.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Theme.textMuted)
-                    .padding(.top, 4)
             }
             .padding(12)
 
