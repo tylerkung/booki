@@ -153,7 +153,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "pick_declined maps to the picks_graded preference key since it's a pick status change. The bet data (team name, market type, stake) is already available in these functions."
     },
     {

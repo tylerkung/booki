@@ -133,3 +133,18 @@ Started: Fri Feb 27 02:10:26 PST 2026
   - Use `bookieRecord?.auth_user_id` (optional chaining) since the bookie query uses `let` binding and could be null
   - `sendNotification` is imported directly from `_shared/notifications.ts` (not via the HTTP endpoint) per established pattern
 ---
+
+## 2026-02-27 - US-009
+- Implemented: Push notifications in `submit_bet`, `submit_bets`, and `decline_bet` edge functions
+- `submit_bet`: After successful bet creation, notifies bookie with event `pick_submitted`. Body: "{playerName} — {side} {market} ${stake}", deep link to bet detail. Expanded bookie query to include `auth_user_id`, player query to include `name`.
+- `submit_bets`: After successful batch insertion, sends one summary notification to bookie: "{playerName} submitted {count} picks", deep link to picks tab. Same query expansions as submit_bet.
+- `decline_bet`: After declining, looks up player's `auth_user_id` from players table, sends notification with event `pick_declined`: "{side} {market} was declined", deep link to bet detail.
+- All notification calls wrapped in try/catch — failures logged but don't affect the main operation
+- Files changed: `supabase/functions/submit_bet/index.ts`, `supabase/functions/submit_bets/index.ts`, `supabase/functions/decline_bet/index.ts`
+- **Learnings for future iterations:**
+  - `submit_bet` bookie query already existed for `manual_bet_acceptance` — just expand `.select()` to include `auth_user_id`
+  - `submit_bets` follows same pattern — bookie query expanded, player query expanded for `name`
+  - `decline_bet` doesn't have a player query in its flow — need a separate lookup by `bet.player_id` after the decline succeeds
+  - Bet records store resolved `side` (team name) and `market` (type) — use directly in notification body, no need to re-resolve from market table
+  - `pick_declined` event maps to `picks_graded` preference in the notification helper's event-to-preference mapping
+---
