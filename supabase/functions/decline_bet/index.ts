@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
+import { sendNotification } from '../_shared/notifications.ts';
 
 interface DeclineBetRequest {
   bet_id: string;
@@ -143,6 +144,27 @@ Deno.serve(async (req) => {
 
     // Store idempotency key with response
     await storeIdempotency(client, body.idempotency_key, 'decline_bet', userId, response);
+
+    // Notify player that their pick was declined (fire-and-forget)
+    try {
+      const { data: playerRecord } = await client
+        .from('players')
+        .select('auth_user_id')
+        .eq('id', bet.player_id)
+        .single();
+
+      if (playerRecord?.auth_user_id) {
+        await sendNotification({
+          event: 'pick_declined',
+          recipientUserIds: [playerRecord.auth_user_id],
+          title: 'Pick declined',
+          body: `${bet.side} ${bet.market} was declined`,
+          data: { deep_link: `booki://bet/${bet.id}` },
+        });
+      }
+    } catch (notifError) {
+      console.error('Notification error (decline_bet):', notifError);
+    }
 
     return new Response(
       response,

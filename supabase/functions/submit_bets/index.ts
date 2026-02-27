@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
+import { sendNotification } from '../_shared/notifications.ts';
 
 interface BatchBetInput {
   event_id: string;
@@ -111,7 +112,7 @@ Deno.serve(async (req) => {
     // 2. Player lookup + validation
     const { data: player, error: playerError } = await client
       .from('players')
-      .select('id, bookie_id, auth_user_id')
+      .select('id, bookie_id, auth_user_id, name')
       .eq('id', normalizedPlayerId)
       .single();
 
@@ -201,7 +202,7 @@ Deno.serve(async (req) => {
     // 5. Bookie manual mode
     const { data: bookie } = await client
       .from('bookies')
-      .select('manual_bet_acceptance')
+      .select('manual_bet_acceptance, auth_user_id')
       .eq('id', requestBookieId)
       .single();
 
@@ -367,6 +368,22 @@ Deno.serve(async (req) => {
 
     // 11. Store idempotency
     await storeIdempotency(client, body.idempotency_key, 'submit_bets', userId, response);
+
+    // Notify bookie of batch pick submission (fire-and-forget)
+    try {
+      if (bookie?.auth_user_id && createdBets.length > 0) {
+        const playerName = player.name || 'A member';
+        await sendNotification({
+          event: 'pick_submitted',
+          recipientUserIds: [bookie.auth_user_id],
+          title: 'New picks',
+          body: `${playerName} submitted ${createdBets.length} pick${createdBets.length > 1 ? 's' : ''}`,
+          data: { deep_link: 'booki://picks' },
+        });
+      }
+    } catch (notifError) {
+      console.error('Notification error (submit_bets):', notifError);
+    }
 
     return new Response(
       response,

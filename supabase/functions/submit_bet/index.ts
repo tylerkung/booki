@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
+import { sendNotification } from '../_shared/notifications.ts';
 
 interface SubmitBetRequest {
   event_id: string;
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
     // Validate: player exists and belongs to the specified bookie
     const { data: player, error: playerError } = await client
       .from('players')
-      .select('id, bookie_id, auth_user_id')
+      .select('id, bookie_id, auth_user_id, name')
       .eq('id', normalizedPlayerId)
       .single();
 
@@ -196,7 +197,7 @@ Deno.serve(async (req) => {
     // Default is false (auto-accept enabled), meaning bets are accepted immediately
     const { data: bookie } = await client
       .from('bookies')
-      .select('manual_bet_acceptance')
+      .select('manual_bet_acceptance, auth_user_id')
       .eq('id', requestBookieId)
       .single();
 
@@ -303,6 +304,23 @@ Deno.serve(async (req) => {
 
     // Store idempotency key with response
     await storeIdempotency(client, body.idempotency_key, 'submit_bet', userId, response);
+
+    // Notify bookie of new pick (fire-and-forget)
+    try {
+      if (bookie?.auth_user_id) {
+        const playerName = player.name || 'A member';
+        const stakeDisplay = `$${stakeNum}`;
+        await sendNotification({
+          event: 'pick_submitted',
+          recipientUserIds: [bookie.auth_user_id],
+          title: 'New pick',
+          body: `${playerName} — ${resolvedSide} ${marketType} ${stakeDisplay}`,
+          data: { deep_link: `booki://bet/${bet.id}` },
+        });
+      }
+    } catch (notifError) {
+      console.error('Notification error (submit_bet):', notifError);
+    }
 
     return new Response(
       response,
