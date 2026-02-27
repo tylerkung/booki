@@ -119,3 +119,17 @@ Started: Fri Feb 27 02:10:26 PST 2026
   - Player `auth_user_id` must be looked up from `players` table (bets have `player_id`, not auth ID)
   - `sendGradingNotifications` helper pattern: collect graded bets during loop, send after loop completes — avoids mid-loop async notification delays
 ---
+
+## 2026-02-27 - US-008
+- Implemented: Push notifications in `adjust_balance` and `claim_invite` edge functions
+- `adjust_balance`: After successful ledger entry, sends notification to player's `auth_user_id` with event `balance_adjusted`. Title varies: "Payment recorded" for `paymentLogged` type, "Balance updated" for adjustments. Body includes amount and optional reason.
+- `claim_invite`: After successful claim, sends notification to bookie's `auth_user_id` with event `new_member`. Body: "{playerName} joined your group", deep link to member detail.
+- Both expand their existing DB queries to include `auth_user_id` (player query in adjust_balance, bookie query in claim_invite)
+- Both wrapped in try/catch — failures logged but don't affect the main operation
+- Files changed: `supabase/functions/adjust_balance/index.ts`, `supabase/functions/claim_invite/index.ts`
+- **Learnings for future iterations:**
+  - `adjust_balance` already has the player record from validation — just expand `.select()` to include `auth_user_id`
+  - `claim_invite` already queries `bookies` for `default_credit_limit` — expand that to include `auth_user_id`
+  - Use `bookieRecord?.auth_user_id` (optional chaining) since the bookie query uses `let` binding and could be null
+  - `sendNotification` is imported directly from `_shared/notifications.ts` (not via the HTTP endpoint) per established pattern
+---

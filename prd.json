@@ -138,7 +138,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "adjust_balance already has the player and bookie context. claim_invite already has player name and bookie ID. Just add the notification call at the end of the success path."
     },
     {
