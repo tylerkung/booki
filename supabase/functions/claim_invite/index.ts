@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
+import { sendNotification } from '../_shared/notifications.ts';
 
 interface ClaimInviteRequest {
   invite_code: string;
@@ -123,7 +124,7 @@ Deno.serve(async (req) => {
     let creditLimit = 1000; // fallback default
     const { data: bookieRecord } = await client
       .from('bookies')
-      .select('default_credit_limit')
+      .select('default_credit_limit, auth_user_id')
       .eq('id', invite.bookie_id)
       .single();
 
@@ -196,6 +197,21 @@ Deno.serve(async (req) => {
         player_name: newPlayer.name,
       },
     });
+
+    // Send push notification to the bookie (fire-and-forget)
+    if (bookieRecord?.auth_user_id) {
+      try {
+        await sendNotification({
+          event: 'new_member',
+          recipientUserIds: [bookieRecord.auth_user_id],
+          title: 'New member',
+          body: `${newPlayer.name} joined your group`,
+          data: { deep_link: `booki://members/${newPlayer.id}` },
+        });
+      } catch (notifError) {
+        console.error('Failed to send new member notification:', notifError);
+      }
+    }
 
     // Prepare success response
     const response = JSON.stringify({

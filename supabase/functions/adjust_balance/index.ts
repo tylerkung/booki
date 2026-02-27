@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
+import { sendNotification } from '../_shared/notifications.ts';
 
 interface AdjustBalanceRequest {
   player_id: string;
@@ -102,7 +103,7 @@ Deno.serve(async (req) => {
     // Validate: player exists and belongs to this bookie
     const { data: player, error: playerError } = await client
       .from('players')
-      .select('id, bookie_id')
+      .select('id, bookie_id, auth_user_id')
       .eq('id', body.player_id)
       .single();
 
@@ -162,6 +163,30 @@ Deno.serve(async (req) => {
 
     // Store idempotency key with response
     await storeIdempotency(client, body.idempotency_key, 'adjust_balance', userId, response);
+
+    // Send push notification to the player (fire-and-forget)
+    if (player.auth_user_id) {
+      try {
+        const isPayment = body.type === 'paymentLogged';
+        const absAmount = Math.abs(amount).toFixed(2);
+        const notifTitle = isPayment ? 'Payment recorded' : 'Balance updated';
+        let notifBody = isPayment
+          ? `$${absAmount} payment recorded`
+          : `Balance adjusted by ${amount >= 0 ? '+' : '-'}$${absAmount}`;
+        if (body.reason) {
+          notifBody += ` — ${body.reason.trim()}`;
+        }
+        await sendNotification({
+          event: 'balance_adjusted',
+          recipientUserIds: [player.auth_user_id],
+          title: notifTitle,
+          body: notifBody,
+          data: { deep_link: 'booki://account' },
+        });
+      } catch (notifError) {
+        console.error('Failed to send balance notification:', notifError);
+      }
+    }
 
     return new Response(
       response,
