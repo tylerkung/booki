@@ -73,7 +73,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Use existing SupabaseManager or sbClient pattern from the codebase. Token hex conversion: deviceToken.map { String(format: '%02x', $0) }.joined(). The delegate method userNotificationCenter(_:willPresent:) should return [.banner, .sound] for foreground display."
     },
     {
@@ -90,7 +90,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Check existing BookiApp.swift and AuthManager.swift for the right injection points. If app uses SwiftUI lifecycle (no AppDelegate), use UIApplicationDelegateAdaptor."
     },
     {

@@ -10,7 +10,11 @@ Started: Fri Feb 27 02:10:26 PST 2026
 - No local Deno — typecheck validated by following existing _shared/ patterns
 - Shared helpers use `createServiceClient()` for service-role DB access
 - `sendNotification()` is fire-and-forget — import from `'../_shared/notifications.ts'`
+- App uses `UIApplicationDelegateAdaptor` in BookiApp.swift for APNs token callbacks
 - APNs JWT uses WebCrypto ECDSA P-256 (importKey pkcs8), cached 50 min
+- Use Codable structs (not AnyJSON dicts) for Supabase insert/upsert in iOS services
+- iOS notification delegate needs `@preconcurrency UNUserNotificationCenterDelegate` for Swift 6
+- Entitlements already have `aps-environment`, Info.plist has `remote-notification` background mode
 ---
 
 ## 2026-02-27 - US-001
@@ -48,4 +52,35 @@ Started: Fri Feb 27 02:10:26 PST 2026
   - Internal edge functions validate `service_role` key directly (compare Bearer token to `SUPABASE_SERVICE_ROLE_KEY` env var)
   - Other edge functions can call this via `fetch` to the Supabase functions URL with service role auth
   - However, for simplicity, most edge functions import `sendNotification()` directly from `_shared/notifications.ts` instead of going through this HTTP endpoint
+---
+
+## 2026-02-27 - US-004
+- Implemented: `Booki/Services/NotificationService.swift`
+- `@Observable @MainActor` singleton following `StoreKitService` pattern
+- `requestPermission()` — requests `.alert, .badge, .sound` authorization, registers for remote notifications if granted
+- `registerToken(_ deviceToken: Data)` — converts token to hex, upserts to `device_tokens` table via Codable struct
+- `removeToken()` — deletes all device_tokens for current user (for logout)
+- `UNUserNotificationCenterDelegate` — `willPresent` returns `[.banner, .sound]`, `didReceive` extracts `deep_link` (routing deferred to US-006)
+- Files changed: `Booki/Services/NotificationService.swift` (new), `Booki.xcodeproj/project.pbxproj` (add to project)
+- **Learnings for future iterations:**
+  - Use Codable structs with `CodingKeys` for Supabase upsert (matches codebase pattern), not `AnyJSON` dictionaries
+  - `@preconcurrency UNUserNotificationCenterDelegate` needed for Swift 6 strict concurrency
+  - `SupabaseClientManager.shared.client` is the canonical way to get the Supabase client
+  - Entitlements (`aps-environment`) and Info.plist (`UIBackgroundModes: remote-notification`) already configured
+  - `booki://` URL scheme already registered in Info.plist
+  - NSObject subclass needed for UNUserNotificationCenterDelegate conformance
+---
+
+## 2026-02-27 - US-005
+- Implemented: Wired NotificationService into app lifecycle
+- Created `AppDelegate` class in BookiApp.swift with `UIApplicationDelegateAdaptor` for `didRegisterForRemoteNotificationsWithDeviceToken` and `didFailToRegisterForRemoteNotificationsWithError`
+- Set `UNUserNotificationCenter.current().delegate = NotificationService.shared` on app launch in `onAppear`
+- Added `NotificationService.shared.requestPermission()` call after successful auth in `checkCurrentSession()` and in the `.signedIn` auth state listener
+- Added `NotificationService.shared.removeToken()` call in `AuthManager.signOut()` before signing out of Supabase (covers all logout paths)
+- Files changed: `Booki/BookiApp.swift`, `Booki/Services/AuthManager.swift`
+- **Learnings for future iterations:**
+  - SwiftUI lifecycle apps need `UIApplicationDelegateAdaptor` for APNs token callbacks — no native SwiftUI equivalent
+  - Best to call `removeToken()` in `AuthManager.signOut()` rather than each view's logout button — single point covers all logout paths
+  - `requestPermission()` is idempotent — safe to call on every sign-in event (returns cached result if already granted)
+  - Auth state listener's `.signedIn` fires on both fresh login and token refresh scenarios — `requestPermission()` is safe here since it only prompts once
 ---
