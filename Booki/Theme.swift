@@ -133,9 +133,9 @@ enum Theme {
         case .bold, .semibold, .heavy, .black:
             name = "IBMPlexSans-Bold"
         case .medium:
-            name = "IBMPlexSans-Medium"
+            name = "IBMPlexSans-Medm"
         default:
-            name = "IBMPlexSans-Regular"
+            name = "IBMPlexSans"
         }
         return Font.custom(name, size: size)
     }

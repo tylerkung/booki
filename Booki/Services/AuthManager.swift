@@ -56,8 +56,9 @@ final class AuthManager {
     private(set) var isLoadingBookie: Bool = false
 
     /// Whether the user is a standalone tracker (authenticated but no bookie or linked player)
+    /// Must also check !isLoadingBookie to avoid a transient true state during ensureBookieRecord()
     var isStandaloneUser: Bool {
-        isAuthenticated && userRole == nil
+        isAuthenticated && userRole == nil && !isLoadingBookie && !isLoading
     }
 
     /// Whether user agreement is required before accessing the app
@@ -137,7 +138,7 @@ final class AuthManager {
             return
         } catch {
             // No player record found - continue to check for bookie record
-            print("No player record found for auth user, checking bookie: \(error)")
+            // No player record found - continue to check for bookie record
         }
 
         // Second, try to find an existing bookie record for this user

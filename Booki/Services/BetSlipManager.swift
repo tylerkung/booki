@@ -4,7 +4,7 @@ import SwiftUI
 /// US-041: Support Multi-Bet (Parlay) Selections
 enum BetMode: String, Codable, CaseIterable {
     case singles = "Singles"
-    case parlay = "Multi-Pick"
+    case parlay = "Multi"
 }
 
 /// Extended selection model for bet slip with event details for display

@@ -86,6 +86,10 @@ struct BetSlipSheet: View {
             let stake = manager.itemStakes[key] ?? 0
             if stake > 0 {
                 initialItemStakeTexts[key] = Self.formatStakeText(stake)
+                let toWin = manager.calculateToWin(odds: item.odds, stake: stake)
+                if toWin > 0 {
+                    initialItemToWinTexts[key] = Self.formatStakeText(toWin)
+                }
             }
         }
         _itemStakeTexts = State(initialValue: initialItemStakeTexts)
@@ -396,7 +400,7 @@ struct BetSlipSheet: View {
             betModeToggle
 
             if showMultiPickTierMessage {
-                Text("Multi-Picks aren't available yet. Ask your organizer to upgrade.")
+                Text("Multi-Picks aren't available. Ask your organizer to unlock this feature.")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)

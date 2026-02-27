@@ -112,12 +112,13 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Update bookie to pro tier with subscription ID
+        // Update bookie to pro tier with subscription ID and source
         const { error: updateError } = await client
           .from('bookies')
           .update({
             tier: 'pro',
             stripe_subscription_id: subscriptionId,
+            subscription_source: 'stripe',
           })
           .eq('id', bookieId);
 
@@ -137,7 +138,7 @@ Deno.serve(async (req) => {
         // Look up bookie by stripe_subscription_id
         const { data: bookie, error: lookupError } = await client
           .from('bookies')
-          .select('id')
+          .select('id, subscription_source')
           .eq('stripe_subscription_id', subscriptionId)
           .single();
 
@@ -146,12 +147,19 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Downgrade to free tier, clear subscription ID
+        // Only downgrade if subscription_source is 'stripe' or NULL (not 'apple')
+        if (bookie.subscription_source === 'apple') {
+          console.log(`customer.subscription.deleted: Skipping — bookie ${bookie.id} managed by Apple IAP`);
+          break;
+        }
+
+        // Downgrade to free tier, clear subscription ID and source
         const { error: updateError } = await client
           .from('bookies')
           .update({
             tier: 'free',
             stripe_subscription_id: null,
+            subscription_source: null,
           })
           .eq('id', bookie.id);
 
@@ -176,7 +184,7 @@ Deno.serve(async (req) => {
         // Look up bookie by stripe_customer_id
         const { data: bookie, error: lookupError } = await client
           .from('bookies')
-          .select('id, tier')
+          .select('id, tier, subscription_source')
           .eq('stripe_customer_id', customerId)
           .single();
 
@@ -185,10 +193,16 @@ Deno.serve(async (req) => {
           break;
         }
 
+        // Only downgrade if subscription_source is 'stripe' or NULL (not 'apple')
+        if (bookie.subscription_source === 'apple') {
+          console.log(`invoice.payment_failed: Skipping — bookie ${bookie.id} managed by Apple IAP`);
+          break;
+        }
+
         // Downgrade to free on payment failure
         const { error: updateError } = await client
           .from('bookies')
-          .update({ tier: 'free' })
+          .update({ tier: 'free', subscription_source: null })
           .eq('id', bookie.id);
 
         if (updateError) {

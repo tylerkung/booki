@@ -1,22 +1,10 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Request/Response Models
-
-private struct PortalRequest: Encodable {}
-
-private struct PortalResponse: Decodable {
-    let success: Bool
-    let url: String?
-    let error: String?
-}
-
 /// Subscription management screen for Pro bookies to view plan details.
 struct SubscriptionManagementView: View {
     @Query private var bookies: [Bookie]
     @Query private var players: [Player]
-    @State private var isLoadingPortal = false
-    @State private var portalError: String?
 
     private var currentBookie: Bookie? {
         bookies.first
@@ -24,7 +12,7 @@ struct SubscriptionManagementView: View {
 
     private var activeMemberCount: Int {
         guard let bookie = currentBookie else { return 0 }
-        return players.filter { $0.bookieId == bookie.id && $0.authUserId != nil && $0.status == .active }.count
+        return players.filter { $0.bookieId == bookie.id && $0.status != .archived }.count
     }
 
     private var memberSinceDate: String {
@@ -41,6 +29,10 @@ struct SubscriptionManagementView: View {
             return "—"
         }
         return formatter.string(from: nextDate)
+    }
+
+    private var displayPrice: String {
+        StoreKitService.shared.product?.displayPrice ?? "$59.99"
     }
 
     var body: some View {
@@ -64,7 +56,7 @@ struct SubscriptionManagementView: View {
                                 .font(Theme.font(size: 20, weight: .bold))
                                 .foregroundStyle(Theme.textPrimary)
 
-                            Text("$49.99 / month")
+                            Text("\(displayPrice) / month")
                                 .font(Theme.bodyFont(size: 15))
                                 .foregroundStyle(Theme.textSecondary)
                         }
@@ -94,7 +86,7 @@ struct SubscriptionManagementView: View {
                 }
                 .cardStyle()
 
-                // Billing header
+                // Manage Subscription
                 Text("BILLING")
                     .font(Theme.caption)
                     .fontWeight(.semibold)
@@ -105,44 +97,29 @@ struct SubscriptionManagementView: View {
                     .padding(.bottom, -8)
 
                 VStack(spacing: 0) {
-                    Button {
-                        Task { await openCustomerPortal() }
-                    } label: {
+                    Link(destination: URL(string: "https://apps.apple.com/account/subscriptions")!) {
                         HStack(spacing: 14) {
                             Image(systemName: "creditcard")
                                 .font(.system(size: 18))
                                 .foregroundStyle(Theme.accent)
                                 .frame(width: 28, alignment: .center)
 
-                            Text("Manage on Stripe")
+                            Text("Manage Subscription")
                                 .font(Theme.body)
                                 .fontWeight(.medium)
                                 .foregroundStyle(Theme.textPrimary)
 
                             Spacer()
 
-                            if isLoadingPortal {
-                                ProgressView()
-                                    .tint(Theme.textMuted)
-                            } else {
-                                Image(systemName: "arrow.up.right")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Theme.textMuted)
-                            }
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Theme.textMuted)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                     }
-                    .disabled(isLoadingPortal)
                 }
                 .cardStyle()
-
-                if let portalError {
-                    Text(portalError)
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.danger)
-                        .padding(.horizontal, 4)
-                }
 
                 Text("Cancel anytime. Your existing members and data are preserved.")
                     .font(Theme.caption)
@@ -155,38 +132,12 @@ struct SubscriptionManagementView: View {
         .background(Theme.background)
         .navigationTitle("Subscription")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await StoreKitService.shared.loadProducts()
+        }
     }
 
     // MARK: - Private Helpers
-
-    private func openCustomerPortal() async {
-        isLoadingPortal = true
-        portalError = nil
-
-        do {
-            let response: PortalResponse = try await EdgeFunctionService.shared.callFunction(
-                name: "create_customer_portal",
-                body: PortalRequest()
-            )
-
-            if response.success, let urlString = response.url, let url = URL(string: urlString) {
-                await MainActor.run {
-                    UIApplication.shared.open(url)
-                    isLoadingPortal = false
-                }
-            } else {
-                await MainActor.run {
-                    portalError = response.error ?? "Failed to open billing portal"
-                    isLoadingPortal = false
-                }
-            }
-        } catch {
-            await MainActor.run {
-                portalError = error.localizedDescription
-                isLoadingPortal = false
-            }
-        }
-    }
 
     private func detailRow(label: String, value: String) -> some View {
         HStack {

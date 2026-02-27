@@ -18,7 +18,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": "dashboard.js is at landing/dashboard/dashboard.js. The current parseRoute() at line 115 uses a simple hash match. Extend it with regex or string splitting to detect /members/<id> and /picks/<id> patterns. Add selectedPlayerId and selectedBetId to the Alpine data object. Add 'member-detail', 'pick-detail', 'settings' to the routes concept."
     },
     {
@@ -37,7 +37,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": "Add a new section in app.html with x-show=\"route === 'pick-detail'\". Add loadPickDetail() method to dashboard.js that fetches the single bet. Potential return calculation: for positive American odds, return = stake * (odds/100); for negative, return = stake * (100/Math.abs(odds)). Use the existing formatCurrency() and formatOdds() helpers. The member name can be looked up from playerMap."
     },
     {
@@ -55,7 +55,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": "Add to the pick detail view created in US-002. The bet_legs table has columns: team_name, market_type, odds, status, ticket_id. Use x-show to conditionally render the parlay section. Settlement events may not exist for all bets — only those that have been settled/reversed/overridden. Gracefully handle empty results."
     },
     {
@@ -76,7 +76,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": "Use the existing callEdgeFunction('grade_bet', body) pattern from dashboard.js. The grade_bet edge function is at supabase/functions/grade_bet/index.ts. After success, call loadPickDetail() to refresh. Add grading state variables (isGrading, gradingOutcome) to Alpine data. Void is just grade_bet with outcome='void'. Style grade buttons: Win=green, Loss=red, Push=gray, Void=outlined/destructive."
     },
     {
@@ -97,7 +97,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
       "notes": "Add override/reverse modals to app.html. Add state: showOverrideModal, overrideOutcome, overrideReason, isOverriding, showReverseModal, isReversing. Edge functions: override_grade at supabase/functions/override_grade/index.ts, reverse_settlement at supabase/functions/reverse_settlement/index.ts. For free tier, use :disabled=\"!isPro\" and show a Pro badge or tooltip."
     },
     {
@@ -116,7 +116,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": true,
+      "passes": false,
       "notes": "Add a new section in app.html with x-show=\"route === 'member-detail'\". Add loadMemberDetail() method. The settle/adjust modals already exist — just set this.settlePlayer or this.adjustPlayer to the loaded player and open the modal. For archive/remove, add new state vars (showArchiveModal, showRemoveModal, isArchiving, isRemoving). Credit utilization bar: use a div with percentage width and accent color background."
     },
     {
@@ -134,7 +134,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 7,
-      "passes": true,
+      "passes": false,
       "notes": "Add to the member detail view created in US-006. Performance data is computed client-side from the fetched bets and ledger entries. PnL excludes paymentLogged entries. Win rate: if (wins+losses) === 0, show '—' instead of NaN. Picks section reuses the pick row layout from the main picks table but in a compact card format."
     },
     {
@@ -152,7 +152,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
-      "passes": true,
+      "passes": false,
       "notes": "Add state: isEditingName, isEditingCredit, editNameValue, editCreditValue. Use x-show to toggle between display text and input field. Save directly via Supabase client (not an edge function — RLS allows bookie to update their own players). After save, also update the player in this.playerMap and this.players array so other views stay in sync."
     },
     {
@@ -170,7 +170,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
-      "passes": true,
+      "passes": false,
       "notes": "Fetch bets and ledger entries for the player, merge into a single array sorted by created_at. Each item needs a normalized shape: { date, type, description, amount, source: 'bet'|'ledger' }. For bets: amount is stake (negative from bookie perspective) for placement, or payout for settlement. For ledger entries: use the entry amount directly. Type badges use the existing statusBadgeClass pattern."
     },
     {
@@ -189,7 +189,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 10,
-      "passes": true,
+      "passes": false,
       "notes": "Add settings section to app.html with x-show=\"route === 'settings'\". Add sidebar nav item in the <ul> before the Log Out link. For password change, Supabase JS v2 uses supabase.auth.updateUser({ password }). The current password re-auth may need supabase.auth.signInWithPassword() first to verify. Add state: settingsName, currentPassword, newPassword, confirmPassword, isSavingProfile, isChangingPassword."
     },
     {
@@ -206,7 +206,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 11,
-      "passes": true,
+      "passes": false,
       "notes": "Add to the settings page created in US-010. Toggle switches can be styled checkboxes or custom CSS toggle components. The bookies table has columns: default_credit_limit, allow_futures_parlays. Load current values in loadBookie() or a dedicated loadSettings() method. For Pro gating, use the existing isPro property."
     },
     {
@@ -226,7 +226,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 12,
-      "passes": true,
+      "passes": false,
       "notes": "Add to the settings page. Step down edge function: supabase/functions/step_down_organizer/index.ts. Delete account edge function: supabase/functions/delete_account/index.ts. For the two-step delete confirmation, add state: showDeleteStep1, showDeleteStep2, deleteConfirmText. Only enable final delete button when deleteConfirmText === 'DELETE'. After either operation succeeds, sign out and redirect."
     },
     {
@@ -240,7 +240,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 13,
-      "passes": true,
+      "passes": false,
       "notes": "Simple static section at the bottom of settings (above danger zone). Use anchor tags with the existing btn-ghost styling or plain text links."
     },
     {
@@ -259,7 +259,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 14,
-      "passes": true,
+      "passes": false,
       "notes": "Add invites loading to dashboard.js — loadInvites() method. Add state: invites array, isDeletingInvite. The capacity banner uses activeMemberCount (already computed) vs tier limit. Copy Link format could be something like 'Download Booki and use code: XXXX' or a bookisports.com URL. For delete, only allow deleting unclaimed invites (claimed_at IS NULL)."
     },
     {
@@ -277,7 +277,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 15,
-      "passes": true,
+      "passes": false,
       "notes": "Extend loadDashboard() to also fetch open bets for exposure calculation. Potential payout = stake * (decimal odds - 1) for each open bet. Group by player_id to find per-member exposure. The member cards can be a new 'dashboard-members' section in app.html. Utilization bar reuses the credit bar pattern from member detail."
     },
     {
@@ -295,7 +295,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 16,
-      "passes": true,
+      "passes": false,
       "notes": "Add sections to the dashboard view in app.html. For the blur overlay, use CSS: filter: blur(4px) + pointer-events: none on the content, with an absolutely positioned upgrade CTA on top. Sport data comes from bets.sport column. Futures use market_type='outright'. Top 3 popular = most common team_name/selection among open futures."
     },
     {
@@ -311,7 +311,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 17,
-      "passes": true,
+      "passes": false,
       "notes": "Add computeAttentionTags() to dashboard.js. It needs the player's bets (sorted by created_at) and ledger entries. Consecutive wins/losses: look at the last N graded bets in order. Group average stake: compute across all players' bets. 24h window for Degen: sliding window check. Cache computed tags to avoid recalculating on every render."
     },
     {
@@ -330,7 +330,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 18,
-      "passes": true,
+      "passes": false,
       "notes": "Add shimmer CSS to dashboard.css: @keyframes shimmer with background gradient animation. Skeleton elements use .skeleton class with fixed height and border-radius. Add isLoading flags that are set true before fetch and false after. Use x-show with the loading flags to toggle between skeleton and real content. Empty states replace the existing basic 'No X found' text with styled cards."
     },
     {
@@ -348,7 +348,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 19,
-      "passes": true,
+      "passes": false,
       "notes": "Use CSS @media (max-width: 768px) rules in dashboard.css. Tables can be converted by setting display:block on rows and display:flex on cells with labels via ::before pseudo-elements using data-label attributes, OR by duplicating the layout with x-show for mobile vs desktop. The CSS-only approach with display:block on <tr> and ::before content is cleanest."
     },
     {
@@ -365,7 +365,7 @@
         "No visual indicator needed — data just refreshes silently"
       ],
       "priority": 20,
-      "passes": true,
+      "passes": false,
       "notes": "Supabase JS v2 Realtime: this.supabase.channel('bookie-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'bets', filter: `bookie_id=eq.${this.bookie.id}` }, callback).subscribe(). Add the subscription in init() after loadBookie(). Store the channel reference for cleanup. Debounce: use a simple setTimeout pattern that clears previous timeout before setting new one."
     },
     {
@@ -384,7 +384,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 21,
-      "passes": true,
+      "passes": false,
       "notes": "For pagination, add picksOffset state variable. loadPicks() uses .range(offset, offset+49). Load More increments offset by 50 and appends results. For sorting, add memberSortColumn and memberSortAsc state. The filteredPlayers computed property should apply sorting after search filtering. Column headers get @click handlers and sort indicator spans."
     }
   ]

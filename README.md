@@ -461,4 +461,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 26, 2026 - Default standalone UX, organizer upsell, step-down flow, smart live scores refresh, hourly auto-refresh, delete_bookie_data RPC, Pro upgrade blocked as Coming Soon*
+*Last updated: February 26, 2026 - Apple IAP integration, IBM Plex Sans global font, web dashboard, expired invite cleanup, subscription member count fix*

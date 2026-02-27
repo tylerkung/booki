@@ -330,7 +330,7 @@ final class SyncService {
                 await syncStandalone()
                 return
             }
-            syncStatus = .error("Not authenticated")
+syncStatus = .error("Not authenticated")
             return
         }
 
@@ -375,14 +375,12 @@ final class SyncService {
                         self.lastSyncedAt = Date()
                         self.syncStatus = .idle
                     }
-
                     // Refresh pending count
                     await self.updatePendingChangesCount()
                 } catch {
                     await MainActor.run {
                         self.syncStatus = .error(error.localizedDescription)
                     }
-                    print("Sync failed: \(error)")
                 }
                 continuation.resume()
             }
@@ -911,6 +909,7 @@ final class SyncService {
                 existing.username = record.username
                 existing.passwordHash = record.passwordHash
                 existing.createdAt = record.createdAt
+                existing.authUserId = record.authUserId
                 existing.updatedAt = record.updatedAt
                 existing.bookieId = bookieId
                 existing.needsSync = false
@@ -934,6 +933,7 @@ final class SyncService {
                 needsSync: false,
                 lastSyncedAt: Date()
             )
+            player.authUserId = record.authUserId
             player.username = record.username
             player.passwordHash = record.passwordHash
             context.insert(player)

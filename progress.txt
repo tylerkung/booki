@@ -403,4 +403,20 @@ Started: Thu Feb 26 14:57:41 PST 2026
   - `BalanceService.calculateBalance()` is ledger-only; `playerSummary().availableCredit` includes open stakes — use the latter for credit utilization
   - `LiabilityService.calculatePayout()` returns profit only (not including stake return)
 ---
+
+## 2026-02-26 - Apple IAP, Font Fix, Expired Invites, Subscription Count
+- **Apple IAP integration**: StoreKitService (StoreKit 2), `apple_iap_webhook` edge function, `subscription_source` column prevents cross-platform webhook conflicts. ProUpgradeSheet uses live IAP purchase ($59.99/mo). Deleted ProCheckoutView (Stripe web checkout). SubscriptionManagementView links to Apple subscription management.
+- **IBM Plex Sans font fix**: Font .ttf files were HTML (downloaded from wrong GitHub URL). Re-downloaded from `IBM/plex` repo. Fixed Xcode `lastKnownFileType` from `text` to `file`. Fixed PostScript name mismatches: Regular=`IBMPlexSans` (not `-Regular`), Medium=`IBMPlexSans-Medm` (not `-Medium`). Set `Theme.body` as global default font on root view.
+- **Nav bar titles**: Space Grotesk Bold applied via UIKit appearance for nav bar titles.
+- **Expired invites auto-delete**: Added `.task` to PlayersListView that deletes expired invites from Supabase and SwiftData on appear.
+- **Subscription member count fix**: `upsertPlayer` in SyncService wasn't syncing `authUserId` from server records. Fixed both update and insert paths. Relaxed `activeMemberCount` filter to `status != .archived`.
+- **Stripe webhook guard**: Only downgrades tier if `subscription_source = 'stripe'` or NULL (not `'apple'`).
+- **Web dashboard landing page**: `landing/dashboard/index.html` with login/signup forms.
+- Files changed: `StoreKitService.swift`, `ProUpgradeSheet.swift`, `SubscriptionManagementView.swift`, `BookiApp.swift`, `Theme.swift`, `SyncService.swift`, `PlayersListView.swift`, `SettingsView.swift`, `stripe_webhook/index.ts`, `apple_iap_webhook/index.ts`, `026_apple_iap_columns.sql`, font .ttf files, `project.pbxproj`
+- **Learnings:**
+  - IBM Plex Sans PostScript names: Regular=`IBMPlexSans`, Medium=`IBMPlexSans-Medm`, Bold=`IBMPlexSans-Bold` — verify with fontTools
+  - Xcode caches `lastKnownFileType` in project.pbxproj — if font files were previously HTML, the type stays `text` even after replacing with real binaries
+  - `Font.custom()` silently falls back to system font when PostScript name doesn't match — no error
+  - `.font(Theme.body)` on root view cascades to all SwiftUI Text views via environment
+  - UIKit nav bar titles need separate font configuration via UINavigationBarAppearance
 ---

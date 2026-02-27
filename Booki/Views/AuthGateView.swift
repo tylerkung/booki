@@ -97,6 +97,14 @@ struct AuthGateView: View {
                 showOnboarding = true
             }
         }
+        // Trigger initial sync when bookieId becomes available (covers both bookie and player roles)
+        // .task(id:) runs on appear AND when the id changes, unlike .onChange which misses pre-set values
+        .task(id: authManager.currentBookieId) {
+            guard let _ = authManager.currentBookieId, !hasTriggeredInitialSync else { return }
+            hasTriggeredInitialSync = true
+            await syncService.sync()
+            await realtimeService.subscribe()
+        }
         .animation(.easeInOut(duration: 0.5), value: authManager.isAuthenticated)
         .animation(.easeInOut(duration: 0.4), value: authManager.isLoading)
         .animation(.easeInOut(duration: 0.4), value: authManager.isLoadingBookie)

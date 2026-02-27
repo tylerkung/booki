@@ -282,3 +282,6 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Override simplified**: Removed "Reverse Settlement" button (terminology conflict with settle up). "Override Grade" renamed to "Override" — handles reversal + re-grading in one step.
 - **Member detail picks**: Shows only open picks (removed Open/Graded segmented picker)
 - **Members list credit fix**: Shows actual credit used (including open stakes) instead of just balance owed
+- **IBM Plex Sans global font**: Fixed font files (were HTML, re-downloaded as real TTF binaries), fixed PostScript name mismatches (`IBMPlexSans` not `-Regular`, `IBMPlexSans-Medm` not `-Medium`), set as global default via `.font(Theme.body)` on root view. Nav bar titles use Space Grotesk Bold via UIKit appearance.
+- **Expired invites auto-delete**: PlayersListView cleans up expired invites from Supabase + SwiftData on appear
+- **Subscription member count fix**: `upsertPlayer` now syncs `authUserId` from server; `activeMemberCount` uses `status != .archived`

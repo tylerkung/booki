@@ -1,0 +1,41 @@
+# Ralph Progress Log
+Started: Tue Feb 25 2026
+
+## Codebase Patterns
+- `.refreshable` cancels its task on view re-render — always use `Task.detached` + `withCheckedContinuation` pattern
+- SyncService is available via `@Environment(SyncService.self)` in player views
+- TrackView groups bets into Ticket structs by ticketId — work with tickets not raw bets for display
+- Bet.gradeResult is `GradeResult?` enum (.win/.loss/.push), not a String — use enum comparison
+- LiabilityService.calculatePayout(stake:odds:) returns profit only (not stake + profit)
+- Player init argument order: name, email, creditLimit, status, ..., displayName (position 14) — do NOT misorder
+- Theme.swift has no `success` color — use `Theme.accent` for green
+- Decimal has no `.rounded()` in Swift — convert through `NSDecimalNumber(decimal:).doubleValue` then `Double.rounded()`
+- ProUpgradeSheet is presented via `.sheet` from multiple views — all entry points must continue working
+
+---
+
+## 2026-02-26: Post-Ralph Audit & Fixes
+
+### Audit Fixes (US-001 through US-012)
+- **US-003 fix**: Hide invite button when at member capacity (PlayersListView `isAtMemberCapacity`)
+- **US-007 fix**: Parse server error codes to friendly messages in BetSlipSheet (`friendlyErrorMessage()`)
+- **BecomeOrganizerView**: Added to Xcode project.pbxproj (Ralph created file but missed project reference)
+- **ProfileSettingsView**: Fixed card margin — changed `VStack(alignment: .leading)` to default alignment
+- **Standalone player cleanup**: Delete synthetic "Standalone" player before `becomeOrganizer()` in AccountView
+- **Delete account**: Always calls edge function (even for standalone users) to delete auth user from Supabase
+
+### Account Deletion RPC (Migration 025)
+- `delete_bookie_data(target_bookie_id)` SECURITY DEFINER function
+- Atomically disables immutability triggers, deletes in FK order, re-enables triggers
+- Called by `delete_account` edge function instead of individual table deletes
+
+### Auto-Refresh & Live Scores Optimization
+- Hourly auto-refresh (was every 2 hours), 50 game cap (was 25)
+- New `refresh_live_scores` edge function: runs every 5 min, smart fetching based on sport duration estimates
+- Sport duration map: NBA 150min, NFL 210min, MLB 180min, etc.
+- Only calls Odds API when games are in "finishing window" (last 30 min of estimated duration)
+- Full auto-grading and parlay settlement when events finalize
+
+### Documentation
+- Updated Odds API from 500 free calls/month to 20,000 paid tier
+- Updated cron schedule documentation

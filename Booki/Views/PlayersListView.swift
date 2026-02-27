@@ -38,7 +38,11 @@ struct PlayersListView: View {
     }
 
     private var pendingInvites: [Invite] {
-        invites.filter { $0.claimedAt == nil && !deletedInviteIds.contains($0.id.uuidString.lowercased()) }
+        invites.filter { $0.claimedAt == nil && !$0.isExpired && !deletedInviteIds.contains($0.id.uuidString.lowercased()) }
+    }
+
+    private var expiredInvites: [Invite] {
+        invites.filter { $0.claimedAt == nil && $0.isExpired }
     }
 
     private var playerSummaries: [PlayerAnalyticsSummary] {
@@ -132,6 +136,9 @@ struct PlayersListView: View {
                 .sheet(isPresented: $showProUpgrade) {
                     ProUpgradeSheet(contextMessage: "You've reached the 3-member limit")
                         .presentationBackground(Theme.background)
+                }
+                .task {
+                    await cleanUpExpiredInvites()
                 }
         }
         .overlay(alignment: .bottom) {
@@ -384,6 +391,27 @@ struct PlayersListView: View {
             }
             .padding(.top, 8)
             .padding(.bottom, 16)
+        }
+    }
+
+    private func cleanUpExpiredInvites() async {
+        let expired = expiredInvites
+        guard !expired.isEmpty else { return }
+        let supabase = SupabaseClientManager.shared.client
+        for invite in expired {
+            let inviteId = invite.id.uuidString.lowercased()
+            do {
+                try await supabase
+                    .from("invites")
+                    .delete()
+                    .eq("id", value: inviteId)
+                    .execute()
+            } catch {
+                print("Failed to delete expired invite \(inviteId): \(error)")
+            }
+            await MainActor.run {
+                modelContext.delete(invite)
+            }
         }
     }
 

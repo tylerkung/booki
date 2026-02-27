@@ -156,6 +156,12 @@ main {
     height: 64px;
 }
 
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
 .nav-logo img {
     width: 100px;
     height: auto;
@@ -177,6 +183,17 @@ main {
 .nav-link:hover,
 .nav-link.active {
     color: var(--text-primary);
+}
+
+.btn-nav-login {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.btn-nav-login:hover {
+    color: var(--accent);
 }
 
 .btn-nav {
@@ -1424,7 +1441,7 @@ html, body {
 @media (max-width: 768px) {
     /* Nav: hamburger menu */
     .nav-links,
-    .btn-nav {
+    .nav-actions {
         display: none;
     }
 

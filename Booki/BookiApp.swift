@@ -47,6 +47,7 @@ struct BookiApp: App {
     var body: some Scene {
         WindowGroup {
             AuthGateView(pendingInviteCode: $pendingInviteCode)
+                .font(Theme.body)
                 .preferredColorScheme(.dark)
                 .environment(authManager)
                 .environment(syncService)
@@ -57,6 +58,10 @@ struct BookiApp: App {
                     let context = sharedModelContainer.mainContext
                     syncService.configure(modelContext: context, authManager: authManager)
                     realtimeService.configure(modelContext: context, authManager: authManager)
+
+                    // Start StoreKit transaction listener + check entitlements
+                    StoreKitService.shared.startTransactionListener()
+                    Task { await StoreKitService.shared.checkCurrentEntitlement() }
                 }
                 .onOpenURL { url in
                     handleIncomingURL(url)
@@ -123,8 +128,16 @@ struct BookiApp: App {
             let navBarAppearance = UINavigationBarAppearance()
             navBarAppearance.configureWithOpaqueBackground()
             navBarAppearance.backgroundColor = UIColor(Theme.background)
-            navBarAppearance.titleTextAttributes = [.foregroundColor: UIColor(Theme.textPrimary)]
-            navBarAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor(Theme.textPrimary)]
+            let navTitleFont = UIFont(name: "SpaceGrotesk-Bold", size: 17) ?? .boldSystemFont(ofSize: 17)
+            let navLargeTitleFont = UIFont(name: "SpaceGrotesk-Bold", size: 34) ?? .boldSystemFont(ofSize: 34)
+            navBarAppearance.titleTextAttributes = [
+                .foregroundColor: UIColor(Theme.textPrimary),
+                .font: navTitleFont
+            ]
+            navBarAppearance.largeTitleTextAttributes = [
+                .foregroundColor: UIColor(Theme.textPrimary),
+                .font: navLargeTitleFont
+            ]
 
             UINavigationBar.appearance().standardAppearance = navBarAppearance
             UINavigationBar.appearance().scrollEdgeAppearance = navBarAppearance

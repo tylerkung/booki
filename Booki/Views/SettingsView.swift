@@ -12,13 +12,6 @@ struct SettingsView: View {
     @State private var showingLogoutError = false
     @State private var logoutErrorMessage = ""
     @State private var showingProUpgrade = false
-    @State private var showingDeleteConfirmation = false
-    @State private var showingDeleteFinalConfirmation = false
-    @State private var isDeletingAccount = false
-    @State private var deleteError: String?
-    @State private var showingStepDownConfirmation = false
-    @State private var isSteppingDown = false
-    @State private var stepDownError: String?
 
     private var isPro: Bool {
         bookies.first?.isPro ?? false
@@ -57,28 +50,13 @@ struct SettingsView: View {
                     settingsMenuRow(icon: "info.circle", title: "About") {
                         AboutSettingsView()
                     }
-                    menuDivider
-                    // Step Down as Organizer
-                    Button {
-                        showingStepDownConfirmation = true
-                    } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: "person.crop.circle.badge.minus")
-                                .font(.system(size: 20))
-                                .foregroundStyle(Theme.danger)
-                                .frame(width: 28, alignment: .center)
+                }
+                .cardStyle()
+                .padding(.horizontal, 16)
+                .padding(.top, 20)
 
-                            Text("Step Down as Organizer")
-                                .font(Theme.body)
-                                .fontWeight(.medium)
-                                .foregroundStyle(Theme.danger)
-
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                    }
-                    menuDivider
+                // Log Out — separate card
+                VStack(spacing: 0) {
                     Button {
                         showingLogoutConfirmation = true
                     } label: {
@@ -89,32 +67,6 @@ struct SettingsView: View {
                                 .frame(width: 28, alignment: .center)
 
                             Text("Log Out")
-                                .font(Theme.body)
-                                .fontWeight(.medium)
-                                .foregroundStyle(Theme.danger)
-
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                    }
-                }
-                .cardStyle()
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
-
-                // Delete Account — separate card at bottom
-                VStack(spacing: 0) {
-                    Button {
-                        showingDeleteConfirmation = true
-                    } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 20))
-                                .foregroundStyle(Theme.danger)
-                                .frame(width: 28, alignment: .center)
-
-                            Text("Delete Account")
                                 .font(Theme.body)
                                 .fontWeight(.medium)
                                 .foregroundStyle(Theme.danger)
@@ -147,79 +99,6 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingProUpgrade) {
                 ProUpgradeSheet()
-            }
-            .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Continue", role: .destructive) {
-                    showingDeleteFinalConfirmation = true
-                }
-            } message: {
-                Text("This will permanently delete your account, all your data, members, picks, and history. This action cannot be undone.")
-            }
-            .alert("Are you sure?", isPresented: $showingDeleteFinalConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Delete My Account", role: .destructive) {
-                    performAccountDeletion()
-                }
-            } message: {
-                Text("This is your final confirmation. Your account and all associated data will be permanently deleted.")
-            }
-            .alert("Deletion Error", isPresented: Binding(
-                get: { deleteError != nil },
-                set: { if !$0 { deleteError = nil } }
-            )) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(deleteError ?? "")
-            }
-            .alert("Step Down as Organizer", isPresented: $showingStepDownConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Step Down", role: .destructive) {
-                    performStepDown()
-                }
-            } message: {
-                Text("Are you sure? Your organizer dashboard and settings will be removed. Your personal pick history will be preserved.")
-            }
-            .alert("Cannot Step Down", isPresented: Binding(
-                get: { stepDownError != nil },
-                set: { if !$0 { stepDownError = nil } }
-            )) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(stepDownError ?? "")
-            }
-            .overlay {
-                if isSteppingDown {
-                    ZStack {
-                        Color.black.opacity(0.5).ignoresSafeArea()
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .tint(Theme.accent)
-                                .scaleEffect(1.5)
-                            Text("Stepping down...")
-                                .font(Theme.bodyFont(size: 15, weight: .medium))
-                                .foregroundStyle(Theme.textPrimary)
-                        }
-                        .padding(32)
-                        .background(Theme.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                    }
-                } else if isDeletingAccount {
-                    ZStack {
-                        Color.black.opacity(0.5).ignoresSafeArea()
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .tint(Theme.accent)
-                                .scaleEffect(1.5)
-                            Text("Deleting account...")
-                                .font(Theme.bodyFont(size: 15, weight: .medium))
-                                .foregroundStyle(Theme.textPrimary)
-                        }
-                        .padding(32)
-                        .background(Theme.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                    }
-                }
             }
         }
     }
@@ -384,6 +263,220 @@ struct SettingsView: View {
         }
     }
 
+}
+
+private struct EmptyRequest: Encodable {}
+private struct DeleteAccountResponse: Decodable {
+    let success: Bool
+    let error: String?
+}
+private struct StepDownResponse: Decodable {
+    let success: Bool
+    let error: String?
+}
+
+// MARK: - Profile Settings
+
+struct ProfileSettingsView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AuthManager.self) private var authManager
+    @Query private var bookies: [Bookie]
+    @Query private var players: [Player]
+
+    @State private var showingEditProfile = false
+    @State private var showingStepDownConfirmation = false
+    @State private var isSteppingDown = false
+    @State private var stepDownError: String?
+    @State private var showingDeleteConfirmation = false
+    @State private var showingDeleteFinalConfirmation = false
+    @State private var isDeletingAccount = false
+    @State private var deleteError: String?
+
+    private var currentBookie: Bookie? {
+        bookies.first
+    }
+
+    private var hasActiveMembersOrInvites: Bool {
+        guard let bookie = currentBookie else { return false }
+        return players.contains { $0.bookieId == bookie.id && $0.authUserId != nil && $0.status == .active }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                sectionHeader("Organizer Profile")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(spacing: 0) {
+                    if let bookie = currentBookie {
+                        settingsDetailRow(label: "Name", value: bookie.name)
+                        settingsDivider
+                        settingsDetailRow(label: "Email", value: bookie.email)
+                        settingsDivider
+                        settingsDetailRow(label: "Status") {
+                            Text(bookie.isPro ? "Pro" : "Free")
+                                .foregroundStyle(bookie.isPro ? Theme.accent : Theme.textSecondary)
+                        }
+                        settingsDivider
+                        Button {
+                            showingEditProfile = true
+                        } label: {
+                            Label("Edit Profile", systemImage: "pencil")
+                                .foregroundStyle(Theme.accent)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        Text("No profile configured")
+                            .foregroundStyle(Theme.textSecondary)
+                            .italic()
+                            .padding(16)
+
+                        Button {
+                            showingEditProfile = true
+                        } label: {
+                            Label("Create Profile", systemImage: "plus.circle")
+                                .foregroundStyle(Theme.accent)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                        }
+                    }
+                }
+                .cardStyle()
+
+                // Step Down as Organizer
+                VStack(spacing: 0) {
+                    Button {
+                        showingStepDownConfirmation = true
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "person.crop.circle.badge.minus")
+                                .font(.system(size: 20))
+                                .foregroundStyle(Theme.danger)
+                                .frame(width: 28, alignment: .center)
+
+                            Text("Step Down as Organizer")
+                                .font(Theme.body)
+                                .fontWeight(.medium)
+                                .foregroundStyle(Theme.danger)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                }
+                .cardStyle()
+
+                // Delete Account
+                VStack(spacing: 0) {
+                    Button {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 20))
+                                .foregroundStyle(Theme.danger)
+                                .frame(width: 28, alignment: .center)
+
+                            Text("Delete Account")
+                                .font(Theme.body)
+                                .fontWeight(.medium)
+                                .foregroundStyle(Theme.danger)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                }
+                .cardStyle()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+        }
+        .background(Theme.background)
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingEditProfile) {
+            EditProfileSheet(existingBookie: currentBookie)
+        }
+        .alert("Step Down as Organizer", isPresented: $showingStepDownConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Step Down", role: .destructive) {
+                performStepDown()
+            }
+        } message: {
+            Text("Are you sure? Your organizer dashboard and settings will be removed. Your personal pick history will be preserved.")
+        }
+        .alert("Cannot Step Down", isPresented: Binding(
+            get: { stepDownError != nil },
+            set: { if !$0 { stepDownError = nil } }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(stepDownError ?? "")
+        }
+        .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Continue", role: .destructive) {
+                showingDeleteFinalConfirmation = true
+            }
+        } message: {
+            Text("This will permanently delete your account, all members, picks, and history. This cannot be undone.")
+        }
+        .alert("Are You Sure?", isPresented: $showingDeleteFinalConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete Everything", role: .destructive) {
+                performAccountDeletion()
+            }
+        } message: {
+            Text("Last chance. All data will be permanently erased.")
+        }
+        .alert("Delete Failed", isPresented: Binding(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(deleteError ?? "")
+        }
+        .overlay {
+            if isSteppingDown {
+                ZStack {
+                    Color.black.opacity(0.5).ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .tint(Theme.accent)
+                            .scaleEffect(1.5)
+                        Text("Stepping down...")
+                            .font(Theme.bodyFont(size: 15, weight: .medium))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .padding(32)
+                    .background(Theme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+            } else if isDeletingAccount {
+                ZStack {
+                    Color.black.opacity(0.5).ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .tint(Theme.accent)
+                            .scaleEffect(1.5)
+                        Text("Deleting account...")
+                            .font(Theme.bodyFont(size: 15, weight: .medium))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .padding(32)
+                    .background(Theme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+            }
+        }
+    }
+
     private func performStepDown() {
         isSteppingDown = true
         Task {
@@ -395,7 +488,6 @@ struct SettingsView: View {
                 if response.success {
                     await MainActor.run {
                         isSteppingDown = false
-                        // Clear bookie state — app will route to PlayerMainView
                         authManager.clearBookieState()
                     }
                 } else if response.error == "has_members_or_invites" {
@@ -443,97 +535,6 @@ struct SettingsView: View {
                     deleteError = error.localizedDescription
                 }
             }
-        }
-    }
-}
-
-private struct EmptyRequest: Encodable {}
-private struct DeleteAccountResponse: Decodable {
-    let success: Bool
-    let error: String?
-}
-private struct StepDownResponse: Decodable {
-    let success: Bool
-    let error: String?
-}
-
-// MARK: - Profile Settings
-
-struct ProfileSettingsView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(AuthManager.self) private var authManager
-    @Query private var bookies: [Bookie]
-
-    @State private var showingEditProfile = false
-
-    private var currentBookie: Bookie? {
-        bookies.first
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                sectionHeader("Organizer Profile")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                VStack(spacing: 0) {
-                    if let bookie = currentBookie {
-                        settingsDetailRow(label: "Name", value: bookie.name)
-                        settingsDivider
-                        settingsDetailRow(label: "Email", value: bookie.email)
-                        settingsDivider
-                        settingsDetailRow(label: "Status") {
-                            Text(bookie.isPro ? "Pro" : "Free")
-                                .foregroundStyle(bookie.isPro ? Theme.accent : Theme.textSecondary)
-                        }
-                        settingsDivider
-                        Button {
-                            showingEditProfile = true
-                        } label: {
-                            Label("Edit Profile", systemImage: "pencil")
-                                .foregroundStyle(Theme.accent)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    } else {
-                        Text("No profile configured")
-                            .foregroundStyle(Theme.textSecondary)
-                            .italic()
-                            .padding(16)
-
-                        Button {
-                            showingEditProfile = true
-                        } label: {
-                            Label("Create Profile", systemImage: "plus.circle")
-                                .foregroundStyle(Theme.accent)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                        }
-                    }
-                }
-                .cardStyle()
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-        }
-        .background(Theme.background)
-        .navigationTitle("Profile")
-        .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showingEditProfile) {
-            EditProfileSheet(existingBookie: currentBookie)
-        }
-    }
-
-    private func subscriptionStatusColor(_ status: SubscriptionStatus) -> Color {
-        switch status {
-        case .free: return Theme.textSecondary
-        case .pro: return Theme.accent
-        case .ultra: return Theme.gold
-        // Legacy
-        case .active: return Theme.accent
-        case .inactive: return Theme.danger
-        case .trial: return Theme.textSecondary
         }
     }
 }
