@@ -100,7 +100,37 @@ struct PlayerMainView: View {
         }
         .onAppear {
             ensureStandalonePlayer()
+            // Handle deep link waiting from cold start
+            handleDeepLink(NotificationService.shared.pendingDeepLink)
         }
+        .onChange(of: NotificationService.shared.pendingDeepLink) { _, deepLink in
+            handleDeepLink(deepLink)
+        }
+    }
+
+    /// Route a deep link to the appropriate tab
+    private func handleDeepLink(_ deepLink: String?) {
+        guard let deepLink else { return }
+        guard let url = URL(string: deepLink) else {
+            NotificationService.shared.pendingDeepLink = nil
+            return
+        }
+
+        let host = url.host
+
+        switch host {
+        case "ticket":
+            selectedTab = 2 // TRACK tab
+        case "picks":
+            selectedTab = 2 // TRACK tab
+        case "account":
+            selectedTab = 3 // ACCOUNT tab
+        default:
+            break
+        }
+
+        // Consume the deep link
+        NotificationService.shared.pendingDeepLink = nil
     }
 
     /// Create a synthetic local-only player for standalone users

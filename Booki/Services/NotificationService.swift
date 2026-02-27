@@ -16,6 +16,9 @@ final class NotificationService: NSObject {
 
     private(set) var isPermissionGranted: Bool = false
 
+    /// Pending deep link from a notification tap, consumed by the UI after navigation.
+    var pendingDeepLink: String?
+
     // MARK: - Private
 
     private let supabase: SupabaseClient
@@ -123,7 +126,7 @@ extension NotificationService: @preconcurrency UNUserNotificationCenterDelegate 
         let userInfo = response.notification.request.content.userInfo
         if let deepLink = userInfo["deep_link"] as? String {
             print("NotificationService: Deep link tapped: \(deepLink)")
-            // Deep link routing will be wired in US-006
+            pendingDeepLink = deepLink
         }
     }
 }

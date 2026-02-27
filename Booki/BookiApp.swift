@@ -93,23 +93,24 @@ struct BookiApp: App {
         .modelContainer(sharedModelContainer)
     }
 
-    /// Parse booki://invite/{code} deep links
+    /// Parse booki:// deep links (invite, bet, ticket, members, picks, account)
     private func handleIncomingURL(_ url: URL) {
-        guard url.scheme == "booki",
-              url.host == "invite" else {
-            return
-        }
+        guard url.scheme == "booki" else { return }
 
-        // Extract invite code from path: booki://invite/{CODE}
-        let code = url.pathComponents.first { $0 != "/" }
-        guard let code, !code.isEmpty else { return }
+        if url.host == "invite" {
+            // Extract invite code from path: booki://invite/{CODE}
+            let code = url.pathComponents.first { $0 != "/" }
+            guard let code, !code.isEmpty else { return }
 
-        if authManager.isAuthenticated && authManager.userRole == .bookie {
-            // Bookies can't accept invites — show alert handled in AuthGateView
-            pendingInviteCode = nil
+            if authManager.isAuthenticated && authManager.userRole == .bookie {
+                pendingInviteCode = nil
+            } else {
+                pendingInviteCode = code
+            }
         } else {
-            // Unauthenticated or player — route to InviteClaimView
-            pendingInviteCode = code
+            // All other deep links (bet, ticket, members, picks, account)
+            // Route through NotificationService's pendingDeepLink
+            NotificationService.shared.pendingDeepLink = url.absoluteString
         }
     }
 

@@ -49,6 +49,9 @@ struct ContentView: View {
     /// Navigation to view the conflicting record
     @State private var navigateToConflictRecord: Bool = false
 
+    /// Selected tab for deep link routing
+    @State private var selectedTab = 0
+
     /// Count of open (non-terminal) bets for Picks tab badge
     private var openBetsCount: Int {
         bets.filter { [.pending, .accepted, .readyToGrade, .graded].contains($0.status) }.count
@@ -151,30 +154,65 @@ struct ContentView: View {
     // MARK: - Bookie Mode
 
     private var bookieModeView: some View {
-        TabView {
-            Tab("DASHBOARD", systemImage: "chart.bar.fill") {
+        TabView(selection: $selectedTab) {
+            Tab("DASHBOARD", systemImage: "chart.bar.fill", value: 0) {
                 AnalyticsDashboardView()
             }
 
-            Tab("PICKS", systemImage: "list.bullet.rectangle") {
+            Tab("PICKS", systemImage: "list.bullet.rectangle", value: 1) {
                 BetsListView()
             }
 
-            Tab("MEMBERS", systemImage: "person.2.fill") {
+            Tab("MEMBERS", systemImage: "person.2.fill", value: 2) {
                 PlayersListView()
             }
             .badge(flaggedPlayersCount > 0 ? flaggedPlayersCount : 0)
 
-            Tab("EVENTS", systemImage: "sportscourt.fill") {
+            Tab("EVENTS", systemImage: "sportscourt.fill", value: 3) {
                 EventsListView()
             }
 
-            Tab("SETTINGS", systemImage: "gearshape.fill") {
+            Tab("SETTINGS", systemImage: "gearshape.fill", value: 4) {
                 SettingsView()
                     .toolbar(.hidden, for: .navigationBar)
             }
         }
         .tint(Theme.accent)
+        .onChange(of: NotificationService.shared.pendingDeepLink) { _, deepLink in
+            handleDeepLink(deepLink)
+        }
+        .onAppear {
+            // Handle deep link waiting from cold start
+            handleDeepLink(NotificationService.shared.pendingDeepLink)
+        }
+    }
+
+    /// Route a deep link to the appropriate tab/view
+    private func handleDeepLink(_ deepLink: String?) {
+        guard let deepLink else { return }
+        guard let url = URL(string: deepLink) else {
+            NotificationService.shared.pendingDeepLink = nil
+            return
+        }
+
+        let host = url.host
+
+        switch host {
+        case "bet":
+            selectedTab = 1 // PICKS tab
+            // BetDetailView navigation handled within BetsListView
+        case "members":
+            selectedTab = 2 // MEMBERS tab
+        case "picks":
+            selectedTab = 1 // PICKS tab
+        case "account":
+            selectedTab = 4 // SETTINGS tab
+        default:
+            break
+        }
+
+        // Consume the deep link
+        NotificationService.shared.pendingDeepLink = nil
     }
 
 }
