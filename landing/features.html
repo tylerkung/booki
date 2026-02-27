@@ -61,33 +61,30 @@
         <!-- Hero -->
         <section class="features-hero">
             <div class="container">
-                <span class="eyebrow">Platform Features</span>
-                <h1>Everything you need to<br><span class="gradient-text">track picks with your group.</span></h1>
-                <p class="features-hero-sub">From pick submission to settlement, Booki handles every step. Here's what's under the hood.</p>
+                <span class="eyebrow reveal">Platform Features</span>
+                <h1 class="reveal">Everything you need to<br><span class="gradient-text">track picks with your group.</span></h1>
+                <p class="features-hero-sub reveal">From pick submission to settlement, Booki handles every step. Here's what's under the hood.</p>
             </div>
         </section>
 
         <div class="section-divider"></div>
 
-        <!-- Feature Sections — alternating layout -->
-        <section class="feature-section">
-            <div class="container feature-section-inner">
-                <div class="feature-section-text">
-                    <span class="feature-number">01</span>
-                    <h2>Member Management</h2>
-                    <p>Invite your friends, set individual credit limits, and manage your group. Archive or remove members without losing historical data. Everyone gets their own clean interface to browse games and submit picks.</p>
-                    <ul class="feature-detail-list">
-                        <li>Invite links with one-tap onboarding</li>
-                        <li>Per-member credit limits &amp; balance tracking</li>
-                        <li>Free &amp; Pro tiers with scalable limits</li>
-                        <li>Archive or remove without data loss</li>
-                    </ul>
-                </div>
-                <div class="feature-section-visual">
-                    <div class="feature-visual-card">
-                        <div class="feature-visual-icon">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                        </div>
+        <!-- BLOCK 1: Hero feature — full-width centered -->
+        <section class="ft-hero-feature reveal">
+            <div class="container">
+                <div class="ft-hero-feature-inner">
+                    <div class="ft-hero-icon reveal">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    </div>
+                    <h2 class="reveal">Fully automatic. Zero manual work.</h2>
+                    <p class="reveal">Games sync. Odds update. Picks get graded. Balances settle. Everything runs on autopilot so you can focus on your group, not a spreadsheet.</p>
+                    <div class="ft-hero-pills reveal">
+                        <span class="ft-pill">Hourly odds sync</span>
+                        <span class="ft-pill">Live score tracking</span>
+                        <span class="ft-pill">Auto-grading</span>
+                        <span class="ft-pill">Auto-settlement</span>
+                        <span class="ft-pill">Catch-up grading</span>
+                        <span class="ft-pill">Stale pick voiding</span>
                     </div>
                 </div>
             </div>
@@ -95,24 +92,45 @@
 
         <div class="section-divider"></div>
 
-        <section class="feature-section feature-section--flipped">
-            <div class="container feature-section-inner">
-                <div class="feature-section-text">
-                    <span class="feature-number">02</span>
-                    <h2>Pick Tracking</h2>
-                    <p>Singles, multi-picks, alternate lines, and futures. Everyone submits picks through a clean mobile interface. Every pick is timestamped, odds-locked, and tracked from submission through settlement.</p>
-                    <ul class="feature-detail-list">
-                        <li>Straights, multi-picks &amp; futures</li>
-                        <li>Moneyline, spread &amp; totals</li>
-                        <li>Alternate lines support</li>
-                        <li>Odds locked at submission time</li>
-                    </ul>
-                </div>
-                <div class="feature-section-visual">
-                    <div class="feature-visual-card">
-                        <div class="feature-visual-icon">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        <!-- BLOCK 2: Three-card grid -->
+        <section class="ft-trio">
+            <div class="container">
+                <div class="ft-trio-grid reveal-stagger">
+                    <div class="ft-trio-card reveal">
+                        <div class="ft-trio-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         </div>
+                        <h3>Member Management</h3>
+                        <p>Invite friends via text or email. Set individual credit limits. Smart attention tags flag who's on a heater, who's overdue, and who's pushing limits.</p>
+                        <ul class="ft-trio-list">
+                            <li>One-tap invite links</li>
+                            <li>Per-member credit limits</li>
+                            <li>Attention tags &amp; alerts</li>
+                        </ul>
+                    </div>
+                    <div class="ft-trio-card reveal">
+                        <div class="ft-trio-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                        </div>
+                        <h3>Pick Tracking</h3>
+                        <p>Singles, multi-picks, futures, and alternate lines. Every pick is timestamped, odds-locked at submission, and tracked through settlement.</p>
+                        <ul class="ft-trio-list">
+                            <li>Batch submission</li>
+                            <li>Moneyline, spread &amp; totals</li>
+                            <li>Futures &amp; outrights</li>
+                        </ul>
+                    </div>
+                    <div class="ft-trio-card reveal">
+                        <div class="ft-trio-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
+                        </div>
+                        <h3>Settlement &amp; Balances</h3>
+                        <p>Balances update when picks are graded. One-tap settle ups. Tamper-evident ledger. Everyone always knows exactly where they stand.</p>
+                        <ul class="ft-trio-list">
+                            <li>One-tap settle ups</li>
+                            <li>Hash-chained ledger</li>
+                            <li>Full audit trail</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -120,134 +138,148 @@
 
         <div class="section-divider"></div>
 
-        <section class="feature-section">
-            <div class="container feature-section-inner">
-                <div class="feature-section-text">
-                    <span class="feature-number">03</span>
-                    <h2>Live Odds &amp; Games</h2>
-                    <p>Games from NFL, NBA, MLB, NHL, and college sports sync automatically with real-time lines. Everyone sees a clean game board organized by sport with live odds on every market.</p>
+        <!-- BLOCK 3: Wide split — Live Odds & Games -->
+        <section class="ft-split reveal">
+            <div class="container ft-split-inner">
+                <div class="ft-split-visual reveal">
+                    <div class="ft-split-card">
+                        <div class="ft-split-card-row">
+                            <span class="ft-sport-badge">NFL</span>
+                            <span class="ft-sport-badge">NBA</span>
+                            <span class="ft-sport-badge">MLB</span>
+                            <span class="ft-sport-badge">NHL</span>
+                            <span class="ft-sport-badge">NCAAF</span>
+                            <span class="ft-sport-badge">NCAAB</span>
+                            <span class="ft-sport-badge">Golf</span>
+                            <span class="ft-sport-badge">Soccer</span>
+                        </div>
+                        <div class="ft-split-card-row ft-split-card-row--game">
+                            <div class="ft-game-mock">
+                                <div class="ft-game-teams">
+                                    <span>LAL</span>
+                                    <span>BOS</span>
+                                </div>
+                                <div class="ft-game-odds">
+                                    <span class="ft-odds">-110</span>
+                                    <span class="ft-odds">+3.5</span>
+                                    <span class="ft-odds">o215</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ft-split-card-live">
+                            <span class="ft-live-dot"></span> Live scores updating
+                        </div>
+                    </div>
+                </div>
+                <div class="ft-split-text reveal">
+                    <span class="feature-number">Live Odds &amp; Games</span>
+                    <h2>20+ sports.<br>Real-time lines.</h2>
+                    <p>NFL, NBA, MLB, NHL, college sports, golf, soccer, and more. Games sync automatically with live odds on every market. Sport hub pages let your group browse by league. Live scores update as games happen.</p>
                     <ul class="feature-detail-list">
-                        <li>NFL, NBA, MLB, NHL &amp; college sports</li>
                         <li>Real-time odds updates</li>
-                        <li>Sport-tabbed game board</li>
-                        <li>Search by team name</li>
+                        <li>Sport hub pages with league sub-tabs</li>
+                        <li>Live score tracking during games</li>
+                        <li>Futures &amp; outrights for every sport</li>
                     </ul>
-                </div>
-                <div class="feature-section-visual">
-                    <div class="feature-visual-card">
-                        <div class="feature-visual-icon">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-                        </div>
-                    </div>
                 </div>
             </div>
         </section>
 
         <div class="section-divider"></div>
 
-        <section class="feature-section feature-section--flipped">
-            <div class="container feature-section-inner">
-                <div class="feature-section-text">
-                    <span class="feature-number">04</span>
-                    <h2>Auto-Grading</h2>
-                    <p>When games finish, picks are graded automatically. Moneyline, spread, and totals are all handled. No manual input. Catch-up grading handles any missed events, and stale pending picks are voided automatically.</p>
+        <!-- BLOCK 4: Wide split flipped — Analytics -->
+        <section class="ft-split ft-split--flipped reveal">
+            <div class="container ft-split-inner">
+                <div class="ft-split-visual reveal">
+                    <div class="ft-split-card">
+                        <div class="ft-split-card-row ft-split-card-row--stats">
+                            <div class="ft-stat-mock">
+                                <span class="ft-stat-label">PnL</span>
+                                <span class="ft-stat-value ft-stat-value--green">+$1,240</span>
+                            </div>
+                            <div class="ft-stat-mock">
+                                <span class="ft-stat-label">Open</span>
+                                <span class="ft-stat-value">12</span>
+                            </div>
+                            <div class="ft-stat-mock">
+                                <span class="ft-stat-label">Members</span>
+                                <span class="ft-stat-value">8</span>
+                            </div>
+                        </div>
+                        <div class="ft-split-card-row ft-split-card-row--tags">
+                            <span class="ft-tag ft-tag--hot">On Heater</span>
+                            <span class="ft-tag ft-tag--alert">Overdue</span>
+                            <span class="ft-tag ft-tag--whale">Whale</span>
+                            <span class="ft-tag ft-tag--cold">Cold Streak</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="ft-split-text reveal">
+                    <span class="feature-number">Analytics &amp; Insights</span>
+                    <h2>See everything.<br>Miss nothing.</h2>
+                    <p>PnL trends, member performance, open activity, and smart attention tags that surface who needs your attention. Drill into individual member analytics for pick history and performance breakdowns.</p>
                     <ul class="feature-detail-list">
-                        <li>Automatic grading on final scores</li>
-                        <li>Moneyline, spread &amp; totals logic</li>
-                        <li>Catch-up grading for missed events</li>
-                        <li>Stale pick auto-voiding</li>
+                        <li>PnL dashboard with 1D / 1W / 1M / All filters</li>
+                        <li>Member-level stats &amp; pick history</li>
+                        <li>Smart attention tags &amp; alerts</li>
+                        <li>Web dashboard for desktop management</li>
                     </ul>
                 </div>
-                <div class="feature-section-visual">
-                    <div class="feature-visual-card">
-                        <div class="feature-visual-icon">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+        </section>
+
+        <!-- BLOCK 5: Platform strip -->
+        <section class="platform-strip">
+            <div class="container">
+                <h2 class="section-headline reveal">Available everywhere.</h2>
+                <p class="platform-strip-sub reveal">Members get a native iOS app. Organizers also get a full web dashboard.</p>
+                <div class="platform-cards reveal-stagger">
+                    <div class="platform-card reveal-scale">
+                        <div class="platform-card-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="12" height="20" x="6" y="2" rx="2"/><path d="M12 18h.01"/></svg>
                         </div>
+                        <h3>iOS App</h3>
+                        <p>Native app for members to browse games, submit picks, and track their record. Organizers manage everything on the go.</p>
+                    </div>
+                    <div class="platform-card reveal-scale">
+                        <div class="platform-card-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+                        </div>
+                        <h3>Web Dashboard</h3>
+                        <p>Full organizer dashboard on the web. View PnL, manage members, browse picks, and handle subscriptions from any browser.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <div class="section-divider"></div>
-
-        <section class="feature-section">
-            <div class="container feature-section-inner">
-                <div class="feature-section-text">
-                    <span class="feature-number">05</span>
-                    <h2>Settlement &amp; Balances</h2>
-                    <p>Settlements are calculated automatically when picks are graded. Balances update in real time. Everyone always sees a clear, transparent view of what they owe or are owed&mdash;no ambiguity, no disputes. Learn more about <a href="bookie-ledger-software.html" style="color: var(--accent); text-decoration: underline;">how Booki's ledger works</a>.</p>
-                    <ul class="feature-detail-list">
-                        <li>Automatic ledger entries on settlement</li>
-                        <li>Real-time balance updates</li>
-                        <li>Full transaction history</li>
-                        <li>Manual balance adjustments with audit trail</li>
-                    </ul>
-                </div>
-                <div class="feature-section-visual">
-                    <div class="feature-visual-card">
-                        <div class="feature-visual-icon">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <div class="section-divider"></div>
-
-        <section class="feature-section feature-section--flipped">
-            <div class="container feature-section-inner">
-                <div class="feature-section-text">
-                    <span class="feature-number">06</span>
-                    <h2>Analytics Dashboard</h2>
-                    <p>See everything at a glance. Open activity, alerts, member stats, win/loss records, and performance trends. Drill into individual member analytics for deeper insight.</p>
-                    <ul class="feature-detail-list">
-                        <li>Activity tracking &amp; alerts</li>
-                        <li>Member-level performance stats</li>
-                        <li>Win/loss records &amp; trends</li>
-                        <li>Open activity tracking</li>
-                    </ul>
-                </div>
-                <div class="feature-section-visual">
-                    <div class="feature-visual-card">
-                        <div class="feature-visual-icon">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <div class="section-divider"></div>
-
-        <!-- Capability grid -->
+        <!-- BLOCK 6: Capability grid -->
         <section class="capabilities">
             <div class="container">
-                <h2 class="section-headline">And everything else.</h2>
-                <div class="capabilities-grid">
-                    <div class="capability">
+                <h2 class="section-headline reveal">And everything else.</h2>
+                <div class="capabilities-grid reveal-stagger">
+                    <div class="capability reveal-scale">
                         <h3>Server-Authoritative</h3>
-                        <p>Every critical operation runs through secure edge functions. No client-side cheating.</p>
+                        <p>Every pick, grade, and settlement runs through secure server-side functions. No client-side manipulation.</p>
                     </div>
-                    <div class="capability">
-                        <h3>Audit Trail</h3>
-                        <p>Every action is logged. Full history of picks, grades, settlements, and adjustments.</p>
+                    <div class="capability reveal-scale">
+                        <h3>Tamper-Evident Ledger</h3>
+                        <p>Every transaction is hash-chained. Balances are cryptographically verifiable and immutable once written.</p>
                     </div>
-                    <div class="capability">
-                        <h3>Idempotent Operations</h3>
-                        <p>Duplicate requests are caught and cached. No double-submissions, no double-settlements.</p>
+                    <div class="capability reveal-scale">
+                        <h3>Branded Invite Emails</h3>
+                        <p>Invites are sent as branded emails with one-tap claim links. No more copying codes into group chats.</p>
                     </div>
-                    <div class="capability">
-                        <h3>Invite System</h3>
-                        <p>Generate invite links, share via text, and onboard members in seconds.</p>
-                    </div>
-                    <div class="capability">
+                    <div class="capability reveal-scale">
                         <h3>Odds Format Preference</h3>
-                        <p>American, decimal, or fractional. Each user picks their preferred format.</p>
+                        <p>American, decimal, or fractional. Each member picks their preferred format across the entire app.</p>
                     </div>
-                    <div class="capability">
-                        <h3>Cron Automation</h3>
-                        <p>Scores and grades refresh automatically on schedule. No manual triggers needed.</p>
+                    <div class="capability reveal-scale">
+                        <h3>Pro Subscription</h3>
+                        <p>Free tier for small groups. Pro unlocks up to 50 members, priority support, and the web dashboard.</p>
+                    </div>
+                    <div class="capability reveal-scale">
+                        <h3>Full Automation</h3>
+                        <p>Odds sync hourly. Scores refresh in real time. Picks are graded and settled automatically. Zero manual work.</p>
                     </div>
                 </div>
             </div>
@@ -258,7 +290,7 @@
         <!-- CTA -->
         <section class="final-cta">
             <div class="container">
-                <h2 class="final-cta-headline"><span class="gradient-text">Ready to get started?</span></h2>
+                <h2 class="final-cta-headline"><span class="gradient-text">Ready to be the house?</span></h2>
                 <p class="final-cta-sub">Join the waitlist and be first in line when we launch. Or explore our <a href="blog/" style="color: var(--accent); text-decoration: underline;">blog</a> for tips and guides.</p>
                 <form class="waitlist-form" name="waitlist-features" data-netlify="true">
                     <input type="hidden" name="form-name" value="waitlist-features">
@@ -296,6 +328,24 @@
         document.querySelector('.nav-hamburger').addEventListener('click', function() {
             document.querySelector('.site-nav').classList.toggle('nav-open');
         });
+
+        // Scroll-reveal — IntersectionObserver
+        (function() {
+            var revealEls = document.querySelectorAll('.reveal, .reveal-scale, .section-divider');
+            if (!('IntersectionObserver' in window)) {
+                revealEls.forEach(function(el) { el.classList.add('is-visible'); });
+                return;
+            }
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+            revealEls.forEach(function(el) { observer.observe(el); });
+        })();
 
         // Waitlist form submission with success state
         document.querySelectorAll('.waitlist-form').forEach(function(form) {

@@ -1196,10 +1196,18 @@ html, body {
 }
 
 /* Staggered children — each child delays slightly */
-.reveal-stagger > .reveal { transition-delay: 0s; }
-.reveal-stagger > .reveal:nth-child(2) { transition-delay: 0.1s; }
-.reveal-stagger > .reveal:nth-child(3) { transition-delay: 0.2s; }
-.reveal-stagger > .reveal:nth-child(4) { transition-delay: 0.2s; }
+.reveal-stagger > .reveal,
+.reveal-stagger > .reveal-scale { transition-delay: 0s; }
+.reveal-stagger > .reveal:nth-child(2),
+.reveal-stagger > .reveal-scale:nth-child(2) { transition-delay: 0.1s; }
+.reveal-stagger > .reveal:nth-child(3),
+.reveal-stagger > .reveal-scale:nth-child(3) { transition-delay: 0.15s; }
+.reveal-stagger > .reveal:nth-child(4),
+.reveal-stagger > .reveal-scale:nth-child(4) { transition-delay: 0.2s; }
+.reveal-stagger > .reveal:nth-child(5),
+.reveal-stagger > .reveal-scale:nth-child(5) { transition-delay: 0.25s; }
+.reveal-stagger > .reveal:nth-child(6),
+.reveal-stagger > .reveal-scale:nth-child(6) { transition-delay: 0.3s; }
 
 /* Subtle scale-in for cards */
 .reveal-scale {
@@ -1279,27 +1287,7 @@ html, body {
     margin: 0 auto;
 }
 
-/* Features Page — Alternating Sections */
-.feature-section {
-    padding: 100px 0;
-}
-
-.feature-section-inner {
-    display: flex;
-    align-items: center;
-    gap: 80px;
-    max-width: 860px;
-    margin: 0 auto;
-}
-
-.feature-section--flipped .feature-section-inner {
-    flex-direction: row-reverse;
-}
-
-.feature-section-text {
-    flex: 1;
-}
-
+/* Features Page — Shared */
 .feature-number {
     display: inline-block;
     font-family: 'Space Grotesk', sans-serif;
@@ -1308,19 +1296,6 @@ html, body {
     color: var(--accent);
     letter-spacing: 0.08em;
     margin-bottom: 16px;
-}
-
-.feature-section-text h2 {
-    font-size: 2rem;
-    font-weight: 800;
-    margin-bottom: 16px;
-    letter-spacing: -0.01em;
-}
-
-.feature-section-text > p {
-    font-size: 1.05rem;
-    line-height: 1.75;
-    margin-bottom: 28px;
 }
 
 .feature-detail-list li {
@@ -1340,33 +1315,20 @@ html, body {
     font-size: 0.85rem;
 }
 
-.feature-section-visual {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+/* Features — Hero Feature (full-width centered) */
+.ft-hero-feature {
+    padding: 100px 0;
 }
 
-.feature-visual-card {
-    width: 240px;
-    height: 240px;
-    border-radius: 24px;
-    background: linear-gradient(180deg, var(--bg-card) 0%, #0E0E18 100%);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+.ft-hero-feature-inner {
+    max-width: 640px;
+    margin: 0 auto;
+    text-align: center;
 }
 
-.feature-visual-card:hover {
-    border-color: rgba(0, 245, 212, 0.3);
-    box-shadow: 0 4px 32px rgba(0, 245, 212, 0.06);
-}
-
-.feature-visual-icon {
-    width: 80px;
-    height: 80px;
+.ft-hero-icon {
+    width: 72px;
+    height: 72px;
     border-radius: 20px;
     background: rgba(0, 245, 212, 0.08);
     border: 1px solid rgba(0, 245, 212, 0.15);
@@ -1374,6 +1336,315 @@ html, body {
     align-items: center;
     justify-content: center;
     color: var(--accent);
+    margin: 0 auto 28px;
+}
+
+.ft-hero-feature h2 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+    line-height: 1.2;
+}
+
+.ft-hero-feature > .container > .ft-hero-feature-inner > p {
+    font-size: 1.1rem;
+    line-height: 1.75;
+    color: var(--text-secondary);
+    margin-bottom: 36px;
+}
+
+.ft-hero-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.ft-pill {
+    padding: 8px 16px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: rgba(0, 245, 212, 0.06);
+    border: 1px solid rgba(0, 245, 212, 0.12);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Features — Three-card grid */
+.ft-trio {
+    padding: 100px 0;
+}
+
+.ft-trio-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+.ft-trio-card {
+    background: linear-gradient(180deg, var(--bg-card) 0%, #0E0E18 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 28px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.ft-trio-card:hover {
+    border-color: rgba(0, 245, 212, 0.3);
+    box-shadow: 0 4px 32px rgba(0, 245, 212, 0.06);
+    transform: translateY(-4px);
+}
+
+.ft-trio-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: rgba(0, 245, 212, 0.08);
+    border: 1px solid rgba(0, 245, 212, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    margin-bottom: 24px;
+}
+
+.ft-trio-card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.ft-trio-card > p {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+.ft-trio-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.ft-trio-list li {
+    padding: 6px 0 6px 22px;
+    position: relative;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.ft-trio-list li::before {
+    content: '\2713';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+/* Features — Wide split section */
+.ft-split {
+    padding: 100px 0;
+}
+
+.ft-split-inner {
+    display: flex;
+    align-items: center;
+    gap: 64px;
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.ft-split--flipped .ft-split-inner {
+    flex-direction: row-reverse;
+}
+
+.ft-split-visual {
+    flex: 1;
+    min-width: 0;
+}
+
+.ft-split-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.ft-split-text h2 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+    line-height: 1.2;
+}
+
+.ft-split-text > p {
+    font-size: 1.05rem;
+    line-height: 1.75;
+    margin-bottom: 28px;
+    color: var(--text-secondary);
+}
+
+/* Split section — mock cards */
+.ft-split-card {
+    background: linear-gradient(180deg, var(--bg-card) 0%, #0E0E18 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    overflow: hidden;
+}
+
+.ft-split-card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.ft-sport-badge {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: 0.04em;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+}
+
+.ft-split-card-row--game {
+    margin-bottom: 16px;
+}
+
+.ft-game-mock {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ft-game-teams {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.ft-game-odds {
+    display: flex;
+    gap: 8px;
+}
+
+.ft-odds {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: 'Space Grotesk', sans-serif;
+    background: rgba(0, 245, 212, 0.08);
+    border: 1px solid rgba(0, 245, 212, 0.15);
+    color: var(--accent);
+}
+
+.ft-split-card-live {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.ft-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00F5D4;
+    animation: ft-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ft-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Split section — stats mock */
+.ft-split-card-row--stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.ft-stat-mock {
+    text-align: center;
+    padding: 16px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ft-stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.ft-stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.ft-stat-value--green {
+    color: #00F5D4;
+}
+
+.ft-split-card-row--tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ft-tag {
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.ft-tag--hot {
+    background: rgba(255, 107, 53, 0.12);
+    border: 1px solid rgba(255, 107, 53, 0.25);
+    color: #FF6B35;
+}
+
+.ft-tag--alert {
+    background: rgba(255, 59, 48, 0.12);
+    border: 1px solid rgba(255, 59, 48, 0.25);
+    color: #FF3B30;
+}
+
+.ft-tag--whale {
+    background: rgba(0, 245, 212, 0.1);
+    border: 1px solid rgba(0, 245, 212, 0.2);
+    color: #00F5D4;
+}
+
+.ft-tag--cold {
+    background: rgba(90, 130, 240, 0.12);
+    border: 1px solid rgba(90, 130, 240, 0.25);
+    color: #5A82F0;
 }
 
 /* Features Page — Capabilities Grid */
@@ -1410,6 +1681,74 @@ html, body {
 .capability p {
     font-size: 0.95rem;
     line-height: 1.6;
+}
+
+/* Features Page — Platform Strip (teal breakout) */
+.platform-strip {
+    padding: 120px 0;
+    background: var(--accent);
+    position: relative;
+}
+
+.platform-strip .section-headline {
+    color: #0A0A14;
+}
+
+.platform-strip-sub {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: rgba(10, 10, 20, 0.7);
+    max-width: 560px;
+    margin: 0 auto 48px;
+    text-align: center;
+}
+
+.platform-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.platform-card {
+    background: rgba(10, 10, 20, 0.85);
+    border: 1px solid rgba(10, 10, 20, 0.3);
+    border-radius: 20px;
+    padding: 36px 32px;
+    text-align: center;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.platform-card:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    transform: translateY(-4px);
+}
+
+.platform-card-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: rgba(0, 245, 212, 0.1);
+    border: 1px solid rgba(0, 245, 212, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    margin: 0 auto 20px;
+}
+
+.platform-card h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.platform-card p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.65);
 }
 
 /* Features Page — By the Numbers */
@@ -1577,19 +1916,45 @@ html, body {
     }
 
     /* Feature sections: stack */
-    .feature-section {
+    .ft-hero-feature {
         padding: 60px 0;
     }
 
-    .feature-section-inner,
-    .feature-section--flipped .feature-section-inner {
+    .ft-hero-feature h2 {
+        font-size: 1.75rem;
+    }
+
+    .ft-trio {
+        padding: 60px 0;
+    }
+
+    .ft-trio-grid {
+        grid-template-columns: 1fr;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .ft-split {
+        padding: 60px 0;
+    }
+
+    .ft-split-inner,
+    .ft-split--flipped .ft-split-inner {
         flex-direction: column;
         gap: 40px;
     }
 
-    .feature-visual-card {
-        width: 180px;
-        height: 180px;
+    .ft-split-text h2 {
+        font-size: 1.75rem;
+    }
+
+    .ft-game-odds {
+        gap: 4px;
+    }
+
+    .ft-odds {
+        padding: 6px 10px;
+        font-size: 0.75rem;
     }
 
     /* Capabilities: single column */
@@ -1599,6 +1964,16 @@ html, body {
 
     .capabilities-grid {
         grid-template-columns: 1fr;
+    }
+
+    /* Platform strip: single column */
+    .platform-strip {
+        padding: 80px 0;
+    }
+
+    .platform-cards {
+        grid-template-columns: 1fr;
+        max-width: 400px;
     }
 
     /* By the numbers: stack */

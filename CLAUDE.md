@@ -286,6 +286,9 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **IBM Plex Sans global font**: Fixed font files (were HTML, re-downloaded as real TTF binaries), fixed PostScript name mismatches (`IBMPlexSans` not `-Regular`, `IBMPlexSans-Medm` not `-Medium`), set as global default via `.font(Theme.body)` on root view. Nav bar titles use Space Grotesk Bold via UIKit appearance.
 - **Expired invites auto-delete**: PlayersListView cleans up expired invites from Supabase + SwiftData on appear
 - **Subscription member count fix**: `upsertPlayer` now syncs `authUserId` from server; `activeMemberCount` uses `status != .archived`
+- **Features page redesign**: Mixed layouts (hero feature, 3-card grid, wide splits with mock UI, teal platform strip), scroll reveal animations, no more repetitive zig-zag
+- **Dashboard login polish**: Radial gradient bg, teal glow card, gradient CTA, `isOrganizer()` auth hardening
+- **Blog scheduling**: `data-publish` attribute hides future-dated posts on blog index until publish date
 - **Bottom-funnel blog posts**: 4 new posts (how-to-be-a-bookie-for-friends, wagerlab-vs-booki, best-bookie-software-small-books, best-pph-software-small-bookies), FAQPage schema on 2 posts, staggered publish dates (2/week)
 - **Nav login link**: "Log In" → `/dashboard/` added to all 16 landing pages (desktop `nav-actions` wrapper + mobile nav-link)
 - **Nav CTA fix**: `.btn-nav` overflow fixed with `justify-self: end; width: fit-content`

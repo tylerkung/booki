@@ -447,5 +447,19 @@ Started: Thu Feb 26 14:57:41 PST 2026
 - **Learnings:**
   - 3-column grid `1fr auto 1fr` causes children in the right `1fr` to stretch — need `justify-self: end` + `width: fit-content`
   - Neutral listicle format ("7 Best X") ranks better for AI overviews than hard comparison pages
+---
+
+## 2026-02-27 - Features Page Redesign, Dashboard Login Polish, Blog Scheduling
+- **Features page layout overhaul**: Replaced repetitive zig-zag alternating sections with mixed layouts — centered hero feature block with pill tags, 3-card grid (Members/Picks/Settlement), two wide split sections with mock UI cards (Live Odds with sport badges + game row + pulsing live dot; Analytics with PnL stats + colored attention tags), full-bleed teal "Available everywhere" platform strip (iOS App + Web Dashboard), capabilities grid.
+- **Scroll reveal animations**: Added IntersectionObserver-based `reveal`, `reveal-scale`, and `reveal-stagger` animations throughout features.html. Extended stagger delays to support 6 children.
+- **Dashboard login page visual**: Radial gradient background, wider card with teal glow shadow, accent glow behind logo, gradient CTA button with hover lift, input focus ring, disclaimer divider.
+- **Dashboard auth hardening**: `isOrganizer()` function cross-references bookies + players tables to block players with spurious bookie records. Added to both `checkSession()` and `handleLogin()`.
+- **Blog publish scheduling**: `data-publish` attribute on blog index cards, JS hides future-dated posts on page load. Posts auto-appear on their scheduled date.
+- **Platform strip teal breakout**: Full teal background section with dark glass cards, dark headline text, white card content for high contrast.
+- Files changed: `landing/features.html`, `landing/styles.css`, `landing/blog/index.html`, `landing/dashboard/index.html`, `landing/dashboard/dashboard.css`, `landing/dashboard/app.html`
+- **Learnings:**
+  - Mixed layout patterns (hero block → card grid → split sections → breakout color) are much more engaging than repetitive alternating sections
+  - Mock UI elements (sport badges, odds buttons, stat cards, attention tags) make feature pages feel more tangible than abstract icons
+  - `data-publish` + client-side date check is a simple blog scheduling pattern for static sites — no build step needed
   - FAQPage schema on posts with FAQ sections targets featured snippet / AI summary slots
 ---

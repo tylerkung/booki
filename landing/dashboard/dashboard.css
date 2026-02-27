@@ -26,7 +26,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     background-color: var(--bg);
     color: var(--text-secondary);
     font-size: 14px;
@@ -50,39 +50,56 @@ input, button, select, textarea { font: inherit; }
     align-items: center;
     justify-content: center;
     padding: 24px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(0, 245, 212, 0.06) 0%, transparent 60%);
 }
 
 .auth-card {
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 40px 32px;
+    border-radius: 16px;
+    padding: 48px 36px 40px;
+    position: relative;
+    box-shadow: 0 0 80px rgba(0, 245, 212, 0.04), 0 24px 48px rgba(0, 0, 0, 0.4);
 }
 
 .auth-logo {
-    display: block;
-    text-align: center;
-    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 36px;
+    position: relative;
+}
+
+.auth-logo::before {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle, rgba(0, 245, 212, 0.2) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(20px);
 }
 
 .auth-logo img {
-    height: 32px;
+    height: 36px;
     margin: 0 auto;
+    position: relative;
 }
 
 .auth-title {
     text-align: center;
-    font-size: 24px;
-    margin-bottom: 4px;
+    font-size: 26px;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
 }
 
 .auth-subtitle {
     text-align: center;
     color: var(--text-muted);
     font-size: 14px;
-    margin-bottom: 28px;
+    margin-bottom: 32px;
 }
 
 .form-group {
@@ -99,18 +116,19 @@ input, button, select, textarea { font: inherit; }
 
 .form-group input {
     width: 100%;
-    padding: 10px 14px;
+    padding: 11px 14px;
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-size: 14px;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-group input:focus {
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 245, 212, 0.1);
 }
 
 .form-group input::placeholder {
@@ -155,19 +173,22 @@ input, button, select, textarea { font: inherit; }
 
 .btn-primary-full {
     width: 100%;
-    padding: 12px;
-    background: var(--accent);
+    padding: 13px;
+    background: linear-gradient(180deg, #00F5D4 0%, #00D4B8 100%);
     color: var(--bg);
     border: none;
     border-radius: var(--radius-sm);
     font-weight: 700;
     font-size: 15px;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(0, 245, 212, 0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+    margin-top: 4px;
 }
 
-.btn-primary-full:hover { opacity: 0.9; }
-.btn-primary-full:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary-full:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0, 245, 212, 0.3), inset 0 1px 0 rgba(255,255,255,0.15); }
+.btn-primary-full:active { transform: translateY(0); }
+.btn-primary-full:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .auth-links {
     text-align: center;
@@ -191,7 +212,9 @@ input, button, select, textarea { font: inherit; }
     text-align: center;
     font-size: 11px;
     color: var(--text-muted);
-    margin-top: 24px;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--divider);
 }
 
 /* ── Dashboard Layout ── */

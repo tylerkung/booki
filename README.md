@@ -461,4 +461,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 27, 2026 - Bottom-funnel SEO blog posts (8 total), nav login link across all pages, tweet bank*
+*Last updated: February 27, 2026 - Features page redesign, dashboard login polish, blog publish scheduling*

@@ -11,7 +11,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="dashboard.css">
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -262,13 +262,14 @@
                     </template>
                     <table class="data-table" x-show="recentActivity.length > 0">
                         <thead>
-                            <tr><th>Date</th><th>Type</th><th>Member</th><th>Amount</th></tr>
+                            <tr><th>Date</th><th>Type</th><th>Description</th><th>Member</th><th>Amount</th></tr>
                         </thead>
                         <tbody>
                             <template x-for="entry in recentActivity" :key="entry.id">
                                 <tr>
                                     <td data-label="Date" x-text="formatDate(entry.created_at)"></td>
                                     <td data-label="Type"><span class="badge badge-muted" x-text="entry.type"></span></td>
+                                    <td data-label="Description" style="color:var(--text-secondary);font-size:13px;" x-text="entry.description || '—'"></td>
                                     <td class="name" data-label="Member" x-text="getPlayerName(entry.player_id)"></td>
                                     <td data-label="Amount" x-text="formatCurrency(entry.amount)"></td>
                                 </tr>
@@ -457,7 +458,7 @@
                                             <td data-label="Date" x-text="formatDate(bet.created_at)"></td>
                                             <td class="name" data-label="Member" x-text="getPlayerName(bet.player_id)"></td>
                                             <td data-label="Type"><span class="badge badge-muted" x-text="bet.bet_type || 'single'"></span></td>
-                                            <td data-label="Pick" x-text="bet.team_name || bet.selection || '—'"></td>
+                                            <td data-label="Pick" x-text="bet.side || '—'"></td>
                                             <td data-label="Odds" x-text="formatOdds(bet.odds)"></td>
                                             <td data-label="Stake" x-text="formatCurrency(bet.stake)"></td>
                                             <td data-label="Status"><span class="badge" :class="statusBadgeClass(bet.status)" x-text="bet.status"></span></td>
@@ -510,9 +511,9 @@
                                 <span class="badge" :class="statusBadgeClass(pickDetail.status)" style="font-size:13px;padding:5px 14px;" x-text="pickDetail.status"></span>
                                 <span style="font-size:12px;color:var(--text-muted);" x-text="formatDate(pickDetail.created_at)"></span>
                             </div>
-                            <h2 style="font-size:20px;margin-bottom:4px;" x-text="pickDetail.team_name || pickDetail.selection || '—'"></h2>
+                            <h2 style="font-size:20px;margin-bottom:4px;" x-text="pickDetail.side || '—'"></h2>
                             <p style="color:var(--text-secondary);font-size:14px;margin-bottom:4px;" x-text="pickDetail.event_name || '—'"></p>
-                            <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px;" x-text="pickDetail.market_type || '—'"></p>
+                            <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px;" x-text="formatMarketType(pickDetail.market) || '—'"></p>
                             <div>
                                 <span style="font-size:13px;color:var(--text-muted);">Member: </span>
                                 <a :href="'#/members/' + pickDetail.player_id" style="color:var(--accent);font-size:13px;font-weight:500;" x-text="getPlayerName(pickDetail.player_id)"></a>
@@ -589,8 +590,8 @@
                                 <template x-for="leg in pickDetailLegs" :key="leg.id">
                                     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg-elevated);border-radius:var(--radius-sm);">
                                         <div style="flex:1;min-width:0;">
-                                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;" x-text="leg.team_name || leg.selection || '—'"></div>
-                                            <div style="font-size:12px;color:var(--text-muted);" x-text="leg.market_type || '—'"></div>
+                                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;" x-text="leg.side || '—'"></div>
+                                            <div style="font-size:12px;color:var(--text-muted);" x-text="formatMarketType(leg.market)"></div>
                                         </div>
                                         <div style="display:flex;align-items:center;gap:10px;">
                                             <span style="font-size:13px;font-weight:600;color:var(--text-secondary);" x-text="formatOdds(leg.odds)"></span>
@@ -820,7 +821,7 @@
                                         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;"
                                              @click="window.location.hash = '#/picks/' + bet.id">
                                             <div style="flex:1;min-width:0;">
-                                                <div style="font-size:14px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="bet.team_name || bet.selection || '—'"></div>
+                                                <div style="font-size:14px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="bet.side || '—'"></div>
                                                 <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
                                                     <span x-text="formatDate(bet.created_at)"></span>
                                                     <span style="margin:0 4px;">·</span>

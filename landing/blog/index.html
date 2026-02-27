@@ -73,7 +73,7 @@
         <section class="blog-listing">
             <div class="container">
                 <div class="blog-grid">
-                    <a href="how-organizers-track-weekly-settlements.html" class="blog-card">
+                    <a href="how-organizers-track-weekly-settlements.html" class="blog-card" data-publish="2026-02-24">
                         <div class="blog-card-content">
                             <span class="blog-card-date">February 24, 2026</span>
                             <h2 class="blog-card-title">How Organizers Track Weekly Settlements</h2>
@@ -84,7 +84,7 @@
                         </div>
                     </a>
 
-                    <a href="pph-vs-manual-ledger-systems.html" class="blog-card">
+                    <a href="pph-vs-manual-ledger-systems.html" class="blog-card" data-publish="2026-02-24">
                         <div class="blog-card-content">
                             <span class="blog-card-date">February 24, 2026</span>
                             <h2 class="blog-card-title">PPH vs Manual Ledger Systems: Which Is Right for You?</h2>
@@ -95,7 +95,7 @@
                         </div>
                     </a>
 
-                    <a href="spreadsheet-template-tracking-picks.html" class="blog-card">
+                    <a href="spreadsheet-template-tracking-picks.html" class="blog-card" data-publish="2026-02-24">
                         <div class="blog-card-content">
                             <span class="blog-card-date">February 24, 2026</span>
                             <h2 class="blog-card-title">Free Spreadsheet Template for Tracking Picks</h2>
@@ -106,7 +106,7 @@
                         </div>
                     </a>
 
-                    <a href="common-mistakes-independent-organizers.html" class="blog-card">
+                    <a href="common-mistakes-independent-organizers.html" class="blog-card" data-publish="2026-02-24">
                         <div class="blog-card-content">
                             <span class="blog-card-date">February 24, 2026</span>
                             <h2 class="blog-card-title">Common Mistakes Independent Organizers Make (and How to Avoid Them)</h2>
@@ -117,7 +117,7 @@
                         </div>
                     </a>
 
-                    <a href="how-to-be-a-bookie-for-friends.html" class="blog-card">
+                    <a href="how-to-be-a-bookie-for-friends.html" class="blog-card" data-publish="2026-02-27">
                         <div class="blog-card-content">
                             <span class="blog-card-date">February 27, 2026</span>
                             <h2 class="blog-card-title">How to Be a Bookie for Your Friend Group (Without a Spreadsheet)</h2>
@@ -128,7 +128,7 @@
                         </div>
                     </a>
 
-                    <a href="wagerlab-vs-booki.html" class="blog-card">
+                    <a href="wagerlab-vs-booki.html" class="blog-card" data-publish="2026-03-01">
                         <div class="blog-card-content">
                             <span class="blog-card-date">March 1, 2026</span>
                             <h2 class="blog-card-title">WagerLab vs Booki: Social Betting App vs. Private Sportsbook Manager</h2>
@@ -139,7 +139,7 @@
                         </div>
                     </a>
 
-                    <a href="best-bookie-software-small-books.html" class="blog-card">
+                    <a href="best-bookie-software-small-books.html" class="blog-card" data-publish="2026-03-05">
                         <div class="blog-card-content">
                             <span class="blog-card-date">March 5, 2026</span>
                             <h2 class="blog-card-title">Best Bookie Software for Small Books (Under 25 Members)</h2>
@@ -150,7 +150,7 @@
                         </div>
                     </a>
 
-                    <a href="best-pph-software-small-bookies.html" class="blog-card">
+                    <a href="best-pph-software-small-bookies.html" class="blog-card" data-publish="2026-03-06">
                         <div class="blog-card-content">
                             <span class="blog-card-date">March 6, 2026</span>
                             <h2 class="blog-card-title">7 Best PPH Software Options for Small Bookies (2026 Guide)</h2>
@@ -207,6 +207,16 @@
         document.querySelector('.nav-hamburger').addEventListener('click', function() {
             document.querySelector('.site-nav').classList.toggle('nav-open');
         });
+
+        // Hide blog posts scheduled for the future
+        (function() {
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+            document.querySelectorAll('.blog-card[data-publish]').forEach(function(card) {
+                var publish = new Date(card.getAttribute('data-publish') + 'T00:00:00');
+                if (publish > today) card.style.display = 'none';
+            });
+        })();
 
         // Waitlist form submission with success state
         document.querySelectorAll('.waitlist-form').forEach(function(form) {
