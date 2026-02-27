@@ -437,10 +437,25 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
                   grade_result: gradeOutcome.result,
                   updated_at: new Date().toISOString(),
                 })
-                .eq('id', bet.id);
+                .eq('id', bet.id)
+                .eq('status', 'accepted');
 
               if (updateError) {
                 console.error(`Catch-up: error settling bet ${bet.id}:`, updateError);
+                continue;
+              }
+
+              // Check for existing ledger entry to prevent duplicates
+              const { data: existingCatchupEntry } = await client
+                .from('ledger_entries')
+                .select('id')
+                .eq('bet_id', bet.id)
+                .eq('type', 'settlement')
+                .limit(1);
+
+              if (existingCatchupEntry && existingCatchupEntry.length > 0) {
+                console.log(`Catch-up: skipping ledger entry for bet ${bet.id} — already exists`);
+                catchupBetsSettled++;
                 continue;
               }
 
@@ -1477,7 +1492,7 @@ Deno.serve(async (req) => {
                           continue;
                         }
 
-                        // Update bet with grade result — go straight to 'settled'
+                        // Update bet with grade result — go straight to 'settled' (only if still accepted)
                         const { error: updateError } = await client
                           .from('bets')
                           .update({
@@ -1485,11 +1500,26 @@ Deno.serve(async (req) => {
                             grade_result: gradeOutcome.result,
                             updated_at: new Date().toISOString(),
                           })
-                          .eq('id', bet.id);
+                          .eq('id', bet.id)
+                          .eq('status', 'accepted');
 
                         if (updateError) {
                           console.error(`Error settling bet ${bet.id}:`, updateError);
                           gradingErrors.push(`Bet ${bet.id}: ${updateError.message}`);
+                          continue;
+                        }
+
+                        // Check for existing ledger entry to prevent duplicates
+                        const { data: existingEntry } = await client
+                          .from('ledger_entries')
+                          .select('id')
+                          .eq('bet_id', bet.id)
+                          .eq('type', 'settlement')
+                          .limit(1);
+
+                        if (existingEntry && existingEntry.length > 0) {
+                          console.log(`Skipping ledger entry for bet ${bet.id} — already exists`);
+                          gradedCount++;
                           continue;
                         }
 

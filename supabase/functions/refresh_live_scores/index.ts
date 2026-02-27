@@ -289,7 +289,21 @@ Deno.serve(async (req) => {
                       grade_result: gradeOutcome.result,
                       grade_details: gradeOutcome.gradeDetails,
                       settled_amount: payoutAmount,
-                    }).eq('id', bet.id);
+                    }).eq('id', bet.id).eq('status', 'accepted');
+
+                    // Check for existing ledger entry to prevent duplicates
+                    const { data: existingLedger } = await client
+                      .from('ledger_entries')
+                      .select('id')
+                      .eq('bet_id', bet.id)
+                      .eq('type', 'settlement')
+                      .limit(1);
+
+                    if (existingLedger && existingLedger.length > 0) {
+                      console.log(`Live scores: skipping ledger entry for bet ${bet.id} — already exists`);
+                      betsGraded++;
+                      continue;
+                    }
 
                     const descriptionMap: Record<string, string> = { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed', void: 'Bet voided' };
                     const description = descriptionMap[gradeOutcome.result] || 'Bet settled';
