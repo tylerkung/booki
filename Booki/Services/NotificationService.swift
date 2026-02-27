@@ -74,6 +74,15 @@ final class NotificationService: NSObject {
         }
     }
 
+    /// Clear the app icon badge count (called when app enters foreground).
+    func clearBadge() {
+        UNUserNotificationCenter.current().setBadgeCount(0) { error in
+            if let error {
+                print("NotificationService: Failed to clear badge: \(error)")
+            }
+        }
+    }
+
     /// Remove all device tokens for the current user (called on logout).
     func removeToken() async {
         guard let userId = try? await supabase.auth.session.user.id else { return }

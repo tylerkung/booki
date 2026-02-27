@@ -211,12 +211,18 @@ export async function sendNotification(params: SendNotificationParams): Promise<
     // 4. Send to each device token
     const staleTokenIds: string[] = [];
 
+    // Only set badge for pick_graded/parlay_graded and balance_adjusted events
+    const badgeEvents = new Set(['pick_graded', 'parlay_graded', 'balance_adjusted']);
+    const aps: Record<string, unknown> = {
+      alert: { title, body },
+      sound: 'default',
+    };
+    if (badgeEvents.has(event)) {
+      aps.badge = 1;
+    }
+
     const apnsPayload = JSON.stringify({
-      aps: {
-        alert: { title, body },
-        sound: 'default',
-        badge: 1,
-      },
+      aps,
       deep_link: data?.deep_link || null,
     });
 

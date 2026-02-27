@@ -23,6 +23,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct BookiApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
     @State private var authManager = AuthManager()
     @State private var syncService = SyncService()
     @State private var realtimeService = RealtimeService()
@@ -88,6 +89,11 @@ struct BookiApp: App {
                 }
                 .onOpenURL { url in
                     handleIncomingURL(url)
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    if newPhase == .active {
+                        NotificationService.shared.clearBadge()
+                    }
                 }
         }
         .modelContainer(sharedModelContainer)
