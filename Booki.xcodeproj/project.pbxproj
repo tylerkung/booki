@@ -140,6 +140,7 @@
 		8A12345600A6 /* PlayerPicksListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A12345500A6 /* PlayerPicksListView.swift */; };
 		8A12345600A7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A12345500A7 /* PrivacyInfo.xcprivacy */; };
 		8A99887700C1 /* StoreKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A99887600C1 /* StoreKitService.swift */; };
+		8A99887700D1 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A99887600D1 /* NotificationService.swift */; };
 		8AE1C2D400B1 /* PlayerProfileEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AE1C2D300B1 /* PlayerProfileEditView.swift */; };
 		8AE1C2D400B2 /* BecomeOrganizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AE1C2D300B2 /* BecomeOrganizerView.swift */; };
 /* End PBXBuildFile section */
@@ -292,6 +293,7 @@
 		8A12345500A6 /* PlayerPicksListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPicksListView.swift; sourceTree = "<group>"; };
 		8A12345500A7 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		8A99887600C1 /* StoreKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitService.swift; sourceTree = "<group>"; };
+		8A99887600D1 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		8AE1C2D300B1 /* PlayerProfileEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfileEditView.swift; sourceTree = "<group>"; };
 		8AE1C2D300B2 /* BecomeOrganizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BecomeOrganizerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -487,6 +489,7 @@
 				50C084032F2BF49A001A0FE5 /* AuditService.swift */,
 				50C084042F2BF49A001A0FE5 /* EdgeFunctionService.swift */,
 				8A99887600C1 /* StoreKitService.swift */,
+				8A99887600D1 /* NotificationService.swift */,
 				8A1234550065 /* BookieService.swift */,
 				8A1234550066 /* SyncService.swift */,
 				8A1234550067 /* RealtimeService.swift */,
@@ -752,6 +755,7 @@
 				507360762F4D2C47000350CE /* SportPageView.swift in Sources */,
 				50C084072F2BF49A001A0FE5 /* EdgeFunctionService.swift in Sources */,
 				8A99887700C1 /* StoreKitService.swift in Sources */,
+				8A99887700D1 /* NotificationService.swift in Sources */,
 				8A1234560070 /* SyncModels.swift in Sources */,
 				8A1234560071 /* InviteCodeService.swift in Sources */,
 				8A1234560099 /* InviteClaimView.swift in Sources */,
@@ -944,6 +948,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Booki/Info.plist;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
@@ -977,6 +982,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Booki/Info.plist;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
