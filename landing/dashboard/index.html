@@ -17,7 +17,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="dashboard.css">
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -110,13 +110,45 @@
             return true;
         }
 
-        // Check if already logged in
+        // Check if already logged in AND is an organizer
         async function checkSession() {
             if (!initSupabase()) return;
             const { data: { session } } = await sbClient.auth.getSession();
             if (session) {
-                window.location.href = 'app.html';
+                if (await isOrganizer(session.user.id)) {
+                    window.location.href = 'app.html';
+                } else {
+                    await sbClient.auth.signOut();
+                }
             }
+        }
+
+        // Check bookie record exists AND user isn't just a player with a spurious record
+        async function isOrganizer(userId) {
+            const { data: bookieRecord } = await sbClient
+                .from('bookies')
+                .select('id')
+                .eq('auth_user_id', userId)
+                .limit(1);
+
+            if (!bookieRecord || bookieRecord.length === 0) return false;
+
+            // Guard against spurious bookie records: if user is a player
+            // under a DIFFERENT bookie, they're not a real organizer
+            const { data: playerRecord } = await sbClient
+                .from('players')
+                .select('id, bookie_id')
+                .eq('auth_user_id', userId)
+                .limit(1);
+
+            if (playerRecord && playerRecord.length > 0) {
+                // Player exists — only allow if their bookie_id matches their own bookie record
+                if (playerRecord[0].bookie_id !== bookieRecord[0].id) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         checkSession();
@@ -173,8 +205,16 @@
                 return;
             }
 
-            // Ensure bookie record exists
-            await ensureBookieRecord(data.user);
+            // Check if user is an organizer (not just a player with spurious bookie record)
+            if (!await isOrganizer(data.user.id)) {
+                await sbClient.auth.signOut();
+                errorEl.textContent = 'This account is not an organizer. The dashboard is for organizers only.';
+                errorEl.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Log In';
+                return;
+            }
+
             window.location.href = 'app.html';
         }
 

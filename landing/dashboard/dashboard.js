@@ -267,9 +267,10 @@ function dashboardApp() {
                 if (!session) window.location.href = 'index.html';
             });
 
-            // Load bookie
+            // Load bookie — sign out non-organizers to prevent redirect loop
             await this.loadBookie();
             if (!this.bookie) {
+                await this.supabase.auth.signOut();
                 window.location.href = 'index.html';
                 return;
             }
@@ -508,18 +509,22 @@ function dashboardApp() {
                 .order('created_at', { ascending: false })
                 .limit(10);
 
-            const { data: recentBets } = await this.supabase
+            const { data: recentBets, error: betsErr } = await this.supabase
                 .from('bets')
-                .select('id, player_id, stake, status, market, side, is_parlay, parlay_legs, created_at')
+                .select('id, player_id, stake, odds, status, market, side, is_parlay, parlay_legs, created_at')
                 .eq('bookie_id', this.bookie.id)
                 .order('created_at', { ascending: false })
                 .limit(10);
 
+            if (betsErr) console.error('Recent bets query failed:', betsErr);
+
             // Normalize both into a common shape and merge
+            const ledgerTypeLabels = { settlement: 'graded', paymentLogged: 'settle up', adjustment: 'adjustment' };
             const ledgerItems = (recentLedger || []).map(e => ({
                 id: 'ledger-' + e.id,
                 created_at: e.created_at,
-                type: e.type || 'settlement',
+                type: ledgerTypeLabels[e.type] || e.type,
+                description: e.description || '',
                 player_id: e.player_id,
                 amount: e.amount,
                 _source: 'ledger',
@@ -527,7 +532,8 @@ function dashboardApp() {
             const betItems = (recentBets || []).map(b => ({
                 id: 'bet-' + b.id,
                 created_at: b.created_at,
-                type: b.is_parlay ? 'multi-pick' : 'pick placed',
+                type: b.is_parlay ? 'multi-pick' : 'pick',
+                description: (b.side || '') + ' ' + this.formatOdds(b.odds),
                 player_id: b.player_id,
                 amount: b.stake,
                 _source: 'bet',
@@ -729,10 +735,26 @@ function dashboardApp() {
 
             this.pickDetail = data[0];
 
+            // Enrich with event data (side/market are on bets, event name is on events)
+            if (this.pickDetail.event_id) {
+                const { data: evtData } = await this.supabase
+                    .from('events')
+                    .select('home_team, away_team, sport, start_time')
+                    .eq('id', this.pickDetail.event_id)
+                    .limit(1);
+                if (evtData && evtData.length > 0) {
+                    const evt = evtData[0];
+                    this.pickDetail.event_name = evt.away_team
+                        ? `${evt.away_team} @ ${evt.home_team}`
+                        : evt.home_team;
+                    this.pickDetail.sport = evt.sport;
+                }
+            }
+
             // Fetch parlay legs if applicable
             if (this.pickDetail.bet_type === 'parlay' && this.pickDetail.ticket_id) {
                 const { data: legs } = await this.supabase
-                    .from('bet_legs')
+                    .from('bets')
                     .select('*')
                     .eq('ticket_id', this.pickDetail.ticket_id)
                     .order('created_at');
@@ -890,7 +912,7 @@ function dashboardApp() {
                     type: bet.status === 'won' || bet.status === 'settled' ? 'won'
                         : bet.status === 'lost' ? 'lost'
                         : 'bet_placed',
-                    description: (bet.team_name || bet.selection || 'Pick') + ' ' + this.formatOdds(bet.odds),
+                    description: (bet.side || 'Pick') + ' ' + this.formatOdds(bet.odds),
                     amount: bet.status === 'lost' ? -(Number(bet.stake) || 0)
                         : (bet.status === 'won' || bet.status === 'settled') ? this.calcPickPnl(bet)
                         : -(Number(bet.stake) || 0),
@@ -1693,6 +1715,12 @@ function dashboardApp() {
             return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         },
 
+        formatMarketType(market) {
+            if (!market) return '';
+            const map = { h2h: 'Moneyline', spreads: 'Spread', totals: 'Total', outright: 'Futures' };
+            return map[market] || market;
+        },
+
         formatOdds(odds) {
             if (!odds) return '—';
             const n = Number(odds);
@@ -1720,13 +1748,10 @@ function dashboardApp() {
 
         // ── Toasts ──
         toast(message, type = 'success') {
-            const t = { message, type, visible: true };
-            this.toasts.push(t);
+            const id = Date.now() + Math.random();
+            this.toasts.push({ id, message, type });
             setTimeout(() => {
-                t.visible = false;
-                setTimeout(() => {
-                    this.toasts = this.toasts.filter(x => x !== t);
-                }, 300);
+                this.toasts = this.toasts.filter(x => x.id !== id);
             }, 3000);
         },
     };
