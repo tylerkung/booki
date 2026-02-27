@@ -510,7 +510,7 @@ function dashboardApp() {
 
             const { data: recentBets } = await this.supabase
                 .from('bets')
-                .select('id, player_id, stake, status, market, side, event_description, is_parlay, parlay_legs, created_at')
+                .select('id, player_id, stake, status, market, side, is_parlay, parlay_legs, created_at')
                 .eq('bookie_id', this.bookie.id)
                 .order('created_at', { ascending: false })
                 .limit(10);
@@ -583,7 +583,7 @@ function dashboardApp() {
             // Sport Performance breakdown + attention tags data
             const { data: allBets } = await this.supabase
                 .from('bets')
-                .select('sport, stake, odds, status, market, team_name, selection, player_id, is_parlay, created_at')
+                .select('sport, stake, odds, status, market, side, player_id, is_parlay, created_at')
                 .eq('bookie_id', this.bookie.id);
 
             const sportMap = {};
@@ -609,7 +609,7 @@ function dashboardApp() {
             const futureBets = (allBets || []).filter(b => b.market === 'outright' && ['pending', 'accepted'].includes(b.status));
             const selectionCount = {};
             for (const b of futureBets) {
-                const sel = b.team_name || b.selection || 'Unknown';
+                const sel = b.side || 'Unknown';
                 selectionCount[sel] = (selectionCount[sel] || 0) + 1;
             }
             const topSelections = Object.entries(selectionCount)
