@@ -363,7 +363,13 @@
                         <div>
                             <table class="data-table">
                                 <thead>
-                                    <tr><th>Name</th><th>Balance</th><th>Credit</th><th>Status</th><th>Actions</th></tr>
+                                    <tr>
+                                        <th class="sortable" @click="sortMembers('name')">Name <span class="sort-indicator" x-show="memberSortColumn === 'name'" x-text="memberSortAsc ? '↑' : '↓'"></span></th>
+                                        <th class="sortable" @click="sortMembers('balance')">Balance <span class="sort-indicator" x-show="memberSortColumn === 'balance'" x-text="memberSortAsc ? '↑' : '↓'"></span></th>
+                                        <th class="sortable" @click="sortMembers('credit')">Credit <span class="sort-indicator" x-show="memberSortColumn === 'credit'" x-text="memberSortAsc ? '↑' : '↓'"></span></th>
+                                        <th class="sortable" @click="sortMembers('status')">Status <span class="sort-indicator" x-show="memberSortColumn === 'status'" x-text="memberSortAsc ? '↑' : '↓'"></span></th>
+                                        <th>Actions</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     <template x-for="p in filteredPlayers" :key="p.id">
@@ -463,6 +469,14 @@
                                 <div class="empty-state">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                                     <p>No picks yet. Members will appear here once they start placing picks.</p>
+                                </div>
+                            </template>
+                            <template x-if="hasMorePicks && bets.length > 0">
+                                <div style="text-align:center;padding:16px;">
+                                    <button class="btn btn-ghost" @click="loadMorePicks()" :disabled="isLoadingPicks">
+                                        <span x-show="!isLoadingPicks">Load More</span>
+                                        <span x-show="isLoadingPicks">Loading...</span>
+                                    </button>
                                 </div>
                             </template>
                         </div>

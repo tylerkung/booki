@@ -422,6 +422,22 @@ input, button, select, textarea { font: inherit; }
 
 .data-table .name { color: var(--text-primary); font-weight: 500; }
 
+.data-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+}
+
+.data-table th.sortable:hover {
+    color: var(--text-primary);
+}
+
+.sort-indicator {
+    font-size: 10px;
+    margin-left: 2px;
+    color: var(--accent);
+}
+
 /* ── Page Header ── */
 .page-header {
     margin-bottom: 24px;

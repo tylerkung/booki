@@ -44,6 +44,12 @@ function dashboardApp() {
         pickFilter: 'open',
         pickMemberFilter: '',
         pickTypeFilter: '',
+        picksOffset: 0,
+        hasMorePicks: false,
+
+        // ── Members Sorting ──
+        memberSortColumn: 'name',
+        memberSortAsc: true,
 
         // ── Subscription ──
         isPro: false,
@@ -602,16 +608,20 @@ function dashboardApp() {
         },
 
         // ── Picks Data ──
-        async loadPicks() {
+        async loadPicks(append = false) {
             if (!this.bookie) return;
             this.isLoadingPicks = true;
+
+            if (!append) {
+                this.picksOffset = 0;
+            }
 
             let query = this.supabase
                 .from('bets')
                 .select('*')
                 .eq('bookie_id', this.bookie.id)
                 .order('created_at', { ascending: false })
-                .limit(100);
+                .range(this.picksOffset, this.picksOffset + 49);
 
             if (this.pickFilter === 'open') {
                 query = query.in('status', ['pending', 'accepted']);
@@ -639,8 +649,19 @@ function dashboardApp() {
                 return;
             }
 
-            this.bets = data || [];
+            const results = data || [];
+            if (append) {
+                this.bets = [...this.bets, ...results];
+            } else {
+                this.bets = results;
+            }
+            this.hasMorePicks = results.length === 50;
             this.isLoadingPicks = false;
+        },
+
+        async loadMorePicks() {
+            this.picksOffset += 50;
+            await this.loadPicks(true);
         },
 
         // ── Pick Detail ──
@@ -1575,11 +1596,47 @@ function dashboardApp() {
 
         get filteredPlayers() {
             const q = this.memberSearch.toLowerCase();
-            if (!q) return this.players;
-            return this.players.filter(p =>
-                (p.name || '').toLowerCase().includes(q) ||
-                (p.display_name || '').toLowerCase().includes(q)
-            );
+            let result = this.players;
+            if (q) {
+                result = result.filter(p =>
+                    (p.name || '').toLowerCase().includes(q) ||
+                    (p.display_name || '').toLowerCase().includes(q)
+                );
+            }
+            // Sort
+            const col = this.memberSortColumn;
+            const asc = this.memberSortAsc;
+            result = [...result].sort((a, b) => {
+                let va, vb;
+                if (col === 'name') {
+                    va = (a.display_name || a.name || '').toLowerCase();
+                    vb = (b.display_name || b.name || '').toLowerCase();
+                } else if (col === 'balance') {
+                    va = Number(a.balance) || 0;
+                    vb = Number(b.balance) || 0;
+                } else if (col === 'credit') {
+                    va = Number(a.credit_limit) || 0;
+                    vb = Number(b.credit_limit) || 0;
+                } else if (col === 'status') {
+                    va = a.auth_user_id ? 1 : 0;
+                    vb = b.auth_user_id ? 1 : 0;
+                } else {
+                    return 0;
+                }
+                if (va < vb) return asc ? -1 : 1;
+                if (va > vb) return asc ? 1 : -1;
+                return 0;
+            });
+            return result;
+        },
+
+        sortMembers(column) {
+            if (this.memberSortColumn === column) {
+                this.memberSortAsc = !this.memberSortAsc;
+            } else {
+                this.memberSortColumn = column;
+                this.memberSortAsc = true;
+            }
         },
 
         formatCurrency(val) {
