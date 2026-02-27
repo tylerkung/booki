@@ -536,6 +536,16 @@ struct AccountView: View {
                 playerMenuRow(icon: "lock.rotation", title: "Change Password")
             }
 
+            Divider()
+                .background(Theme.border)
+                .padding(.leading, 58)
+
+            NavigationLink {
+                NotificationPreferencesView()
+            } label: {
+                playerMenuRow(icon: "bell.badge", title: "Notifications")
+            }
+
             // "Be an Organizer" row for standalone users
             if authManager.isStandaloneUser {
                 Divider()
