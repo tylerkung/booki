@@ -583,12 +583,25 @@ function dashboardApp() {
             // Sport Performance breakdown + attention tags data
             const { data: allBets } = await this.supabase
                 .from('bets')
-                .select('sport, stake, odds, status, market, side, player_id, is_parlay, created_at')
+                .select('event_id, stake, odds, status, market, side, player_id, is_parlay, created_at')
                 .eq('bookie_id', this.bookie.id);
+
+            // Build event → sport lookup
+            const eventIds = [...new Set((allBets || []).map(b => b.event_id).filter(Boolean))];
+            let eventSportMap = {};
+            if (eventIds.length > 0) {
+                const { data: events } = await this.supabase
+                    .from('events')
+                    .select('id, sport')
+                    .in('id', eventIds);
+                for (const e of (events || [])) {
+                    eventSportMap[e.id] = e.sport;
+                }
+            }
 
             const sportMap = {};
             for (const b of (allBets || [])) {
-                const sport = b.sport || 'Unknown';
+                const sport = eventSportMap[b.event_id] || 'Unknown';
                 if (!sportMap[sport]) {
                     sportMap[sport] = { sport, picks: 0, staked: 0, pnl: 0, wins: 0, losses: 0 };
                 }
