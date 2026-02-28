@@ -72,6 +72,7 @@ struct BookiApp: App {
             AuthGateView(pendingInviteCode: $pendingInviteCode)
                 .font(Theme.body)
                 .preferredColorScheme(.dark)
+                .scrollIndicators(.hidden)
                 .environment(authManager)
                 .environment(syncService)
                 .environment(realtimeService)

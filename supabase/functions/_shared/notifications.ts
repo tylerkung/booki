@@ -226,8 +226,21 @@ export async function sendNotification(params: SendNotificationParams): Promise<
       deep_link: data?.deep_link || null,
     });
 
+    // APNs error reasons that indicate the token should be removed
+    const STALE_TOKEN_REASONS = new Set([
+      'BadDeviceToken',
+      'Unregistered',
+      'ExpiredProviderToken',
+      'InvalidProviderToken',
+      'MissingProviderToken',
+      'DeviceTokenNotForTopic',
+    ]);
+
     for (const tokenRow of tokens) {
       try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10_000);
+
         const response = await fetch(`${apnsHost}/3/device/${tokenRow.token}`, {
           method: 'POST',
           headers: {
@@ -238,7 +251,10 @@ export async function sendNotification(params: SendNotificationParams): Promise<
             'content-type': 'application/json',
           },
           body: apnsPayload,
+          signal: controller.signal,
         });
+
+        clearTimeout(timeout);
 
         if (response.status === 200) {
           sent++;
@@ -248,15 +264,21 @@ export async function sendNotification(params: SendNotificationParams): Promise<
           console.log(`APNs 410 Gone for token ${tokenRow.id}, marking for deletion`);
         } else {
           const errorBody = await response.text();
-          if (errorBody.includes('BadDeviceToken')) {
+          // Check if the error reason indicates a stale/invalid token
+          const isStale = [...STALE_TOKEN_REASONS].some((reason) => errorBody.includes(reason));
+          if (isStale) {
             staleTokenIds.push(tokenRow.id);
-            console.log(`APNs BadDeviceToken for token ${tokenRow.id}, marking for deletion`);
+            console.log(`APNs stale token ${tokenRow.id}: ${errorBody}`);
           } else {
             console.error(`APNs error (${response.status}) for token ${tokenRow.id}:`, errorBody);
           }
         }
       } catch (err) {
-        console.error(`Error sending to token ${tokenRow.id}:`, err);
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          console.error(`APNs request timed out for token ${tokenRow.id}`);
+        } else {
+          console.error(`Error sending to token ${tokenRow.id}:`, err);
+        }
       }
     }
 

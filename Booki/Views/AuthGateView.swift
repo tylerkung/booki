@@ -43,7 +43,6 @@ struct AuthGateView: View {
 
     @State private var splashLogoScale: CGFloat = 0.7
     @State private var splashLogoOpacity: Double = 0
-    @State private var splashSpinnerOpacity: Double = 0
 
     // MARK: - Body
 
@@ -104,6 +103,8 @@ struct AuthGateView: View {
             hasTriggeredInitialSync = true
             await syncService.sync()
             await realtimeService.subscribe()
+            // Retry deferred push token registration now that auth is ready
+            await NotificationService.shared.retryPendingToken()
         }
         .animation(.easeInOut(duration: 0.5), value: authManager.isAuthenticated)
         .animation(.easeInOut(duration: 0.4), value: authManager.isLoading)
@@ -265,30 +266,18 @@ struct AuthGateView: View {
             Theme.backgroundGradient
                 .ignoresSafeArea()
 
-            VStack(spacing: 24) {
-                // App Logo with accent glow
-                Image("BookiLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 180)
-                    .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
-                    .scaleEffect(splashLogoScale)
-                    .opacity(splashLogoOpacity)
-
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: Theme.accent))
-                    .scaleEffect(1.2)
-                    .padding(.top, 16)
-                    .opacity(splashSpinnerOpacity)
-            }
+            Image("BookiLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 180)
+                .shadow(color: Theme.accent.opacity(0.3), radius: 40, x: 0, y: 0)
+                .scaleEffect(splashLogoScale)
+                .opacity(splashLogoOpacity)
         }
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
                 splashLogoScale = 1.0
                 splashLogoOpacity = 1.0
-            }
-            withAnimation(.easeInOut(duration: 0.3).delay(0.4)) {
-                splashSpinnerOpacity = 1.0
             }
         }
     }

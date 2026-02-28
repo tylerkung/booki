@@ -461,4 +461,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 27, 2026 - Push notifications (APNs), notification preferences UI, apple_iap_webhook fix, multi-pick card layout fix*
+*Last updated: February 28, 2026 - Bet slip UX polish, notification hardening, smart odds refresh (15-min windows), final scores on picks*

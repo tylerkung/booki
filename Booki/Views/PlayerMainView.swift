@@ -106,11 +106,17 @@ struct PlayerMainView: View {
         .onChange(of: NotificationService.shared.pendingDeepLink) { _, deepLink in
             handleDeepLink(deepLink)
         }
+        // Retry pending deep link once player data is ready
+        .onChange(of: currentPlayer?.id) { _, _ in
+            handleDeepLink(NotificationService.shared.pendingDeepLink)
+        }
     }
 
     /// Route a deep link to the appropriate tab
     private func handleDeepLink(_ deepLink: String?) {
         guard let deepLink else { return }
+        // Don't navigate before the player/tab view is ready
+        guard currentPlayer != nil else { return }
         guard let url = URL(string: deepLink) else {
             NotificationService.shared.pendingDeepLink = nil
             return
@@ -119,7 +125,7 @@ struct PlayerMainView: View {
         let host = url.host
 
         switch host {
-        case "ticket":
+        case "bet", "ticket":
             selectedTab = 2 // TRACK tab
         case "picks":
             selectedTab = 2 // TRACK tab

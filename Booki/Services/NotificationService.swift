@@ -46,12 +46,17 @@ final class NotificationService: NSObject, @unchecked Sendable {
 
     // MARK: - Token Registration
 
+    /// Pending token to register once auth is ready
+    private var pendingDeviceToken: Data?
+
     /// Convert device token data to hex string and upsert to Supabase.
+    /// If auth isn't ready yet, stores the token and retries when `retryPendingToken()` is called.
     func registerToken(_ deviceToken: Data) async {
         let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
 
         guard let userId = try? await supabase.auth.session.user.id else {
-            print("NotificationService: No authenticated user for token registration")
+            print("NotificationService: No authenticated user yet, deferring token registration")
+            pendingDeviceToken = deviceToken
             return
         }
 
@@ -74,6 +79,13 @@ final class NotificationService: NSObject, @unchecked Sendable {
         }
     }
 
+    /// Retry registering a pending device token (call after auth becomes ready).
+    func retryPendingToken() async {
+        guard let token = pendingDeviceToken else { return }
+        pendingDeviceToken = nil
+        await registerToken(token)
+    }
+
     /// Clear the app icon badge count (called when app enters foreground).
     func clearBadge() {
         UNUserNotificationCenter.current().setBadgeCount(0) { error in
@@ -83,15 +95,14 @@ final class NotificationService: NSObject, @unchecked Sendable {
         }
     }
 
-    /// Remove all device tokens for the current user (called on logout).
-    func removeToken() async {
-        guard let userId = try? await supabase.auth.session.user.id else { return }
-
+    /// Remove all device tokens for the current user (call BEFORE clearing auth).
+    /// Pass the userId explicitly since auth session may be cleared by the time this runs.
+    func removeToken(for userId: String) async {
         do {
             try await supabase
                 .from("device_tokens")
                 .delete()
-                .eq("user_id", value: userId.uuidString.lowercased())
+                .eq("user_id", value: userId.lowercased())
                 .execute()
         } catch {
             print("NotificationService: Failed to remove tokens: \(error)")

@@ -7,8 +7,8 @@ import { sendNotification } from '../_shared/notifications.ts';
 
 /**
  * Generates an idempotency key for auto-refresh operations.
- * Format: auto_refresh_{YYYY-MM-DD}_{HH}
- * Uses the current UTC hour so each cron run gets its own key.
+ * Format: auto_refresh_{YYYY-MM-DD}_{HH}_{quarter}
+ * Uses 15-minute windows so each cron run gets its own key.
  */
 function generateIdempotencyKey(): string {
   const now = new Date();
@@ -16,8 +16,9 @@ function generateIdempotencyKey(): string {
   const month = String(now.getUTCMonth() + 1).padStart(2, '0');
   const day = String(now.getUTCDate()).padStart(2, '0');
   const hour = String(now.getUTCHours()).padStart(2, '0');
+  const quarter = Math.floor(now.getUTCMinutes() / 15);
   const dateStr = `${year}-${month}-${day}`;
-  return `auto_refresh_${dateStr}_${hour}`;
+  return `auto_refresh_${dateStr}_${hour}_q${quarter}`;
 }
 
 /**
@@ -128,8 +129,8 @@ async function sendGradingNotifications(
           await sendNotification({
             event: 'pick_graded',
             recipientUserIds: [authUserId],
-            title: `${bets.length} picks graded`,
-            body: `${bets.length} picks graded — see results`,
+            title: 'Your picks were graded',
+            body: `${bets.length} picks — see results`,
             data: { deep_link: 'booki://picks' },
           });
         }
@@ -1203,8 +1204,11 @@ Deno.serve(async (req) => {
 
       // Group games by sport key for efficient API calls
       // Outright events use separate futures API keys
+      // Only refresh odds for games starting within 4 hours (sync_games handles the rest)
+      const ODDS_REFRESH_WINDOW_MS = 4 * 60 * 60 * 1000; // 4 hours
       const gamesBySportKey = new Map<string, SelectedGame[]>();
       const gamesByFuturesKey = new Map<string, SelectedGame[]>();
+      let skippedNotSoon = 0;
       for (const game of finalSelection) {
         // Skip odds refresh if event has already started (but not outrights — they have distant future dates)
         const isOutright = game.away_team === 'Outright';
@@ -1212,6 +1216,11 @@ Deno.serve(async (req) => {
           const startTime = new Date(game.start_time);
           if (startTime <= now) {
             console.log(`Skipping odds refresh for ${game.id} - event has started`);
+            continue;
+          }
+          // Only refresh odds for games starting within the window
+          if (startTime.getTime() - now.getTime() > ODDS_REFRESH_WINDOW_MS) {
+            skippedNotSoon++;
             continue;
           }
         }
@@ -1247,6 +1256,11 @@ Deno.serve(async (req) => {
           gamesBySportKey.set(sportKey, existing);
         }
       }
+
+      if (skippedNotSoon > 0) {
+        console.log(`Skipped ${skippedNotSoon} games starting >4h from now (handled by sync_games)`);
+      }
+      console.log(`Refreshing odds for ${gamesBySportKey.size} sports, ${Array.from(gamesBySportKey.values()).reduce((s, g) => s + g.length, 0)} games within 4h window`);
 
       // Fetch odds for each sport and update markets
       for (const [sportKey, games] of gamesBySportKey) {

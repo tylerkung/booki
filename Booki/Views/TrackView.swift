@@ -290,7 +290,8 @@ struct TrackView: View {
                                 presenter: buildPresenter(for: ticket),
                                 ticket: ticket,
                                 eventNameProvider: eventName,
-                                leagueProvider: league
+                                leagueProvider: league,
+                                scoreProvider: eventScore
                             )
                         }
                         .buttonStyle(.plain)
@@ -334,6 +335,13 @@ struct TrackView: View {
         return bet.sportLeague
     }
 
+    private func eventScore(for bet: Bet) -> String? {
+        guard let event = findEvent(for: bet) else { return nil }
+        guard let home = event.homeScore, let away = event.awayScore else { return nil }
+        guard event.awayTeam != "Outright" else { return nil }
+        return "\(away)-\(home)"
+    }
+
     private func buildPresenter(for ticket: Ticket) -> PickPresenter {
         if ticket.isParlay {
             return PickPresenter.multiPick(bets: ticket.bets, events: Array(events))
@@ -355,6 +363,7 @@ struct TicketCardView: View {
     let ticket: Ticket
     let eventNameProvider: (Bet) -> String
     let leagueProvider: (Bet) -> String?
+    let scoreProvider: ((Bet) -> String?)?
 
     /// Color for leg status dot
     private func legStatusColor(for bet: Bet) -> Color {
@@ -400,17 +409,16 @@ struct TicketCardView: View {
                         .lineLimit(1)
                 }
 
-                // Stake + Profit + Mini status dots
-                HStack(spacing: 8) {
+                // Stake + Profit + Score/Dots
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
                     Text(presenter.stakeLine)
                         .font(Theme.bodyFont(size: 13))
                         .foregroundStyle(Theme.textSecondary)
                     Text(presenter.profitLine)
                         .font(Theme.bodyFont(size: 13, weight: .medium))
                         .foregroundStyle(presenter.profitColor)
-
+                    Spacer()
                     if ticket.isParlay {
-                        Spacer()
                         HStack(spacing: 4) {
                             ForEach(ticket.bets) { bet in
                                 Circle()
@@ -418,6 +426,10 @@ struct TicketCardView: View {
                                     .frame(width: 8, height: 8)
                             }
                         }
+                    } else if let bet = ticket.bets.first, let score = scoreProvider?(bet) {
+                        Text(score)
+                            .font(Theme.bodyFont(size: 13, weight: .medium))
+                            .foregroundStyle(Theme.textSecondary)
                     }
                 }
             }

@@ -258,6 +258,36 @@ struct BetConfirmationSheet: View {
 
     // MARK: - Success View (US-053: Enhanced celebration animation)
 
+    private static let confirmationMessages = [
+        "You're in!",
+        "Locked in.",
+        "On the board.",
+        "Brave.",
+        "Bold choice.",
+        "Noted.",
+        "Pick submitted.",
+        "In the action.",
+        "Game on.",
+        "Feeling dangerous.",
+        "Let's cook.",
+        "Big swing.",
+        "The streets have spoken.",
+        "Dialed in.",
+        "Trust the gut.",
+        "Ballsy.",
+        "Confirmed.",
+        "Registered.",
+        "And it's away.",
+        "From downtown!",
+        "Into the lineup.",
+        "You said what you said.",
+        "On the record.",
+        "The people have spoken.",
+        "You might be onto something.",
+    ]
+
+    @State private var confirmationMessage = confirmationMessages.randomElement() ?? "You're in!"
+
     /// US-053: Outer ring pulse state
     @State private var outerRingScale: CGFloat = 0.8
     @State private var outerRingOpacity: Double = 0
@@ -308,7 +338,7 @@ struct BetConfirmationSheet: View {
             }
 
             VStack(spacing: 8) {
-                Text("You're in!")
+                Text(confirmationMessage)
                     .font(Theme.title2)
                     .fontWeight(.bold)
 

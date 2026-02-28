@@ -102,8 +102,10 @@ final class AuthManager {
 
     /// Signs out the current user
     func signOut() async throws {
-        // Remove push notification device token before signing out
-        await NotificationService.shared.removeToken()
+        // Remove push notification device token before clearing auth
+        if let userId = try? await supabase.auth.session.user.id.uuidString {
+            await NotificationService.shared.removeToken(for: userId)
+        }
         try await supabase.auth.signOut()
         // Auth state listener will handle updating the published properties
     }

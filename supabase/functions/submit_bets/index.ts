@@ -225,6 +225,8 @@ Deno.serve(async (req) => {
     const marketIds = body.bets.map(b => b.market_id.toLowerCase());
     const uniqueMarketIds = Array.from(new Set(marketIds));
 
+    console.log('Looking up market IDs:', uniqueMarketIds);
+
     const { data: markets, error: marketsError } = await client
       .from('markets')
       .select('id, type, side_a, side_b')
@@ -232,6 +234,13 @@ Deno.serve(async (req) => {
 
     if (marketsError) {
       console.error('Error fetching markets:', marketsError);
+    }
+
+    console.log('Markets found:', markets?.length ?? 0, 'of', uniqueMarketIds.length, 'requested');
+    if (markets && markets.length < uniqueMarketIds.length) {
+      const foundIds = new Set(markets.map(m => m.id.toLowerCase()));
+      const missingIds = uniqueMarketIds.filter(id => !foundIds.has(id));
+      console.log('Missing market IDs:', missingIds);
     }
 
     const marketMap = new Map(

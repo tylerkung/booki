@@ -52,6 +52,31 @@ struct BetSlipSheet: View {
     /// US-005: Store submitted items for re-use
     @State private var lastSubmittedItems: [BetSlipItem] = []
 
+    /// Random confirmation message
+    @State private var confirmationMessage: String = "You're in!"
+
+    private static let confirmationMessages = [
+        "You're in!", "Locked in.", "On the board.", "Brave.",
+        "Bold choice.", "Noted.", "Pick submitted.", "In the action.",
+        "Game on.", "Feeling dangerous.", "Let's cook.", "Big swing.",
+        "The streets have spoken.", "Dialed in.", "Trust the gut.",
+        "Ballsy.", "Confirmed.", "Registered.", "And it's away.",
+        "From downtown!", "Into the lineup.", "You said what you said.",
+        "On the record.", "The people have spoken.", "You might be onto something.",
+    ]
+
+    private static let multiPickMessages = confirmationMessages + [
+        "Bold strategy, let's see if it pays off.",
+        "All or nothing.",
+        "You might be a genius.",
+        "Every leg hits and you're a hero.",
+        "You love the rush, don't you.",
+        "A lot riding on this one.",
+        "Fortune favors the bold.",
+        "Turks & Caicos?",
+        "Swing for the fences.",
+    ]
+
     /// Animation state for success (US-006)
     @State private var showCheckmark: Bool = false
     @State private var checkmarkScale: CGFloat = 0
@@ -217,6 +242,12 @@ struct BetSlipSheet: View {
             .onChange(of: betSlipManager.betMode) { _, _ in
                 activeFieldId = nil
             }
+            // Auto-switch from Multi to Singles when selections drop below 2
+            .onChange(of: betSlipManager.count) { _, newCount in
+                if newCount < 2 && betSlipManager.betMode == .parlay {
+                    betSlipManager.betMode = .singles
+                }
+            }
             // Pad decimal places when switching away from a field
             .onChange(of: activeFieldId) { oldFieldId, _ in
                 guard let oldId = oldFieldId else { return }
@@ -302,22 +333,14 @@ struct BetSlipSheet: View {
     private var balanceDisplayRow: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Balance:")
+                Text("Available:")
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
 
-                Text(formatCurrency(displayBalance))
+                Text(formatCurrency(balanceSummary.availableCredit))
                     .font(Theme.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(balanceColor)
-
-                Text("/")
-                    .font(Theme.subheadline)
-                    .foregroundStyle(Theme.textMuted)
-
-                Text("\(formatCurrency(balanceSummary.creditLimit)) limit")
-                    .font(Theme.subheadline)
-                    .foregroundStyle(Theme.textMuted)
+                    .foregroundStyle(balanceSummary.availableCredit > 0 ? Theme.accent : Theme.danger)
 
                 Spacer()
             }
@@ -407,7 +430,7 @@ struct BetSlipSheet: View {
                     .transition(.opacity)
             }
 
-            // Secondary: selection count + balance on one line
+            // Secondary: selection count + available credit
             HStack {
                 Text("\(betSlipManager.count) selection\(betSlipManager.count == 1 ? "" : "s")")
                     .foregroundStyle(Theme.textSecondary)
@@ -415,11 +438,7 @@ struct BetSlipSheet: View {
                 if player != nil {
                     Text("·")
                         .foregroundStyle(Theme.textMuted)
-                    Text(formatCurrency(displayBalance))
-                        .foregroundStyle(balanceColor)
-                    Text("/")
-                        .foregroundStyle(Theme.textMuted)
-                    Text("\(formatCurrency(balanceSummary.creditLimit)) limit")
+                    Text("\(formatCurrency(balanceSummary.availableCredit)) max")
                         .foregroundStyle(Theme.textMuted)
                 }
 
@@ -478,7 +497,8 @@ struct BetSlipSheet: View {
             ForEach(BetMode.allCases, id: \.self) { mode in
                 let isFuturesBlocked = mode == .parlay && betSlipManager.containsOutrightSelection && !bookieAllowsFuturesParlays
                 let isTierBlocked = mode == .parlay && !bookieIsPro
-                let isDisabled = isSubmitting || (mode == .parlay && betSlipManager.hasConflictingSelections) || isFuturesBlocked || isTierBlocked
+                let needsMultipleSelections = mode == .parlay && betSlipManager.count < 2
+                let isDisabled = isSubmitting || (mode == .parlay && betSlipManager.hasConflictingSelections) || isFuturesBlocked || isTierBlocked || needsMultipleSelections
                 Button(action: {
                     if isTierBlocked {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -1239,7 +1259,7 @@ struct BetSlipSheet: View {
             }
 
             VStack(spacing: 8) {
-                Text("You're in!")
+                Text(confirmationMessage)
                     .font(Theme.title2)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.textPrimary)
@@ -1266,7 +1286,8 @@ struct BetSlipSheet: View {
                         betSlipManager.stake = 0
                         // Return to bet slip view
                         submissionComplete = false
-                        // Reset animation states
+                        // Reset animation states and pick new message for next submit
+                        confirmationMessage = Self.confirmationMessages.randomElement() ?? "You're in!"
                         showCheckmark = false
                         checkmarkScale = 0
                         outerRingScale = 0.8
@@ -1579,6 +1600,10 @@ struct BetSlipSheet: View {
 
                     // Haptic feedback for successful submission
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
+
+                    // Pick a random confirmation message (multi-pick pool includes extra messages)
+                    let pool = betSlipManager.betMode == .parlay ? Self.multiPickMessages : Self.confirmationMessages
+                    confirmationMessage = pool.randomElement() ?? "You're in!"
 
                     // Show success animation
                     withAnimation(.easeInOut(duration: 0.3)) {

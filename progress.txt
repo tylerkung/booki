@@ -482,3 +482,23 @@ Started: Thu Feb 26 14:57:41 PST 2026
   - Deno Deploy's `fetch()` does support HTTP/2 via ALPN negotiation — APNs works directly, no relay needed
   - Push notifications require physical device — Simulator can't register with APNs
 ---
+
+## 2026-02-28 - Bet Slip UX, Notification Hardening, Smart Odds Refresh, Final Scores
+- **Bet slip available credit**: Replaced balance/limit display with available credit as "max" (e.g., "1 selection · $9,974 max")
+- **Multi-pick auto-switch**: Auto-switches from Multi to Singles when selections drop below 2, Multi button disabled with 1 selection
+- **Confirmation messages**: 25 singles + 9 multi-pick randomized messages on bet submission success
+- **Loading screen cleanup**: Removed spinner, just centered Booki logo with accent glow
+- **Notification hardening**: APNs 10s fetch timeout via AbortController, expanded stale token cleanup (BadDeviceToken, Unregistered, ExpiredProviderToken, InvalidProviderToken, MissingProviderToken, DeviceTokenNotForTopic), deferred token registration with retryPendingToken() after auth ready, logout captures userId before clearing auth
+- **Deep link crash fix**: PlayerMainView now handles `booki://bet/` links (was missing, caused crash), cold-start guard prevents navigation before player data loads, retry on player ready
+- **Smart odds refresh**: auto_refresh_games uses 15-min idempotency windows (was hourly), only refreshes odds for games starting within 4 hours — sync_games handles the rest. Cron needs manual update to `*/15 * * * *`
+- **Final scores on picks**: Singles show final score inline with stake/profit on TrackView list cards and TicketDetailView, lastTextBaseline aligned
+- **Notification text**: Batch grading title changed to "Your picks were graded", body to "N picks — see results"
+- **Tweet bank**: Removed language glorifying player losses, replaced 7 tweets with neutral/supportive alternatives
+- Files changed: `BetSlipSheet.swift`, `BetConfirmationSheet.swift`, `AuthGateView.swift`, `PlayerMainView.swift`, `TicketDetailView.swift`, `TrackView.swift`, `NotificationService.swift`, `AuthManager.swift`, `BookiApp.swift`, `_shared/notifications.ts`, `auto_refresh_games/index.ts`, `submit_bets/index.ts`, `tweets.json`
+- **Learnings:**
+  - `removeToken()` on logout must capture userId BEFORE clearing auth — otherwise session is nil and cleanup silently fails
+  - APNs has 6+ distinct stale token error reasons beyond BadDeviceToken — handle them all or the DB fills with dead tokens
+  - `AbortController` + `setTimeout` is the Deno pattern for fetch timeouts
+  - `onChange(of: currentPlayer?.id)` retries pending deep links once player data loads — prevents cold-start race
+  - 15-min odds refresh with 4-hour proximity filter keeps API usage low while ensuring fresh odds near game time
+---

@@ -202,15 +202,15 @@ struct TicketDetailView: View {
                     .lineLimit(1)
             }
 
-            HStack(spacing: 8) {
+            HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(presenter.stakeLine)
                     .font(Theme.bodyFont(size: 13))
                     .foregroundStyle(Theme.textSecondary)
                 Text(presenter.profitLine)
                     .font(Theme.bodyFont(size: 13, weight: .medium))
                     .foregroundStyle(presenter.profitColor)
+                Spacer()
                 if ticket.isParlay {
-                    Spacer()
                     HStack(spacing: 4) {
                         ForEach(ticket.bets) { bet in
                             Circle()
@@ -218,6 +218,10 @@ struct TicketDetailView: View {
                                 .frame(width: 8, height: 8)
                         }
                     }
+                } else if let bet = ticket.bets.first, let score = eventScore(for: bet) {
+                    Text(score)
+                        .font(Theme.bodyFont(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
         }

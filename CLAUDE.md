@@ -164,7 +164,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (February 27, 2026)
+## Current State (February 28, 2026)
 
 - **Branch**: `ralph/push-notifications`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
@@ -297,3 +297,10 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **NotificationService pattern**: `@unchecked Sendable` with per-property `@MainActor` isolation — `@MainActor` on the whole class crashes because UNUserNotificationCenterDelegate methods are called on a private serial queue
 - **APNs auth**: Token-based `.p8` key, ES256 JWT cached 50 min, secrets: `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_ENVIRONMENT`
 - **Multi-Pick card layout fix**: Chevron inline with title/status pill, leg dots inline with stake/profit line
+- **Bet slip UX**: Available credit shown as "max" instead of balance/limit, Multi auto-switches to Singles when selections drop below 2, Multi button disabled with 1 selection
+- **Confirmation messages**: 25 singles + 9 multi-pick messages randomized on submission, displayed in BetSlipSheet success view
+- **Loading screen**: Spinner removed, just centered Booki logo with accent glow
+- **Notification hardening**: APNs 10s fetch timeout, expanded stale token cleanup (6 error reasons), deferred token registration with `retryPendingToken()` after auth ready, logout captures userId before clearing auth
+- **Deep link fix**: PlayerMainView now handles `booki://bet/` links (was missing), cold-start guard prevents navigation before player data loads
+- **Smart odds refresh**: `auto_refresh_games` uses 15-min idempotency windows (was hourly), only refreshes odds for games starting within 4 hours (sync_games handles the rest)
+- **Final scores on picks**: Singles show final score (away-home) inline with stake/profit on both TrackView list cards and TicketDetailView, baseline-aligned
