@@ -20,3 +20,13 @@ Started: Tue Mar  3 01:44:11 PST 2026
   - app.html has 3 roles: 'organizer', 'player' (with bookie), 'standalone' (no bookie) — visibility conditions for player features often need standalone added
   - The player-ticket sidebar link (line 2585) still says `userRole === 'player'` — standalone can't see ticket details from track tab (not in US-011 criteria but may need future fix)
 ---
+
+## 2026-03-03 - US-004
+- Added .eq('bookie_id', this.bookie.id) to the main bets query in loadPickDetail() after .eq('id', this.selectedBetId)
+- Added .eq('bookie_id', this.bookie.id) to the parlay legs query in loadPickDetail() after .eq('ticket_id', ...)
+- Files changed: landing/dashboard/dashboard.js, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - loadPickDetail() is around line 2670 in dashboard.js — two separate queries: main bet fetch (~2677) and parlay legs fetch (~2710)
+  - Other organizer queries like loadMemberDetail already use explicit bookie_id filters — these two were outliers
+  - Defense-in-depth pattern: always add explicit ownership filters even when RLS covers it
+---

@@ -724,13 +724,13 @@ function dashboardApp() {
 
         get playerCreditUtilization() {
             if (!this.playerCreditLimit) return 0;
-            const used = Math.abs(this.playerBalance) + this.playerOpenStakes;
+            const used = Math.max(0, this.playerBalance) + this.playerOpenStakes;
             return Math.min(100, Math.max(0, (used / this.playerCreditLimit) * 100));
         },
 
         get playerAvailableCredit() {
             if (!this.playerCreditLimit) return 0;
-            return Math.max(0, this.playerCreditLimit - Math.abs(this.playerBalance) - this.playerOpenStakes);
+            return Math.max(0, this.playerCreditLimit - Math.max(0, this.playerBalance) - this.playerOpenStakes);
         },
 
         get playerRecentActivity() {
@@ -944,6 +944,7 @@ function dashboardApp() {
                 .from('bets')
                 .select('*')
                 .eq('id', this.selectedBetId)
+                .eq('player_id', this.playerId)
                 .limit(1);
 
             if (error || !data?.length) {
@@ -1794,11 +1795,12 @@ function dashboardApp() {
             for (const b of openBetsList) {
                 if (!b.player_id) continue;
                 if (!memberExposureMap[b.player_id]) {
-                    memberExposureMap[b.player_id] = { exposure: 0, openPicks: 0 };
+                    memberExposureMap[b.player_id] = { exposure: 0, openPicks: 0, openStakes: 0 };
                 }
                 const payout = this.calcPotentialReturn(b) - (Number(b.stake) || 0);
                 memberExposureMap[b.player_id].exposure += payout;
                 memberExposureMap[b.player_id].openPicks += 1;
+                memberExposureMap[b.player_id].openStakes += Number(b.stake) || 0;
             }
 
             // Build dashboard members list sorted by exposure desc
@@ -1807,6 +1809,7 @@ function dashboardApp() {
                     ...p,
                     exposure: memberExposureMap[p.id]?.exposure || 0,
                     openPicks: memberExposureMap[p.id]?.openPicks || 0,
+                    openStakes: memberExposureMap[p.id]?.openStakes || 0,
                 }))
                 .filter(p => p.status !== 'archived')
                 .sort((a, b) => b.exposure - a.exposure);
@@ -1924,7 +1927,7 @@ function dashboardApp() {
             // Near Credit Limit alerts: utilization >= 75%
             for (const m of this.dashboardMembers) {
                 const limit = m.credit_limit || 1000;
-                const utilization = Math.abs(m.balance || 0) / limit * 100;
+                const utilization = (Math.max(0, m.balance || 0) + (m.openStakes || 0)) / limit * 100;
                 if (utilization >= 75) {
                     alerts.push({
                         id: 'nearlimit-' + m.id,
@@ -1980,7 +1983,7 @@ function dashboardApp() {
                 const signals = [];
                 const tags = m.attentionTags || [];
                 const limit = m.credit_limit || 1000;
-                const utilization = Math.abs(m.balance || 0) / limit * 100;
+                const utilization = (Math.max(0, m.balance || 0) + (m.openStakes || 0)) / limit * 100;
 
                 // Near Limit: credit utilization >= 75%
                 if (utilization >= 75) {
@@ -2675,6 +2678,7 @@ function dashboardApp() {
                 .from('bets')
                 .select('*')
                 .eq('id', this.selectedBetId)
+                .eq('bookie_id', this.bookie.id)
                 .limit(1);
 
             if (error || !data?.length) {
@@ -2708,6 +2712,7 @@ function dashboardApp() {
                     .from('bets')
                     .select('*')
                     .eq('ticket_id', this.pickDetail.ticket_id)
+                    .eq('bookie_id', this.bookie.id)
                     .order('created_at');
                 this.pickDetailLegs = legs || [];
             }

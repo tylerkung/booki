@@ -61,7 +61,7 @@
         "Verify parlay legs still load: navigate to a multi-pick detail, confirm all legs display"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Other organizer queries already use explicit bookie_id filters (e.g., loadMemberDetail at line 2576). These two queries are outliers. Adding the filter improves query planning and makes intent explicit."
     },
     {
