@@ -480,9 +480,9 @@ input, button, select, textarea { font: inherit; }
 .badge {
     display: inline-flex;
     align-items: center;
-    padding: 3px 10px;
+    padding: 2px 8px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -1062,5 +1062,49 @@ input, button, select, textarea { font: inherit; }
 @media (max-width: 480px) {
     .stats-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* ── Event Rows ── */
+.event-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--divider);
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+    color: inherit;
+}
+
+.event-row:last-child { border-bottom: none; }
+.event-row:hover { background: var(--bg-elevated); }
+
+.event-time {
+    font-size: 12px;
+    color: var(--text-muted);
+    min-width: 120px;
+    flex-shrink: 0;
+}
+
+.event-matchup {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+    .event-row {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .event-time {
+        min-width: auto;
+        width: 100%;
+    }
+    .event-matchup {
+        flex: 1;
     }
 }
