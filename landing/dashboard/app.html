@@ -1245,6 +1245,11 @@
                             :disabled="settlementWeek && settlementWeek.getTime() >= mostRecentSunday().getTime()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
+                    <button class="btn btn-ghost" @click="exportSettlementCSV()" title="Export CSV"
+                            :disabled="isLoadingSettlement || settlementReports.length === 0">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Export CSV</span>
+                    </button>
                 </div>
 
                 <!-- Shimmer Loading -->

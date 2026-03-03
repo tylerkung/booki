@@ -1002,6 +1002,67 @@ function dashboardApp() {
             this.isSettlementPaying = false;
         },
 
+        exportSettlementCSV() {
+            if (!this.settlementReports.length) return;
+
+            const headers = ['Member Name', 'Starting Balance', 'Bets Won', 'Bets Lost', 'Adjustments', 'Ending Balance', 'Status'];
+            const rows = this.settlementReports.map(r => [
+                r.name,
+                r.startingBalance.toFixed(2),
+                r.betsWon.toFixed(2),
+                r.betsLost.toFixed(2),
+                r.adjustments.toFixed(2),
+                r.endingBalance.toFixed(2),
+                r.isPaid || r.endingBalance === 0 ? 'Settled' : 'Unpaid'
+            ]);
+
+            // Summary row
+            const totals = this.settlementReports.reduce((acc, r) => ({
+                startingBalance: acc.startingBalance + r.startingBalance,
+                betsWon: acc.betsWon + r.betsWon,
+                betsLost: acc.betsLost + r.betsLost,
+                adjustments: acc.adjustments + r.adjustments,
+                endingBalance: acc.endingBalance + r.endingBalance,
+            }), { startingBalance: 0, betsWon: 0, betsLost: 0, adjustments: 0, endingBalance: 0 });
+
+            rows.push([
+                'TOTAL',
+                totals.startingBalance.toFixed(2),
+                totals.betsWon.toFixed(2),
+                totals.betsLost.toFixed(2),
+                totals.adjustments.toFixed(2),
+                totals.endingBalance.toFixed(2),
+                ''
+            ]);
+
+            const escapeCsvField = (field) => {
+                const str = String(field);
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    return '"' + str.replace(/"/g, '""') + '"';
+                }
+                return str;
+            };
+
+            const csvString = [headers, ...rows].map(row => row.map(escapeCsvField).join(',')).join('\n');
+
+            // Format filename date from the week-ending Sunday
+            const d = this.settlementWeek || this.mostRecentSunday();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const filename = `booki-settlement-${yyyy}-${mm}-${dd}.csv`;
+
+            const blob = new Blob([csvString], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            this.toast('Settlement report exported', 'success');
+        },
+
         // ── Event Detail ──
         async loadEventDetail() {
             if (!this.selectedEventId || !this.bookie) return;
