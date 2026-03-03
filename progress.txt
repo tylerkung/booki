@@ -111,3 +111,14 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Pro-gated pattern: `.pro-gated-section` card with `position:relative;overflow:hidden`, content div with `:class="{ 'pro-blur': !isPro }"`, overlay div with `.pro-upgrade-overlay`
   - `<template x-if>` wrapping the card ensures it's only rendered when `riskWatchlist.length > 0`
 ---
+
+## 2026-03-02 - US-009
+- Implemented Settlement Snapshot card on Dashboard, positioned after Risk Watchlist and before Members Grid
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `snapshotWeekRange`, `snapshotOwedToYou`, `snapshotYouOwe`, `snapshotUnpaidCount`, `snapshotOverdueCount`, `snapshotTopUnpaid` computed getters, `openSnapshotPay()`/`snapshotMarkPaid()` methods with `showSnapshotPayModal`/`snapshotPayPlayer`/`isSnapshotPaying` state. Card HTML with calendar icon header showing overdue badge and week range, two-metric summary (Owed to You / You Owe), stats row (unpaid + overdue counts with icons), top 3 unpaid members with Mark Paid button, confirmation modal, "View Settlements" bottom link with chevron. CSS for `.snapshot-unpaid-row` and `.snapshot-view-link`.
+- **Learnings for future iterations:**
+  - Settlement Snapshot uses live balance data from `players` array (already computed in `loadPlayerBalances()`), not `settlementReports` — no extra settlement loading needed on dashboard
+  - `snapshotMarkPaid()` calls `adjust_balance` then refreshes both `loadPlayerBalances()` and `loadDashboard()` to update all dashboard cards
+  - View link uses accent rgba background (0, 245, 212) at 6%/12% opacity for subtle teal highlight — hardcoded since CSS custom properties don't work inside `rgba()`
+  - Overdue badge in card header uses `<template x-if>` to only render when count > 0
+---

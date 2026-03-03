@@ -277,6 +277,11 @@ function dashboardApp() {
         adjustError: '',
         isAdjusting: false,
 
+        // ── Settlement Snapshot (Dashboard) ──
+        showSnapshotPayModal: false,
+        snapshotPayPlayer: null,
+        isSnapshotPaying: false,
+
         // ── Settlement ──
         settlementWeek: null,
         isLoadingSettlement: false,
@@ -1154,6 +1159,71 @@ function dashboardApp() {
             return this.settlementReports
                 .filter(r => r.endingBalance < 0)
                 .reduce((sum, r) => sum + Math.abs(r.endingBalance), 0);
+        },
+
+        // ── Settlement Snapshot (Dashboard) ──
+        get snapshotWeekRange() {
+            const sunday = this.mostRecentSunday();
+            return this.formatWeekRange(sunday);
+        },
+
+        get snapshotOwedToYou() {
+            const activePlayers = this.players.filter(p => p.status !== 'archived');
+            return activePlayers
+                .filter(p => (p.balance || 0) > 0)
+                .reduce((sum, p) => sum + (p.balance || 0), 0);
+        },
+
+        get snapshotYouOwe() {
+            const activePlayers = this.players.filter(p => p.status !== 'archived');
+            return activePlayers
+                .filter(p => (p.balance || 0) < 0)
+                .reduce((sum, p) => sum + Math.abs(p.balance || 0), 0);
+        },
+
+        get snapshotUnpaidCount() {
+            return this.players.filter(p => p.status !== 'archived' && (p.balance || 0) !== 0).length;
+        },
+
+        get snapshotOverdueCount() {
+            return this.players.filter(p => p.status !== 'archived' && p.collection_status === 'overdue').length;
+        },
+
+        get snapshotTopUnpaid() {
+            return this.players
+                .filter(p => p.status !== 'archived' && (p.balance || 0) !== 0)
+                .sort((a, b) => Math.abs(b.balance || 0) - Math.abs(a.balance || 0))
+                .slice(0, 3);
+        },
+
+        openSnapshotPay(player) {
+            this.snapshotPayPlayer = player;
+            this.showSnapshotPayModal = true;
+        },
+
+        async snapshotMarkPaid() {
+            if (!this.snapshotPayPlayer || !this.bookie) return;
+            this.isSnapshotPaying = true;
+
+            try {
+                await this.callEdgeFunction('adjust_balance', {
+                    idempotency_key: crypto.randomUUID(),
+                    player_id: this.snapshotPayPlayer.id,
+                    amount: -(this.snapshotPayPlayer.balance || 0),
+                    type: 'paymentLogged',
+                    reason: 'Weekly settlement',
+                });
+
+                this.toast(`Marked ${this.snapshotPayPlayer.display_name || this.snapshotPayPlayer.name || 'member'} as paid`, 'success');
+                this.showSnapshotPayModal = false;
+                this.snapshotPayPlayer = null;
+                await this.loadPlayerBalances();
+                await this.loadDashboard();
+            } catch (e) {
+                this.toast(e.message || 'Failed to mark as paid', 'error');
+            }
+
+            this.isSnapshotPaying = false;
         },
 
         openSettlementPay(report) {

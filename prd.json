@@ -191,6 +191,7 @@
         "Compute from allLedgerEntries and players data already loaded on dashboard"
       ],
       "priority": 9,
+      "passes": true,
       "notes": "This mirrors the iOS SettlementSnapshotCard. Balances come from summing all ledger entries per player (the allLedgerEntries array is already fetched on dashboard load). Unpaid = positive balance and not recently paid. Overdue = player.collection_status === 'overdue'. The 'Mark Paid' quick action is the same as settle up — calls adjust_balance with negated balance amount and type paymentLogged."
     },
     {
