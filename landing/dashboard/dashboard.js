@@ -410,7 +410,7 @@ function dashboardApp() {
             if (this.userRole === 'organizer') {
                 await this.loadPlayers();
                 await this.loadDashboard();
-            } else if (this.userRole === 'player') {
+            } else if (this.userRole === 'player' || this.userRole === 'standalone') {
                 await this.loadPlayerHome();
             }
         },
@@ -419,7 +419,7 @@ function dashboardApp() {
         parseRoute() {
             const prevRoute = this.route;
             const hash = window.location.hash.replace(/\?.*$/, '');
-            const path = hash.replace('#/', '') || (this.userRole === 'organizer' ? 'dashboard' : 'player-home');
+            const path = hash.replace('#/', '') || (this.userRole === 'organizer' ? 'dashboard' : 'player-games');
 
             // Organizer parameterized routes
             const memberMatch = path.match(/^members\/(.+)$/);
@@ -432,7 +432,7 @@ function dashboardApp() {
             // Organizer routes
             const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings'];
             // Player routes
-            const playerRoutes = ['player-home', 'player-games', 'player-track', 'player-account'];
+            const playerRoutes = ['player-games', 'player-track', 'player-account'];
 
             if (eventMatch) {
                 this.route = 'event-detail';
@@ -460,7 +460,7 @@ function dashboardApp() {
                 if (this.userRole === 'organizer') {
                     this.route = organizerRoutes.includes(path) ? path : 'dashboard';
                 } else {
-                    this.route = playerRoutes.includes(path) ? path : 'player-home';
+                    this.route = playerRoutes.includes(path) ? path : 'player-games';
                 }
                 this.selectedPlayerId = null;
                 this.selectedBetId = null;
@@ -477,7 +477,6 @@ function dashboardApp() {
             if (this.route === 'settlement') this.loadSettlement();
 
             // Load route-specific data (player)
-            if (this.route === 'player-home') this.loadPlayerHome();
             if (this.route === 'player-games') this.loadPlayerGames();
             if (this.route === 'player-track') this.loadPlayerTrack();
             if (this.route === 'player-ticket') this.loadPlayerTicketDetail();
@@ -637,12 +636,12 @@ function dashboardApp() {
             if (this.userRole === 'player') {
                 const hash = window.location.hash.replace(/\?.*$/, '');
                 if (!hash || hash === '#/' || hash === '#/dashboard') {
-                    window.location.hash = '#/player-home';
+                    window.location.hash = '#/player-games';
                 }
             } else if (this.userRole === 'standalone') {
                 const hash = window.location.hash.replace(/\?.*$/, '');
                 if (!hash || hash === '#/' || hash === '#/dashboard') {
-                    window.location.hash = '#/player-home';
+                    window.location.hash = '#/player-games';
                 }
             }
         },
@@ -1264,6 +1263,11 @@ function dashboardApp() {
         // ── Player Games ──
         async loadPlayerGames() {
             this.isLoadingPlayerEvents = true;
+
+            // Ensure balance/bets data is loaded for the balance bar
+            if (this.playerBets.length === 0 && this.playerLedgerEntries.length === 0 && !this.isLoadingPlayerHome) {
+                await this.loadPlayerHome();
+            }
 
             // Fetch upcoming events (not final/canceled, start_time > now)
             const now = new Date().toISOString();

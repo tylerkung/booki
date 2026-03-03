@@ -146,7 +146,7 @@
         "Sidebar nav order should be: Games, Track, Account (3 items, not 4)"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "iOS PlayerMainView.swift line 60: Tab('GAMES', systemImage: 'house.fill', value: 0). Games is THE player home. The separate Home tab with balance summary is a web-only pattern that doesn't match iOS. Balance info should be persistent (visible from Games) not a separate tab. Reference: iOS PlayerTabView wraps each tab with a header showing balance."
     },
     {

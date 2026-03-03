@@ -1,3 +1,20 @@
+## 2026-03-03 - US-009
+- Removed player-home tab entirely; Games is now the default player landing page
+- Removed Home sidebar nav link from app.html
+- Removed player-home HTML section (~150 lines) from app.html
+- Changed parseRoute() default: 'player-home' → 'player-games'; removed 'player-home' from playerRoutes array
+- Changed detectUserRole() redirects: '#/player-home' → '#/player-games' for both 'player' and 'standalone' roles
+- Added balance bar to Games view: compact single-row bar above sport filter chips (balance left, available credit right)
+- Added Performance card (W-L-P record, win rate, net performance, open picks) at top of Account tab
+- Kept loadPlayerHome() as pure data-fetching method; moved call to init() for standalone too
+- loadPlayerGames() now calls loadPlayerHome() if bets/ledger not yet loaded (ensures balance bar has data)
+- Files changed: landing/dashboard/app.html, landing/dashboard/dashboard.js, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - loadPlayerHome() is a shared data-loading method used by loadPlayerTrack/loadPlayerAccount/loadPlayerGames — keep it as a pure data fetcher
+  - The standalone role wasn't calling loadPlayerHome() during init (only 'player' was) — fixed
+  - Balance bar uses x-show="!isLoadingPlayerHome" to avoid flashing $0 while data loads
+---
+
 ## Codebase Patterns
 - dashboard.js playerCreditUtilization and playerAvailableCredit use Math.max(0, balance) not Math.abs — winning players get full credit
 - memberExposureMap tracks openStakes per member for accurate credit utilization alerts
