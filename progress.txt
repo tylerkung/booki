@@ -51,3 +51,15 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - No new CSS needed — reused existing `.btn-grade`, `.btn-grade-win`, `.btn-grade-loss`, `.btn-grade-push`, `.btn-void`, `.modal-overlay`, `.modal`, `.modal-actions`
   - `callEdgeFunction()` is the standard way to call edge functions — returns data with optional `.error`
 ---
+
+## 2026-03-02 - US-004
+- Implemented Settlement view with weekly periods and per-member reports
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: sidebar nav link with dollar sign SVG, `#/settlement` route, settlement state variables, `mostRecentSunday()`/`getWeekStart()`/`formatWeekRange()`/`navigateWeek()` helpers, `loadSettlement()` fetching ledger entries and computing per-member settlement reports (starting balance, bets won/lost, adjustments, ending balance), `filteredSettlementReports`/`settlementOwedToYou`/`settlementYouOwe` computed getters, `settlementMarkPaid()` calling `adjust_balance` edge function with `paymentLogged` type, settlement view with week navigator, summary row, filter chips (All/Unsettled/Settled/Needs Attention), data table, Mark Paid confirmation modal, shimmer loading skeleton, empty state
+- **Learnings for future iterations:**
+  - Settlement calculation splits ledger entries into "before week start" (starting balance) and "within week" (activity), by type
+  - Settlement types: `settlement` = grading results (positive = player lost, negative = player won from bookie perspective), `paymentLogged` = settle-ups, `adjustment` = manual adjustments
+  - Mark Paid calls `adjust_balance` with `amount: -endingBalance` and `type: 'paymentLogged'` — negating the balance to zero it out
+  - Week runs Mon–Sun: `mostRecentSunday()` gets the most recent Sunday, `getWeekStart()` subtracts 6 days for Monday
+  - Added `.table-responsive` wrapper for horizontal scrolling on mobile data tables
+---

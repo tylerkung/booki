@@ -89,6 +89,7 @@
         "Empty state when no members have activity for the selected week"
       ],
       "priority": 4,
+      "passes": true,
       "notes": "Settlement calculation: starting_balance = sum of ledger_entries before week start for that player. Bets won/lost = sum of settlement-type ledger entries within the week. Adjustments = sum of adjustment-type ledger entries within the week. Ending balance = starting_balance + bets_won_lost + adjustments. The adjust_balance edge function expects { player_id, amount, type, reason, idempotency_key }. For Mark Paid: amount should negate the ending balance (if player owes $100, send amount: -100 with type: 'paymentLogged')."
     },
     {
