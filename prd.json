@@ -130,6 +130,7 @@
         "Alerts should use existing styling: card background, border-left colored by severity (4px solid var(--danger) or var(--warning))"
       ],
       "priority": 6,
+      "passes": true,
       "notes": "Credit utilization is calculated as abs(balance) / credit_limit * 100. Balance comes from ledger entries sum for that player. The dashboard already loads allLedgerEntries and players, so this data is available. High exposure requires iterating open bets and grouping by event_id."
     },
     {

@@ -74,3 +74,14 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Week runs Mon–Sun: `mostRecentSunday()` gets the most recent Sunday, `getWeekStart()` subtracts 6 days for Monday
   - Added `.table-responsive` wrapper for horizontal scrolling on mobile data tables
 ---
+
+## 2026-03-02 - US-006
+- Implemented Attention Feed card on Dashboard, positioned above Members Grid
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `attentionExpanded` state, `attentionAlerts` computed getter (Overdue + Near Credit Limit categories from dashboardMembers/attentionTags), `attentionAlertCount` and `displayedAttentionAlerts` getters, "All clear" empty state with checkmark, alert rows with left-border severity coloring (urgent=danger, warning=orange), collapsible View All toggle at 5 items, `.attention-alert-row` CSS with colored left borders
+- **Learnings for future iterations:**
+  - Attention alerts reuse `attentionTags` already computed on `dashboardMembers` in `loadDashboard()` — no extra queries needed
+  - Event-level high exposure grouping would require storing `allBets` at dashboard scope (currently local to `loadDashboard()`). Consider persisting if US-007 needs it
+  - Computed getters that depend on `dashboardMembers` auto-update when `loadDashboard()` runs — Alpine reactivity handles this
+  - Alert rows use `<a>` tags with href for navigation — no `@click` + `location.hash` needed
+---
