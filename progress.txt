@@ -16,6 +16,9 @@ Started: Mon Mar  2 19:47:05 PST 2026
 - Modals placed outside `<template x-if>` blocks to survive re-renders — at the view section level
 - The `allBets` query in `loadDashboard()` must include ALL columns used by `computeAttentionTags()` — add new columns to `.select()` when tags depend on them
 - Pro-gated pattern: `.pro-gated-section` card + `pro-blur` class + `.pro-upgrade-overlay` overlay
+- Dual-role auth: `userRole` is 'organizer'|'player'|'standalone'. Player routes prefixed with `player-`. Organizer data only loads for organizer role.
+- Player state: `playerId`, `playerBookieId`, `playerRecord` (full player row), `playerBookie` (organizer's bookie settings)
+- Sidebar links use `x-show="userRole === 'organizer'"` or `x-show="userRole === 'player' || userRole === 'standalone'"`
 
 ---
 
@@ -157,4 +160,17 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Pro-gated pattern: outer `pro-gated-section` card with `position:relative;overflow:hidden`, inner content with `:class="{ 'pro-blur': !isPro }"`, overlay with `.pro-upgrade-overlay` using `<template x-if="!isPro">`
   - `x-model.number` auto-coerces input values to numbers for Alpine.js — use for numeric fields
   - `loadAcceptancePolicy()` called from `loadSettings()` alongside `loadNotifPrefs()`
+---
+
+## 2026-03-02 - US-013
+- Implemented dual-role auth routing for player and organizer login
+- Files changed: `landing/dashboard/index.html`, `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `userRole`/`playerId`/`playerBookieId`/`playerRecord`/`playerBookie` state variables, `detectUserRole()` method with bookie/player record checks + spurious bookie guard, updated `parseRoute()` with player routes (`player-home`, `player-games`, `player-track`, `player-account`, `player-ticket/{id}`) + role validation, role-conditional sidebar nav (x-show on all links), placeholder player view sections (Home, Games, Track, Account, Ticket Detail), removed organizer-only login gate from index.html, updated login/session check to allow any authenticated user
+- **Learnings for future iterations:**
+  - `detectUserRole()` replaces the old `loadBookie()` + non-organizer redirect — checks both `bookies` and `players` tables, applies spurious bookie guard
+  - `subscribeToRealtime()` already guards with `if (!this.bookie)` — safe for player role where bookie is null
+  - Player routes are prefixed with `player-` to avoid collision with organizer routes (e.g., `player-home` vs `dashboard`)
+  - Role-based default route: organizer defaults to `dashboard`, player/standalone defaults to `player-home`
+  - Organizer data loading (loadPlayers, loadDashboard) only runs for `userRole === 'organizer'` — player data loading will be added in US-014+
+  - Sign-up flow unchanged — new accounts still create bookie records (organizer role). Players are invite-only.
 ---
