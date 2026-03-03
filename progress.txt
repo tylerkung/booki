@@ -146,3 +146,15 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - `decline_bet` edge function takes `{ bet_id, idempotency_key }` — no `reason` field in the function signature
   - After accept/decline, both `loadDashboard()` and `loadPicks()` are refreshed to update both views
 ---
+
+## 2026-03-02 - US-012
+- Implemented acceptance policy settings in Settings view (pro-gated)
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `acceptancePolicy`/`isLoadingAcceptancePolicy`/`isSavingAcceptancePolicy` state variables, `loadAcceptancePolicy()` fetching from `acceptance_policies` table with `.maybeSingle()` and defaults, `saveAcceptancePolicy()` upserting with `onConflict: 'bookie_id'`, Acceptance Rules card in Settings with toggle rows (Auto-Accept Enabled, Auto-Accept New Members, Auto-Accept Multi-Picks), conditional Parlay Max Legs input, Max Stake / Require Approval Above / Event Lock Offset number inputs, Save Rules button, pro-gated with blur overlay and upgrade link
+- **Learnings for future iterations:**
+  - `acceptance_policies` table uses `bookie_id` as unique key — upsert with `{ onConflict: 'bookie_id' }`
+  - Use `.maybeSingle()` for tables where the record may not exist yet (avoids error on first load)
+  - Pro-gated pattern: outer `pro-gated-section` card with `position:relative;overflow:hidden`, inner content with `:class="{ 'pro-blur': !isPro }"`, overlay with `.pro-upgrade-overlay` using `<template x-if="!isPro">`
+  - `x-model.number` auto-coerces input values to numbers for Alpine.js — use for numeric fields
+  - `loadAcceptancePolicy()` called from `loadSettings()` alongside `loadNotifPrefs()`
+---
