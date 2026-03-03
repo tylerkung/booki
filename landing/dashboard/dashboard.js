@@ -328,6 +328,11 @@ function dashboardApp() {
         playerSportFilter: '',
         showBetSlip: false,
 
+        // ── Player Track ──
+        playerTrackFilter: 'all',
+        isLoadingPlayerTrack: true,
+        playerTrackEvents: {},
+
         // ── Bet Slip ──
         betSlipMode: 'singles', // 'singles' | 'multi'
         betSlipStakes: {},
@@ -451,6 +456,7 @@ function dashboardApp() {
             // Load route-specific data (player)
             if (this.route === 'player-home') this.loadPlayerHome();
             if (this.route === 'player-games') this.loadPlayerGames();
+            if (this.route === 'player-track') this.loadPlayerTrack();
         },
 
         // ── Auth ──
@@ -613,7 +619,7 @@ function dashboardApp() {
             // Fetch bets for this player
             const { data: bets } = await this.supabase
                 .from('bets')
-                .select('id, event_id, side, odds, stake, status, grade_result, market, is_parlay, ticket_id, created_at')
+                .select('id, event_id, side, odds, stake, status, grade_result, market, is_parlay, ticket_id, bet_type, created_at, graded_at')
                 .eq('player_id', this.playerId)
                 .order('created_at', { ascending: false });
 
@@ -709,6 +715,176 @@ function dashboardApp() {
             if (pct >= 80) return '#FF8C00';
             if (pct >= 50) return 'var(--warning)';
             return 'var(--accent)';
+        },
+
+        // ── Player Track ──
+        async loadPlayerTrack() {
+            if (!this.playerId) return;
+            this.isLoadingPlayerTrack = true;
+
+            // Ensure player bets are loaded (reuse loadPlayerHome data)
+            if (this.playerBets.length === 0 && !this.isLoadingPlayerHome) {
+                await this.loadPlayerHome();
+            }
+
+            // Fetch events for bet enrichment (final scores, team names)
+            const eventIds = [...new Set(this.playerBets.map(b => b.event_id).filter(Boolean))];
+            if (eventIds.length > 0) {
+                const { data: events } = await this.supabase
+                    .from('events')
+                    .select('id, home_team, away_team, start_time, status, sport, league, final_score')
+                    .in('id', eventIds);
+
+                this.playerTrackEvents = {};
+                for (const ev of (events || [])) {
+                    this.playerTrackEvents[ev.id] = ev;
+                }
+            }
+
+            this.isLoadingPlayerTrack = false;
+        },
+
+        get playerTickets() {
+            const ticketMap = {};
+            for (const bet of this.playerBets) {
+                const key = bet.ticket_id || bet.id;
+                if (!ticketMap[key]) ticketMap[key] = [];
+                ticketMap[key].push(bet);
+            }
+            return Object.entries(ticketMap).map(([ticketId, legs]) => {
+                const isParlay = legs.length > 1 || legs[0]?.bet_type === 'parlay';
+                const first = legs[0];
+                const stake = Number(first.stake) || 0;
+
+                // Ticket-level grade result
+                let gradeResult = null;
+                if (legs.every(l => l.grade_result)) {
+                    if (legs.some(l => l.grade_result === 'loss')) gradeResult = 'loss';
+                    else if (legs.every(l => l.grade_result === 'push')) gradeResult = 'push';
+                    else gradeResult = 'win';
+                }
+
+                // Status
+                const isOpen = legs.some(l => ['pending', 'accepted', 'readyToGrade', 'graded'].includes(l.status));
+                const isVoid = legs.every(l => l.status === 'void');
+                const status = isVoid ? 'void' : (gradeResult ? 'settled' : (isOpen ? 'open' : first.status));
+
+                // Combined odds for parlays
+                let combinedOdds = Number(first.odds) || 0;
+                if (isParlay && legs.length > 1) {
+                    let dec = 1;
+                    for (const l of legs) {
+                        dec *= this.americanToDecimal(l.odds);
+                    }
+                    combinedOdds = this.decimalToAmerican(dec);
+                }
+
+                // PnL
+                let pnl = 0;
+                if (gradeResult === 'win') {
+                    if (isParlay && legs.length > 1) {
+                        let dec = 1;
+                        for (const l of legs) {
+                            if (l.grade_result !== 'push') dec *= this.americanToDecimal(l.odds);
+                        }
+                        pnl = stake * dec - stake;
+                    } else {
+                        pnl = this.calcPickPnl(first);
+                    }
+                } else if (gradeResult === 'loss') {
+                    pnl = -stake;
+                }
+
+                // Potential return (for open picks)
+                let potentialReturn = 0;
+                if (!gradeResult) {
+                    if (isParlay && legs.length > 1) {
+                        let dec = 1;
+                        for (const l of legs) dec *= this.americanToDecimal(l.odds);
+                        potentialReturn = stake * dec - stake;
+                    } else {
+                        potentialReturn = this.calcPotentialReturn(first) - stake;
+                    }
+                }
+
+                // Event enrichment for singles
+                const event = this.playerTrackEvents[first.event_id] || null;
+
+                return {
+                    ticketId,
+                    legs,
+                    isParlay,
+                    gradeResult,
+                    status,
+                    stake,
+                    combinedOdds,
+                    pnl,
+                    potentialReturn,
+                    event,
+                    created_at: first.created_at,
+                    title: isParlay ? (legs.length + '-leg Multi-Pick') : (first.side || 'Pick'),
+                    subtitle: isParlay ? '' : (event ? (event.away_team + ' @ ' + event.home_team) : ''),
+                    finalScore: (!isParlay && event && event.final_score) ? event.final_score : null,
+                };
+            }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        },
+
+        get playerTrackStats() {
+            const rec = this.computePlayerRecord();
+            const totalStaked = this.playerBets.reduce((sum, b) => sum + (Number(b.stake) || 0), 0);
+            return {
+                wins: rec.wins,
+                losses: rec.losses,
+                pushes: rec.pushes,
+                totalStaked,
+                pnl: this.playerDisplayPnl,
+            };
+        },
+
+        get playerTrackFilterCounts() {
+            const tickets = this.playerTickets;
+            return {
+                all: tickets.length,
+                open: tickets.filter(t => t.status === 'open').length,
+                won: tickets.filter(t => t.gradeResult === 'win').length,
+                lost: tickets.filter(t => t.gradeResult === 'loss').length,
+                pushed: tickets.filter(t => t.gradeResult === 'push').length,
+            };
+        },
+
+        get filteredPlayerTickets() {
+            const tickets = this.playerTickets;
+            switch (this.playerTrackFilter) {
+                case 'open': return tickets.filter(t => t.status === 'open');
+                case 'won': return tickets.filter(t => t.gradeResult === 'win');
+                case 'lost': return tickets.filter(t => t.gradeResult === 'loss');
+                case 'pushed': return tickets.filter(t => t.gradeResult === 'push');
+                default: return tickets;
+            }
+        },
+
+        playerTicketStatusBadgeClass(ticket) {
+            if (ticket.gradeResult === 'win') return 'badge-success';
+            if (ticket.gradeResult === 'loss') return 'badge-danger';
+            if (ticket.gradeResult === 'push') return 'badge-muted';
+            if (ticket.status === 'void') return 'badge-danger';
+            return 'badge-warning';
+        },
+
+        playerTicketStatusText(ticket) {
+            if (ticket.gradeResult === 'win') return 'Won';
+            if (ticket.gradeResult === 'loss') return 'Lost';
+            if (ticket.gradeResult === 'push') return 'Push';
+            if (ticket.status === 'void') return 'Void';
+            return 'Open';
+        },
+
+        playerLegDotColor(leg) {
+            if (leg.grade_result === 'win') return 'var(--accent)';
+            if (leg.grade_result === 'loss') return 'var(--danger)';
+            if (leg.grade_result === 'push') return 'var(--warning)';
+            if (leg.status === 'void') return 'var(--text-muted)';
+            return 'var(--text-muted)';
         },
 
         // ── Player Games ──

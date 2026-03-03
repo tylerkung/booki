@@ -2440,16 +2440,139 @@
                 </template>
             </div>
 
-            <!-- ── Player Track View (placeholder) ── -->
+            <!-- ── Player Track View ── -->
             <div x-show="route === 'player-track' && userRole === 'player'" x-cloak>
-                <div class="page-header">
-                    <h1>Track</h1>
-                    <p>View your open and past picks</p>
+                <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+                    <div>
+                        <h1>Track</h1>
+                        <p x-text="isLoadingPlayerTrack ? 'Loading picks...' : filteredPlayerTickets.length + ' picks'"></p>
+                    </div>
+                    <button class="btn-ghost" @click="loadPlayerTrack()" :disabled="isLoadingPlayerTrack" style="font-size:13px;padding:6px 12px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px;"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Refresh
+                    </button>
                 </div>
-                <div class="card" style="padding:32px;text-align:center;">
-                    <div style="font-size:48px;margin-bottom:16px;">&#128200;</div>
-                    <div style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Pick Tracking</div>
-                    <div style="font-size:14px;color:var(--text-secondary);">Your picks and performance will appear here.</div>
+
+                <!-- Shimmer Loading Skeleton -->
+                <template x-if="isLoadingPlayerTrack && playerBets.length === 0">
+                    <div>
+                        <div class="card" style="padding:24px;margin-bottom:24px;">
+                            <div style="display:flex;gap:16px;">
+                                <div class="shimmer" style="flex:1;height:60px;border-radius:8px;"></div>
+                                <div class="shimmer" style="flex:1;height:60px;border-radius:8px;"></div>
+                                <div class="shimmer" style="flex:1;height:60px;border-radius:8px;"></div>
+                            </div>
+                        </div>
+                        <div class="shimmer" style="height:36px;width:300px;border-radius:8px;margin-bottom:20px;"></div>
+                        <template x-for="i in 4" :key="i">
+                            <div class="card" style="padding:16px;margin-bottom:12px;">
+                                <div class="shimmer shimmer-line" style="width:60%;height:14px;margin-bottom:12px;"></div>
+                                <div class="shimmer shimmer-line" style="width:40%;height:12px;"></div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- Loaded Content -->
+                <div x-show="!(isLoadingPlayerTrack && playerBets.length === 0)" x-cloak>
+
+                    <!-- Summary Card -->
+                    <div class="card" style="padding:24px;margin-bottom:24px;">
+                        <div class="player-stats-row">
+                            <div class="player-stat">
+                                <div class="stat-label">Record</div>
+                                <div class="stat-value">
+                                    <span style="color:var(--success);" x-text="playerTrackStats.wins"></span><span style="color:var(--text-muted);">-</span><span style="color:var(--danger);" x-text="playerTrackStats.losses"></span><span style="color:var(--text-muted);">-</span><span style="color:var(--text-muted);" x-text="playerTrackStats.pushes"></span>
+                                </div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="stat-label">Total Staked</div>
+                                <div class="stat-value" x-text="formatCurrency(playerTrackStats.totalStaked)"></div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="stat-label">Net Performance</div>
+                                <div class="stat-value" :class="playerTrackStats.pnl >= 0 ? 'positive' : 'negative'" x-text="formatCurrency(playerTrackStats.pnl)"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter chips -->
+                    <div class="filter-bar" style="margin-bottom:20px;">
+                        <button class="chip" :class="{ active: playerTrackFilter === 'all' }" @click="playerTrackFilter = 'all'"
+                                x-text="'All (' + playerTrackFilterCounts.all + ')'"></button>
+                        <button class="chip" :class="{ active: playerTrackFilter === 'open' }" @click="playerTrackFilter = 'open'"
+                                x-text="'Open (' + playerTrackFilterCounts.open + ')'"></button>
+                        <button class="chip" :class="{ active: playerTrackFilter === 'won' }" @click="playerTrackFilter = 'won'"
+                                x-text="'Won (' + playerTrackFilterCounts.won + ')'"></button>
+                        <button class="chip" :class="{ active: playerTrackFilter === 'lost' }" @click="playerTrackFilter = 'lost'"
+                                x-text="'Lost (' + playerTrackFilterCounts.lost + ')'"></button>
+                        <button class="chip" :class="{ active: playerTrackFilter === 'pushed' }" @click="playerTrackFilter = 'pushed'"
+                                x-text="'Pushed (' + playerTrackFilterCounts.pushed + ')'"></button>
+                    </div>
+
+                    <!-- Empty state -->
+                    <template x-if="filteredPlayerTickets.length === 0 && !isLoadingPlayerTrack">
+                        <div class="card">
+                            <div class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                <p style="font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:4px;">No Picks Yet</p>
+                                <p>Browse <a href="#/player-games" style="color:var(--accent);">games</a> to place your first pick.</p>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Ticket Cards -->
+                    <template x-for="ticket in filteredPlayerTickets" :key="ticket.ticketId">
+                        <a :href="'#/player-ticket/' + ticket.ticketId" class="pt-ticket-card card">
+                            <div class="pt-ticket-top">
+                                <div class="pt-ticket-info">
+                                    <div class="pt-ticket-title" x-text="ticket.title"></div>
+                                    <template x-if="ticket.subtitle">
+                                        <div class="pt-ticket-subtitle" x-text="ticket.subtitle"></div>
+                                    </template>
+                                    <template x-if="ticket.isParlay">
+                                        <div class="pt-ticket-subtitle" x-text="ticket.legs.length + ' legs · ' + formatOdds(Math.round(ticket.combinedOdds))"></div>
+                                    </template>
+                                </div>
+                                <span class="badge" :class="playerTicketStatusBadgeClass(ticket)" x-text="playerTicketStatusText(ticket)"></span>
+                            </div>
+
+                            <!-- Multi-pick leg dots -->
+                            <template x-if="ticket.isParlay">
+                                <div class="pt-leg-dots">
+                                    <template x-for="(leg, li) in ticket.legs" :key="li">
+                                        <span class="pt-leg-dot" :style="{ background: playerLegDotColor(leg) }"></span>
+                                    </template>
+                                </div>
+                            </template>
+
+                            <div class="pt-ticket-bottom">
+                                <div class="pt-ticket-stake">
+                                    <span style="color:var(--text-muted);font-size:12px;">Stake</span>
+                                    <span x-text="formatCurrency(ticket.stake)"></span>
+                                </div>
+                                <!-- Final score for settled singles -->
+                                <template x-if="ticket.finalScore && !ticket.isParlay">
+                                    <div class="pt-ticket-score" x-text="ticket.finalScore.replace('-', ' - ')"></div>
+                                </template>
+                                <div class="pt-ticket-profit">
+                                    <template x-if="ticket.gradeResult">
+                                        <div>
+                                            <span style="color:var(--text-muted);font-size:12px;">Profit</span>
+                                            <span :class="ticket.pnl >= 0 ? 'positive' : 'negative'" x-text="(ticket.pnl >= 0 ? '+' : '') + formatCurrency(ticket.pnl)"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="!ticket.gradeResult && ticket.status !== 'void'">
+                                        <div>
+                                            <span style="color:var(--text-muted);font-size:12px;">Potential</span>
+                                            <span style="color:var(--accent);" x-text="'+' + formatCurrency(ticket.potentialReturn)"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </a>
+                    </template>
+
                 </div>
             </div>
 
