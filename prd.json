@@ -48,6 +48,7 @@
         "If event has no markets, show empty state in Markets card: 'No odds available'"
       ],
       "priority": 2,
+      "passes": true,
       "notes": "Markets table columns: id, event_id, bookie_id, market_type (h2h/spreads/totals/outright), home_odds, away_odds, draw_odds, over_line, under_line, spread_line, over_odds, under_odds, home_spread_odds, away_spread_odds, updated_at. Markets have bookie_id NULL for shared markets. Event IDs in bets table are stored as TEXT (event_id column), not UUID — use string comparison."
     },
     {

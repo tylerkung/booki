@@ -1108,3 +1108,17 @@ input, button, select, textarea { font: inherit; }
         flex: 1;
     }
 }
+
+/* ── Market Odds (Event Detail) ── */
+.market-odds-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 100px;
+}
+.odds-mono {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}

@@ -25,3 +25,14 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Events query uses `.is('bookie_id', null)` for shared events, `.gte('start_time', ...)` for date filtering
   - Event rows link to `#/events/{id}` which will be handled by US-002 (Event Detail)
 ---
+
+## 2026-03-02 - US-002
+- Implemented Event Detail view with odds, exposure breakdown, and pick management
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `#/events/{id}` route in parseRoute(), `selectedEventId`/`eventDetail`/`eventDetailBets`/`eventDetailMarkets`/`isLoadingEventDetail` state, `loadEventDetail()` fetching event + markets (bookie_id IS NULL) + bets (by bookie_id), `eventExposureBreakdown` and `eventTotalExposure` computed getters, hero card with status/matchup/final_score, markets card with h2h/spreads/totals/outright display, exposure breakdown by side, picks table with member links
+- **Learnings for future iterations:**
+  - Markets are shared (`bookie_id IS NULL`) but bets are bookie-specific — query markets with `.is('bookie_id', null)` and bets with `.eq('bookie_id', bookie.id)`
+  - Spread lines: `spread_line` is from the away team's perspective. Home spread = negation of away spread
+  - Event detail route must be checked BEFORE the member/pick routes in parseRoute() to avoid `events/xxx` matching other patterns
+  - Odds display uses `.odds-mono` CSS class for monospace font
+---

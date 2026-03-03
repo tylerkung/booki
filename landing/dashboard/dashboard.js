@@ -208,6 +208,13 @@ function dashboardApp() {
         eventSearch: '',
         eventSportFilter: '',
 
+        // ── Event Detail ──
+        selectedEventId: null,
+        eventDetail: null,
+        eventDetailBets: [],
+        eventDetailMarkets: [],
+        isLoadingEventDetail: false,
+
         // ── Danger Zone ──
         showStepDownModal: false,
         isSteppingDown: false,
@@ -309,8 +316,12 @@ function dashboardApp() {
             // Check parameterized routes
             const memberMatch = path.match(/^members\/(.+)$/);
             const pickMatch = path.match(/^picks\/(.+)$/);
+            const eventMatch = path.match(/^events\/(.+)$/);
 
-            if (memberMatch) {
+            if (eventMatch) {
+                this.route = 'event-detail';
+                this.selectedEventId = eventMatch[1];
+            } else if (memberMatch) {
                 this.route = 'member-detail';
                 this.selectedPlayerId = memberMatch[1];
             } else if (pickMatch) {
@@ -340,6 +351,7 @@ function dashboardApp() {
             if (this.route === 'member-detail') this.loadMemberDetail();
             if (this.route === 'settings') this.loadSettings();
             if (this.route === 'events') this.loadEvents();
+            if (this.route === 'event-detail') this.loadEventDetail();
         },
 
         // ── Auth ──
@@ -790,6 +802,72 @@ function dashboardApp() {
             const d = new Date(iso);
             return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
                    d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        },
+
+        // ── Event Detail ──
+        async loadEventDetail() {
+            if (!this.selectedEventId || !this.bookie) return;
+            this.isLoadingEventDetail = true;
+            this.eventDetail = null;
+            this.eventDetailBets = [];
+            this.eventDetailMarkets = [];
+
+            // Fetch event
+            const { data: evtData, error: evtErr } = await this.supabase
+                .from('events')
+                .select('*')
+                .eq('id', this.selectedEventId)
+                .limit(1);
+
+            if (evtErr || !evtData?.length) {
+                console.error('Failed to load event detail:', evtErr);
+                this.toast('Failed to load event', 'error');
+                this.isLoadingEventDetail = false;
+                return;
+            }
+
+            this.eventDetail = evtData[0];
+
+            // Fetch markets for this event (shared markets have bookie_id NULL)
+            const { data: mkts } = await this.supabase
+                .from('markets')
+                .select('*')
+                .eq('event_id', this.selectedEventId)
+                .is('bookie_id', null);
+
+            this.eventDetailMarkets = mkts || [];
+
+            // Fetch bets on this event for this bookie
+            const { data: betsData } = await this.supabase
+                .from('bets')
+                .select('*')
+                .eq('event_id', this.selectedEventId)
+                .eq('bookie_id', this.bookie.id)
+                .order('created_at', { ascending: false });
+
+            this.eventDetailBets = betsData || [];
+            this.isLoadingEventDetail = false;
+        },
+
+        get eventExposureBreakdown() {
+            const sides = {};
+            for (const bet of this.eventDetailBets) {
+                if (!['pending', 'accepted', 'readyToGrade'].includes(bet.status)) continue;
+                const side = bet.side || 'Unknown';
+                if (!sides[side]) sides[side] = { side, count: 0, totalStake: 0 };
+                sides[side].count += 1;
+                sides[side].totalStake += Number(bet.stake) || 0;
+            }
+            const arr = Object.values(sides).sort((a, b) => b.totalStake - a.totalStake);
+            const maxStake = arr.length > 0 ? arr[0].totalStake : 0;
+            for (const s of arr) {
+                s.isHighest = s.totalStake === maxStake && arr.length > 1;
+            }
+            return arr;
+        },
+
+        get eventTotalExposure() {
+            return this.eventExposureBreakdown.reduce((sum, s) => sum + s.totalStake, 0);
         },
 
         // ── Picks Data ──
