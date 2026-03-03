@@ -66,6 +66,7 @@
         "All grade_bet calls include idempotency_key: crypto.randomUUID()"
       ],
       "priority": 3,
+      "passes": true,
       "notes": "Eligible bets for grading: status in ['accepted', 'readyToGrade']. Eligible bets for voiding: status in ['pending', 'accepted', 'readyToGrade']. The grade_bet edge function expects { bet_id, outcome, idempotency_key } where outcome is 'win', 'loss', 'push', or 'void'. Do NOT grade bets that are already settled/graded/void."
     },
     {

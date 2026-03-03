@@ -510,8 +510,120 @@
                                 </div>
                             </template>
                         </div>
+
+                        <!-- Actions Card -->
+                        <div class="card" style="margin-bottom:16px;" x-show="eventGradableBets.length > 0 || eventVoidableBets.length > 0">
+                            <div class="card-header">
+                                <span class="card-title">Actions</span>
+                                <span style="font-size:12px;color:var(--text-muted);" x-text="eventGradableBets.length + ' gradable'"></span>
+                            </div>
+
+                            <!-- Grade All Picks -->
+                            <div x-show="eventGradableBets.length > 0" style="padding:12px 0;border-bottom:1px solid var(--divider);">
+                                <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;">Grade All Picks</div>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                    <button class="btn btn-grade btn-grade-win" @click="confirmBatchGrade('win')">Win (Home)</button>
+                                    <button class="btn btn-grade btn-grade-loss" @click="confirmBatchGrade('loss')">Win (Away)</button>
+                                    <button class="btn btn-grade btn-grade-push" @click="confirmBatchGrade('push')">Push</button>
+                                </div>
+                            </div>
+
+                            <!-- Void All Picks -->
+                            <div x-show="eventVoidableBets.length > 0" style="padding:12px 0;border-bottom:1px solid var(--divider);">
+                                <button class="btn btn-void" @click="showBatchVoidModal = true">
+                                    Void All Picks
+                                </button>
+                            </div>
+
+                            <!-- Enter Final Score -->
+                            <div style="padding:12px 0;border-bottom:1px solid var(--divider);">
+                                <button class="btn btn-ghost" @click="openFinalScoreModal()" style="color:var(--text-primary);">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    Enter Final Score
+                                </button>
+                            </div>
+
+                            <!-- Change Status -->
+                            <div style="padding:12px 0;">
+                                <button class="btn btn-ghost" @click="showChangeStatusModal = true; eventNewStatus = eventDetail.status || 'scheduled'" style="color:var(--text-primary);">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+                                    Change Status
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </template>
+
+                <!-- Batch Grade Confirmation Modal -->
+                <div class="modal-overlay" x-show="showBatchGradeModal" x-cloak @click.self="showBatchGradeModal = false">
+                    <div class="modal">
+                        <h2 x-text="'Grade ' + eventGradableBets.length + ' pick' + (eventGradableBets.length !== 1 ? 's' : '') + ' as ' + batchGradeOutcome + '?'"></h2>
+                        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">This will grade all eligible picks on this event. This action cannot be easily undone.</p>
+                        <div x-show="batchGradeProgress" style="color:var(--accent);font-size:13px;margin-bottom:12px;" x-text="batchGradeProgress"></div>
+                        <div class="modal-actions">
+                            <button class="btn btn-ghost" @click="showBatchGradeModal = false" :disabled="isBatchGrading">Cancel</button>
+                            <button class="btn btn-grade" :class="batchGradeOutcome === 'win' ? 'btn-grade-win' : (batchGradeOutcome === 'loss' ? 'btn-grade-loss' : 'btn-grade-push')" @click="executeBatchGrade()" :disabled="isBatchGrading" x-text="isBatchGrading ? 'Grading...' : 'Confirm'"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Batch Void Confirmation Modal -->
+                <div class="modal-overlay" x-show="showBatchVoidModal" x-cloak @click.self="showBatchVoidModal = false">
+                    <div class="modal">
+                        <h2 x-text="'Void all ' + eventVoidableBets.length + ' active pick' + (eventVoidableBets.length !== 1 ? 's' : '') + ' on this event?'"></h2>
+                        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">Voided picks will be returned to members. This action cannot be easily undone.</p>
+                        <div x-show="batchVoidProgress" style="color:var(--accent);font-size:13px;margin-bottom:12px;" x-text="batchVoidProgress"></div>
+                        <div class="modal-actions">
+                            <button class="btn btn-ghost" @click="showBatchVoidModal = false" :disabled="isBatchVoiding">Cancel</button>
+                            <button class="btn btn-void" @click="executeBatchVoid()" :disabled="isBatchVoiding" x-text="isBatchVoiding ? 'Voiding...' : 'Void All'"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enter Final Score Modal -->
+                <div class="modal-overlay" x-show="showFinalScoreModal" x-cloak @click.self="showFinalScoreModal = false">
+                    <div class="modal">
+                        <h2>Enter Final Score</h2>
+                        <div style="display:flex;gap:16px;margin-bottom:16px;">
+                            <div class="form-group" style="flex:1;margin-bottom:0;">
+                                <label x-text="eventDetail ? (eventDetail.away_team || 'Away') : 'Away'"></label>
+                                <input type="number" x-model="finalScoreAway" min="0" step="1" placeholder="0">
+                            </div>
+                            <div class="form-group" style="flex:1;margin-bottom:0;">
+                                <label x-text="eventDetail ? (eventDetail.home_team || 'Home') : 'Home'"></label>
+                                <input type="number" x-model="finalScoreHome" min="0" step="1" placeholder="0">
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-ghost" @click="showFinalScoreModal = false" :disabled="isSavingFinalScore">Cancel</button>
+                            <button class="btn btn-grade btn-grade-win" @click="saveFinalScore()" :disabled="isSavingFinalScore || finalScoreAway === '' || finalScoreHome === ''" x-text="isSavingFinalScore ? 'Saving...' : 'Save Score'"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Change Status Modal -->
+                <div class="modal-overlay" x-show="showChangeStatusModal" x-cloak @click.self="showChangeStatusModal = false">
+                    <div class="modal">
+                        <h2>Change Event Status</h2>
+                        <div class="form-group" style="margin-bottom:16px;">
+                            <label>New Status</label>
+                            <select x-model="eventNewStatus" style="width:100%;padding:11px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:14px;">
+                                <option value="scheduled">Scheduled</option>
+                                <option value="in_progress">Live</option>
+                                <option value="final">Final</option>
+                                <option value="postponed">Postponed</option>
+                                <option value="canceled">Canceled</option>
+                            </select>
+                        </div>
+                        <div x-show="eventNewStatus === 'canceled' && eventVoidableBets.length > 0" style="background:rgba(255,77,106,0.1);border:1px solid var(--danger);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--danger);margin-bottom:16px;">
+                            Canceling this event may require voiding <span x-text="eventVoidableBets.length"></span> active pick(s).
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-ghost" @click="showChangeStatusModal = false" :disabled="isSavingStatus">Cancel</button>
+                            <button class="btn btn-grade btn-grade-win" @click="saveEventStatus()" :disabled="isSavingStatus || eventNewStatus === (eventDetail ? eventDetail.status : '')" x-text="isSavingStatus ? 'Saving...' : 'Update Status'"></button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- ── Members View ── -->

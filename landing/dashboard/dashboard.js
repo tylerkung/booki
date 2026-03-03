@@ -215,6 +215,23 @@ function dashboardApp() {
         eventDetailMarkets: [],
         isLoadingEventDetail: false,
 
+        // ── Event Actions (Batch Grading) ──
+        showBatchGradeModal: false,
+        batchGradeOutcome: '',
+        isBatchGrading: false,
+        batchGradeProgress: '',
+        showBatchVoidModal: false,
+        isBatchVoiding: false,
+        batchVoidProgress: '',
+        showFinalScoreModal: false,
+        finalScoreAway: '',
+        finalScoreHome: '',
+        isSavingFinalScore: false,
+        showChangeStatusModal: false,
+        eventNewStatus: '',
+        isSavingStatus: false,
+        showCancelWarning: false,
+
         // ── Danger Zone ──
         showStepDownModal: false,
         isSteppingDown: false,
@@ -870,6 +887,14 @@ function dashboardApp() {
             return this.eventExposureBreakdown.reduce((sum, s) => sum + s.totalStake, 0);
         },
 
+        get eventGradableBets() {
+            return this.eventDetailBets.filter(b => ['accepted', 'readyToGrade'].includes(b.status));
+        },
+
+        get eventVoidableBets() {
+            return this.eventDetailBets.filter(b => ['pending', 'accepted', 'readyToGrade'].includes(b.status));
+        },
+
         // ── Picks Data ──
         async loadPicks(append = false) {
             if (!this.bookie) return;
@@ -1488,6 +1513,142 @@ function dashboardApp() {
             }
 
             this.isVoiding = false;
+        },
+
+        // ── Batch Event Actions ──
+        confirmBatchGrade(outcome) {
+            this.batchGradeOutcome = outcome;
+            this.batchGradeProgress = '';
+            this.showBatchGradeModal = true;
+        },
+
+        async executeBatchGrade() {
+            const bets = this.eventGradableBets;
+            if (bets.length === 0) return;
+            this.isBatchGrading = true;
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (let i = 0; i < bets.length; i++) {
+                this.batchGradeProgress = `Grading pick ${i + 1} of ${bets.length}...`;
+                try {
+                    const response = await this.callEdgeFunction('grade_bet', {
+                        bet_id: bets[i].id,
+                        outcome: this.batchGradeOutcome,
+                        idempotency_key: crypto.randomUUID(),
+                    });
+                    if (response.error) {
+                        errorCount++;
+                    } else {
+                        successCount++;
+                    }
+                } catch (e) {
+                    errorCount++;
+                }
+            }
+
+            this.isBatchGrading = false;
+            this.batchGradeProgress = '';
+            this.showBatchGradeModal = false;
+
+            if (errorCount === 0) {
+                this.toast(`${successCount} pick${successCount !== 1 ? 's' : ''} graded as ${this.batchGradeOutcome}`, 'success');
+            } else {
+                this.toast(`${successCount} graded, ${errorCount} failed`, errorCount > 0 && successCount === 0 ? 'error' : 'success');
+            }
+
+            await this.loadEventDetail();
+        },
+
+        async executeBatchVoid() {
+            const bets = this.eventVoidableBets;
+            if (bets.length === 0) return;
+            this.isBatchVoiding = true;
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (let i = 0; i < bets.length; i++) {
+                this.batchVoidProgress = `Voiding pick ${i + 1} of ${bets.length}...`;
+                try {
+                    const response = await this.callEdgeFunction('grade_bet', {
+                        bet_id: bets[i].id,
+                        outcome: 'void',
+                        idempotency_key: crypto.randomUUID(),
+                    });
+                    if (response.error) {
+                        errorCount++;
+                    } else {
+                        successCount++;
+                    }
+                } catch (e) {
+                    errorCount++;
+                }
+            }
+
+            this.isBatchVoiding = false;
+            this.batchVoidProgress = '';
+            this.showBatchVoidModal = false;
+
+            if (errorCount === 0) {
+                this.toast(`${successCount} pick${successCount !== 1 ? 's' : ''} voided`, 'success');
+            } else {
+                this.toast(`${successCount} voided, ${errorCount} failed`, errorCount > 0 && successCount === 0 ? 'error' : 'success');
+            }
+
+            await this.loadEventDetail();
+        },
+
+        openFinalScoreModal() {
+            if (this.eventDetail && this.eventDetail.final_score) {
+                const parts = this.eventDetail.final_score.split('-');
+                this.finalScoreAway = parts[0] || '';
+                this.finalScoreHome = parts[1] || '';
+            } else {
+                this.finalScoreAway = '';
+                this.finalScoreHome = '';
+            }
+            this.showFinalScoreModal = true;
+        },
+
+        async saveFinalScore() {
+            if (!this.eventDetail) return;
+            this.isSavingFinalScore = true;
+
+            const finalScore = `${this.finalScoreAway}-${this.finalScoreHome}`;
+            const { error } = await this.supabase
+                .from('events')
+                .update({ final_score: finalScore, status: 'final' })
+                .eq('id', this.eventDetail.id);
+
+            if (error) {
+                this.toast('Failed to save final score', 'error');
+            } else {
+                this.toast('Final score saved', 'success');
+                this.showFinalScoreModal = false;
+                await this.loadEventDetail();
+            }
+
+            this.isSavingFinalScore = false;
+        },
+
+        async saveEventStatus() {
+            if (!this.eventDetail || this.eventNewStatus === this.eventDetail.status) return;
+            this.isSavingStatus = true;
+
+            const { error } = await this.supabase
+                .from('events')
+                .update({ status: this.eventNewStatus })
+                .eq('id', this.eventDetail.id);
+
+            if (error) {
+                this.toast('Failed to update status', 'error');
+            } else {
+                this.toast(`Status changed to ${this.eventNewStatus}`, 'success');
+                this.showChangeStatusModal = false;
+                await this.loadEventDetail();
+            }
+
+            this.isSavingStatus = false;
         },
 
         // ── Override Grade ──

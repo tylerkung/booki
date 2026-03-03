@@ -12,6 +12,8 @@ Started: Mon Mar  2 19:47:05 PST 2026
 - Sport DB values: `americanfootball_nfl`, `basketball_nba`, etc. — use `formatSportName()` for display
 - State variables go at the top of `dashboardApp()`, methods below `init()`
 - Computed getters use `get` syntax for Alpine reactivity
+- Edge functions called via `callEdgeFunction(name, body)` — always include `idempotency_key: crypto.randomUUID()`
+- Modals placed outside `<template x-if>` blocks to survive re-renders — at the view section level
 
 ---
 
@@ -35,4 +37,17 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Spread lines: `spread_line` is from the away team's perspective. Home spread = negation of away spread
   - Event detail route must be checked BEFORE the member/pick routes in parseRoute() to avoid `events/xxx` matching other patterns
   - Odds display uses `.odds-mono` CSS class for monospace font
+---
+
+## 2026-03-02 - US-003
+- Implemented batch grading and event management actions on Event Detail
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: Actions card with Grade All Picks (Win Home/Win Away/Push), Void All Picks, Enter Final Score, Change Status. Batch grade/void modals with progress indicators, final score modal with pre-populated values, change status modal with cancel warning. Computed getters `eventGradableBets` and `eventVoidableBets` for filtering eligible bets. Sequential edge function calls with per-pick progress feedback.
+- **Learnings for future iterations:**
+  - Batch grading calls `grade_bet` sequentially (not parallel) to respect rate limits — use a for-loop with progress tracking
+  - Gradable bets: `['accepted', 'readyToGrade']`. Voidable bets: `['pending', 'accepted', 'readyToGrade']`
+  - Final score format in DB: `"away_score-home_score"` string
+  - Modals placed outside `<template x-if>` blocks to avoid being destroyed when data changes — they live at the same level as the event-detail section
+  - No new CSS needed — reused existing `.btn-grade`, `.btn-grade-win`, `.btn-grade-loss`, `.btn-grade-push`, `.btn-void`, `.modal-overlay`, `.modal`, `.modal-actions`
+  - `callEdgeFunction()` is the standard way to call edge functions — returns data with optional `.error`
 ---
