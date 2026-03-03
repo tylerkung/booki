@@ -411,6 +411,7 @@
         "Load player account data on route navigation"
       ],
       "priority": 19,
+      "passes": true,
       "notes": "Player name update: write to players table (display_name column) via Supabase. RLS requires using claim_player or similar — check if direct update works with player's auth. If not, the name might need an edge function. Email is read-only on web (email change requires auth confirmation flow which is complex). Activity amounts: NEGATE internal amounts for player display (internal positive = player owes bookie → display as negative/red for player). For transaction descriptions: ledger entries of type 'settlement' with a bet_id can be enriched by looking up the bet's side and grade_result."
     },
     {

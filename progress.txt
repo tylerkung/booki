@@ -249,3 +249,16 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - No new CSS needed — all styles reused from existing pick detail and player track views
   - Player-facing financials: no negation needed — profit is displayed as-is (positive = won, negative = lost)
 ---
+
+## 2026-03-02 - US-019
+- Implemented player account view with profile, change password, activity, notifications, about, logout, and delete account
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `isLoadingPlayerAccount`/`playerActivityFilter`/`playerActivity`/`playerAccountNotifPrefs`/`isLoadingPlayerNotifPrefs`/`isEditingPlayerName`/`editPlayerNameValue`/`playerCurrentPassword`/`playerNewPassword`/`playerConfirmPassword`/`isChangingPlayerPassword`/`playerPasswordError`/`showPlayerDeleteStep1`/`showPlayerDeleteStep2`/`playerDeleteConfirmText`/`isDeletingPlayerAccount` state variables, `loadPlayerAccount()` method, `filteredPlayerActivity` computed getter with All/Graded/Adjustments/Settled filters, `playerMemberSince` computed getter, `loadPlayerNotifPrefs()`/`togglePlayerNotifPref()` for player notification preferences (picks_graded, balance_changes, game_results), `startEditingPlayerName()`/`savePlayerName()` for inline name editing, `changePlayerPassword()` with current password re-auth, `deletePlayerAccount()` with two-step confirmation modals, Profile card (name edit, email readonly, organizer name, member since), Change Password card, Activity card with filter chips, Notifications card with toggle switches, About card (website/terms/privacy links), Log Out button, Delete Account muted button with 2-step modal
+- **Learnings for future iterations:**
+  - Player account reuses `playerLedgerEntries` from `loadPlayerHome()` — checks if data exists before re-fetching
+  - Player notification preferences use different fields than organizer: `picks_graded`, `balance_changes`, `game_results` (not `new_members`/`pick_submissions`/`risk_alerts`)
+  - Player name update via `display_name` column on `players` table — may be blocked by RLS, falls back to `name` column
+  - Separate state variables for player password change (`playerCurrentPassword`, etc.) to avoid colliding with organizer settings state
+  - Delete account modals use separate `showPlayerDeleteStep1`/`showPlayerDeleteStep2` state to avoid conflicting with organizer delete modals
+  - No new CSS needed — all styles reused from organizer settings, player home activity, and existing form/toggle/card patterns
+---
