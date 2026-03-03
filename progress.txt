@@ -1,3 +1,17 @@
+## 2026-03-03 - US-012 + US-013 + US-015 + US-018 + US-019 + US-020
+- US-012: Added playerTimeFilter state + filter logic in filteredPlayerEvents getter (today/tomorrow/thisWeek). Added time filter chips (All/Today/Tomorrow/This Week) below sport chips in Games view. Empty state message updates per filter.
+- US-013: Added 480px breakpoint for .toast-container (right/left:12px) and .toast (word-break).
+- US-015: Added 480px breakpoint: .pg-odds-btn 60px/10px, hide .pg-odds-line, .pg-team-name 11px, .pg-game-row tighter padding.
+- US-018: Added overflow/ellipsis/nowrap to .stat-value globally. Added 768px (24px) and 480px (22px) font-size overrides.
+- US-019: At 480px, .filter-bar changes to nowrap + overflow-x:auto + scrollbar hidden.
+- US-020: Sidebar uses display:flex+flex-direction:column. .sidebar-bottom changed from position:absolute to margin-top:auto.
+- Files changed: landing/dashboard/dashboard.css, landing/dashboard/dashboard.js, landing/dashboard/app.html, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - sidebar flex-column + sidebar-bottom margin-top:auto is the canonical "stick to bottom" pattern
+  - filteredPlayerEvents uses local timezone Date math (new Date with year/month/date constructor)
+  - Time filter chips are separate filter-bar row below sport chips — both rows use overflow-x:auto at 480px
+---
+
 ## 2026-03-03 - US-006 + US-007 + US-008
 - US-006: Added isValidUUID() helper; validates UUIDs before setting parameterized routes in parseRoute(). Invalid UUIDs silently redirect to parent route.
 - US-007: Wrapped callEdgeFunction fetch in AbortController with 10s timeout. AbortError → 'Request timed out', TypeError → 'Network error', HTTP error without body.error → 'Failed to call {name}'.

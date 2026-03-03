@@ -326,6 +326,7 @@ function dashboardApp() {
         isLoadingPlayerEvents: true,
         playerEventSearch: '',
         playerSportFilter: '',
+        playerTimeFilter: 'all',
         showBetSlip: false,
 
         // ── Player Track ──
@@ -1335,6 +1336,13 @@ function dashboardApp() {
         get filteredPlayerEvents() {
             const q = this.playerEventSearch.toLowerCase();
             const sportFilter = this.playerSportFilter;
+            const timeFilter = this.playerTimeFilter;
+
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+            const tomorrowEnd = new Date(todayStart.getTime() + 2 * 24 * 60 * 60 * 1000);
+            const weekEnd = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
 
             return this.playerEvents.filter(ev => {
                 if (q) {
@@ -1344,6 +1352,12 @@ function dashboardApp() {
                 }
                 if (sportFilter) {
                     if (this.formatSportName(ev.sport) !== sportFilter) return false;
+                }
+                if (timeFilter !== 'all') {
+                    const startTime = new Date(ev.start_time);
+                    if (timeFilter === 'today' && (startTime < todayStart || startTime >= todayEnd)) return false;
+                    if (timeFilter === 'tomorrow' && (startTime < todayEnd || startTime >= tomorrowEnd)) return false;
+                    if (timeFilter === 'thisWeek' && startTime >= weekEnd) return false;
                 }
                 return true;
             });

@@ -235,6 +235,8 @@ input, button, select, textarea { font: inherit; }
     overflow-y: auto;
     z-index: 100;
     transition: transform 0.3s;
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar-logo {
@@ -320,10 +322,8 @@ input, button, select, textarea { font: inherit; }
 }
 
 .sidebar-bottom {
-    position: absolute;
-    bottom: 24px;
-    left: 16px;
-    right: 16px;
+    margin-top: auto;
+    padding-top: 16px;
 }
 
 .sidebar-bottom a {
@@ -447,6 +447,9 @@ input, button, select, textarea { font: inherit; }
     font-size: 28px;
     font-weight: 700;
     color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .stat-value.positive { color: var(--success); }
@@ -1094,6 +1097,9 @@ input, button, select, textarea { font: inherit; }
         font-size: 12px;
         padding: 5px 10px;
     }
+
+    /* US-018: Stat value size at tablet */
+    .stat-value { font-size: 24px; }
 }
 
 @media (max-width: 480px) {
@@ -1932,3 +1938,39 @@ input, button, select, textarea { font: inherit; }
 }
 .positive { color: var(--success) !important; }
 .negative { color: var(--danger) !important; }
+
+/* ── 480px Mobile Overrides ── */
+@media (max-width: 480px) {
+    /* US-013: Toast overflow */
+    .toast-container {
+        right: 12px;
+        left: 12px;
+    }
+    .toast {
+        max-width: 100%;
+        word-break: break-word;
+    }
+
+    /* US-015: Odds grid narrow screens */
+    .pg-odds-btn { width: 60px; font-size: 10px; }
+    .pg-odds-line { display: none; }
+    .pg-team-name { font-size: 11px; }
+    .pg-game-row { padding: 8px 12px; }
+
+    /* US-018: Stat value font-size */
+    .stat-value { font-size: 22px; }
+
+    /* US-019: Filter chip scrolling */
+    .filter-bar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+    }
+    .filter-bar::-webkit-scrollbar { display: none; }
+
+    /* US-020: Card padding tighter */
+    .card { padding: 16px; }
+    .card-header { margin-bottom: 12px; }
+}
