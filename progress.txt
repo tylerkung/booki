@@ -262,3 +262,14 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Delete account modals use separate `showPlayerDeleteStep1`/`showPlayerDeleteStep2` state to avoid conflicting with organizer delete modals
   - No new CSS needed — all styles reused from organizer settings, player home activity, and existing form/toggle/card patterns
 ---
+
+## 2026-03-02 - US-020
+- Implemented persistent balance display in player header (sidebar + mobile)
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `.sidebar-player-balance` section in sidebar (below logo, above nav) with large balance amount + label (Credit/You owe/Settled), `.mobile-balance` inline in mobile header between logo and hamburger, color-coded positive (green/success), negative (red/danger), settled (gray/muted), player-specific realtime subscription for `ledger_entries` filtered by `player_id` to keep balance live, CSS for `.sidebar-player-balance`, `.sidebar-balance-amount`, `.sidebar-balance-label`, `.mobile-balance` with Space Grotesk font
+- **Learnings for future iterations:**
+  - `subscribeToRealtime()` previously guarded with `if (!this.bookie)` which skipped players entirely — split into player and organizer branches
+  - Player realtime subscribes to `ledger_entries` with `player_id` filter, reloads `loadPlayerHome()` which updates `playerLedgerEntries` → `playerBalance` → `playerDisplayBalance` reactively
+  - `formatCurrency()` already exists in dashboard.js — reuse it in templates
+  - Sidebar balance uses `x-show="userRole === 'player'"` with `x-cloak` to prevent flash on organizer accounts
+---
