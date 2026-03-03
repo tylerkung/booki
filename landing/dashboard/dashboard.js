@@ -204,6 +204,10 @@ function dashboardApp() {
         isSavingCreditLimit: false,
         settingsAllowFuturesParlays: false,
 
+        // ── Notification Preferences ──
+        notifPrefs: { new_members: true, pick_submissions: false, risk_alerts: true, game_results: true },
+        isLoadingNotifPrefs: false,
+
         // ── Events ──
         events: [],
         isLoadingEvents: false,
@@ -2430,6 +2434,40 @@ function dashboardApp() {
             this.passwordError = '';
             this.settingsDefaultCreditLimit = this.bookie.default_credit_limit ?? 1000;
             this.settingsAllowFuturesParlays = this.bookie.allow_futures_parlays ?? false;
+            this.loadNotifPrefs();
+        },
+
+        async loadNotifPrefs() {
+            if (!this.session?.user?.id) return;
+            this.isLoadingNotifPrefs = true;
+            const { data, error } = await this.supabase
+                .from('notification_preferences')
+                .select('new_members, pick_submissions, risk_alerts, game_results')
+                .eq('user_id', this.session.user.id)
+                .maybeSingle();
+            if (data) {
+                this.notifPrefs = {
+                    new_members: data.new_members ?? true,
+                    pick_submissions: data.pick_submissions ?? false,
+                    risk_alerts: data.risk_alerts ?? true,
+                    game_results: data.game_results ?? true,
+                };
+            }
+            this.isLoadingNotifPrefs = false;
+        },
+
+        async toggleNotifPref(field) {
+            if (!this.session?.user?.id) return;
+            this.notifPrefs[field] = !this.notifPrefs[field];
+            const { error } = await this.supabase
+                .from('notification_preferences')
+                .upsert({ user_id: this.session.user.id, [field]: this.notifPrefs[field] }, { onConflict: 'user_id' });
+            if (error) {
+                this.notifPrefs[field] = !this.notifPrefs[field];
+                this.toast('Failed to update notification preference', 'error');
+            } else {
+                this.toast('Notification preference updated', 'success');
+            }
         },
 
         async saveProfile() {

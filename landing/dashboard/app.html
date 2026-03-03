@@ -1697,6 +1697,63 @@
                     </button>
                 </div>
 
+                <!-- Notifications Section -->
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header">
+                        <span class="card-title" style="display:flex;align-items:center;gap:8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            Notifications
+                        </span>
+                    </div>
+                    <template x-if="isLoadingNotifPrefs">
+                        <div style="padding:12px 0;color:var(--text-secondary);font-size:13px;">Loading preferences...</div>
+                    </template>
+                    <template x-if="!isLoadingNotifPrefs">
+                        <div>
+                            <div class="toggle-row">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">New Members</span>
+                                    <span class="toggle-desc">When a member accepts your invite</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" :checked="notifPrefs.new_members" @change="toggleNotifPref('new_members')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="toggle-row">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Pick Submissions</span>
+                                    <span class="toggle-desc">When a member places a pick</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" :checked="notifPrefs.pick_submissions" @change="toggleNotifPref('pick_submissions')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="toggle-row">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Risk Alerts</span>
+                                    <span class="toggle-desc">Credit limit and exposure warnings</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" :checked="notifPrefs.risk_alerts" @change="toggleNotifPref('risk_alerts')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="toggle-row">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Game Results</span>
+                                    <span class="toggle-desc">When games are graded and picks are settled</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" :checked="notifPrefs.game_results" @change="toggleNotifPref('game_results')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
                 <!-- Member Settings Section -->
                 <div class="card" style="margin-bottom:24px;">
                     <div class="card-header"><span class="card-title">Member Settings</span></div>
