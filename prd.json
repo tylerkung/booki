@@ -313,6 +313,7 @@
         "Add state: playerEvents (array), playerMarkets (array), betSlipSelections (array), isLoadingPlayerEvents (boolean), playerEventSearch (string), playerSportFilter (string)"
       ],
       "priority": 15,
+      "passes": true,
       "notes": "Markets table: market_type (h2h/spreads/totals/outright), home_odds, away_odds, spread_line, home_spread_odds, away_spread_odds, over_line, over_odds, under_odds. For the game row: Spread column uses home_spread_odds/away_spread_odds with spread_line. Money column uses home_odds/away_odds (h2h market). Total column uses over_odds/under_odds with over_line. side_indicator 'a' = away/over, 'b' = home/under for the submit_bets edge function. Group markets by event_id for O(1) lookup. Market IDs must be stored in selections for submission."
     },
     {

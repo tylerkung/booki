@@ -19,6 +19,8 @@ Started: Mon Mar  2 19:47:05 PST 2026
 - Dual-role auth: `userRole` is 'organizer'|'player'|'standalone'. Player routes prefixed with `player-`. Organizer data only loads for organizer role.
 - Player state: `playerId`, `playerBookieId`, `playerRecord` (full player row), `playerBookie` (organizer's bookie settings)
 - Sidebar links use `x-show="userRole === 'organizer'"` or `x-show="userRole === 'player' || userRole === 'standalone'"`
+- Player games: markets lookup via `playerMarketsByEvent` computed getter (nested map: event_id → market_type → market object) for O(1) access in templates
+- Bet selections stored in `betSlipSelections[]` with `event_id`, `market_id`, `side`, `side_indicator`, `odds`, `event_name`, `market_type`
 
 ---
 
@@ -185,4 +187,19 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - `playerCreditUtilization` uses `Math.abs(balance) + openStakes` / `creditLimit` — includes open stakes in utilization
   - `loadPlayerHome()` triggered both on init (for player role) and on route navigation to `player-home`
   - Player data (ledger + bets) will be reused by US-015 (games/bet placement) and US-017 (track view)
+---
+
+## 2026-03-02 - US-015
+- Implemented player games view with odds browsing and bet selection
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `playerEvents`/`playerMarkets`/`betSlipSelections`/`isLoadingPlayerEvents`/`playerEventSearch`/`playerSportFilter`/`showBetSlip` state variables, `loadPlayerGames()` fetching upcoming events (non-final, future start_time) + markets (bookie_id IS NULL), `playerMarketsByEvent` computed getter for O(1) market lookup by event+type, `filteredPlayerEvents`/`groupedPlayerEvents`/`playerSportOptions` computed getters, `isEventLocked()`/`getMarketForEvent()`/`formatSpreadLine()`/`isSelectionActive()`/`toggleSelection()` methods, full game row layout with away/home team rows each showing 3 odds buttons (spread/money/total), odds buttons toggle into `betSlipSelections` array, lock detection for past-start events, floating bet slip indicator bar (fixed bottom, accent pill), shimmer loading skeleton, empty state, CSS for `.pg-*` classes (game row, team row, odds buttons with active/locked states, bet slip bar with hover animation)
+- **Learnings for future iterations:**
+  - Markets are shared (`bookie_id IS NULL`) — same query pattern as organizer events
+  - `playerMarketsByEvent` uses nested map: `{ event_id: { market_type: market } }` for O(1) lookup — avoids N*M iterations in template
+  - Spread line from DB is from away team perspective; home spread = negation (`-(spread_line || 0)`)
+  - `side_indicator` convention: 'a' = away/over, 'b' = home/under — must match `submit_bets` edge function expectations
+  - Selection state stored as objects in `betSlipSelections` array with `event_id`, `market_id`, `side`, `side_indicator`, `odds`, `event_name`, `market_type` — used by bet slip (US-016)
+  - `toggleSelection()` uses `findIndex` + `splice` for removal — Alpine reactivity tracks array mutations
+  - Event lock detection: `new Date(ev.start_time) <= new Date()` — simple comparison, no offset
+  - CSS prefix `pg-` used for player games to avoid collisions with other view styles
 ---
