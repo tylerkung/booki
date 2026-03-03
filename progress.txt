@@ -52,6 +52,17 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - `callEdgeFunction()` is the standard way to call edge functions — returns data with optional `.error`
 ---
 
+## 2026-03-02 - US-005
+- Implemented CSV export for settlement reports
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: Export CSV button (btn-ghost with download SVG icon) inside settlement week selector div, `exportSettlementCSV()` method generating CSV with exact column headers (Member Name, Starting Balance, Bets Won, Bets Lost, Adjustments, Ending Balance, Status), TOTAL summary row, proper CSV field escaping, `booki-settlement-YYYY-MM-DD.csv` filename from week-ending Sunday, Blob download pattern, toast on success, button disabled when loading or empty
+- **Learnings for future iterations:**
+  - CSV field escaping: wrap in quotes and double internal quotes when field contains commas, quotes, or newlines
+  - Settlement week date (`this.settlementWeek`) is the Sunday; use it directly for the filename date
+  - The `settlementReports` array has `isPaid` boolean and `endingBalance` for determining Settled/Unpaid status
+  - Blob download pattern: create Blob → createObjectURL → createElement('a') → set href+download → click → revokeObjectURL
+---
+
 ## 2026-03-02 - US-004
 - Implemented Settlement view with weekly periods and per-member reports
 - Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`

@@ -109,6 +109,7 @@
         "Button disabled when settlementReports is empty or loading"
       ],
       "priority": 5,
+      "passes": true,
       "notes": "Standard browser CSV download pattern: const blob = new Blob([csvString], { type: 'text/csv' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);"
     },
     {
