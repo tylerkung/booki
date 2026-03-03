@@ -228,6 +228,7 @@
         "Also add Accept/Decline buttons on the Picks tab for pending picks — small action buttons in the status column"
       ],
       "priority": 11,
+      "passes": true,
       "notes": "accept_bet edge function expects { bet_id, idempotency_key }. decline_bet expects { bet_id, reason?, idempotency_key }. The bookie's manual_bet_acceptance setting is on the bookies table — load it with the bookie record. Most organizers use auto-accept (default), so this is lower priority."
     },
     {

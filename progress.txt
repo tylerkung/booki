@@ -133,3 +133,16 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Optimistic UI toggle: flip the boolean immediately, then revert on error for responsive feel
   - No new CSS needed — all toggle styles already existed from Pick Management section
 ---
+
+## 2026-03-02 - US-011
+- Implemented accept/decline actions for pending picks on Dashboard and Picks tab
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `acceptingBetId`/`decliningBetId`/`showDeclineModal`/`declineBetId` state variables, `acceptBet()` method calling `accept_bet` edge function, `openDeclineModal()`/`confirmDeclineBet()` methods calling `decline_bet` edge function, `_betId` and `_betStatus` fields on recentActivity bet items, Accept/Decline buttons on Dashboard Recent Activity rows (pending bets only, shown when `bookie.manual_bet_acceptance` is enabled), Accept/Decline buttons on Picks tab table rows (pending bets only), Decline confirmation modal with Cancel/Decline actions
+- **Learnings for future iterations:**
+  - `bookie.manual_bet_acceptance` is loaded via `loadBookie()` with `select('*')` — no extra query needed
+  - Accept/Decline buttons conditionally shown via `x-show="bookie && bookie.manual_bet_acceptance"` — auto-accept bookies see no extra column
+  - Reused existing `.btn-grade`, `.btn-grade-win`, `.btn-grade-loss` CSS classes with compact sizing (font-size:11px, padding:3px 10px)
+  - `@click.stop` on action buttons prevents the row click from navigating to pick detail
+  - `decline_bet` edge function takes `{ bet_id, idempotency_key }` — no `reason` field in the function signature
+  - After accept/decline, both `loadDashboard()` and `loadPicks()` are refreshed to update both views
+---
