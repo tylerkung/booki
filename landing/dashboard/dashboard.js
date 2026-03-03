@@ -319,6 +319,15 @@ function dashboardApp() {
         playerOpenStakes: 0,
         isLoadingPlayerHome: true,
 
+        // ── Player Games ──
+        playerEvents: [],
+        playerMarkets: [],
+        betSlipSelections: [],
+        isLoadingPlayerEvents: true,
+        playerEventSearch: '',
+        playerSportFilter: '',
+        showBetSlip: false,
+
         // ── Toasts ──
         toasts: [],
 
@@ -433,6 +442,7 @@ function dashboardApp() {
 
             // Load route-specific data (player)
             if (this.route === 'player-home') this.loadPlayerHome();
+            if (this.route === 'player-games') this.loadPlayerGames();
         },
 
         // ── Auth ──
@@ -691,6 +701,132 @@ function dashboardApp() {
             if (pct >= 80) return '#FF8C00';
             if (pct >= 50) return 'var(--warning)';
             return 'var(--accent)';
+        },
+
+        // ── Player Games ──
+        async loadPlayerGames() {
+            this.isLoadingPlayerEvents = true;
+
+            // Fetch upcoming events (not final/canceled, start_time > now)
+            const now = new Date().toISOString();
+            const { data: events } = await this.supabase
+                .from('events')
+                .select('id, home_team, away_team, start_time, status, sport, league')
+                .is('bookie_id', null)
+                .not('status', 'in', '("final","canceled")')
+                .gte('start_time', now)
+                .order('start_time', { ascending: true });
+
+            this.playerEvents = events || [];
+
+            // Fetch markets for all displayed events
+            const eventIds = this.playerEvents.map(e => e.id);
+            if (eventIds.length > 0) {
+                const { data: markets } = await this.supabase
+                    .from('markets')
+                    .select('id, event_id, market_type, home_odds, away_odds, spread_line, home_spread_odds, away_spread_odds, over_line, over_odds, under_odds')
+                    .is('bookie_id', null)
+                    .in('event_id', eventIds);
+
+                this.playerMarkets = markets || [];
+            } else {
+                this.playerMarkets = [];
+            }
+
+            this.isLoadingPlayerEvents = false;
+        },
+
+        get playerMarketsByEvent() {
+            const map = {};
+            for (const m of this.playerMarkets) {
+                if (!map[m.event_id]) map[m.event_id] = {};
+                map[m.event_id][m.market_type] = m;
+            }
+            return map;
+        },
+
+        get filteredPlayerEvents() {
+            const q = this.playerEventSearch.toLowerCase();
+            const sportFilter = this.playerSportFilter;
+
+            return this.playerEvents.filter(ev => {
+                if (q) {
+                    const home = (ev.home_team || '').toLowerCase();
+                    const away = (ev.away_team || '').toLowerCase();
+                    if (!home.includes(q) && !away.includes(q)) return false;
+                }
+                if (sportFilter) {
+                    if (this.formatSportName(ev.sport) !== sportFilter) return false;
+                }
+                return true;
+            });
+        },
+
+        get groupedPlayerEvents() {
+            const groups = {};
+            for (const ev of this.filteredPlayerEvents) {
+                const sport = this.formatSportName(ev.sport);
+                const league = this.formatLeagueName(ev.sport);
+                const key = sport + ' — ' + league;
+                if (!groups[key]) {
+                    groups[key] = { sport, league, key, events: [] };
+                }
+                groups[key].events.push(ev);
+            }
+            return Object.values(groups);
+        },
+
+        get playerSportOptions() {
+            const sports = new Set();
+            for (const ev of this.playerEvents) {
+                sports.add(this.formatSportName(ev.sport));
+            }
+            return [...sports].sort();
+        },
+
+        isEventLocked(ev) {
+            return new Date(ev.start_time) <= new Date();
+        },
+
+        getMarketForEvent(eventId, marketType) {
+            return this.playerMarketsByEvent[eventId]?.[marketType] || null;
+        },
+
+        formatSpreadLine(line) {
+            if (line == null) return '';
+            const n = Number(line);
+            return n > 0 ? '+' + n : String(n);
+        },
+
+        isSelectionActive(eventId, marketId, sideIndicator) {
+            return this.betSlipSelections.some(
+                s => s.event_id === eventId && s.market_id === marketId && s.side_indicator === sideIndicator
+            );
+        },
+
+        toggleSelection(event, market, sideIndicator, side, odds) {
+            if (!market || !odds) return;
+            if (this.isEventLocked(event)) return;
+
+            const idx = this.betSlipSelections.findIndex(
+                s => s.event_id === event.id && s.market_id === market.id && s.side_indicator === sideIndicator
+            );
+
+            if (idx >= 0) {
+                // Remove
+                this.betSlipSelections.splice(idx, 1);
+            } else {
+                // Add
+                this.betSlipSelections.push({
+                    event_id: event.id,
+                    market_id: market.id,
+                    side,
+                    side_indicator: sideIndicator,
+                    odds: Number(odds),
+                    event_name: (event.away_team || '') + ' @ ' + (event.home_team || ''),
+                    market_type: market.market_type,
+                });
+            }
         },
 
         // ── Load Bookie ──

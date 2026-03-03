@@ -1363,3 +1363,165 @@ input, button, select, textarea { font: inherit; }
     .player-record-num { font-size: 24px; }
     .player-stats-row { grid-template-columns: 1fr; gap: 12px; }
 }
+
+/* ── Player Games ── */
+.pg-col-labels {
+    display: flex;
+    gap: 4px;
+}
+.pg-col-labels span {
+    width: 90px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+
+.pg-game-row {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--divider);
+    position: relative;
+}
+.pg-game-row:last-child { border-bottom: none; }
+.pg-game-row.pg-locked { opacity: 0.5; }
+
+.pg-game-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.pg-game-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pg-team-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pg-team-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.pg-odds-cells {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.pg-odds-btn {
+    width: 90px;
+    padding: 6px 4px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    white-space: nowrap;
+}
+.pg-odds-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: rgba(0, 245, 212, 0.05);
+}
+.pg-odds-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.pg-odds-btn.pg-odds-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+}
+.pg-odds-btn.pg-odds-active .pg-odds-line {
+    color: var(--bg);
+    opacity: 0.7;
+}
+.pg-odds-btn.pg-odds-locked {
+    opacity: 0.3;
+}
+
+.pg-odds-line {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.pg-odds-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+}
+.pg-odds-na {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.pg-lock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Floating bet slip bar */
+.pg-betslip-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 14px 32px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 24px rgba(0, 245, 212, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 150;
+    transition: transform 0.15s, box-shadow 0.15s;
+    animation: pg-bar-in 0.3s ease-out;
+}
+.pg-betslip-bar:hover {
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 6px 32px rgba(0, 245, 212, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes pg-bar-in {
+    from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+@media (max-width: 768px) {
+    .pg-col-labels { display: none; }
+    .pg-odds-btn { width: 70px; padding: 5px 2px; font-size: 11px; }
+    .pg-odds-cells { gap: 3px; }
+    .pg-team-name { font-size: 12px; }
+    .pg-betslip-bar { bottom: 16px; padding: 12px 24px; font-size: 14px; }
+}
