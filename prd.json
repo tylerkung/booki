@@ -234,7 +234,7 @@
         "Test at 375px: each table row should render as a card with label::before content on the left and value on the right"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "The CSS at max-width 768px converts .data-table to card layout using td[data-label]::before { content: attr(data-label) }. But many cells are missing the attribute, so they render as unlabeled values on mobile."
     },
     {
@@ -267,7 +267,7 @@
         "Member name should be fully visible (or truncate at 20+ chars, not 6)"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "The header has member name on left, 3 buttons on right in a space-between flex. On 375px the buttons take ~300px, leaving the name ~43px."
     },
     {
@@ -282,7 +282,7 @@
         "Title should truncate with ellipsis if too long"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "iOS shows the page title in the navigation bar. The web mobile header currently just has a hamburger on the left and optional balance on the right. Adding the title provides wayfinding context."
     },
     {

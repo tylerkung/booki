@@ -1,3 +1,14 @@
+## 2026-03-03 - US-014 + US-016 + US-017
+- US-014: Added data-label attributes to settlement table (the only table missing them). Picks/members/invite/event-detail/dashboard tables were already complete.
+- US-016: Added .member-detail-header CSS class with flex-direction:column + gap at 768px. Changed inline style to class.
+- US-017: Added .mobile-page-title span to mobile header showing current route name (Dashboard/Members/Picks/etc.) centered between logo and hamburger.
+- Files changed: landing/dashboard/app.html, landing/dashboard/dashboard.css, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Only settlement table needed data-label — other tables were already complete
+  - mobile-page-title uses x-text with ternary chain to map routes to display names
+  - member-detail-header CSS class adds responsive stacking; inline min-width:0 on the name div prevents overflow
+---
+
 ## 2026-03-03 - US-012 + US-013 + US-015 + US-018 + US-019 + US-020
 - US-012: Added playerTimeFilter state + filter logic in filteredPlayerEvents getter (today/tomorrow/thisWeek). Added time filter chips (All/Today/Tomorrow/This Week) below sport chips in Games view. Empty state message updates per filter.
 - US-013: Added 480px breakpoint for .toast-container (right/left:12px) and .toast (word-break).

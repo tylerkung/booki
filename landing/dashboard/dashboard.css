@@ -1939,6 +1939,37 @@ input, button, select, textarea { font: inherit; }
 .positive { color: var(--success) !important; }
 .negative { color: var(--danger) !important; }
 
+/* ── Member Detail Header ── */
+.member-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+@media (max-width: 768px) {
+    .member-detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .member-detail-header > div:last-child {
+        align-self: flex-start;
+    }
+}
+
+/* ── Mobile Header Title ── */
+.mobile-page-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+}
+
 /* ── 480px Mobile Overrides ── */
 @media (max-width: 480px) {
     /* US-013: Toast overflow */

@@ -37,7 +37,23 @@
     <!-- Mobile Header -->
     <div class="mobile-header">
         <a href="../index.html"><img src="../assets/logo-booki-blk.svg" alt="Booki"></a>
-        <span class="mobile-balance" x-show="userRole === 'player'" x-cloak :class="{ positive: playerDisplayBalance > 0, negative: playerDisplayBalance < 0, settled: playerDisplayBalance === 0 }" x-text="(playerDisplayBalance < 0 ? '-' : '') + formatCurrency(Math.abs(playerDisplayBalance))"></span>
+        <span class="mobile-page-title" x-text="
+            route === 'dashboard' ? 'Dashboard' :
+            route === 'members' ? 'Members' :
+            route === 'picks' ? 'Picks' :
+            route === 'events' ? 'Events' :
+            route === 'settlement' ? 'Settlement' :
+            route === 'settings' ? 'Settings' :
+            route === 'subscription' ? 'Subscription' :
+            route === 'player-games' ? 'Games' :
+            route === 'player-track' ? 'Track' :
+            route === 'player-account' ? 'Account' :
+            route === 'member-detail' ? (memberDetail?.display_name || memberDetail?.name || 'Member') :
+            route === 'pick-detail' ? 'Pick Detail' :
+            route === 'event-detail' ? 'Event Detail' :
+            route === 'player-ticket' ? 'Pick Detail' :
+            ''
+        "></span>
         <button class="hamburger" @click="sidebarOpen = !sidebarOpen">
             <span></span><span></span><span></span>
         </button>
@@ -1244,8 +1260,8 @@
                     <div>
                         <!-- Header Card -->
                         <div class="card" style="margin-bottom:16px;">
-                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-                                <div style="display:flex;align-items:center;gap:8px;">
+                            <div class="member-detail-header" style="margin-bottom:16px;">
+                                <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                                     <!-- Display name: view/edit toggle -->
                                     <h2 x-show="!isEditingName" style="font-size:22px;margin:0;line-height:1;" x-text="memberDetail.display_name || memberDetail.name"></h2>
                                     <button x-show="!isEditingName" @click="startEditingName()" class="btn btn-ghost" style="padding:2px 4px;font-size:14px;color:var(--text-muted);" title="Edit name">
@@ -1554,19 +1570,19 @@
                                     <tbody>
                                         <template x-for="report in filteredSettlementReports" :key="report.player_id">
                                             <tr>
-                                                <td>
+                                                <td data-label="Member">
                                                     <a :href="'#/members/' + report.player_id" style="color:var(--accent);text-decoration:none;font-weight:500;" x-text="report.name"></a>
                                                 </td>
-                                                <td x-text="formatCurrency(report.startingBalance)" :style="{ color: report.startingBalance > 0 ? 'var(--success)' : report.startingBalance < 0 ? 'var(--danger)' : 'var(--text-muted)' }"></td>
-                                                <td x-text="formatCurrency(report.betsWon)" style="color:var(--danger)"></td>
-                                                <td x-text="formatCurrency(report.betsLost)" style="color:var(--success)"></td>
-                                                <td x-text="formatCurrency(report.adjustments)" :style="{ color: report.adjustments !== 0 ? 'var(--text-primary)' : 'var(--text-muted)' }"></td>
-                                                <td style="font-weight:600;" :style="{ color: report.endingBalance > 0 ? 'var(--success)' : report.endingBalance < 0 ? 'var(--danger)' : 'var(--text-muted)' }" x-text="formatCurrency(report.endingBalance)"></td>
-                                                <td>
+                                                <td data-label="Starting" x-text="formatCurrency(report.startingBalance)" :style="{ color: report.startingBalance > 0 ? 'var(--success)' : report.startingBalance < 0 ? 'var(--danger)' : 'var(--text-muted)' }"></td>
+                                                <td data-label="Won" x-text="formatCurrency(report.betsWon)" style="color:var(--danger)"></td>
+                                                <td data-label="Lost" x-text="formatCurrency(report.betsLost)" style="color:var(--success)"></td>
+                                                <td data-label="Adjustments" x-text="formatCurrency(report.adjustments)" :style="{ color: report.adjustments !== 0 ? 'var(--text-primary)' : 'var(--text-muted)' }"></td>
+                                                <td data-label="Ending" style="font-weight:600;" :style="{ color: report.endingBalance > 0 ? 'var(--success)' : report.endingBalance < 0 ? 'var(--danger)' : 'var(--text-muted)' }" x-text="formatCurrency(report.endingBalance)"></td>
+                                                <td data-label="Status">
                                                     <span class="badge" :class="report.endingBalance === 0 ? 'badge-success' : report.collection_status === 'overdue' ? 'badge-danger' : 'badge-warning'"
                                                           x-text="report.endingBalance === 0 ? 'Settled' : report.collection_status === 'overdue' ? 'Overdue' : 'Unpaid'"></span>
                                                 </td>
-                                                <td>
+                                                <td data-label="Actions">
                                                     <button x-show="report.endingBalance !== 0" class="btn btn-sm" style="font-size:12px;padding:4px 10px;background:var(--accent);color:#000;border:none;border-radius:6px;cursor:pointer;" @click="openSettlementPay(report)">
                                                         Mark Paid
                                                     </button>
