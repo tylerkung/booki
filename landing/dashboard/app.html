@@ -68,6 +68,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     Events
                 </a></li>
+                <li><a href="#/settlement" :class="{ active: route === 'settlement' }" @click="sidebarOpen = false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Settlement
+                </a></li>
                 <li><a href="#/subscription" :class="{ active: route === 'subscription' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                     Subscription
@@ -1220,6 +1224,147 @@
                         <button class="btn btn-danger" @click="removeMember()" :disabled="isRemoving">
                             <span x-text="isRemoving ? 'Removing...' : 'Remove Member'"></span>
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Settlement View ── -->
+            <div x-show="route === 'settlement'" x-cloak>
+                <div class="page-header">
+                    <h1>Settlement</h1>
+                    <p>Weekly settlement periods and member reports</p>
+                </div>
+
+                <!-- Week Selector -->
+                <div class="settlement-week-selector">
+                    <button class="btn btn-ghost" @click="navigateWeek(-1)" title="Previous week">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <span class="settlement-week-label" x-text="formatWeekRange(settlementWeek)"></span>
+                    <button class="btn btn-ghost" @click="navigateWeek(1)" title="Next week"
+                            :disabled="settlementWeek && settlementWeek.getTime() >= mostRecentSunday().getTime()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+
+                <!-- Shimmer Loading -->
+                <template x-if="isLoadingSettlement">
+                    <div>
+                        <div class="settlement-summary" style="margin-bottom:20px;">
+                            <div class="stat-tile"><div class="shimmer" style="width:80%;height:32px;"></div></div>
+                            <div class="stat-tile"><div class="shimmer" style="width:80%;height:32px;"></div></div>
+                        </div>
+                        <div class="card">
+                            <template x-for="i in 3" :key="i">
+                                <div style="padding:16px;border-bottom:1px solid var(--border);">
+                                    <div class="shimmer shimmer-line" style="width:60%;height:14px;margin-bottom:8px;"></div>
+                                    <div class="shimmer shimmer-line" style="width:40%;height:14px;"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Loaded Content -->
+                <div x-show="!isLoadingSettlement" x-cloak>
+                    <!-- Summary Row -->
+                    <div class="settlement-summary">
+                        <div class="stat-tile">
+                            <div class="stat-label">Owed to You</div>
+                            <div class="stat-value positive" x-text="formatCurrency(settlementOwedToYou)"></div>
+                        </div>
+                        <div class="stat-tile">
+                            <div class="stat-label">You Owe</div>
+                            <div class="stat-value negative" x-text="formatCurrency(settlementYouOwe)"></div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Chips -->
+                    <div class="filter-bar" style="margin-bottom:20px;">
+                        <button class="chip" :class="{ active: settlementFilter === 'all' }" @click="settlementFilter = 'all'">All</button>
+                        <button class="chip" :class="{ active: settlementFilter === 'unsettled' }" @click="settlementFilter = 'unsettled'">Unsettled</button>
+                        <button class="chip" :class="{ active: settlementFilter === 'settled' }" @click="settlementFilter = 'settled'">Settled</button>
+                        <button class="chip" :class="{ active: settlementFilter === 'attention' }" @click="settlementFilter = 'attention'">Needs Attention</button>
+                    </div>
+
+                    <!-- Settlement Table -->
+                    <template x-if="filteredSettlementReports.length > 0">
+                        <div class="card">
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Member</th>
+                                            <th>Starting</th>
+                                            <th>Won</th>
+                                            <th>Lost</th>
+                                            <th>Adjustments</th>
+                                            <th>Ending</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="report in filteredSettlementReports" :key="report.player_id">
+                                            <tr>
+                                                <td>
+                                                    <a :href="'#/members/' + report.player_id" style="color:var(--accent);text-decoration:none;font-weight:500;" x-text="report.name"></a>
+                                                </td>
+                                                <td x-text="formatCurrency(report.startingBalance)" :style="{ color: report.startingBalance > 0 ? 'var(--success)' : report.startingBalance < 0 ? 'var(--danger)' : 'var(--text-muted)' }"></td>
+                                                <td x-text="formatCurrency(report.betsWon)" style="color:var(--danger)"></td>
+                                                <td x-text="formatCurrency(report.betsLost)" style="color:var(--success)"></td>
+                                                <td x-text="formatCurrency(report.adjustments)" :style="{ color: report.adjustments !== 0 ? 'var(--text-primary)' : 'var(--text-muted)' }"></td>
+                                                <td style="font-weight:600;" :style="{ color: report.endingBalance > 0 ? 'var(--success)' : report.endingBalance < 0 ? 'var(--danger)' : 'var(--text-muted)' }" x-text="formatCurrency(report.endingBalance)"></td>
+                                                <td>
+                                                    <span class="badge" :class="report.endingBalance === 0 ? 'badge-success' : report.collection_status === 'overdue' ? 'badge-danger' : 'badge-warning'"
+                                                          x-text="report.endingBalance === 0 ? 'Settled' : report.collection_status === 'overdue' ? 'Overdue' : 'Unpaid'"></span>
+                                                </td>
+                                                <td>
+                                                    <button x-show="report.endingBalance !== 0" class="btn btn-sm" style="font-size:12px;padding:4px 10px;background:var(--accent);color:#000;border:none;border-radius:6px;cursor:pointer;" @click="openSettlementPay(report)">
+                                                        Mark Paid
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Empty State -->
+                    <template x-if="filteredSettlementReports.length === 0 && !isLoadingSettlement">
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <div class="empty-title">No activity this week</div>
+                            <div class="empty-desc">No members have activity for the selected settlement period.</div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Mark Paid Confirmation Modal -->
+                <div class="modal-overlay" x-show="showSettlementPayModal" x-cloak @click.self="showSettlementPayModal = false">
+                    <div class="modal">
+                        <h3>Mark as Paid</h3>
+                        <p style="color:var(--text-secondary);margin-bottom:16px;">
+                            Confirm settlement payment for <strong x-text="settlementPayPlayer?.name"></strong>?
+                        </p>
+                        <div class="card" style="padding:16px;margin-bottom:16px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <span style="color:var(--text-secondary);">Amount</span>
+                                <span style="font-weight:600;font-size:18px;"
+                                      :style="{ color: (settlementPayPlayer?.endingBalance || 0) > 0 ? 'var(--success)' : 'var(--danger)' }"
+                                      x-text="formatCurrency(Math.abs(settlementPayPlayer?.endingBalance || 0))"></span>
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-ghost" @click="showSettlementPayModal = false">Cancel</button>
+                            <button class="btn" style="background:var(--accent);color:#000;border:none;" @click="settlementMarkPaid()" :disabled="isSettlementPaying">
+                                <span x-text="isSettlementPaying ? 'Processing...' : 'Confirm Payment'"></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

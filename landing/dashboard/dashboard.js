@@ -272,6 +272,15 @@ function dashboardApp() {
         adjustError: '',
         isAdjusting: false,
 
+        // ── Settlement ──
+        settlementWeek: null,
+        isLoadingSettlement: false,
+        settlementReports: [],
+        settlementFilter: 'all',
+        showSettlementPayModal: false,
+        settlementPayPlayer: null,
+        isSettlementPaying: false,
+
         // ── Toasts ──
         toasts: [],
 
@@ -355,7 +364,7 @@ function dashboardApp() {
                 this.route = 'pick-detail';
                 this.selectedBetId = pickMatch[1];
             } else {
-                const routes = ['dashboard', 'members', 'picks', 'events', 'subscription', 'settings'];
+                const routes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings'];
                 this.route = routes.includes(path) ? path : 'dashboard';
                 this.selectedPlayerId = null;
                 this.selectedBetId = null;
@@ -369,6 +378,7 @@ function dashboardApp() {
             if (this.route === 'settings') this.loadSettings();
             if (this.route === 'events') this.loadEvents();
             if (this.route === 'event-detail') this.loadEventDetail();
+            if (this.route === 'settlement') this.loadSettlement();
         },
 
         // ── Auth ──
@@ -819,6 +829,177 @@ function dashboardApp() {
             const d = new Date(iso);
             return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
                    d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        },
+
+        // ── Settlement ──
+        mostRecentSunday() {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            const day = d.getDay(); // 0=Sun
+            if (day !== 0) d.setDate(d.getDate() - day);
+            return d;
+        },
+
+        getWeekStart(sunday) {
+            const d = new Date(sunday);
+            d.setDate(d.getDate() - 6); // Monday
+            return d;
+        },
+
+        formatWeekRange(sunday) {
+            if (!sunday) return '';
+            const mon = this.getWeekStart(sunday);
+            const monStr = mon.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            const sunStr = sunday.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+            return monStr + ' – ' + sunStr;
+        },
+
+        navigateWeek(direction) {
+            const current = this.settlementWeek || this.mostRecentSunday();
+            const next = new Date(current);
+            next.setDate(next.getDate() + (direction * 7));
+
+            const mostRecent = this.mostRecentSunday();
+            if (next > mostRecent) return;
+
+            const fiveWeeksAgo = new Date(mostRecent);
+            fiveWeeksAgo.setDate(fiveWeeksAgo.getDate() - 28);
+            if (next < fiveWeeksAgo) return;
+
+            this.settlementWeek = next;
+            this.loadSettlement();
+        },
+
+        async loadSettlement() {
+            if (!this.bookie) return;
+            this.isLoadingSettlement = true;
+
+            if (!this.settlementWeek) {
+                this.settlementWeek = this.mostRecentSunday();
+            }
+
+            const weekEnd = new Date(this.settlementWeek);
+            weekEnd.setHours(23, 59, 59, 999);
+            const weekStart = this.getWeekStart(this.settlementWeek);
+
+            const { data: allEntries, error } = await this.supabase
+                .from('ledger_entries')
+                .select('player_id, amount, type, created_at')
+                .eq('bookie_id', this.bookie.id)
+                .lte('created_at', weekEnd.toISOString());
+
+            if (error) {
+                console.error('Failed to load settlement:', error);
+                this.isLoadingSettlement = false;
+                return;
+            }
+
+            const entries = allEntries || [];
+            const activePlayers = this.players.filter(p => p.status !== 'archived');
+            const reports = [];
+
+            for (const player of activePlayers) {
+                const playerEntries = entries.filter(e => e.player_id === player.id);
+                let startingBalance = 0;
+                let betsWon = 0;
+                let betsLost = 0;
+                let adjustments = 0;
+
+                for (const e of playerEntries) {
+                    const entryDate = new Date(e.created_at);
+                    if (entryDate < weekStart) {
+                        startingBalance += e.amount || 0;
+                    } else if (entryDate <= weekEnd) {
+                        if (e.type === 'settlement') {
+                            if ((e.amount || 0) >= 0) {
+                                betsLost += e.amount || 0;
+                            } else {
+                                betsWon += e.amount || 0;
+                            }
+                        } else if (e.type === 'adjustment') {
+                            adjustments += e.amount || 0;
+                        } else if (e.type === 'paymentLogged') {
+                            adjustments += e.amount || 0;
+                        }
+                    }
+                }
+
+                const endingBalance = startingBalance + betsWon + betsLost + adjustments;
+                const hasActivity = betsWon !== 0 || betsLost !== 0 || adjustments !== 0 || endingBalance !== 0;
+
+                if (hasActivity || endingBalance !== 0) {
+                    reports.push({
+                        player_id: player.id,
+                        name: player.display_name || player.name || 'Unknown',
+                        startingBalance,
+                        betsWon,
+                        betsLost,
+                        adjustments,
+                        endingBalance,
+                        collection_status: player.collection_status || null,
+                        isPaid: endingBalance === 0,
+                    });
+                }
+            }
+
+            reports.sort((a, b) => Math.abs(b.endingBalance) - Math.abs(a.endingBalance));
+            this.settlementReports = reports;
+            this.isLoadingSettlement = false;
+        },
+
+        get filteredSettlementReports() {
+            if (this.settlementFilter === 'all') return this.settlementReports;
+            if (this.settlementFilter === 'unsettled') {
+                return this.settlementReports.filter(r => r.endingBalance !== 0 && !r.isPaid);
+            }
+            if (this.settlementFilter === 'settled') {
+                return this.settlementReports.filter(r => r.endingBalance === 0 || r.isPaid);
+            }
+            if (this.settlementFilter === 'attention') {
+                return this.settlementReports.filter(r => r.collection_status === 'overdue');
+            }
+            return this.settlementReports;
+        },
+
+        get settlementOwedToYou() {
+            return this.settlementReports
+                .filter(r => r.endingBalance > 0)
+                .reduce((sum, r) => sum + r.endingBalance, 0);
+        },
+
+        get settlementYouOwe() {
+            return this.settlementReports
+                .filter(r => r.endingBalance < 0)
+                .reduce((sum, r) => sum + Math.abs(r.endingBalance), 0);
+        },
+
+        openSettlementPay(report) {
+            this.settlementPayPlayer = report;
+            this.showSettlementPayModal = true;
+        },
+
+        async settlementMarkPaid() {
+            if (!this.settlementPayPlayer || !this.bookie) return;
+            this.isSettlementPaying = true;
+
+            try {
+                await this.callEdgeFunction('adjust_balance', {
+                    idempotency_key: crypto.randomUUID(),
+                    player_id: this.settlementPayPlayer.player_id,
+                    amount: -this.settlementPayPlayer.endingBalance,
+                    type: 'paymentLogged',
+                    reason: 'Weekly settlement',
+                });
+
+                this.toast(`Marked ${this.settlementPayPlayer.name} as paid`, 'success');
+                this.showSettlementPayModal = false;
+                await this.loadPlayers();
+                await this.loadSettlement();
+            } catch (e) {
+                this.toast(e.message || 'Failed to mark as paid', 'error');
+            }
+
+            this.isSettlementPaying = false;
         },
 
         // ── Event Detail ──

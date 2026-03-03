@@ -1122,3 +1122,35 @@ input, button, select, textarea { font: inherit; }
     font-weight: 600;
     color: var(--text-primary);
 }
+
+/* ── Settlement ── */
+.settlement-week-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.settlement-week-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 260px;
+    text-align: center;
+}
+.settlement-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 768px) {
+    .settlement-week-label {
+        font-size: 13px;
+        min-width: 200px;
+    }
+}
