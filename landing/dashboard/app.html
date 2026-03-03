@@ -2293,10 +2293,149 @@
                 </template>
 
                 <!-- Floating bet slip indicator -->
-                <template x-if="betSlipSelections.length > 0">
+                <template x-if="betSlipSelections.length > 0 && !showBetSlip">
                     <div class="pg-betslip-bar" @click="showBetSlip = true">
                         <span x-text="betSlipSelections.length + ' Selection' + (betSlipSelections.length !== 1 ? 's' : '')"></span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                    </div>
+                </template>
+
+                <!-- ── Bet Slip Modal ── -->
+                <template x-if="showBetSlip">
+                    <div class="bs-overlay" @click.self="showBetSlip = false">
+                        <div class="bs-modal">
+                            <!-- Success State -->
+                            <template x-if="betSlipSuccess">
+                                <div class="bs-success">
+                                    <div class="bs-success-check">
+                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    </div>
+                                    <h2 x-text="betSlipSuccessMessage" style="font-size:24px;margin:16px 0 8px;"></h2>
+                                    <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;">Your pick has been placed successfully.</p>
+                                    <button class="btn btn-accent" style="width:100%;padding:14px;" @click="closeBetSlipSuccess()">Done</button>
+                                </div>
+                            </template>
+
+                            <!-- Main Bet Slip -->
+                            <template x-if="!betSlipSuccess">
+                                <div>
+                                    <!-- Header -->
+                                    <div class="bs-header">
+                                        <h2 style="font-size:18px;">Pick Entry</h2>
+                                        <div style="display:flex;gap:8px;align-items:center;">
+                                            <button class="btn-ghost" style="color:var(--danger);font-size:12px;font-weight:600;padding:4px 8px;background:none;border:none;cursor:pointer;" @click="clearBetSlip()">Clear All</button>
+                                            <button class="btn-ghost" style="padding:4px;background:none;border:none;cursor:pointer;color:var(--text-muted);" @click="showBetSlip = false">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Mode Toggle -->
+                                    <div class="bs-mode-toggle">
+                                        <button :class="{ active: betSlipMode === 'singles' }" @click="betSlipMode = 'singles'">Singles</button>
+                                        <button :class="{ active: betSlipMode === 'multi', disabled: !canSelectMulti }" :disabled="!canSelectMulti" @click="if(canSelectMulti) betSlipMode = 'multi'">Multi</button>
+                                    </div>
+
+                                    <!-- Available Credit -->
+                                    <div class="bs-credit" x-show="playerCreditLimit > 0">
+                                        <span style="color:var(--text-muted);font-size:12px;">Available</span>
+                                        <span style="color:var(--accent);font-size:13px;font-weight:600;" x-text="formatCurrency(playerAvailableCredit) + ' max'"></span>
+                                    </div>
+
+                                    <!-- Selection Cards -->
+                                    <div class="bs-selections">
+                                        <template x-for="(sel, idx) in betSlipSelections" :key="sel.event_id + sel.market_id + sel.side_indicator">
+                                            <div class="bs-card">
+                                                <div class="bs-card-header">
+                                                    <div style="flex:1;min-width:0;">
+                                                        <div class="bs-card-side" x-text="sel.side"></div>
+                                                        <div class="bs-card-event" x-text="sel.event_name"></div>
+                                                    </div>
+                                                    <div style="display:flex;align-items:center;gap:8px;">
+                                                        <span class="bs-card-odds" x-text="formatOdds(sel.odds)"></span>
+                                                        <button class="bs-remove-btn" @click="removeSelection(idx)">
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Stake input (singles mode only) -->
+                                                <template x-if="betSlipMode === 'singles'">
+                                                    <div class="bs-stake-row">
+                                                        <div class="bs-input-group">
+                                                            <span class="bs-input-prefix">$</span>
+                                                            <input type="number" class="bs-stake-input" placeholder="0" step="0.01" min="0"
+                                                                :value="betSlipStakes[idx] || ''"
+                                                                @input="betSlipStakes[idx] = $event.target.value">
+                                                        </div>
+                                                        <div class="bs-quick-stakes">
+                                                            <button @click="addQuickStake(idx, 1)">+$1</button>
+                                                            <button @click="addQuickStake(idx, 5)">+$5</button>
+                                                            <button @click="addQuickStake(idx, 25)">+$25</button>
+                                                        </div>
+                                                        <div class="bs-to-win" x-show="(Number(betSlipStakes[idx]) || 0) > 0">
+                                                            <span style="color:var(--text-muted);font-size:11px;">To Win</span>
+                                                            <span style="color:var(--success);font-size:13px;font-weight:600;" x-text="formatCurrency(calcToWin(sel.odds, betSlipStakes[idx]))"></span>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <!-- Multi-pick stake (multi mode) -->
+                                    <template x-if="betSlipMode === 'multi'">
+                                        <div class="bs-multi-section">
+                                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                                                <span style="font-size:13px;font-weight:600;color:var(--text-primary);">Multi-Pick</span>
+                                                <span class="bs-card-odds" x-text="combinedMultiOddsAmerican"></span>
+                                            </div>
+                                            <div class="bs-stake-row">
+                                                <div class="bs-input-group">
+                                                    <span class="bs-input-prefix">$</span>
+                                                    <input type="number" class="bs-stake-input" placeholder="0" step="0.01" min="0"
+                                                        x-model="betSlipMultiStake">
+                                                </div>
+                                                <div class="bs-quick-stakes">
+                                                    <button @click="addQuickStakeMulti(1)">+$1</button>
+                                                    <button @click="addQuickStakeMulti(5)">+$5</button>
+                                                    <button @click="addQuickStakeMulti(25)">+$25</button>
+                                                </div>
+                                                <div class="bs-to-win" x-show="(Number(betSlipMultiStake) || 0) > 0">
+                                                    <span style="color:var(--text-muted);font-size:11px;">To Win</span>
+                                                    <span style="color:var(--success);font-size:13px;font-weight:600;" x-text="formatCurrency(multiToWin)"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <!-- Validation Warning -->
+                                    <div class="bs-validation" x-show="betSlipValidationMessage && betSlipTotalStakes > 0" x-text="betSlipValidationMessage"></div>
+
+                                    <!-- Submit Button -->
+                                    <button class="bs-submit-btn"
+                                        :disabled="!betSlipValid || isSubmittingBets"
+                                        @click="submitBetSlip()">
+                                        <template x-if="isSubmittingBets">
+                                            <span>Placing...</span>
+                                        </template>
+                                        <template x-if="!isSubmittingBets">
+                                            <span x-text="betSlipButtonText"></span>
+                                        </template>
+                                    </button>
+
+                                    <!-- Disclaimer -->
+                                    <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:12px;">Picks are not processed as real-money wagers by Booki.</p>
+                                </div>
+                            </template>
+
+                            <!-- Loading overlay -->
+                            <template x-if="isSubmittingBets">
+                                <div class="bs-loading-overlay">
+                                    <div class="bs-spinner"></div>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </template>
             </div>

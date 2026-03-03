@@ -328,6 +328,14 @@ function dashboardApp() {
         playerSportFilter: '',
         showBetSlip: false,
 
+        // ── Bet Slip ──
+        betSlipMode: 'singles', // 'singles' | 'multi'
+        betSlipStakes: {},
+        betSlipMultiStake: '',
+        isSubmittingBets: false,
+        betSlipSuccess: false,
+        betSlipSuccessMessage: '',
+
         // ── Toasts ──
         toasts: [],
 
@@ -827,6 +835,241 @@ function dashboardApp() {
                     market_type: market.market_type,
                 });
             }
+        },
+
+        // ── Bet Slip ──
+        removeSelection(index) {
+            this.betSlipSelections.splice(index, 1);
+            delete this.betSlipStakes[index];
+            // Re-key stakes
+            const newStakes = {};
+            Object.keys(this.betSlipStakes).forEach(k => {
+                const ki = Number(k);
+                if (ki > index) newStakes[ki - 1] = this.betSlipStakes[k];
+                else newStakes[ki] = this.betSlipStakes[k];
+            });
+            this.betSlipStakes = newStakes;
+            if (this.betSlipSelections.length < 2 && this.betSlipMode === 'multi') {
+                this.betSlipMode = 'singles';
+            }
+            if (this.betSlipSelections.length === 0) {
+                this.showBetSlip = false;
+            }
+        },
+
+        clearBetSlip() {
+            this.betSlipSelections = [];
+            this.betSlipStakes = {};
+            this.betSlipMultiStake = '';
+            this.betSlipMode = 'singles';
+            this.betSlipSuccess = false;
+        },
+
+        addQuickStake(index, amount) {
+            const current = Number(this.betSlipStakes[index]) || 0;
+            this.betSlipStakes[index] = String(current + amount);
+        },
+
+        addQuickStakeMulti(amount) {
+            const current = Number(this.betSlipMultiStake) || 0;
+            this.betSlipMultiStake = String(current + amount);
+        },
+
+        calcToWin(odds, stake) {
+            const o = Number(odds) || 0;
+            const s = Number(stake) || 0;
+            if (s <= 0) return 0;
+            if (o > 0) return s * (o / 100);
+            if (o < 0) return s * (100 / Math.abs(o));
+            return 0;
+        },
+
+        americanToDecimal(odds) {
+            const o = Number(odds) || 0;
+            if (o > 0) return 1 + o / 100;
+            if (o < 0) return 1 + 100 / Math.abs(o);
+            return 1;
+        },
+
+        decimalToAmerican(dec) {
+            if (dec >= 2) return '+' + Math.round((dec - 1) * 100);
+            if (dec > 1) return String(-Math.round(100 / (dec - 1)));
+            return '+100';
+        },
+
+        get combinedMultiOdds() {
+            if (this.betSlipSelections.length < 2) return 0;
+            let combined = 1;
+            for (const sel of this.betSlipSelections) {
+                combined *= this.americanToDecimal(sel.odds);
+            }
+            return combined;
+        },
+
+        get combinedMultiOddsAmerican() {
+            const dec = this.combinedMultiOdds;
+            if (dec <= 1) return '+100';
+            return this.decimalToAmerican(dec);
+        },
+
+        get multiToWin() {
+            const stake = Number(this.betSlipMultiStake) || 0;
+            if (stake <= 0) return 0;
+            return stake * (this.combinedMultiOdds - 1);
+        },
+
+        get betSlipTotalStakes() {
+            if (this.betSlipMode === 'multi') return Number(this.betSlipMultiStake) || 0;
+            let total = 0;
+            for (const key in this.betSlipStakes) {
+                total += Number(this.betSlipStakes[key]) || 0;
+            }
+            return total;
+        },
+
+        get betSlipValid() {
+            if (this.betSlipMode === 'singles') {
+                // At least one selection with a positive stake
+                let hasStake = false;
+                for (let i = 0; i < this.betSlipSelections.length; i++) {
+                    const s = Number(this.betSlipStakes[i]) || 0;
+                    if (s > 0) hasStake = true;
+                }
+                if (!hasStake) return false;
+            } else {
+                if ((Number(this.betSlipMultiStake) || 0) <= 0) return false;
+                if (this.betSlipSelections.length < 2) return false;
+            }
+            // Check credit
+            if (this.betSlipTotalStakes > this.playerAvailableCredit && this.playerCreditLimit > 0) return false;
+            return true;
+        },
+
+        get betSlipValidationMessage() {
+            if (this.betSlipMode === 'singles') {
+                let hasStake = false;
+                for (let i = 0; i < this.betSlipSelections.length; i++) {
+                    if ((Number(this.betSlipStakes[i]) || 0) > 0) hasStake = true;
+                }
+                if (!hasStake) return 'Enter a stake amount';
+            } else {
+                if (this.betSlipSelections.length < 2) return 'Need at least 2 selections for Multi-Pick';
+                if ((Number(this.betSlipMultiStake) || 0) <= 0) return 'Enter a stake amount';
+            }
+            if (this.betSlipTotalStakes > this.playerAvailableCredit && this.playerCreditLimit > 0) {
+                return 'Exceeds available credit';
+            }
+            return '';
+        },
+
+        get canSelectMulti() {
+            if (this.betSlipSelections.length < 2) return false;
+            // Check bookie futures parlay setting
+            if (this.playerBookie && !this.playerBookie.allow_futures_parlays) {
+                if (this.betSlipSelections.some(s => s.market_type === 'outright')) return false;
+            }
+            return true;
+        },
+
+        get betSlipButtonText() {
+            if (this.betSlipMode === 'multi') return 'Place Multi-Pick';
+            const count = this.betSlipSelections.filter((_, i) => (Number(this.betSlipStakes[i]) || 0) > 0).length;
+            return count > 1 ? 'Place Picks' : 'Place Pick';
+        },
+
+        betSlipConfirmationMessages: [
+            'Locked in!', 'Let it ride!', 'Good luck!', 'Sharp move!',
+            'Dialed in!', 'Money time!', "Let's go!", 'Registered!',
+            'On the board!', 'Ride or die!', 'Smooth operator!',
+            'Big brain play!', 'Trust the process!', 'All gas!',
+            'Chef kiss!', 'In it to win it!', 'Feeling lucky!',
+            'No regrets!', 'LFG!', 'Fire pick!', 'Confident!',
+            'Built different!', 'Main character energy!', 'Certified!',
+            'Bold move!', 'This is the way!', 'Full send!',
+            'Nothing but net!', 'Hammer time!', 'Clutch!',
+            'Ice in your veins!', 'Risk it for the biscuit!',
+            'Go big or go home!', 'Smooth sailing!',
+        ],
+
+        async submitBetSlip() {
+            if (!this.betSlipValid || this.isSubmittingBets) return;
+            this.isSubmittingBets = true;
+
+            try {
+                if (this.betSlipMode === 'singles') {
+                    // Build bets array — only selections with stakes
+                    const bets = [];
+                    for (let i = 0; i < this.betSlipSelections.length; i++) {
+                        const stake = Number(this.betSlipStakes[i]) || 0;
+                        if (stake <= 0) continue;
+                        const sel = this.betSlipSelections[i];
+                        bets.push({
+                            event_id: sel.event_id,
+                            market_id: sel.market_id,
+                            side: sel.side,
+                            side_indicator: sel.side_indicator,
+                            odds: sel.odds,
+                            stake,
+                        });
+                    }
+
+                    const response = await this.callEdgeFunction('submit_bets', {
+                        player_id: this.playerId,
+                        bookie_id: this.playerBookieId,
+                        bets,
+                        idempotency_key: crypto.randomUUID(),
+                    });
+
+                    if (response.error) throw new Error(response.error);
+
+                    // Check partial success
+                    if (response.results) {
+                        const failed = response.results.filter(r => !r.success);
+                        if (failed.length > 0 && failed.length < bets.length) {
+                            this.toast(`${bets.length - failed.length} of ${bets.length} picks placed`, 'success');
+                        }
+                    }
+                } else {
+                    // Multi-pick / parlay
+                    const legs = this.betSlipSelections.map(sel => ({
+                        event_id: sel.event_id,
+                        market_id: sel.market_id,
+                        side: sel.side,
+                        side_indicator: sel.side_indicator,
+                        odds: sel.odds,
+                    }));
+
+                    const response = await this.callEdgeFunction('submit_parlay', {
+                        player_id: this.playerId,
+                        bookie_id: this.playerBookieId,
+                        stake: Number(this.betSlipMultiStake),
+                        combined_odds: Number(this.combinedMultiOddsAmerican.replace('+', '')),
+                        legs,
+                        idempotency_key: crypto.randomUUID(),
+                    });
+
+                    if (response.error) throw new Error(response.error);
+                }
+
+                // Show success
+                const msgs = this.betSlipConfirmationMessages;
+                this.betSlipSuccessMessage = msgs[Math.floor(Math.random() * msgs.length)];
+                this.betSlipSuccess = true;
+
+                // Refresh player data
+                this.loadPlayerHome();
+            } catch (err) {
+                console.error('Submit bet slip error:', err);
+                this.toast(err.message || 'Failed to place pick', 'error');
+            }
+
+            this.isSubmittingBets = false;
+        },
+
+        closeBetSlipSuccess() {
+            this.betSlipSuccess = false;
+            this.showBetSlip = false;
+            this.clearBetSlip();
         },
 
         // ── Load Bookie ──
