@@ -94,7 +94,7 @@
         "Test: #/picks/abc → redirects to #/picks, #/picks/f3ad0fa1-1234-5678-9abc-def012345678 → loads pick detail"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "This prevents unnecessary database queries with invalid IDs. Currently these fail gracefully (toast error), but silent redirect is cleaner UX. The helper can be reused elsewhere."
     },
     {
@@ -111,7 +111,7 @@
         "Reference: iOS EdgeFunctionService.swift has retry logic, but for web a timeout is sufficient"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Keep this simple — just a timeout and better error messages. No retry logic needed since the user can retry manually. The iOS app has retry logic in EdgeFunctionService.swift but the web dashboard is simpler."
     },
     {
@@ -125,7 +125,7 @@
         "This is defense-in-depth — RLS already restricts to own bets"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Complements US-002 (which added player_id to the main bet query). The parlay legs query should have the same filter for consistency."
     },
     {

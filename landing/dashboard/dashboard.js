@@ -416,6 +416,10 @@ function dashboardApp() {
         },
 
         // ── Routing ──
+        isValidUUID(str) {
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+        },
+
         parseRoute() {
             const prevRoute = this.route;
             const hash = window.location.hash.replace(/\?.*$/, '');
@@ -435,12 +439,24 @@ function dashboardApp() {
             const playerRoutes = ['player-games', 'player-track', 'player-account'];
 
             if (eventMatch) {
+                if (!this.isValidUUID(eventMatch[1])) {
+                    window.location.hash = '#/events';
+                    return;
+                }
                 this.route = 'event-detail';
                 this.selectedEventId = eventMatch[1];
             } else if (memberMatch && this.userRole === 'organizer') {
+                if (!this.isValidUUID(memberMatch[1])) {
+                    window.location.hash = '#/members';
+                    return;
+                }
                 this.route = 'member-detail';
                 this.selectedPlayerId = memberMatch[1];
             } else if (pickMatch && this.userRole === 'organizer') {
+                if (!this.isValidUUID(pickMatch[1])) {
+                    window.location.hash = '#/picks';
+                    return;
+                }
                 // Set back route based on where we came from
                 if (prevRoute === 'member-detail' && this.selectedPlayerId) {
                     const name = this.memberDetail?.display_name || this.memberDetail?.name || this.playerMap[this.selectedPlayerId]?.name || 'Member';
@@ -453,6 +469,10 @@ function dashboardApp() {
                 this.route = 'pick-detail';
                 this.selectedBetId = pickMatch[1];
             } else if (playerTicketMatch && (this.userRole === 'player' || this.userRole === 'standalone')) {
+                if (!this.isValidUUID(playerTicketMatch[1])) {
+                    window.location.hash = '#/player-track';
+                    return;
+                }
                 this.route = 'player-ticket';
                 this.selectedBetId = playerTicketMatch[1];
             } else {
@@ -964,6 +984,7 @@ function dashboardApp() {
                     .from('bets')
                     .select('*')
                     .eq('ticket_id', bet.ticket_id)
+                    .eq('player_id', this.playerId)
                     .order('created_at');
                 if (parlayLegs && parlayLegs.length > 0) {
                     legs = parlayLegs;
@@ -3909,19 +3930,33 @@ function dashboardApp() {
 
         // ── Helpers ──
         async callEdgeFunction(name, body) {
-            const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.session.access_token}`,
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(body),
-            });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            let res;
+            try {
+                res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.session.access_token}`,
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body),
+                    signal: controller.signal,
+                });
+            } catch (err) {
+                clearTimeout(timeoutId);
+                if (err.name === 'AbortError') {
+                    throw new Error('Request timed out. Please try again.');
+                }
+                throw new Error('Network error. Check your connection and try again.');
+            }
+            clearTimeout(timeoutId);
 
             const data = await res.json();
             if (!res.ok && !data.error) {
-                throw new Error(`HTTP ${res.status}`);
+                throw new Error(`Failed to call ${name}. Please try again.`);
             }
             return data;
         },

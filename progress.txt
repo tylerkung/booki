@@ -1,3 +1,14 @@
+## 2026-03-03 - US-006 + US-007 + US-008
+- US-006: Added isValidUUID() helper; validates UUIDs before setting parameterized routes in parseRoute(). Invalid UUIDs silently redirect to parent route.
+- US-007: Wrapped callEdgeFunction fetch in AbortController with 10s timeout. AbortError → 'Request timed out', TypeError → 'Network error', HTTP error without body.error → 'Failed to call {name}'.
+- US-008: Added .eq('player_id', this.playerId) to parlay leg query in loadPlayerTicketDetail() — defense-in-depth filter complementing US-002.
+- Files changed: landing/dashboard/dashboard.js, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - isValidUUID helper is now available for other uses in dashboard.js
+  - callEdgeFunction() pattern: AbortController cleanup in both success and error paths with clearTimeout(timeoutId)
+  - Three small hardening stories handled in one commit for efficiency
+---
+
 ## 2026-03-03 - US-005
 - Fixed parlay gradeResult logic to show 'Lost' immediately when ANY leg has grade_result='loss'
 - Fixed in playerTickets getter (list view): `if (legs.some(l => l.grade_result === 'loss'))` sets gradeResult='loss' early
