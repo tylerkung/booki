@@ -122,3 +122,14 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - View link uses accent rgba background (0, 245, 212) at 6%/12% opacity for subtle teal highlight — hardcoded since CSS custom properties don't work inside `rgba()`
   - Overdue badge in card header uses `<template x-if>` to only render when count > 0
 ---
+
+## 2026-03-02 - US-010
+- Implemented notification preferences section in Settings view, positioned after Change Password
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `notifPrefs` state object with 4 boolean fields (new_members, pick_submissions, risk_alerts, game_results), `isLoadingNotifPrefs` state, `loadNotifPrefs()` fetching from `notification_preferences` table with `.maybeSingle()` and fallback defaults, `toggleNotifPref(field)` with immediate UI toggle + Supabase upsert (reverts on error), bell icon SVG in card header, 4 toggle rows with descriptive labels using existing `.toggle-row`/`.toggle-switch`/`.toggle-label`/`.toggle-desc` CSS, loading state via `<template x-if>`, `loadNotifPrefs()` called from `loadSettings()`
+- **Learnings for future iterations:**
+  - `notification_preferences` table uses `user_id` as unique key — upsert with `{ onConflict: 'user_id' }`
+  - Use `.maybeSingle()` instead of `.single()` when the record may not exist yet — avoids error on first load
+  - Optimistic UI toggle: flip the boolean immediately, then revert on error for responsive feel
+  - No new CSS needed — all toggle styles already existed from Pick Management section
+---
