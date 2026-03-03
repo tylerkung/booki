@@ -222,3 +222,18 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Quick stakes use `addQuickStake(idx, amount)` pattern — adds to existing value rather than replacing
   - CSS prefix `bs-` for bet slip to avoid collisions with other styles
 ---
+
+## 2026-03-02 - US-017
+- Implemented player track view with open and past picks, performance stats, and ticket cards
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `playerTrackFilter`/`isLoadingPlayerTrack`/`playerTrackEvents` state variables, `loadPlayerTrack()` fetching events for bet enrichment (final scores, team names), `playerTickets` computed getter grouping bets by ticket_id into ticket objects with combined odds/PnL/potential return/event data, `playerTrackStats` (record + total staked + PnL), `playerTrackFilterCounts` for filter chip counts, `filteredPlayerTickets` filtering by all/open/won/lost/pushed, `playerTicketStatusBadgeClass()`/`playerTicketStatusText()`/`playerLegDotColor()` helpers, route trigger in `parseRoute()`, summary card with record/staked/PnL, filter chips with counts, ticket cards with title/subtitle/status badge/leg dots/stake/profit/final score, empty state, shimmer loading skeleton, refresh button. CSS: `.pt-*` prefix classes for ticket cards with hover effects, leg dots, responsive layout, generic `.positive`/`.negative` color classes
+- Added `bet_type` and `graded_at` to player bets query select for ticket type detection
+- **Learnings for future iterations:**
+  - Reuse `playerBets` from `loadPlayerHome()` — check if data exists before re-fetching to avoid duplicate queries
+  - Ticket grouping: `ticket_id` groups parlay legs, singles use bet.id as key. `bet_type === 'parlay'` also identifies parlays even with single-leg
+  - Event enrichment: batch fetch events by ID and store in `playerTrackEvents` object keyed by event.id for O(1) lookup
+  - Combined parlay odds: multiply decimal odds of all legs (excluding pushed legs for won parlays), convert back to American
+  - PnL for parlays: Won = stake * combinedDecimal - stake. Loss = -stake. Use `americanToDecimal`/`decimalToAmerican` helpers
+  - Filter counts use computed getter chaining — `playerTrackFilterCounts` reads from `playerTickets` which reads from `playerBets`
+  - CSS prefix `pt-` used for player track to avoid collisions with other view styles
+---

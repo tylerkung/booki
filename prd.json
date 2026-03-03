@@ -370,6 +370,7 @@
         "Pull-to-refresh equivalent: refresh button in header that reloads data"
       ],
       "priority": 17,
+      "passes": true,
       "notes": "Ticket grouping: bets with the same ticket_id are legs of a parlay. Singles have a unique ticket_id (or null — treat null ticket_id as standalone). Combined parlay odds: multiply decimal odds of all legs, convert back to American. Profit calculation: Win → potential_return based on odds. Loss → -stake. Push → 0. For parlays: all legs must be graded to determine ticket result. If any leg is a loss, ticket is a loss. If all are win/push, calculate combined odds excluding pushed legs."
     },
     {
