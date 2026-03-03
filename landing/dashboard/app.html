@@ -48,6 +48,7 @@
             route === 'player-games' ? 'Games' :
             route === 'player-track' ? 'Track' :
             route === 'player-account' ? 'Account' :
+            route === 'player-sport' ? (sportCategories[selectedSportPage]?.displayName || 'Sport') :
             route === 'member-detail' ? (memberDetail?.display_name || memberDetail?.name || 'Member') :
             route === 'pick-detail' ? 'Pick Detail' :
             route === 'event-detail' ? 'Event Detail' :
@@ -2010,11 +2011,10 @@
                     <input type="text" class="search-input" placeholder="Search by team name..." x-model="playerEventSearch" style="max-width:400px;">
                 </div>
 
-                <!-- Sport filter chips -->
+                <!-- Sport filter chips — tap to navigate to sport page -->
                 <div class="filter-bar" style="margin-bottom:12px;">
-                    <button class="chip" :class="{ active: playerSportFilter === '' }" @click="playerSportFilter = ''">All</button>
                     <template x-for="sport in playerSportOptions" :key="sport">
-                        <button class="chip" :class="{ active: playerSportFilter === sport }" @click="playerSportFilter = sport" x-text="sport"></button>
+                        <button class="chip" @click="window.location.hash = '#/player-sport/' + (sportToKey(sport) || sport.toLowerCase())" x-text="sport"></button>
                     </template>
                 </div>
 
@@ -2061,9 +2061,10 @@
                             <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden;">
                                 <!-- Group header with column labels -->
                                 <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--divider);">
-                                    <div style="display:flex;align-items:center;gap:8px;">
+                                    <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="window.location.hash = '#/player-sport/' + (sportToKey(group.sport) || group.sport.toLowerCase())">
                                         <span style="font-size:13px;font-weight:700;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.5px;" x-text="group.sport"></span>
                                         <span style="font-size:11px;color:var(--text-muted);" x-text="group.league"></span>
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--text-muted);flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
                                     </div>
                                     <div class="pg-col-labels">
                                         <span>SPREAD</span>
@@ -2180,152 +2181,237 @@
                     </div>
                 </template>
 
-                <!-- Floating bet slip indicator -->
-                <template x-if="betSlipSelections.length > 0 && !showBetSlip">
-                    <div class="pg-betslip-bar" @click="showBetSlip = true">
-                        <span x-text="betSlipSelections.length + ' Selection' + (betSlipSelections.length !== 1 ? 's' : '')"></span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+            </div>
+
+            <!-- ── Player Sport Page ── -->
+            <div x-show="route === 'player-sport' && (userRole === 'player' || userRole === 'standalone')" x-cloak>
+                <!-- Back + Title -->
+                <div class="page-header" style="padding-bottom:0;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <a href="#/player-games" style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text-muted);text-decoration:none;" @click.prevent="window.location.hash = '#/player-games'">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                            Games
+                        </a>
+                        <span style="color:var(--divider);">/</span>
+                        <h1 style="margin:0;font-size:20px;" x-text="sportCategories[selectedSportPage]?.displayName || ''"></h1>
+                    </div>
+                </div>
+
+                <!-- League tab bar -->
+                <div class="sp-tab-bar">
+                    <template x-for="league in (sportCategories[selectedSportPage]?.leagues || [])" :key="league.id">
+                        <button class="sp-tab" :class="{ 'sp-tab-active': selectedLeagueTab === league.id }" @click="selectedLeagueTab = league.id; if (!sportPageIsGolf) sportPageOutrightMarkets = [];" x-text="league.displayName"></button>
+                    </template>
+                    <!-- Futures tab (only for non-golf sports) -->
+                    <template x-if="!sportPageIsGolf">
+                        <button class="sp-tab" :class="{ 'sp-tab-active': selectedLeagueTab === 'futures' }" @click="selectedLeagueTab = 'futures'; loadSportPage()">Futures</button>
+                    </template>
+                </div>
+
+                <!-- Loading skeleton -->
+                <template x-if="isLoadingSportPage">
+                    <div style="padding-top:16px;">
+                        <div class="card" style="margin-bottom:12px;padding:16px;">
+                            <div class="shimmer shimmer-line" style="width:100%;height:48px;margin-bottom:8px;"></div>
+                            <div class="shimmer shimmer-line" style="width:100%;height:48px;margin-bottom:8px;"></div>
+                            <div class="shimmer shimmer-line" style="width:100%;height:48px;"></div>
+                        </div>
                     </div>
                 </template>
 
-                <!-- ── Bet Slip Modal ── -->
-                <template x-if="showBetSlip">
-                    <div class="bs-overlay" @click.self="showBetSlip = false">
-                        <div class="bs-modal">
-                            <!-- Success State -->
-                            <template x-if="betSlipSuccess">
-                                <div class="bs-success">
-                                    <div class="bs-success-check">
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                    </div>
-                                    <h2 x-text="betSlipSuccessMessage" style="font-size:24px;margin:16px 0 8px;"></h2>
-                                    <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;">Your pick has been placed successfully.</p>
-                                    <button class="btn btn-accent" style="width:100%;padding:14px;" @click="closeBetSlipSuccess()">Done</button>
-                                </div>
-                            </template>
-
-                            <!-- Main Bet Slip -->
-                            <template x-if="!betSlipSuccess">
-                                <div>
-                                    <!-- Header -->
-                                    <div class="bs-header">
-                                        <h2 style="font-size:18px;">Pick Entry</h2>
-                                        <div style="display:flex;gap:8px;align-items:center;">
-                                            <button class="btn-ghost" style="color:var(--danger);font-size:12px;font-weight:600;padding:4px 8px;background:none;border:none;cursor:pointer;" @click="clearBetSlip()">Clear All</button>
-                                            <button class="btn-ghost" style="padding:4px;background:none;border:none;cursor:pointer;color:var(--text-muted);" @click="showBetSlip = false">
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                            </button>
+                <!-- Content (not loading) -->
+                <template x-if="!isLoadingSportPage">
+                    <div>
+                        <!-- ── Futures tab content ── -->
+                        <template x-if="selectedLeagueTab === 'futures' && !sportPageIsGolf">
+                            <div>
+                                <!-- Empty state -->
+                                <template x-if="sportPageFuturesGrouped.length === 0">
+                                    <div class="card" style="margin-top:16px;">
+                                        <div class="empty-state">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                            <p style="font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:4px;" x-text="'No futures available for ' + (sportCategories[selectedSportPage]?.displayName || 'this sport')"></p>
+                                            <p>Championship and tournament futures will appear here once synced.</p>
                                         </div>
                                     </div>
-
-                                    <!-- Mode Toggle -->
-                                    <div class="bs-mode-toggle">
-                                        <button :class="{ active: betSlipMode === 'singles' }" @click="betSlipMode = 'singles'">Singles</button>
-                                        <button :class="{ active: betSlipMode === 'multi', disabled: !canSelectMulti }" :disabled="!canSelectMulti" @click="if(canSelectMulti) betSlipMode = 'multi'">Multi</button>
-                                    </div>
-
-                                    <!-- Available Credit -->
-                                    <div class="bs-credit" x-show="playerCreditLimit > 0">
-                                        <span style="color:var(--text-muted);font-size:12px;">Available</span>
-                                        <span style="color:var(--accent);font-size:13px;font-weight:600;" x-text="formatCurrency(playerAvailableCredit) + ' max'"></span>
-                                    </div>
-
-                                    <!-- Selection Cards -->
-                                    <div class="bs-selections">
-                                        <template x-for="(sel, idx) in betSlipSelections" :key="sel.event_id + sel.market_id + sel.side_indicator">
-                                            <div class="bs-card">
-                                                <div class="bs-card-header">
-                                                    <div style="flex:1;min-width:0;">
-                                                        <div class="bs-card-side" x-text="sel.side"></div>
-                                                        <div class="bs-card-event" x-text="sel.event_name"></div>
-                                                    </div>
-                                                    <div style="display:flex;align-items:center;gap:8px;">
-                                                        <span class="bs-card-odds" x-text="formatOdds(sel.odds)"></span>
-                                                        <button class="bs-remove-btn" @click="removeSelection(idx)">
-                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                                        </button>
-                                                    </div>
+                                </template>
+                                <!-- Futures cards -->
+                                <template x-if="sportPageFuturesGrouped.length > 0">
+                                    <div style="margin-top:16px;">
+                                        <template x-for="group in sportPageFuturesGrouped" :key="group.eventName">
+                                            <div class="card" style="margin-bottom:12px;padding:0;overflow:hidden;">
+                                                <div style="padding:10px 16px;border-bottom:1px solid var(--divider);background:var(--bg);">
+                                                    <span style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;" x-text="group.eventName"></span>
                                                 </div>
-
-                                                <!-- Stake input (singles mode only) -->
-                                                <template x-if="betSlipMode === 'singles'">
-                                                    <div class="bs-stake-row">
-                                                        <div class="bs-input-group">
-                                                            <span class="bs-input-prefix">$</span>
-                                                            <input type="number" class="bs-stake-input" placeholder="0" step="0.01" min="0"
-                                                                :value="betSlipStakes[idx] || ''"
-                                                                @input="betSlipStakes[idx] = $event.target.value">
-                                                        </div>
-                                                        <div class="bs-quick-stakes">
-                                                            <button @click="addQuickStake(idx, 1)">+$1</button>
-                                                            <button @click="addQuickStake(idx, 5)">+$5</button>
-                                                            <button @click="addQuickStake(idx, 25)">+$25</button>
-                                                        </div>
-                                                        <div class="bs-to-win" x-show="(Number(betSlipStakes[idx]) || 0) > 0">
-                                                            <span style="color:var(--text-muted);font-size:11px;">To Win</span>
-                                                            <span style="color:var(--success);font-size:13px;font-weight:600;" x-text="formatCurrency(calcToWin(sel.odds, betSlipStakes[idx]))"></span>
-                                                        </div>
+                                                <template x-for="(market, idx) in group.markets" :key="market.id">
+                                                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;" :style="idx % 2 === 1 ? 'background:var(--card-bg)' : ''">
+                                                        <span style="font-size:14px;color:var(--text-primary);" x-text="market.side_a"></span>
+                                                        <button class="pg-odds-btn"
+                                                            :class="{ 'pg-odds-active': isSelectionActive(group.event.id, market.id, 'a') }"
+                                                            style="width:70px;"
+                                                            @click="toggleSelection(group.event, market, 'a', market.side_a, market.odds_a)"
+                                                            x-text="formatOdds(market.odds_a)">
+                                                        </button>
                                                     </div>
                                                 </template>
                                             </div>
                                         </template>
                                     </div>
+                                </template>
+                            </div>
+                        </template>
 
-                                    <!-- Multi-pick stake (multi mode) -->
-                                    <template x-if="betSlipMode === 'multi'">
-                                        <div class="bs-multi-section">
-                                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                                                <span style="font-size:13px;font-weight:600;color:var(--text-primary);">Multi-Pick</span>
-                                                <span class="bs-card-odds" x-text="combinedMultiOddsAmerican"></span>
+                        <!-- ── Golf league tab = outright markets ── -->
+                        <template x-if="sportPageIsGolf">
+                            <div>
+                                <template x-if="sportPageLeagueOutrights.length === 0">
+                                    <div class="card" style="margin-top:16px;">
+                                        <div class="empty-state">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                            <p style="font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:4px;">No futures available</p>
+                                            <p>Tournament futures will appear here once synced.</p>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="sportPageLeagueOutrights.length > 0">
+                                    <div style="margin-top:16px;">
+                                        <template x-for="group in sportPageLeagueOutrights" :key="group.eventName">
+                                            <div class="card" style="margin-bottom:12px;padding:0;overflow:hidden;">
+                                                <div style="padding:10px 16px;border-bottom:1px solid var(--divider);background:var(--bg);">
+                                                    <span style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;" x-text="group.eventName"></span>
+                                                </div>
+                                                <template x-for="(market, idx) in group.markets" :key="market.id">
+                                                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;" :style="idx % 2 === 1 ? 'background:var(--card-bg)' : ''">
+                                                        <span style="font-size:14px;color:var(--text-primary);" x-text="market.side_a"></span>
+                                                        <button class="pg-odds-btn"
+                                                            :class="{ 'pg-odds-active': isSelectionActive(group.event.id, market.id, 'a') }"
+                                                            style="width:70px;"
+                                                            @click="toggleSelection(group.event, market, 'a', market.side_a, market.odds_a)"
+                                                            x-text="formatOdds(market.odds_a)">
+                                                        </button>
+                                                    </div>
+                                                </template>
                                             </div>
-                                            <div class="bs-stake-row">
-                                                <div class="bs-input-group">
-                                                    <span class="bs-input-prefix">$</span>
-                                                    <input type="number" class="bs-stake-input" placeholder="0" step="0.01" min="0"
-                                                        x-model="betSlipMultiStake">
-                                                </div>
-                                                <div class="bs-quick-stakes">
-                                                    <button @click="addQuickStakeMulti(1)">+$1</button>
-                                                    <button @click="addQuickStakeMulti(5)">+$5</button>
-                                                    <button @click="addQuickStakeMulti(25)">+$25</button>
-                                                </div>
-                                                <div class="bs-to-win" x-show="(Number(betSlipMultiStake) || 0) > 0">
-                                                    <span style="color:var(--text-muted);font-size:11px;">To Win</span>
-                                                    <span style="color:var(--success);font-size:13px;font-weight:600;" x-text="formatCurrency(multiToWin)"></span>
-                                                </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- ── Regular league games (non-golf, non-futures tab) ── -->
+                        <template x-if="selectedLeagueTab !== 'futures' && !sportPageIsGolf">
+                            <div>
+                                <!-- Empty state -->
+                                <template x-if="sportPageLeagueEvents.length === 0">
+                                    <div class="card" style="margin-top:16px;">
+                                        <div class="empty-state">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                            <p style="font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:4px;"
+                                               x-text="'No upcoming ' + (sportCategories[selectedSportPage]?.leagues.find(l => l.id === selectedLeagueTab)?.displayName || '') + ' games'"></p>
+                                            <p>Check back later for available games and odds.</p>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Game card -->
+                                <template x-if="sportPageLeagueEvents.length > 0">
+                                    <div class="card" style="margin-top:16px;padding:0;overflow:hidden;">
+                                        <!-- Column labels header -->
+                                        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--divider);">
+                                            <span style="font-size:11px;color:var(--text-muted);" x-text="sportCategories[selectedSportPage]?.leagues.find(l => l.id === selectedLeagueTab)?.displayName || ''"></span>
+                                            <div class="pg-col-labels">
+                                                <span>SPREAD</span>
+                                                <span>MONEY</span>
+                                                <span>TOTAL</span>
                                             </div>
                                         </div>
-                                    </template>
-
-                                    <!-- Validation Warning -->
-                                    <div class="bs-validation" x-show="betSlipValidationMessage && betSlipTotalStakes > 0" x-text="betSlipValidationMessage"></div>
-
-                                    <!-- Submit Button -->
-                                    <button class="bs-submit-btn"
-                                        :disabled="!betSlipValid || isSubmittingBets"
-                                        @click="submitBetSlip()">
-                                        <template x-if="isSubmittingBets">
-                                            <span>Placing...</span>
+                                        <!-- Game rows -->
+                                        <template x-for="ev in sportPageLeagueEvents" :key="ev.id">
+                                            <div class="pg-game-row" :class="{ 'pg-locked': isEventLocked(ev) }">
+                                                <div class="pg-game-time" x-text="formatEventTime(ev.start_time)"></div>
+                                                <div class="pg-game-grid">
+                                                    <!-- Away team row -->
+                                                    <div class="pg-team-row">
+                                                        <div class="pg-team-name" x-text="ev.away_team || 'Away'"></div>
+                                                        <div class="pg-odds-cells">
+                                                            <button class="pg-odds-btn"
+                                                                :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'spreads') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'spreads')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'spreads')"
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'spreads'), 'a', (ev.away_team || 'Away') + ' ' + formatSpreadLine(getMarketForEvent(ev.id, 'spreads')?.spread_line), getMarketForEvent(ev.id, 'spreads')?.away_spread_odds)">
+                                                                <template x-if="getMarketForEvent(ev.id, 'spreads')">
+                                                                    <span><span class="pg-odds-line" x-text="formatSpreadLine(getMarketForEvent(ev.id, 'spreads').spread_line)"></span><span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'spreads').away_spread_odds)"></span></span>
+                                                                </template>
+                                                                <template x-if="!getMarketForEvent(ev.id, 'spreads')"><span class="pg-odds-na">—</span></template>
+                                                            </button>
+                                                            <button class="pg-odds-btn"
+                                                                :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'h2h')"
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'a', (ev.away_team || 'Away') + ' ML', getMarketForEvent(ev.id, 'h2h')?.away_odds)">
+                                                                <template x-if="getMarketForEvent(ev.id, 'h2h')">
+                                                                    <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').away_odds)"></span>
+                                                                </template>
+                                                                <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">—</span></template>
+                                                            </button>
+                                                            <button class="pg-odds-btn"
+                                                                :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'totals') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'totals')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'totals')"
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'totals'), 'a', 'Over ' + (getMarketForEvent(ev.id, 'totals')?.over_line || ''), getMarketForEvent(ev.id, 'totals')?.over_odds)">
+                                                                <template x-if="getMarketForEvent(ev.id, 'totals')">
+                                                                    <span><span class="pg-odds-line" x-text="'O ' + getMarketForEvent(ev.id, 'totals').over_line"></span><span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'totals').over_odds)"></span></span>
+                                                                </template>
+                                                                <template x-if="!getMarketForEvent(ev.id, 'totals')"><span class="pg-odds-na">—</span></template>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Home team row -->
+                                                    <div class="pg-team-row">
+                                                        <div class="pg-team-name" x-text="ev.home_team || 'Home'"></div>
+                                                        <div class="pg-odds-cells">
+                                                            <button class="pg-odds-btn"
+                                                                :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'spreads') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'spreads')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'spreads')"
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'spreads'), 'b', (ev.home_team || 'Home') + ' ' + formatSpreadLine(-(getMarketForEvent(ev.id, 'spreads')?.spread_line || 0)), getMarketForEvent(ev.id, 'spreads')?.home_spread_odds)">
+                                                                <template x-if="getMarketForEvent(ev.id, 'spreads')">
+                                                                    <span><span class="pg-odds-line" x-text="formatSpreadLine(-(getMarketForEvent(ev.id, 'spreads').spread_line || 0))"></span><span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'spreads').home_spread_odds)"></span></span>
+                                                                </template>
+                                                                <template x-if="!getMarketForEvent(ev.id, 'spreads')"><span class="pg-odds-na">—</span></template>
+                                                            </button>
+                                                            <button class="pg-odds-btn"
+                                                                :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'h2h')"
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'b', (ev.home_team || 'Home') + ' ML', getMarketForEvent(ev.id, 'h2h')?.home_odds)">
+                                                                <template x-if="getMarketForEvent(ev.id, 'h2h')">
+                                                                    <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').home_odds)"></span>
+                                                                </template>
+                                                                <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">—</span></template>
+                                                            </button>
+                                                            <button class="pg-odds-btn"
+                                                                :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'totals') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'totals')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'totals')"
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'totals'), 'b', 'Under ' + (getMarketForEvent(ev.id, 'totals')?.over_line || ''), getMarketForEvent(ev.id, 'totals')?.under_odds)">
+                                                                <template x-if="getMarketForEvent(ev.id, 'totals')">
+                                                                    <span><span class="pg-odds-line" x-text="'U ' + getMarketForEvent(ev.id, 'totals').over_line"></span><span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'totals').under_odds)"></span></span>
+                                                                </template>
+                                                                <template x-if="!getMarketForEvent(ev.id, 'totals')"><span class="pg-odds-na">—</span></template>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <template x-if="isEventLocked(ev)">
+                                                    <div class="pg-lock-badge">
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                                        Locked
+                                                    </div>
+                                                </template>
+                                            </div>
                                         </template>
-                                        <template x-if="!isSubmittingBets">
-                                            <span x-text="betSlipButtonText"></span>
-                                        </template>
-                                    </button>
-
-                                    <!-- Disclaimer -->
-                                    <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:12px;">Picks are not processed as real-money wagers by Booki.</p>
-                                </div>
-                            </template>
-
-                            <!-- Loading overlay -->
-                            <template x-if="isSubmittingBets">
-                                <div class="bs-loading-overlay">
-                                    <div class="bs-spinner"></div>
-                                </div>
-                            </template>
-                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </div>
                 </template>
+
             </div>
 
             <!-- ── Player Track View ── -->
@@ -2875,6 +2961,153 @@
 
         </main>
     </div>
+
+    <!-- ── Shared Bet Slip Bar + Modal (player-games & player-sport) ── -->
+    <div class="pg-betslip-bar"
+        x-show="(route === 'player-games' || route === 'player-sport') && betSlipSelections.length > 0 && !showBetSlip"
+        x-cloak
+        @click="showBetSlip = true">
+        <span x-text="betSlipSelections.length + ' Selection' + (betSlipSelections.length !== 1 ? 's' : '')"></span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+    </div>
+
+    <template x-if="showBetSlip">
+        <div class="bs-overlay" @click.self="showBetSlip = false">
+            <div class="bs-modal">
+                <!-- Success State -->
+                <template x-if="betSlipSuccess">
+                    <div class="bs-success">
+                        <div class="bs-success-check">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </div>
+                        <h2 x-text="betSlipSuccessMessage" style="font-size:24px;margin:16px 0 8px;"></h2>
+                        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;">Your pick has been placed successfully.</p>
+                        <button class="btn btn-accent" style="width:100%;padding:14px;" @click="closeBetSlipSuccess()">Done</button>
+                    </div>
+                </template>
+
+                <!-- Main Bet Slip -->
+                <template x-if="!betSlipSuccess">
+                    <div>
+                        <!-- Header -->
+                        <div class="bs-header">
+                            <h2 style="font-size:18px;">Pick Entry</h2>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <button class="btn-ghost" style="color:var(--danger);font-size:12px;font-weight:600;padding:4px 8px;background:none;border:none;cursor:pointer;" @click="clearBetSlip()">Clear All</button>
+                                <button class="btn-ghost" style="padding:4px;background:none;border:none;cursor:pointer;color:var(--text-muted);" @click="showBetSlip = false">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Mode Toggle -->
+                        <div class="bs-mode-toggle">
+                            <button :class="{ active: betSlipMode === 'singles' }" @click="betSlipMode = 'singles'">Singles</button>
+                            <button :class="{ active: betSlipMode === 'multi', disabled: !canSelectMulti }" :disabled="!canSelectMulti" @click="if(canSelectMulti) betSlipMode = 'multi'">Multi</button>
+                        </div>
+
+                        <!-- Available Credit -->
+                        <div class="bs-credit" x-show="playerCreditLimit > 0">
+                            <span style="color:var(--text-muted);font-size:12px;">Available</span>
+                            <span style="color:var(--accent);font-size:13px;font-weight:600;" x-text="formatCurrency(playerAvailableCredit) + ' max'"></span>
+                        </div>
+
+                        <!-- Selection Cards -->
+                        <div class="bs-selections">
+                            <template x-for="(sel, idx) in betSlipSelections" :key="sel.event_id + sel.market_id + sel.side_indicator">
+                                <div class="bs-card">
+                                    <div class="bs-card-header">
+                                        <div style="flex:1;min-width:0;">
+                                            <div class="bs-card-side" x-text="sel.side"></div>
+                                            <div class="bs-card-event" x-text="sel.event_name"></div>
+                                        </div>
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span class="bs-card-odds" x-text="formatOdds(sel.odds)"></span>
+                                            <button class="bs-remove-btn" @click="removeSelection(idx)">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Stake input (singles mode only) -->
+                                    <template x-if="betSlipMode === 'singles'">
+                                        <div class="bs-stake-row">
+                                            <div class="bs-input-group">
+                                                <span class="bs-input-prefix">$</span>
+                                                <input type="number" class="bs-stake-input" placeholder="0" step="0.01" min="0"
+                                                    :value="betSlipStakes[idx] || ''"
+                                                    @input="betSlipStakes[idx] = $event.target.value">
+                                            </div>
+                                            <div class="bs-quick-stakes">
+                                                <button @click="addQuickStake(idx, 1)">+$1</button>
+                                                <button @click="addQuickStake(idx, 5)">+$5</button>
+                                                <button @click="addQuickStake(idx, 25)">+$25</button>
+                                            </div>
+                                            <div class="bs-to-win" x-show="(Number(betSlipStakes[idx]) || 0) > 0">
+                                                <span style="color:var(--text-muted);font-size:11px;">To Win</span>
+                                                <span style="color:var(--success);font-size:13px;font-weight:600;" x-text="formatCurrency(calcToWin(sel.odds, betSlipStakes[idx]))"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Multi-pick stake (multi mode) -->
+                        <template x-if="betSlipMode === 'multi'">
+                            <div class="bs-multi-section">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                                    <span style="font-size:13px;font-weight:600;color:var(--text-primary);">Multi-Pick</span>
+                                    <span class="bs-card-odds" x-text="combinedMultiOddsAmerican"></span>
+                                </div>
+                                <div class="bs-stake-row">
+                                    <div class="bs-input-group">
+                                        <span class="bs-input-prefix">$</span>
+                                        <input type="number" class="bs-stake-input" placeholder="0" step="0.01" min="0"
+                                            x-model="betSlipMultiStake">
+                                    </div>
+                                    <div class="bs-quick-stakes">
+                                        <button @click="addQuickStakeMulti(1)">+$1</button>
+                                        <button @click="addQuickStakeMulti(5)">+$5</button>
+                                        <button @click="addQuickStakeMulti(25)">+$25</button>
+                                    </div>
+                                    <div class="bs-to-win" x-show="(Number(betSlipMultiStake) || 0) > 0">
+                                        <span style="color:var(--text-muted);font-size:11px;">To Win</span>
+                                        <span style="color:var(--success);font-size:13px;font-weight:600;" x-text="formatCurrency(multiToWin)"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Validation Warning -->
+                        <div class="bs-validation" x-show="betSlipValidationMessage && betSlipTotalStakes > 0" x-text="betSlipValidationMessage"></div>
+
+                        <!-- Submit Button -->
+                        <button class="bs-submit-btn"
+                            :disabled="!betSlipValid || isSubmittingBets"
+                            @click="submitBetSlip()">
+                            <template x-if="isSubmittingBets">
+                                <span>Placing...</span>
+                            </template>
+                            <template x-if="!isSubmittingBets">
+                                <span x-text="betSlipButtonText"></span>
+                            </template>
+                        </button>
+
+                        <!-- Disclaimer -->
+                        <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:12px;">Picks are not processed as real-money wagers by Booki.</p>
+                    </div>
+                </template>
+
+                <!-- Loading overlay -->
+                <template x-if="isSubmittingBets">
+                    <div class="bs-loading-overlay">
+                        <div class="bs-spinner"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
 
     <!-- ── Invite Modal ── -->
     <div class="modal-overlay" x-show="showInviteModal" x-cloak @click.self="showInviteModal = false" x-transition>

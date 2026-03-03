@@ -329,6 +329,22 @@ function dashboardApp() {
         playerTimeFilter: 'all',
         showBetSlip: false,
 
+        // ── Player Sport Page ──
+        selectedSportPage: '',
+        selectedLeagueTab: '',
+        isLoadingSportPage: false,
+        sportPageOutrightMarkets: [],
+        sportCategories: {
+            basketball: { displayName: 'Basketball', leagues: [{id:'nba',displayName:'NBA'},{id:'ncaab',displayName:'NCAAB'},{id:'wnba',displayName:'WNBA'}] },
+            football: { displayName: 'Football', leagues: [{id:'nfl',displayName:'NFL'},{id:'ncaaf',displayName:'NCAAF'}] },
+            baseball: { displayName: 'Baseball', leagues: [{id:'mlb',displayName:'MLB'}] },
+            hockey: { displayName: 'Hockey', leagues: [{id:'nhl',displayName:'NHL'}] },
+            soccer: { displayName: 'Soccer', leagues: [{id:'epl',displayName:'EPL'},{id:'mls',displayName:'MLS'}] },
+            mma: { displayName: 'MMA', leagues: [{id:'ufc',displayName:'UFC'}] },
+            tennis: { displayName: 'Tennis', leagues: [{id:'atp',displayName:'ATP'},{id:'wta',displayName:'WTA'}] },
+            golf: { displayName: 'Golf', leagues: [{id:'pga',displayName:'PGA'},{id:'masters',displayName:'Masters'},{id:'the_open',displayName:'The Open'},{id:'us_open',displayName:'US Open'}] },
+        },
+
         // ── Player Track ──
         playerTrackFilter: 'all',
         isLoadingPlayerTrack: true,
@@ -433,11 +449,12 @@ function dashboardApp() {
 
             // Player parameterized routes
             const playerTicketMatch = path.match(/^player-ticket\/(.+)$/);
+            const playerSportMatch = path.match(/^player-sport\/(.+)$/);
 
             // Organizer routes
             const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings'];
             // Player routes
-            const playerRoutes = ['player-games', 'player-track', 'player-account'];
+            const playerRoutes = ['player-games', 'player-track', 'player-account', 'player-sport'];
 
             if (eventMatch) {
                 if (!this.isValidUUID(eventMatch[1])) {
@@ -476,6 +493,18 @@ function dashboardApp() {
                 }
                 this.route = 'player-ticket';
                 this.selectedBetId = playerTicketMatch[1];
+            } else if (playerSportMatch && (this.userRole === 'player' || this.userRole === 'standalone')) {
+                const sport = playerSportMatch[1].toLowerCase();
+                if (!this.sportCategories[sport]) {
+                    window.location.hash = '#/player-games';
+                    return;
+                }
+                this.route = 'player-sport';
+                this.selectedSportPage = sport;
+                const sportLeagues = this.sportCategories[sport].leagues;
+                if (!this.selectedLeagueTab || !sportLeagues.find(l => l.id === this.selectedLeagueTab)) {
+                    this.selectedLeagueTab = sportLeagues[0]?.id || 'futures';
+                }
             } else {
                 // Validate route against user role
                 if (this.userRole === 'organizer') {
@@ -502,6 +531,7 @@ function dashboardApp() {
             if (this.route === 'player-track') this.loadPlayerTrack();
             if (this.route === 'player-ticket') this.loadPlayerTicketDetail();
             if (this.route === 'player-account') this.loadPlayerAccount();
+            if (this.route === 'player-sport') this.loadSportPage();
         },
 
         // ── Auth ──
@@ -1322,6 +1352,104 @@ function dashboardApp() {
             }
 
             this.isLoadingPlayerEvents = false;
+        },
+
+        async loadSportPage() {
+            this.isLoadingSportPage = true;
+            const cat = this.sportCategories[this.selectedSportPage];
+            if (!cat) { this.isLoadingSportPage = false; return; }
+
+            // Reuse already-loaded events if available, otherwise fetch them
+            if (this.playerEvents.length === 0) {
+                await this.loadPlayerGames();
+            }
+
+            // Fetch outright markets for this sport (side_a/odds_a columns)
+            const outrightEventIds = this.playerEvents
+                .filter(ev => ev.away_team === 'Outright' && this.formatSportName(ev.sport) === cat.displayName)
+                .map(ev => ev.id);
+
+            if (outrightEventIds.length > 0) {
+                const { data: markets } = await this.supabase
+                    .from('markets')
+                    .select('id, event_id, market_type, side_a, odds_a')
+                    .is('bookie_id', null)
+                    .in('event_id', outrightEventIds)
+                    .eq('market_type', 'outright');
+                this.sportPageOutrightMarkets = markets || [];
+            } else {
+                this.sportPageOutrightMarkets = [];
+            }
+
+            this.isLoadingSportPage = false;
+        },
+
+        sportToKey(displayName) {
+            return Object.entries(this.sportCategories).find(([k, v]) => v.displayName === displayName)?.[0] || null;
+        },
+
+        get sportPageCurrentCat() {
+            return this.sportCategories[this.selectedSportPage] || null;
+        },
+
+        get sportPageIsGolf() {
+            return this.selectedSportPage === 'golf';
+        },
+
+        get sportPageLeagueEvents() {
+            const cat = this.sportPageCurrentCat;
+            if (!cat) return [];
+            const league = cat.leagues.find(l => l.id === this.selectedLeagueTab);
+            if (!league) return [];
+            const now = new Date();
+            return this.playerEvents.filter(ev => {
+                if (ev.away_team === 'Outright') return false;
+                if (this.formatSportName(ev.sport) !== cat.displayName) return false;
+                if (ev.league !== league.displayName) return false;
+                if (new Date(ev.start_time) <= now) return false;
+                return true;
+            });
+        },
+
+        get sportPageFuturesGrouped() {
+            const cat = this.sportPageCurrentCat;
+            if (!cat) return [];
+            const outrightEvents = this.playerEvents.filter(ev =>
+                ev.away_team === 'Outright' && this.formatSportName(ev.sport) === cat.displayName
+            );
+            const result = [];
+            for (const ev of outrightEvents) {
+                const markets = this.sportPageOutrightMarkets
+                    .filter(m => m.event_id === ev.id)
+                    .sort((a, b) => a.odds_a - b.odds_a);
+                if (markets.length > 0) {
+                    result.push({ eventName: ev.home_team, event: ev, markets });
+                }
+            }
+            return result;
+        },
+
+        get sportPageLeagueOutrights() {
+            // For golf: outright markets for the currently selected league tab
+            const cat = this.sportPageCurrentCat;
+            if (!cat) return [];
+            const league = cat.leagues.find(l => l.id === this.selectedLeagueTab);
+            if (!league) return [];
+            const outrightEvents = this.playerEvents.filter(ev =>
+                ev.away_team === 'Outright' &&
+                this.formatSportName(ev.sport) === cat.displayName &&
+                ev.league === league.displayName
+            );
+            const result = [];
+            for (const ev of outrightEvents) {
+                const markets = this.sportPageOutrightMarkets
+                    .filter(m => m.event_id === ev.id)
+                    .sort((a, b) => a.odds_a - b.odds_a);
+                if (markets.length > 0) {
+                    result.push({ eventName: ev.home_team, event: ev, markets });
+                }
+            }
+            return result;
         },
 
         get playerMarketsByEvent() {

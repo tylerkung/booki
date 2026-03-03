@@ -170,7 +170,7 @@
         "Empty state per league tab: 'No upcoming {league} games' or 'No futures available for {sport}'"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "iOS SportPageView is the key reference. It has: selectedLeagueId state, orderedLeagues computed, leagueEvents filtered, isOutrightOnlySport for golf. League tabs are text + accent underline, not chip-style. Sport-to-DB mapping: display names (Basketball/Football/etc.) map to events.sport column, league names (NBA/NFL/etc.) map to events.league column. Outright markets have market_type='outright' in the markets table."
     },
     {

@@ -1,3 +1,23 @@
+## 2026-03-03 - US-010
+- US-010: Added sport page with league sub-tabs and futures browsing
+- New route '#/player-sport/{sport}' (e.g., #/player-sport/basketball) handled in parseRoute() with sportCategories validation
+- State: selectedSportPage, selectedLeagueTab, isLoadingSportPage, sportPageOutrightMarkets, sportCategories data structure
+- Computed getters: sportPageCurrentCat, sportPageIsGolf, sportPageLeagueEvents, sportPageFuturesGrouped, sportPageLeagueOutrights
+- sportToKey() helper: maps display name (e.g. 'Basketball') back to sport key for navigation
+- Games view sport chips now navigate to sport page instead of inline filtering
+- Games view group headers are now tappable with chevron icon → navigate to sport page
+- Sport page HTML: back breadcrumb, sp-tab-bar with league tabs + Futures tab (non-golf), game rows reusing pg-game-row pattern, outright futures cards
+- Golf special case: league tabs render outright markets directly (no separate Futures tab) — sportPageIsGolf flag
+- Bet slip bar + modal moved outside all route x-show containers to fix display:none visibility bug; now shared x-show condition on route === 'player-games' || 'player-sport'
+- Outright markets use side_a/odds_a columns fetched separately in loadSportPage() (separate from playerMarkets which uses different columns)
+- Files changed: landing/dashboard/dashboard.js, landing/dashboard/app.html, landing/dashboard/dashboard.css, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - position:fixed children are hidden by parent display:none — move shared overlays outside route x-show containers
+  - Outright markets have side_a/odds_a columns (not home_odds/away_odds) — need separate DB fetch
+  - sportCategories as a state property (not a getter) avoids reactivity issues with Object.entries() calls
+  - Golf is isOutrightOnlySport: league tabs show outright markets, no Futures tab
+---
+
 ## 2026-03-03 - US-014 + US-016 + US-017
 - US-014: Added data-label attributes to settlement table (the only table missing them). Picks/members/invite/event-detail/dashboard tables were already complete.
 - US-016: Added .member-detail-header CSS class with flex-direction:column + gap at 768px. Changed inline style to class.
