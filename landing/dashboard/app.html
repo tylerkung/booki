@@ -1968,16 +1968,153 @@
                 </div>
             </div>
 
-            <!-- ── Player Home View (placeholder) ── -->
+            <!-- ── Player Home View ── -->
             <div x-show="route === 'player-home' && (userRole === 'player' || userRole === 'standalone')" x-cloak>
                 <div class="page-header">
                     <h1>Home</h1>
                     <p x-text="playerRecord ? ('Welcome, ' + (playerRecord.display_name || playerRecord.name || 'Member')) : 'Welcome'"></p>
                 </div>
-                <div class="card" style="padding:32px;text-align:center;">
-                    <div style="font-size:48px;margin-bottom:16px;">&#127968;</div>
-                    <div style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Player Dashboard</div>
-                    <div style="font-size:14px;color:var(--text-secondary);">Your balance, performance, and activity will appear here.</div>
+
+                <!-- Shimmer Loading Skeleton -->
+                <template x-if="isLoadingPlayerHome">
+                    <div>
+                        <div class="card" style="padding:32px;text-align:center;margin-bottom:24px;">
+                            <div class="shimmer" style="width:120px;height:14px;margin:0 auto 16px;"></div>
+                            <div class="shimmer" style="width:200px;height:40px;margin:0 auto 12px;"></div>
+                            <div class="shimmer" style="width:160px;height:14px;margin:0 auto;"></div>
+                        </div>
+                        <div class="card" style="padding:24px;margin-bottom:24px;">
+                            <div class="shimmer shimmer-line" style="width:40%;height:14px;margin-bottom:16px;"></div>
+                            <div style="display:flex;gap:16px;">
+                                <div class="shimmer" style="flex:1;height:60px;border-radius:8px;"></div>
+                                <div class="shimmer" style="flex:1;height:60px;border-radius:8px;"></div>
+                                <div class="shimmer" style="flex:1;height:60px;border-radius:8px;"></div>
+                            </div>
+                        </div>
+                        <div class="card" style="padding:24px;">
+                            <div class="shimmer shimmer-line" style="width:50%;height:14px;margin-bottom:16px;"></div>
+                            <template x-for="i in 3" :key="i">
+                                <div class="shimmer" style="height:48px;margin-bottom:8px;border-radius:8px;"></div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Loaded Content -->
+                <div x-show="!isLoadingPlayerHome" x-cloak>
+
+                    <!-- Balance Hero -->
+                    <div class="card player-balance-hero" style="margin-bottom:24px;">
+                        <div style="text-align:center;padding:32px 24px;">
+                            <div style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Current Balance</div>
+                            <div class="player-balance-amount"
+                                 :class="playerDisplayBalance > 0 ? 'positive' : playerDisplayBalance < 0 ? 'negative' : ''"
+                                 x-text="formatCurrency(playerDisplayBalance)"></div>
+                            <div style="font-size:13px;margin-top:8px;"
+                                 :style="{ color: playerDisplayBalance > 0 ? 'var(--success)' : playerDisplayBalance < 0 ? 'var(--danger)' : 'var(--text-muted)' }"
+                                 x-text="playerDisplayBalance > 0 ? 'Amount owed to you' : playerDisplayBalance < 0 ? 'Amount you owe' : 'All settled'"></div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:12px;font-style:italic;">
+                                Balances are informational and not processed by Booki.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Card -->
+                    <div class="card" style="padding:24px;margin-bottom:24px;">
+                        <div class="card-header" style="margin-bottom:16px;">
+                            <span class="card-title">Performance</span>
+                        </div>
+
+                        <!-- Record (W-L-P) -->
+                        <div class="player-record-row" style="margin-bottom:20px;">
+                            <div class="player-record-item">
+                                <span class="player-record-num" style="color:var(--success);" x-text="computePlayerRecord().wins"></span>
+                                <span class="player-record-dot" style="background:var(--success);"></span>
+                                <span class="player-record-label">W</span>
+                            </div>
+                            <div class="player-record-divider">-</div>
+                            <div class="player-record-item">
+                                <span class="player-record-num" style="color:var(--danger);" x-text="computePlayerRecord().losses"></span>
+                                <span class="player-record-dot" style="background:var(--danger);"></span>
+                                <span class="player-record-label">L</span>
+                            </div>
+                            <div class="player-record-divider">-</div>
+                            <div class="player-record-item">
+                                <span class="player-record-num" style="color:var(--text-muted);" x-text="computePlayerRecord().pushes"></span>
+                                <span class="player-record-dot" style="background:var(--text-muted);"></span>
+                                <span class="player-record-label">P</span>
+                            </div>
+                        </div>
+
+                        <!-- Stats Row -->
+                        <div class="player-stats-row">
+                            <div class="player-stat">
+                                <div class="stat-label">Win Rate</div>
+                                <div class="stat-value" x-text="playerWinRate + '%'"></div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="stat-label">Net Performance</div>
+                                <div class="stat-value" :class="playerDisplayPnl >= 0 ? 'positive' : 'negative'" x-text="formatCurrency(playerDisplayPnl)"></div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="stat-label">Open Picks</div>
+                                <div class="stat-value" x-text="playerOpenPicksCount"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Credit Utilization (only for players with credit limit, not standalone) -->
+                    <template x-if="userRole === 'player' && playerCreditLimit > 0">
+                        <div class="card" style="padding:24px;margin-bottom:24px;">
+                            <div class="card-header" style="margin-bottom:16px;">
+                                <span class="card-title">Credit</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;">
+                                <span style="color:var(--text-muted);">Used</span>
+                                <span style="color:var(--text-primary);" x-text="formatCurrency(Math.abs(playerBalance) + playerOpenStakes) + ' / ' + formatCurrency(playerCreditLimit)"></span>
+                            </div>
+                            <div class="credit-bar-track">
+                                <div class="credit-bar-fill"
+                                     :style="{ width: Math.min(100, playerCreditUtilization) + '%', background: creditUtilizationColor(playerCreditUtilization) }"></div>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:8px;">
+                                <span style="color:var(--text-muted);" x-text="Math.round(playerCreditUtilization) + '% used'"></span>
+                                <span style="color:var(--success);" x-text="formatCurrency(playerAvailableCredit) + ' available'"></span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Recent Activity -->
+                    <div class="card" style="padding:24px;">
+                        <div class="card-header" style="margin-bottom:16px;">
+                            <span class="card-title">Recent Activity</span>
+                        </div>
+
+                        <template x-if="playerRecentActivity.length === 0">
+                            <div class="empty-state">
+                                <div class="empty-state-title">No activity yet</div>
+                                <div class="empty-state-desc">Your transaction history will appear here.</div>
+                            </div>
+                        </template>
+
+                        <div class="player-activity-list">
+                            <template x-for="entry in playerRecentActivity" :key="entry.id">
+                                <div class="player-activity-row">
+                                    <div class="player-activity-indicator" :style="{ background: playerActivityTypeColor(entry) }"></div>
+                                    <div class="player-activity-content">
+                                        <div class="player-activity-desc" x-text="entry.description || playerActivityTypeBadge(entry)"></div>
+                                        <div class="player-activity-date" x-text="formatDate(entry.created_at)"></div>
+                                    </div>
+                                    <div class="player-activity-amount">
+                                        <span class="badge"
+                                              :class="(-entry.amount || 0) >= 0 ? 'badge-success' : 'badge-danger'"
+                                              x-text="formatCurrency(-entry.amount || 0)"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 

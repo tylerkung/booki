@@ -313,6 +313,12 @@ function dashboardApp() {
         showDeclineModal: false,
         declineBetId: null,
 
+        // ── Player Home ──
+        playerLedgerEntries: [],
+        playerBets: [],
+        playerOpenStakes: 0,
+        isLoadingPlayerHome: true,
+
         // ── Toasts ──
         toasts: [],
 
@@ -359,6 +365,8 @@ function dashboardApp() {
             if (this.userRole === 'organizer') {
                 await this.loadPlayers();
                 await this.loadDashboard();
+            } else if (this.userRole === 'player') {
+                await this.loadPlayerHome();
             }
         },
 
@@ -422,6 +430,9 @@ function dashboardApp() {
             if (this.route === 'events') this.loadEvents();
             if (this.route === 'event-detail') this.loadEventDetail();
             if (this.route === 'settlement') this.loadSettlement();
+
+            // Load route-specific data (player)
+            if (this.route === 'player-home') this.loadPlayerHome();
         },
 
         // ── Auth ──
@@ -565,6 +576,121 @@ function dashboardApp() {
                     window.location.hash = '#/player-home';
                 }
             }
+        },
+
+        // ── Player Home ──
+        async loadPlayerHome() {
+            if (!this.playerId) return;
+            this.isLoadingPlayerHome = true;
+
+            // Fetch ledger entries for this player
+            const { data: ledger } = await this.supabase
+                .from('ledger_entries')
+                .select('id, amount, type, description, bet_id, created_at')
+                .eq('player_id', this.playerId)
+                .order('created_at', { ascending: false });
+
+            this.playerLedgerEntries = ledger || [];
+
+            // Fetch bets for this player
+            const { data: bets } = await this.supabase
+                .from('bets')
+                .select('id, event_id, side, odds, stake, status, grade_result, market, is_parlay, ticket_id, created_at')
+                .eq('player_id', this.playerId)
+                .order('created_at', { ascending: false });
+
+            this.playerBets = bets || [];
+
+            // Calculate open stakes
+            this.playerOpenStakes = this.playerBets
+                .filter(b => ['pending', 'accepted'].includes(b.status))
+                .reduce((sum, b) => sum + (Number(b.stake) || 0), 0);
+
+            this.isLoadingPlayerHome = false;
+        },
+
+        get playerBalance() {
+            // Sum all ledger entries for this player (internal: positive = player owes bookie)
+            return this.playerLedgerEntries.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        },
+
+        get playerDisplayBalance() {
+            // Negate for player display: positive = bookie owes player (credit)
+            return -this.playerBalance;
+        },
+
+        computePlayerRecord() {
+            const settled = this.playerBets.filter(b => b.status === 'settled' || b.grade_result);
+            const wins = settled.filter(b => b.grade_result === 'win').length;
+            const losses = settled.filter(b => b.grade_result === 'loss').length;
+            const pushes = settled.filter(b => b.grade_result === 'push').length;
+            return { wins, losses, pushes };
+        },
+
+        get playerWinRate() {
+            const rec = this.computePlayerRecord();
+            const total = rec.wins + rec.losses;
+            return total > 0 ? Math.round((rec.wins / total) * 100) : 0;
+        },
+
+        get playerPnl() {
+            // Sum ledger entries excluding paymentLogged (settle ups) for performance
+            return this.playerLedgerEntries
+                .filter(e => e.type !== 'paymentLogged')
+                .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        },
+
+        get playerDisplayPnl() {
+            // Negate for player display
+            return -this.playerPnl;
+        },
+
+        get playerOpenPicksCount() {
+            return this.playerBets.filter(b => ['pending', 'accepted', 'readyToGrade', 'graded'].includes(b.status)).length;
+        },
+
+        get playerCreditLimit() {
+            return this.playerRecord?.credit_limit || 0;
+        },
+
+        get playerCreditUtilization() {
+            if (!this.playerCreditLimit) return 0;
+            const used = Math.abs(this.playerBalance) + this.playerOpenStakes;
+            return Math.min(100, Math.max(0, (used / this.playerCreditLimit) * 100));
+        },
+
+        get playerAvailableCredit() {
+            if (!this.playerCreditLimit) return 0;
+            return Math.max(0, this.playerCreditLimit - Math.abs(this.playerBalance) - this.playerOpenStakes);
+        },
+
+        get playerRecentActivity() {
+            // Last 10 ledger entries
+            return this.playerLedgerEntries.slice(0, 10);
+        },
+
+        playerActivityTypeColor(entry) {
+            if (entry.type === 'settlement') {
+                // Check if it was a win or loss based on amount (internal: positive = player owes bookie = loss)
+                return (entry.amount || 0) > 0 ? 'var(--danger)' : 'var(--success)';
+            }
+            if (entry.type === 'paymentLogged') return 'var(--accent-secondary)';
+            if (entry.type === 'adjustment') return 'var(--warning)';
+            return 'var(--text-muted)';
+        },
+
+        playerActivityTypeBadge(entry) {
+            if (entry.type === 'settlement') return 'Graded';
+            if (entry.type === 'paymentLogged') return 'Settlement';
+            if (entry.type === 'adjustment') return 'Adjustment';
+            return entry.type || '—';
+        },
+
+        creditUtilizationColor(pct) {
+            if (pct >= 100) return 'var(--danger)';
+            if (pct >= 80) return '#FF8C00';
+            if (pct >= 50) return 'var(--warning)';
+            return 'var(--accent)';
         },
 
         // ── Load Bookie ──
