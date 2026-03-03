@@ -237,3 +237,15 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Filter counts use computed getter chaining — `playerTrackFilterCounts` reads from `playerTickets` which reads from `playerBets`
   - CSS prefix `pt-` used for player track to avoid collisions with other view styles
 ---
+
+## 2026-03-02 - US-018
+- Implemented player ticket detail view with hero card, parlay legs, financials, and activity timeline
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `playerTicketDetail`/`playerTicketLegs`/`isLoadingPlayerTicket` state variables, `loadPlayerTicketDetail()` method fetching bet by ID + parlay legs by ticket_id + event enrichment, hero card with status badge/title/subtitle/sport/league/final score, parlay legs card with colored dots + grade badges, financials card with stake/odds/potential return (open) or profit + total return (settled), activity timeline with placed + graded dates, shimmer loading, route trigger in `parseRoute()`
+- **Learnings for future iterations:**
+  - `playerTicketDetail` is a computed object (not raw DB row) — includes `bet`, `legs`, `isParlay`, `gradeResult`, `status`, `stake`, `combinedOdds`, `pnl`, `potentialReturn`, `timeline`
+  - Leg enrichment uses `_` prefixed properties (`_event_name`, `_sport`, `_league`, `_final_score`) to avoid colliding with DB columns
+  - Reused `playerTicketStatusBadgeClass()`/`playerTicketStatusText()`/`playerLegDotColor()` helpers from player track view
+  - No new CSS needed — all styles reused from existing pick detail and player track views
+  - Player-facing financials: no negation needed — profit is displayed as-is (positive = won, negative = lost)
+---

@@ -391,6 +391,7 @@
         "Shimmer loading while data loads"
       ],
       "priority": 18,
+      "passes": true,
       "notes": "For singles: fetch single bet by ID. For parlays: fetch all bets with matching ticket_id. Enrich with event data by fetching from events table using event_id. The existing pick detail view (organizer) has similar structure — reuse the card layout patterns but without the grading actions. Player-facing amounts: profit is displayed as-is (positive = player won money, negative = player lost money), no negation needed since these are relative to the player's perspective."
     },
     {
