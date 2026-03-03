@@ -322,6 +322,22 @@ input, button, select, textarea { font: inherit; }
     flex-shrink: 0;
 }
 
+.sidebar-organizer-cta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 16px 0 0;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.15s;
+}
+.sidebar-organizer-cta:hover { opacity: 0.85; }
+
 .sidebar-bottom {
     margin-top: auto;
     padding-top: 16px;
@@ -960,7 +976,7 @@ input, button, select, textarea { font: inherit; }
 
 .badge-pro {
     background: var(--accent);
-    color: #fff;
+    color: var(--bg);
     padding: 2px 8px;
     border-radius: 4px;
     font-weight: 600;

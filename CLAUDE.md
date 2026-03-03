@@ -304,6 +304,9 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Deep link fix**: PlayerMainView now handles `booki://bet/` links (was missing), cold-start guard prevents navigation before player data loads
 - **Smart odds refresh**: `auto_refresh_games` uses 15-min idempotency windows (was hourly), only refreshes odds for games starting within 4 hours (sync_games handles the rest)
 - **Final scores on picks**: Singles show final score (away-home) inline with stake/profit on both TrackView list cards and TicketDetailView, baseline-aligned
+- **Web-first repositioning**: All ~16 landing pages updated from iOS-first to web-first messaging, `#waitlist` CTAs replaced with `/dashboard/` "Get Started Free" links, removed app-specific language
+- **Become an Organizer flow**: Standalone users see CTA on Account page + sidebar, detail page explains benefits/how it works, `becomeOrganizer()` creates bookie record, success page with next steps before dashboard
+- **step_down_organizer**: Redeployed for CORS fix
 - **Web bet slip sidebar**: Desktop gets persistent right sidebar (340px, `--betslip-width`) instead of floating bar + modal. Slides in/out with selections, main content reflows. Mobile keeps existing floating bar + modal. `hasBetSlip` computed getter drives visibility.
 - **Web bet slip bidirectional staking**: Side-by-side Stake/Potential fields with reverse calculation (`calcStakeFromToWin`). `sanitizeMoney()` enforces 2 decimal max. Focus tracking (`betSlipActiveField`) prevents `:value` overwriting during typing. Summary section (pick count, total stake, total return) in footer.
 - **Web odds button styling**: Selected state = solid teal bg + dark text; hover = teal text on dark bg. Spread/total show line in secondary color, odds in primary with parentheses `(odds)`. `::after` nbsp spacing between line and value.

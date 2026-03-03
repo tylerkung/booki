@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon_io/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon_io/favicon-16x16.png">
     <link rel="icon" type="image/x-icon" href="assets/favicon_io/favicon.ico">
-    <meta name="description" content="You've been invited to join a group on Booki. Download the app and enter your invite code to get started.">
+    <meta name="description" content="You've been invited to join a group on Booki. Sign up and enter your invite code to get started.">
     <title>Join Invite — Booki</title>
     <link rel="canonical" href="https://bookisports.com/invite.html">
 
@@ -15,13 +15,13 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://bookisports.com/invite.html">
     <meta property="og:title" content="Join Invite — Booki">
-    <meta property="og:description" content="You've been invited to join a group on Booki. Download the app and enter your invite code to get started.">
+    <meta property="og:description" content="You've been invited to join a group on Booki. Sign up and enter your invite code to get started.">
     <meta property="og:image" content="https://bookisports.com/assets/bookie-og.jpg">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Join Invite — Booki">
-    <meta name="twitter:description" content="You've been invited to join a group on Booki. Download the app and enter your invite code to get started.">
+    <meta name="twitter:description" content="You've been invited to join a group on Booki. Sign up and enter your invite code to get started.">
     <meta name="twitter:image" content="https://bookisports.com/assets/bookie-og.jpg">
 
     <link rel="stylesheet" href="styles.css">
@@ -90,11 +90,11 @@
         <div class="invite-card">
             <img src="/assets/logo-booki-blk.svg" alt="Booki" class="invite-logo">
             <h1 class="invite-title">You've been invited</h1>
-            <p class="invite-sub">Open in the Booki app to join.</p>
+            <p class="invite-sub">Sign in to Booki to join your group.</p>
             <div class="invite-code" id="inviteCode"></div>
             <br><br>
-            <a href="#" id="openAppBtn" class="invite-btn">Open in Booki</a>
-            <p class="invite-fallback">Don't have the app? Copy the code above and enter it after signing up.</p>
+            <a href="/dashboard/" id="openAppBtn" class="invite-btn">Open Booki</a>
+            <p class="invite-fallback">Copy the code above and enter it after signing up.</p>
         </div>
     </div>
     <script>
@@ -105,12 +105,12 @@
         // Display the code
         document.getElementById('inviteCode').textContent = code;
 
-        // Set deep link on button
-        var deepLink = 'booki://invite/' + code;
-        document.getElementById('openAppBtn').href = deepLink;
+        // Set button to web dashboard
+        document.getElementById('openAppBtn').href = '/dashboard/';
 
-        // Auto-attempt deep link redirect on iOS
+        // On iOS, try deep link first (falls back to web if app not installed)
         if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+            var deepLink = 'booki://invite/' + code;
             window.location.href = deepLink;
         }
     </script>

@@ -48,6 +48,8 @@
             route === 'player-games' ? 'Games' :
             route === 'player-track' ? 'Track' :
             route === 'player-account' ? 'Account' :
+            route === 'become-organizer' ? 'Become an Organizer' :
+            route === 'organizer-welcome' ? 'Welcome' :
             route === 'player-sport' ? (sportCategories[selectedSportPage]?.displayName || 'Sport') :
             route === 'member-detail' ? (memberDetail?.display_name || memberDetail?.name || 'Member') :
             route === 'pick-detail' ? 'Pick Detail' :
@@ -118,6 +120,12 @@
                     Account
                 </a></li>
             </ul>
+            <template x-if="userRole === 'standalone'">
+                <a href="#/become-organizer" class="sidebar-organizer-cta" @click="sidebarOpen = false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Become an Organizer
+                </a>
+            </template>
             <div class="sidebar-bottom">
                 <a href="#" @click.prevent="logout()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -2758,6 +2766,35 @@
                             </div>
                         </div>
 
+                        <!-- Become an Organizer CTA (standalone only) -->
+                        <template x-if="userRole === 'standalone'">
+                            <div class="card" style="margin-bottom:24px;border:1px solid rgba(0,245,212,0.25);background:linear-gradient(135deg, var(--bg-card), rgba(0,245,212,0.04));display:flex;flex-direction:column;align-items:center;">
+                                <div style="text-align:center;padding:8px 0 4px;">
+                                    <div style="font-size:28px;margin-bottom:12px;">
+                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    </div>
+                                    <h3 style="margin:0 0 6px;font-size:17px;font-weight:700;color:var(--text-primary);">Ready to run your group?</h3>
+                                    <p style="margin:0 0 16px;font-size:13px;color:var(--text-secondary);line-height:1.5;">Create your own book, invite members, and manage everything from your dashboard.</p>
+                                </div>
+                                <div style="display:inline-flex;flex-direction:column;gap:8px;font-size:13px;color:var(--text-secondary);margin:0 auto 20px;">
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        Invite up to 3 members free
+                                    </div>
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        Auto-grading and auto-settlement
+                                    </div>
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        Real-time dashboard and analytics
+                                    </div>
+                                </div>
+                                <a href="#/become-organizer" class="btn btn-accent" style="display:flex;justify-content:center;max-width:280px;margin:0 auto;text-decoration:none;">Learn More</a>
+                                <p style="margin:10px 0 0;font-size:11px;color:var(--text-muted);text-align:center;">Free to start — no credit card required</p>
+                            </div>
+                        </template>
+
                         <!-- Profile Section -->
                         <div class="card" style="margin-bottom:24px;">
                             <div class="card-header">
@@ -2968,6 +3005,150 @@
                         </div>
                     </div>
                 </template>
+            </div>
+
+            <!-- ── Become an Organizer Page ── -->
+            <div x-show="route === 'become-organizer' && userRole === 'standalone'" x-cloak>
+                <div class="page-header">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <a href="#/player-account" style="color:var(--text-secondary);text-decoration:none;display:flex;align-items:center;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        </a>
+                        <h1 style="margin:0;">Become an Organizer</h1>
+                    </div>
+                    <p>Everything you need to run your own group</p>
+                </div>
+
+                <!-- What You Get -->
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header"><span class="card-title">What you get immediately</span></div>
+                    <div style="display:flex;flex-direction:column;gap:16px;">
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,245,212,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Your own dashboard</div>
+                                <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Real-time overview of your group's activity, performance, and balances — all in one place.</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,245,212,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Invite up to 3 members free</div>
+                                <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Send invite codes via email or link. Members sign up and are instantly connected to your group.</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,245,212,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Auto-pilot mode</div>
+                                <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Picks are auto-accepted, auto-graded, and auto-settled. No manual work needed — just let it run.</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,245,212,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Balance and credit management</div>
+                                <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Set credit limits, track what's owed, and settle up — all from your member detail view.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- How It Works -->
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header"><span class="card-title">How your group works</span></div>
+                    <div style="display:flex;flex-direction:column;gap:16px;">
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;">1</div>
+                            <div>
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">You're the organizer</div>
+                                <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">You create the group and control the settings. Members you invite are tied to your account.</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;">2</div>
+                            <div>
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Members place picks under your group</div>
+                                <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Every pick they submit runs through your book. You see all action, balances, and exposure in real time.</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;">3</div>
+                            <div>
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Everything is consolidated</div>
+                                <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">All picks, results, and settlements are tracked under one roof. No spreadsheets, no guesswork.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Free Tier Note -->
+                <div style="padding:16px 20px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card);margin-bottom:24px;display:flex;gap:10px;align-items:flex-start;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">
+                        The free plan includes up to <strong style="color:var(--text-primary);">3 members</strong>, singles tracking, auto-grading, and a full dashboard. Upgrade to Pro anytime for up to 50 members and advanced features.
+                    </div>
+                </div>
+
+                <!-- Confirm CTA -->
+                <button class="btn btn-accent" style="display:block;max-width:320px;width:100%;margin:0 auto;padding:14px;font-size:15px;" @click="becomeOrganizer()" :disabled="isBecomingOrganizer">
+                    <span x-text="isBecomingOrganizer ? 'Setting up your group...' : 'Get Started — It\'s Free'"></span>
+                </button>
+                <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:10px;margin-bottom:48px;">No credit card required. You can step down anytime.</p>
+            </div>
+
+            <!-- ── Organizer Welcome / Success Page ── -->
+            <div x-show="route === 'organizer-welcome'" x-cloak>
+                <div style="max-width:480px;margin:0 auto;text-align:center;padding:48px 0;">
+
+                    <!-- Checkmark -->
+                    <div style="width:64px;height:64px;border-radius:50%;background:rgba(0,245,212,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+
+                    <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:var(--text-primary);">You're all set</h1>
+                    <p style="margin:0 0 32px;font-size:15px;color:var(--text-secondary);line-height:1.6;">Your organizer account is live. Here's what to do next.</p>
+
+                    <!-- Next Steps -->
+                    <div class="card" style="text-align:left;margin-bottom:24px;">
+                        <div style="display:flex;flex-direction:column;gap:20px;">
+                            <div style="display:flex;gap:12px;align-items:flex-start;">
+                                <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;">1</div>
+                                <div>
+                                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Invite your first member</div>
+                                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Head to the Members tab and send an invite code via email or link.</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:12px;align-items:flex-start;">
+                                <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-elevated);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;border:1px solid var(--border);">2</div>
+                                <div>
+                                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Members start placing picks</div>
+                                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Once they join, they can browse games and submit picks immediately.</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:12px;align-items:flex-start;">
+                                <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-elevated);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;border:1px solid var(--border);">3</div>
+                                <div>
+                                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Watch your dashboard light up</div>
+                                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Track activity, balances, and performance — everything runs on auto-pilot.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CTA -->
+                    <a href="#/dashboard" class="btn btn-accent" style="display:flex;justify-content:center;max-width:320px;width:100%;margin:0 auto;padding:14px;font-size:15px;text-decoration:none;" @click="loadBookie(); loadPlayers(); loadDashboard();">
+                        Go to Dashboard
+                    </a>
+                </div>
             </div>
 
         </main>

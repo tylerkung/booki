@@ -361,6 +361,7 @@ function dashboardApp() {
 
         // ── Player Account ──
         isLoadingPlayerAccount: false,
+        isBecomingOrganizer: false,
         playerActivityFilter: 'all',
         playerActivity: [],
         playerAccountNotifPrefs: { picks_graded: true, balance_changes: true, game_results: true },
@@ -457,9 +458,9 @@ function dashboardApp() {
             const playerSportMatch = path.match(/^player-sport\/(.+)$/);
 
             // Organizer routes
-            const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings'];
+            const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings', 'organizer-welcome'];
             // Player routes
-            const playerRoutes = ['player-games', 'player-track', 'player-account', 'player-sport'];
+            const playerRoutes = ['player-games', 'player-track', 'player-account', 'player-sport', 'become-organizer'];
 
             if (eventMatch) {
                 if (!this.isValidUUID(eventMatch[1])) {
@@ -1250,6 +1251,44 @@ function dashboardApp() {
             }
             this.toast('Name updated', 'success');
             this.isEditingPlayerName = false;
+        },
+
+        async becomeOrganizer() {
+            if (this.isBecomingOrganizer) return;
+            this.isBecomingOrganizer = true;
+            try {
+                const userId = this.session.user.id;
+                const userName = this.session.user.user_metadata?.full_name || this.session.user.email?.split('@')[0] || 'My Book';
+
+                // Create bookie record
+                const { data, error } = await this.supabase
+                    .from('bookies')
+                    .insert({
+                        auth_user_id: userId,
+                        name: userName,
+                        tier: 'free',
+                        default_credit_limit: 1000,
+                        allow_futures_parlays: false,
+                    })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                // Switch to organizer role
+                this.bookie = data;
+                this.userRole = 'organizer';
+                this.isPro = false;
+
+                // Navigate to success page
+                this.route = 'organizer-welcome';
+                window.location.hash = '#/organizer-welcome';
+            } catch (err) {
+                console.error('Become organizer error:', err);
+                this.toast('Failed to create organizer account. Please try again.', 'error');
+            } finally {
+                this.isBecomingOrganizer = false;
+            }
         },
 
         async changePlayerPassword() {

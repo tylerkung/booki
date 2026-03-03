@@ -84,3 +84,21 @@ Started: Fri Feb 27 02:10:26 PST 2026
   - Other edge functions can call this via `fetch` to the Supabase functions URL with service role auth
   - However, for simplicity, most edge functions import `sendNotification()` directly from `_shared/notifications.ts` instead of going through this HTTP endpoint
 ---
+
+## 2026-03-03 - Web-first repositioning + Become an Organizer flow
+- Repositioned all ~16 landing pages from iOS-first to web-first platform messaging
+- Replaced all `#waitlist` email CTAs with direct `/dashboard/` "Get Started Free" links
+- Removed iOS/app-specific language across homepage, features, SEO pages, blog posts, legal docs
+- Added "Become an Organizer" flow for standalone users:
+  - CTA card on player Account page ("Learn More" → detail page)
+  - Teal sidebar CTA linking to detail page
+  - Detail page: "What you get immediately" + "How your group works" sections
+  - `becomeOrganizer()` JS method creates bookie record in Supabase
+  - Success page with next steps and "Go to Dashboard" CTA
+- Fixed `.badge-pro` text color (white → dark) for readability on teal
+- Redeployed `step_down_organizer` edge function (CORS fix)
+- Files changed: `landing/dashboard/app.html`, `dashboard.css`, `dashboard.js`, `landing/index.html`, `landing/features.html`, all blog posts, SEO pages, legal pages, email templates
+- **Learnings:**
+  - `.btn` class uses `display: inline-flex` — use `justify-content: center` instead of `text-align: center`
+  - CTA buttons in wide layouts need `max-width` + `margin: 0 auto` to avoid stretching
+---

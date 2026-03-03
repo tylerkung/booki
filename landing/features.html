@@ -42,7 +42,7 @@
             </div>
             <div class="nav-actions">
                 <a href="dashboard/" class="btn-nav-login">Log In</a>
-                <a href="index.html#waitlist" class="btn-primary btn-nav">Get Early Access</a>
+                <a href="dashboard/" class="btn-primary btn-nav">Get Started Free</a>
             </div>
             <button class="nav-hamburger" aria-label="Toggle menu">
                 <span></span><span></span><span></span>
@@ -53,7 +53,7 @@
             <a href="blog/" class="nav-link">Blog</a>
             <a href="index.html#pricing" class="nav-link">Pricing</a>
             <a href="dashboard/" class="nav-link">Log In</a>
-            <a href="index.html#waitlist" class="btn-primary btn-nav-mobile">Get Early Access</a>
+            <a href="dashboard/" class="btn-primary btn-nav-mobile">Get Started Free</a>
         </div>
     </nav>
 
@@ -232,21 +232,21 @@
         <section class="platform-strip">
             <div class="container">
                 <h2 class="section-headline reveal">Available everywhere.</h2>
-                <p class="platform-strip-sub reveal">Members get a native iOS app. Organizers also get a full web dashboard.</p>
+                <p class="platform-strip-sub reveal">One platform that works on any device. Desktop, tablet, or phone&mdash;just open your browser.</p>
                 <div class="platform-cards reveal-stagger">
+                    <div class="platform-card reveal-scale">
+                        <div class="platform-card-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </div>
+                        <h3>Web App</h3>
+                        <p>Members browse games, submit picks, and track their record from any browser. Organizers manage everything from the same platform.</p>
+                    </div>
                     <div class="platform-card reveal-scale">
                         <div class="platform-card-icon">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="12" height="20" x="6" y="2" rx="2"/><path d="M12 18h.01"/></svg>
                         </div>
-                        <h3>iOS App</h3>
-                        <p>Native app for members to browse games, submit picks, and track their record. Organizers manage everything on the go.</p>
-                    </div>
-                    <div class="platform-card reveal-scale">
-                        <div class="platform-card-icon">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
-                        </div>
-                        <h3>Web Dashboard</h3>
-                        <p>Full organizer dashboard on the web. View PnL, manage members, browse picks, and handle subscriptions from any browser.</p>
+                        <h3>Mobile App</h3>
+                        <p>Native mobile app coming soon. In the meantime, the web app is fully optimized for mobile browsers.</p>
                     </div>
                 </div>
             </div>
@@ -275,7 +275,7 @@
                     </div>
                     <div class="capability reveal-scale">
                         <h3>Pro Subscription</h3>
-                        <p>Free tier for small groups. Pro unlocks up to 50 members, priority support, and the web dashboard.</p>
+                        <p>Free tier for small groups. Pro unlocks up to 50 members, advanced analytics, and priority support.</p>
                     </div>
                     <div class="capability reveal-scale">
                         <h3>Full Automation</h3>
@@ -291,20 +291,11 @@
         <section class="final-cta">
             <div class="container">
                 <h2 class="final-cta-headline"><span class="gradient-text">Ready to be the house?</span></h2>
-                <p class="final-cta-sub">Join the waitlist and be first in line when we launch. Or explore our <a href="blog/" style="color: var(--accent); text-decoration: underline;">blog</a> for tips and guides.</p>
-                <form class="waitlist-form" name="waitlist-features" data-netlify="true">
-                    <input type="hidden" name="form-name" value="waitlist-features">
-                    <div class="waitlist-input-group">
-                        <input type="email" name="email" placeholder="Enter your email" required>
-                        <button type="submit" class="btn-primary">Get Early Access</button>
-                    </div>
-                    <p class="waitlist-privacy">We'll never share your email. Unsubscribe anytime.</p>
-                </form>
-                <div class="waitlist-success" style="display: none;">
-                    <span class="waitlist-success-icon">&#10003;</span>
-                    <p class="waitlist-success-title">You're on the list.</p>
-                    <p class="waitlist-success-sub">We'll be in touch when early access opens.</p>
+                <p class="final-cta-sub">Start tracking picks with your group today. Or explore our <a href="blog/" style="color: var(--accent); text-decoration: underline;">blog</a> for tips and guides.</p>
+                <div class="hero-buttons" style="justify-content: center; margin-top: 24px;">
+                    <a href="dashboard/" class="btn-primary">Get Started Free</a>
                 </div>
+                <p class="waitlist-privacy">Free for up to 3 members. No credit card required.</p>
             </div>
         </section>
     </main>
