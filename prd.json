@@ -344,6 +344,7 @@
         "Add CSS for bet slip modal: .bet-slip-overlay, .bet-slip-modal, .bet-slip-header, .bet-slip-card, .odds-pill, .odds-pill.selected"
       ],
       "priority": 16,
+      "passes": true,
       "notes": "submit_bets expects: { player_id, bookie_id, bets: [{ event_id, market_id, side, odds, stake }], idempotency_key }. submit_parlay expects: { player_id, bookie_id, stake, combined_odds, legs: [{ event_id, market_id, side, side_indicator, odds }], idempotency_key }. The side field should be human-readable (e.g., 'Lakers -3.5'). side_indicator is 'a' (away/over) or 'b' (home/under). Both functions return { success: true, results: [...] } with partial success model for singles. Available credit must be fetched via get_player_balance RPC or calculated from ledger + open bets."
     },
     {

@@ -21,6 +21,9 @@ Started: Mon Mar  2 19:47:05 PST 2026
 - Sidebar links use `x-show="userRole === 'organizer'"` or `x-show="userRole === 'player' || userRole === 'standalone'"`
 - Player games: markets lookup via `playerMarketsByEvent` computed getter (nested map: event_id → market_type → market object) for O(1) access in templates
 - Bet selections stored in `betSlipSelections[]` with `event_id`, `market_id`, `side`, `side_indicator`, `odds`, `event_name`, `market_type`
+- Bet slip submission: `submit_bets` for singles (partial success model), `submit_parlay` for multi-picks (combined_odds as American number)
+- American↔decimal odds: positive → `1 + odds/100`, negative → `1 + 100/abs(odds)`. Multiply decimals for parlay combined odds
+- CSS namespacing: `pg-` for player games, `bs-` for bet slip — prevents class collisions
 
 ---
 
@@ -202,4 +205,20 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - `toggleSelection()` uses `findIndex` + `splice` for removal — Alpine reactivity tracks array mutations
   - Event lock detection: `new Date(ev.start_time) <= new Date()` — simple comparison, no offset
   - CSS prefix `pg-` used for player games to avoid collisions with other view styles
+---
+
+## 2026-03-02 - US-016
+- Implemented bet slip modal with singles and multi-pick submission
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `betSlipMode`/`betSlipStakes`/`betSlipMultiStake`/`isSubmittingBets`/`betSlipSuccess`/`betSlipSuccessMessage` state variables, `removeSelection()`/`clearBetSlip()`/`addQuickStake()`/`addQuickStakeMulti()` methods, `calcToWin()`/`americanToDecimal()`/`decimalToAmerican()` odds helpers, `combinedMultiOdds`/`combinedMultiOddsAmerican`/`multiToWin`/`betSlipTotalStakes`/`betSlipValid`/`betSlipValidationMessage`/`canSelectMulti`/`betSlipButtonText` computed getters, `submitBetSlip()` method calling `submit_bets` (singles) or `submit_parlay` (multi) edge functions, 34 randomized confirmation messages, success animation state with `closeBetSlipSuccess()`, full modal UI with mode toggle (Singles/Multi), selection cards with per-card stake input + quick stakes (+$1/+$5/+$25) + to-win display, multi-pick combined odds + single stake, available credit display, validation warnings, loading overlay with spinner, success checkmark animation, compliance disclaimer. CSS: `.bs-*` prefix classes for overlay/modal/cards/inputs/buttons with slide-up animation, desktop centered modal, mobile bottom sheet
+- **Learnings for future iterations:**
+  - American-to-decimal conversion: positive → `1 + odds/100`, negative → `1 + 100/abs(odds)`. Decimal-to-American: `>= 2` → `+(dec-1)*100`, `< 2` → `-100/(dec-1)`
+  - Combined parlay odds: multiply decimal odds of all legs, then convert back to American for display and submission
+  - `submit_bets` expects `{ player_id, bookie_id, bets: [{event_id, market_id, side, side_indicator, odds, stake}], idempotency_key }` — returns partial success model
+  - `submit_parlay` expects `{ player_id, bookie_id, stake, combined_odds (number, American), legs: [{event_id, market_id, side, side_indicator, odds}], idempotency_key }`
+  - Bet slip floating bar hidden when modal is open (added `&& !showBetSlip` condition)
+  - Alpine.js `x-model` works for simple two-way binding but `@input` with `:value` needed for object-keyed stakes (`betSlipStakes[idx]`) since Alpine doesn't support computed model paths
+  - Multi-pick disabled when fewer than 2 selections or when bookie disallows futures parlays and selections contain outrights
+  - Quick stakes use `addQuickStake(idx, amount)` pattern — adds to existing value rather than replacing
+  - CSS prefix `bs-` for bet slip to avoid collisions with other styles
 ---
