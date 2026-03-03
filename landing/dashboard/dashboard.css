@@ -1146,6 +1146,24 @@ input, button, select, textarea { font: inherit; }
 .attention-alert-urgent { border-left-color: var(--danger); }
 .attention-alert-warning { border-left-color: var(--warning); }
 
+/* ── Tonight's Exposure ── */
+.tonight-exposure-card:hover { border-color: var(--accent); transition: border-color 0.2s; }
+.tonight-stats {
+    display: flex;
+    gap: 24px;
+    padding: 12px 0;
+}
+.tonight-stat { flex: 1; }
+.tonight-risk-game {
+    padding: 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    margin-top: 4px;
+}
+@media (max-width: 768px) {
+    .tonight-stats { flex-direction: column; gap: 12px; }
+}
+
 /* ── Settlement ── */
 .settlement-week-selector {
     display: flex;

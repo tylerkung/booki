@@ -33,6 +33,8 @@ function dashboardApp() {
         dashboardMembers: [],
         sportPerformance: [],
         futuresActivity: { openCount: 0, totalStaked: 0, topSelections: [] },
+        dashboardOpenBets: [],
+        tonightEvents: [],
 
         // ── Members ──
         players: [],
@@ -610,11 +612,12 @@ function dashboardApp() {
             // Exposure: fetch open bets for potential payout calculation
             const { data: openBets } = await this.supabase
                 .from('bets')
-                .select('stake, odds, player_id, status')
+                .select('stake, odds, player_id, status, event_id, side')
                 .eq('bookie_id', this.bookie.id)
                 .in('status', ['pending', 'accepted']);
 
             const openBetsList = openBets || [];
+            this.dashboardOpenBets = openBetsList;
             // Net exposure = sum of potential payouts (what bookie would pay out)
             this.netExposure = openBetsList.reduce((sum, b) => {
                 const payout = this.calcPotentialReturn(b) - (Number(b.stake) || 0);
@@ -647,6 +650,19 @@ function dashboardApp() {
             this.topRiskMember = this.dashboardMembers.length > 0 && this.dashboardMembers[0].exposure > 0
                 ? this.dashboardMembers[0]
                 : null;
+
+            // Tonight's events: games starting between now and end of today (local timezone)
+            const todayStart = new Date();
+            const todayEnd = new Date();
+            todayEnd.setHours(23, 59, 59, 999);
+            const { data: tonightEvts } = await this.supabase
+                .from('events')
+                .select('id, home_team, away_team, start_time, status, sport, league')
+                .is('bookie_id', null)
+                .gte('start_time', todayStart.toISOString())
+                .lte('start_time', todayEnd.toISOString())
+                .not('status', 'in', '("final","canceled")');
+            this.tonightEvents = tonightEvts || [];
 
             // Sport Performance breakdown + attention tags data
             const { data: allBets } = await this.supabase
@@ -788,6 +804,49 @@ function dashboardApp() {
         get displayedAttentionAlerts() {
             if (this.attentionExpanded) return this.attentionAlerts;
             return this.attentionAlerts.slice(0, 5);
+        },
+
+        get tonightsExposure() {
+            const tonightIds = new Set(this.tonightEvents.map(e => e.id));
+            if (tonightIds.size === 0) {
+                return { gameCount: 0, totalPotentialLoss: 0, highestRiskGame: null, highExposure: false };
+            }
+
+            // Group open bets by tonight's event
+            const eventExposure = {};
+            for (const b of this.dashboardOpenBets) {
+                if (!tonightIds.has(b.event_id)) continue;
+                if (!eventExposure[b.event_id]) eventExposure[b.event_id] = 0;
+                const payout = this.calcPotentialReturn(b) - (Number(b.stake) || 0);
+                eventExposure[b.event_id] += payout;
+            }
+
+            const totalPotentialLoss = Object.values(eventExposure).reduce((s, v) => s + v, 0);
+
+            // Find highest risk game
+            let highestRiskGame = null;
+            let maxExposure = 0;
+            for (const [eventId, exposure] of Object.entries(eventExposure)) {
+                if (exposure > maxExposure) {
+                    maxExposure = exposure;
+                    const evt = this.tonightEvents.find(e => e.id === eventId);
+                    if (evt) {
+                        highestRiskGame = {
+                            id: eventId,
+                            name: (evt.away_team || '?') + ' @ ' + (evt.home_team || '?'),
+                            startTime: evt.start_time,
+                            exposure: exposure,
+                        };
+                    }
+                }
+            }
+
+            return {
+                gameCount: this.tonightEvents.length,
+                totalPotentialLoss,
+                highestRiskGame,
+                highExposure: maxExposure >= 1000,
+            };
         },
 
         // ── Events Data ──
