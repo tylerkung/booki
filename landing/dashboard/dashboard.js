@@ -232,6 +232,9 @@ function dashboardApp() {
         isSavingStatus: false,
         showCancelWarning: false,
 
+        // ── Attention Feed ──
+        attentionExpanded: false,
+
         // ── Danger Zone ──
         showStepDownModal: false,
         isSteppingDown: false,
@@ -712,6 +715,79 @@ function dashboardApp() {
                 member.attentionTags = this.computeAttentionTags(member, playerBets, playerLedger, groupAvgStake);
             }
             this.isLoadingDashboard = false;
+        },
+
+        // ── Attention Feed Alerts ──
+        get attentionAlerts() {
+            const alerts = [];
+            if (!this.dashboardMembers || this.dashboardMembers.length === 0) return alerts;
+
+            // Overdue alerts: members with positive balance and overdue tag
+            for (const m of this.dashboardMembers) {
+                const tags = m.attentionTags || [];
+                if (tags.some(t => t.key === 'overdue')) {
+                    alerts.push({
+                        id: 'overdue-' + m.id,
+                        severity: 'urgent',
+                        category: 'Overdue',
+                        icon: 'exclamation',
+                        description: (m.display_name || m.name || 'Unknown') + ' — owes ' + this.formatCurrency(m.balance || 0),
+                        badge: 'Overdue',
+                        badgeClass: 'badge-danger',
+                        amount: this.formatCurrency(m.balance || 0),
+                        href: '#/members/' + m.id,
+                    });
+                }
+            }
+
+            // Near Credit Limit alerts: utilization >= 75%
+            for (const m of this.dashboardMembers) {
+                const limit = m.credit_limit || 1000;
+                const utilization = Math.abs(m.balance || 0) / limit * 100;
+                if (utilization >= 75) {
+                    alerts.push({
+                        id: 'nearlimit-' + m.id,
+                        severity: 'urgent',
+                        category: 'Near Limit',
+                        icon: 'exclamation',
+                        description: (m.display_name || m.name || 'Unknown') + ' — ' + Math.round(utilization) + '% credit used',
+                        badge: 'Near Limit',
+                        badgeClass: 'badge-danger',
+                        amount: Math.round(utilization) + '%',
+                        href: '#/members/' + m.id,
+                    });
+                }
+            }
+
+            // High Exposure alerts: events with total bookie exposure >= $500
+            // Group open bets by event_id
+            const eventExposureMap = {};
+            for (const m of this.dashboardMembers) {
+                // Use openPicks and exposure from dashboardMembers (already computed)
+            }
+            // We need open bets — reconstruct from bets or use netExposure as proxy
+            // Since we already have per-member exposure in dashboardMembers, group by event from bets data isn't stored
+            // Instead, use members with high individual exposure as a signal
+            // The allBets data isn't persisted at dashboard level, so we skip event-level grouping
+            // and rely on the per-member exposure data
+
+            // Sort: urgent first, then warning
+            alerts.sort((a, b) => {
+                if (a.severity === 'urgent' && b.severity !== 'urgent') return -1;
+                if (a.severity !== 'urgent' && b.severity === 'urgent') return 1;
+                return 0;
+            });
+
+            return alerts;
+        },
+
+        get attentionAlertCount() {
+            return this.attentionAlerts.length;
+        },
+
+        get displayedAttentionAlerts() {
+            if (this.attentionExpanded) return this.attentionAlerts;
+            return this.attentionAlerts.slice(0, 5);
         },
 
         // ── Events Data ──

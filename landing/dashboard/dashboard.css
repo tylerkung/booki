@@ -1123,6 +1123,29 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-primary);
 }
 
+/* ── Attention Alert Rows ── */
+.attention-alert-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    border-left: 4px solid var(--border);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    margin-bottom: 8px;
+    background: var(--bg-elevated);
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+    color: inherit;
+}
+
+.attention-alert-row:last-child { margin-bottom: 0; }
+.attention-alert-row:hover { background: rgba(255,255,255,0.03); }
+
+.attention-alert-urgent { border-left-color: var(--danger); }
+.attention-alert-warning { border-left-color: var(--warning); }
+
 /* ── Settlement ── */
 .settlement-week-selector {
     display: flex;
