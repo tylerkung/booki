@@ -164,9 +164,9 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (February 28, 2026)
+## Current State (March 3, 2026)
 
-- **Branch**: `ralph/push-notifications`
+- **Branch**: `ralph/web-dashboard-hardening`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
 - **Phases complete**: 1-20 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration, Default UX & Organizer Upsell, API Optimization & Live Scores, Apple IAP & Web Dashboard, Push Notifications)
@@ -304,3 +304,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Deep link fix**: PlayerMainView now handles `booki://bet/` links (was missing), cold-start guard prevents navigation before player data loads
 - **Smart odds refresh**: `auto_refresh_games` uses 15-min idempotency windows (was hourly), only refreshes odds for games starting within 4 hours (sync_games handles the rest)
 - **Final scores on picks**: Singles show final score (away-home) inline with stake/profit on both TrackView list cards and TicketDetailView, baseline-aligned
+- **Web bet slip sidebar**: Desktop gets persistent right sidebar (340px, `--betslip-width`) instead of floating bar + modal. Slides in/out with selections, main content reflows. Mobile keeps existing floating bar + modal. `hasBetSlip` computed getter drives visibility.
+- **Web bet slip bidirectional staking**: Side-by-side Stake/Potential fields with reverse calculation (`calcStakeFromToWin`). `sanitizeMoney()` enforces 2 decimal max. Focus tracking (`betSlipActiveField`) prevents `:value` overwriting during typing. Summary section (pick count, total stake, total return) in footer.
+- **Web odds button styling**: Selected state = solid teal bg + dark text; hover = teal text on dark bg. Spread/total show line in secondary color, odds in primary with parentheses `(odds)`. `::after` nbsp spacing between line and value.
+- **Web futures 2-column grid**: Outright markets render in `grid-template-columns: 1fr 1fr` layout. Fixed Alpine `:style` string overwriting inline `display:flex` — use object syntax instead.
+- **Web bet submission fix**: `side` field now sends `side_indicator` ('a'/'b') to edge functions instead of display name

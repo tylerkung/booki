@@ -328,6 +328,10 @@ function dashboardApp() {
         playerSportFilter: '',
         playerTimeFilter: 'all',
         showBetSlip: false,
+        collapsedSports: {},
+        collapsedLeagues: {},
+        _loadedMarketSports: {},
+        _loadingMarketSports: {},
 
         // ── Player Sport Page ──
         selectedSportPage: '',
@@ -377,6 +381,7 @@ function dashboardApp() {
         betSlipMode: 'singles', // 'singles' | 'multi'
         betSlipStakes: {},
         betSlipMultiStake: '',
+        betSlipActiveField: null, // tracks which input is focused: 'stake-{idx}', 'potential-{idx}', 'multi-stake', 'multi-potential'
         isSubmittingBets: false,
         betSlipSuccess: false,
         betSlipSuccessMessage: '',
@@ -671,7 +676,7 @@ function dashboardApp() {
                 // Fetch bookie settings for the player's organizer
                 const { data: bookieSettings } = await this.supabase
                     .from('bookies')
-                    .select('id, name, tier, allow_futures_parlays, manual_bet_acceptance')
+                    .select('id, name, tier, allow_futures_parlays')
                     .eq('id', playerData[0].bookie_id)
                     .limit(1);
 
@@ -714,7 +719,7 @@ function dashboardApp() {
             // Fetch bets for this player
             const { data: bets } = await this.supabase
                 .from('bets')
-                .select('id, event_id, side, odds, stake, status, grade_result, market, is_parlay, ticket_id, bet_type, created_at, graded_at')
+                .select('id, event_id, side, odds, stake, status, grade_result, market, is_parlay, ticket_id, parlay_legs, created_at')
                 .eq('player_id', this.playerId)
                 .order('created_at', { ascending: false });
 
@@ -847,7 +852,7 @@ function dashboardApp() {
                 ticketMap[key].push(bet);
             }
             return Object.entries(ticketMap).map(([ticketId, legs]) => {
-                const isParlay = legs.length > 1 || legs[0]?.bet_type === 'parlay';
+                const isParlay = legs.length > 1 || legs[0]?.is_parlay;
                 const first = legs[0];
                 const stake = Number(first.stake) || 0;
 
@@ -1010,7 +1015,7 @@ function dashboardApp() {
 
             // For parlays, fetch all legs by ticket_id
             let legs = [bet];
-            if (bet.bet_type === 'parlay' && bet.ticket_id) {
+            if (bet.is_parlay && bet.ticket_id) {
                 const { data: parlayLegs } = await this.supabase
                     .from('bets')
                     .select('*')
@@ -1047,7 +1052,7 @@ function dashboardApp() {
                 }
             }
 
-            const isParlay = legs.length > 1 || bet.bet_type === 'parlay';
+            const isParlay = legs.length > 1 || bet.is_parlay;
             const stake = Number(bet.stake) || 0;
 
             // Combined odds for parlays
@@ -1107,7 +1112,7 @@ function dashboardApp() {
             const timeline = [];
             timeline.push({ type: 'placed', label: 'Pick Placed', date: bet.created_at });
             if (gradeResult) {
-                const gradedAt = bet.graded_at || legs.find(l => l.graded_at)?.graded_at;
+                const gradedAt = bet.updated_at;
                 timeline.push({
                     type: 'graded',
                     label: gradeResult === 'win' ? 'Won' : gradeResult === 'loss' ? 'Lost' : 'Pushed',
@@ -1325,33 +1330,83 @@ function dashboardApp() {
                 await this.loadPlayerHome();
             }
 
-            // Fetch upcoming events (not final/canceled, start_time > now)
+            // Fetch only event summaries (no markets — loaded lazily per sport)
             const now = new Date().toISOString();
             const { data: events } = await this.supabase
                 .from('events')
                 .select('id, home_team, away_team, start_time, status, sport, league')
                 .is('bookie_id', null)
-                .not('status', 'in', '("final","canceled")')
+                .not('status', 'eq', 'final').not('status', 'eq', 'canceled')
                 .gte('start_time', now)
                 .order('start_time', { ascending: true });
 
             this.playerEvents = events || [];
+            this.playerMarkets = [];
+            this._loadedMarketSports = {};
+            this._loadingMarketSports = {};
 
-            // Fetch markets for all displayed events
-            const eventIds = this.playerEvents.map(e => e.id);
-            if (eventIds.length > 0) {
-                const { data: markets } = await this.supabase
-                    .from('markets')
-                    .select('id, event_id, market_type, home_odds, away_odds, spread_line, home_spread_odds, away_spread_odds, over_line, over_odds, under_odds')
-                    .is('bookie_id', null)
-                    .in('event_id', eventIds);
-
-                this.playerMarkets = markets || [];
-            } else {
-                this.playerMarkets = [];
-            }
+            // Auto-load markets for the first 2 visible sports
+            const sportGroups = this.groupedPlayerEvents;
+            const autoLoadSports = sportGroups.slice(0, 2).map(g => g.sport);
+            await Promise.all(autoLoadSports.map(s => this.ensureMarketsForSport(s)));
 
             this.isLoadingPlayerEvents = false;
+        },
+
+        async ensureMarketsForSport(sportName) {
+            if (this._loadedMarketSports[sportName] || this._loadingMarketSports[sportName]) return;
+            this._loadingMarketSports[sportName] = true;
+
+            const eventIds = this.playerEvents
+                .filter(ev => this.formatSportName(ev.sport) === sportName && ev.away_team !== 'Outright')
+                .map(ev => ev.id);
+
+            if (eventIds.length > 0) {
+                const BATCH = 50;
+                const batches = [];
+                for (let i = 0; i < eventIds.length; i += BATCH) {
+                    batches.push(
+                        this.supabase
+                            .from('markets')
+                            .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                            .in('event_id', eventIds.slice(i, i + BATCH))
+                            .neq('type', 'outright')
+                            .limit(500)
+                    );
+                }
+                const results = await Promise.all(batches);
+                const newMarkets = results.flatMap(r => r.data || []);
+                // Append to existing markets (don't replace)
+                this.playerMarkets = [...this.playerMarkets, ...newMarkets];
+            }
+
+            this._loadedMarketSports[sportName] = true;
+            this._loadingMarketSports[sportName] = false;
+        },
+
+        toggleSportCollapse(sport) {
+            this.collapsedSports[sport] = !this.collapsedSports[sport];
+            // Load markets when expanding
+            if (!this.collapsedSports[sport]) {
+                this.ensureMarketsForSport(sport);
+            }
+        },
+
+        toggleLeagueCollapse(key) {
+            this.collapsedLeagues[key] = !this.collapsedLeagues[key];
+        },
+
+        navigateToSportLeague(sportKey, leagueName) {
+            // Find matching league tab ID from sportCategories
+            const cat = this.sportCategories[sportKey];
+            if (cat) {
+                const match = cat.leagues.find(l =>
+                    l.displayName.toUpperCase() === leagueName.toUpperCase() ||
+                    l.id.toUpperCase() === leagueName.toUpperCase()
+                );
+                if (match) this.selectedLeagueTab = match.id;
+            }
+            window.location.hash = '#/player-sport/' + sportKey;
         },
 
         async loadSportPage() {
@@ -1359,27 +1414,59 @@ function dashboardApp() {
             const cat = this.sportCategories[this.selectedSportPage];
             if (!cat) { this.isLoadingSportPage = false; return; }
 
-            // Reuse already-loaded events if available, otherwise fetch them
+            // Ensure events are loaded
             if (this.playerEvents.length === 0) {
-                await this.loadPlayerGames();
+                // Fetch events inline instead of calling loadPlayerGames
+                const now = new Date().toISOString();
+                const { data: events } = await this.supabase
+                    .from('events')
+                    .select('id, home_team, away_team, start_time, status, sport, league')
+                    .is('bookie_id', null)
+                    .not('status', 'eq', 'final').not('status', 'eq', 'canceled')
+                    .gte('start_time', now)
+                    .order('start_time', { ascending: true });
+                this.playerEvents = events || [];
             }
 
-            // Fetch outright markets for this sport (side_a/odds_a columns)
-            const outrightEventIds = this.playerEvents
-                .filter(ev => ev.away_team === 'Outright' && this.formatSportName(ev.sport) === cat.displayName)
+            // Filter events for this sport client-side
+            const sportName = cat.displayName; // e.g. "Basketball"
+            const sportEventIds = this.playerEvents
+                .filter(ev => this.formatSportName(ev.sport) === sportName && ev.away_team !== 'Outright')
                 .map(ev => ev.id);
 
-            if (outrightEventIds.length > 0) {
-                const { data: markets } = await this.supabase
-                    .from('markets')
-                    .select('id, event_id, market_type, side_a, odds_a')
-                    .is('bookie_id', null)
-                    .in('event_id', outrightEventIds)
-                    .eq('market_type', 'outright');
-                this.sportPageOutrightMarkets = markets || [];
+            const outrightEventIds = this.playerEvents
+                .filter(ev => this.formatSportName(ev.sport) === sportName && ev.away_team === 'Outright')
+                .map(ev => ev.id);
+
+            // Fetch sport-specific markets + outrights in parallel
+            const fetches = [];
+            if (sportEventIds.length > 0) {
+                fetches.push(
+                    this.supabase
+                        .from('markets')
+                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                        .in('event_id', sportEventIds)
+                        .limit(500)
+                );
             } else {
-                this.sportPageOutrightMarkets = [];
+                fetches.push(Promise.resolve({ data: [] }));
             }
+            if (outrightEventIds.length > 0) {
+                fetches.push(
+                    this.supabase
+                        .from('markets')
+                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                        .in('event_id', outrightEventIds)
+                        .eq('type', 'outright')
+                        .limit(1000)
+                );
+            } else {
+                fetches.push(Promise.resolve({ data: [] }));
+            }
+
+            const [marketsRes, outrightsRes] = await Promise.all(fetches);
+            this.playerMarkets = marketsRes.data || [];
+            this.sportPageOutrightMarkets = outrightsRes.data || [];
 
             this.isLoadingSportPage = false;
         },
@@ -1453,10 +1540,12 @@ function dashboardApp() {
         },
 
         get playerMarketsByEvent() {
+            const aliasMap = { moneyline: 'h2h', spread: 'spreads', total: 'totals' };
             const map = {};
             for (const m of this.playerMarkets) {
                 if (!map[m.event_id]) map[m.event_id] = {};
-                map[m.event_id][m.market_type] = m;
+                map[m.event_id][m.type] = m;
+                if (aliasMap[m.type]) map[m.event_id][aliasMap[m.type]] = m;
             }
             return map;
         },
@@ -1492,29 +1581,46 @@ function dashboardApp() {
         },
 
         get groupedPlayerEvents() {
-            const groups = {};
+            const sportMap = {};
             for (const ev of this.filteredPlayerEvents) {
                 const sport = this.formatSportName(ev.sport);
-                const league = this.formatLeagueName(ev.sport);
-                const key = sport + ' — ' + league;
-                if (!groups[key]) {
-                    groups[key] = { sport, league, key, events: [] };
-                }
-                groups[key].events.push(ev);
+                const league = this.formatLeagueName(ev.sport, ev.league);
+                if (!sportMap[sport]) sportMap[sport] = { sport, sportKey: this.sportToKey(sport), leagues: {} };
+                if (!sportMap[sport].leagues[league]) sportMap[sport].leagues[league] = [];
+                sportMap[sport].leagues[league].push(ev);
             }
-            return Object.values(groups);
+            return Object.values(sportMap).map(s => {
+                const cat = s.sportKey ? this.sportCategories[s.sportKey] : null;
+                const leagueEntries = Object.entries(s.leagues).map(([league, events]) => ({ league, events }));
+                if (cat) {
+                    // Sort leagues to match sportCategories tab order
+                    const tabOrder = cat.leagues.map(l => l.displayName.toUpperCase());
+                    leagueEntries.sort((a, b) => {
+                        const ai = tabOrder.indexOf(a.league.toUpperCase());
+                        const bi = tabOrder.indexOf(b.league.toUpperCase());
+                        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+                    });
+                }
+                return { ...s, leagues: leagueEntries };
+            });
         },
 
         get playerSportOptions() {
-            const sports = new Set();
+            // Preserve order sports appear in the event list (by earliest start_time)
+            const seen = new Set();
+            const ordered = [];
             for (const ev of this.playerEvents) {
-                sports.add(this.formatSportName(ev.sport));
+                const sport = this.formatSportName(ev.sport);
+                if (!seen.has(sport)) {
+                    seen.add(sport);
+                    ordered.push(sport);
+                }
             }
-            return [...sports].sort();
+            return ordered;
         },
 
         isEventLocked(ev) {
-            return new Date(ev.start_time) <= new Date();
+            return new Date(ev.start_time) <= Date.now();
         },
 
         getMarketForEvent(eventId, marketType) {
@@ -1527,10 +1633,29 @@ function dashboardApp() {
             return n > 0 ? '+' + n : String(n);
         },
 
+        // Extract numeric line from side_a/side_b strings like "Lakers -3.5" or "Over 215.5"
+        extractLine(sideStr) {
+            if (!sideStr) return null;
+            const match = sideStr.match(/([+-]?\d+\.?\d*)$/);
+            return match ? Number(match[1]) : null;
+        },
+
+        // Extract team name from side_a/side_b (everything before the line number)
+        extractTeam(sideStr) {
+            if (!sideStr) return '';
+            return sideStr.replace(/\s*[+-]?\d+\.?\d*$/, '').trim();
+        },
+
+        get _selectionKeys() {
+            const set = new Set();
+            for (const s of this.betSlipSelections) {
+                set.add(s.event_id + '|' + s.market_id + '|' + s.side_indicator);
+            }
+            return set;
+        },
+
         isSelectionActive(eventId, marketId, sideIndicator) {
-            return this.betSlipSelections.some(
-                s => s.event_id === eventId && s.market_id === marketId && s.side_indicator === sideIndicator
-            );
+            return this._selectionKeys.has(eventId + '|' + marketId + '|' + sideIndicator);
         },
 
         toggleSelection(event, market, sideIndicator, side, odds) {
@@ -1553,7 +1678,7 @@ function dashboardApp() {
                     side_indicator: sideIndicator,
                     odds: Number(odds),
                     event_name: (event.away_team || '') + ' @ ' + (event.home_team || ''),
-                    market_type: market.market_type,
+                    market_type: market.type,
                 });
             }
         },
@@ -1605,6 +1730,23 @@ function dashboardApp() {
             return 0;
         },
 
+        sanitizeMoney(val) {
+            let s = String(val).replace(/[^0-9.]/g, '');
+            const parts = s.split('.');
+            if (parts.length > 2) s = parts[0] + '.' + parts.slice(1).join('');
+            if (parts.length === 2 && parts[1].length > 2) s = parts[0] + '.' + parts[1].slice(0, 2);
+            return s;
+        },
+
+        calcStakeFromToWin(odds, toWin) {
+            const o = Number(odds) || 0;
+            const tw = Number(toWin) || 0;
+            if (tw <= 0) return 0;
+            if (o > 0) return tw / (o / 100);
+            if (o < 0) return tw / (100 / Math.abs(o));
+            return 0;
+        },
+
         americanToDecimal(odds) {
             const o = Number(odds) || 0;
             if (o > 0) return 1 + o / 100;
@@ -1616,6 +1758,11 @@ function dashboardApp() {
             if (dec >= 2) return '+' + Math.round((dec - 1) * 100);
             if (dec > 1) return String(-Math.round(100 / (dec - 1)));
             return '+100';
+        },
+
+        get hasBetSlip() {
+            return (this.route === 'player-games' || this.route === 'player-sport')
+                && this.betSlipSelections.length > 0;
         },
 
         get combinedMultiOdds() {
@@ -1698,6 +1845,27 @@ function dashboardApp() {
             return count > 1 ? 'Place Picks' : 'Place Pick';
         },
 
+        get betSlipStakedCount() {
+            if (this.betSlipMode === 'multi') return this.betSlipSelections.length;
+            return this.betSlipSelections.filter((_, i) => (Number(this.betSlipStakes[i]) || 0) > 0).length;
+        },
+
+        get betSlipTotalReturn() {
+            if (this.betSlipMode === 'multi') {
+                const stake = Number(this.betSlipMultiStake) || 0;
+                if (stake <= 0) return 0;
+                return stake + this.multiToWin;
+            }
+            let total = 0;
+            for (let i = 0; i < this.betSlipSelections.length; i++) {
+                const s = Number(this.betSlipStakes[i]) || 0;
+                if (s > 0) {
+                    total += s + this.calcToWin(this.betSlipSelections[i].odds, s);
+                }
+            }
+            return total;
+        },
+
         betSlipConfirmationMessages: [
             'Locked in!', 'Let it ride!', 'Good luck!', 'Sharp move!',
             'Dialed in!', 'Money time!', "Let's go!", 'Registered!',
@@ -1727,7 +1895,7 @@ function dashboardApp() {
                         bets.push({
                             event_id: sel.event_id,
                             market_id: sel.market_id,
-                            side: sel.side,
+                            side: sel.side_indicator,
                             side_indicator: sel.side_indicator,
                             odds: sel.odds,
                             stake,
@@ -1755,7 +1923,7 @@ function dashboardApp() {
                     const legs = this.betSlipSelections.map(sel => ({
                         event_id: sel.event_id,
                         market_id: sel.market_id,
-                        side: sel.side,
+                        side: sel.side_indicator,
                         side_indicator: sel.side_indicator,
                         odds: sel.odds,
                     }));
@@ -2000,7 +2168,7 @@ function dashboardApp() {
                 .is('bookie_id', null)
                 .gte('start_time', todayStart.toISOString())
                 .lte('start_time', todayEnd.toISOString())
-                .not('status', 'in', '("final","canceled")');
+                .not('status', 'eq', 'final').not('status', 'eq', 'canceled');
             this.tonightEvents = tonightEvts || [];
 
             // Sport Performance breakdown + attention tags data
@@ -2278,7 +2446,9 @@ function dashboardApp() {
             return map[sport] || sport.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
         },
 
-        formatLeagueName(sport) {
+        formatLeagueName(sport, league) {
+            // Prefer the event's league column if provided
+            if (league) return league;
             if (!sport) return '';
             const parts = sport.split('_');
             return parts.length > 1 ? parts.slice(1).join(' ').toUpperCase() : sport.toUpperCase();
@@ -2328,7 +2498,7 @@ function dashboardApp() {
             const groups = {};
             for (const ev of this.filteredEvents) {
                 const sport = this.formatSportName(ev.sport);
-                const league = this.formatLeagueName(ev.sport);
+                const league = this.formatLeagueName(ev.sport, ev.league);
                 const key = sport + ' — ' + league;
                 if (!groups[key]) {
                     groups[key] = { sport, league, key, events: [] };
@@ -2807,11 +2977,11 @@ function dashboardApp() {
             }
 
             if (this.pickTypeFilter === 'single') {
-                query = query.eq('bet_type', 'single');
+                query = query.eq('is_parlay', false);
             } else if (this.pickTypeFilter === 'parlay') {
-                query = query.eq('bet_type', 'parlay');
+                query = query.eq('is_parlay', true);
             } else if (this.pickTypeFilter === 'futures') {
-                query = query.eq('market_type', 'outright');
+                query = query.eq('market', 'outright');
             }
 
             const { data, error } = await query;
@@ -2878,7 +3048,7 @@ function dashboardApp() {
             }
 
             // Fetch parlay legs if applicable
-            if (this.pickDetail.bet_type === 'parlay' && this.pickDetail.ticket_id) {
+            if (this.pickDetail.is_parlay && this.pickDetail.ticket_id) {
                 const { data: legs } = await this.supabase
                     .from('bets')
                     .select('*')
@@ -3319,7 +3489,7 @@ function dashboardApp() {
 
             // Parlay Demon: 60%+ of bets are parlays
             if (playerBets.length >= 5) {
-                const parlayCount = playerBets.filter(b => b.bet_type === 'parlay').length;
+                const parlayCount = playerBets.filter(b => b.is_parlay).length;
                 if (parlayCount / playerBets.length >= 0.6) {
                     tags.push({ key: 'parlay', label: 'Parlay Demon', color: 'pink', desc: Math.round(parlayCount / playerBets.length * 100) + '% of picks are multi-picks.' });
                 }
@@ -4167,7 +4337,7 @@ function dashboardApp() {
 
         formatMarketType(market) {
             if (!market) return '';
-            const map = { h2h: 'Moneyline', spreads: 'Spread', totals: 'Total', outright: 'Futures' };
+            const map = { h2h: 'Moneyline', moneyline: 'Moneyline', spreads: 'Spread', spread: 'Spread', totals: 'Total', total: 'Total', outright: 'Futures' };
             return map[market] || market;
         },
 

@@ -11,6 +11,24 @@ Started: Fri Feb 27 02:10:26 PST 2026
 - Shared helpers use `createServiceClient()` for service-role DB access
 - `sendNotification()` is fire-and-forget — import from `'../_shared/notifications.ts'`
 - APNs JWT uses WebCrypto ECDSA P-256 (importKey pkcs8), cached 50 min
+
+## CRITICAL: iOS App is the Reference Implementation
+- **Always read the iOS Swift code before building web equivalents.** The iOS app is the source of truth for how features work, what edge functions expect, and how data flows.
+- **Edge function payloads:** Read the iOS service files (`BetService.swift`, `EdgeFunctionService.swift`, etc.) to see exact payload shapes sent to edge functions. Do NOT guess field names or values.
+  - `submit_bets` expects `side: 'a'` or `'b'` (side_indicator), NOT human-readable names like "Lakers ML"
+  - `submit_parlay` expects `side_indicator: 'a'` or `'b'` per leg, plus `side` as human-readable
+  - Both require `player_id`, `bookie_id`, `idempotency_key` at top level
+- **Balance convention:** Internal positive = player owes bookie. Player-facing display NEGATES this. iOS uses `BalanceService.playerSummary()` which includes open stakes in credit utilization.
+- **Credit calculation:** Available credit = credit_limit - max(0, balance) - open_stakes. Do NOT use Math.abs(balance) — winning players (negative internal balance) should NOT have reduced credit.
+- **Player name updates:** RLS on players table requires `is_bookie()` — players CANNOT directly update their own record. iOS uses `claim_player` edge function pattern. Web must use an edge function too.
+- **Key iOS reference files for web parity:**
+  - `Booki/Services/BetService.swift` — bet submission payloads
+  - `Booki/Services/BetSlipManager.swift` — bet slip selection model
+  - `Booki/Services/BalanceService.swift` — balance and credit calculations
+  - `Booki/Services/SettlementService.swift` — settlement report logic
+  - `Booki/Views/BetSlipSheet.swift` — bet slip UX flow
+  - `Booki/Views/TrackView.swift` — ticket grouping and display
+  - `Booki/Views/PlayerMainView.swift` — player tab structure
 ---
 
 ## 2026-02-27 - US-001
@@ -35,6 +53,23 @@ Started: Fri Feb 27 02:10:26 PST 2026
   - `base64url` encoding needed for JWT: replace `+` with `-`, `/` with `_`, strip trailing `=`
   - Users without a `notification_preferences` row should still receive notifications (default opt-in behavior)
   - Service role client needed to read other users' tokens/preferences (bypasses RLS)
+---
+
+## 2026-03-03 - Web Dashboard Bet Slip & Odds Overhaul
+- Implemented: Desktop bet slip sidebar (Schwab SnapTicket style), bidirectional staking, odds button restyling, futures grid layout
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.css`, `landing/dashboard/dashboard.js`
+- Key changes:
+  - Right sidebar (340px fixed) replaces floating bar + modal on desktop; mobile unchanged
+  - Side-by-side Stake/Potential fields with reverse calculation and money sanitization
+  - Summary section (pick count, total stake, total return) above submit button
+  - Odds buttons: spread/total show line + (odds) format, hover = teal text, selected = solid teal
+  - Futures markets in 2-column grid layout
+  - Fixed `side` field sending display name instead of 'a'/'b' to edge functions
+- **Learnings for future iterations:**
+  - Alpine `:style="string"` REPLACES the entire style attribute — use object syntax `{ prop: val }` to MERGE with static `style`
+  - Alpine `:value` with reactive computed values overwrites user input — track focus state and return `undefined` when field is active
+  - `sanitizeMoney()` strips non-numeric, prevents multiple decimals, caps at 2 decimal places — use `type="text" inputmode="decimal"` for full control
+  - `betSlipSelections[].side` stores display name, `side_indicator` stores 'a'/'b' — edge functions expect the latter
 ---
 
 ## 2026-02-27 - US-003

@@ -127,7 +127,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main-content" :class="{ 'has-betslip': hasBetSlip }">
 
             <!-- ── Dashboard View ── -->
             <div x-show="route === 'dashboard'" x-cloak>
@@ -662,51 +662,45 @@
                                 <div>
                                     <template x-for="mkt in eventDetailMarkets" :key="mkt.id">
                                         <div style="padding:12px 0;border-bottom:1px solid var(--divider);">
-                                            <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;" x-text="formatMarketType(mkt.market_type)"></div>
+                                            <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;" x-text="formatMarketType(mkt.type)"></div>
                                             <div class="market-odds-grid">
-                                                <template x-if="mkt.market_type === 'h2h'">
+                                                <template x-if="mkt.type === 'h2h' || mkt.type === 'moneyline'">
                                                     <div style="display:flex;gap:16px;">
                                                         <div class="market-odds-cell">
                                                             <span style="font-size:12px;color:var(--text-muted);" x-text="eventDetail.away_team || 'Away'"></span>
-                                                            <span class="odds-mono" x-text="formatOdds(mkt.away_odds)"></span>
+                                                            <span class="odds-mono" x-text="formatOdds(mkt.odds_a)"></span>
                                                         </div>
                                                         <div class="market-odds-cell">
                                                             <span style="font-size:12px;color:var(--text-muted);" x-text="eventDetail.home_team || 'Home'"></span>
-                                                            <span class="odds-mono" x-text="formatOdds(mkt.home_odds)"></span>
+                                                            <span class="odds-mono" x-text="formatOdds(mkt.odds_b)"></span>
                                                         </div>
-                                                        <template x-if="mkt.draw_odds">
-                                                            <div class="market-odds-cell">
-                                                                <span style="font-size:12px;color:var(--text-muted);">Draw</span>
-                                                                <span class="odds-mono" x-text="formatOdds(mkt.draw_odds)"></span>
-                                                            </div>
-                                                        </template>
                                                     </div>
                                                 </template>
-                                                <template x-if="mkt.market_type === 'spreads'">
+                                                <template x-if="mkt.type === 'spreads' || mkt.type === 'spread'">
                                                     <div style="display:flex;gap:16px;">
                                                         <div class="market-odds-cell">
-                                                            <span style="font-size:12px;color:var(--text-muted);" x-text="(eventDetail.away_team || 'Away') + ' ' + (mkt.spread_line > 0 ? '+' : '') + mkt.spread_line"></span>
-                                                            <span class="odds-mono" x-text="formatOdds(mkt.away_spread_odds)"></span>
+                                                            <span style="font-size:12px;color:var(--text-muted);" x-text="mkt.side_a || 'Away'"></span>
+                                                            <span class="odds-mono" x-text="formatOdds(mkt.odds_a)"></span>
                                                         </div>
                                                         <div class="market-odds-cell">
-                                                            <span style="font-size:12px;color:var(--text-muted);" x-text="(eventDetail.home_team || 'Home') + ' ' + ((-mkt.spread_line) > 0 ? '+' : '') + (-mkt.spread_line)"></span>
-                                                            <span class="odds-mono" x-text="formatOdds(mkt.home_spread_odds)"></span>
+                                                            <span style="font-size:12px;color:var(--text-muted);" x-text="mkt.side_b || 'Home'"></span>
+                                                            <span class="odds-mono" x-text="formatOdds(mkt.odds_b)"></span>
                                                         </div>
                                                     </div>
                                                 </template>
-                                                <template x-if="mkt.market_type === 'totals'">
+                                                <template x-if="mkt.type === 'totals' || mkt.type === 'total'">
                                                     <div style="display:flex;gap:16px;">
                                                         <div class="market-odds-cell">
-                                                            <span style="font-size:12px;color:var(--text-muted);" x-text="'O ' + mkt.over_line"></span>
-                                                            <span class="odds-mono" x-text="formatOdds(mkt.over_odds)"></span>
+                                                            <span style="font-size:12px;color:var(--text-muted);" x-text="mkt.side_a || 'Over'"></span>
+                                                            <span class="odds-mono" x-text="formatOdds(mkt.odds_a)"></span>
                                                         </div>
                                                         <div class="market-odds-cell">
-                                                            <span style="font-size:12px;color:var(--text-muted);" x-text="'U ' + mkt.over_line"></span>
-                                                            <span class="odds-mono" x-text="formatOdds(mkt.under_odds)"></span>
+                                                            <span style="font-size:12px;color:var(--text-muted);" x-text="mkt.side_b || 'Under'"></span>
+                                                            <span class="odds-mono" x-text="formatOdds(mkt.odds_b)"></span>
                                                         </div>
                                                     </div>
                                                 </template>
-                                                <template x-if="mkt.market_type === 'outright'">
+                                                <template x-if="mkt.type === 'outright'">
                                                     <div style="font-size:13px;color:var(--text-muted);">Futures market</div>
                                                 </template>
                                             </div>
@@ -1061,7 +1055,7 @@
                                         <tr style="cursor:pointer;" @click="window.location.hash = '#/picks/' + bet.id">
                                             <td data-label="Date" x-text="formatDate(bet.created_at)"></td>
                                             <td class="name" data-label="Member" x-text="getPlayerName(bet.player_id)"></td>
-                                            <td data-label="Type"><span class="badge badge-muted" x-text="bet.bet_type || 'single'"></span></td>
+                                            <td data-label="Type"><span class="badge badge-muted" x-text="bet.is_parlay ? 'parlay' : 'single'"></span></td>
                                             <td data-label="Pick" x-text="bet.side || '—'"></td>
                                             <td data-label="Odds" x-text="formatOdds(bet.odds)"></td>
                                             <td data-label="Stake" x-text="formatCurrency(bet.stake)"></td>
@@ -1118,7 +1112,7 @@
                         <!-- Hero Card -->
                         <div class="card" style="margin-bottom:16px;">
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-                                <span class="badge" :class="(pickDetail.bet_type === 'parlay' && pickDetailLegs.some(l => l.grade_result === 'loss')) ? 'badge-danger' : statusBadgeClass(pickDetail)" style="font-size:13px;padding:5px 14px;" x-text="(pickDetail.bet_type === 'parlay' && pickDetailLegs.some(l => l.grade_result === 'loss')) ? 'Lost' : statusDisplayText(pickDetail)"></span>
+                                <span class="badge" :class="(pickDetail.is_parlay && pickDetailLegs.some(l => l.grade_result === 'loss')) ? 'badge-danger' : statusBadgeClass(pickDetail)" style="font-size:13px;padding:5px 14px;" x-text="(pickDetail.is_parlay && pickDetailLegs.some(l => l.grade_result === 'loss')) ? 'Lost' : statusDisplayText(pickDetail)"></span>
                                 <span style="font-size:12px;color:var(--text-muted);" x-text="formatDate(pickDetail.created_at)"></span>
                             </div>
                             <h2 style="font-size:20px;margin-bottom:4px;" x-text="pickDetail.side || '—'"></h2>
@@ -1191,7 +1185,7 @@
                         </div>
 
                         <!-- Parlay Legs Card (only for parlays) -->
-                        <div class="card" style="margin-bottom:16px;" x-show="pickDetail.bet_type === 'parlay' && pickDetailLegs.length > 0">
+                        <div class="card" style="margin-bottom:16px;" x-show="pickDetail.is_parlay && pickDetailLegs.length > 0">
                             <div class="card-header">
                                 <span class="card-title">Legs</span>
                                 <span style="font-size:13px;color:var(--text-muted);">Combined: <strong style="color:var(--text-primary);" x-text="formatOdds(pickDetail.odds)"></strong></span>
@@ -1270,7 +1264,7 @@
                                     </button>
                                     <input x-show="isEditingName" id="edit-name-input" type="text" x-model="editNameValue"
                                            @keydown.enter="saveMemberName()" @keydown.escape="isEditingName = false" @blur="saveMemberName()"
-                                           class="input" style="font-size:18px;font-weight:700;padding:4px 8px;width:220px;">
+                                           class="input" style="font-size:18px;font-weight:700;padding:4px 8px;width:100%;max-width:220px;">
                                 </div>
                                 <!-- Actions + Overflow menu -->
                                 <div style="display:flex;align-items:center;gap:8px;">
@@ -1988,42 +1982,30 @@
 
             <!-- ── Player Games View ── -->
             <div x-show="route === 'player-games' && (userRole === 'player' || userRole === 'standalone')" x-cloak>
-                <div class="page-header">
+                <div class="page-header" style="margin-bottom:12px;">
                     <h1>Games</h1>
                     <p x-text="isLoadingPlayerEvents ? 'Loading games...' : filteredPlayerEvents.length + ' upcoming games'"></p>
                 </div>
 
-                <!-- Balance bar -->
-                <div x-show="!isLoadingPlayerHome" x-cloak style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--card-bg);border-radius:var(--radius-sm);margin-bottom:16px;">
-                    <div style="display:flex;align-items:baseline;gap:6px;">
-                        <span style="font-size:18px;font-weight:700;" :class="playerDisplayBalance > 0 ? 'positive' : playerDisplayBalance < 0 ? 'negative' : ''" x-text="(playerDisplayBalance < 0 ? '-' : '') + formatCurrency(Math.abs(playerDisplayBalance))"></span>
-                        <span style="font-size:12px;color:var(--text-muted);" x-text="playerDisplayBalance > 0 ? 'Credit' : playerDisplayBalance < 0 ? 'You owe' : 'Settled'"></span>
-                    </div>
-                    <template x-if="userRole === 'player' && playerCreditLimit > 0">
-                        <div style="text-align:right;">
-                            <span style="font-size:13px;color:var(--success);" x-text="formatCurrency(playerAvailableCredit) + ' available'"></span>
-                        </div>
-                    </template>
-                </div>
-
-                <!-- Search -->
-                <div style="margin-bottom:16px;">
-                    <input type="text" class="search-input" placeholder="Search by team name..." x-model="playerEventSearch" style="max-width:400px;">
-                </div>
-
-                <!-- Sport filter chips — tap to navigate to sport page -->
-                <div class="filter-bar" style="margin-bottom:12px;">
+                <!-- Sport navigation cards -->
+                <div class="games-sport-nav">
                     <template x-for="sport in playerSportOptions" :key="sport">
-                        <button class="chip" @click="window.location.hash = '#/player-sport/' + (sportToKey(sport) || sport.toLowerCase())" x-text="sport"></button>
+                        <a class="games-sport-card" href="#" @click.prevent="window.location.hash = '#/player-sport/' + (sportToKey(sport) || sport.toLowerCase())">
+                            <span class="games-sport-card-name" x-text="sport"></span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                        </a>
                     </template>
                 </div>
 
-                <!-- Time filter chips -->
-                <div class="filter-bar" style="margin-bottom:20px;">
-                    <button class="chip" :class="{ active: playerTimeFilter === 'all' }" @click="playerTimeFilter = 'all'">All</button>
-                    <button class="chip" :class="{ active: playerTimeFilter === 'today' }" @click="playerTimeFilter = 'today'">Today</button>
-                    <button class="chip" :class="{ active: playerTimeFilter === 'tomorrow' }" @click="playerTimeFilter = 'tomorrow'">Tomorrow</button>
-                    <button class="chip" :class="{ active: playerTimeFilter === 'thisWeek' }" @click="playerTimeFilter = 'thisWeek'">This Week</button>
+                <!-- Search + Time filters row -->
+                <div class="games-toolbar">
+                    <input type="text" class="search-input" placeholder="Search by team name..." x-model="playerEventSearch" style="flex:1;max-width:400px;">
+                    <div class="filter-bar" style="margin:0;">
+                        <button class="chip" :class="{ active: playerTimeFilter === 'all' }" @click="playerTimeFilter = 'all'">All</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'today' }" @click="playerTimeFilter = 'today'">Today</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'tomorrow' }" @click="playerTimeFilter = 'tomorrow'">Tomorrow</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'thisWeek' }" @click="playerTimeFilter = 'thisWeek'">This Week</button>
+                    </div>
                 </div>
 
                 <!-- Loading skeleton -->
@@ -2054,128 +2036,153 @@
                     </div>
                 </template>
 
-                <!-- Games grouped by sport/league -->
+                <!-- Games grouped by sport → league (Bovada-style) -->
                 <template x-if="!isLoadingPlayerEvents && filteredPlayerEvents.length > 0">
                     <div>
-                        <template x-for="group in groupedPlayerEvents" :key="group.key">
+                        <template x-for="sportGroup in groupedPlayerEvents" :key="sportGroup.sport">
                             <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden;">
-                                <!-- Group header with column labels -->
-                                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--divider);">
-                                    <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="window.location.hash = '#/player-sport/' + (sportToKey(group.sport) || group.sport.toLowerCase())">
-                                        <span style="font-size:13px;font-weight:700;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.5px;" x-text="group.sport"></span>
-                                        <span style="font-size:11px;color:var(--text-muted);" x-text="group.league"></span>
+                                <!-- Sport section header -->
+                                <div class="sport-section-header" @click="toggleSportCollapse(sportGroup.sport)">
+                                    <div class="sport-section-left" @click.stop="window.location.hash = '#/player-sport/' + (sportGroup.sportKey || sportGroup.sport.toLowerCase())">
+                                        <span class="sport-section-name" x-text="sportGroup.sport"></span>
                                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--text-muted);flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
                                     </div>
-                                    <div class="pg-col-labels">
-                                        <span>SPREAD</span>
-                                        <span>MONEY</span>
-                                        <span>TOTAL</span>
-                                    </div>
+                                    <span class="sport-section-toggle" x-text="collapsedSports[sportGroup.sport] ? '+' : '−'"></span>
                                 </div>
 
-                                <!-- Game rows -->
-                                <template x-for="ev in group.events" :key="ev.id">
-                                    <div class="pg-game-row" :class="{ 'pg-locked': isEventLocked(ev) }">
-                                        <!-- Time -->
-                                        <div class="pg-game-time" x-text="formatEventTime(ev.start_time)"></div>
+                                <!-- Collapsible body -->
+                                <div x-show="!collapsedSports[sportGroup.sport]" x-transition.opacity>
+                                    <template x-for="leagueGroup in sportGroup.leagues" :key="sportGroup.sport + '|' + leagueGroup.league">
+                                        <div>
+                                            <!-- League sub-header -->
+                                            <div class="league-sub-header" @click="toggleLeagueCollapse(sportGroup.sport + '|' + leagueGroup.league)">
+                                                <div class="league-sub-left">
+                                                    <a class="league-sub-link" @click.stop.prevent="navigateToSportLeague(sportGroup.sportKey || sportGroup.sport.toLowerCase(), leagueGroup.league)" href="#">
+                                                        <span x-text="leagueGroup.league"></span>
+                                                        <span class="league-count" x-text="'(' + leagueGroup.events.length + ')'"></span>
+                                                    </a>
+                                                    <span class="league-toggle" x-text="collapsedLeagues[sportGroup.sport + '|' + leagueGroup.league] ? '+' : '−'"></span>
+                                                </div>
+                                                <div class="pg-col-labels" x-show="!collapsedLeagues[sportGroup.sport + '|' + leagueGroup.league]">
+                                                    <span>SPREAD</span>
+                                                    <span>MONEY</span>
+                                                    <span>TOTAL</span>
+                                                </div>
+                                            </div>
 
-                                        <!-- Teams + Odds grid -->
-                                        <div class="pg-game-grid">
-                                            <!-- Away team row -->
-                                            <div class="pg-team-row">
-                                                <div class="pg-team-name" x-text="ev.away_team || 'Away'"></div>
-                                                <div class="pg-odds-cells">
-                                                    <!-- Away spread -->
-                                                    <button class="pg-odds-btn"
-                                                        :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'spreads') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'spreads')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
-                                                        :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'spreads')"
-                                                        @click="toggleSelection(ev, getMarketForEvent(ev.id, 'spreads'), 'a', (ev.away_team || 'Away') + ' ' + formatSpreadLine(getMarketForEvent(ev.id, 'spreads')?.spread_line), getMarketForEvent(ev.id, 'spreads')?.away_spread_odds)">
-                                                        <template x-if="getMarketForEvent(ev.id, 'spreads')">
-                                                            <span>
-                                                                <span class="pg-odds-line" x-text="formatSpreadLine(getMarketForEvent(ev.id, 'spreads').spread_line)"></span>
-                                                                <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'spreads').away_spread_odds)"></span>
-                                                            </span>
-                                                        </template>
-                                                        <template x-if="!getMarketForEvent(ev.id, 'spreads')"><span class="pg-odds-na">—</span></template>
-                                                    </button>
-                                                    <!-- Away moneyline -->
-                                                    <button class="pg-odds-btn"
-                                                        :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
-                                                        :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'h2h')"
-                                                        @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'a', (ev.away_team || 'Away') + ' ML', getMarketForEvent(ev.id, 'h2h')?.away_odds)">
-                                                        <template x-if="getMarketForEvent(ev.id, 'h2h')">
-                                                            <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').away_odds)"></span>
-                                                        </template>
-                                                        <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">—</span></template>
-                                                    </button>
-                                                    <!-- Over -->
-                                                    <button class="pg-odds-btn"
-                                                        :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'totals') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'totals')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
-                                                        :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'totals')"
-                                                        @click="toggleSelection(ev, getMarketForEvent(ev.id, 'totals'), 'a', 'Over ' + (getMarketForEvent(ev.id, 'totals')?.over_line || ''), getMarketForEvent(ev.id, 'totals')?.over_odds)">
-                                                        <template x-if="getMarketForEvent(ev.id, 'totals')">
-                                                            <span>
-                                                                <span class="pg-odds-line" x-text="'O ' + getMarketForEvent(ev.id, 'totals').over_line"></span>
-                                                                <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'totals').over_odds)"></span>
-                                                            </span>
-                                                        </template>
-                                                        <template x-if="!getMarketForEvent(ev.id, 'totals')"><span class="pg-odds-na">—</span></template>
-                                                    </button>
+                                            <!-- Game rows (collapsible, truncated to 3) -->
+                                            <div x-show="!collapsedLeagues[sportGroup.sport + '|' + leagueGroup.league]" x-transition.opacity>
+                                            <template x-for="ev in leagueGroup.events.slice(0, 3)" :key="ev.id">
+                                                <div class="pg-game-row" :class="{ 'pg-locked': isEventLocked(ev) }">
+                                                    <!-- Time -->
+                                                    <div class="pg-game-time" x-text="formatEventTime(ev.start_time)"></div>
+
+                                                    <!-- Teams + Odds grid -->
+                                                    <div class="pg-game-grid">
+                                                        <!-- Away team row -->
+                                                        <div class="pg-team-row">
+                                                            <div class="pg-team-name" x-text="ev.away_team || 'Away'"></div>
+                                                            <div class="pg-odds-cells">
+                                                                <!-- Away spread -->
+                                                                <button class="pg-odds-btn"
+                                                                    :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'spreads') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'spreads')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                    :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'spreads')"
+                                                                    @click="toggleSelection(ev, getMarketForEvent(ev.id, 'spreads'), 'a', getMarketForEvent(ev.id, 'spreads')?.side_a || (ev.away_team || 'Away'), getMarketForEvent(ev.id, 'spreads')?.odds_a)">
+                                                                    <template x-if="getMarketForEvent(ev.id, 'spreads')">
+                                                                        <span>
+                                                                            <span class="pg-odds-line" x-text="formatSpreadLine(extractLine(getMarketForEvent(ev.id, 'spreads').side_a))"></span>
+                                                                            <span class="pg-odds-val" x-text="'(' + formatOdds(getMarketForEvent(ev.id, 'spreads').odds_a) + ')'"></span>
+                                                                        </span>
+                                                                    </template>
+                                                                    <template x-if="!getMarketForEvent(ev.id, 'spreads')"><span class="pg-odds-na">—</span></template>
+                                                                </button>
+                                                                <!-- Away moneyline -->
+                                                                <button class="pg-odds-btn"
+                                                                    :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                    :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'h2h')"
+                                                                    @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'a', (ev.away_team || 'Away') + ' ML', getMarketForEvent(ev.id, 'h2h')?.odds_a)">
+                                                                    <template x-if="getMarketForEvent(ev.id, 'h2h')">
+                                                                        <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').odds_a)"></span>
+                                                                    </template>
+                                                                    <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">—</span></template>
+                                                                </button>
+                                                                <!-- Over -->
+                                                                <button class="pg-odds-btn"
+                                                                    :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'totals') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'totals')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                    :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'totals')"
+                                                                    @click="toggleSelection(ev, getMarketForEvent(ev.id, 'totals'), 'a', getMarketForEvent(ev.id, 'totals')?.side_a || 'Over', getMarketForEvent(ev.id, 'totals')?.odds_a)">
+                                                                    <template x-if="getMarketForEvent(ev.id, 'totals')">
+                                                                        <span>
+                                                                            <span class="pg-odds-line" x-text="'O ' + extractLine(getMarketForEvent(ev.id, 'totals').side_a)"></span>
+                                                                            <span class="pg-odds-val" x-text="'(' + formatOdds(getMarketForEvent(ev.id, 'totals').odds_a) + ')'"></span>
+                                                                        </span>
+                                                                    </template>
+                                                                    <template x-if="!getMarketForEvent(ev.id, 'totals')"><span class="pg-odds-na">—</span></template>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <!-- Home team row -->
+                                                        <div class="pg-team-row">
+                                                            <div class="pg-team-name" x-text="ev.home_team || 'Home'"></div>
+                                                            <div class="pg-odds-cells">
+                                                                <!-- Home spread -->
+                                                                <button class="pg-odds-btn"
+                                                                    :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'spreads') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'spreads')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                    :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'spreads')"
+                                                                    @click="toggleSelection(ev, getMarketForEvent(ev.id, 'spreads'), 'b', getMarketForEvent(ev.id, 'spreads')?.side_b || (ev.home_team || 'Home'), getMarketForEvent(ev.id, 'spreads')?.odds_b)">
+                                                                    <template x-if="getMarketForEvent(ev.id, 'spreads')">
+                                                                        <span>
+                                                                            <span class="pg-odds-line" x-text="formatSpreadLine(extractLine(getMarketForEvent(ev.id, 'spreads').side_b))"></span>
+                                                                            <span class="pg-odds-val" x-text="'(' + formatOdds(getMarketForEvent(ev.id, 'spreads').odds_b) + ')'"></span>
+                                                                        </span>
+                                                                    </template>
+                                                                    <template x-if="!getMarketForEvent(ev.id, 'spreads')"><span class="pg-odds-na">—</span></template>
+                                                                </button>
+                                                                <!-- Home moneyline -->
+                                                                <button class="pg-odds-btn"
+                                                                    :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                    :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'h2h')"
+                                                                    @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'b', (ev.home_team || 'Home') + ' ML', getMarketForEvent(ev.id, 'h2h')?.odds_b)">
+                                                                    <template x-if="getMarketForEvent(ev.id, 'h2h')">
+                                                                        <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').odds_b)"></span>
+                                                                    </template>
+                                                                    <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">—</span></template>
+                                                                </button>
+                                                                <!-- Under -->
+                                                                <button class="pg-odds-btn"
+                                                                    :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'totals') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'totals')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
+                                                                    :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'totals')"
+                                                                    @click="toggleSelection(ev, getMarketForEvent(ev.id, 'totals'), 'b', getMarketForEvent(ev.id, 'totals')?.side_b || 'Under', getMarketForEvent(ev.id, 'totals')?.odds_b)">
+                                                                    <template x-if="getMarketForEvent(ev.id, 'totals')">
+                                                                        <span>
+                                                                            <span class="pg-odds-line" x-text="'U ' + extractLine(getMarketForEvent(ev.id, 'totals').side_b)"></span>
+                                                                            <span class="pg-odds-val" x-text="'(' + formatOdds(getMarketForEvent(ev.id, 'totals').odds_b) + ')'"></span>
+                                                                        </span>
+                                                                    </template>
+                                                                    <template x-if="!getMarketForEvent(ev.id, 'totals')"><span class="pg-odds-na">—</span></template>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Lock overlay -->
+                                                    <template x-if="isEventLocked(ev)">
+                                                        <div class="pg-lock-badge">
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                                            Locked
+                                                        </div>
+                                                    </template>
                                                 </div>
-                                            </div>
-                                            <!-- Home team row -->
-                                            <div class="pg-team-row">
-                                                <div class="pg-team-name" x-text="ev.home_team || 'Home'"></div>
-                                                <div class="pg-odds-cells">
-                                                    <!-- Home spread -->
-                                                    <button class="pg-odds-btn"
-                                                        :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'spreads') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'spreads')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
-                                                        :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'spreads')"
-                                                        @click="toggleSelection(ev, getMarketForEvent(ev.id, 'spreads'), 'b', (ev.home_team || 'Home') + ' ' + formatSpreadLine(-(getMarketForEvent(ev.id, 'spreads')?.spread_line || 0)), getMarketForEvent(ev.id, 'spreads')?.home_spread_odds)">
-                                                        <template x-if="getMarketForEvent(ev.id, 'spreads')">
-                                                            <span>
-                                                                <span class="pg-odds-line" x-text="formatSpreadLine(-(getMarketForEvent(ev.id, 'spreads').spread_line || 0))"></span>
-                                                                <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'spreads').home_spread_odds)"></span>
-                                                            </span>
-                                                        </template>
-                                                        <template x-if="!getMarketForEvent(ev.id, 'spreads')"><span class="pg-odds-na">—</span></template>
-                                                    </button>
-                                                    <!-- Home moneyline -->
-                                                    <button class="pg-odds-btn"
-                                                        :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
-                                                        :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'h2h')"
-                                                        @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'b', (ev.home_team || 'Home') + ' ML', getMarketForEvent(ev.id, 'h2h')?.home_odds)">
-                                                        <template x-if="getMarketForEvent(ev.id, 'h2h')">
-                                                            <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').home_odds)"></span>
-                                                        </template>
-                                                        <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">—</span></template>
-                                                    </button>
-                                                    <!-- Under -->
-                                                    <button class="pg-odds-btn"
-                                                        :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'totals') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'totals')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
-                                                        :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'totals')"
-                                                        @click="toggleSelection(ev, getMarketForEvent(ev.id, 'totals'), 'b', 'Under ' + (getMarketForEvent(ev.id, 'totals')?.over_line || ''), getMarketForEvent(ev.id, 'totals')?.under_odds)">
-                                                        <template x-if="getMarketForEvent(ev.id, 'totals')">
-                                                            <span>
-                                                                <span class="pg-odds-line" x-text="'U ' + getMarketForEvent(ev.id, 'totals').over_line"></span>
-                                                                <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'totals').under_odds)"></span>
-                                                            </span>
-                                                        </template>
-                                                        <template x-if="!getMarketForEvent(ev.id, 'totals')"><span class="pg-odds-na">—</span></template>
-                                                    </button>
-                                                </div>
-                                            </div>
+                                            </template>
+
+                                            <!-- Show More → navigate to sport page with league selected -->
+                                            <template x-if="leagueGroup.events.length > 3">
+                                                <button class="show-more-btn" @click.stop="navigateToSportLeague(sportGroup.sportKey || sportGroup.sport.toLowerCase(), leagueGroup.league)" x-text="'Show More (' + (leagueGroup.events.length - 3) + ')'"></button>
+                                            </template>
+                                            </div><!-- /collapsible league body -->
                                         </div>
-
-                                        <!-- Lock overlay -->
-                                        <template x-if="isEventLocked(ev)">
-                                            <div class="pg-lock-badge">
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                                                Locked
-                                            </div>
-                                        </template>
-                                    </div>
-                                </template>
+                                    </template>
+                                </div>
                             </div>
                         </template>
                     </div>
@@ -2243,17 +2250,19 @@
                                                 <div style="padding:10px 16px;border-bottom:1px solid var(--divider);background:var(--bg);">
                                                     <span style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;" x-text="group.eventName"></span>
                                                 </div>
-                                                <template x-for="(market, idx) in group.markets" :key="market.id">
-                                                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;" :style="idx % 2 === 1 ? 'background:var(--card-bg)' : ''">
-                                                        <span style="font-size:14px;color:var(--text-primary);" x-text="market.side_a"></span>
-                                                        <button class="pg-odds-btn"
-                                                            :class="{ 'pg-odds-active': isSelectionActive(group.event.id, market.id, 'a') }"
-                                                            style="width:70px;"
-                                                            @click="toggleSelection(group.event, market, 'a', market.side_a, market.odds_a)"
-                                                            x-text="formatOdds(market.odds_a)">
-                                                        </button>
-                                                    </div>
-                                                </template>
+                                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--divider);">
+                                                    <template x-for="(market, idx) in group.markets" :key="market.id">
+                                                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:var(--bg-card);">
+                                                            <span style="font-size:13px;color:var(--text-primary);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="market.side_a"></span>
+                                                            <button class="pg-odds-btn"
+                                                                :class="{ 'pg-odds-active': isSelectionActive(group.event.id, market.id, 'a') }"
+                                                                style="width:70px;flex-shrink:0;"
+                                                                @click="toggleSelection(group.event, market, 'a', market.side_a, market.odds_a)"
+                                                                x-text="formatOdds(market.odds_a)">
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                </div>
                                             </div>
                                         </template>
                                     </div>
@@ -2280,17 +2289,19 @@
                                                 <div style="padding:10px 16px;border-bottom:1px solid var(--divider);background:var(--bg);">
                                                     <span style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;" x-text="group.eventName"></span>
                                                 </div>
-                                                <template x-for="(market, idx) in group.markets" :key="market.id">
-                                                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;" :style="idx % 2 === 1 ? 'background:var(--card-bg)' : ''">
-                                                        <span style="font-size:14px;color:var(--text-primary);" x-text="market.side_a"></span>
-                                                        <button class="pg-odds-btn"
-                                                            :class="{ 'pg-odds-active': isSelectionActive(group.event.id, market.id, 'a') }"
-                                                            style="width:70px;"
-                                                            @click="toggleSelection(group.event, market, 'a', market.side_a, market.odds_a)"
-                                                            x-text="formatOdds(market.odds_a)">
-                                                        </button>
-                                                    </div>
-                                                </template>
+                                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--divider);">
+                                                    <template x-for="(market, idx) in group.markets" :key="market.id">
+                                                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:var(--bg-card);">
+                                                            <span style="font-size:13px;color:var(--text-primary);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="market.side_a"></span>
+                                                            <button class="pg-odds-btn"
+                                                                :class="{ 'pg-odds-active': isSelectionActive(group.event.id, market.id, 'a') }"
+                                                                style="width:70px;flex-shrink:0;"
+                                                                @click="toggleSelection(group.event, market, 'a', market.side_a, market.odds_a)"
+                                                                x-text="formatOdds(market.odds_a)">
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                </div>
                                             </div>
                                         </template>
                                     </div>
@@ -2337,27 +2348,27 @@
                                                             <button class="pg-odds-btn"
                                                                 :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'spreads') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'spreads')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
                                                                 :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'spreads')"
-                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'spreads'), 'a', (ev.away_team || 'Away') + ' ' + formatSpreadLine(getMarketForEvent(ev.id, 'spreads')?.spread_line), getMarketForEvent(ev.id, 'spreads')?.away_spread_odds)">
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'spreads'), 'a', getMarketForEvent(ev.id, 'spreads')?.side_a || (ev.away_team || 'Away'), getMarketForEvent(ev.id, 'spreads')?.odds_a)">
                                                                 <template x-if="getMarketForEvent(ev.id, 'spreads')">
-                                                                    <span><span class="pg-odds-line" x-text="formatSpreadLine(getMarketForEvent(ev.id, 'spreads').spread_line)"></span><span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'spreads').away_spread_odds)"></span></span>
+                                                                    <span><span class="pg-odds-line" x-text="formatSpreadLine(extractLine(getMarketForEvent(ev.id, 'spreads').side_a))"></span><span class="pg-odds-val" x-text="'(' + formatOdds(getMarketForEvent(ev.id, 'spreads').odds_a) + ')'"></span></span>
                                                                 </template>
                                                                 <template x-if="!getMarketForEvent(ev.id, 'spreads')"><span class="pg-odds-na">—</span></template>
                                                             </button>
                                                             <button class="pg-odds-btn"
                                                                 :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
                                                                 :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'h2h')"
-                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'a', (ev.away_team || 'Away') + ' ML', getMarketForEvent(ev.id, 'h2h')?.away_odds)">
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'a', (ev.away_team || 'Away') + ' ML', getMarketForEvent(ev.id, 'h2h')?.odds_a)">
                                                                 <template x-if="getMarketForEvent(ev.id, 'h2h')">
-                                                                    <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').away_odds)"></span>
+                                                                    <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').odds_a)"></span>
                                                                 </template>
                                                                 <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">—</span></template>
                                                             </button>
                                                             <button class="pg-odds-btn"
                                                                 :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'totals') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'totals')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
                                                                 :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'totals')"
-                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'totals'), 'a', 'Over ' + (getMarketForEvent(ev.id, 'totals')?.over_line || ''), getMarketForEvent(ev.id, 'totals')?.over_odds)">
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'totals'), 'a', getMarketForEvent(ev.id, 'totals')?.side_a || 'Over', getMarketForEvent(ev.id, 'totals')?.odds_a)">
                                                                 <template x-if="getMarketForEvent(ev.id, 'totals')">
-                                                                    <span><span class="pg-odds-line" x-text="'O ' + getMarketForEvent(ev.id, 'totals').over_line"></span><span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'totals').over_odds)"></span></span>
+                                                                    <span><span class="pg-odds-line" x-text="'O ' + extractLine(getMarketForEvent(ev.id, 'totals').side_a)"></span><span class="pg-odds-val" x-text="'(' + formatOdds(getMarketForEvent(ev.id, 'totals').odds_a) + ')'"></span></span>
                                                                 </template>
                                                                 <template x-if="!getMarketForEvent(ev.id, 'totals')"><span class="pg-odds-na">—</span></template>
                                                             </button>
@@ -2370,27 +2381,27 @@
                                                             <button class="pg-odds-btn"
                                                                 :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'spreads') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'spreads')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
                                                                 :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'spreads')"
-                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'spreads'), 'b', (ev.home_team || 'Home') + ' ' + formatSpreadLine(-(getMarketForEvent(ev.id, 'spreads')?.spread_line || 0)), getMarketForEvent(ev.id, 'spreads')?.home_spread_odds)">
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'spreads'), 'b', getMarketForEvent(ev.id, 'spreads')?.side_b || (ev.home_team || 'Home'), getMarketForEvent(ev.id, 'spreads')?.odds_b)">
                                                                 <template x-if="getMarketForEvent(ev.id, 'spreads')">
-                                                                    <span><span class="pg-odds-line" x-text="formatSpreadLine(-(getMarketForEvent(ev.id, 'spreads').spread_line || 0))"></span><span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'spreads').home_spread_odds)"></span></span>
+                                                                    <span><span class="pg-odds-line" x-text="formatSpreadLine(extractLine(getMarketForEvent(ev.id, 'spreads').side_b))"></span><span class="pg-odds-val" x-text="'(' + formatOdds(getMarketForEvent(ev.id, 'spreads').odds_b) + ')'"></span></span>
                                                                 </template>
                                                                 <template x-if="!getMarketForEvent(ev.id, 'spreads')"><span class="pg-odds-na">—</span></template>
                                                             </button>
                                                             <button class="pg-odds-btn"
                                                                 :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
                                                                 :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'h2h')"
-                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'b', (ev.home_team || 'Home') + ' ML', getMarketForEvent(ev.id, 'h2h')?.home_odds)">
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'b', (ev.home_team || 'Home') + ' ML', getMarketForEvent(ev.id, 'h2h')?.odds_b)">
                                                                 <template x-if="getMarketForEvent(ev.id, 'h2h')">
-                                                                    <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').home_odds)"></span>
+                                                                    <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').odds_b)"></span>
                                                                 </template>
                                                                 <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">—</span></template>
                                                             </button>
                                                             <button class="pg-odds-btn"
                                                                 :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'totals') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'totals')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
                                                                 :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'totals')"
-                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'totals'), 'b', 'Under ' + (getMarketForEvent(ev.id, 'totals')?.over_line || ''), getMarketForEvent(ev.id, 'totals')?.under_odds)">
+                                                                @click="toggleSelection(ev, getMarketForEvent(ev.id, 'totals'), 'b', getMarketForEvent(ev.id, 'totals')?.side_b || 'Under', getMarketForEvent(ev.id, 'totals')?.odds_b)">
                                                                 <template x-if="getMarketForEvent(ev.id, 'totals')">
-                                                                    <span><span class="pg-odds-line" x-text="'U ' + getMarketForEvent(ev.id, 'totals').over_line"></span><span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'totals').under_odds)"></span></span>
+                                                                    <span><span class="pg-odds-line" x-text="'U ' + extractLine(getMarketForEvent(ev.id, 'totals').side_b)"></span><span class="pg-odds-val" x-text="'(' + formatOdds(getMarketForEvent(ev.id, 'totals').odds_b) + ')'"></span></span>
                                                                 </template>
                                                                 <template x-if="!getMarketForEvent(ev.id, 'totals')"><span class="pg-odds-na">—</span></template>
                                                             </button>
@@ -2960,6 +2971,188 @@
             </div>
 
         </main>
+
+        <!-- ── Desktop Bet Slip Sidebar ── -->
+        <aside class="betslip-sidebar"
+            x-show="hasBetSlip"
+            x-cloak
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="translate-x-full"
+            x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in duration-300"
+            x-transition:leave-start="translate-x-0"
+            x-transition:leave-end="translate-x-full">
+
+            <!-- Success State -->
+            <template x-if="betSlipSuccess">
+                <div class="bs-sidebar-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                    <div class="bs-success">
+                        <div class="bs-success-check">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </div>
+                        <h2 x-text="betSlipSuccessMessage" style="font-size:24px;margin:16px 0 8px;"></h2>
+                        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;">Your pick has been placed successfully.</p>
+                        <button class="btn btn-accent" style="width:100%;padding:14px;" @click="closeBetSlipSuccess()">Done</button>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Main Bet Slip -->
+            <template x-if="!betSlipSuccess">
+                <div style="display:flex;flex-direction:column;height:100%;">
+                    <!-- Header -->
+                    <div class="bs-sidebar-header">
+                        <div class="bs-header" style="margin-bottom:12px;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <h2 style="font-size:18px;">Pick Slip</h2>
+                                <span style="background:var(--bg-elevated);color:var(--accent);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;" x-text="betSlipSelections.length"></span>
+                            </div>
+                            <button class="btn-ghost" style="color:var(--danger);font-size:12px;font-weight:600;padding:4px 8px;background:none;border:none;cursor:pointer;" @click="clearBetSlip()">Clear All</button>
+                        </div>
+                        <!-- Mode Toggle -->
+                        <div class="bs-mode-toggle" style="margin-bottom:0;">
+                            <button :class="{ active: betSlipMode === 'singles' }" @click="betSlipMode = 'singles'">Singles</button>
+                            <button :class="{ active: betSlipMode === 'multi', disabled: !canSelectMulti }" :disabled="!canSelectMulti" @click="if(canSelectMulti) betSlipMode = 'multi'">Multi</button>
+                        </div>
+                    </div>
+
+                    <!-- Body (scrollable) -->
+                    <div class="bs-sidebar-body">
+                        <!-- Available Credit -->
+                        <div class="bs-credit" x-show="playerCreditLimit > 0">
+                            <span style="color:var(--text-muted);font-size:12px;">Available</span>
+                            <span style="color:var(--accent);font-size:13px;font-weight:600;" x-text="formatCurrency(playerAvailableCredit) + ' max'"></span>
+                        </div>
+
+                        <!-- Selection Cards -->
+                        <div class="bs-selections" style="margin-bottom:0;">
+                            <template x-for="(sel, idx) in betSlipSelections" :key="sel.event_id + sel.market_id + sel.side_indicator">
+                                <div class="bs-card">
+                                    <div class="bs-card-header">
+                                        <div style="flex:1;min-width:0;">
+                                            <div class="bs-card-side" x-text="sel.side"></div>
+                                            <div class="bs-card-event" x-text="sel.event_name"></div>
+                                        </div>
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span class="bs-card-odds" x-text="formatOdds(sel.odds)"></span>
+                                            <button class="bs-remove-btn" @click="removeSelection(idx)">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Stake / Potential inputs (singles mode only) -->
+                                    <template x-if="betSlipMode === 'singles'">
+                                        <div class="bs-stake-pair">
+                                            <div class="bs-field">
+                                                <div class="bs-field-label">Stake</div>
+                                                <div class="bs-field-input">
+                                                    <span class="bs-input-prefix">$</span>
+                                                    <input type="text" inputmode="decimal" placeholder="0"
+                                                        :value="betSlipActiveField === 'stake-' + idx ? undefined : ((Number(betSlipStakes[idx]) || 0) > 0 ? Number(betSlipStakes[idx]).toFixed(2) : '')"
+                                                        @focus="betSlipActiveField = 'stake-' + idx"
+                                                        @blur="betSlipActiveField = null"
+                                                        @input="betSlipStakes[idx] = sanitizeMoney($event.target.value)">
+                                                </div>
+                                            </div>
+                                            <div class="bs-field bs-field-potential">
+                                                <div class="bs-field-label">Potential</div>
+                                                <div class="bs-field-input">
+                                                    <span class="bs-input-prefix">$</span>
+                                                    <input type="text" inputmode="decimal" placeholder="0"
+                                                        :value="betSlipActiveField === 'potential-' + idx ? undefined : ((Number(betSlipStakes[idx]) || 0) > 0 ? calcToWin(sel.odds, betSlipStakes[idx]).toFixed(2) : '')"
+                                                        @focus="betSlipActiveField = 'potential-' + idx"
+                                                        @blur="betSlipActiveField = null"
+                                                        @input="betSlipStakes[idx] = sanitizeMoney(String(Math.round(calcStakeFromToWin(sel.odds, $event.target.value) * 100) / 100))">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Footer (sticky) -->
+                    <div class="bs-sidebar-footer">
+                        <!-- Multi-pick stake (multi mode) -->
+                        <template x-if="betSlipMode === 'multi'">
+                            <div class="bs-multi-section" style="margin-bottom:12px;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                                    <span style="font-size:13px;font-weight:600;color:var(--text-primary);">Multi-Pick</span>
+                                    <span class="bs-card-odds" x-text="combinedMultiOddsAmerican"></span>
+                                </div>
+                                <div class="bs-stake-pair">
+                                    <div class="bs-field">
+                                        <div class="bs-field-label">Stake</div>
+                                        <div class="bs-field-input">
+                                            <span class="bs-input-prefix">$</span>
+                                            <input type="text" inputmode="decimal" placeholder="0"
+                                                :value="betSlipActiveField === 'multi-stake' ? undefined : ((Number(betSlipMultiStake) || 0) > 0 ? Number(betSlipMultiStake).toFixed(2) : '')"
+                                                @focus="betSlipActiveField = 'multi-stake'"
+                                                @blur="betSlipActiveField = null"
+                                                @input="betSlipMultiStake = sanitizeMoney($event.target.value)"
+                                        </div>
+                                    </div>
+                                    <div class="bs-field bs-field-potential">
+                                        <div class="bs-field-label">Potential</div>
+                                        <div class="bs-field-input">
+                                            <span class="bs-input-prefix">$</span>
+                                            <input type="text" inputmode="decimal" placeholder="0"
+                                                :value="betSlipActiveField === 'multi-potential' ? undefined : ((Number(betSlipMultiStake) || 0) > 0 ? multiToWin.toFixed(2) : '')"
+                                                @focus="betSlipActiveField = 'multi-potential'"
+                                                @blur="betSlipActiveField = null"
+                                                @input="betSlipMultiStake = sanitizeMoney(String(Math.round(($event.target.value / (combinedMultiOdds - 1)) * 100) / 100))">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Summary -->
+                        <div class="bs-summary" x-show="betSlipTotalStakes > 0">
+                            <div class="bs-summary-row">
+                                <span>Number of Picks</span>
+                                <span x-text="betSlipStakedCount"></span>
+                            </div>
+                            <div class="bs-summary-row">
+                                <span>Total Stake</span>
+                                <span x-text="formatCurrency(betSlipTotalStakes)"></span>
+                            </div>
+                            <div class="bs-summary-row bs-summary-total">
+                                <span>Total Return</span>
+                                <span x-text="formatCurrency(betSlipTotalReturn)"></span>
+                            </div>
+                        </div>
+
+                        <!-- Validation Warning -->
+                        <div class="bs-validation" x-show="betSlipValidationMessage && betSlipTotalStakes > 0" x-text="betSlipValidationMessage"></div>
+
+                        <!-- Submit Button -->
+                        <button class="bs-submit-btn"
+                            :disabled="!betSlipValid || isSubmittingBets"
+                            @click="submitBetSlip()">
+                            <template x-if="isSubmittingBets">
+                                <span>Placing...</span>
+                            </template>
+                            <template x-if="!isSubmittingBets">
+                                <span x-text="betSlipButtonText"></span>
+                            </template>
+                        </button>
+
+                        <!-- Disclaimer -->
+                        <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:12px;">Picks are not processed as real-money wagers by Booki.</p>
+                    </div>
+
+                    <!-- Loading overlay -->
+                    <template x-if="isSubmittingBets">
+                        <div style="position:absolute;inset:0;background:rgba(20,20,31,0.8);display:flex;align-items:center;justify-content:center;z-index:10;">
+                            <div class="bs-spinner"></div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </aside>
     </div>
 
     <!-- ── Shared Bet Slip Bar + Modal (player-games & player-sport) ── -->
@@ -3029,23 +3222,30 @@
                                         </div>
                                     </div>
 
-                                    <!-- Stake input (singles mode only) -->
+                                    <!-- Stake / Potential inputs (singles mode only) -->
                                     <template x-if="betSlipMode === 'singles'">
-                                        <div class="bs-stake-row">
-                                            <div class="bs-input-group">
-                                                <span class="bs-input-prefix">$</span>
-                                                <input type="number" class="bs-stake-input" placeholder="0" step="0.01" min="0"
-                                                    :value="betSlipStakes[idx] || ''"
-                                                    @input="betSlipStakes[idx] = $event.target.value">
+                                        <div class="bs-stake-pair">
+                                            <div class="bs-field">
+                                                <div class="bs-field-label">Stake</div>
+                                                <div class="bs-field-input">
+                                                    <span class="bs-input-prefix">$</span>
+                                                    <input type="text" inputmode="decimal" placeholder="0"
+                                                        :value="betSlipActiveField === 'stake-' + idx ? undefined : ((Number(betSlipStakes[idx]) || 0) > 0 ? Number(betSlipStakes[idx]).toFixed(2) : '')"
+                                                        @focus="betSlipActiveField = 'stake-' + idx"
+                                                        @blur="betSlipActiveField = null"
+                                                        @input="betSlipStakes[idx] = sanitizeMoney($event.target.value)">
+                                                </div>
                                             </div>
-                                            <div class="bs-quick-stakes">
-                                                <button @click="addQuickStake(idx, 1)">+$1</button>
-                                                <button @click="addQuickStake(idx, 5)">+$5</button>
-                                                <button @click="addQuickStake(idx, 25)">+$25</button>
-                                            </div>
-                                            <div class="bs-to-win" x-show="(Number(betSlipStakes[idx]) || 0) > 0">
-                                                <span style="color:var(--text-muted);font-size:11px;">To Win</span>
-                                                <span style="color:var(--success);font-size:13px;font-weight:600;" x-text="formatCurrency(calcToWin(sel.odds, betSlipStakes[idx]))"></span>
+                                            <div class="bs-field bs-field-potential">
+                                                <div class="bs-field-label">Potential</div>
+                                                <div class="bs-field-input">
+                                                    <span class="bs-input-prefix">$</span>
+                                                    <input type="text" inputmode="decimal" placeholder="0"
+                                                        :value="betSlipActiveField === 'potential-' + idx ? undefined : ((Number(betSlipStakes[idx]) || 0) > 0 ? calcToWin(sel.odds, betSlipStakes[idx]).toFixed(2) : '')"
+                                                        @focus="betSlipActiveField = 'potential-' + idx"
+                                                        @blur="betSlipActiveField = null"
+                                                        @input="betSlipStakes[idx] = sanitizeMoney(String(Math.round(calcStakeFromToWin(sel.odds, $event.target.value) * 100) / 100))">
+                                                </div>
                                             </div>
                                         </div>
                                     </template>
@@ -3060,24 +3260,48 @@
                                     <span style="font-size:13px;font-weight:600;color:var(--text-primary);">Multi-Pick</span>
                                     <span class="bs-card-odds" x-text="combinedMultiOddsAmerican"></span>
                                 </div>
-                                <div class="bs-stake-row">
-                                    <div class="bs-input-group">
-                                        <span class="bs-input-prefix">$</span>
-                                        <input type="number" class="bs-stake-input" placeholder="0" step="0.01" min="0"
-                                            x-model="betSlipMultiStake">
+                                <div class="bs-stake-pair">
+                                    <div class="bs-field">
+                                        <div class="bs-field-label">Stake</div>
+                                        <div class="bs-field-input">
+                                            <span class="bs-input-prefix">$</span>
+                                            <input type="text" inputmode="decimal" placeholder="0"
+                                                :value="betSlipActiveField === 'multi-stake' ? undefined : ((Number(betSlipMultiStake) || 0) > 0 ? Number(betSlipMultiStake).toFixed(2) : '')"
+                                                @focus="betSlipActiveField = 'multi-stake'"
+                                                @blur="betSlipActiveField = null"
+                                                @input="betSlipMultiStake = sanitizeMoney($event.target.value)"
+                                        </div>
                                     </div>
-                                    <div class="bs-quick-stakes">
-                                        <button @click="addQuickStakeMulti(1)">+$1</button>
-                                        <button @click="addQuickStakeMulti(5)">+$5</button>
-                                        <button @click="addQuickStakeMulti(25)">+$25</button>
-                                    </div>
-                                    <div class="bs-to-win" x-show="(Number(betSlipMultiStake) || 0) > 0">
-                                        <span style="color:var(--text-muted);font-size:11px;">To Win</span>
-                                        <span style="color:var(--success);font-size:13px;font-weight:600;" x-text="formatCurrency(multiToWin)"></span>
+                                    <div class="bs-field bs-field-potential">
+                                        <div class="bs-field-label">Potential</div>
+                                        <div class="bs-field-input">
+                                            <span class="bs-input-prefix">$</span>
+                                            <input type="text" inputmode="decimal" placeholder="0"
+                                                :value="betSlipActiveField === 'multi-potential' ? undefined : ((Number(betSlipMultiStake) || 0) > 0 ? multiToWin.toFixed(2) : '')"
+                                                @focus="betSlipActiveField = 'multi-potential'"
+                                                @blur="betSlipActiveField = null"
+                                                @input="betSlipMultiStake = sanitizeMoney(String(Math.round(($event.target.value / (combinedMultiOdds - 1)) * 100) / 100))">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </template>
+
+                        <!-- Summary -->
+                        <div class="bs-summary" x-show="betSlipTotalStakes > 0">
+                            <div class="bs-summary-row">
+                                <span>Number of Picks</span>
+                                <span x-text="betSlipStakedCount"></span>
+                            </div>
+                            <div class="bs-summary-row">
+                                <span>Total Stake</span>
+                                <span x-text="formatCurrency(betSlipTotalStakes)"></span>
+                            </div>
+                            <div class="bs-summary-row bs-summary-total">
+                                <span>Total Return</span>
+                                <span x-text="formatCurrency(betSlipTotalReturn)"></span>
+                            </div>
+                        </div>
 
                         <!-- Validation Warning -->
                         <div class="bs-validation" x-show="betSlipValidationMessage && betSlipTotalStakes > 0" x-text="betSlipValidationMessage"></div>
