@@ -85,3 +85,14 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Computed getters that depend on `dashboardMembers` auto-update when `loadDashboard()` runs — Alpine reactivity handles this
   - Alert rows use `<a>` tags with href for navigation — no `@click` + `location.hash` needed
 ---
+
+## 2026-03-02 - US-007
+- Implemented Tonight's Open Activity card on Dashboard, positioned after stats grid and before Attention Feed
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `dashboardOpenBets` and `tonightEvents` state variables, added `event_id` and `side` to open bets select query, tonight's events fetch (today's date range, excluding final/canceled), `tonightsExposure` computed getter returning `{ gameCount, totalPotentialLoss, highestRiskGame, highExposure }`, card HTML with clock icon header, no-games empty state, stats row (Games Tonight + Total Potential Loss), highest risk game section with time/matchup/exposure and High Exposure badge at $1,000+, card clickable to `#/events`, `.tonight-exposure-card`/`.tonight-stats`/`.tonight-risk-game` CSS with responsive stacking
+- **Learnings for future iterations:**
+  - Open bets query in `loadDashboard()` now includes `event_id` and `side` — stored in `this.dashboardOpenBets` for reuse by computed getters
+  - Tonight's events filter: `gte(now) + lte(end-of-today)` with `.not('status', 'in', '("final","canceled")')` syntax for Supabase NOT IN
+  - The `calcPotentialReturn(bet)` helper returns total return (stake + profit), so potential loss to bookie = `calcPotentialReturn(b) - stake`
+  - Card-level `@click` with `cursor:pointer` works well for navigable dashboard cards
+---

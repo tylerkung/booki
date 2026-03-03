@@ -151,6 +151,7 @@
         "Add computed getter 'tonightsExposure' that returns { gameCount, totalPotentialLoss, highestRiskGame, highExposure }"
       ],
       "priority": 7,
+      "passes": true,
       "notes": "Potential return calculation from American odds: positive odds → stake * (odds/100), negative odds → stake * (100/abs(odds)). The potential loss to the bookie is potential_return (not including stake return). Tonight's events: filter events where start_time is today (use local date comparison). Open bets: status in ['pending', 'accepted']."
     },
     {
