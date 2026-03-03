@@ -1,207 +1,418 @@
 {
   "project": "Booki",
-  "branchName": "ralph/push-notifications",
-  "description": "Push notification infrastructure — APNs integration, Supabase device token storage, send_notification edge function, iOS NotificationService, deep link routing, notification preferences UI, and integration with existing edge functions.",
+  "branchName": "ralph/web-dashboard-parity",
+  "description": "Bring the web dashboard (landing/dashboard/) to full feature parity with the iOS app. Add Events browsing, Settlement view, Event Detail with batch grading, Dashboard enhancements, CSV export for organizers. Add complete player (member) web app: dual-role auth routing, player home with balance and performance, events browsing with bet placement (bet slip), pick tracking, and player account/settings. All changes in landing/dashboard/ files: app.html, dashboard.js, dashboard.css, index.html.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add device_tokens and notification_preferences tables",
-      "description": "As a developer, I need database tables to store APNs device tokens and per-user notification preferences so the server can send targeted push notifications.",
+      "title": "Add Events tab with sport browsing and search",
+      "description": "As an organizer, I need to browse events/games by sport and search by team name on the web dashboard, so I can see what games are available and check odds.",
       "acceptanceCriteria": [
-        "Create migration file in supabase/migrations/ with next sequence number",
-        "device_tokens table: id (uuid PK default gen_random_uuid()), user_id (uuid FK auth.users NOT NULL), token (text NOT NULL), platform (text NOT NULL default 'ios'), app_version (text), created_at (timestamptz default now()), updated_at (timestamptz default now())",
-        "device_tokens has UNIQUE constraint on (user_id, token)",
-        "device_tokens has index on user_id",
-        "notification_preferences table: id (uuid PK default gen_random_uuid()), user_id (uuid FK auth.users UNIQUE NOT NULL), picks_graded (boolean default true), balance_changes (boolean default true), new_members (boolean default true), pick_submissions (boolean default false), game_results (boolean default true), risk_alerts (boolean default true), marketing (boolean default false), created_at (timestamptz default now())",
-        "RLS enabled on both tables",
-        "device_tokens RLS: users can SELECT, INSERT, UPDATE, DELETE their own rows (auth.uid() = user_id)",
-        "notification_preferences RLS: users can SELECT and UPDATE their own row, INSERT if not exists (auth.uid() = user_id)",
-        "Typecheck passes"
+        "Add 'Events' link to sidebar navigation between Picks and Subscription, with a calendar/game icon SVG",
+        "Add route handling for '#/events' in parseRoute(), loading events data when navigated to",
+        "Add 'events' to the valid routes list so it doesn't redirect to dashboard",
+        "Create async loadEvents() method that fetches from Supabase 'events' table where bookie_id IS NULL, ordered by start_time ascending, limited to events with start_time >= 14 days ago",
+        "Add state variables: events (array), isLoadingEvents (boolean), eventSearch (string), eventSportFilter (string, default '')",
+        "Create events view HTML section with x-show=\"route === 'events'\"",
+        "Add page header: 'Events' title with subtitle showing event count",
+        "Add search input (class 'search-input') that filters events by home_team or away_team (case-insensitive)",
+        "Add sport filter chips: All, Football, Basketball, Baseball, Hockey, Soccer, Golf, MMA, Tennis — using existing .chip and .chip.active CSS classes",
+        "Add computed getter 'filteredEvents' that filters by search query AND sport filter, then sorts by start_time ascending",
+        "Group events by sport + league with section headers (styled like card-header with sport name and league)",
+        "Each event row shows: start_time (formatted), away_team @ home_team, status badge (scheduled=badge-muted, in_progress=badge-warning, final=badge-success, canceled=badge-danger), and is clickable to navigate to '#/events/{id}'",
+        "Add shimmer loading skeleton while events are loading (3 skeleton rows)",
+        "Add empty state when no events match filters: 'No events found' with description",
+        "Events with status 'final' that are older than 48 hours should be hidden unless search is active",
+        "Responsive: event rows use flexbox and stack on mobile (below 768px)"
       ],
       "priority": 1,
       "passes": true,
-      "notes": ""
+      "notes": "Events are shared (bookie_id IS NULL). Query with .is('bookie_id', null) or .or('bookie_id.is.null'). Sport values in DB: americanfootball_nfl, basketball_nba, baseball_mlb, icehockey_nhl, soccer_epl, golf_pga, mma_ufc, tennis_atp — map these to display names. The iOS app uses SportCategory enum for sport display names."
     },
     {
       "id": "US-002",
-      "title": "Create send_notification shared helper",
-      "description": "As a developer, I need a shared helper module in supabase/functions/_shared/ that handles APNs JWT generation and HTTP/2 push delivery, so edge functions can send notifications with a single function call.",
+      "title": "Add Event Detail view with odds, exposure, and pick management",
+      "description": "As an organizer, I need to view event details including odds, exposure breakdown, and all picks placed on the event, so I can manage risk and grade picks.",
       "acceptanceCriteria": [
-        "Create supabase/functions/_shared/notifications.ts",
-        "Export async function sendNotification({ event, recipientUserIds, title, body, data }) that: (1) queries notification_preferences to filter out opted-out users based on event-to-preference mapping, (2) queries device_tokens for remaining users, (3) sends APNs HTTP/2 POST to api.push.apple.com for each token, (4) deletes tokens that return 410 Gone or BadDeviceToken",
-        "Event-to-preference mapping: pick_graded/parlay_graded -> picks_graded, balance_adjusted -> balance_changes, new_member -> new_members, pick_submitted -> pick_submissions, game_results -> game_results, risk_alert -> risk_alerts",
-        "APNs JWT generation using ES256 with APNS_KEY_P8, APNS_KEY_ID, APNS_TEAM_ID from Deno.env. JWT cached in module-level variable, regenerated when older than 50 minutes",
-        "APNs payload format: { aps: { alert: { title, body }, sound: 'default', badge: 1 }, deep_link: data.deep_link }",
-        "APNs headers: authorization Bearer JWT, apns-topic com.bookiapp.booki, apns-push-type alert, apns-priority 10",
-        "Function is fire-and-forget safe — all errors caught and logged, never throws",
-        "Typecheck passes"
+        "Add route handling for '#/events/{id}' in parseRoute() — pattern: /^events\\/(.+)$/",
+        "Add state: selectedEventId, eventDetail (null), eventDetailBets (array), eventDetailMarkets (array), isLoadingEventDetail (boolean)",
+        "Create async loadEventDetail() that fetches the event by ID, its markets (from 'markets' table where event_id matches), and all bets placed on this event (from 'bets' table where event_id matches and bookie_id matches)",
+        "Create event-detail view HTML with x-show=\"route === 'event-detail'\"",
+        "Back button: 'Back to Events' linking to '#/events'",
+        "Hero card showing: status badge (large), start_time, matchup (away_team @ home_team), sport + league, final_score if status is 'final'",
+        "Markets card showing available odds: for each market, show market type (Moneyline/Spread/Total using formatMarketType), home odds, away odds, and for totals show over/under line. Style odds in monospace font. Markets are view-only (no bet placement)",
+        "Exposure Breakdown card: group bets by side, show count of bets and total stake per side, highlight the side with higher exposure in accent color. Show total exposure across all sides",
+        "Picks card: table of all bets on this event with columns: Member (linked to member detail), Side, Odds, Stake, Status badge. Rows clickable to pick detail. Use existing data-table pattern",
+        "Add shimmer loading state for event detail",
+        "If event has no bets, show empty state in Picks card: 'No picks placed on this event'",
+        "If event has no markets, show empty state in Markets card: 'No odds available'"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Reads APNS_KEY_P8, APNS_KEY_ID, APNS_TEAM_ID, APNS_ENVIRONMENT from Supabase secrets. APNS_ENVIRONMENT determines api.push.apple.com vs api.sandbox.push.apple.com. Use importKey with ECDSA P-256 for signing."
+      "notes": "Markets table columns: id, event_id, bookie_id, market_type (h2h/spreads/totals/outright), home_odds, away_odds, draw_odds, over_line, under_line, spread_line, over_odds, under_odds, home_spread_odds, away_spread_odds, updated_at. Markets have bookie_id NULL for shared markets. Event IDs in bets table are stored as TEXT (event_id column), not UUID — use string comparison."
     },
     {
       "id": "US-003",
-      "title": "Create send_notification edge function endpoint",
-      "description": "As a developer, I need a standalone send_notification edge function that other functions can invoke via fetch, providing a clean API boundary for notification delivery.",
+      "title": "Add batch grading and event management actions to Event Detail",
+      "description": "As an organizer, I need to change event status, enter final scores, and batch grade all picks on an event, so I can efficiently manage game results.",
       "acceptanceCriteria": [
-        "Create supabase/functions/send_notification/index.ts",
-        "Accepts POST with JSON body: { event, recipient_user_ids, title, body, data }",
-        "Validates that request has service role key (internal-only, not user-facing)",
-        "Calls sendNotification from _shared/notifications.ts",
-        "Returns { success: true, sent: number } with count of notifications sent",
-        "Handles CORS preflight",
-        "Typecheck passes"
+        "Add Actions card to event detail view (only shown when event has bets with gradable statuses: accepted, readyToGrade)",
+        "Grade All Picks section: Win (Home) / Win (Away) / Push buttons using existing .btn-grade, .btn-grade-win, .btn-grade-loss, .btn-grade-push CSS classes. Clicking a button opens a confirmation modal showing how many picks will be graded",
+        "Grade confirmation modal: 'Grade X picks as [outcome]?' with Cancel and Confirm buttons. On confirm, call grade_bet edge function for each eligible bet in sequence (not parallel, to respect rate limits). Show progress: 'Grading pick X of Y...' Toast success/error counts when done",
+        "Void All Picks button (btn-danger-outline): confirmation modal 'Void all X active picks on this event?'. Calls grade_bet with outcome 'void' for each eligible bet",
+        "Add Enter Final Score action: button opens modal with two number inputs (Away Score, Home Score). On save, updates event in Supabase: final_score as 'away_score-home_score' string format, status to 'final'. Toast on success",
+        "Add Change Status action: dropdown with options Scheduled, Live, Final, Postponed, Canceled. Updates event status in Supabase. When changing to Canceled, show confirmation warning about voiding picks",
+        "After any grading action completes, reload event detail data to refresh pick statuses",
+        "All grade_bet calls include idempotency_key: crypto.randomUUID()"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "This function is called internally by other edge functions via fetch to the Supabase functions URL. Validates via service_role key in Authorization header, not user JWT."
+      "notes": "Eligible bets for grading: status in ['accepted', 'readyToGrade']. Eligible bets for voiding: status in ['pending', 'accepted', 'readyToGrade']. The grade_bet edge function expects { bet_id, outcome, idempotency_key } where outcome is 'win', 'loss', 'push', or 'void'. Do NOT grade bets that are already settled/graded/void."
     },
     {
       "id": "US-004",
-      "title": "Create NotificationService.swift for iOS",
-      "description": "As a developer, I need an iOS service that handles push notification permission, APNs token registration, and token storage in Supabase.",
+      "title": "Add Settlement view with weekly periods and per-member reports",
+      "description": "As an organizer, I need a settlement view showing weekly settlement periods with per-member balance reports and mark-paid actions, so I can track collections and manage weekly settle-ups.",
       "acceptanceCriteria": [
-        "Create Booki/Services/NotificationService.swift",
-        "Class is @Observable and @MainActor",
-        "Property: isPermissionGranted: Bool",
-        "Method: requestPermission() — calls UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]), updates isPermissionGranted, if granted calls UIApplication.shared.registerForRemoteNotifications()",
-        "Method: registerToken(_ deviceToken: Data) — converts token to hex string, upserts to device_tokens table via Supabase client (user_id from current session, platform 'ios', app_version from Bundle.main)",
-        "Method: removeToken() — deletes all device_tokens for current user_id (called on logout)",
-        "Add UNUserNotificationCenterDelegate conformance to handle foreground notifications (show banner unless already on that screen)",
-        "Add @preconcurrency import Supabase",
-        "Typecheck passes"
+        "Add 'Settlement' as a navigable card/link on the Dashboard view (inside a card with calendar icon, similar to iOS SettlementSnapshotCard). Clicking navigates to '#/settlement'",
+        "Add route handling for '#/settlement' in parseRoute()",
+        "Add state: settlementWeek (Date, default to most recent Sunday), isLoadingSettlement (boolean), settlementReports (array)",
+        "Create helper function mostRecentSunday() that returns the most recent Sunday (if today is Sunday, return today). Week runs Monday through Sunday",
+        "Create week selector: left/right arrow buttons to navigate weeks, showing date range 'Mon MMM D - Sun MMM D, YYYY'. Limit to last 5 weeks (no future navigation)",
+        "Create async loadSettlement() that calculates per-member settlement reports for the selected week: for each active member, sum ledger entries within the week period to get starting balance, bets won/lost amounts, adjustments, and ending balance",
+        "Settlement summary row at top: 'Owed to You' total (sum of positive ending balances) in accent color, 'You Owe' total (sum of negative ending balances, shown as positive) in danger color",
+        "Filter chips: All, Unsettled (ending balance != 0 and not marked paid), Settled (marked paid or zero balance), Needs Attention (overdue collection status)",
+        "Per-member settlement table with columns: Member (linked), Starting Balance, Won, Lost, Adjustments, Ending Balance (color-coded), Status (Settled/Unpaid badge), Actions",
+        "Mark Paid action button per member: calls adjust_balance edge function with type 'paymentLogged' and amount that zeroes the balance. Show confirmation with amount. Toast on success, reload settlement",
+        "Settlement view uses existing card, data-table, badge, chip, and filter-bar CSS patterns",
+        "Add shimmer skeleton while loading",
+        "Empty state when no members have activity for the selected week"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Use existing SupabaseManager or sbClient pattern from the codebase. Token hex conversion: deviceToken.map { String(format: '%02x', $0) }.joined(). The delegate method userNotificationCenter(_:willPresent:) should return [.banner, .sound] for foreground display."
+      "notes": "Settlement calculation: starting_balance = sum of ledger_entries before week start for that player. Bets won/lost = sum of settlement-type ledger entries within the week. Adjustments = sum of adjustment-type ledger entries within the week. Ending balance = starting_balance + bets_won_lost + adjustments. The adjust_balance edge function expects { player_id, amount, type, reason, idempotency_key }. For Mark Paid: amount should negate the ending balance (if player owes $100, send amount: -100 with type: 'paymentLogged')."
     },
     {
       "id": "US-005",
-      "title": "Wire NotificationService into app lifecycle",
-      "description": "As a developer, I need the NotificationService connected to the app delegate and auth flow so tokens are registered on launch and cleaned up on logout.",
+      "title": "Add CSV export for settlement reports",
+      "description": "As an organizer, I need to export settlement reports as CSV files, so I can keep records and share reports outside the app.",
       "acceptanceCriteria": [
-        "Add NotificationService as @State property on BookiApp or inject via environment",
-        "In AppDelegate or BookiApp, implement application(_:didRegisterForRemoteNotificationsWithDeviceToken:) and call notificationService.registerToken()",
-        "In AppDelegate or BookiApp, implement application(_:didFailToRegisterForRemoteNotificationsWithError:) and log the error",
-        "On successful auth (in AuthManager or checkSession), call notificationService.requestPermission() if not already granted",
-        "On logout (in AuthManager.signOut), call notificationService.removeToken() before signing out of Supabase",
-        "Set UNUserNotificationCenter.current().delegate to NotificationService on app launch",
-        "Typecheck passes"
+        "Add 'Export CSV' button (btn-ghost with download icon) to the settlement view header, next to the week selector",
+        "Clicking generates a CSV file from the current settlementReports data",
+        "CSV columns: Member Name, Starting Balance, Bets Won, Bets Lost, Adjustments, Ending Balance, Status (Settled/Unpaid)",
+        "CSV header row uses these exact column names",
+        "Currency values formatted as plain numbers (no $ symbol) with 2 decimal places for CSV compatibility",
+        "Add summary row at bottom: 'TOTAL', sum of each numeric column, empty status",
+        "File name format: 'booki-settlement-YYYY-MM-DD.csv' where date is the week ending Sunday",
+        "Download triggers via creating a Blob with text/csv MIME type, creating an object URL, clicking a temporary <a> element, then revoking the URL",
+        "Toast 'Settlement report exported' on success",
+        "Button disabled when settlementReports is empty or loading"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Check existing BookiApp.swift and AuthManager.swift for the right injection points. If app uses SwiftUI lifecycle (no AppDelegate), use UIApplicationDelegateAdaptor."
+      "notes": "Standard browser CSV download pattern: const blob = new Blob([csvString], { type: 'text/csv' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);"
     },
     {
       "id": "US-006",
-      "title": "Add deep link routing from notification taps",
-      "description": "As a user, I want tapping a notification to take me directly to the relevant screen (bet detail, member detail, picks tab, etc.).",
+      "title": "Add Attention Feed card to Dashboard",
+      "description": "As an organizer, I need to see urgent alerts on the dashboard (overdue members, near credit limit, high exposure) so I can take action on issues that need attention.",
       "acceptanceCriteria": [
-        "Add pendingDeepLink: String? property to a shared observable (ContentView or navigation state)",
-        "Implement userNotificationCenter(_:didReceive:) in NotificationService to extract deep_link from notification payload and set pendingDeepLink",
-        "In ContentView or root navigation, observe pendingDeepLink and route: booki://bet/{id} -> BetDetailView, booki://ticket/{id} -> TicketDetailView, booki://members/{id} -> PlayerAnalyticsDetailView, booki://picks -> Picks tab, booki://account -> Account tab",
-        "Deep link is consumed (set to nil) after navigation completes",
-        "Works when app is launched from killed state (cold start) and from background",
-        "Typecheck passes"
+        "Add Attention Feed card to dashboard, positioned above the Members Grid section",
+        "Card header: 'Attention' with count badge showing total alert count",
+        "Three alert categories sorted by severity: Overdue (red, urgent), Near Credit Limit (red, urgent), High Exposure Games (orange, warning)",
+        "Overdue alerts: members with collection_status === 'overdue' — show member name, balance owed, 'Overdue' badge in danger color. Row clickable to member detail",
+        "Near Credit Limit alerts: members with credit utilization >= 75% — show member name, utilization percentage, 'Near Limit' badge in danger color. Row clickable to member detail",
+        "High Exposure alerts: identify from open bets — events where total bookie exposure (sum of potential payouts minus stakes for open bets) >= $500. Show event name, exposure amount, 'High Exposure' badge in warning color",
+        "Each alert row has an icon (exclamation triangle for urgent, warning triangle for warning), description text, and right-aligned amount or percentage",
+        "When no alerts exist, show 'All clear — no issues need attention' with a checkmark icon in accent color",
+        "Use computed getter 'attentionAlerts' that builds the array from existing dashboard data (players, bets, allLedgerEntries)",
+        "Card collapsible: show max 5 alerts with 'View All (X)' toggle when more exist",
+        "Alerts should use existing styling: card background, border-left colored by severity (4px solid var(--danger) or var(--warning))"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "The booki:// URL scheme is already registered. Check ContentView.swift for existing tab selection logic. Use .onOpenURL or similar pattern for cold start deep links."
+      "notes": "Credit utilization is calculated as abs(balance) / credit_limit * 100. Balance comes from ledger entries sum for that player. The dashboard already loads allLedgerEntries and players, so this data is available. High exposure requires iterating open bets and grouping by event_id."
     },
     {
       "id": "US-007",
-      "title": "Integrate notifications into auto_refresh_games",
-      "description": "As a member, I want to receive a push notification when my picks are graded so I know the result without opening the app.",
+      "title": "Add Tonight's Exposure card to Dashboard",
+      "description": "As an organizer, I need to see tonight's game exposure at a glance on the dashboard, so I can quickly assess my risk for today's games.",
       "acceptanceCriteria": [
-        "In auto_refresh_games/index.ts, after grading bets, collect graded bet results grouped by player auth_user_id",
-        "For each player with graded bets, call sendNotification with event 'pick_graded', title 'Your pick was graded', body showing team/result/amount (e.g. 'Lakers ML — Won (+$50)'), deep_link 'booki://bet/{betId}'",
-        "If multiple bets graded for same player in one run, send one summary notification: 'X picks graded — see results' with deep_link 'booki://picks'",
-        "Also notify the bookie with event 'game_results': 'X games finalized — Y picks graded'",
-        "Notification calls wrapped in try/catch — failures logged but do not affect grading",
-        "Import sendNotification from '../_shared/notifications.ts'",
-        "Typecheck passes"
+        "Add Tonight's Open Activity card to dashboard, positioned after the stats grid and before the Attention Feed",
+        "Card header: 'Tonight's Open Activity' with a clock icon",
+        "Show total games count for tonight (events with start_time between now and end of today, status not final/canceled)",
+        "Show Total Potential Loss: sum of (potential_return - stake) for all open bets on tonight's events. Color-coded in danger",
+        "Show Highest Risk Game: the event with the largest total exposure, showing matchup name, start time, and exposure amount",
+        "If exposure exceeds $1,000 on any single game, show a 'High Exposure' badge in warning color",
+        "If no games tonight, show 'No games scheduled tonight' in muted text",
+        "Card clickable — navigates to '#/events' filtered to today",
+        "Compute tonight's events by comparing event start_time to today's date range (midnight to midnight in local timezone)",
+        "Use existing stat-tile-like layout for the metrics inside the card",
+        "Add computed getter 'tonightsExposure' that returns { gameCount, totalPotentialLoss, highestRiskGame, highExposure }"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "auto_refresh_games already tracks graded bets in its logic. Add notification calls after the grading loop completes. Use the existing bet data (team names, amounts, results) to build notification bodies. Fire-and-forget pattern."
+      "notes": "Potential return calculation from American odds: positive odds → stake * (odds/100), negative odds → stake * (100/abs(odds)). The potential loss to the bookie is potential_return (not including stake return). Tonight's events: filter events where start_time is today (use local date comparison). Open bets: status in ['pending', 'accepted']."
     },
     {
       "id": "US-008",
-      "title": "Integrate notifications into adjust_balance and claim_invite",
-      "description": "As a member, I want to be notified when my balance is adjusted. As an organizer, I want to know when someone joins my group.",
+      "title": "Add Member Risk Watchlist card to Dashboard",
+      "description": "As an organizer, I need to see which members have the most risk signals so I can proactively manage my book.",
       "acceptanceCriteria": [
-        "In adjust_balance/index.ts, after successful balance adjustment, call sendNotification with: recipient = player's auth_user_id, event = 'balance_adjusted', title = 'Balance updated' for adjustments or 'Payment recorded' for paymentLogged type, body showing amount and reason if provided, deep_link = 'booki://account'",
-        "In claim_invite/index.ts, after successful claim, call sendNotification with: recipient = bookie's auth_user_id, event = 'new_member', title = 'New member', body = '{playerName} joined your group', deep_link = 'booki://members/{playerId}'",
-        "Both wrapped in try/catch, fire-and-forget",
-        "Import sendNotification from '../_shared/notifications.ts'",
-        "Typecheck passes"
+        "Add Risk Watchlist card to dashboard, positioned after the Attention Feed and before Members Grid",
+        "Card header: 'Risk Watchlist' with shield icon",
+        "Show top 5 members with risk signals, sorted by number of signals descending",
+        "Risk signals (as small badges per member row): 'Near Limit' (credit utilization >= 75%, danger color), 'Overdue' (collection_status === 'overdue', danger color), 'Hot Streak' (3+ consecutive wins, warning color), 'Losing Big' (net P/L worse than -$500 in last 7 days, danger color)",
+        "Each member row shows: name, credit utilization progress bar (same style as members grid), risk badges, and balance amount",
+        "Member rows clickable — navigate to member detail",
+        "Only show the card if at least one member has a risk signal",
+        "Pro-gated: wrap in pro-gated-section with blur overlay for free tier",
+        "Use computed getter 'riskWatchlist' that returns top 5 members with signals array",
+        "Use existing credit utilization bar styles (progress bar with fill, warning color at >80%)"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "adjust_balance already has the player and bookie context. claim_invite already has player name and bookie ID. Just add the notification call at the end of the success path."
+      "notes": "Hot streak detection: sort member's graded bets by created_at descending, count consecutive wins from the top. Losing big: sum ledger entries (excluding paymentLogged) from last 7 days. Credit utilization calculation already exists in getMemberCreditUtilization(). The dashboard already computes attention tags — some of this data can be reused."
     },
     {
       "id": "US-009",
-      "title": "Integrate notifications into submit_bet, submit_bets, and decline_bet",
-      "description": "As an organizer, I want to know when members submit picks. As a member, I want to know if my pick is declined.",
+      "title": "Add Settlement Snapshot card to Dashboard",
+      "description": "As an organizer, I need a quick settlement overview on the dashboard showing current week totals and top unpaid members, so I can track collections without leaving the dashboard.",
       "acceptanceCriteria": [
-        "In submit_bet/index.ts, after successful submission, call sendNotification with: recipient = bookie's auth_user_id, event = 'pick_submitted', title = 'New pick', body = '{playerName} — {teamName} {marketType} ${stake}', deep_link = 'booki://bet/{betId}'",
-        "In submit_bets/index.ts, after successful batch submission, send one summary notification to bookie: '{playerName} submitted {count} picks', deep_link = 'booki://picks'",
-        "In decline_bet/index.ts, after declining, call sendNotification with: recipient = player's auth_user_id, event = 'pick_declined' (maps to picks_graded preference), title = 'Pick declined', body = '{teamName} {marketType} was declined', deep_link = 'booki://bet/{betId}'",
-        "All wrapped in try/catch, fire-and-forget",
-        "Typecheck passes"
+        "Add Settlement Snapshot card to dashboard, positioned after the Risk Watchlist",
+        "Card header: 'Settlement' with calendar icon, showing current week date range (Mon MMM D - Sun MMM D, YYYY) as subtitle",
+        "Show two metrics side by side: 'Owed to You' (sum of positive member balances, accent color) and 'You Owe' (sum of negative member balances shown as positive, danger color)",
+        "Show stats row: 'X unpaid' count with person icon, 'X overdue' count with warning icon",
+        "Show top 3 unpaid members (highest balance first): member name, amount owed (color-coded), and 'Mark Paid' button per row",
+        "Mark Paid button: calls adjust_balance edge function with type 'paymentLogged' to zero the balance. Show brief 'Paid' confirmation with checkmark animation, then refresh data",
+        "Bottom link: 'View Settlements' navigating to '#/settlement' (styled like btn-ghost with chevron right, accent background at 10% opacity)",
+        "If overdue count > 0, show 'X overdue' badge (capsule, danger background) in the card header",
+        "Use existing card, badge, and button patterns",
+        "Compute from allLedgerEntries and players data already loaded on dashboard"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "pick_declined maps to the picks_graded preference key since it's a pick status change. The bet data (team name, market type, stake) is already available in these functions."
+      "notes": "This mirrors the iOS SettlementSnapshotCard. Balances come from summing all ledger entries per player (the allLedgerEntries array is already fetched on dashboard load). Unpaid = positive balance and not recently paid. Overdue = player.collection_status === 'overdue'. The 'Mark Paid' quick action is the same as settle up — calls adjust_balance with negated balance amount and type paymentLogged."
     },
     {
       "id": "US-010",
-      "title": "Add notification preferences UI for members",
-      "description": "As a member, I want to control which notifications I receive from the Account screen.",
+      "title": "Add notification preferences to Settings",
+      "description": "As an organizer, I need to manage my notification preferences from the web dashboard settings, so I can control which notifications I receive.",
       "acceptanceCriteria": [
-        "Add 'Notifications' row to AccountView menu (between Activity and About)",
-        "Create NotificationPreferencesView.swift with toggle list in .cardStyle() card",
-        "Three toggles for members: 'Pick results' (picks_graded), 'Balance changes' (balance_changes), 'Game results' (game_results)",
-        "On appear, fetch notification_preferences for current user from Supabase. If no row exists, insert one with defaults",
-        "Each toggle updates the corresponding column in notification_preferences via Supabase",
-        "Match existing Settings visual style (ScrollView, .background(Theme.background), cardStyle sections)",
-        "Typecheck passes"
+        "Add 'Notifications' section to Settings view, positioned after Change Password section",
+        "Section header: 'Notifications' with bell icon",
+        "Show toggle switches for each notification type: New Members (default true), Pick Submissions (default false), Risk Alerts (default true), Game Results (default true)",
+        "On settings load, fetch notification_preferences from Supabase for the current user. If no record exists, use defaults",
+        "Each toggle change immediately updates the notification_preferences record in Supabase (upsert pattern). Toast on success",
+        "Use existing toggle-row, toggle-switch, toggle-label, toggle-desc CSS classes",
+        "Add description text under each toggle explaining what it controls: New Members = 'When a member accepts your invite', Pick Submissions = 'When a member places a pick', Risk Alerts = 'Credit limit and exposure warnings', Game Results = 'When games are graded and picks are settled'",
+        "Add state: notifPrefs object with boolean fields, isLoadingNotifPrefs boolean",
+        "Load notification preferences in loadSettings() method"
       ],
       "priority": 10,
-      "passes": true,
-      "notes": "Follow the pattern of other settings sub-views. Use existing Supabase client. Debounce or save-on-toggle (no save button needed)."
+      "notes": "notification_preferences table columns: user_id (unique), picks_graded, balance_changes, new_members, pick_submissions, game_results, risk_alerts, marketing. The web dashboard maps: New Members = new_members, Pick Submissions = pick_submissions, Risk Alerts = risk_alerts, Game Results = game_results. Upsert pattern: this.supabase.from('notification_preferences').upsert({ user_id: this.session.user.id, [field]: value }, { onConflict: 'user_id' })."
     },
     {
       "id": "US-011",
-      "title": "Add notification preferences UI for organizers",
-      "description": "As an organizer, I want to control which notifications I receive from the Settings screen.",
+      "title": "Add accept/decline actions for pending picks on Dashboard",
+      "description": "As an organizer with manual approval enabled, I need to accept or decline pending picks directly from the dashboard, so I can manage picks without navigating to the pick detail page.",
       "acceptanceCriteria": [
-        "Add 'Notifications' row to organizer SettingsView menu (between Change Password and Subscription)",
-        "Create BookieNotificationPreferencesView.swift with toggle list in .cardStyle() card",
-        "Four toggles for organizers: 'New members' (new_members), 'Pick submissions' (pick_submissions), 'Risk alerts' (risk_alerts), 'Game results' (game_results)",
-        "On appear, fetch notification_preferences for current user from Supabase. If no row exists, insert one with defaults",
-        "Each toggle updates the corresponding column in notification_preferences via Supabase",
-        "Match existing Settings visual style",
-        "Typecheck passes"
+        "On the dashboard Recent Activity section, add Accept/Decline action buttons on pending pick rows (bets with status 'pending')",
+        "Accept button (btn-grade-win style, compact): calls accept_bet edge function with { bet_id, idempotency_key }. On success, toast 'Pick accepted' and reload dashboard",
+        "Decline button (btn-grade-loss style, compact): opens a confirmation modal 'Decline this pick?' with optional reason input. Calls decline_bet edge function with { bet_id, reason, idempotency_key }. On success, toast 'Pick declined' and reload dashboard",
+        "Buttons only shown when organizer has manual_bet_acceptance enabled (check bookie settings)",
+        "Buttons are compact (small font, minimal padding) to fit inline with activity rows",
+        "Add state: acceptingBetId (string, null), decliningBetId (string, null) for loading states on individual rows",
+        "Disable buttons while action is in progress, show spinner or 'Accepting...' text",
+        "Also add Accept/Decline buttons on the Picks tab for pending picks — small action buttons in the status column"
       ],
       "priority": 11,
-      "passes": true,
-      "notes": "Organizers see different toggles than members since they care about different events. Follow the same pattern as US-010."
+      "notes": "accept_bet edge function expects { bet_id, idempotency_key }. decline_bet expects { bet_id, reason?, idempotency_key }. The bookie's manual_bet_acceptance setting is on the bookies table — load it with the bookie record. Most organizers use auto-accept (default), so this is lower priority."
     },
     {
       "id": "US-012",
-      "title": "Add badge count and clear on foreground",
-      "description": "As a user, I want to see a badge on the app icon when I have unread graded picks, and have it clear when I open the app.",
+      "title": "Add acceptance policy settings",
+      "description": "As an organizer, I need to configure acceptance policy rules from the web dashboard, so I can set max stake limits and auto-decline rules.",
       "acceptanceCriteria": [
-        "In NotificationService, when app enters foreground (via scenePhase .active or NotificationCenter willEnterForeground), set UNUserNotificationCenter.current().setBadgeCount(0)",
-        "In send_notification APNs payload, set badge to 1 for pick_graded and balance_adjusted events",
-        "Typecheck passes"
+        "Add 'Acceptance Rules' subsection within Pick Management settings (Pro-gated)",
+        "Show current rules from acceptance_policies table (fetch by bookie_id)",
+        "Editable fields: Max Stake (number input, optional — null means no limit), Require Approval Above (number input, optional — bets above this amount need manual approval), Event Lock Offset (number input, minutes before game start to stop accepting picks, default 0)",
+        "Auto-Accept toggles: Auto-Accept Enabled (master toggle), Auto-Accept New Players (toggle), Auto-Accept Parlays (toggle)",
+        "Parlay Max Legs (number input, only shown when Auto-Accept Parlays is on)",
+        "Save button: upserts acceptance_policies record in Supabase. Toast on success",
+        "If no acceptance_policies record exists for this bookie, show all defaults and create on first save",
+        "Pro-gated: entire section blurred with upgrade overlay for free tier",
+        "Use existing form-group, toggle-row patterns",
+        "Add state: acceptancePolicy object, isLoadingAcceptancePolicy boolean, isSavingAcceptancePolicy boolean"
       ],
       "priority": 12,
-      "passes": true,
-      "notes": "Simple badge: always 1 when there's a notification, clear to 0 on foreground. No need to track exact unread count for v1."
+      "notes": "acceptance_policies table: bookie_id (UNIQUE), max_stake, require_approval_above, auto_accept_enabled (default true), auto_accept_new_players (default true), auto_accept_parlays (default true), parlay_max_legs, event_lock_offset_minutes (default 0), parlay_push_void_policy. Load in loadSettings(). Upsert with onConflict: 'bookie_id'."
+    },
+    {
+      "id": "US-013",
+      "title": "Add dual-role auth routing for player and organizer login",
+      "description": "As a player (member), I need to log in to the web dashboard and be routed to a player experience, so I can view my picks, balance, and place bets from a browser.",
+      "acceptanceCriteria": [
+        "Modify index.html login flow: remove the isOrganizer() gate that rejects non-organizer logins. Instead, after login, determine user role and route accordingly",
+        "Role detection logic: (1) check if user has a bookie record in bookies table — if yes and not a spurious record, route as organizer. (2) check if user has a player record in players table with a bookie_id — if yes, route as player. (3) if neither, create a standalone player experience (synthetic bookie not needed for web — just show events and track)",
+        "Add state variable: userRole ('organizer' | 'player' | 'standalone'), playerId (string), playerBookieId (string)",
+        "For player login: fetch the player record to get player.id, player.bookie_id, player.credit_limit, player.name. Store in state",
+        "For player login: also fetch the bookie record for the player's bookie_id to get bookie settings (allow_futures_parlays, tier, etc.)",
+        "Update sidebar navigation: organizers see Dashboard/Members/Picks/Events/Settlement/Subscription/Settings. Players see Home/Games/Track/Account. Use x-show on sidebar links based on userRole",
+        "Update parseRoute() to validate routes against user role — players can't access #/members, organizers can't access #/player-home",
+        "Player routes: #/player-home, #/player-games, #/player-track, #/player-account, #/player-ticket/{id}",
+        "Update app.html page title and mobile header to show role-appropriate branding",
+        "Sign-up flow: new sign-ups always create an organizer (bookie) record — same as current behavior. Players are created via invite flow only"
+      ],
+      "priority": 13,
+      "notes": "The existing isOrganizer() function in index.html handles spurious bookie records well — keep that logic but extend it. For players: query players table where auth_user_id = userId. The player's bookie_id tells us which organizer they belong to. Standalone users (no player record, no bookie record) should see a limited experience — just events browsing and a prompt to either become an organizer or enter an invite code. The Supabase session/token is the same for both roles — role is determined by which tables have records."
+    },
+    {
+      "id": "US-014",
+      "title": "Add player home view with balance, performance, and recent activity",
+      "description": "As a player, I need a home screen showing my current balance, performance stats, and recent activity, so I can see my status at a glance.",
+      "acceptanceCriteria": [
+        "Create player home view HTML with x-show=\"route === 'player-home' && userRole === 'player'\"",
+        "Balance hero section at top: large balance number (styled like Account hero in iOS — 32pt+ bold), color-coded green (positive = bookie owes you) or red (negative = you owe). Context text below: 'Amount owed to you' / 'Amount you owe' / 'All settled'. Disclaimer text: 'Balances are informational and not processed by Booki.'",
+        "Balance calculation: fetch all ledger_entries for this player_id, sum amounts, then NEGATE for display (internal positive = player owes bookie, display positive = credit owed to player)",
+        "Performance card: Record (W-L-P) in large colored numbers with dots (green wins, red losses, gray pushes), Win Rate percentage, Net Performance (P/L, color-coded), Open Picks count",
+        "Credit utilization bar: shows used/total credit. Available credit = credit_limit - abs(balance) - open_stakes. Color-coded progress bar (teal <50%, gold 50-80%, orange 80-100%, red 100%+). Hidden for standalone users",
+        "Recent Activity section: last 10 ledger entries for this player, showing description, date, amount (player-facing: negated), type badge. Settlement entries show bet context (e.g., 'Won - Lakers ML -150')",
+        "Add async loadPlayerHome() that fetches player's ledger entries, bets (for record calc), and current balance",
+        "Add computed getters: playerBalance, playerRecord (W-L-P from grade_result), playerWinRate, playerPnl, playerOpenPicks, playerCreditUtilization",
+        "Shimmer loading skeleton while data loads",
+        "Load player home data on init and on route navigation"
+      ],
+      "priority": 14,
+      "notes": "Balance convention: internal positive = player owes bookie. For player display, NEGATE the value so positive = credit (green), negative = debt (red). This is critical. Open stakes = sum of stakes for bets with status in ['pending', 'accepted']. Credit utilization = (abs(balance) + open_stakes) / credit_limit * 100. The player's bets and ledger entries are already filtered by player_id in the Supabase query."
+    },
+    {
+      "id": "US-015",
+      "title": "Add player games view with odds browsing and bet selection",
+      "description": "As a player, I need to browse upcoming games with odds and select picks to add to my bet slip, so I can place bets from the web.",
+      "acceptanceCriteria": [
+        "Create player games view HTML with x-show=\"route === 'player-games' && userRole === 'player'\"",
+        "Fetch events from Supabase: events where bookie_id IS NULL, status NOT IN ('final', 'canceled'), start_time > now, ordered by start_time ascending",
+        "Also fetch markets for all displayed events: markets where bookie_id IS NULL or event_id in displayed event IDs",
+        "Sport filter tabs at top: horizontal scrollable chips for All + each sport with events. Active chip styled with accent background",
+        "Search input to filter by team name (home_team or away_team)",
+        "Group events by sport + league with section headers showing 'SPREAD / MONEY / TOTAL' column labels",
+        "Each game row shows: start time, away team name + 3 odds buttons (spread, moneyline, total/over-under), home team name + 3 odds buttons. Modeled after iOS CompactGameRow layout",
+        "Odds buttons show the odds value (e.g., '-110', '+150') with spread/total line where applicable (e.g., '-3.5 -110'). Styled as small tappable pills with border",
+        "Clicking an odds button toggles that selection into the bet slip (adds or removes). Selected buttons have accent background. Store selections in a betSlipSelections array",
+        "Each selection stores: event_id, market_id, side (human-readable team name + market), side_indicator ('a' or 'b'), odds (number), event_name (away @ home), market_type",
+        "Floating bet slip indicator at bottom of page (fixed position): shows '[N] Selection(s)' in accent bar when selections exist. Clicking opens bet slip modal",
+        "Lock detection: if event start_time has passed, show odds as locked (muted, non-clickable) with lock icon",
+        "Empty state when no upcoming games: 'No upcoming games' with description",
+        "Shimmer skeleton while events load",
+        "Add state: playerEvents (array), playerMarkets (array), betSlipSelections (array), isLoadingPlayerEvents (boolean), playerEventSearch (string), playerSportFilter (string)"
+      ],
+      "priority": 15,
+      "notes": "Markets table: market_type (h2h/spreads/totals/outright), home_odds, away_odds, spread_line, home_spread_odds, away_spread_odds, over_line, over_odds, under_odds. For the game row: Spread column uses home_spread_odds/away_spread_odds with spread_line. Money column uses home_odds/away_odds (h2h market). Total column uses over_odds/under_odds with over_line. side_indicator 'a' = away/over, 'b' = home/under for the submit_bets edge function. Group markets by event_id for O(1) lookup. Market IDs must be stored in selections for submission."
+    },
+    {
+      "id": "US-016",
+      "title": "Add bet slip modal with singles and multi-pick submission",
+      "description": "As a player, I need a bet slip where I can enter stakes for my selections and submit picks, so I can place singles and multi-pick bets from the web.",
+      "acceptanceCriteria": [
+        "Create bet slip as a modal overlay (full-height slide-up on mobile, right-side panel or centered modal on desktop)",
+        "Modal header: 'Pick Entry' title, Close button, Clear All button (danger text)",
+        "Mode toggle: Singles / Multi tabs (capsule segmented control). Multi disabled when fewer than 2 selections. Multi disabled if bookie doesn't allow futures parlays and selections contain futures",
+        "Available credit display: show '$X,XXX max' (available_credit = credit_limit - abs(balance) - open_stakes)",
+        "Selection cards: each shows event name, side/pick description, odds. X button to remove. In singles mode, each card has a Stake input field",
+        "Stake input fields: number inputs with $ prefix, step 0.01. On change, calculate To Win amount displayed next to it",
+        "To Win calculation: positive odds → stake * (odds/100), negative odds → stake * (100/abs(odds))",
+        "Quick stake buttons: +$1, +$5, +$25 — adds to current active stake field",
+        "Multi-pick mode: single stake input at bottom, combined odds displayed (multiply decimal odds of all legs), combined To Win",
+        "Combined odds calculation: for each leg convert American to decimal (positive: 1 + odds/100, negative: 1 + 100/abs(odds)), multiply all, convert back to American",
+        "Validation: stake > 0, total stakes don't exceed available credit, no locked events. Show warning text when validation fails. Disable Place Pick button when invalid",
+        "Place Pick button: full-width accent button at bottom. Text: 'Place Pick' (single) / 'Place Picks' (multiple singles) / 'Place Multi-Pick' (parlay). Dimmed when disabled",
+        "Singles submission: calls submit_bets edge function with { player_id, bookie_id, bets: [{event_id, market_id, side, odds, stake}], idempotency_key }",
+        "Multi-pick submission: calls submit_parlay edge function with { player_id, bookie_id, stake, combined_odds, legs: [{event_id, market_id, side, side_indicator, odds}], idempotency_key }",
+        "Loading state during submission: overlay with spinner, disable all inputs",
+        "Success state: checkmark animation with randomized confirmation message (pick from array of 10+ fun messages like 'Locked in!', 'Let it ride!', 'Good luck!'). Done button to dismiss",
+        "Error handling: toast error message, keep bet slip open so user can retry",
+        "After successful submission: clear selections, close bet slip, reload player data (balance, open picks)",
+        "Add state: showBetSlip (boolean), betSlipMode ('singles' | 'multi'), betSlipStakes (object keyed by selection index), isSubmittingBets (boolean), betSlipSuccess (boolean)",
+        "Compliance disclaimer at bottom of bet slip: 'Picks are not processed as real-money wagers by Booki.'",
+        "Add CSS for bet slip modal: .bet-slip-overlay, .bet-slip-modal, .bet-slip-header, .bet-slip-card, .odds-pill, .odds-pill.selected"
+      ],
+      "priority": 16,
+      "notes": "submit_bets expects: { player_id, bookie_id, bets: [{ event_id, market_id, side, odds, stake }], idempotency_key }. submit_parlay expects: { player_id, bookie_id, stake, combined_odds, legs: [{ event_id, market_id, side, side_indicator, odds }], idempotency_key }. The side field should be human-readable (e.g., 'Lakers -3.5'). side_indicator is 'a' (away/over) or 'b' (home/under). Both functions return { success: true, results: [...] } with partial success model for singles. Available credit must be fetched via get_player_balance RPC or calculated from ledger + open bets."
+    },
+    {
+      "id": "US-017",
+      "title": "Add player track view for viewing open and past picks",
+      "description": "As a player, I need to view my open and past picks with performance stats, so I can track my betting history and results.",
+      "acceptanceCriteria": [
+        "Create player track view HTML with x-show=\"route === 'player-track' && userRole === 'player'\"",
+        "Summary card at top: Record (W-L-P), Total Staked, Net Performance (P/L, color-coded green/red). Use stat-tile-like layout",
+        "Filter chips: All (N), Open (N), Won (N), Lost (N), Pushed (N). Counts computed from player's bets. Use existing .chip and .chip.active classes",
+        "Open = status in ['pending', 'accepted', 'readyToGrade', 'graded']. Won = settled + grade_result 'win'. Lost = settled + grade_result 'loss'. Pushed = settled + grade_result 'push'",
+        "Ticket cards for each pick/ticket: group bets by ticket_id (parlays share ticket_id, singles have unique ticket_id). Each card shows: title (e.g., 'Lakers ML -150' for singles, '3-leg Multi-Pick +450' for parlays), status badge, stake, profit/potential return",
+        "For settled singles: show final score (away_score - home_score) if available from the event",
+        "For multi-picks: show colored status dots per leg (teal=win, red=loss, yellow=push, gray=pending/void)",
+        "Cards clickable — navigate to '#/player-ticket/{ticket_id}' (use first bet's ID for singles)",
+        "Fetch player's bets from Supabase: bets where player_id = playerId, ordered by created_at descending",
+        "Also fetch events for bet enrichment (event names, final scores) — batch fetch by event_id",
+        "Add computed getter 'playerTickets' that groups bets by ticket_id into ticket objects with calculated combined odds for parlays",
+        "Add computed getter 'playerTrackStats' for the summary card",
+        "Add computed getter 'filteredPlayerTickets' that filters by selected track filter",
+        "Add state: playerBets (array), playerTrackFilter ('all'), isLoadingPlayerTrack (boolean)",
+        "Empty state: 'No Picks Yet' with description encouraging browsing games",
+        "Pull-to-refresh equivalent: refresh button in header that reloads data"
+      ],
+      "priority": 17,
+      "notes": "Ticket grouping: bets with the same ticket_id are legs of a parlay. Singles have a unique ticket_id (or null — treat null ticket_id as standalone). Combined parlay odds: multiply decimal odds of all legs, convert back to American. Profit calculation: Win → potential_return based on odds. Loss → -stake. Push → 0. For parlays: all legs must be graded to determine ticket result. If any leg is a loss, ticket is a loss. If all are win/push, calculate combined odds excluding pushed legs."
+    },
+    {
+      "id": "US-018",
+      "title": "Add player ticket detail view",
+      "description": "As a player, I need to view the full details of a pick including odds, stake, potential return, and leg details for multi-picks.",
+      "acceptanceCriteria": [
+        "Create player ticket detail view HTML with x-show=\"route === 'player-ticket' && userRole === 'player'\"",
+        "Add route handling for '#/player-ticket/{id}' in parseRoute()",
+        "Back button: 'Back to Track' linking to '#/player-track'",
+        "Hero card: title (side for singles, 'X-leg Multi-Pick' for parlays), status badge (large), event name (away @ home), sport/league, date placed. For singles: show final score if available",
+        "For multi-picks: show each leg as a row with side, odds, event name, league, and grade result badge (won/lost/push/pending). Colored dot indicator per leg",
+        "Financials card: Stake, Odds (formatted American), Potential Return (if open) or Profit + Total Return (if settled). Color-code profit green/red",
+        "Odds format: show American by default (e.g., +150, -110). For parlays show combined odds",
+        "Activity card: show 'Placed' date with 'Pick placed' description. If graded, show graded date and result. Simple timeline with dots and lines (matching existing pick detail pattern)",
+        "Fetch bet(s) by ID or ticket_id, enrich with event data",
+        "Add state: playerTicketDetail (null), playerTicketLegs (array), isLoadingPlayerTicket (boolean)",
+        "Shimmer loading while data loads"
+      ],
+      "priority": 18,
+      "notes": "For singles: fetch single bet by ID. For parlays: fetch all bets with matching ticket_id. Enrich with event data by fetching from events table using event_id. The existing pick detail view (organizer) has similar structure — reuse the card layout patterns but without the grading actions. Player-facing amounts: profit is displayed as-is (positive = player won money, negative = player lost money), no negation needed since these are relative to the player's perspective."
+    },
+    {
+      "id": "US-019",
+      "title": "Add player account view with profile, settings, and activity",
+      "description": "As a player, I need an account page to view my profile, change my password, view transaction history, and manage my account.",
+      "acceptanceCriteria": [
+        "Create player account view HTML with x-show=\"route === 'player-account' && userRole === 'player'\"",
+        "Profile section (card): show Name (read-only), Email (read-only), Organizer name (fetched from bookie record), Member Since date. 'Edit Profile' link that opens inline editing for name (saves to players table display_name or name)",
+        "Change Password section: same as organizer — current password, new password, confirm password. Uses supabase.auth.updateUser(). Reuse existing change password HTML/logic if possible, or duplicate the pattern",
+        "Activity section: 'View Activity' link that shows full transaction history. Filter chips: All, Graded, Adjustments, Settled. Transaction rows show: color indicator (green=win, red=loss, yellow=adjustment, purple=payment), enriched description, date, amount badge (player-facing: negated amounts). Settlement entries show bet context",
+        "Notification preferences: toggle switches for Pick Results (picks_graded), Balance Changes (balance_changes), Game Results (game_results). Same upsert pattern as organizer notification prefs",
+        "About section: links to Website, Terms of Service, Privacy Policy (open in new tabs)",
+        "Log Out button: confirmation, calls supabase.auth.signOut(), redirects to index.html",
+        "Delete Account button (muted danger text, at bottom): two-step confirmation (warning then type 'DELETE'). Calls delete_account edge function. Redirects to login on success",
+        "Add state: playerProfile (object), isLoadingPlayerAccount (boolean), playerActivityFilter ('all'), playerActivity (array)",
+        "Load player account data on route navigation"
+      ],
+      "priority": 19,
+      "notes": "Player name update: write to players table (display_name column) via Supabase. RLS requires using claim_player or similar — check if direct update works with player's auth. If not, the name might need an edge function. Email is read-only on web (email change requires auth confirmation flow which is complex). Activity amounts: NEGATE internal amounts for player display (internal positive = player owes bookie → display as negative/red for player). For transaction descriptions: ledger entries of type 'settlement' with a bet_id can be enriched by looking up the bet's side and grade_result."
+    },
+    {
+      "id": "US-020",
+      "title": "Add persistent balance display in player header",
+      "description": "As a player, I need to see my current balance at all times in the header, so I always know where I stand.",
+      "acceptanceCriteria": [
+        "For player role: add balance display to the mobile header bar and desktop sidebar header area",
+        "Balance shown as large text, color-coded: green (positive = bookie owes player), red (negative = player owes bookie), gray (zero/settled)",
+        "Balance updates when navigating between views (computed from loaded ledger data)",
+        "On desktop sidebar: show balance below the user's name/email in the sidebar header",
+        "On mobile header: show balance on the right side of the top bar (next to hamburger menu)",
+        "Balance uses the player-facing convention: negate internal value (internal positive → display negative, internal negative → display positive)",
+        "Format as currency: '$1,234.56' with appropriate sign",
+        "Add computed getter 'playerDisplayBalance' that returns the negated formatted balance",
+        "Refresh balance when bet slip submission succeeds or when ledger data reloads via realtime"
+      ],
+      "priority": 20,
+      "notes": "The iOS app shows balance in AppHeaderView on every tab. For web, the sidebar or top bar is the equivalent. The balance should be reactive — when realtime subscription fires for ledger_entries changes, the balance updates automatically if the computed getter reads from the ledger data array. Make sure the realtime subscription for players also covers the player's own data, not just the bookie's data."
     }
   ]
 }
