@@ -667,7 +667,7 @@ function dashboardApp() {
             // Sport Performance breakdown + attention tags data
             const { data: allBets } = await this.supabase
                 .from('bets')
-                .select('event_id, stake, odds, status, market, side, player_id, is_parlay, created_at')
+                .select('event_id, stake, odds, status, market, side, player_id, is_parlay, created_at, grade_result')
                 .eq('bookie_id', this.bookie.id);
 
             // Build event → sport lookup
@@ -804,6 +804,54 @@ function dashboardApp() {
         get displayedAttentionAlerts() {
             if (this.attentionExpanded) return this.attentionAlerts;
             return this.attentionAlerts.slice(0, 5);
+        },
+
+        // ── Risk Watchlist ──
+        get riskWatchlist() {
+            if (!this.dashboardMembers || this.dashboardMembers.length === 0) return [];
+            const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            const results = [];
+            for (const m of this.dashboardMembers) {
+                const signals = [];
+                const tags = m.attentionTags || [];
+                const limit = m.credit_limit || 1000;
+                const utilization = Math.abs(m.balance || 0) / limit * 100;
+
+                // Near Limit: credit utilization >= 75%
+                if (utilization >= 75) {
+                    signals.push({ key: 'nearlimit', label: 'Near Limit', color: 'danger' });
+                }
+                // Overdue
+                if (tags.some(t => t.key === 'overdue')) {
+                    signals.push({ key: 'overdue', label: 'Overdue', color: 'danger' });
+                }
+                // Hot Streak: 3+ consecutive wins
+                if (tags.some(t => t.key === 'heater')) {
+                    signals.push({ key: 'hotstreak', label: 'Hot Streak', color: 'warning' });
+                }
+                // Losing Big: net P/L worse than -$500 in last 7 days
+                const recentLedger = this.allLedgerEntries.filter(e =>
+                    e.player_id === m.id &&
+                    e.type !== 'paymentLogged' &&
+                    new Date(e.created_at).getTime() >= sevenDaysAgo
+                );
+                const recentPnl = recentLedger.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+                // Internal positive = player owes bookie (player lost). If > 500, player is losing big
+                if (recentPnl > 500) {
+                    signals.push({ key: 'losingbig', label: 'Losing Big', color: 'danger' });
+                }
+
+                if (signals.length > 0) {
+                    results.push({
+                        ...m,
+                        riskSignals: signals,
+                        creditUtilization: Math.min(100, Math.max(0, utilization)),
+                    });
+                }
+            }
+            // Sort by signal count descending, return top 5
+            results.sort((a, b) => b.riskSignals.length - a.riskSignals.length);
+            return results.slice(0, 5);
         },
 
         get tonightsExposure() {

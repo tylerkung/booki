@@ -233,6 +233,41 @@
                     </div>
                 </div>
 
+                <!-- Risk Watchlist (Pro-gated) -->
+                <template x-if="riskWatchlist.length > 0">
+                    <div class="card pro-gated-section" style="margin-bottom:24px;position:relative;overflow:hidden;" x-show="!isLoadingDashboard" x-cloak>
+                        <div class="card-header">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <span class="card-title">Risk Watchlist</span>
+                            </div>
+                            <span x-show="isPro" class="badge badge-success" style="font-size:10px;">PRO</span>
+                        </div>
+                        <div :class="{ 'pro-blur': !isPro }">
+                            <template x-for="member in riskWatchlist" :key="member.id">
+                                <a :href="'#/members/' + member.id" class="risk-watchlist-row">
+                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                        <span style="font-weight:600;color:var(--text-primary);font-size:14px;" x-text="member.display_name || member.name || 'Unknown'"></span>
+                                        <span style="font-size:13px;font-weight:600;" :style="{ color: (member.balance || 0) >= 0 ? 'var(--success)' : 'var(--danger)' }" x-text="formatCurrency(member.balance || 0)"></span>
+                                    </div>
+                                    <div class="capacity-bar" style="height:4px;margin-bottom:8px;">
+                                        <div class="capacity-fill" :class="{ 'capacity-fill-warning': member.creditUtilization > 80 }"
+                                             :style="{ width: member.creditUtilization + '%' }"></div>
+                                    </div>
+                                    <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                                        <template x-for="signal in member.riskSignals" :key="signal.key">
+                                            <span class="badge" :class="signal.color === 'danger' ? 'badge-danger' : 'badge-warning'" x-text="signal.label"></span>
+                                        </template>
+                                    </div>
+                                </a>
+                            </template>
+                        </div>
+                        <div x-show="!isPro" class="pro-upgrade-overlay">
+                            <a href="#/subscription" class="btn btn-accent">Upgrade to Pro</a>
+                        </div>
+                    </div>
+                </template>
+
                 <!-- Dashboard Members -->
                 <template x-if="dashboardMembers.length > 0">
                     <div class="card" style="margin-bottom:24px;">

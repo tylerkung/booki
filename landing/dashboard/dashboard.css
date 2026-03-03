@@ -1146,6 +1146,20 @@ input, button, select, textarea { font: inherit; }
 .attention-alert-urgent { border-left-color: var(--danger); }
 .attention-alert-warning { border-left-color: var(--warning); }
 
+/* ── Risk Watchlist ── */
+.risk-watchlist-row {
+    display: block;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    background: var(--bg-elevated);
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+}
+.risk-watchlist-row:last-child { margin-bottom: 0; }
+.risk-watchlist-row:hover { background: rgba(255,255,255,0.03); }
+
 /* ── Tonight's Exposure ── */
 .tonight-exposure-card:hover { border-color: var(--accent); transition: border-color 0.2s; }
 .tonight-stats {
