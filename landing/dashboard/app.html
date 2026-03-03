@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon_io/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon_io/favicon-16x16.png">
     <link rel="icon" type="image/x-icon" href="../assets/favicon_io/favicon.ico">
-    <title>Booki Dashboard</title>
+    <title>Booki</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -52,33 +52,52 @@
                 <img src="../assets/logo-booki-blk.svg" alt="Booki">
             </a>
             <ul class="sidebar-nav">
-                <li><a href="#/dashboard" :class="{ active: route === 'dashboard' }" @click="sidebarOpen = false">
+                <!-- Organizer Navigation -->
+                <li x-show="userRole === 'organizer'"><a href="#/dashboard" :class="{ active: route === 'dashboard' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
                     Dashboard
                 </a></li>
-                <li><a href="#/members" :class="{ active: route === 'members' }" @click="sidebarOpen = false">
+                <li x-show="userRole === 'organizer'"><a href="#/members" :class="{ active: route === 'members' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     Members
                 </a></li>
-                <li><a href="#/picks" :class="{ active: route === 'picks' }" @click="sidebarOpen = false">
+                <li x-show="userRole === 'organizer'"><a href="#/picks" :class="{ active: route === 'picks' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     Picks
                 </a></li>
-                <li><a href="#/events" :class="{ active: route === 'events' }" @click="sidebarOpen = false">
+                <li x-show="userRole === 'organizer'"><a href="#/events" :class="{ active: route === 'events' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     Events
                 </a></li>
-                <li><a href="#/settlement" :class="{ active: route === 'settlement' }" @click="sidebarOpen = false">
+                <li x-show="userRole === 'organizer'"><a href="#/settlement" :class="{ active: route === 'settlement' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                     Settlement
                 </a></li>
-                <li><a href="#/subscription" :class="{ active: route === 'subscription' }" @click="sidebarOpen = false">
+                <li x-show="userRole === 'organizer'"><a href="#/subscription" :class="{ active: route === 'subscription' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                     Subscription
                 </a></li>
-                <li><a href="#/settings" :class="{ active: route === 'settings' }" @click="sidebarOpen = false">
+                <li x-show="userRole === 'organizer'"><a href="#/settings" :class="{ active: route === 'settings' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     Settings
+                </a></li>
+
+                <!-- Player Navigation -->
+                <li x-show="userRole === 'player' || userRole === 'standalone'"><a href="#/player-home" :class="{ active: route === 'player-home' }" @click="sidebarOpen = false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    Home
+                </a></li>
+                <li x-show="userRole === 'player' || userRole === 'standalone'"><a href="#/player-games" :class="{ active: route === 'player-games' }" @click="sidebarOpen = false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Games
+                </a></li>
+                <li x-show="userRole === 'player'"><a href="#/player-track" :class="{ active: route === 'player-track' }" @click="sidebarOpen = false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    Track
+                </a></li>
+                <li x-show="userRole === 'player' || userRole === 'standalone'"><a href="#/player-account" :class="{ active: route === 'player-account' }" @click="sidebarOpen = false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Account
                 </a></li>
             </ul>
             <div class="sidebar-bottom">
@@ -1946,6 +1965,68 @@
                         </div>
                         <button class="btn btn-danger" @click="showDeleteStep1 = true">Delete Account</button>
                     </div>
+                </div>
+            </div>
+
+            <!-- ── Player Home View (placeholder) ── -->
+            <div x-show="route === 'player-home' && (userRole === 'player' || userRole === 'standalone')" x-cloak>
+                <div class="page-header">
+                    <h1>Home</h1>
+                    <p x-text="playerRecord ? ('Welcome, ' + (playerRecord.display_name || playerRecord.name || 'Member')) : 'Welcome'"></p>
+                </div>
+                <div class="card" style="padding:32px;text-align:center;">
+                    <div style="font-size:48px;margin-bottom:16px;">&#127968;</div>
+                    <div style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Player Dashboard</div>
+                    <div style="font-size:14px;color:var(--text-secondary);">Your balance, performance, and activity will appear here.</div>
+                </div>
+            </div>
+
+            <!-- ── Player Games View (placeholder) ── -->
+            <div x-show="route === 'player-games' && (userRole === 'player' || userRole === 'standalone')" x-cloak>
+                <div class="page-header">
+                    <h1>Games</h1>
+                    <p>Browse upcoming games and place picks</p>
+                </div>
+                <div class="card" style="padding:32px;text-align:center;">
+                    <div style="font-size:48px;margin-bottom:16px;">&#127944;</div>
+                    <div style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Games Coming Soon</div>
+                    <div style="font-size:14px;color:var(--text-secondary);">Browse events and place picks from the web.</div>
+                </div>
+            </div>
+
+            <!-- ── Player Track View (placeholder) ── -->
+            <div x-show="route === 'player-track' && userRole === 'player'" x-cloak>
+                <div class="page-header">
+                    <h1>Track</h1>
+                    <p>View your open and past picks</p>
+                </div>
+                <div class="card" style="padding:32px;text-align:center;">
+                    <div style="font-size:48px;margin-bottom:16px;">&#128200;</div>
+                    <div style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Pick Tracking</div>
+                    <div style="font-size:14px;color:var(--text-secondary);">Your picks and performance will appear here.</div>
+                </div>
+            </div>
+
+            <!-- ── Player Ticket Detail View (placeholder) ── -->
+            <div x-show="route === 'player-ticket' && userRole === 'player'" x-cloak>
+                <div class="page-header">
+                    <h1>Pick Detail</h1>
+                </div>
+                <div class="card" style="padding:32px;text-align:center;">
+                    <div style="font-size:14px;color:var(--text-secondary);">Pick details will appear here.</div>
+                </div>
+            </div>
+
+            <!-- ── Player Account View (placeholder) ── -->
+            <div x-show="route === 'player-account' && (userRole === 'player' || userRole === 'standalone')" x-cloak>
+                <div class="page-header">
+                    <h1>Account</h1>
+                    <p>Manage your profile and settings</p>
+                </div>
+                <div class="card" style="padding:32px;text-align:center;">
+                    <div style="font-size:48px;margin-bottom:16px;">&#128100;</div>
+                    <div style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Account Settings</div>
+                    <div style="font-size:14px;color:var(--text-secondary);">Profile, settings, and activity management coming soon.</div>
                 </div>
             </div>
 

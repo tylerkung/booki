@@ -8,10 +8,10 @@
     <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon_io/favicon-16x16.png">
     <link rel="icon" type="image/x-icon" href="../assets/favicon_io/favicon.ico">
     <title>Booki Dashboard — Log In</title>
-    <meta name="description" content="Log in to your Booki dashboard to manage members, track picks, and view analytics.">
+    <meta name="description" content="Log in to your Booki dashboard to manage your book or track your picks.">
 
     <meta property="og:title" content="Booki Dashboard — Log In">
-    <meta property="og:description" content="Manage your Booki organization from the web.">
+    <meta property="og:description" content="Manage your book or track your picks from the web.">
     <meta property="og:image" content="https://bookisports.com/assets/bookie-og.jpg">
     <meta name="twitter:card" content="summary_large_image">
 
@@ -29,7 +29,7 @@
                 <img src="../assets/logo-booki-blk.svg" alt="Booki" />
             </a>
             <h1 class="auth-title">Welcome back</h1>
-            <p class="auth-subtitle">Log in to your organizer dashboard</p>
+            <p class="auth-subtitle">Log in to your dashboard</p>
 
             <!-- Login Form -->
             <div id="login-form">
@@ -110,16 +110,12 @@
             return true;
         }
 
-        // Check if already logged in AND is an organizer
+        // Check if already logged in — redirect to app for any authenticated user
         async function checkSession() {
             if (!initSupabase()) return;
             const { data: { session } } = await sbClient.auth.getSession();
             if (session) {
-                if (await isOrganizer(session.user.id)) {
-                    window.location.href = 'app.html';
-                } else {
-                    await sbClient.auth.signOut();
-                }
+                window.location.href = 'app.html';
             }
         }
 
@@ -159,7 +155,7 @@
             document.getElementById('signup-form').style.display = 'none';
             document.getElementById('forgot-form').style.display = 'none';
             document.querySelector('.auth-title').textContent = 'Welcome back';
-            document.querySelector('.auth-subtitle').textContent = 'Log in to your organizer dashboard';
+            document.querySelector('.auth-subtitle').textContent = 'Log in to your dashboard';
         }
 
         function showSignUp() {
@@ -205,16 +201,7 @@
                 return;
             }
 
-            // Check if user is an organizer (not just a player with spurious bookie record)
-            if (!await isOrganizer(data.user.id)) {
-                await sbClient.auth.signOut();
-                errorEl.textContent = 'This account is not an organizer. The dashboard is for organizers only.';
-                errorEl.style.display = 'block';
-                btn.disabled = false;
-                btn.textContent = 'Log In';
-                return;
-            }
-
+            // Redirect to app — role detection happens in app.html
             window.location.href = 'app.html';
         }
 

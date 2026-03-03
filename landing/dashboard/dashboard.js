@@ -13,6 +13,13 @@ function dashboardApp() {
         session: null,
         bookie: null,
 
+        // ── Dual-Role ──
+        userRole: 'organizer', // 'organizer' | 'player' | 'standalone'
+        playerId: null,
+        playerBookieId: null,
+        playerRecord: null,
+        playerBookie: null,
+
         // ── Route ──
         route: 'dashboard',
         sidebarOpen: false,
@@ -333,13 +340,8 @@ function dashboardApp() {
                 if (!session) window.location.href = 'index.html';
             });
 
-            // Load bookie — sign out non-organizers to prevent redirect loop
-            await this.loadBookie();
-            if (!this.bookie) {
-                await this.supabase.auth.signOut();
-                window.location.href = 'index.html';
-                return;
-            }
+            // Detect user role
+            await this.detectUserRole();
 
             // Subscribe to realtime updates
             this.subscribeToRealtime();
@@ -353,49 +355,65 @@ function dashboardApp() {
             if (params.get('success') === 'true') this.subscriptionSuccess = true;
             if (params.get('canceled') === 'true') this.subscriptionCanceled = true;
 
-            // Load data
-            await this.loadPlayers();
-            await this.loadDashboard();
+            // Load data based on role
+            if (this.userRole === 'organizer') {
+                await this.loadPlayers();
+                await this.loadDashboard();
+            }
         },
 
         // ── Routing ──
         parseRoute() {
             const prevRoute = this.route;
             const hash = window.location.hash.replace(/\?.*$/, '');
-            const path = hash.replace('#/', '') || 'dashboard';
+            const path = hash.replace('#/', '') || (this.userRole === 'organizer' ? 'dashboard' : 'player-home');
 
-            // Check parameterized routes
+            // Organizer parameterized routes
             const memberMatch = path.match(/^members\/(.+)$/);
             const pickMatch = path.match(/^picks\/(.+)$/);
             const eventMatch = path.match(/^events\/(.+)$/);
 
+            // Player parameterized routes
+            const playerTicketMatch = path.match(/^player-ticket\/(.+)$/);
+
+            // Organizer routes
+            const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings'];
+            // Player routes
+            const playerRoutes = ['player-home', 'player-games', 'player-track', 'player-account'];
+
             if (eventMatch) {
                 this.route = 'event-detail';
                 this.selectedEventId = eventMatch[1];
-            } else if (memberMatch) {
+            } else if (memberMatch && this.userRole === 'organizer') {
                 this.route = 'member-detail';
                 this.selectedPlayerId = memberMatch[1];
-            } else if (pickMatch) {
+            } else if (pickMatch && this.userRole === 'organizer') {
                 // Set back route based on where we came from
                 if (prevRoute === 'member-detail' && this.selectedPlayerId) {
                     const name = this.memberDetail?.display_name || this.memberDetail?.name || this.playerMap[this.selectedPlayerId]?.name || 'Member';
                     this.pickBackRoute = '#/members/' + this.selectedPlayerId;
                     this.pickBackLabel = 'Back to ' + name;
                 } else if (prevRoute !== 'pick-detail') {
-                    // Don't reset if we're already on pick-detail (e.g. navigating between picks)
                     this.pickBackRoute = '#/picks';
                     this.pickBackLabel = 'Back to Picks';
                 }
                 this.route = 'pick-detail';
                 this.selectedBetId = pickMatch[1];
+            } else if (playerTicketMatch && (this.userRole === 'player' || this.userRole === 'standalone')) {
+                this.route = 'player-ticket';
+                this.selectedBetId = playerTicketMatch[1];
             } else {
-                const routes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings'];
-                this.route = routes.includes(path) ? path : 'dashboard';
+                // Validate route against user role
+                if (this.userRole === 'organizer') {
+                    this.route = organizerRoutes.includes(path) ? path : 'dashboard';
+                } else {
+                    this.route = playerRoutes.includes(path) ? path : 'player-home';
+                }
                 this.selectedPlayerId = null;
                 this.selectedBetId = null;
             }
 
-            // Load route-specific data
+            // Load route-specific data (organizer)
             if (this.route === 'picks') this.loadPicks();
             if (this.route === 'pick-detail') this.loadPickDetail();
             if (this.route === 'members') this.loadInvites();
@@ -476,6 +494,77 @@ function dashboardApp() {
                 clearTimeout(this._realtimeDebounceTimers[key]);
             }
             this._realtimeDebounceTimers = {};
+        },
+
+        // ── Role Detection ──
+        async detectUserRole() {
+            const userId = this.session.user.id;
+
+            // 1. Check for bookie record
+            const { data: bookieData } = await this.supabase
+                .from('bookies')
+                .select('*')
+                .eq('auth_user_id', userId)
+                .limit(1);
+
+            // 2. Check for player record
+            const { data: playerData } = await this.supabase
+                .from('players')
+                .select('*')
+                .eq('auth_user_id', userId)
+                .limit(1);
+
+            const hasBookie = bookieData && bookieData.length > 0;
+            const hasPlayer = playerData && playerData.length > 0;
+
+            // Guard against spurious bookie records: if user is a player
+            // under a DIFFERENT bookie, they're not a real organizer
+            let isRealOrganizer = hasBookie;
+            if (hasBookie && hasPlayer) {
+                if (playerData[0].bookie_id !== bookieData[0].id) {
+                    isRealOrganizer = false;
+                }
+            }
+
+            if (isRealOrganizer) {
+                // Route as organizer
+                this.userRole = 'organizer';
+                this.bookie = bookieData[0];
+                this.isPro = this.bookie.tier === 'pro';
+            } else if (hasPlayer && playerData[0].bookie_id) {
+                // Route as player
+                this.userRole = 'player';
+                this.playerRecord = playerData[0];
+                this.playerId = playerData[0].id;
+                this.playerBookieId = playerData[0].bookie_id;
+
+                // Fetch bookie settings for the player's organizer
+                const { data: bookieSettings } = await this.supabase
+                    .from('bookies')
+                    .select('id, name, tier, allow_futures_parlays, manual_bet_acceptance')
+                    .eq('id', playerData[0].bookie_id)
+                    .limit(1);
+
+                if (bookieSettings && bookieSettings.length > 0) {
+                    this.playerBookie = bookieSettings[0];
+                }
+            } else {
+                // Standalone — no player record with bookie, no real organizer record
+                this.userRole = 'standalone';
+            }
+
+            // Default route based on role
+            if (this.userRole === 'player') {
+                const hash = window.location.hash.replace(/\?.*$/, '');
+                if (!hash || hash === '#/' || hash === '#/dashboard') {
+                    window.location.hash = '#/player-home';
+                }
+            } else if (this.userRole === 'standalone') {
+                const hash = window.location.hash.replace(/\?.*$/, '');
+                if (!hash || hash === '#/' || hash === '#/dashboard') {
+                    window.location.hash = '#/player-home';
+                }
+            }
         },
 
         // ── Load Bookie ──
