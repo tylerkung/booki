@@ -468,7 +468,7 @@
                     </template>
                     <table class="data-table" x-show="recentActivity.length > 0">
                         <thead>
-                            <tr><th>Date</th><th>Type</th><th>Description</th><th>Member</th><th>Amount</th></tr>
+                            <tr><th>Date</th><th>Type</th><th>Description</th><th>Member</th><th>Amount</th><th x-show="bookie && bookie.manual_bet_acceptance"></th></tr>
                         </thead>
                         <tbody>
                             <template x-for="entry in recentActivity" :key="entry.id">
@@ -478,10 +478,28 @@
                                     <td data-label="Description" style="color:var(--text-secondary);font-size:13px;" x-text="entry.description || '—'"></td>
                                     <td class="name" data-label="Member" x-text="getPlayerName(entry.player_id)"></td>
                                     <td data-label="Amount" x-text="formatCurrency(entry.amount)"></td>
+                                    <td x-show="bookie && bookie.manual_bet_acceptance" data-label="Actions">
+                                        <div x-show="entry._source === 'bet' && entry._betStatus === 'pending'" style="display:flex;gap:6px;">
+                                            <button class="btn-grade btn-grade-win" style="font-size:11px;padding:3px 10px;" :disabled="acceptingBetId === entry._betId" @click.stop="acceptBet(entry._betId)" x-text="acceptingBetId === entry._betId ? 'Accepting...' : 'Accept'"></button>
+                                            <button class="btn-grade btn-grade-loss" style="font-size:11px;padding:3px 10px;" :disabled="decliningBetId === entry._betId" @click.stop="openDeclineModal(entry._betId)">Decline</button>
+                                        </div>
+                                    </td>
                                 </tr>
                             </template>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Decline Pick Modal -->
+            <div class="modal-overlay" x-show="showDeclineModal" x-cloak @click.self="showDeclineModal = false; declineBetId = null">
+                <div class="modal">
+                    <h3>Decline this pick?</h3>
+                    <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">This will decline the pending pick and notify the member.</p>
+                    <div class="modal-actions">
+                        <button class="btn btn-ghost" @click="showDeclineModal = false; declineBetId = null">Cancel</button>
+                        <button class="btn btn-danger" :disabled="decliningBetId" @click="confirmDeclineBet()" x-text="decliningBetId ? 'Declining...' : 'Decline'"></button>
+                    </div>
                 </div>
             </div>
 
@@ -999,7 +1017,7 @@
                         <div>
                             <table class="data-table">
                                 <thead>
-                                    <tr><th>Date</th><th>Member</th><th>Type</th><th>Pick</th><th>Odds</th><th>Stake</th><th>Status</th></tr>
+                                    <tr><th>Date</th><th>Member</th><th>Type</th><th>Pick</th><th>Odds</th><th>Stake</th><th>Status</th><th x-show="bookie && bookie.manual_bet_acceptance"></th></tr>
                                 </thead>
                                 <tbody>
                                     <template x-for="bet in bets" :key="bet.id">
@@ -1011,6 +1029,12 @@
                                             <td data-label="Odds" x-text="formatOdds(bet.odds)"></td>
                                             <td data-label="Stake" x-text="formatCurrency(bet.stake)"></td>
                                             <td data-label="Status"><span class="badge" :class="statusBadgeClass(bet)" x-text="statusDisplayText(bet)"></span></td>
+                                            <td x-show="bookie && bookie.manual_bet_acceptance" data-label="Actions">
+                                                <div x-show="bet.status === 'pending'" style="display:flex;gap:6px;">
+                                                    <button class="btn-grade btn-grade-win" style="font-size:11px;padding:3px 10px;" :disabled="acceptingBetId === bet.id" @click.stop="acceptBet(bet.id)" x-text="acceptingBetId === bet.id ? 'Accepting...' : 'Accept'"></button>
+                                                    <button class="btn-grade btn-grade-loss" style="font-size:11px;padding:3px 10px;" :disabled="decliningBetId === bet.id" @click.stop="openDeclineModal(bet.id)">Decline</button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     </template>
                                 </tbody>

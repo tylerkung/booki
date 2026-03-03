@@ -295,6 +295,12 @@ function dashboardApp() {
         settlementPayPlayer: null,
         isSettlementPaying: false,
 
+        // ── Accept/Decline Picks ──
+        acceptingBetId: null,
+        decliningBetId: null,
+        showDeclineModal: false,
+        declineBetId: null,
+
         // ── Toasts ──
         toasts: [],
 
@@ -610,6 +616,8 @@ function dashboardApp() {
                 player_id: b.player_id,
                 amount: b.stake,
                 _source: 'bet',
+                _betId: b.id,
+                _betStatus: b.status,
             }));
 
             const merged = [...ledgerItems, ...betItems]
@@ -1318,6 +1326,62 @@ function dashboardApp() {
             URL.revokeObjectURL(url);
 
             this.toast('Settlement report exported', 'success');
+        },
+
+        // ── Accept/Decline Picks ──
+        async acceptBet(betId) {
+            if (this.acceptingBetId) return;
+            this.acceptingBetId = betId;
+
+            try {
+                const response = await this.callEdgeFunction('accept_bet', {
+                    bet_id: betId,
+                    idempotency_key: crypto.randomUUID(),
+                });
+
+                if (response.error) {
+                    this.toast(response.error || 'Failed to accept pick', 'error');
+                } else {
+                    this.toast('Pick accepted', 'success');
+                    await this.loadDashboard();
+                    await this.loadPicks();
+                }
+            } catch (e) {
+                this.toast(e.message || 'Failed to accept pick', 'error');
+            }
+
+            this.acceptingBetId = null;
+        },
+
+        openDeclineModal(betId) {
+            this.declineBetId = betId;
+            this.showDeclineModal = true;
+        },
+
+        async confirmDeclineBet() {
+            if (!this.declineBetId || this.decliningBetId) return;
+            this.decliningBetId = this.declineBetId;
+
+            try {
+                const response = await this.callEdgeFunction('decline_bet', {
+                    bet_id: this.declineBetId,
+                    idempotency_key: crypto.randomUUID(),
+                });
+
+                if (response.error) {
+                    this.toast(response.error || 'Failed to decline pick', 'error');
+                } else {
+                    this.toast('Pick declined', 'success');
+                    await this.loadDashboard();
+                    await this.loadPicks();
+                }
+            } catch (e) {
+                this.toast(e.message || 'Failed to decline pick', 'error');
+            }
+
+            this.decliningBetId = null;
+            this.showDeclineModal = false;
+            this.declineBetId = null;
         },
 
         // ── Event Detail ──
