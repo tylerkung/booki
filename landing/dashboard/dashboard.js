@@ -338,6 +338,24 @@ function dashboardApp() {
         playerTicketLegs: [],
         isLoadingPlayerTicket: false,
 
+        // ── Player Account ──
+        isLoadingPlayerAccount: false,
+        playerActivityFilter: 'all',
+        playerActivity: [],
+        playerAccountNotifPrefs: { picks_graded: true, balance_changes: true, game_results: true },
+        isLoadingPlayerNotifPrefs: false,
+        isEditingPlayerName: false,
+        editPlayerNameValue: '',
+        playerCurrentPassword: '',
+        playerNewPassword: '',
+        playerConfirmPassword: '',
+        isChangingPlayerPassword: false,
+        playerPasswordError: '',
+        showPlayerDeleteStep1: false,
+        showPlayerDeleteStep2: false,
+        playerDeleteConfirmText: '',
+        isDeletingPlayerAccount: false,
+
         // ── Bet Slip ──
         betSlipMode: 'singles', // 'singles' | 'multi'
         betSlipStakes: {},
@@ -463,6 +481,7 @@ function dashboardApp() {
             if (this.route === 'player-games') this.loadPlayerGames();
             if (this.route === 'player-track') this.loadPlayerTrack();
             if (this.route === 'player-ticket') this.loadPlayerTicketDetail();
+            if (this.route === 'player-account') this.loadPlayerAccount();
         },
 
         // ── Auth ──
@@ -1037,6 +1056,188 @@ function dashboardApp() {
             };
             this.playerTicketLegs = legs;
             this.isLoadingPlayerTicket = false;
+        },
+
+        // ── Player Account ──
+        async loadPlayerAccount() {
+            this.isLoadingPlayerAccount = true;
+            this.playerPasswordError = '';
+            this.playerCurrentPassword = '';
+            this.playerNewPassword = '';
+            this.playerConfirmPassword = '';
+
+            // Ensure player data is loaded
+            if (this.playerBets.length === 0 && this.playerLedgerEntries.length === 0 && !this.isLoadingPlayerHome) {
+                await this.loadPlayerHome();
+            }
+
+            // Load full activity (all ledger entries)
+            this.playerActivity = this.playerLedgerEntries;
+
+            // Load notification preferences
+            await this.loadPlayerNotifPrefs();
+
+            this.isLoadingPlayerAccount = false;
+        },
+
+        get filteredPlayerActivity() {
+            if (this.playerActivityFilter === 'all') return this.playerActivity;
+            if (this.playerActivityFilter === 'graded') return this.playerActivity.filter(e => e.type === 'settlement');
+            if (this.playerActivityFilter === 'adjustments') return this.playerActivity.filter(e => e.type === 'adjustment');
+            if (this.playerActivityFilter === 'settled') return this.playerActivity.filter(e => e.type === 'paymentLogged');
+            return this.playerActivity;
+        },
+
+        get playerMemberSince() {
+            if (!this.playerRecord?.created_at) return '';
+            return new Date(this.playerRecord.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        },
+
+        async loadPlayerNotifPrefs() {
+            if (!this.session?.user?.id) return;
+            this.isLoadingPlayerNotifPrefs = true;
+            const { data } = await this.supabase
+                .from('notification_preferences')
+                .select('picks_graded, balance_changes, game_results')
+                .eq('user_id', this.session.user.id)
+                .maybeSingle();
+            if (data) {
+                this.playerAccountNotifPrefs = {
+                    picks_graded: data.picks_graded ?? true,
+                    balance_changes: data.balance_changes ?? true,
+                    game_results: data.game_results ?? true,
+                };
+            }
+            this.isLoadingPlayerNotifPrefs = false;
+        },
+
+        async togglePlayerNotifPref(field) {
+            if (!this.session?.user?.id) return;
+            this.playerAccountNotifPrefs[field] = !this.playerAccountNotifPrefs[field];
+            const { error } = await this.supabase
+                .from('notification_preferences')
+                .upsert({ user_id: this.session.user.id, [field]: this.playerAccountNotifPrefs[field] }, { onConflict: 'user_id' });
+            if (error) {
+                this.playerAccountNotifPrefs[field] = !this.playerAccountNotifPrefs[field];
+                this.toast('Failed to update preference', 'error');
+            } else {
+                this.toast('Preference updated', 'success');
+            }
+        },
+
+        startEditingPlayerName() {
+            this.editPlayerNameValue = this.playerRecord?.display_name || this.playerRecord?.name || '';
+            this.isEditingPlayerName = true;
+            this.$nextTick(() => {
+                const el = document.getElementById('edit-player-name-input');
+                if (el) { el.focus(); el.select(); }
+            });
+        },
+
+        async savePlayerName() {
+            const newName = this.editPlayerNameValue.trim();
+            if (!newName) {
+                this.isEditingPlayerName = false;
+                return;
+            }
+            const oldName = this.playerRecord?.display_name || this.playerRecord?.name;
+            if (newName === oldName) {
+                this.isEditingPlayerName = false;
+                return;
+            }
+
+            // Use claim_player-style approach — direct update may be blocked by RLS
+            const { error } = await this.supabase
+                .from('players')
+                .update({ display_name: newName })
+                .eq('id', this.playerId);
+
+            if (error) {
+                // Fall back: try name column
+                const { error: err2 } = await this.supabase
+                    .from('players')
+                    .update({ name: newName })
+                    .eq('id', this.playerId);
+                if (err2) {
+                    this.toast('Failed to update name', 'error');
+                    this.isEditingPlayerName = false;
+                    return;
+                }
+                this.playerRecord.name = newName;
+            } else {
+                this.playerRecord.display_name = newName;
+            }
+            this.toast('Name updated', 'success');
+            this.isEditingPlayerName = false;
+        },
+
+        async changePlayerPassword() {
+            this.playerPasswordError = '';
+
+            if (!this.playerCurrentPassword) {
+                this.playerPasswordError = 'Current password is required';
+                return;
+            }
+            if (this.playerNewPassword.length < 6) {
+                this.playerPasswordError = 'New password must be at least 6 characters';
+                return;
+            }
+            if (this.playerNewPassword !== this.playerConfirmPassword) {
+                this.playerPasswordError = 'Passwords do not match';
+                return;
+            }
+
+            this.isChangingPlayerPassword = true;
+
+            const { error: signInError } = await this.supabase.auth.signInWithPassword({
+                email: this.session.user.email,
+                password: this.playerCurrentPassword,
+            });
+
+            if (signInError) {
+                this.playerPasswordError = 'Current password is incorrect';
+                this.isChangingPlayerPassword = false;
+                return;
+            }
+
+            const { error } = await this.supabase.auth.updateUser({
+                password: this.playerNewPassword,
+            });
+
+            if (error) {
+                this.playerPasswordError = error.message || 'Failed to update password';
+            } else {
+                this.toast('Password updated', 'success');
+                this.playerCurrentPassword = '';
+                this.playerNewPassword = '';
+                this.playerConfirmPassword = '';
+            }
+
+            this.isChangingPlayerPassword = false;
+        },
+
+        async deletePlayerAccount() {
+            if (this.playerDeleteConfirmText !== 'DELETE') return;
+            this.isDeletingPlayerAccount = true;
+
+            try {
+                const response = await this.callEdgeFunction('delete_account', {
+                    idempotency_key: crypto.randomUUID(),
+                });
+
+                if (response.error) {
+                    this.toast(response.error, 'error');
+                } else {
+                    this.toast('Account deleted', 'success');
+                    this.showPlayerDeleteStep2 = false;
+                    await this.supabase.auth.signOut();
+                    window.location.href = 'index.html';
+                }
+            } catch (e) {
+                this.toast(e.message || 'Failed to delete account', 'error');
+            }
+
+            this.isDeletingPlayerAccount = false;
         },
 
         // ── Player Games ──

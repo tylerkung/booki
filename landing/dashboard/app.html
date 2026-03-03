@@ -2713,17 +2713,234 @@
                 </template>
             </div>
 
-            <!-- ── Player Account View (placeholder) ── -->
+            <!-- ── Player Account View ── -->
             <div x-show="route === 'player-account' && (userRole === 'player' || userRole === 'standalone')" x-cloak>
                 <div class="page-header">
                     <h1>Account</h1>
                     <p>Manage your profile and settings</p>
                 </div>
-                <div class="card" style="padding:32px;text-align:center;">
-                    <div style="font-size:48px;margin-bottom:16px;">&#128100;</div>
-                    <div style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Account Settings</div>
-                    <div style="font-size:14px;color:var(--text-secondary);">Profile, settings, and activity management coming soon.</div>
-                </div>
+
+                <!-- Shimmer Loading -->
+                <template x-if="isLoadingPlayerAccount">
+                    <div>
+                        <div class="card" style="margin-bottom:24px;"><div class="shimmer" style="height:120px;border-radius:var(--radius-sm);"></div></div>
+                        <div class="card" style="margin-bottom:24px;"><div class="shimmer" style="height:160px;border-radius:var(--radius-sm);"></div></div>
+                        <div class="card" style="margin-bottom:24px;"><div class="shimmer" style="height:100px;border-radius:var(--radius-sm);"></div></div>
+                    </div>
+                </template>
+
+                <template x-if="!isLoadingPlayerAccount">
+                    <div>
+                        <!-- Profile Section -->
+                        <div class="card" style="margin-bottom:24px;">
+                            <div class="card-header">
+                                <span class="card-title" style="display:flex;align-items:center;gap:8px;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    Profile
+                                </span>
+                            </div>
+
+                            <!-- Name (editable) -->
+                            <div class="form-group">
+                                <label>Name</label>
+                                <template x-if="!isEditingPlayerName">
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <span style="color:var(--text-primary);font-size:14px;" x-text="playerRecord?.display_name || playerRecord?.name || '—'"></span>
+                                        <button class="btn btn-ghost" style="font-size:12px;padding:2px 8px;" @click="startEditingPlayerName()">Edit</button>
+                                    </div>
+                                </template>
+                                <template x-if="isEditingPlayerName">
+                                    <div style="display:flex;gap:8px;">
+                                        <input type="text" id="edit-player-name-input" x-model="editPlayerNameValue"
+                                               @keydown.enter="savePlayerName()" @keydown.escape="isEditingPlayerName = false"
+                                               style="flex:1;">
+                                        <button class="btn btn-accent" style="font-size:12px;padding:6px 12px;" @click="savePlayerName()">Save</button>
+                                        <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;" @click="isEditingPlayerName = false">Cancel</button>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- Email (read-only) -->
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" :value="session?.user?.email || ''" disabled
+                                       style="opacity:0.6;cursor:not-allowed;">
+                            </div>
+
+                            <!-- Organizer (read-only, only for players) -->
+                            <template x-if="userRole === 'player' && playerBookie">
+                                <div class="form-group">
+                                    <label>Organizer</label>
+                                    <span style="color:var(--text-primary);font-size:14px;" x-text="playerBookie.name || '—'"></span>
+                                </div>
+                            </template>
+
+                            <!-- Member Since -->
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>Member Since</label>
+                                <span style="color:var(--text-primary);font-size:14px;" x-text="playerMemberSince || '—'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Change Password Section -->
+                        <div class="card" style="margin-bottom:24px;">
+                            <div class="card-header">
+                                <span class="card-title" style="display:flex;align-items:center;gap:8px;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    Change Password
+                                </span>
+                            </div>
+
+                            <template x-if="playerPasswordError">
+                                <div class="form-error" x-text="playerPasswordError"></div>
+                            </template>
+
+                            <div class="form-group">
+                                <label>Current Password</label>
+                                <input type="password" x-model="playerCurrentPassword" placeholder="Enter current password">
+                            </div>
+                            <div class="form-group">
+                                <label>New Password</label>
+                                <input type="password" x-model="playerNewPassword" placeholder="Minimum 6 characters">
+                            </div>
+                            <div class="form-group">
+                                <label>Confirm New Password</label>
+                                <input type="password" x-model="playerConfirmPassword" placeholder="Re-enter new password"
+                                       @keydown.enter="changePlayerPassword()">
+                            </div>
+                            <button class="btn btn-accent" @click="changePlayerPassword()" :disabled="isChangingPlayerPassword">
+                                <span x-text="isChangingPlayerPassword ? 'Updating...' : 'Change Password'"></span>
+                            </button>
+                        </div>
+
+                        <!-- Activity Section -->
+                        <div class="card" style="margin-bottom:24px;">
+                            <div class="card-header" style="margin-bottom:12px;">
+                                <span class="card-title" style="display:flex;align-items:center;gap:8px;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                    Activity
+                                </span>
+                            </div>
+
+                            <!-- Filter Chips -->
+                            <div class="filter-bar" style="margin-bottom:16px;">
+                                <button class="chip" :class="{ active: playerActivityFilter === 'all' }" @click="playerActivityFilter = 'all'">All</button>
+                                <button class="chip" :class="{ active: playerActivityFilter === 'graded' }" @click="playerActivityFilter = 'graded'">Graded</button>
+                                <button class="chip" :class="{ active: playerActivityFilter === 'adjustments' }" @click="playerActivityFilter = 'adjustments'">Adjustments</button>
+                                <button class="chip" :class="{ active: playerActivityFilter === 'settled' }" @click="playerActivityFilter = 'settled'">Settled</button>
+                            </div>
+
+                            <template x-if="filteredPlayerActivity.length === 0">
+                                <div class="empty-state">
+                                    <div class="empty-state-title">No activity</div>
+                                    <div class="empty-state-desc">Transactions matching this filter will appear here.</div>
+                                </div>
+                            </template>
+
+                            <div class="player-activity-list">
+                                <template x-for="entry in filteredPlayerActivity" :key="entry.id">
+                                    <div class="player-activity-row">
+                                        <div class="player-activity-indicator" :style="{ background: playerActivityTypeColor(entry) }"></div>
+                                        <div class="player-activity-content">
+                                            <div class="player-activity-desc" x-text="entry.description || playerActivityTypeBadge(entry)"></div>
+                                            <div class="player-activity-date" x-text="formatDate(entry.created_at)"></div>
+                                        </div>
+                                        <div class="player-activity-amount">
+                                            <span class="badge"
+                                                  :class="(-entry.amount || 0) >= 0 ? 'badge-success' : 'badge-danger'"
+                                                  x-text="formatCurrency(-entry.amount || 0)"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Notification Preferences -->
+                        <div class="card" style="margin-bottom:24px;">
+                            <div class="card-header">
+                                <span class="card-title" style="display:flex;align-items:center;gap:8px;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                    Notifications
+                                </span>
+                            </div>
+
+                            <template x-if="isLoadingPlayerNotifPrefs">
+                                <div style="padding:12px 0;color:var(--text-secondary);font-size:13px;">Loading preferences...</div>
+                            </template>
+                            <template x-if="!isLoadingPlayerNotifPrefs">
+                                <div>
+                                    <div class="toggle-row">
+                                        <div class="toggle-info">
+                                            <span class="toggle-label">Pick Results</span>
+                                            <span class="toggle-desc">When your picks are graded and settled</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" :checked="playerAccountNotifPrefs.picks_graded" @change="togglePlayerNotifPref('picks_graded')">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="toggle-row">
+                                        <div class="toggle-info">
+                                            <span class="toggle-label">Balance Changes</span>
+                                            <span class="toggle-desc">When your balance is adjusted or settled</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" :checked="playerAccountNotifPrefs.balance_changes" @change="togglePlayerNotifPref('balance_changes')">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="toggle-row">
+                                        <div class="toggle-info">
+                                            <span class="toggle-label">Game Results</span>
+                                            <span class="toggle-desc">When games you have picks on are finalized</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" :checked="playerAccountNotifPrefs.game_results" @change="togglePlayerNotifPref('game_results')">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- About Section -->
+                        <div class="card" style="margin-bottom:24px;">
+                            <div class="card-header"><span class="card-title">About</span></div>
+                            <div style="display:flex;flex-direction:column;gap:12px;">
+                                <a href="https://bookisports.com" target="_blank" rel="noopener noreferrer" class="btn btn-ghost" style="justify-content:flex-start;text-decoration:none;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                    Website
+                                </a>
+                                <a href="https://bookisports.com/terms" target="_blank" rel="noopener noreferrer" class="btn btn-ghost" style="justify-content:flex-start;text-decoration:none;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                    Terms of Service
+                                </a>
+                                <a href="https://bookisports.com/privacy" target="_blank" rel="noopener noreferrer" class="btn btn-ghost" style="justify-content:flex-start;text-decoration:none;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    Privacy Policy
+                                </a>
+                            </div>
+                            <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--divider);font-size:13px;color:var(--text-secondary);">
+                                Booki Sports 2026. All rights reserved.
+                            </div>
+                        </div>
+
+                        <!-- Log Out -->
+                        <div class="card" style="margin-bottom:24px;">
+                            <button class="btn btn-ghost" style="width:100%;justify-content:center;color:var(--text-secondary);" @click="logout()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                Log Out
+                            </button>
+                        </div>
+
+                        <!-- Delete Account -->
+                        <div style="text-align:center;margin-bottom:48px;">
+                            <button class="btn btn-ghost" style="color:var(--text-muted);font-size:13px;" @click="showPlayerDeleteStep1 = true">
+                                Delete Account
+                            </button>
+                        </div>
+                    </div>
+                </template>
             </div>
 
         </main>
@@ -2902,6 +3119,36 @@
                 <button class="btn btn-secondary" @click="showDeleteStep2 = false; deleteConfirmText = '';">Cancel</button>
                 <button class="btn btn-danger" @click="deleteAccount()" :disabled="isDeleting || deleteConfirmText !== 'DELETE'">
                     <span x-text="isDeleting ? 'Deleting...' : 'Delete My Account'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Player Delete Account Step 1 Modal ── -->
+    <div class="modal-overlay" x-show="showPlayerDeleteStep1" x-cloak @click.self="showPlayerDeleteStep1 = false" x-transition>
+        <div class="modal">
+            <h2>Delete Account</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">Are you sure you want to delete your account? This will permanently remove your account and all associated data.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showPlayerDeleteStep1 = false">Cancel</button>
+                <button class="btn btn-danger" @click="showPlayerDeleteStep1 = false; showPlayerDeleteStep2 = true; playerDeleteConfirmText = '';">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Player Delete Account Step 2 Modal ── -->
+    <div class="modal-overlay" x-show="showPlayerDeleteStep2" x-cloak @click.self="showPlayerDeleteStep2 = false" x-transition>
+        <div class="modal">
+            <h2 style="color:var(--danger);">Confirm Deletion</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">This action is irreversible. Type <strong style="color:var(--danger);">DELETE</strong> to confirm.</p>
+            <div class="form-group">
+                <input type="text" x-model="playerDeleteConfirmText" placeholder="Type DELETE to confirm"
+                       @keydown.enter="deletePlayerAccount()" autocomplete="off">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @click="showPlayerDeleteStep2 = false; playerDeleteConfirmText = '';">Cancel</button>
+                <button class="btn btn-danger" @click="deletePlayerAccount()" :disabled="isDeletingPlayerAccount || playerDeleteConfirmText !== 'DELETE'">
+                    <span x-text="isDeletingPlayerAccount ? 'Deleting...' : 'Delete My Account'"></span>
                 </button>
             </div>
         </div>
