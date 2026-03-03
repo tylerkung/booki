@@ -78,7 +78,7 @@
         "Reference: CLAUDE.md says 'Suppressed Partial (X/Y) badge and will lose warning when parlay already has a losing leg — shows normal Lost appearance'"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "This is a cosmetic fix matching iOS behavior documented in CLAUDE.md. The key insight: once any leg loses, the parlay outcome is determined (lost), so showing 'Partial' is misleading."
     },
     {

@@ -801,10 +801,12 @@ function dashboardApp() {
                 const stake = Number(first.stake) || 0;
 
                 // Ticket-level grade result
+                // If ANY leg has lost, the parlay is lost (no need to wait for all legs)
                 let gradeResult = null;
-                if (legs.every(l => l.grade_result)) {
-                    if (legs.some(l => l.grade_result === 'loss')) gradeResult = 'loss';
-                    else if (legs.every(l => l.grade_result === 'push')) gradeResult = 'push';
+                if (legs.some(l => l.grade_result === 'loss')) {
+                    gradeResult = 'loss';
+                } else if (legs.every(l => l.grade_result)) {
+                    if (legs.every(l => l.grade_result === 'push')) gradeResult = 'push';
                     else gradeResult = 'win';
                 }
 
@@ -1007,10 +1009,12 @@ function dashboardApp() {
             }
 
             // Ticket-level grade result
+            // If ANY leg has lost, the parlay is lost (no need to wait for all legs)
             let gradeResult = null;
-            if (legs.every(l => l.grade_result)) {
-                if (legs.some(l => l.grade_result === 'loss')) gradeResult = 'loss';
-                else if (legs.every(l => l.grade_result === 'push')) gradeResult = 'push';
+            if (legs.some(l => l.grade_result === 'loss')) {
+                gradeResult = 'loss';
+            } else if (legs.every(l => l.grade_result)) {
+                if (legs.every(l => l.grade_result === 'push')) gradeResult = 'push';
                 else gradeResult = 'win';
             }
 

@@ -1,3 +1,16 @@
+## 2026-03-03 - US-005
+- Fixed parlay gradeResult logic to show 'Lost' immediately when ANY leg has grade_result='loss'
+- Fixed in playerTickets getter (list view): `if (legs.some(l => l.grade_result === 'loss'))` sets gradeResult='loss' early
+- Fixed in loadPlayerTicketDetail() (detail view): same logic change for the ticket-level gradeResult
+- Fixed organizer pick detail hero card: inline conditional checks pickDetailLegs.some(l => l.grade_result === 'loss') for badge/text
+- Previously: waiting for legs.every(l => l.grade_result) meant partially-graded losing parlays showed as "Open"
+- Files changed: landing/dashboard/dashboard.js, landing/dashboard/app.html, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Parlay gradeResult logic is in 2 places: playerTickets getter and loadPlayerTicketDetail() — both need the same fix
+  - Organizer pick detail uses pickDetailLegs array (loaded async) so inline conditional works better than a computed
+  - The web had no "Partial" badge, just "Open" for partially-graded parlays — the fix makes losing parlays show "Lost" early
+---
+
 ## 2026-03-03 - US-009
 - Removed player-home tab entirely; Games is now the default player landing page
 - Removed Home sidebar nav link from app.html
