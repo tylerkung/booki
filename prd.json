@@ -288,6 +288,7 @@
         "Load player home data on init and on route navigation"
       ],
       "priority": 14,
+      "passes": true,
       "notes": "Balance convention: internal positive = player owes bookie. For player display, NEGATE the value so positive = credit (green), negative = debt (red). This is critical. Open stakes = sum of stakes for bets with status in ['pending', 'accepted']. Credit utilization = (abs(balance) + open_stakes) / credit_limit * 100. The player's bets and ledger entries are already filtered by player_id in the Supabase query."
     },
     {

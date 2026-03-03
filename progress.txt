@@ -174,3 +174,15 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Organizer data loading (loadPlayers, loadDashboard) only runs for `userRole === 'organizer'` — player data loading will be added in US-014+
   - Sign-up flow unchanged — new accounts still create bookie records (organizer role). Players are invite-only.
 ---
+
+## 2026-03-02 - US-014
+- Implemented player home view with balance hero, performance card, credit utilization, and recent activity
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `playerLedgerEntries`/`playerBets`/`playerOpenStakes`/`isLoadingPlayerHome` state variables, `loadPlayerHome()` fetching ledger entries + bets for the player, computed getters (`playerBalance`, `playerDisplayBalance`, `playerWinRate`, `playerPnl`, `playerDisplayPnl`, `playerOpenPicksCount`, `playerCreditUtilization`, `playerAvailableCredit`, `playerCreditLimit`, `playerRecentActivity`), `computePlayerRecord()` W-L-P from grade_result, `playerActivityTypeColor()`/`playerActivityTypeBadge()`/`creditUtilizationColor()` helpers, balance hero with negated display (positive=green=credit, negative=red=debt), performance card with record dots + stats row, credit utilization bar (color-coded by percentage), recent activity list with color indicators and negated amounts, shimmer loading skeleton, CSS for `.player-balance-hero`, `.player-record-*`, `.player-stats-row`, `.credit-bar-*`, `.player-activity-*`, responsive mobile styles
+- **Learnings for future iterations:**
+  - `playerRecord` (state from detectUserRole) is the full player row — don't create a computed getter with the same name. Use `computePlayerRecord()` as a method instead
+  - Player balance negation: internal positive = player owes bookie. Display: negate so positive = credit (green). Same negation applies to ledger entry amounts in activity list
+  - `playerCreditUtilization` uses `Math.abs(balance) + openStakes` / `creditLimit` — includes open stakes in utilization
+  - `loadPlayerHome()` triggered both on init (for player role) and on route navigation to `player-home`
+  - Player data (ledger + bets) will be reused by US-015 (games/bet placement) and US-017 (track view)
+---
