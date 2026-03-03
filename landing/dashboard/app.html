@@ -37,6 +37,7 @@
     <!-- Mobile Header -->
     <div class="mobile-header">
         <a href="../index.html"><img src="../assets/logo-booki-blk.svg" alt="Booki"></a>
+        <span class="mobile-balance" x-show="userRole === 'player'" x-cloak :class="{ positive: playerDisplayBalance > 0, negative: playerDisplayBalance < 0, settled: playerDisplayBalance === 0 }" x-text="(playerDisplayBalance < 0 ? '-' : '') + formatCurrency(Math.abs(playerDisplayBalance))"></span>
         <button class="hamburger" @click="sidebarOpen = !sidebarOpen">
             <span></span><span></span><span></span>
         </button>
@@ -51,6 +52,10 @@
             <a href="../index.html" class="sidebar-logo">
                 <img src="../assets/logo-booki-blk.svg" alt="Booki">
             </a>
+            <div class="sidebar-player-balance" x-show="userRole === 'player'" x-cloak>
+                <span class="sidebar-balance-amount" :class="{ positive: playerDisplayBalance > 0, negative: playerDisplayBalance < 0, settled: playerDisplayBalance === 0 }" x-text="formatCurrency(Math.abs(playerDisplayBalance))"></span>
+                <span class="sidebar-balance-label" x-text="playerDisplayBalance > 0 ? 'Credit' : playerDisplayBalance < 0 ? 'You owe' : 'Settled'"></span>
+            </div>
             <ul class="sidebar-nav">
                 <!-- Organizer Navigation -->
                 <li x-show="userRole === 'organizer'"><a href="#/dashboard" :class="{ active: route === 'dashboard' }" @click="sidebarOpen = false">

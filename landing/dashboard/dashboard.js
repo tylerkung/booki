@@ -503,7 +503,27 @@ function dashboardApp() {
         },
 
         subscribeToRealtime() {
-            if (!this.bookie || this.realtimeChannel) return;
+            if (this.realtimeChannel) return;
+
+            // Player realtime: subscribe to own ledger entries for live balance updates
+            if (this.userRole === 'player' && this.playerId) {
+                this.realtimeChannel = this.supabase
+                    .channel('player-changes')
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'ledger_entries',
+                        filter: `player_id=eq.${this.playerId}`
+                    }, () => {
+                        this._debouncedReload('player-ledger', () => {
+                            this.loadPlayerHome();
+                        });
+                    })
+                    .subscribe();
+                return;
+            }
+
+            if (!this.bookie) return;
 
             const bookieId = this.bookie.id;
 
