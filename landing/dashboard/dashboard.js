@@ -333,6 +333,11 @@ function dashboardApp() {
         isLoadingPlayerTrack: true,
         playerTrackEvents: {},
 
+        // ── Player Ticket Detail ──
+        playerTicketDetail: null,
+        playerTicketLegs: [],
+        isLoadingPlayerTicket: false,
+
         // ── Bet Slip ──
         betSlipMode: 'singles', // 'singles' | 'multi'
         betSlipStakes: {},
@@ -457,6 +462,7 @@ function dashboardApp() {
             if (this.route === 'player-home') this.loadPlayerHome();
             if (this.route === 'player-games') this.loadPlayerGames();
             if (this.route === 'player-track') this.loadPlayerTrack();
+            if (this.route === 'player-ticket') this.loadPlayerTicketDetail();
         },
 
         // ── Auth ──
@@ -885,6 +891,152 @@ function dashboardApp() {
             if (leg.grade_result === 'push') return 'var(--warning)';
             if (leg.status === 'void') return 'var(--text-muted)';
             return 'var(--text-muted)';
+        },
+
+        // ── Player Ticket Detail ──
+        async loadPlayerTicketDetail() {
+            if (!this.selectedBetId || !this.playerId) return;
+            this.isLoadingPlayerTicket = true;
+            this.playerTicketDetail = null;
+            this.playerTicketLegs = [];
+
+            // Fetch the bet by ID
+            const { data, error } = await this.supabase
+                .from('bets')
+                .select('*')
+                .eq('id', this.selectedBetId)
+                .limit(1);
+
+            if (error || !data?.length) {
+                console.error('Failed to load ticket detail:', error);
+                this.toast('Failed to load pick', 'error');
+                this.isLoadingPlayerTicket = false;
+                return;
+            }
+
+            const bet = data[0];
+
+            // For parlays, fetch all legs by ticket_id
+            let legs = [bet];
+            if (bet.bet_type === 'parlay' && bet.ticket_id) {
+                const { data: parlayLegs } = await this.supabase
+                    .from('bets')
+                    .select('*')
+                    .eq('ticket_id', bet.ticket_id)
+                    .order('created_at');
+                if (parlayLegs && parlayLegs.length > 0) {
+                    legs = parlayLegs;
+                }
+            }
+
+            // Enrich legs with event data
+            const eventIds = [...new Set(legs.map(l => l.event_id).filter(Boolean))];
+            const eventMap = {};
+            if (eventIds.length > 0) {
+                const { data: events } = await this.supabase
+                    .from('events')
+                    .select('id, home_team, away_team, sport, league, start_time, status, final_score')
+                    .in('id', eventIds);
+                for (const ev of (events || [])) {
+                    eventMap[ev.id] = ev;
+                }
+            }
+
+            // Enrich each leg with event info
+            for (const leg of legs) {
+                const ev = eventMap[leg.event_id];
+                if (ev) {
+                    leg._event_name = ev.away_team ? (ev.away_team + ' @ ' + ev.home_team) : ev.home_team;
+                    leg._sport = ev.sport;
+                    leg._league = ev.league;
+                    leg._final_score = ev.final_score;
+                    leg._start_time = ev.start_time;
+                }
+            }
+
+            const isParlay = legs.length > 1 || bet.bet_type === 'parlay';
+            const stake = Number(bet.stake) || 0;
+
+            // Combined odds for parlays
+            let combinedOdds = Number(bet.odds) || 0;
+            if (isParlay && legs.length > 1) {
+                let dec = 1;
+                for (const l of legs) {
+                    dec *= this.americanToDecimal(l.odds);
+                }
+                combinedOdds = this.decimalToAmerican(dec);
+            }
+
+            // Ticket-level grade result
+            let gradeResult = null;
+            if (legs.every(l => l.grade_result)) {
+                if (legs.some(l => l.grade_result === 'loss')) gradeResult = 'loss';
+                else if (legs.every(l => l.grade_result === 'push')) gradeResult = 'push';
+                else gradeResult = 'win';
+            }
+
+            // PnL
+            let pnl = 0;
+            if (gradeResult === 'win') {
+                if (isParlay && legs.length > 1) {
+                    let dec = 1;
+                    for (const l of legs) {
+                        if (l.grade_result !== 'push') dec *= this.americanToDecimal(l.odds);
+                    }
+                    pnl = stake * dec - stake;
+                } else {
+                    pnl = this.calcPickPnl(bet);
+                }
+            } else if (gradeResult === 'loss') {
+                pnl = -stake;
+            }
+
+            // Potential return (for open picks)
+            let potentialReturn = 0;
+            if (!gradeResult) {
+                if (isParlay && legs.length > 1) {
+                    let dec = 1;
+                    for (const l of legs) dec *= this.americanToDecimal(l.odds);
+                    potentialReturn = stake * dec;
+                } else {
+                    potentialReturn = this.calcPotentialReturn(bet);
+                }
+            }
+
+            // Status
+            const isOpen = legs.some(l => ['pending', 'accepted', 'readyToGrade', 'graded'].includes(l.status));
+            const isVoid = legs.every(l => l.status === 'void');
+            const status = isVoid ? 'void' : (gradeResult ? 'settled' : (isOpen ? 'open' : bet.status));
+
+            // Build timeline
+            const timeline = [];
+            timeline.push({ type: 'placed', label: 'Pick Placed', date: bet.created_at });
+            if (gradeResult) {
+                const gradedAt = bet.graded_at || legs.find(l => l.graded_at)?.graded_at;
+                timeline.push({
+                    type: 'graded',
+                    label: gradeResult === 'win' ? 'Won' : gradeResult === 'loss' ? 'Lost' : 'Pushed',
+                    date: gradedAt || bet.updated_at,
+                });
+            }
+
+            this.playerTicketDetail = {
+                bet,
+                legs,
+                isParlay,
+                gradeResult,
+                status,
+                stake,
+                combinedOdds,
+                pnl,
+                potentialReturn,
+                timeline,
+                title: isParlay ? (legs.length + '-leg Multi-Pick') : (bet.side || 'Pick'),
+                subtitle: isParlay ? '' : (legs[0]._event_name || ''),
+                finalScore: (!isParlay && legs[0]._final_score) ? legs[0]._final_score : null,
+            };
+            this.playerTicketLegs = legs;
+            this.isLoadingPlayerTicket = false;
         },
 
         // ── Player Games ──

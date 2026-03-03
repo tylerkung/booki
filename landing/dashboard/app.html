@@ -2576,14 +2576,141 @@
                 </div>
             </div>
 
-            <!-- ── Player Ticket Detail View (placeholder) ── -->
+            <!-- ── Player Ticket Detail View ── -->
             <div x-show="route === 'player-ticket' && userRole === 'player'" x-cloak>
-                <div class="page-header">
-                    <h1>Pick Detail</h1>
+                <div style="margin-bottom:20px;">
+                    <a href="#/player-track" class="btn btn-ghost" style="gap:6px;padding-left:0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Back to Track
+                    </a>
                 </div>
-                <div class="card" style="padding:32px;text-align:center;">
-                    <div style="font-size:14px;color:var(--text-secondary);">Pick details will appear here.</div>
-                </div>
+
+                <!-- Loading state -->
+                <template x-if="isLoadingPlayerTicket">
+                    <div>
+                        <div class="card" style="margin-bottom:16px;"><div class="shimmer" style="height:120px;"></div></div>
+                        <div class="card" style="margin-bottom:16px;"><div class="shimmer" style="height:100px;"></div></div>
+                        <div class="card"><div class="shimmer" style="height:80px;"></div></div>
+                    </div>
+                </template>
+
+                <!-- Loaded state -->
+                <template x-if="!isLoadingPlayerTicket && playerTicketDetail">
+                    <div>
+                        <!-- Hero Card -->
+                        <div class="card" style="margin-bottom:16px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                                <span class="badge" :class="playerTicketStatusBadgeClass(playerTicketDetail)" style="font-size:13px;padding:5px 14px;" x-text="playerTicketStatusText(playerTicketDetail)"></span>
+                                <span style="font-size:12px;color:var(--text-muted);" x-text="formatDate(playerTicketDetail.bet.created_at)"></span>
+                            </div>
+                            <h2 style="font-size:20px;margin-bottom:4px;" x-text="playerTicketDetail.title"></h2>
+                            <template x-if="!playerTicketDetail.isParlay">
+                                <div>
+                                    <p style="color:var(--text-secondary);font-size:14px;margin-bottom:4px;" x-text="playerTicketDetail.subtitle"></p>
+                                    <p style="color:var(--text-muted);font-size:13px;margin-bottom:4px;" x-text="playerTicketLegs[0]?._sport ? (formatSportName(playerTicketLegs[0]._sport) + (playerTicketLegs[0]._league ? ' · ' + formatLeagueName(playerTicketLegs[0]._league) : '')) : ''"></p>
+                                    <template x-if="playerTicketDetail.finalScore">
+                                        <p style="font-size:13px;color:var(--text-muted);margin-top:8px;">
+                                            Final Score: <span style="color:var(--text-primary);font-weight:600;" x-text="playerTicketDetail.finalScore.replace('-', ' - ')"></span>
+                                        </p>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Parlay Legs Card -->
+                        <template x-if="playerTicketDetail.isParlay && playerTicketLegs.length > 0">
+                            <div class="card" style="margin-bottom:16px;">
+                                <div class="card-header">
+                                    <span class="card-title">Legs</span>
+                                    <span style="font-size:13px;color:var(--text-muted);">Combined: <strong style="color:var(--text-primary);" x-text="formatOdds(playerTicketDetail.combinedOdds)"></strong></span>
+                                </div>
+                                <div style="display:flex;flex-direction:column;gap:12px;">
+                                    <template x-for="leg in playerTicketLegs" :key="leg.id">
+                                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg-elevated);border-radius:var(--radius-sm);">
+                                            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+                                                <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;" :style="{ background: playerLegDotColor(leg) }"></div>
+                                                <div style="flex:1;min-width:0;">
+                                                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px;" x-text="leg.side || '—'"></div>
+                                                    <div style="font-size:12px;color:var(--text-muted);" x-text="leg._event_name || ''"></div>
+                                                    <div style="font-size:11px;color:var(--text-muted);" x-text="leg._league ? formatLeagueName(leg._league) : ''"></div>
+                                                </div>
+                                            </div>
+                                            <div style="display:flex;align-items:center;gap:10px;">
+                                                <span style="font-size:13px;font-weight:600;color:var(--text-secondary);" x-text="formatOdds(leg.odds)"></span>
+                                                <span class="badge" :class="{
+                                                    'badge-success': leg.grade_result === 'win',
+                                                    'badge-danger': leg.grade_result === 'loss',
+                                                    'badge-muted': leg.grade_result === 'push' || leg.status === 'void',
+                                                    'badge-warning': !leg.grade_result && leg.status !== 'void'
+                                                }" style="font-size:11px;" x-text="leg.grade_result === 'win' ? 'Won' : leg.grade_result === 'loss' ? 'Lost' : leg.grade_result === 'push' ? 'Push' : leg.status === 'void' ? 'Void' : 'Pending'"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Financials Card -->
+                        <div class="card" style="margin-bottom:16px;">
+                            <div class="card-header"><span class="card-title">Financials</span></div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Stake</div>
+                                    <div style="font-size:18px;font-weight:700;color:var(--text-primary);" x-text="formatCurrency(playerTicketDetail.stake)"></div>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Odds</div>
+                                    <div style="font-size:18px;font-weight:700;color:var(--text-primary);" x-text="formatOdds(playerTicketDetail.combinedOdds)"></div>
+                                </div>
+                                <template x-if="!playerTicketDetail.gradeResult">
+                                    <div>
+                                        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Potential Return</div>
+                                        <div style="font-size:18px;font-weight:700;color:var(--accent);" x-text="formatCurrency(playerTicketDetail.potentialReturn)"></div>
+                                    </div>
+                                </template>
+                                <template x-if="playerTicketDetail.gradeResult">
+                                    <div>
+                                        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Profit</div>
+                                        <div style="font-size:18px;font-weight:700;"
+                                             :style="{ color: playerTicketDetail.pnl >= 0 ? 'var(--success)' : 'var(--danger)' }"
+                                             x-text="(playerTicketDetail.pnl >= 0 ? '+' : '') + formatCurrency(playerTicketDetail.pnl)"></div>
+                                    </div>
+                                </template>
+                                <template x-if="playerTicketDetail.gradeResult && playerTicketDetail.gradeResult !== 'loss'">
+                                    <div>
+                                        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Total Return</div>
+                                        <div style="font-size:18px;font-weight:700;color:var(--text-primary);" x-text="formatCurrency(playerTicketDetail.stake + playerTicketDetail.pnl)"></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Activity Timeline Card -->
+                        <div class="card" x-show="playerTicketDetail.timeline.length > 0">
+                            <div class="card-header"><span class="card-title">Activity</span></div>
+                            <div style="display:flex;flex-direction:column;gap:0;position:relative;">
+                                <template x-for="(entry, idx) in playerTicketDetail.timeline" :key="idx">
+                                    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;" :style="idx < playerTicketDetail.timeline.length - 1 ? 'border-bottom:1px solid var(--border)' : ''">
+                                        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:2px;">
+                                            <div style="width:10px;height:10px;border-radius:50%;" :style="{
+                                                background: entry.type === 'graded'
+                                                    ? (entry.label === 'Won' ? 'var(--success)' : entry.label === 'Lost' ? 'var(--danger)' : 'var(--warning)')
+                                                    : 'var(--accent)'
+                                            }"></div>
+                                            <template x-if="idx < playerTicketDetail.timeline.length - 1">
+                                                <div style="width:2px;height:20px;background:var(--border);"></div>
+                                            </template>
+                                        </div>
+                                        <div style="flex:1;">
+                                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);" x-text="entry.label"></div>
+                                            <div style="font-size:12px;color:var(--text-muted);" x-text="formatDate(entry.date)"></div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </div>
 
             <!-- ── Player Account View (placeholder) ── -->
