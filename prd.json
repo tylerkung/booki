@@ -430,6 +430,7 @@
         "Refresh balance when bet slip submission succeeds or when ledger data reloads via realtime"
       ],
       "priority": 20,
+      "passes": true,
       "notes": "The iOS app shows balance in AppHeaderView on every tab. For web, the sidebar or top bar is the equivalent. The balance should be reactive — when realtime subscription fires for ledger_entries changes, the balance updates automatically if the computed getter reads from the ledger data array. Make sure the realtime subscription for players also covers the player's own data, not just the bookie's data."
     }
   ]
