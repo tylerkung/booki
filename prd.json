@@ -171,6 +171,7 @@
         "Use existing credit utilization bar styles (progress bar with fill, warning color at >80%)"
       ],
       "priority": 8,
+      "passes": true,
       "notes": "Hot streak detection: sort member's graded bets by created_at descending, count consecutive wins from the top. Losing big: sum ledger entries (excluding paymentLogged) from last 7 days. Credit utilization calculation already exists in getMemberCreditUtilization(). The dashboard already computes attention tags — some of this data can be reused."
     },
     {

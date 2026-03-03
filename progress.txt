@@ -14,6 +14,8 @@ Started: Mon Mar  2 19:47:05 PST 2026
 - Computed getters use `get` syntax for Alpine reactivity
 - Edge functions called via `callEdgeFunction(name, body)` — always include `idempotency_key: crypto.randomUUID()`
 - Modals placed outside `<template x-if>` blocks to survive re-renders — at the view section level
+- The `allBets` query in `loadDashboard()` must include ALL columns used by `computeAttentionTags()` — add new columns to `.select()` when tags depend on them
+- Pro-gated pattern: `.pro-gated-section` card + `pro-blur` class + `.pro-upgrade-overlay` overlay
 
 ---
 
@@ -95,4 +97,17 @@ Started: Mon Mar  2 19:47:05 PST 2026
   - Tonight's events filter: `gte(now) + lte(end-of-today)` with `.not('status', 'in', '("final","canceled")')` syntax for Supabase NOT IN
   - The `calcPotentialReturn(bet)` helper returns total return (stake + profit), so potential loss to bookie = `calcPotentialReturn(b) - stake`
   - Card-level `@click` with `cursor:pointer` works well for navigable dashboard cards
+---
+
+## 2026-03-02 - US-008
+- Implemented Risk Watchlist card on Dashboard (pro-gated), positioned after Attention Feed and before Members Grid
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `riskWatchlist` computed getter with 4 risk signals (Near Limit, Overdue, Hot Streak, Losing Big), top 5 members sorted by signal count, pro-gated card with blur overlay, credit utilization progress bars, clickable member rows, `.risk-watchlist-row` CSS
+- Fixed: Added `grade_result` to allBets query select in `loadDashboard()` — was missing, causing hot streak/cold streak detection in `computeAttentionTags` to silently fail on the dashboard
+- **Learnings for future iterations:**
+  - The `allBets` query in `loadDashboard()` must include all columns used by `computeAttentionTags()` — `grade_result` was missing, breaking heater/cold streak tags
+  - Risk signals reuse existing `attentionTags` for overdue/heater detection — no extra queries needed
+  - "Losing Big" uses ledger entries (excluding paymentLogged) from last 7 days — internal positive = player owes bookie (lost), so `sum > 500` means player losing big
+  - Pro-gated pattern: `.pro-gated-section` card with `position:relative;overflow:hidden`, content div with `:class="{ 'pro-blur': !isPro }"`, overlay div with `.pro-upgrade-overlay`
+  - `<template x-if>` wrapping the card ensures it's only rendered when `riskWatchlist.length > 0`
 ---
