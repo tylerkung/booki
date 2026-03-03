@@ -208,6 +208,11 @@ function dashboardApp() {
         notifPrefs: { new_members: true, pick_submissions: false, risk_alerts: true, game_results: true },
         isLoadingNotifPrefs: false,
 
+        // ── Acceptance Policy ──
+        acceptancePolicy: null,
+        isLoadingAcceptancePolicy: false,
+        isSavingAcceptancePolicy: false,
+
         // ── Events ──
         events: [],
         isLoadingEvents: false,
@@ -2499,6 +2504,7 @@ function dashboardApp() {
             this.settingsDefaultCreditLimit = this.bookie.default_credit_limit ?? 1000;
             this.settingsAllowFuturesParlays = this.bookie.allow_futures_parlays ?? false;
             this.loadNotifPrefs();
+            this.loadAcceptancePolicy();
         },
 
         async loadNotifPrefs() {
@@ -2532,6 +2538,55 @@ function dashboardApp() {
             } else {
                 this.toast('Notification preference updated', 'success');
             }
+        },
+
+        async loadAcceptancePolicy() {
+            if (!this.bookie) return;
+            this.isLoadingAcceptancePolicy = true;
+            const { data, error } = await this.supabase
+                .from('acceptance_policies')
+                .select('*')
+                .eq('bookie_id', this.bookie.id)
+                .maybeSingle();
+            if (data) {
+                this.acceptancePolicy = { ...data };
+            } else {
+                this.acceptancePolicy = {
+                    bookie_id: this.bookie.id,
+                    max_stake: null,
+                    require_approval_above: null,
+                    auto_accept_enabled: true,
+                    auto_accept_new_players: true,
+                    auto_accept_parlays: true,
+                    parlay_max_legs: null,
+                    event_lock_offset_minutes: 0,
+                };
+            }
+            this.isLoadingAcceptancePolicy = false;
+        },
+
+        async saveAcceptancePolicy() {
+            if (!this.bookie || !this.acceptancePolicy) return;
+            this.isSavingAcceptancePolicy = true;
+            const payload = {
+                bookie_id: this.bookie.id,
+                max_stake: this.acceptancePolicy.max_stake || null,
+                require_approval_above: this.acceptancePolicy.require_approval_above || null,
+                auto_accept_enabled: this.acceptancePolicy.auto_accept_enabled ?? true,
+                auto_accept_new_players: this.acceptancePolicy.auto_accept_new_players ?? true,
+                auto_accept_parlays: this.acceptancePolicy.auto_accept_parlays ?? true,
+                parlay_max_legs: this.acceptancePolicy.parlay_max_legs || null,
+                event_lock_offset_minutes: parseInt(this.acceptancePolicy.event_lock_offset_minutes, 10) || 0,
+            };
+            const { error } = await this.supabase
+                .from('acceptance_policies')
+                .upsert(payload, { onConflict: 'bookie_id' });
+            if (error) {
+                this.toast('Failed to save acceptance rules', 'error');
+            } else {
+                this.toast('Acceptance rules saved', 'success');
+            }
+            this.isSavingAcceptancePolicy = false;
         },
 
         async saveProfile() {

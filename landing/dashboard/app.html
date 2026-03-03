@@ -1813,6 +1813,98 @@
                     </div>
                 </div>
 
+                <!-- Acceptance Rules Section (Pro-gated) -->
+                <div class="card pro-gated-section" style="margin-bottom:24px;position:relative;overflow:hidden;">
+                    <div :class="{ 'pro-blur': !isPro }">
+                        <div class="card-header">
+                            <span class="card-title" style="display:flex;align-items:center;gap:8px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                Acceptance Rules
+                            </span>
+                        </div>
+
+                        <template x-if="isLoadingAcceptancePolicy">
+                            <div style="padding:12px 0;color:var(--text-secondary);font-size:13px;">Loading acceptance rules...</div>
+                        </template>
+                        <template x-if="!isLoadingAcceptancePolicy && acceptancePolicy">
+                            <div>
+                                <!-- Auto-Accept Toggles -->
+                                <div class="toggle-row">
+                                    <div class="toggle-info">
+                                        <span class="toggle-label">Auto-Accept Enabled</span>
+                                        <span class="toggle-desc">Automatically accept incoming picks without manual approval.</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" x-model="acceptancePolicy.auto_accept_enabled">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="toggle-row">
+                                    <div class="toggle-info">
+                                        <span class="toggle-label">Auto-Accept New Members</span>
+                                        <span class="toggle-desc">Automatically accept picks from newly joined members.</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" x-model="acceptancePolicy.auto_accept_new_players">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="toggle-row">
+                                    <div class="toggle-info">
+                                        <span class="toggle-label">Auto-Accept Multi-Picks</span>
+                                        <span class="toggle-desc">Automatically accept multi-pick (parlay) tickets.</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" x-model="acceptancePolicy.auto_accept_parlays">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+
+                                <!-- Parlay Max Legs (shown when auto-accept parlays is on) -->
+                                <template x-if="acceptancePolicy.auto_accept_parlays">
+                                    <div class="form-group" style="margin-top:8px;">
+                                        <label>Max Legs per Multi-Pick</label>
+                                        <p style="font-size:13px;color:var(--text-secondary);margin:-4px 0 8px;">Maximum number of legs allowed in a multi-pick. Leave blank for no limit.</p>
+                                        <input type="number" x-model.number="acceptancePolicy.parlay_max_legs" min="2" placeholder="No limit">
+                                    </div>
+                                </template>
+
+                                <!-- Stake Limits -->
+                                <div class="form-group" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--divider);">
+                                    <label>Max Stake</label>
+                                    <p style="font-size:13px;color:var(--text-secondary);margin:-4px 0 8px;">Maximum allowed stake per pick. Leave blank for no limit.</p>
+                                    <input type="number" x-model.number="acceptancePolicy.max_stake" min="0" step="1" placeholder="No limit">
+                                </div>
+                                <div class="form-group">
+                                    <label>Require Approval Above</label>
+                                    <p style="font-size:13px;color:var(--text-secondary);margin:-4px 0 8px;">Picks above this amount require manual approval. Leave blank to disable.</p>
+                                    <input type="number" x-model.number="acceptancePolicy.require_approval_above" min="0" step="1" placeholder="Disabled">
+                                </div>
+
+                                <!-- Event Lock Offset -->
+                                <div class="form-group">
+                                    <label>Event Lock Offset (minutes)</label>
+                                    <p style="font-size:13px;color:var(--text-secondary);margin:-4px 0 8px;">Stop accepting picks this many minutes before game start. 0 = accept until game time.</p>
+                                    <input type="number" x-model.number="acceptancePolicy.event_lock_offset_minutes" min="0" step="1" placeholder="0">
+                                </div>
+
+                                <button class="btn btn-accent" style="margin-top:8px;" @click="saveAcceptancePolicy()" :disabled="isSavingAcceptancePolicy">
+                                    <span x-text="isSavingAcceptancePolicy ? 'Saving...' : 'Save Rules'"></span>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                    <template x-if="!isPro">
+                        <div class="pro-upgrade-overlay">
+                            <div style="text-align:center;">
+                                <span class="badge badge-pro" style="font-size:13px;margin-bottom:8px;">Pro</span>
+                                <p style="font-size:14px;color:var(--text-primary);margin:0 0 12px;">Upgrade to Pro to configure acceptance rules</p>
+                                <a href="#/subscription" class="btn btn-accent" style="font-size:13px;">Upgrade</a>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
                 <!-- About Section -->
                 <div class="card" style="margin-bottom:24px;">
                     <div class="card-header"><span class="card-title">About</span></div>

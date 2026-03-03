@@ -248,6 +248,7 @@
         "Add state: acceptancePolicy object, isLoadingAcceptancePolicy boolean, isSavingAcceptancePolicy boolean"
       ],
       "priority": 12,
+      "passes": true,
       "notes": "acceptance_policies table: bookie_id (UNIQUE), max_stake, require_approval_above, auto_accept_enabled (default true), auto_accept_new_players (default true), auto_accept_parlays (default true), parlay_max_legs, event_lock_offset_minutes (default 0), parlay_push_void_policy. Load in loadSettings(). Upsert with onConflict: 'bookie_id'."
     },
     {
