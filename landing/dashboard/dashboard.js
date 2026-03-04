@@ -14,14 +14,14 @@ function dashboardApp() {
         bookie: null,
 
         // ── Dual-Role ──
-        userRole: 'organizer', // 'organizer' | 'player' | 'standalone'
+        userRole: '', // '' (loading) | 'organizer' | 'player' | 'standalone'
         playerId: null,
         playerBookieId: null,
         playerRecord: null,
         playerBookie: null,
 
         // ── Route ──
-        route: 'dashboard',
+        route: '',
         sidebarOpen: false,
         selectedPlayerId: null,
         selectedBetId: null,
@@ -474,6 +474,7 @@ function dashboardApp() {
                 return;
             }
             this.session = session;
+            document.body.style.visibility = 'visible';
 
             // Listen for auth changes
             this.supabase.auth.onAuthStateChange((event, session) => {

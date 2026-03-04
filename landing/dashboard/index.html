@@ -17,7 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body x-data="dashboardApp()" x-init="init()">
+<body x-data="dashboardApp()" x-init="init()" style="visibility: hidden;">
 
     <!-- Tag Tooltip -->
     <div x-show="tagTooltip" x-cloak class="tag-tooltip"
@@ -37,7 +37,7 @@
     <!-- Mobile Header -->
     <div class="mobile-header">
         <a href="../index.html"><img src="../assets/logo-booki-blk.svg" alt="Booki"></a>
-        <span class="mobile-page-title" x-text="
+        <span class="mobile-page-title" x-show="userRole" x-cloak x-text="
             route === 'dashboard' ? 'Dashboard' :
             route === 'members' ? 'Members' :
             route === 'picks' ? 'Picks' :
@@ -78,7 +78,13 @@
                 <span class="sidebar-balance-amount" :class="{ positive: playerDisplayBalance > 0, negative: playerDisplayBalance < 0, settled: playerDisplayBalance === 0 }" x-text="formatCurrency(Math.abs(playerDisplayBalance))"></span>
                 <span class="sidebar-balance-label" x-text="playerDisplayBalance > 0 ? 'Credit' : playerDisplayBalance < 0 ? 'You owe' : 'Settled'"></span>
             </div>
-            <ul class="sidebar-nav">
+            <!-- Sidebar shimmer (before role detection) -->
+            <ul class="sidebar-nav" x-show="!userRole">
+                <li><a><div class="shimmer" style="width: 100px; height: 14px; border-radius: 4px;"></div></a></li>
+                <li><a><div class="shimmer" style="width: 80px; height: 14px; border-radius: 4px;"></div></a></li>
+                <li><a><div class="shimmer" style="width: 90px; height: 14px; border-radius: 4px;"></div></a></li>
+            </ul>
+            <ul class="sidebar-nav" x-show="userRole" x-cloak>
                 <!-- Organizer Navigation -->
                 <li x-show="userRole === 'organizer'"><a href="#/dashboard" :class="{ active: route === 'dashboard' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -135,7 +141,7 @@
                     Become an Organizer
                 </a>
             </template>
-            <div class="sidebar-bottom">
+            <div class="sidebar-bottom" x-show="userRole" x-cloak>
                 <a href="#" @click.prevent="logout()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                     Log Out
@@ -145,6 +151,21 @@
 
         <!-- Main Content -->
         <main class="main-content" :class="{ 'has-betslip': hasBetSlip }">
+
+            <!-- Loading State (before role detection) -->
+            <div x-show="!userRole" class="loading-skeleton-page">
+                <div style="margin-bottom: 24px;">
+                    <div class="shimmer" style="width: 140px; height: 24px; border-radius: 6px; margin-bottom: 8px;"></div>
+                    <div class="shimmer" style="width: 200px; height: 14px; border-radius: 4px;"></div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div class="card" style="padding: 20px;"><div class="shimmer" style="width: 80px; height: 14px; border-radius: 4px; margin-bottom: 12px;"></div><div class="shimmer" style="width: 120px; height: 28px; border-radius: 6px;"></div></div>
+                    <div class="card" style="padding: 20px;"><div class="shimmer" style="width: 80px; height: 14px; border-radius: 4px; margin-bottom: 12px;"></div><div class="shimmer" style="width: 120px; height: 28px; border-radius: 6px;"></div></div>
+                    <div class="card" style="padding: 20px;"><div class="shimmer" style="width: 80px; height: 14px; border-radius: 4px; margin-bottom: 12px;"></div><div class="shimmer" style="width: 120px; height: 28px; border-radius: 6px;"></div></div>
+                </div>
+                <div class="card" style="padding: 20px; margin-bottom: 16px;"><div class="shimmer" style="width: 100%; height: 60px; border-radius: 6px;"></div></div>
+                <div class="card" style="padding: 20px;"><div class="shimmer" style="width: 100%; height: 100px; border-radius: 6px;"></div></div>
+            </div>
 
             <!-- ── Dashboard View ── -->
             <div x-show="route === 'dashboard'" x-cloak>
