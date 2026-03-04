@@ -41,10 +41,16 @@ struct DashboardView: View {
         let daysSinceLastActivity: Int?
     }
 
+    /// Pre-computed ledger entries grouped by player ID (O(n) once)
+    private var ledgerByPlayer: [UUID: [LedgerEntry]] {
+        Dictionary(grouping: ledgerEntries) { $0.player?.id ?? UUID() }
+    }
+
     /// Computed property for players with balances
     private var playerBalances: [PlayerBalanceItem] {
-        players.filter { $0.status == .active }.compactMap { player in
-            let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
+        let grouped = ledgerByPlayer
+        return players.filter { $0.status == .active }.compactMap { player in
+            let playerLedger = grouped[player.id] ?? []
             let balance = BalanceService.balanceOwed(from: playerLedger)
 
             // Skip players with zero balance
@@ -85,26 +91,17 @@ struct DashboardView: View {
         abs(youOwePlayers.reduce(Decimal.zero) { $0 + $1.balance })
     }
 
-    /// Players who need attention based on alert thresholds
+    /// Players who need attention based on alert thresholds (built from playerBalances to avoid re-filtering)
     private var flaggedPlayers: [FlaggedPlayer] {
         let thresholdDecimal = Decimal(balanceThreshold)
 
-        return players.filter { $0.status == .active }.compactMap { player in
-            let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
-            let balance = BalanceService.balanceOwed(from: playerLedger)
-
+        return playerBalances.compactMap { item in
             // Only flag players who owe money (positive balance)
-            guard balance > 0 else { return nil }
-
-            // Find days since last activity
-            let lastEntryDate = playerLedger.map { $0.createdAt }.max()
-            let daysSinceLastActivity: Int? = lastEntryDate.map { lastDate in
-                Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day ?? 0
-            }
+            guard item.balance > 0 else { return nil }
 
             // Check thresholds
-            let isHighBalance = balance >= thresholdDecimal
-            let isAging = (daysSinceLastActivity ?? 0) >= agingThreshold
+            let isHighBalance = item.balance >= thresholdDecimal
+            let isAging = (item.daysSinceLastActivity ?? 0) >= agingThreshold
 
             // Determine flag reason
             let reason: PlayerFlagReason?
@@ -121,10 +118,10 @@ struct DashboardView: View {
             guard let flagReason = reason else { return nil }
 
             return FlaggedPlayer(
-                id: player.id,
-                player: player,
-                balance: balance,
-                daysSinceLastActivity: daysSinceLastActivity,
+                id: item.id,
+                player: item.player,
+                balance: item.balance,
+                daysSinceLastActivity: item.daysSinceLastActivity,
                 reason: flagReason
             )
         }.sorted { $0.balance > $1.balance }
@@ -378,9 +375,6 @@ struct DashboardView: View {
             .onChange(of: bets.count) {
                 viewModel.refresh(bets: bets, events: events)
             }
-            .onChange(of: bets.map { $0.status }) {
-                viewModel.refresh(bets: bets, events: events)
-            }
             .navigationDestination(for: Event.self) { event in
                 EventDetailView(event: event)
             }
@@ -462,7 +456,7 @@ struct DashboardView: View {
                             HStack {
                                 Text("Members Owe You")
                                 Spacer()
-                                Text(formatCurrency(totalPlayersOwe))
+                                Text(Theme.formatCurrency(totalPlayersOwe))
                                     .font(Theme.font(size: 12, weight: .bold))
                                     .foregroundStyle(Theme.accent)
                             }
@@ -471,7 +465,7 @@ struct DashboardView: View {
                         HStack {
                             Text("Members Owe You")
                             Spacer()
-                            Text(formatCurrency(totalPlayersOwe))
+                            Text(Theme.formatCurrency(totalPlayersOwe))
                                 .font(Theme.font(size: 12, weight: .bold))
                                 .foregroundStyle(Theme.accent)
                         }
@@ -501,7 +495,7 @@ struct DashboardView: View {
                             HStack {
                                 Text("You Owe Members")
                                 Spacer()
-                                Text(formatCurrency(totalYouOwe))
+                                Text(Theme.formatCurrency(totalYouOwe))
                                     .font(Theme.font(size: 12, weight: .bold))
                                     .foregroundStyle(Theme.danger)
                             }
@@ -510,7 +504,7 @@ struct DashboardView: View {
                         HStack {
                             Text("You Owe Members")
                             Spacer()
-                            Text(formatCurrency(totalYouOwe))
+                            Text(Theme.formatCurrency(totalYouOwe))
                                 .font(Theme.font(size: 12, weight: .bold))
                                 .foregroundStyle(Theme.danger)
                         }
@@ -521,12 +515,6 @@ struct DashboardView: View {
         }
     }
 
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
-    }
 }
 
 // MARK: - Exposure Card
@@ -535,10 +523,7 @@ struct ExposureCard: View {
     let totalExposure: Decimal
 
     private var formattedExposure: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: totalExposure as NSDecimalNumber) ?? "$\(totalExposure)"
+        Theme.formatCurrency(totalExposure)
     }
 
     var body: some View {
@@ -663,10 +648,7 @@ struct PendingBetRow: View {
     }
 
     private var formattedStake: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
+        Theme.formatCurrency(bet.stake)
     }
 
     var body: some View {
@@ -796,11 +778,7 @@ struct PlayerBalanceRow: View {
     let isOwedToYou: Bool
 
     private var formattedBalance: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        let amount = abs(balance)
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
+        Theme.formatCurrency(abs(balance))
     }
 
     private var daysText: String? {
@@ -887,10 +865,7 @@ struct FlaggedPlayerRow: View {
     let flaggedPlayer: FlaggedPlayer
 
     private var formattedBalance: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: flaggedPlayer.balance as NSDecimalNumber) ?? "$\(flaggedPlayer.balance)"
+        Theme.formatCurrency(flaggedPlayer.balance)
     }
 
     private var daysText: String? {

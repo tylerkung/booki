@@ -85,10 +85,7 @@ struct EventRiskItem: Identifiable {
 
     /// Formatted exposure string
     var formattedExposure: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: exposure as NSDecimalNumber) ?? "$\(exposure)"
+        Theme.formatCurrency(exposure)
     }
 
     /// Formatted start time string

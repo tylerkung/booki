@@ -398,14 +398,14 @@ struct WeeklySettlementView: View {
                     HStack(spacing: 16) {
                         SummaryStatView(
                             title: "Owed to You",
-                            value: formatCurrency(totalOwedToBookie),
+                            value: Theme.formatCurrency(totalOwedToBookie),
                             icon: "arrow.down.circle.fill",
                             color: Theme.accent
                         )
 
                         SummaryStatView(
                             title: "You Owe",
-                            value: formatCurrency(totalOwedToPlayers),
+                            value: Theme.formatCurrency(totalOwedToPlayers),
                             icon: "arrow.up.circle.fill",
                             color: Theme.danger
                         )
@@ -494,13 +494,6 @@ struct WeeklySettlementView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
         return formatter.string(from: date)
-    }
-
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
     }
 
     /// Check if a player is marked as settled for the selected period
@@ -601,7 +594,7 @@ struct PlayerSettlementRowView: View {
             // Positive = player owes bookie (red/danger)
             // Negative = bookie owes player (green/accent)
             VStack(alignment: .trailing, spacing: 4) {
-                Text(formatCurrency(report.endingBalance))
+                Text(Theme.formatCurrency(abs(report.endingBalance)))
                     .font(Theme.font(size: 16, weight: .bold))
                     .foregroundStyle(balanceColor)
 
@@ -657,13 +650,6 @@ struct PlayerSettlementRowView: View {
         }
     }
 
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let displayAmount = abs(amount)
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: displayAmount as NSDecimalNumber) ?? "$\(displayAmount)"
-    }
 }
 
 // MARK: - Player Settlement Detail View
@@ -753,7 +739,7 @@ struct PlayerSettlementDetailView: View {
                         Text("Payments Received")
                             .foregroundStyle(Theme.textSecondary)
                         Spacer()
-                        Text(formatCurrency(report.paymentsReceived))
+                        Text(Theme.formatCurrency(abs(report.paymentsReceived)))
                             .font(Theme.font(size: 16, weight: .semibold))
                             .foregroundStyle(Theme.accent)
                     }
@@ -771,7 +757,10 @@ struct PlayerSettlementDetailView: View {
                         Text("Adjustments")
                             .foregroundStyle(Theme.textSecondary)
                         Spacer()
-                        Text(formatCurrencySigned(report.adjustments))
+                        Text({
+                            let formatted = Theme.formatCurrency(abs(report.adjustments))
+                            return report.adjustments >= 0 ? "+\(formatted)" : "-\(formatted)"
+                        }())
                             .font(Theme.font(size: 16, weight: .semibold))
                             .foregroundStyle(report.adjustments >= 0 ? Theme.danger : Theme.accent)
                     }
@@ -842,7 +831,7 @@ struct PlayerSettlementDetailView: View {
                                     .font(Theme.headline)
                                     .foregroundStyle(Theme.textPrimary)
 
-                                Text("Member owes \(formatCurrency(report.endingBalance))")
+                                Text("Member owes \(Theme.formatCurrency(abs(report.endingBalance)))")
                                     .font(Theme.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
@@ -979,21 +968,6 @@ struct PlayerSettlementDetailView: View {
 
     // MARK: - Formatting Helpers
 
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: abs(amount) as NSDecimalNumber) ?? "$\(abs(amount))"
-    }
-
-    private func formatCurrencySigned(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        let formatted = formatter.string(from: abs(amount) as NSDecimalNumber) ?? "$\(abs(amount))"
-        return amount >= 0 ? "+\(formatted)" : "-\(formatted)"
-    }
-
     private func formatSettledDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -1075,7 +1049,7 @@ struct BalanceSummaryCard: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(formatCurrency(report.endingBalance))
+                    Text(Theme.formatCurrency(abs(report.endingBalance)))
                         .font(Theme.font(size: 20, weight: .bold))
                         .foregroundStyle(endingBalanceColor)
 
@@ -1108,12 +1082,6 @@ struct BalanceSummaryCard: View {
         }
     }
 
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: abs(amount) as NSDecimalNumber) ?? "$\(abs(amount))"
-    }
 }
 
 // MARK: - Balance Line Item
@@ -1139,10 +1107,7 @@ struct BalanceLineItem: View {
     }
 
     private var formattedAmount: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        let absFormatted = formatter.string(from: abs(amount) as NSDecimalNumber) ?? "$\(abs(amount))"
+        let absFormatted = Theme.formatCurrency(abs(amount))
 
         if showSign && amount != 0 {
             return amount > 0 ? "+\(absFormatted)" : "-\(absFormatted)"
@@ -1276,7 +1241,7 @@ struct QuickPaymentSheet: View {
                             .font(Theme.bodyFont(size: 15))
                             .foregroundStyle(Theme.textSecondary)
                         Spacer()
-                        Text(formatCurrency(amountOwed))
+                        Text(Theme.formatCurrency(amountOwed))
                             .font(Theme.font(size: 17, weight: .bold))
                             .foregroundStyle(amountOwed > 0 ? Theme.accent : Theme.textSecondary)
                     }
@@ -1379,7 +1344,7 @@ struct QuickPaymentSheet: View {
                 .foregroundStyle(Theme.textPrimary)
 
             if let amount = amountDecimal {
-                Text(formatCurrency(amount))
+                Text(Theme.formatCurrency(amount))
                     .font(Theme.title3)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -1415,14 +1380,6 @@ struct QuickPaymentSheet: View {
         }
     }
 
-    // MARK: - Helpers
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 // MARK: - Preview

@@ -30,10 +30,7 @@ struct AppHeaderView: View {
 
     /// Formatted balance string
     private var formattedBalance: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: balance as NSDecimalNumber) ?? "$\(balance)"
+        Theme.formatCurrency(balance)
     }
 
     // MARK: - Body

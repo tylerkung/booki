@@ -1355,6 +1355,8 @@ struct MemberSettingsView: View {
     @Query private var bookies: [Bookie]
 
     @State private var creditLimitText: String = ""
+    @State private var winLimitText: String = ""
+    @State private var winLimitAction: String = "block"
     @State private var isSaving = false
     @State private var saveMessage: String?
 
@@ -1412,6 +1414,69 @@ struct MemberSettingsView: View {
                     .foregroundStyle(Theme.textMuted)
                     .padding(.horizontal, 4)
 
+                sectionHeader("Default Win Limit")
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Win Limit")
+                            .foregroundStyle(Theme.textPrimary)
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Text("$")
+                                .foregroundStyle(Theme.textSecondary)
+                            TextField("None", text: $winLimitText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .foregroundStyle(Theme.textPrimary)
+                                .frame(width: 100)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+
+                    settingsDivider
+
+                    HStack {
+                        Text("When Reached")
+                            .foregroundStyle(Theme.textPrimary)
+                        Spacer()
+                        Picker("", selection: $winLimitAction) {
+                            Text("Block Picks").tag("block")
+                            Text("Require Approval").tag("require_approval")
+                        }
+                        .pickerStyle(.menu)
+                        .tint(Theme.accent)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+
+                    settingsDivider
+
+                    Button {
+                        saveWinLimit()
+                    } label: {
+                        HStack {
+                            if isSaving {
+                                ProgressView()
+                                    .tint(Theme.accent)
+                            } else {
+                                Label("Save", systemImage: "checkmark.circle")
+                                    .foregroundStyle(Theme.accent)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .disabled(isSaving)
+                }
+                .cardStyle()
+
+                Text("Caps how much a member can win before picks are blocked or require approval. Empty = no limit. Applied to new members via invite.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                    .padding(.horizontal, 4)
+
                 if let message = saveMessage {
                     Text(message)
                         .font(Theme.caption)
@@ -1434,6 +1499,14 @@ struct MemberSettingsView: View {
                 } else {
                     creditLimitText = "\(value)"
                 }
+
+                if let wl = bookie.defaultWinLimit {
+                    let wlRounded = NSDecimalNumber(decimal: wl).doubleValue
+                    winLimitText = wlRounded == wlRounded.rounded() ? "\(Int(wlRounded))" : "\(wl)"
+                } else {
+                    winLimitText = ""
+                }
+                winLimitAction = bookie.defaultWinLimitAction ?? "block"
             }
         }
     }
@@ -1468,6 +1541,64 @@ struct MemberSettingsView: View {
                 }
 
                 // Clear success message after a delay
+                try? await Task.sleep(for: .seconds(2))
+                await MainActor.run { saveMessage = nil }
+            } catch {
+                await MainActor.run {
+                    isSaving = false
+                    saveMessage = "Failed to save: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func saveWinLimit() {
+        guard let bookie = currentBookie else { return }
+
+        let cleaned = winLimitText.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)
+        let winLimitValue: Decimal? = cleaned.isEmpty ? nil : Decimal(string: cleaned)
+
+        if !cleaned.isEmpty && (winLimitValue == nil || winLimitValue! < 0) {
+            saveMessage = "Please enter a valid amount"
+            return
+        }
+
+        isSaving = true
+        saveMessage = nil
+
+        Task {
+            do {
+                let supabase = SupabaseClientManager.shared.client
+                let nullValue: String? = nil
+                if let value = winLimitValue {
+                    try await supabase
+                        .from("bookies")
+                        .update([
+                            "default_win_limit": "\(value)",
+                            "default_win_limit_action": winLimitAction,
+                            "updated_at": ISO8601DateFormatter().string(from: Date())
+                        ])
+                        .eq("id", value: bookie.id.uuidString.lowercased())
+                        .execute()
+                } else {
+                    try await supabase
+                        .from("bookies")
+                        .update([
+                            "default_win_limit": nullValue,
+                            "default_win_limit_action": "block",
+                            "updated_at": ISO8601DateFormatter().string(from: Date())
+                        ])
+                        .eq("id", value: bookie.id.uuidString.lowercased())
+                        .execute()
+                }
+
+                await MainActor.run {
+                    bookie.defaultWinLimit = winLimitValue
+                    bookie.defaultWinLimitAction = winLimitValue != nil ? winLimitAction : nil
+                    isSaving = false
+                    saveMessage = "Saved successfully"
+                }
+
                 try? await Task.sleep(for: .seconds(2))
                 await MainActor.run { saveMessage = nil }
             } catch {

@@ -74,6 +74,12 @@ final class Player: Syncable {
     /// Returns display_name if set, otherwise falls back to player's self-chosen name
     var bookieDisplayName: String { displayName ?? name }
 
+    /// Win limit: maximum net winnings before action is triggered (nil = no limit)
+    var winLimit: Decimal?
+
+    /// Action when win limit is reached: "block" or "require_approval"
+    var winLimitAction: String?
+
     /// Collection status for tracking outstanding balance follow-ups
     var collectionStatus: CollectionStatus?
 
@@ -115,6 +121,8 @@ final class Player: Syncable {
         claimedAt: Date? = nil,
         authUserId: UUID? = nil,
         displayName: String? = nil,
+        winLimit: Decimal? = nil,
+        winLimitAction: String? = nil,
         collectionStatus: CollectionStatus? = nil,
         collectionStatusDate: Date? = nil,
         promisedPaymentDate: Date? = nil,
@@ -139,6 +147,8 @@ final class Player: Syncable {
         self.claimedAt = claimedAt
         self.authUserId = authUserId
         self.displayName = displayName
+        self.winLimit = winLimit
+        self.winLimitAction = winLimitAction
         self.collectionStatus = collectionStatus
         self.collectionStatusDate = collectionStatusDate
         self.promisedPaymentDate = promisedPaymentDate

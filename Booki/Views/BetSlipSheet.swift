@@ -337,7 +337,7 @@ struct BetSlipSheet: View {
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
 
-                Text(formatCurrency(balanceSummary.availableCredit))
+                Text(Theme.formatCurrency(balanceSummary.availableCredit))
                     .font(Theme.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(balanceSummary.availableCredit > 0 ? Theme.accent : Theme.danger)
@@ -438,7 +438,7 @@ struct BetSlipSheet: View {
                 if player != nil {
                     Text("·")
                         .foregroundStyle(Theme.textMuted)
-                    Text("\(formatCurrency(balanceSummary.availableCredit)) max")
+                    Text("\(Theme.formatCurrency(balanceSummary.availableCredit)) max")
                         .foregroundStyle(Theme.textMuted)
                 }
 
@@ -689,6 +689,23 @@ struct BetSlipSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
 
+                // Win limit warnings
+                if let status = winLimitStatus, status.reached {
+                    HStack(spacing: 8) {
+                        Image(systemName: status.action == "block" ? "nosign" : "exclamationmark.triangle.fill")
+                            .foregroundStyle(status.action == "block" ? Theme.danger : Theme.warning)
+                        Text(status.action == "block"
+                            ? "Win limit reached — picks suspended"
+                            : "Your picks will require organizer approval")
+                            .font(Theme.caption)
+                            .foregroundStyle(status.action == "block" ? Theme.danger : Theme.warning)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background((status.action == "block" ? Theme.danger : Theme.warning).opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+
                 // Stake validation warnings (inline, no summary)
                 if betSlipManager.betMode == .parlay {
                     if betSlipManager.stake > 0 && !betSlipManager.isStakeValid(availableCredit: availableCredit) {
@@ -808,7 +825,7 @@ struct BetSlipSheet: View {
                         .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
-                    Text(formatCurrency(betSlipManager.individualTotalStake))
+                    Text(Theme.formatCurrency(betSlipManager.individualTotalStake))
                         .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textPrimary)
@@ -827,7 +844,7 @@ struct BetSlipSheet: View {
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
-                    Text(formatCurrency(betSlipManager.individualTotalPayout))
+                    Text(Theme.formatCurrency(betSlipManager.individualTotalPayout))
                         .font(Theme.title1)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.accent)
@@ -865,7 +882,7 @@ struct BetSlipSheet: View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(Theme.warning)
-            Text("Total stake exceeds available credit (\(formatCurrency(availableCredit)))")
+            Text("Total stake exceeds available credit (\(Theme.formatCurrency(availableCredit)))")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.warning)
         }
@@ -1060,10 +1077,24 @@ struct BetSlipSheet: View {
         return openBetCount >= Self.standaloneOpenBetLimit
     }
 
+    /// Win limit status for the current player
+    private var winLimitStatus: WinLimitStatus? {
+        guard let player = player else { return nil }
+        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+        return BalanceService.winLimitStatus(for: player, ledgerEntries: playerLedgerEntries)
+    }
+
+    /// Whether the player's win limit blocks submission entirely
+    private var isWinLimitBlocked: Bool {
+        guard let status = winLimitStatus else { return false }
+        return status.reached && status.action == "block"
+    }
+
     private var canSubmit: Bool {
         guard !betSlipManager.isEmpty else { return false }
         guard player != nil else { return false }
         guard !isAtStandaloneOpenBetLimit else { return false }
+        guard !isWinLimitBlocked else { return false }
 
         // US-006: Different validation based on bet mode
         switch betSlipManager.betMode {
@@ -1168,7 +1199,7 @@ struct BetSlipSheet: View {
                         .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
-                    Text(formatCurrency(betSlipManager.currentTotalStake))
+                    Text(Theme.formatCurrency(betSlipManager.currentTotalStake))
                         .font(Theme.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.textPrimary)
@@ -1187,7 +1218,7 @@ struct BetSlipSheet: View {
                         .font(Theme.headline)
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
-                    Text(formatCurrency(betSlipManager.currentTotalPayout))
+                    Text(Theme.formatCurrency(betSlipManager.currentTotalPayout))
                         .font(Theme.title1)
                         .fontWeight(.bold)
                         .foregroundStyle(Theme.accent)
@@ -1721,13 +1752,6 @@ struct BetSlipSheet: View {
 
     // MARK: - Helpers
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
-
     /// US-001: Format "to win" amount without currency symbol (shown separately)
     private func formatToWin(_ value: Decimal) -> String {
         Self.formatToWinStatic(value)
@@ -1868,14 +1892,6 @@ struct PremiumBetSlipItemCard: View {
         let stake = betSlipManager.getItemStake(marketId: item.marketId, sideIndicator: item.sideIndicator)
         guard stake > 0 else { return 0 }
         return betSlipManager.calculateToWin(odds: item.odds, stake: stake)
-    }
-
-    /// Format currency for display
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 
     /// US-001: Format "to win" amount without currency symbol

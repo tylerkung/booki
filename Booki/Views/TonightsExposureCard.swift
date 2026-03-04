@@ -127,7 +127,7 @@ struct TonightsExposureCard: View {
                             .foregroundStyle(Theme.textSecondary)
                     }
 
-                    Text(formatCurrency(totalPotentialLoss))
+                    Text(Theme.formatCurrency(totalPotentialLoss))
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(
                             totalPotentialLoss >= highExposureThreshold
@@ -157,7 +157,7 @@ struct TonightsExposureCard: View {
                                 .foregroundStyle(Theme.textPrimary)
                                 .lineLimit(1)
 
-                            Text("Highest activity: \(formatCurrency(riskGame.exposure))")
+                            Text("Highest activity: \(Theme.formatCurrency(riskGame.exposure))")
                                 .font(.caption)
                                 .foregroundStyle(Theme.warning)
                         }
@@ -196,13 +196,6 @@ struct TonightsExposureCard: View {
     }
 
     // MARK: - Helpers
-
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
-    }
 
     private func formatTime(_ date: Date) -> String {
         let formatter = DateFormatter()

@@ -170,7 +170,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
 - **Phases complete**: 1-20 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration, Default UX & Organizer Upsell, API Optimization & Live Scores, Apple IAP & Web Dashboard, Push Notifications)
-- **Supabase migrations**: All applied through 028 (see SUPABASE_MIGRATIONS.md)
+- **Supabase migrations**: All applied through 029 (see SUPABASE_MIGRATIONS.md)
 - **Edge Functions**: 15+ functions for server-authoritative operations (including `submit_bets`, `submit_parlay`, `sync_games`, `claim_player`, `create_invite`, `claim_invite`, `refresh_live_scores`, `delete_account`, `apple_iap_webhook`)
 - **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
 - **Settings**: Streamlined — removed Odds API config, sample data, and sync button
@@ -312,3 +312,6 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Web odds button styling**: Selected state = solid teal bg + dark text; hover = teal text on dark bg. Spread/total show line in secondary color, odds in primary with parentheses `(odds)`. `::after` nbsp spacing between line and value.
 - **Web futures 2-column grid**: Outright markets render in `grid-template-columns: 1fr 1fr` layout. Fixed Alpine `:style` string overwriting inline `display:flex` — use object syntax instead.
 - **Web bet submission fix**: `side` field now sends `side_indicator` ('a'/'b') to edge functions instead of display name
+- **Win limit**: Per-member win limit (`win_limit` + `win_limit_action` on players table) caps net winnings. `block` = picks suspended, `require_approval` = picks go pending. Server-enforced in `submit_bets`/`submit_parlay` via ledger balance check. Bookie defaults on bookies table (`default_win_limit`/`default_win_limit_action`), applied via `claim_invite`. iOS: editable on member detail + MemberSettingsView defaults + bet slip warning/block. Web: inline editing on member detail + bet slip validation. Migration 029.
+- **Web member detail tooltips**: Styled tooltips on Credit Limit, Win Limit, and Active/Pending badge using existing `showTagTooltip`/`hideTagTooltip` system
+- **Settlement table fix**: Removed last-row bottom border, fixed `settlementMarkPaid()` to check `response.error` from `callEdgeFunction`

@@ -235,7 +235,7 @@ struct AccountView: View {
                 .tracking(1.5)
                 .foregroundStyle(Theme.textSecondary)
 
-            Text(formatCurrency(displayBalance))
+            Text(Theme.formatCurrency(displayBalance))
                 .font(Theme.font(size: 56, weight: .bold))
                 .foregroundStyle(balanceColor)
                 .shadow(color: balanceColor.opacity(0.3), radius: 8, x: 0, y: 0)
@@ -484,7 +484,7 @@ struct AccountView: View {
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
-                Text("\(formatCurrency(balanceSummary.availableCredit)) / \(formatCurrency(player.creditLimit))")
+                Text("\(Theme.formatCurrency(balanceSummary.availableCredit)) / \(Theme.formatCurrency(player.creditLimit))")
                     .font(Theme.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(balanceSummary.availableCredit >= 0 ? Theme.textPrimary : Theme.danger)
@@ -807,19 +807,9 @@ struct AccountView: View {
         }
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
-
     private func formatProfitLoss(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
         let absValue = Swift.abs(Double(truncating: value as NSDecimalNumber))
-        let formatted = formatter.string(from: NSDecimalNumber(value: absValue)) ?? "$\(absValue)"
+        let formatted = Theme.formatCurrency(Decimal(absValue))
         return value >= 0 ? "+\(formatted)" : "-\(formatted)"
     }
 }
@@ -1023,11 +1013,8 @@ struct TransactionRowView: View {
     }
 
     private var formattedAmount: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
         let absAmount = abs(displayAmount)
-        let formatted = formatter.string(from: absAmount as NSDecimalNumber) ?? "$\(absAmount)"
+        let formatted = Theme.formatCurrency(absAmount)
         return displayAmount >= 0 ? "+\(formatted)" : "-\(formatted)"
     }
 
@@ -1131,11 +1118,8 @@ struct TransactionDetailView: View {
     }
 
     private var formattedAmount: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
         let absAmount = displayAmount < 0 ? -displayAmount : displayAmount
-        let formatted = formatter.string(from: absAmount as NSDecimalNumber) ?? "$\(absAmount)"
+        let formatted = Theme.formatCurrency(absAmount)
         return displayAmount >= 0 ? "+\(formatted)" : "-\(formatted)"
     }
 

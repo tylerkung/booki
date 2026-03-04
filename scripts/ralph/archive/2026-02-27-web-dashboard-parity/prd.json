@@ -1,0 +1,207 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/push-notifications",
+  "description": "Push notification infrastructure — APNs integration, Supabase device token storage, send_notification edge function, iOS NotificationService, deep link routing, notification preferences UI, and integration with existing edge functions.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add device_tokens and notification_preferences tables",
+      "description": "As a developer, I need database tables to store APNs device tokens and per-user notification preferences so the server can send targeted push notifications.",
+      "acceptanceCriteria": [
+        "Create migration file in supabase/migrations/ with next sequence number",
+        "device_tokens table: id (uuid PK default gen_random_uuid()), user_id (uuid FK auth.users NOT NULL), token (text NOT NULL), platform (text NOT NULL default 'ios'), app_version (text), created_at (timestamptz default now()), updated_at (timestamptz default now())",
+        "device_tokens has UNIQUE constraint on (user_id, token)",
+        "device_tokens has index on user_id",
+        "notification_preferences table: id (uuid PK default gen_random_uuid()), user_id (uuid FK auth.users UNIQUE NOT NULL), picks_graded (boolean default true), balance_changes (boolean default true), new_members (boolean default true), pick_submissions (boolean default false), game_results (boolean default true), risk_alerts (boolean default true), marketing (boolean default false), created_at (timestamptz default now())",
+        "RLS enabled on both tables",
+        "device_tokens RLS: users can SELECT, INSERT, UPDATE, DELETE their own rows (auth.uid() = user_id)",
+        "notification_preferences RLS: users can SELECT and UPDATE their own row, INSERT if not exists (auth.uid() = user_id)",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create send_notification shared helper",
+      "description": "As a developer, I need a shared helper module in supabase/functions/_shared/ that handles APNs JWT generation and HTTP/2 push delivery, so edge functions can send notifications with a single function call.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/_shared/notifications.ts",
+        "Export async function sendNotification({ event, recipientUserIds, title, body, data }) that: (1) queries notification_preferences to filter out opted-out users based on event-to-preference mapping, (2) queries device_tokens for remaining users, (3) sends APNs HTTP/2 POST to api.push.apple.com for each token, (4) deletes tokens that return 410 Gone or BadDeviceToken",
+        "Event-to-preference mapping: pick_graded/parlay_graded -> picks_graded, balance_adjusted -> balance_changes, new_member -> new_members, pick_submitted -> pick_submissions, game_results -> game_results, risk_alert -> risk_alerts",
+        "APNs JWT generation using ES256 with APNS_KEY_P8, APNS_KEY_ID, APNS_TEAM_ID from Deno.env. JWT cached in module-level variable, regenerated when older than 50 minutes",
+        "APNs payload format: { aps: { alert: { title, body }, sound: 'default', badge: 1 }, deep_link: data.deep_link }",
+        "APNs headers: authorization Bearer JWT, apns-topic com.bookiapp.booki, apns-push-type alert, apns-priority 10",
+        "Function is fire-and-forget safe — all errors caught and logged, never throws",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Reads APNS_KEY_P8, APNS_KEY_ID, APNS_TEAM_ID, APNS_ENVIRONMENT from Supabase secrets. APNS_ENVIRONMENT determines api.push.apple.com vs api.sandbox.push.apple.com. Use importKey with ECDSA P-256 for signing."
+    },
+    {
+      "id": "US-003",
+      "title": "Create send_notification edge function endpoint",
+      "description": "As a developer, I need a standalone send_notification edge function that other functions can invoke via fetch, providing a clean API boundary for notification delivery.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/send_notification/index.ts",
+        "Accepts POST with JSON body: { event, recipient_user_ids, title, body, data }",
+        "Validates that request has service role key (internal-only, not user-facing)",
+        "Calls sendNotification from _shared/notifications.ts",
+        "Returns { success: true, sent: number } with count of notifications sent",
+        "Handles CORS preflight",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "This function is called internally by other edge functions via fetch to the Supabase functions URL. Validates via service_role key in Authorization header, not user JWT."
+    },
+    {
+      "id": "US-004",
+      "title": "Create NotificationService.swift for iOS",
+      "description": "As a developer, I need an iOS service that handles push notification permission, APNs token registration, and token storage in Supabase.",
+      "acceptanceCriteria": [
+        "Create Booki/Services/NotificationService.swift",
+        "Class is @Observable and @MainActor",
+        "Property: isPermissionGranted: Bool",
+        "Method: requestPermission() — calls UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]), updates isPermissionGranted, if granted calls UIApplication.shared.registerForRemoteNotifications()",
+        "Method: registerToken(_ deviceToken: Data) — converts token to hex string, upserts to device_tokens table via Supabase client (user_id from current session, platform 'ios', app_version from Bundle.main)",
+        "Method: removeToken() — deletes all device_tokens for current user_id (called on logout)",
+        "Add UNUserNotificationCenterDelegate conformance to handle foreground notifications (show banner unless already on that screen)",
+        "Add @preconcurrency import Supabase",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Use existing SupabaseManager or sbClient pattern from the codebase. Token hex conversion: deviceToken.map { String(format: '%02x', $0) }.joined(). The delegate method userNotificationCenter(_:willPresent:) should return [.banner, .sound] for foreground display."
+    },
+    {
+      "id": "US-005",
+      "title": "Wire NotificationService into app lifecycle",
+      "description": "As a developer, I need the NotificationService connected to the app delegate and auth flow so tokens are registered on launch and cleaned up on logout.",
+      "acceptanceCriteria": [
+        "Add NotificationService as @State property on BookiApp or inject via environment",
+        "In AppDelegate or BookiApp, implement application(_:didRegisterForRemoteNotificationsWithDeviceToken:) and call notificationService.registerToken()",
+        "In AppDelegate or BookiApp, implement application(_:didFailToRegisterForRemoteNotificationsWithError:) and log the error",
+        "On successful auth (in AuthManager or checkSession), call notificationService.requestPermission() if not already granted",
+        "On logout (in AuthManager.signOut), call notificationService.removeToken() before signing out of Supabase",
+        "Set UNUserNotificationCenter.current().delegate to NotificationService on app launch",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Check existing BookiApp.swift and AuthManager.swift for the right injection points. If app uses SwiftUI lifecycle (no AppDelegate), use UIApplicationDelegateAdaptor."
+    },
+    {
+      "id": "US-006",
+      "title": "Add deep link routing from notification taps",
+      "description": "As a user, I want tapping a notification to take me directly to the relevant screen (bet detail, member detail, picks tab, etc.).",
+      "acceptanceCriteria": [
+        "Add pendingDeepLink: String? property to a shared observable (ContentView or navigation state)",
+        "Implement userNotificationCenter(_:didReceive:) in NotificationService to extract deep_link from notification payload and set pendingDeepLink",
+        "In ContentView or root navigation, observe pendingDeepLink and route: booki://bet/{id} -> BetDetailView, booki://ticket/{id} -> TicketDetailView, booki://members/{id} -> PlayerAnalyticsDetailView, booki://picks -> Picks tab, booki://account -> Account tab",
+        "Deep link is consumed (set to nil) after navigation completes",
+        "Works when app is launched from killed state (cold start) and from background",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "The booki:// URL scheme is already registered. Check ContentView.swift for existing tab selection logic. Use .onOpenURL or similar pattern for cold start deep links."
+    },
+    {
+      "id": "US-007",
+      "title": "Integrate notifications into auto_refresh_games",
+      "description": "As a member, I want to receive a push notification when my picks are graded so I know the result without opening the app.",
+      "acceptanceCriteria": [
+        "In auto_refresh_games/index.ts, after grading bets, collect graded bet results grouped by player auth_user_id",
+        "For each player with graded bets, call sendNotification with event 'pick_graded', title 'Your pick was graded', body showing team/result/amount (e.g. 'Lakers ML — Won (+$50)'), deep_link 'booki://bet/{betId}'",
+        "If multiple bets graded for same player in one run, send one summary notification: 'X picks graded — see results' with deep_link 'booki://picks'",
+        "Also notify the bookie with event 'game_results': 'X games finalized — Y picks graded'",
+        "Notification calls wrapped in try/catch — failures logged but do not affect grading",
+        "Import sendNotification from '../_shared/notifications.ts'",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "auto_refresh_games already tracks graded bets in its logic. Add notification calls after the grading loop completes. Use the existing bet data (team names, amounts, results) to build notification bodies. Fire-and-forget pattern."
+    },
+    {
+      "id": "US-008",
+      "title": "Integrate notifications into adjust_balance and claim_invite",
+      "description": "As a member, I want to be notified when my balance is adjusted. As an organizer, I want to know when someone joins my group.",
+      "acceptanceCriteria": [
+        "In adjust_balance/index.ts, after successful balance adjustment, call sendNotification with: recipient = player's auth_user_id, event = 'balance_adjusted', title = 'Balance updated' for adjustments or 'Payment recorded' for paymentLogged type, body showing amount and reason if provided, deep_link = 'booki://account'",
+        "In claim_invite/index.ts, after successful claim, call sendNotification with: recipient = bookie's auth_user_id, event = 'new_member', title = 'New member', body = '{playerName} joined your group', deep_link = 'booki://members/{playerId}'",
+        "Both wrapped in try/catch, fire-and-forget",
+        "Import sendNotification from '../_shared/notifications.ts'",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "adjust_balance already has the player and bookie context. claim_invite already has player name and bookie ID. Just add the notification call at the end of the success path."
+    },
+    {
+      "id": "US-009",
+      "title": "Integrate notifications into submit_bet, submit_bets, and decline_bet",
+      "description": "As an organizer, I want to know when members submit picks. As a member, I want to know if my pick is declined.",
+      "acceptanceCriteria": [
+        "In submit_bet/index.ts, after successful submission, call sendNotification with: recipient = bookie's auth_user_id, event = 'pick_submitted', title = 'New pick', body = '{playerName} — {teamName} {marketType} ${stake}', deep_link = 'booki://bet/{betId}'",
+        "In submit_bets/index.ts, after successful batch submission, send one summary notification to bookie: '{playerName} submitted {count} picks', deep_link = 'booki://picks'",
+        "In decline_bet/index.ts, after declining, call sendNotification with: recipient = player's auth_user_id, event = 'pick_declined' (maps to picks_graded preference), title = 'Pick declined', body = '{teamName} {marketType} was declined', deep_link = 'booki://bet/{betId}'",
+        "All wrapped in try/catch, fire-and-forget",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "pick_declined maps to the picks_graded preference key since it's a pick status change. The bet data (team name, market type, stake) is already available in these functions."
+    },
+    {
+      "id": "US-010",
+      "title": "Add notification preferences UI for members",
+      "description": "As a member, I want to control which notifications I receive from the Account screen.",
+      "acceptanceCriteria": [
+        "Add 'Notifications' row to AccountView menu (between Activity and About)",
+        "Create NotificationPreferencesView.swift with toggle list in .cardStyle() card",
+        "Three toggles for members: 'Pick results' (picks_graded), 'Balance changes' (balance_changes), 'Game results' (game_results)",
+        "On appear, fetch notification_preferences for current user from Supabase. If no row exists, insert one with defaults",
+        "Each toggle updates the corresponding column in notification_preferences via Supabase",
+        "Match existing Settings visual style (ScrollView, .background(Theme.background), cardStyle sections)",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Follow the pattern of other settings sub-views. Use existing Supabase client. Debounce or save-on-toggle (no save button needed)."
+    },
+    {
+      "id": "US-011",
+      "title": "Add notification preferences UI for organizers",
+      "description": "As an organizer, I want to control which notifications I receive from the Settings screen.",
+      "acceptanceCriteria": [
+        "Add 'Notifications' row to organizer SettingsView menu (between Change Password and Subscription)",
+        "Create BookieNotificationPreferencesView.swift with toggle list in .cardStyle() card",
+        "Four toggles for organizers: 'New members' (new_members), 'Pick submissions' (pick_submissions), 'Risk alerts' (risk_alerts), 'Game results' (game_results)",
+        "On appear, fetch notification_preferences for current user from Supabase. If no row exists, insert one with defaults",
+        "Each toggle updates the corresponding column in notification_preferences via Supabase",
+        "Match existing Settings visual style",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Organizers see different toggles than members since they care about different events. Follow the same pattern as US-010."
+    },
+    {
+      "id": "US-012",
+      "title": "Add badge count and clear on foreground",
+      "description": "As a user, I want to see a badge on the app icon when I have unread graded picks, and have it clear when I open the app.",
+      "acceptanceCriteria": [
+        "In NotificationService, when app enters foreground (via scenePhase .active or NotificationCenter willEnterForeground), set UNUserNotificationCenter.current().setBadgeCount(0)",
+        "In send_notification APNs payload, set badge to 1 for pick_graded and balance_adjusted events",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Simple badge: always 1 when there's a notification, clear to 0 on foreground. No need to track exact unread count for v1."
+    }
+  ]
+}

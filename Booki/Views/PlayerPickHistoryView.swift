@@ -170,11 +170,8 @@ struct BookieTransactionDetailView: View {
     }
 
     private var formattedAmount: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
         let absAmount = entry.amount < 0 ? -entry.amount : entry.amount
-        let formatted = formatter.string(from: absAmount as NSDecimalNumber) ?? "$\(absAmount)"
+        let formatted = Theme.formatCurrency(absAmount)
         return entry.amount >= 0 ? "+\(formatted)" : "-\(formatted)"
     }
 

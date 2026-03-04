@@ -40,6 +40,8 @@ struct BookieRecord: Codable {
     let allowFuturesParlays: Bool?
     let tier: String?
     let defaultCreditLimit: Double?
+    let defaultWinLimit: Double?
+    let defaultWinLimitAction: String?
     let subscriptionSource: String?
     let appleOriginalTransactionId: String?
 
@@ -56,6 +58,8 @@ struct BookieRecord: Codable {
         case allowFuturesParlays = "allow_futures_parlays"
         case tier
         case defaultCreditLimit = "default_credit_limit"
+        case defaultWinLimit = "default_win_limit"
+        case defaultWinLimitAction = "default_win_limit_action"
         case subscriptionSource = "subscription_source"
         case appleOriginalTransactionId = "apple_original_transaction_id"
     }

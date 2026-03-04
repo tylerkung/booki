@@ -36,17 +36,11 @@ enum AttentionItemType {
         case .nearCreditLimit(let player, let percent):
             return "\(player.bookieDisplayName) at \(percent)% of credit limit"
         case .highExposureGame(let event, let exposure):
-            let formatted = Self.formatCurrency(exposure)
+            let formatted = Theme.formatCurrency(exposure)
             return "\(event.awayTeam) @ \(event.homeTeam) — \(formatted) activity"
         }
     }
 
-    private static func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
-    }
 }
 
 enum AttentionSeverity {

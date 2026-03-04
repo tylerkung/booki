@@ -251,8 +251,8 @@ struct PlayersListView: View {
                         NavigationLink(value: summary) {
                             PlayerRowView(
                                 player: summary.player,
-                                balance: balanceForPlayer(summary.player),
-                                utilization: utilizationForPlayer(summary.player),
+                                balance: balanceMap[summary.player.id] ?? 0,
+                                utilization: utilizationMap[summary.player.id] ?? 0,
                                 summary: summary,
                                 expanded: true,
                                 showTags: bookieIsPro
@@ -443,29 +443,44 @@ struct PlayersListView: View {
         }
     }
 
-    // MARK: - Helper Methods
+    // MARK: - Pre-computed Lookups
 
-    private func balanceForPlayer(_ player: Player) -> Decimal {
-        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
-        return BalanceService.calculateBalance(from: playerLedgerEntries)
+    private var ledgerByPlayer: [UUID: [LedgerEntry]] {
+        Dictionary(grouping: ledgerEntries) { $0.player?.id ?? UUID() }
     }
 
-    private func utilizationForPlayer(_ player: Player) -> Double {
-        guard player.creditLimit > 0 else { return 0 }
+    private var betsByPlayer: [UUID: [Bet]] {
+        Dictionary(grouping: bets) { $0.player?.id ?? UUID() }
+    }
 
-        let playerBets = bets.filter { $0.player?.id == player.id }
-        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
+    private var balanceMap: [UUID: Decimal] {
+        let grouped = ledgerByPlayer
+        var map: [UUID: Decimal] = [:]
+        for player in players where player.status == .active {
+            map[player.id] = BalanceService.calculateBalance(from: grouped[player.id] ?? [])
+        }
+        return map
+    }
 
-        let summary = BalanceService.playerSummary(
-            for: player,
-            bets: playerBets,
-            ledgerEntries: playerLedgerEntries
-        )
-
-        // Utilization = (creditLimit - availableCredit) / creditLimit * 100
-        let used = player.creditLimit - summary.availableCredit
-        let utilization = (used as NSDecimalNumber).doubleValue / (player.creditLimit as NSDecimalNumber).doubleValue
-        return max(0, min(1, utilization)) * 100
+    private var utilizationMap: [UUID: Double] {
+        let ledgerGrouped = ledgerByPlayer
+        let betsGrouped = betsByPlayer
+        var map: [UUID: Double] = [:]
+        for player in players where player.status == .active {
+            guard player.creditLimit > 0 else {
+                map[player.id] = 0
+                continue
+            }
+            let summary = BalanceService.playerSummary(
+                for: player,
+                bets: betsGrouped[player.id] ?? [],
+                ledgerEntries: ledgerGrouped[player.id] ?? []
+            )
+            let used = player.creditLimit - summary.availableCredit
+            let utilization = (used as NSDecimalNumber).doubleValue / (player.creditLimit as NSDecimalNumber).doubleValue
+            map[player.id] = max(0, min(1, utilization)) * 100
+        }
+        return map
     }
 }
 
@@ -562,29 +577,16 @@ struct PlayerRowView: View {
     }
 
     private var formattedBalance: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: balance as NSDecimalNumber) ?? "$\(balance)"
+        Theme.formatWholeCurrency(balance)
     }
 
     private var formattedCreditUsed: String {
-        // Credit used = utilization% × creditLimit (matches detail view calculation)
         let used = player.creditLimit * Decimal(utilization) / 100
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: used as NSDecimalNumber) ?? "$\(used)"
+        return Theme.formatWholeCurrency(used)
     }
 
     private var formattedCreditLimit: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: player.creditLimit as NSDecimalNumber) ?? "$\(player.creditLimit)"
+        Theme.formatWholeCurrency(player.creditLimit)
     }
 
     private var statusColor: Color {
@@ -655,10 +657,10 @@ struct PlayerRowView: View {
     private func expandedMetrics(_ summary: PlayerAnalyticsSummary) -> some View {
         // Row 2: Key metrics
         HStack(spacing: 0) {
-            metricColumn(label: "Open Activity", value: formatCurrencyShort(summary.exposure.grossExposure), color: summary.exposure.grossExposure > 0 ? Theme.textPrimary : Theme.textSecondary)
+            metricColumn(label: "Open Activity", value: Theme.formatWholeCurrency(summary.exposure.grossExposure), color: summary.exposure.grossExposure > 0 ? Theme.textPrimary : Theme.textSecondary)
             metricColumn(label: "7d P/L", value: formatSignedCurrencyShort(summary.sevenDayPL), color: summary.sevenDayPL > 0 ? Theme.accent : summary.sevenDayPL < 0 ? Theme.danger : Theme.textSecondary)
             metricColumn(label: "Win Rate", value: "\(Int(summary.winRate * 100))%", color: Theme.textPrimary)
-            metricColumn(label: "Avg Pick", value: formatCurrencyShort(summary.avgBetSize30d), color: Theme.textPrimary)
+            metricColumn(label: "Avg Pick", value: Theme.formatWholeCurrency(summary.avgBetSize30d), color: Theme.textPrimary)
         }
 
         // Row 3: Attention chips (Pro only)
@@ -698,17 +700,9 @@ struct PlayerRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func formatCurrencyShort(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
-
     private func formatSignedCurrencyShort(_ value: Decimal) -> String {
         let absValue = value < 0 ? -value : value
-        let formatted = formatCurrencyShort(absValue)
+        let formatted = Theme.formatWholeCurrency(absValue)
         if value > 0 { return "+\(formatted)" }
         if value < 0 { return "-\(formatted)" }
         return formatted
@@ -731,12 +725,7 @@ struct PlayerRowView: View {
         if balance > 0 {
             return "Owes \(formattedBalance)"
         } else if balance < 0 {
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .currency
-            formatter.currencyCode = "USD"
-            formatter.maximumFractionDigits = 0
-            let absFormatted = formatter.string(from: (-balance) as NSDecimalNumber) ?? "$\(-balance)"
-            return "You owe \(absFormatted)"
+            return "You owe \(Theme.formatWholeCurrency(-balance))"
         }
         return "Settled"
     }
@@ -793,19 +782,19 @@ struct PlayerDetailView: View {
     }
 
     private var formattedBalance: String {
-        formatCurrency(balanceSummary.balanceOwed)
+        Theme.formatCurrency(balanceSummary.balanceOwed)
     }
 
     private var formattedCreditLimit: String {
-        formatCurrency(player.creditLimit)
+        Theme.formatCurrency(player.creditLimit)
     }
 
     private var formattedAvailableCredit: String {
-        formatCurrency(balanceSummary.availableCredit)
+        Theme.formatCurrency(balanceSummary.availableCredit)
     }
 
     private var formattedOpenLiability: String {
-        formatCurrency(balanceSummary.openLiability)
+        Theme.formatCurrency(balanceSummary.openLiability)
     }
 
     private var statusColor: Color {
@@ -1415,12 +1404,6 @@ struct PlayerDetailView: View {
         return "Event \(bet.eventId.prefix(8))"
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 // MARK: - Player Bet Row View
@@ -1538,12 +1521,6 @@ struct BalanceAdjustmentSheet: View {
         dismiss()
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 // MARK: - Promised Date Sheet

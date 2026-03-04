@@ -497,6 +497,10 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-secondary);
 }
 
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
 .data-table tr:hover td {
     background: var(--bg-elevated);
 }

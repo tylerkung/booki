@@ -32,15 +32,8 @@ struct SettlementSnapshotCard: View {
 
     /// Date range description (e.g., "Feb 3 - Feb 9, 2026")
     private var dateRangeDescription: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-
-        let yearFormatter = DateFormatter()
-        yearFormatter.dateFormat = "MMM d, yyyy"
-
-        let startStr = formatter.string(from: currentWeekStartDate)
-        let endStr = yearFormatter.string(from: currentWeekEndingDate)
-
+        let startStr = Theme.monthDayFormatter.string(from: currentWeekStartDate)
+        let endStr = Theme.monthDayYearFormatter.string(from: currentWeekEndingDate)
         return "\(startStr) - \(endStr)"
     }
 
@@ -62,6 +55,20 @@ struct SettlementSnapshotCard: View {
         }
     }
 
+    /// Reports indexed by player ID for O(1) lookup
+    private var reportsByPlayerId: [UUID: PlayerSettlementReport] {
+        Dictionary(uniqueKeysWithValues: playerReports.map { ($0.player.id, $0) })
+    }
+
+    /// Set of player IDs that are settled for the current period (O(1) contains check)
+    private var settledPlayerIds: Set<UUID> {
+        Set(playerSettlements.compactMap { settlement in
+            guard settlement.isSettled,
+                  Calendar.current.isDate(settlement.periodWeekEndingDate, inSameDayAs: currentWeekEndingDate) else { return nil }
+            return settlement.player?.id
+        })
+    }
+
     /// Total owed to bookie (positive ending balances)
     private var totalOwedToBookie: Decimal {
         playerReports.filter { $0.endingBalance > 0 }
@@ -76,16 +83,11 @@ struct SettlementSnapshotCard: View {
 
     /// Count of players not yet settled for this period
     private var unpaidPlayersCount: Int {
-        activePlayers.filter { player in
-            // Player owes money AND is not settled
-            let report = playerReports.first { $0.player.id == player.id }
-            let owes = (report?.endingBalance ?? 0) > 0
-            let settled = playerSettlements.contains { settlement in
-                settlement.player?.id == player.id &&
-                Calendar.current.isDate(settlement.periodWeekEndingDate, inSameDayAs: currentWeekEndingDate) &&
-                settlement.isSettled
-            }
-            return owes && !settled
+        let reports = reportsByPlayerId
+        let settled = settledPlayerIds
+        return activePlayers.filter { player in
+            let owes = (reports[player.id]?.endingBalance ?? 0) > 0
+            return owes && !settled.contains(player.id)
         }.count
     }
 
@@ -96,14 +98,10 @@ struct SettlementSnapshotCard: View {
 
     /// Top 3 unpaid players sorted by amount owed (highest first)
     private var topUnpaidPlayers: [(report: PlayerSettlementReport, isSettled: Bool)] {
-        playerReports
-            .map { report -> (report: PlayerSettlementReport, isSettled: Bool) in
-                let settled = playerSettlements.contains { settlement in
-                    settlement.player?.id == report.player.id &&
-                    Calendar.current.isDate(settlement.periodWeekEndingDate, inSameDayAs: currentWeekEndingDate) &&
-                    settlement.isSettled
-                }
-                return (report: report, isSettled: settled)
+        let settled = settledPlayerIds
+        return playerReports
+            .map { report in
+                (report: report, isSettled: settled.contains(report.player.id))
             }
             .filter { $0.report.endingBalance != 0 && !$0.isSettled }
             .sorted { abs($0.report.endingBalance) > abs($1.report.endingBalance) }
@@ -175,7 +173,7 @@ struct SettlementSnapshotCard: View {
                             .foregroundStyle(Theme.textSecondary)
                     }
 
-                    Text(formatCurrency(totalOwedToBookie))
+                    Text(Theme.formatCurrency(totalOwedToBookie))
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.accent)
                 }
@@ -192,7 +190,7 @@ struct SettlementSnapshotCard: View {
                             .foregroundStyle(Theme.textSecondary)
                     }
 
-                    Text(formatCurrency(totalOwedToPlayers))
+                    Text(Theme.formatCurrency(totalOwedToPlayers))
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.danger)
                 }
@@ -245,7 +243,7 @@ struct SettlementSnapshotCard: View {
                             Spacer()
 
                             // Amount owed
-                            Text(formatCurrency(abs(item.report.endingBalance)))
+                            Text(Theme.formatCurrency(abs(item.report.endingBalance)))
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundStyle(item.report.endingBalance > 0 ? Theme.danger : Theme.accent)
 
@@ -352,12 +350,4 @@ struct SettlementSnapshotCard: View {
         }
     }
 
-    // MARK: - Helpers
-
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
-    }
 }

@@ -32,6 +32,10 @@ struct PlayerAnalyticsDetailView: View {
     @State private var showingEditCreditLimit = false
     @State private var creditLimitText = ""
 
+    // Edit win limit
+    @State private var showingEditWinLimit = false
+    @State private var winLimitText = ""
+
     // Picks filter
     @State private var picksFilter: PicksFilter = .open
 
@@ -93,6 +97,19 @@ struct PlayerAnalyticsDetailView: View {
                         showingEditCreditLimit = true
                     } label: {
                         Label("Set Credit Limit", systemImage: "creditcard")
+                    }
+                    Button {
+                        if let limit = player.winLimit {
+                            let formatter = NumberFormatter()
+                            formatter.numberStyle = .decimal
+                            formatter.maximumFractionDigits = 0
+                            winLimitText = formatter.string(from: limit as NSDecimalNumber) ?? ""
+                        } else {
+                            winLimitText = ""
+                        }
+                        showingEditWinLimit = true
+                    } label: {
+                        Label("Set Win Limit", systemImage: "trophy")
                     }
                     Button(role: .destructive) {
                         showingArchiveConfirmation = true
@@ -164,6 +181,22 @@ struct PlayerAnalyticsDetailView: View {
         } message: {
             Text("Set the maximum credit for this member.")
         }
+        .alert("Win Limit", isPresented: $showingEditWinLimit) {
+            TextField("Amount (empty = no limit)", text: $winLimitText)
+                .keyboardType(.numberPad)
+            Button("Block") {
+                saveWinLimit(action: "block")
+            }
+            Button("Require Approval") {
+                saveWinLimit(action: "require_approval")
+            }
+            Button("Remove Limit", role: .destructive) {
+                saveWinLimit(action: nil)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Cap net winnings. When reached, picks are blocked or require approval.")
+        }
     }
 
     // MARK: - Actions
@@ -212,6 +245,54 @@ struct PlayerAnalyticsDetailView: View {
                 }
             } catch {
                 print("Failed to update credit limit: \(error)")
+            }
+        }
+    }
+
+    private func saveWinLimit(action: String?) {
+        let playerId = player.id.uuidString.lowercased()
+
+        // If action is nil, remove the limit entirely
+        guard let action = action else {
+            Task {
+                do {
+                    let supabase = SupabaseClientManager.shared.client
+                    let nullValue: String? = nil
+                    try await supabase
+                        .from("players")
+                        .update(["win_limit": nullValue, "win_limit_action": nullValue])
+                        .eq("id", value: playerId)
+                        .execute()
+
+                    await MainActor.run {
+                        player.winLimit = nil
+                        player.winLimitAction = nil
+                    }
+                } catch {
+                    print("Failed to remove win limit: \(error)")
+                }
+            }
+            return
+        }
+
+        let cleaned = winLimitText.replacingOccurrences(of: ",", with: "")
+        guard let value = Decimal(string: cleaned), value > 0 else { return }
+
+        Task {
+            do {
+                let supabase = SupabaseClientManager.shared.client
+                try await supabase
+                    .from("players")
+                    .update(["win_limit": "\(value)", "win_limit_action": action])
+                    .eq("id", value: playerId)
+                    .execute()
+
+                await MainActor.run {
+                    player.winLimit = value
+                    player.winLimitAction = action
+                }
+            } catch {
+                print("Failed to update win limit: \(error)")
             }
         }
     }
@@ -305,7 +386,7 @@ struct PlayerAnalyticsDetailView: View {
                 showingEditCreditLimit = true
             } label: {
                 HStack(spacing: 4) {
-                    Text("Credit: \(formatCurrency(player.creditLimit - balanceSummary.availableCredit)) / \(formatCurrency(player.creditLimit)) · \(Int(utilization))%")
+                    Text("Credit: \(Theme.formatCurrency(player.creditLimit - balanceSummary.availableCredit)) / \(Theme.formatCurrency(player.creditLimit)) · \(Int(utilization))%")
                         .font(Theme.bodyFont(size: 13))
                         .foregroundStyle(Theme.textSecondary)
                     Image(systemName: "pencil")
@@ -314,6 +395,9 @@ struct PlayerAnalyticsDetailView: View {
                 }
             }
 
+            // Win limit (tappable to edit)
+            winLimitRow
+
             // Reason chips
             if !summary.pas.reasonChips.isEmpty {
                 DetailReasonChips(chips: summary.pas.reasonChips)
@@ -321,6 +405,41 @@ struct PlayerAnalyticsDetailView: View {
         }
         .padding(16)
         .cardStyle()
+    }
+
+    @ViewBuilder
+    private var winLimitRow: some View {
+        Button {
+            if let limit = player.winLimit {
+                let formatter = NumberFormatter()
+                formatter.numberStyle = .decimal
+                formatter.maximumFractionDigits = 0
+                winLimitText = formatter.string(from: limit as NSDecimalNumber) ?? ""
+            } else {
+                winLimitText = ""
+            }
+            showingEditWinLimit = true
+        } label: {
+            HStack(spacing: 4) {
+                if let limit = player.winLimit {
+                    let status = BalanceService.winLimitStatus(for: player, ledgerEntries: livePlayerLedgerEntries)
+                    let netWinnings = status?.netWinnings ?? 0
+                    Text("Win Limit: \(Theme.formatCurrency(netWinnings)) / \(Theme.formatCurrency(limit))")
+                        .font(Theme.bodyFont(size: 13))
+                        .foregroundStyle(status?.reached == true ? Theme.danger : Theme.textSecondary)
+                    Text("· \(player.winLimitAction == "require_approval" ? "Approval" : "Block")")
+                        .font(Theme.bodyFont(size: 13))
+                        .foregroundStyle(Theme.textMuted)
+                } else {
+                    Text("Win Limit: None")
+                        .font(Theme.bodyFont(size: 13))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                Image(systemName: "pencil")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.textMuted)
+            }
+        }
     }
 
     // MARK: - CTA Buttons
@@ -371,9 +490,9 @@ struct PlayerAnalyticsDetailView: View {
                 .foregroundStyle(Theme.textSecondary)
                 .tracking(1.0)
 
-            todayMetricRow(label: "Open Exposure", value: formatCurrency(summary.exposure.grossExposure))
+            todayMetricRow(label: "Open Exposure", value: Theme.formatCurrency(summary.exposure.grossExposure))
             todayMetricRow(label: "Open Bets", value: "\(summary.exposure.pendingBetCount)")
-            todayMetricRow(label: "Largest Open Bet", value: formatCurrency(summary.exposure.largestPendingBet))
+            todayMetricRow(label: "Largest Open Bet", value: Theme.formatCurrency(summary.exposure.largestPendingBet))
         }
         .padding(16)
         .cardStyle()
@@ -442,7 +561,7 @@ struct PlayerAnalyticsDetailView: View {
 
     private var behaviorMetrics: some View {
         VStack(spacing: 8) {
-            todayMetricRow(label: "Avg Bet Size (30d)", value: formatCurrency(summary.avgBetSize30d))
+            todayMetricRow(label: "Avg Bet Size (30d)", value: Theme.formatCurrency(summary.avgBetSize30d))
             todayMetricRow(label: "Bets Per Week (30d)", value: String(format: "%.1f", Double(recentBets.count) / 4.3))
         }
     }
@@ -509,7 +628,7 @@ struct PlayerAnalyticsDetailView: View {
                         .font(Theme.bodyFont(size: 15))
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
-                    Text(formatCurrency(liveOverdue.amount))
+                    Text(Theme.formatCurrency(liveOverdue.amount))
                         .font(Theme.font(size: 17, weight: .bold))
                         .foregroundStyle(Theme.danger)
                 }
@@ -631,7 +750,7 @@ struct PlayerAnalyticsDetailView: View {
     }
 
     private func formatSignedCurrency(_ value: Decimal) -> String {
-        let formatted = formatCurrency(abs(value))
+        let formatted = Theme.formatCurrency(abs(value))
         if value > 0 { return "+\(formatted)" }
         if value < 0 { return "-\(formatted)" }
         return formatted
@@ -646,9 +765,9 @@ struct PlayerAnalyticsDetailView: View {
     private var formattedBalanceLabel: String {
         let amount = balanceSummary.balanceOwed
         if amount > 0 {
-            return "Owes \(formatCurrency(amount))"
+            return "Owes \(Theme.formatCurrency(amount))"
         } else if amount < 0 {
-            return "You owe \(formatCurrency(-amount))"
+            return "You owe \(Theme.formatCurrency(-amount))"
         }
         return "Settled"
     }
@@ -669,12 +788,6 @@ struct PlayerAnalyticsDetailView: View {
         }
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 // MARK: - Adjust Balance Request/Response
@@ -714,10 +827,7 @@ private struct SettleUpSheet: View {
     @State private var idempotencyKey = UUID().uuidString
 
     private var formattedBalanceOwed: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: abs(balanceOwed) as NSDecimalNumber) ?? "$\(abs(balanceOwed))"
+        Theme.formatCurrency(abs(balanceOwed))
     }
 
     /// Who owes whom — positive balanceOwed = player owes bookie
@@ -843,10 +953,7 @@ private struct SettleUpSheet: View {
 
     private func partialPaymentWarning(amount: Decimal) -> some View {
         let remaining = abs(balanceOwed) - amount
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        let remainingStr = formatter.string(from: abs(remaining) as NSDecimalNumber) ?? "$\(abs(remaining))"
+        let remainingStr = Theme.formatCurrency(abs(remaining))
         let name = player.bookieDisplayName
 
         let message: String
@@ -950,15 +1057,8 @@ private struct AdjustBalanceSheet: View {
         return amount > 0 && !isLoading
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
-
     private var formattedBalanceOwed: String {
-        formatCurrency(balanceOwed)
+        Theme.formatCurrency(balanceOwed)
     }
 
     var body: some View {
@@ -973,7 +1073,7 @@ private struct AdjustBalanceSheet: View {
                             .font(Theme.bodyFont(size: 15))
                             .foregroundStyle(Theme.textSecondary)
                         Spacer()
-                        Text(balanceOwed > 0 ? "Owes \(formattedBalanceOwed)" : balanceOwed < 0 ? "You owe \(formatCurrency(-balanceOwed))" : "Settled")
+                        Text(balanceOwed > 0 ? "Owes \(formattedBalanceOwed)" : balanceOwed < 0 ? "You owe \(Theme.formatCurrency(-balanceOwed))" : "Settled")
                             .font(Theme.font(size: 17, weight: .bold))
                             .foregroundStyle(balanceOwed > 0 ? Theme.accent : balanceOwed < 0 ? Theme.danger : Theme.textSecondary)
                     }
@@ -1405,11 +1505,8 @@ struct BetHistoryRow: View {
     }
 
     private var formattedAmount: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
         let absAmount = displayAmount < 0 ? -displayAmount : displayAmount
-        let formatted = formatter.string(from: absAmount as NSDecimalNumber) ?? "$\(absAmount)"
+        let formatted = Theme.formatCurrency(absAmount)
         if bet.gradeResult == nil {
             return formatted
         }
@@ -1496,11 +1593,8 @@ struct LedgerHistoryRow: View {
     }
 
     private var formattedAmount: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
         let absAmount = entry.amount < 0 ? -entry.amount : entry.amount
-        let formatted = formatter.string(from: absAmount as NSDecimalNumber) ?? "$\(absAmount)"
+        let formatted = Theme.formatCurrency(absAmount)
         return entry.amount >= 0 ? "+\(formatted)" : "-\(formatted)"
     }
 

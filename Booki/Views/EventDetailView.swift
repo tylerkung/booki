@@ -171,7 +171,7 @@ struct EventDetailView: View {
                         Text("Max Activity")
                             .fontWeight(.semibold)
                         Spacer()
-                        Text(formatCurrency(exposure.maxExposure))
+                        Text(Theme.formatCurrency(exposure.maxExposure))
                             .font(Theme.headline)
                             .foregroundStyle(Theme.danger)
                     }
@@ -333,12 +333,6 @@ struct EventDetailView: View {
         }
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 // MARK: - Exposure Side Row
@@ -346,20 +340,13 @@ struct EventDetailView: View {
 struct ExposureSideRow: View {
     let sideExposure: SideExposure
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(sideExposure.side)
                     .font(Theme.headline)
                 Spacer()
-                Text(formatCurrency(sideExposure.totalExposure))
+                Text(Theme.formatCurrency(sideExposure.totalExposure))
                     .font(Theme.font(size: 15, weight: .bold))
                     .foregroundStyle(Theme.danger)
             }
@@ -370,7 +357,7 @@ struct ExposureSideRow: View {
                     Circle()
                         .fill(Theme.warning)
                         .frame(width: 8, height: 8)
-                    Text("Pending: \(formatCurrency(sideExposure.softExposure))")
+                    Text("Pending: \(Theme.formatCurrency(sideExposure.softExposure))")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -380,7 +367,7 @@ struct ExposureSideRow: View {
                     Circle()
                         .fill(Theme.accent)
                         .frame(width: 8, height: 8)
-                    Text("Accepted: \(formatCurrency(sideExposure.hardExposure))")
+                    Text("Accepted: \(Theme.formatCurrency(sideExposure.hardExposure))")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -400,10 +387,7 @@ struct EventBetRow: View {
     }
 
     private var formattedStake: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
+        Theme.formatCurrency(bet.stake)
     }
 
     var body: some View {
@@ -456,13 +440,6 @@ struct LiabilitySideRow: View {
         bets.filter { $0.status == .accepted }.count
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
-
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
@@ -476,7 +453,7 @@ struct LiabilitySideRow: View {
 
             Spacer()
 
-            Text(formatCurrency(totalLiability))
+            Text(Theme.formatCurrency(totalLiability))
                 .font(Theme.font(size: 15, weight: .bold))
                 .foregroundStyle(Theme.danger)
         }

@@ -79,6 +79,66 @@ enum Theme {
     /// Selected state background with accent tint
     static let selectedBackground = accent.opacity(0.15)
 
+    // MARK: - Formatters
+
+    static let currencyFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = "USD"
+        return f
+    }()
+
+    static let shortDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        return f
+    }()
+
+    static let mediumDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        return f
+    }()
+
+    static let monthDayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f
+    }()
+
+    static let monthDayYearFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d, yyyy"
+        return f
+    }()
+
+    nonisolated(unsafe) static let iso8601Formatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        return f
+    }()
+
+    nonisolated(unsafe) static let relativeDateFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        return f
+    }()
+
+    static let wholeCurrencyFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = "USD"
+        f.maximumFractionDigits = 0
+        return f
+    }()
+
+    static func formatCurrency(_ amount: Decimal) -> String {
+        currencyFormatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
+    }
+
+    static func formatWholeCurrency(_ amount: Decimal) -> String {
+        wholeCurrencyFormatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
+    }
+
     // MARK: - Corner Radius (more rounded = more fun)
 
     /// Standard corner radius for cards

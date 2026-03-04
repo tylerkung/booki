@@ -120,30 +120,42 @@ Deno.serve(async (req) => {
     const authEmail = authUser.user.email ?? '';
     const playerName = authEmail.includes('@') ? authEmail.split('@')[0] : authEmail || 'Member';
 
-    // Fetch bookie's default credit limit
+    // Fetch bookie's default settings
     let creditLimit = 1000; // fallback default
+    let winLimit: number | null = null;
+    let winLimitAction: string | null = null;
     const { data: bookieRecord } = await client
       .from('bookies')
-      .select('default_credit_limit, auth_user_id')
+      .select('default_credit_limit, default_win_limit, default_win_limit_action, auth_user_id')
       .eq('id', invite.bookie_id)
       .single();
 
     if (bookieRecord?.default_credit_limit != null) {
       creditLimit = Number(bookieRecord.default_credit_limit);
     }
+    if (bookieRecord?.default_win_limit != null) {
+      winLimit = Number(bookieRecord.default_win_limit);
+      winLimitAction = bookieRecord.default_win_limit_action || 'block';
+    }
 
     // Create new Player record
+    const playerInsert: Record<string, unknown> = {
+      bookie_id: invite.bookie_id,
+      auth_user_id: authUserId,
+      name: playerName,
+      email: authEmail || null,
+      status: 'active',
+      credit_limit: creditLimit,
+      claimed_at: new Date().toISOString(),
+    };
+    if (winLimit !== null) {
+      playerInsert.win_limit = winLimit;
+      playerInsert.win_limit_action = winLimitAction;
+    }
+
     const { data: newPlayer, error: playerError } = await client
       .from('players')
-      .insert({
-        bookie_id: invite.bookie_id,
-        auth_user_id: authUserId,
-        name: playerName,
-        email: authEmail || null,
-        status: 'active',
-        credit_limit: creditLimit,
-        claimed_at: new Date().toISOString(),
-      })
+      .insert(playerInsert)
       .select('id, name, bookie_id')
       .single();
 

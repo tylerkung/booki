@@ -254,7 +254,7 @@ struct TicketDetailView: View {
             sectionHeader("FINANCIALS")
 
             VStack(spacing: 10) {
-                labeledRow(label: "Stake", value: formatCurrency(presenter.stake))
+                labeledRow(label: "Stake", value: Theme.formatCurrency(presenter.stake))
 
                 // Combined odds in user's preferred format
                 let oddsLabel = ticket.isParlay ? "Combined Odds" : "Odds"
@@ -272,10 +272,10 @@ struct TicketDetailView: View {
 
                 if isSettled {
                     labeledRow(label: "Profit", value: formattedProfit, valueColor: presenter.profitColor)
-                    labeledRow(label: "Total Return", value: formatCurrency(totalReturn))
+                    labeledRow(label: "Total Return", value: Theme.formatCurrency(totalReturn))
                 } else {
-                    labeledRow(label: "Potential", value: "+\(formatCurrency(presenter.profit))", valueColor: Theme.accent)
-                    labeledRow(label: "Total Return", value: formatCurrency(totalReturn))
+                    labeledRow(label: "Potential", value: "+\(Theme.formatCurrency(presenter.profit))", valueColor: Theme.accent)
+                    labeledRow(label: "Total Return", value: Theme.formatCurrency(totalReturn))
                 }
             }
             .padding(12)
@@ -394,11 +394,11 @@ struct TicketDetailView: View {
 
     private var formattedProfit: String {
         if presenter.profit > 0 {
-            return "+\(formatCurrency(presenter.profit))"
+            return "+\(Theme.formatCurrency(presenter.profit))"
         } else if presenter.profit < 0 {
-            return "-\(formatCurrency(abs(presenter.profit)))"
+            return "-\(Theme.formatCurrency(abs(presenter.profit)))"
         } else {
-            return formatCurrency(0)
+            return Theme.formatCurrency(0)
         }
     }
 
@@ -442,12 +442,6 @@ struct TicketDetailView: View {
         return "\(away)-\(home)"
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 #Preview {

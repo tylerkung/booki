@@ -102,6 +102,28 @@ enum BalanceService {
             availableCredit: available
         )
     }
+    /// Checks whether a player's net winnings have reached their win limit
+    /// Net winnings = -balanceOwed (internal positive = player owes, so negative balance = player has won)
+    /// Returns nil if player has no win limit set
+    static func winLimitStatus(
+        for player: Player,
+        ledgerEntries: [LedgerEntry]
+    ) -> WinLimitStatus? {
+        guard let winLimit = player.winLimit, winLimit > 0 else { return nil }
+        let owed = balanceOwed(from: ledgerEntries)
+        let netWinnings = -owed  // Positive when player has won money
+        let reached = netWinnings >= winLimit
+        let action = player.winLimitAction ?? "block"
+        return WinLimitStatus(reached: reached, netWinnings: netWinnings, limit: winLimit, action: action)
+    }
+}
+
+/// Win limit status for a player
+struct WinLimitStatus {
+    let reached: Bool
+    let netWinnings: Decimal
+    let limit: Decimal
+    let action: String  // "block" or "require_approval"
 }
 
 /// Summary of a player's financial state

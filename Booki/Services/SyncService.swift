@@ -559,6 +559,8 @@ syncStatus = .error("Not authenticated")
                 existing.allowFuturesParlays = record.allowFuturesParlays ?? true
                 existing.tier = tierValue
                 existing.defaultCreditLimit = Decimal(record.defaultCreditLimit ?? 1000)
+                existing.defaultWinLimit = record.defaultWinLimit.map { Decimal($0) }
+                existing.defaultWinLimitAction = record.defaultWinLimitAction
             } else {
                 let bookie = Bookie(
                     id: record.id,
@@ -570,7 +572,9 @@ syncStatus = .error("Not authenticated")
                     manualBetGrading: record.manualBetGrading ?? false,
                     allowFuturesParlays: record.allowFuturesParlays ?? true,
                     tier: tierValue,
-                    defaultCreditLimit: Decimal(record.defaultCreditLimit ?? 1000)
+                    defaultCreditLimit: Decimal(record.defaultCreditLimit ?? 1000),
+                    defaultWinLimit: record.defaultWinLimit.map { Decimal($0) },
+                    defaultWinLimitAction: record.defaultWinLimitAction
                 )
                 context.insert(bookie)
             }
@@ -599,6 +603,8 @@ syncStatus = .error("Not authenticated")
                     existing.allowFuturesParlays = record.allowFuturesParlays ?? true
                     existing.tier = tierValue
                     existing.defaultCreditLimit = Decimal(record.defaultCreditLimit ?? 1000)
+                    existing.defaultWinLimit = record.defaultWinLimit.map { Decimal($0) }
+                    existing.defaultWinLimitAction = record.defaultWinLimitAction
                     try context.save()
                 } else {
                     let bookie = Bookie(
@@ -611,7 +617,9 @@ syncStatus = .error("Not authenticated")
                         manualBetGrading: record.manualBetGrading ?? false,
                         allowFuturesParlays: record.allowFuturesParlays ?? true,
                         tier: tierValue,
-                        defaultCreditLimit: Decimal(record.defaultCreditLimit ?? 1000)
+                        defaultCreditLimit: Decimal(record.defaultCreditLimit ?? 1000),
+                        defaultWinLimit: record.defaultWinLimit.map { Decimal($0) },
+                        defaultWinLimitAction: record.defaultWinLimitAction
                     )
                     context.insert(bookie)
                     try context.save()
@@ -902,6 +910,8 @@ syncStatus = .error("Not authenticated")
                 existing.displayName = record.displayName
                 existing.email = record.email
                 existing.creditLimit = record.creditLimit
+                existing.winLimit = record.winLimit
+                existing.winLimitAction = record.winLimitAction
                 existing.status = PlayerStatus(rawValue: record.status) ?? .active
                 existing.collectionStatus = record.collectionStatus.flatMap { CollectionStatus(rawValue: $0) }
                 existing.collectionStatusDate = record.collectionStatusDate
@@ -924,6 +934,8 @@ syncStatus = .error("Not authenticated")
                 creditLimit: record.creditLimit,
                 status: PlayerStatus(rawValue: record.status) ?? .active,
                 displayName: record.displayName,
+                winLimit: record.winLimit,
+                winLimitAction: record.winLimitAction,
                 collectionStatus: record.collectionStatus.flatMap { CollectionStatus(rawValue: $0) },
                 collectionStatusDate: record.collectionStatusDate,
                 promisedPaymentDate: record.promisedPaymentDate,

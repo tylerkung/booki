@@ -193,38 +193,43 @@ struct TrackView: View {
         tickets.filter { matchesFilter($0) }
     }
 
-    private func countForFilter(_ filter: TrackFilter) -> Int {
-        tickets.filter { ticket in
-            switch filter {
-            case .all: return true
-            case .open: return openStatuses.contains(ticket.combinedStatus)
-            case .won:
-                return ticket.combinedStatus == .settled && ticket.bets.allSatisfy { $0.gradeResult == .win || $0.gradeResult == .push }
-                    && ticket.bets.contains(where: { $0.gradeResult == .win })
-            case .lost:
-                return ticket.combinedStatus == .settled && ticket.bets.contains(where: { $0.gradeResult == .loss })
-            case .pushed:
-                return ticket.combinedStatus == .settled && ticket.bets.allSatisfy { $0.gradeResult == .push }
+    /// Single-pass filter counts for all categories
+    private var filterCounts: [TrackFilter: Int] {
+        var counts: [TrackFilter: Int] = [.all: tickets.count, .open: 0, .won: 0, .lost: 0, .pushed: 0]
+        for ticket in tickets {
+            if openStatuses.contains(ticket.combinedStatus) {
+                counts[.open, default: 0] += 1
+            } else if ticket.combinedStatus == .settled {
+                let hasWin = ticket.bets.contains { $0.gradeResult == .win }
+                let hasLoss = ticket.bets.contains { $0.gradeResult == .loss }
+                let allPushOrWin = ticket.bets.allSatisfy { $0.gradeResult == .win || $0.gradeResult == .push }
+                let allPush = ticket.bets.allSatisfy { $0.gradeResult == .push }
+
+                if allPush {
+                    counts[.pushed, default: 0] += 1
+                } else if hasLoss {
+                    counts[.lost, default: 0] += 1
+                } else if hasWin && allPushOrWin {
+                    counts[.won, default: 0] += 1
+                }
             }
-        }.count
+        }
+        return counts
     }
 
-    // MARK: - Stats
+    // MARK: - Stats (single-pass)
 
-    private var settledBets: [Bet] {
-        playerBets.filter { $0.status == .settled }
-    }
-
-    private var wins: Int {
-        settledBets.filter { $0.gradeResult == .win }.count
-    }
-
-    private var losses: Int {
-        settledBets.filter { $0.gradeResult == .loss }.count
-    }
-
-    private var pushes: Int {
-        settledBets.filter { $0.gradeResult == .push }.count
+    private var stats: (wins: Int, losses: Int, pushes: Int) {
+        var w = 0, l = 0, p = 0
+        for bet in playerBets where bet.status == .settled {
+            switch bet.gradeResult {
+            case .win: w += 1
+            case .loss: l += 1
+            case .push: p += 1
+            case nil: break
+            }
+        }
+        return (w, l, p)
     }
 
     private var totalStaked: Decimal {
@@ -232,7 +237,7 @@ struct TrackView: View {
     }
 
     private var netPerformance: Decimal {
-        settledBets.reduce(Decimal.zero) { total, bet in
+        playerBets.filter { $0.status == .settled }.reduce(Decimal.zero) { total, bet in
             guard let result = bet.gradeResult else { return total }
             switch result {
             case .win:
@@ -270,16 +275,16 @@ struct TrackView: View {
             } else {
                 VStack(spacing: 12) {
                     TrackSummaryCard(
-                        wins: wins,
-                        losses: losses,
-                        pushes: pushes,
+                        wins: stats.wins,
+                        losses: stats.losses,
+                        pushes: stats.pushes,
                         totalStaked: totalStaked,
                         netPerformance: netPerformance
                     )
 
                     TrackFilterChips(
                         selectedFilter: $selectedFilter,
-                        countForFilter: countForFilter
+                        filterCounts: filterCounts
                     )
 
                     ForEach(filteredTickets) { ticket in
@@ -499,14 +504,6 @@ private struct TrackSummaryCard: View {
         return Theme.textSecondary
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: value as NSDecimalNumber) ?? "$0.00"
-    }
-
     var body: some View {
         VStack(spacing: 12) {
             // Record
@@ -528,7 +525,7 @@ private struct TrackSummaryCard: View {
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
-                Text(formatCurrency(totalStaked))
+                Text(Theme.formatCurrency(totalStaked))
                     .font(Theme.headline)
                     .foregroundStyle(Theme.textPrimary)
             }
@@ -541,7 +538,7 @@ private struct TrackSummaryCard: View {
                     .font(Theme.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
-                Text(formatCurrency(netPerformance))
+                Text(Theme.formatCurrency(netPerformance))
                     .font(Theme.headline)
                     .foregroundStyle(performanceColor)
             }
@@ -558,13 +555,13 @@ private struct TrackSummaryCard: View {
 
 private struct TrackFilterChips: View {
     @Binding var selectedFilter: TrackFilter
-    let countForFilter: (TrackFilter) -> Int
+    let filterCounts: [TrackFilter: Int]
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(TrackFilter.allCases, id: \.self) { filter in
-                    let count = countForFilter(filter)
+                    let count = filterCounts[filter] ?? 0
                     Button {
                         selectedFilter = filter
                     } label: {

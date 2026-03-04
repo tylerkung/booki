@@ -224,9 +224,9 @@ struct GradingView: View {
                 let preview = settlementPreview
                 Text("""
                     Total picks to settle: \(preview.betCount)
-                    Total member winnings: \(formatCurrency(preview.totalWinnings))
-                    Total member losses: \(formatCurrency(preview.totalLosses))
-                    Net impact: \(formatCurrency(preview.netImpact))
+                    Total member winnings: \(Theme.formatCurrency(preview.totalWinnings))
+                    Total member losses: \(Theme.formatCurrency(preview.totalLosses))
+                    Net impact: \(Theme.formatCurrency(preview.netImpact))
                     """)
             }
             .alert("Settlement Complete", isPresented: $showingBulkSettlementSuccess) {
@@ -420,12 +420,6 @@ struct GradingView: View {
         }
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 // MARK: - Bulk Settlement Models
@@ -463,10 +457,7 @@ struct GradingBetRow: View {
     }
 
     private var formattedStake: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
+        Theme.formatCurrency(bet.stake)
     }
 
     /// Suggested outcome based on event final score (if available)
@@ -798,14 +789,6 @@ struct ParlayGradingGroupView: View {
         return ParlayGradingService.calculateParlayPayout(stake: stake, bets: validLegs, excludeVoidPush: false)
     }
 
-    /// Format currency value
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
-
     /// Get event for a bet
     private func event(for bet: Bet) -> Event? {
         events.first { $0.id.uuidString.lowercased() == bet.eventId.lowercased() }
@@ -934,7 +917,7 @@ struct ParlayGradingGroupView: View {
                     Text("Projected return")
                         .font(Theme.caption2)
                         .foregroundStyle(Theme.textMuted)
-                    Text(formatCurrency(payout))
+                    Text(Theme.formatCurrency(payout))
                         .font(Theme.font(size: 15, weight: .semibold))
                         .foregroundStyle(Theme.accent)
                 }

@@ -11,6 +11,8 @@ struct PlayerRecord: Codable, Identifiable {
     let displayName: String?
     let email: String?
     let creditLimit: Decimal
+    let winLimit: Decimal?
+    let winLimitAction: String?
     let status: String
     let collectionStatus: String?
     let collectionStatusDate: Date?
@@ -28,6 +30,8 @@ struct PlayerRecord: Codable, Identifiable {
         case displayName = "display_name"
         case email
         case creditLimit = "credit_limit"
+        case winLimit = "win_limit"
+        case winLimitAction = "win_limit_action"
         case status
         case collectionStatus = "collection_status"
         case collectionStatusDate = "collection_status_date"
@@ -48,6 +52,8 @@ struct PlayerUpsert: Codable {
     let displayName: String?
     let email: String?
     let creditLimit: Decimal
+    let winLimit: Decimal?
+    let winLimitAction: String?
     let status: String
     let collectionStatus: String?
     let collectionStatusDate: Date?
@@ -70,6 +76,8 @@ struct PlayerUpsert: Codable {
         case displayName = "display_name"
         case email
         case creditLimit = "credit_limit"
+        case winLimit = "win_limit"
+        case winLimitAction = "win_limit_action"
         case status
         case collectionStatus = "collection_status"
         case collectionStatusDate = "collection_status_date"
@@ -94,6 +102,8 @@ struct PlayerUpsert: Codable {
         self.displayName = player.displayName
         self.email = player.email
         self.creditLimit = player.creditLimit
+        self.winLimit = player.winLimit
+        self.winLimitAction = player.winLimitAction
         self.status = player.status.rawValue
         self.collectionStatus = player.collectionStatus?.rawValue
         self.collectionStatusDate = player.collectionStatusDate

@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     // 2. Player lookup + validation
     const { data: player, error: playerError } = await client
       .from('players')
-      .select('id, bookie_id, auth_user_id, name')
+      .select('id, bookie_id, auth_user_id, name, win_limit, win_limit_action')
       .eq('id', normalizedPlayerId)
       .single();
 
@@ -151,6 +151,32 @@ Deno.serve(async (req) => {
           JSON.stringify({ success: false, error: 'open_bet_limit_reached', limit: 25, current: openBetCount ?? 0 }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+    }
+
+    // Win limit check
+    let winLimitRequireApproval = false;
+    if (player.win_limit !== null && player.win_limit !== undefined) {
+      // Calculate balance from ledger entries
+      const { data: ledgerEntries } = await client
+        .from('ledger_entries')
+        .select('amount')
+        .eq('player_id', normalizedPlayerId);
+
+      const balanceOwed = (ledgerEntries || []).reduce((sum: number, e: { amount: number }) => sum + (Number(e.amount) || 0), 0);
+      const netWinnings = -balanceOwed; // Negative balance = player has won
+
+      if (netWinnings >= Number(player.win_limit)) {
+        const action = player.win_limit_action || 'block';
+        if (action === 'block') {
+          return new Response(
+            JSON.stringify({ success: false, error: 'win_limit_reached', net_winnings: netWinnings, win_limit: Number(player.win_limit) }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          // require_approval — flag for policy violations
+          winLimitRequireApproval = true;
+        }
       }
     }
 
@@ -295,6 +321,10 @@ Deno.serve(async (req) => {
 
       if (isNewPlayer) {
         policyViolations.push('New player requires review');
+      }
+
+      if (winLimitRequireApproval) {
+        policyViolations.push('Win limit reached');
       }
 
       const hasPolicyViolations = policyViolations.length > 0;

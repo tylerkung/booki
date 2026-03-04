@@ -58,6 +58,12 @@ final class Bookie {
     // Default credit limit for new members
     var defaultCreditLimit: Decimal
 
+    // Default win limit for new members (nil = no limit)
+    var defaultWinLimit: Decimal?
+
+    // Default win limit action for new members
+    var defaultWinLimitAction: String?
+
     /// Whether this bookie has Pro-level access via tier OR subscription status
     var isPro: Bool {
         tier.isPro || subscriptionStatus == .active || subscriptionStatus == .pro
@@ -74,7 +80,9 @@ final class Bookie {
         manualBetGrading: Bool = false,
         allowFuturesParlays: Bool = true,
         tier: BookieTier = .free,
-        defaultCreditLimit: Decimal = 1000
+        defaultCreditLimit: Decimal = 1000,
+        defaultWinLimit: Decimal? = nil,
+        defaultWinLimitAction: String? = nil
     ) {
         self.id = id
         self.email = email
@@ -87,5 +95,7 @@ final class Bookie {
         self.allowFuturesParlays = allowFuturesParlays
         self.tier = tier
         self.defaultCreditLimit = defaultCreditLimit
+        self.defaultWinLimit = defaultWinLimit
+        self.defaultWinLimitAction = defaultWinLimitAction
     }
 }

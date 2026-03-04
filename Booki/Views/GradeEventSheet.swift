@@ -502,10 +502,7 @@ struct BetGradeRow: View {
     }
 
     private var formattedStake: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: bet.stake as NSDecimalNumber) ?? "$\(bet.stake)"
+        Theme.formatCurrency(bet.stake)
     }
 
     var body: some View {

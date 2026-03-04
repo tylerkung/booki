@@ -107,8 +107,10 @@ function dashboardApp() {
         // ── Inline Editing ──
         isEditingName: false,
         isEditingCredit: false,
+        isEditingWinLimit: false,
         editNameValue: '',
         editCreditValue: '',
+        editWinLimitValue: '',
 
         startEditingName() {
             this.editNameValue = this.memberDetail.display_name || this.memberDetail.name || '';
@@ -196,6 +198,71 @@ function dashboardApp() {
             }
 
             this.isEditingCredit = false;
+        },
+
+        startEditingWinLimit() {
+            this.editWinLimitValue = this.memberDetail.win_limit != null ? String(this.memberDetail.win_limit) : '';
+            this.isEditingWinLimit = true;
+            this.$nextTick(() => {
+                const el = document.getElementById('edit-winlimit-input');
+                if (el) { el.focus(); el.select(); }
+            });
+        },
+
+        async saveMemberWinLimit() {
+            if (!this.memberDetail) return;
+            const raw = this.editWinLimitValue.trim();
+
+            // Empty = remove limit
+            const newLimit = raw === '' ? null : parseFloat(raw);
+            if (newLimit !== null && (isNaN(newLimit) || newLimit < 0)) {
+                this.toast('Invalid win limit', 'error');
+                this.isEditingWinLimit = false;
+                return;
+            }
+
+            if (newLimit === (this.memberDetail.win_limit || null)) {
+                this.isEditingWinLimit = false;
+                return;
+            }
+
+            const { error } = await this.supabase
+                .from('players')
+                .update({ win_limit: newLimit })
+                .eq('id', this.memberDetail.id);
+
+            if (error) {
+                this.toast('Failed to update win limit', 'error');
+            } else {
+                this.memberDetail.win_limit = newLimit;
+                if (this.playerMap[this.memberDetail.id]) {
+                    this.playerMap[this.memberDetail.id].win_limit = newLimit;
+                }
+                const idx = this.players.findIndex(p => p.id === this.memberDetail.id);
+                if (idx >= 0) this.players[idx].win_limit = newLimit;
+                this.toast(newLimit !== null ? 'Win limit updated' : 'Win limit removed', 'success');
+            }
+
+            this.isEditingWinLimit = false;
+        },
+
+        async saveMemberWinLimitAction(action) {
+            if (!this.memberDetail) return;
+            const { error } = await this.supabase
+                .from('players')
+                .update({ win_limit_action: action })
+                .eq('id', this.memberDetail.id);
+
+            if (error) {
+                this.toast('Failed to update action', 'error');
+            } else {
+                this.memberDetail.win_limit_action = action;
+                if (this.playerMap[this.memberDetail.id]) {
+                    this.playerMap[this.memberDetail.id].win_limit_action = action;
+                }
+                const idx = this.players.findIndex(p => p.id === this.memberDetail.id);
+                if (idx >= 0) this.players[idx].win_limit_action = action;
+            }
         },
 
         // ── Settings ──
@@ -394,7 +461,7 @@ function dashboardApp() {
         async init() {
             if (!SUPABASE_ANON_KEY) {
                 console.error('Supabase anon key not configured');
-                window.location.href = 'index.html';
+                window.location.href = 'login.html';
                 return;
             }
 
@@ -403,7 +470,7 @@ function dashboardApp() {
             // Check session
             const { data: { session } } = await this.supabase.auth.getSession();
             if (!session) {
-                window.location.href = 'index.html';
+                window.location.href = 'login.html';
                 return;
             }
             this.session = session;
@@ -411,7 +478,7 @@ function dashboardApp() {
             // Listen for auth changes
             this.supabase.auth.onAuthStateChange((event, session) => {
                 this.session = session;
-                if (!session) window.location.href = 'index.html';
+                if (!session) window.location.href = 'login.html';
             });
 
             // Detect user role
@@ -458,9 +525,9 @@ function dashboardApp() {
             const playerSportMatch = path.match(/^player-sport\/(.+)$/);
 
             // Organizer routes
-            const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings', 'organizer-welcome'];
+            const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings', 'organizer-welcome', 'pro'];
             // Player routes
-            const playerRoutes = ['player-games', 'player-track', 'player-account', 'player-sport', 'become-organizer'];
+            const playerRoutes = ['player-games', 'player-track', 'player-account', 'player-sport', 'become-organizer', 'player-activity', 'player-change-password'];
 
             if (eventMatch) {
                 if (!this.isValidUUID(eventMatch[1])) {
@@ -537,6 +604,7 @@ function dashboardApp() {
             if (this.route === 'player-track') this.loadPlayerTrack();
             if (this.route === 'player-ticket') this.loadPlayerTicketDetail();
             if (this.route === 'player-account') this.loadPlayerAccount();
+            if (this.route === 'player-activity') this.loadPlayerAccount();
             if (this.route === 'player-sport') this.loadSportPage();
         },
 
@@ -544,7 +612,7 @@ function dashboardApp() {
         async logout() {
             this.unsubscribeFromRealtime();
             await this.supabase.auth.signOut();
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
         },
 
         // ── Realtime Subscriptions ──
@@ -789,6 +857,23 @@ function dashboardApp() {
             return Math.max(0, this.playerCreditLimit - Math.max(0, this.playerBalance) - this.playerOpenStakes);
         },
 
+        get playerWinLimit() {
+            return this.playerRecord?.win_limit || null;
+        },
+
+        get playerNetWinnings() {
+            return -this.playerBalance;
+        },
+
+        get isPlayerWinLimitReached() {
+            if (this.playerWinLimit === null) return false;
+            return this.playerNetWinnings >= this.playerWinLimit;
+        },
+
+        get playerWinLimitAction() {
+            return this.playerRecord?.win_limit_action || 'block';
+        },
+
         get playerRecentActivity() {
             // Last 10 ledger entries
             return this.playerLedgerEntries.slice(0, 10);
@@ -809,6 +894,45 @@ function dashboardApp() {
             if (entry.type === 'paymentLogged') return 'Settlement';
             if (entry.type === 'adjustment') return 'Adjustment';
             return entry.type || '—';
+        },
+
+        playerActivityDescription(entry) {
+            // Use stored description if it's already rich (not generic)
+            if (entry.description && !['Bet won', 'Bet lost', 'Bet pushed', 'Parlay won', 'Parlay lost', 'Parlay pushed'].includes(entry.description)) {
+                return entry.description;
+            }
+
+            // Enrich from linked bet
+            if (entry.bet_id && entry.type === 'settlement') {
+                const bet = this.playerBets.find(b => b.id === entry.bet_id || b.ticket_id === entry.bet_id);
+                if (bet) {
+                    const isWin = (entry.amount || 0) < 0; // internal: negative = bookie owes player = win
+                    const isPush = bet.grade_result === 'push';
+                    const result = isPush ? 'Push' : isWin ? 'Won' : 'Lost';
+
+                    if (bet.is_parlay && bet.parlay_legs) {
+                        const legCount = Array.isArray(bet.parlay_legs) ? bet.parlay_legs.length : 0;
+                        const odds = bet.odds ? ' (' + this.formatOdds(bet.odds) + ')' : '';
+                        return 'Multi-Pick \u00b7 ' + legCount + ' legs' + odds + ' \u2014 ' + result;
+                    }
+
+                    // Singles — show team + odds
+                    const side = bet.side || '';
+                    const odds = bet.odds ? ' (' + this.formatOdds(bet.odds) + ')' : '';
+                    return side + odds + ' \u2014 ' + result;
+                }
+
+                // Check if bet_id is a ticket_id for a parlay
+                const parlayBets = this.playerBets.filter(b => b.ticket_id === entry.bet_id);
+                if (parlayBets.length > 0) {
+                    const isWin = (entry.amount || 0) < 0;
+                    const result = isWin ? 'Won' : 'Lost';
+                    return 'Multi-Pick \u00b7 ' + parlayBets.length + ' legs \u2014 ' + result;
+                }
+            }
+
+            // Fallback
+            return entry.description || this.playerActivityTypeBadge(entry);
         },
 
         creditUtilizationColor(pct) {
@@ -998,12 +1122,25 @@ function dashboardApp() {
             this.playerTicketLegs = [];
 
             // Fetch the bet by ID
-            const { data, error } = await this.supabase
+            let { data, error } = await this.supabase
                 .from('bets')
                 .select('*')
                 .eq('id', this.selectedBetId)
                 .eq('player_id', this.playerId)
                 .limit(1);
+
+            // If not found by id, try ticket_id (parlay ticket links use ticket_id)
+            if ((!data || data.length === 0) && !error) {
+                const res = await this.supabase
+                    .from('bets')
+                    .select('*')
+                    .eq('ticket_id', this.selectedBetId)
+                    .eq('player_id', this.playerId)
+                    .order('created_at')
+                    .limit(10);
+                data = res.data;
+                error = res.error;
+            }
 
             if (error || !data?.length) {
                 console.error('Failed to load ticket detail:', error);
@@ -1014,9 +1151,9 @@ function dashboardApp() {
 
             const bet = data[0];
 
-            // For parlays, fetch all legs by ticket_id
-            let legs = [bet];
-            if (bet.is_parlay && bet.ticket_id) {
+            // For parlays, fetch all legs by ticket_id (if we haven't already)
+            let legs = data.length > 1 ? data : [bet];
+            if (legs.length === 1 && bet.is_parlay && bet.ticket_id) {
                 const { data: parlayLegs } = await this.supabase
                     .from('bets')
                     .select('*')
@@ -1351,7 +1488,7 @@ function dashboardApp() {
                     this.toast('Account deleted', 'success');
                     this.showPlayerDeleteStep2 = false;
                     await this.supabase.auth.signOut();
-                    window.location.href = 'index.html';
+                    window.location.href = 'login.html';
                 }
             } catch (e) {
                 this.toast(e.message || 'Failed to delete account', 'error');
@@ -1849,6 +1986,8 @@ function dashboardApp() {
             }
             // Check credit
             if (this.betSlipTotalStakes > this.playerAvailableCredit && this.playerCreditLimit > 0) return false;
+            // Win limit block
+            if (this.isPlayerWinLimitReached && this.playerWinLimitAction === 'block') return false;
             return true;
         },
 
@@ -1866,6 +2005,15 @@ function dashboardApp() {
             if (this.betSlipTotalStakes > this.playerAvailableCredit && this.playerCreditLimit > 0) {
                 return 'Exceeds available credit';
             }
+            if (this.isPlayerWinLimitReached && this.playerWinLimitAction === 'block') {
+                return 'Win limit reached — picks suspended';
+            }
+            return '';
+        },
+
+        get betSlipWinLimitWarning() {
+            if (!this.isPlayerWinLimitReached) return '';
+            if (this.playerWinLimitAction === 'require_approval') return 'Picks will require organizer approval';
             return '';
         },
 
@@ -2779,13 +2927,15 @@ function dashboardApp() {
             this.isSettlementPaying = true;
 
             try {
-                await this.callEdgeFunction('adjust_balance', {
+                const response = await this.callEdgeFunction('adjust_balance', {
                     idempotency_key: crypto.randomUUID(),
                     player_id: this.settlementPayPlayer.player_id,
                     amount: -this.settlementPayPlayer.endingBalance,
                     type: 'paymentLogged',
                     reason: 'Weekly settlement',
                 });
+
+                if (response.error) throw new Error(response.error);
 
                 this.toast(`Marked ${this.settlementPayPlayer.name} as paid`, 'success');
                 this.showSettlementPayModal = false;
@@ -3127,6 +3277,7 @@ function dashboardApp() {
             this.showMemberOverflow = false;
             this.isEditingName = false;
             this.isEditingCredit = false;
+            this.isEditingWinLimit = false;
             this.memberActivityExpanded = false;
 
             // Look up from playerMap first, then fetch from Supabase
@@ -3986,8 +4137,8 @@ function dashboardApp() {
 
             try {
                 const response = await this.callEdgeFunction('create_checkout_session', {
-                    success_url: 'https://bookisports.com/dashboard/app.html#/subscription?success=true',
-                    cancel_url: 'https://bookisports.com/dashboard/app.html#/subscription?canceled=true',
+                    success_url: 'https://bookisports.com/dashboard/#/subscription?success=true',
+                    cancel_url: 'https://bookisports.com/dashboard/#/subscription?canceled=true',
                 });
 
                 if (response.url) {
@@ -4246,7 +4397,7 @@ function dashboardApp() {
                     this.toast('Stepped down from organizer', 'success');
                     this.showStepDownModal = false;
                     await this.supabase.auth.signOut();
-                    window.location.href = 'index.html';
+                    window.location.href = 'login.html';
                 }
             } catch (e) {
                 this.toast(e.message || 'Failed to step down', 'error');
@@ -4270,7 +4421,7 @@ function dashboardApp() {
                     this.toast('Account deleted', 'success');
                     this.showDeleteStep2 = false;
                     await this.supabase.auth.signOut();
-                    window.location.href = 'index.html';
+                    window.location.href = 'login.html';
                 }
             } catch (e) {
                 this.toast(e.message || 'Failed to delete account', 'error');
@@ -4372,6 +4523,13 @@ function dashboardApp() {
             if (!iso) return '—';
             const d = new Date(iso);
             return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        },
+
+        formatDateTime(iso) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' +
+                   d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         },
 
         formatMarketType(market) {

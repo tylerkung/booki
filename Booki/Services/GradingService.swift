@@ -307,10 +307,7 @@ enum GradingService {
 
     /// Formats a decimal for currency display in descriptions
     private static func formatDecimal(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
+        Theme.formatCurrency(value)
     }
 
     /// Formats American odds for display in descriptions

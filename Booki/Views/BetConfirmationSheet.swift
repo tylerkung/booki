@@ -164,7 +164,7 @@ struct BetConfirmationSheet: View {
                     Text("Stake per Pick")
                         .foregroundStyle(Theme.textSecondary)
                     Spacer()
-                    Text(formatCurrency(betSlipManager.stake))
+                    Text(Theme.formatCurrency(betSlipManager.stake))
                 }
             }
 
@@ -173,7 +173,7 @@ struct BetConfirmationSheet: View {
                 Text("Total Stake")
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
-                Text(formatCurrency(betSlipManager.currentTotalStake))
+                Text(Theme.formatCurrency(betSlipManager.currentTotalStake))
                     .fontWeight(.medium)
             }
 
@@ -189,7 +189,7 @@ struct BetConfirmationSheet: View {
                         .foregroundStyle(Theme.textSecondary)
                 }
                 Spacer()
-                Text(formatCurrency(betSlipManager.currentTotalPayout))
+                Text(Theme.formatCurrency(betSlipManager.currentTotalPayout))
                     .font(Theme.title2)
                     .fontWeight(.bold)
                     .foregroundStyle(Theme.accent)
@@ -246,7 +246,7 @@ struct BetConfirmationSheet: View {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(Theme.warning)
-                    Text("Total stake exceeds available credit (\(formatCurrency(balanceSummary.availableCredit)))")
+                    Text("Total stake exceeds available credit (\(Theme.formatCurrency(balanceSummary.availableCredit)))")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.warning)
                 }
@@ -484,14 +484,6 @@ struct BetConfirmationSheet: View {
         }
     }
 
-    // MARK: - Helpers
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 // MARK: - Confirmation Item Row

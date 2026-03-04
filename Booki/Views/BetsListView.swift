@@ -504,7 +504,7 @@ struct BetDetailView: View {
     }
 
     private var formattedStake: String {
-        formatCurrency(bet.stake)
+        Theme.formatCurrency(bet.stake)
     }
 
     private var potentialPayout: Decimal {
@@ -512,7 +512,7 @@ struct BetDetailView: View {
     }
 
     private var formattedPotentialPayout: String {
-        formatCurrency(potentialPayout)
+        Theme.formatCurrency(potentialPayout)
     }
 
     private var totalReturn: Decimal {
@@ -520,7 +520,7 @@ struct BetDetailView: View {
     }
 
     private var formattedTotalReturn: String {
-        formatCurrency(totalReturn)
+        Theme.formatCurrency(totalReturn)
     }
 
     private var formattedDate: String {
@@ -714,7 +714,7 @@ struct BetDetailView: View {
     private var reversalImpactDescription: String {
         if let settlementEntry = ledgerEntries.first(where: { $0.bet?.id == bet.id && $0.type == .settlement }) {
             let amount = settlementEntry.amount
-            let formattedAmount = formatCurrency(abs(amount))
+            let formattedAmount = Theme.formatCurrency(abs(amount))
             if amount > 0 {
                 return "This will remove \(formattedAmount) from the member's balance."
             } else if amount < 0 {
@@ -1435,12 +1435,7 @@ struct BetDetailView: View {
 
     // MARK: - Helpers
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
+
 
     private func gradeResultColor(_ result: GradeResult) -> Color {
         switch result {

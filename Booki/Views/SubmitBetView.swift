@@ -67,7 +67,7 @@ struct SubmitBetView: View {
                         Text("Available Credit")
                             .font(Theme.caption)
                             .foregroundStyle(Theme.textSecondary)
-                        Text(formatCurrency(balanceSummary.availableCredit))
+                        Text(Theme.formatCurrency(balanceSummary.availableCredit))
                             .font(Theme.title2)
                             .foregroundStyle(availableCreditColor)
                     }
@@ -76,7 +76,7 @@ struct SubmitBetView: View {
                         Text("Credit Limit")
                             .font(Theme.caption)
                             .foregroundStyle(Theme.textSecondary)
-                        Text(formatCurrency(player.creditLimit))
+                        Text(Theme.formatCurrency(player.creditLimit))
                             .font(Theme.subheadline)
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -134,14 +134,6 @@ struct SubmitBetView: View {
         }
     }
 
-    // MARK: - Helpers
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 // MARK: - Event Row View
@@ -622,7 +614,7 @@ struct StakeEntryView: View {
                     Text("Available Credit")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
-                    Text(formatCurrency(balanceSummary.availableCredit))
+                    Text(Theme.formatCurrency(balanceSummary.availableCredit))
                         .font(Theme.title2)
                         .foregroundStyle(availableCreditColor)
                 }
@@ -631,7 +623,7 @@ struct StakeEntryView: View {
                     Text("Credit Limit")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
-                    Text(formatCurrency(player.creditLimit))
+                    Text(Theme.formatCurrency(player.creditLimit))
                         .font(Theme.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -682,7 +674,7 @@ struct StakeEntryView: View {
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 if let payout = potentialPayout {
-                    Text(formatCurrency(payout))
+                    Text(Theme.formatCurrency(payout))
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.accent)
                 }
@@ -693,7 +685,7 @@ struct StakeEntryView: View {
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 if let total = totalReturn {
-                    Text(formatCurrency(total))
+                    Text(Theme.formatCurrency(total))
                         .fontWeight(.bold)
                 }
             }
@@ -736,7 +728,7 @@ struct StakeEntryView: View {
             // Stake (if entered)
             if let stakeValue = stake {
                 LabeledContent("Stake") {
-                    Text(formatCurrency(stakeValue))
+                    Text(Theme.formatCurrency(stakeValue))
                         .fontWeight(.semibold)
                 }
             }
@@ -744,7 +736,7 @@ struct StakeEntryView: View {
             // Total Return (if calculated)
             if let payout = potentialPayout {
                 LabeledContent("Total Return") {
-                    Text(formatCurrency(payout))
+                    Text(Theme.formatCurrency(payout))
                         .fontWeight(.semibold)
                         .foregroundStyle(Theme.accent)
                 }
@@ -857,13 +849,6 @@ struct StakeEntryView: View {
     }
 
     // MARK: - Helpers
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 
     private func formatOdds(_ odds: Int) -> String {
         odds >= 0 ? "+\(odds)" : "\(odds)"

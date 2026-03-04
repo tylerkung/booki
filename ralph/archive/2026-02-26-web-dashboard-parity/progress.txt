@@ -1,0 +1,94 @@
+# Ralph Progress Log
+Started: Thu Feb 26 14:57:41 PST 2026
+---
+
+## Codebase Patterns
+- Dashboard SPA uses Alpine.js with hash-based routing in `landing/dashboard/dashboard.js`
+- Routes parsed via `parseRoute()` on `hashchange` events — use regex for parameterized routes
+- State variables (e.g. `selectedPlayerId`) live in the Alpine data object returned by `dashboardApp()`
+- Edge functions called via `callEdgeFunction(name, body)` helper with auth headers
+- Player data cached in `playerMap` (keyed by id) for O(1) lookups
+---
+
+## 2026-02-26 - US-005
+- Implemented override grade and reverse settlement actions on pick detail view (Pro only)
+- For 'graded' picks: added Override Grade button (Pro only) alongside existing Void button
+- For 'settled' picks: added Override Grade + Reverse Settlement buttons (both Pro only)
+- Override Grade modal: outcome dropdown (Win/Loss/Push/Void) + required reason text input
+- Reverse Settlement modal: warning text + confirmation button (btn-danger)
+- Free tier: buttons shown but disabled with `!isPro`, text changes to "Override Grade (Pro)" / "Reverse Settlement (Pro)"
+- Both actions call their respective edge functions with idempotency keys
+- Loading state on buttons, error toast on failure, pick detail reloads on success
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - `override_grade` edge function takes `{ bet_id, new_outcome, reason, idempotency_key }` — reason is required
+  - `reverse_settlement` edge function takes `{ bet_id, idempotency_key }` — reverses ledger entry, returns pick to graded status
+  - Pro gating pattern: `:disabled="!isPro"` + dynamic text via `x-text="isPro ? '...' : '... (Pro)'"` + `:title` for tooltip
+  - Multiple status-specific action cards can coexist using separate `x-show` conditions per status
+---
+
+## 2026-02-26 - US-004
+- Implemented grading and void actions on pick detail view
+- For 'accepted' picks: Win, Loss, Push grade buttons + Void button displayed in Actions card
+- For 'graded' picks: only Void button shown
+- Buttons hidden for all other statuses (pending, settled, void, declined)
+- Grade confirmation modal asks "Grade this pick as [Win/Loss/Push]?"
+- Void confirmation modal warns "This will cancel it with no balance impact"
+- Both actions call `grade_bet` edge function with proper idempotency key
+- Loading state on buttons during edge function calls, error toast on failure
+- After successful grade/void, `loadPickDetail()` reloads to show updated status
+- Added CSS: `.btn-grade-win` (green), `.btn-grade-loss` (red), `.btn-grade-push` (gray), `.btn-void` (outlined red)
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- **Learnings for future iterations:**
+  - `grade_bet` only accepts bets with status `'accepted'` — not pending, graded, or settled
+  - Void is just `grade_bet` with `outcome: 'void'` — same edge function, different outcome
+  - Use `x-show` on the actions card to conditionally show grade vs void buttons by status
+  - Confirmation modals follow existing pattern: overlay + modal + actions row
+---
+
+## 2026-02-26 - US-003
+- Implemented parlay legs card and activity timeline card on pick detail view
+- Parlay legs card: shows each leg with team name, market type, odds, and status badge; combined odds at top
+- Activity timeline card: fetches settlement_events for the bet, falls back to created_at if none exist
+- Timeline uses dot-and-line visual with event type, description, and date
+- Added `pickDetailLegs` and `pickDetailTimeline` state variables
+- Updated `loadPickDetail()` to fetch bet_legs (for parlays) and settlement_events
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - `bet_legs` are queried by `ticket_id` (not `bet_id`) — parlays have a shared ticket_id across legs
+  - `settlement_events` may be empty for bets that haven't been settled/reversed/overridden — always provide a fallback
+  - Financials card needed `margin-bottom:16px` added since new cards follow it now
+  - The card-header with flex layout (title left, meta right) is a reusable pattern: `display:flex;align-items:center;justify-content:space-between`
+---
+
+## 2026-02-26 - US-002
+- Implemented pick detail view with hero and financials cards
+- Pick rows in picks table now clickable — navigate to `#/picks/<betId>`
+- Hero card shows: status badge, team/selection name, event name, market type, clickable member name link
+- Financials card shows: odds (American format), stake, potential return, P/L for settled/won/lost picks
+- Added `loadPickDetail()` method that fetches single bet from Supabase
+- Added `calcPotentialReturn()` and `calcPickPnl()` helper functions
+- Added `pickDetail` and `isLoadingPickDetail` state variables
+- Loading state with shimmer placeholders while data fetches
+- Back button navigates to `#/picks`
+- `parseRoute()` triggers `loadPickDetail()` on pick-detail route
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - Pick detail section uses `x-show="route === 'pick-detail'"` pattern (same as other views)
+  - Potential return = stake + stake*(odds/100) for positive odds, stake + stake*(100/|odds|) for negative
+  - P/L: won/settled = potential return - stake, lost = -stake
+  - The `pickDetail` object holds the full bet row from Supabase
+---
+
+## 2026-02-26 - US-001
+- Implemented parameterized hash routing in dashboard.js
+- Added `selectedPlayerId` and `selectedBetId` reactive properties
+- `parseRoute()` now uses regex to detect `#/members/<id>` and `#/picks/<id>` patterns
+- Added `settings` to supported routes, `member-detail` and `pick-detail` as parameterized routes
+- Existing routes unchanged, back navigation works via existing `hashchange` listener
+- Files changed: `landing/dashboard/dashboard.js`
+- **Learnings for future iterations:**
+  - The dashboard.js is a single Alpine.js data object — all state goes in `dashboardApp()` return object
+  - Routes use simple hash matching — parameterized routes need regex or string splitting
+  - Query params stripped before route matching (`hash.replace(/\?.*$/, '')`)
+---

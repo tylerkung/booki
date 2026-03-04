@@ -404,7 +404,7 @@ struct AnalyticsDashboardView: View {
     }
 
     private func formatSignedCurrency(_ value: Decimal) -> String {
-        let formatted = formatCurrency(value < 0 ? -value : value)
+        let formatted = Theme.formatCurrency(value < 0 ? -value : value)
         if value > 0 { return "+\(formatted)" }
         if value < 0 { return "-\(formatted)" }
         return formatted
@@ -442,7 +442,7 @@ struct AnalyticsDashboardView: View {
             Button { scrollToPlayers = true } label: {
                 SummaryCard(
                     label: "Net Exposure",
-                    value: formatCurrency(totalExposure),
+                    value: Theme.formatCurrency(totalExposure),
                     valueColor: totalExposure > 0 ? Theme.danger : Theme.textPrimary
                 )
             }
@@ -452,7 +452,7 @@ struct AnalyticsDashboardView: View {
             SummaryCard(
                 label: "Pending Picks",
                 value: "\(totalPendingBets)",
-                subtitle: formatCurrency(totalPendingStake) + " at stake",
+                subtitle: Theme.formatCurrency(totalPendingStake) + " at stake",
                 valueColor: totalPendingBets > 0 ? Theme.warning : Theme.textPrimary
             )
 
@@ -463,7 +463,7 @@ struct AnalyticsDashboardView: View {
             Button { scrollToPlayers = true } label: {
                 SummaryCard(
                     label: "Outstanding",
-                    value: overduePlayers.isEmpty ? "All clear" : formatCurrency(totalOverdueAmount),
+                    value: overduePlayers.isEmpty ? "All clear" : Theme.formatCurrency(totalOverdueAmount),
                     subtitle: overduePlayers.isEmpty ? nil : "\(overduePlayers.count) member\(overduePlayers.count == 1 ? "" : "s")",
                     valueColor: overduePlayers.isEmpty ? Theme.accent : Theme.danger
                 )
@@ -479,7 +479,7 @@ struct AnalyticsDashboardView: View {
                     SummaryCard(
                         label: "Top Risk",
                         value: top.player.bookieDisplayName,
-                        subtitle: formatCurrency(top.exposure.grossExposure) + " exposure",
+                        subtitle: Theme.formatCurrency(top.exposure.grossExposure) + " exposure",
                         valueColor: top.pas.label == "High" ? Theme.danger : Theme.warning
                     )
                 }
@@ -535,15 +535,8 @@ struct AnalyticsDashboardView: View {
         return max(0, min(1, utilization)) * 100
     }
 
-    // MARK: - Helpers
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
+
 
 // MARK: - Summary Card
 
@@ -637,7 +630,7 @@ private struct FuturesTrackingCard: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 16) {
                         statColumn(label: "Open Picks", value: "\(futures.count)")
-                        statColumn(label: "Open Activity", value: formatCurrency(totalStaked))
+                        statColumn(label: "Open Activity", value: Theme.formatCurrency(totalStaked))
                     }
 
                     let selections = topSelections
@@ -689,12 +682,6 @@ private struct FuturesTrackingCard: View {
         }
     }
 
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 // MARK: - Sport Performance Section
@@ -790,7 +777,7 @@ private struct SportPerformanceSection: View {
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
 
-                    Text(formatCurrency(stat.totalStaked) + " staked")
+                    Text(Theme.formatCurrency(stat.totalStaked) + " staked")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
 
@@ -808,17 +795,10 @@ private struct SportPerformanceSection: View {
     }
 
     private func formatSignedCurrency(_ value: Decimal) -> String {
-        let formatted = formatCurrency(value < 0 ? -value : value)
+        let formatted = Theme.formatCurrency(value < 0 ? -value : value)
         if value > 0 { return "+\(formatted)" }
         if value < 0 { return "-\(formatted)" }
         return formatted
-    }
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 }
 
@@ -943,7 +923,7 @@ private struct RecentActivitySection: View {
             return "\(playerName)'s pick on \(eventDesc) — \(resultText)"
         case .reconciliation(let entry):
             let playerName = entry.player?.name ?? "Unknown"
-            let absAmount = formatCurrency(entry.amount < 0 ? -entry.amount : entry.amount)
+            let absAmount = Theme.formatCurrency(entry.amount < 0 ? -entry.amount : entry.amount)
             switch entry.type {
             case .adjustment:
                 if entry.amount > 0 {
@@ -973,19 +953,6 @@ private struct RecentActivitySection: View {
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 
-    private func formatSignedCurrency(_ value: Decimal) -> String {
-        let formatted = formatCurrency(value < 0 ? -value : value)
-        if value > 0 { return "+\(formatted)" }
-        if value < 0 { return "-\(formatted)" }
-        return formatted
-    }
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 // MARK: - Skeleton Observers Modifier

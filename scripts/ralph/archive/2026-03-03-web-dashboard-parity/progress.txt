@@ -1,0 +1,289 @@
+# Ralph Progress Log
+Started: Mon Mar  2 19:47:05 PST 2026
+---
+
+## Codebase Patterns
+- Web dashboard uses Alpine.js (`x-data`, `x-show`, `x-cloak`, `x-for`, `x-text`, `@click`) with Supabase JS client
+- Routes are hash-based (`#/events`, `#/members/{id}`) parsed in `parseRoute()` — add new routes to the `routes` array
+- Sidebar nav links in `app.html` between `<ul class="sidebar-nav">` tags
+- Views are `x-show="route === 'xxx'"` sections inside `<main class="main-content">`
+- Use existing CSS classes: `.card`, `.card-header`, `.card-title`, `.chip`, `.chip.active`, `.badge`, `.badge-muted/warning/success/danger`, `.data-table`, `.search-input`, `.filter-bar`, `.empty-state`, `.shimmer`
+- Events are shared (bookie_id IS NULL) — use `.is('bookie_id', null)` in Supabase queries
+- Sport DB values: `americanfootball_nfl`, `basketball_nba`, etc. — use `formatSportName()` for display
+- State variables go at the top of `dashboardApp()`, methods below `init()`
+- Computed getters use `get` syntax for Alpine reactivity
+- Edge functions called via `callEdgeFunction(name, body)` — always include `idempotency_key: crypto.randomUUID()`
+- Modals placed outside `<template x-if>` blocks to survive re-renders — at the view section level
+- The `allBets` query in `loadDashboard()` must include ALL columns used by `computeAttentionTags()` — add new columns to `.select()` when tags depend on them
+- Pro-gated pattern: `.pro-gated-section` card + `pro-blur` class + `.pro-upgrade-overlay` overlay
+- Dual-role auth: `userRole` is 'organizer'|'player'|'standalone'. Player routes prefixed with `player-`. Organizer data only loads for organizer role.
+- Player state: `playerId`, `playerBookieId`, `playerRecord` (full player row), `playerBookie` (organizer's bookie settings)
+- Sidebar links use `x-show="userRole === 'organizer'"` or `x-show="userRole === 'player' || userRole === 'standalone'"`
+- Player games: markets lookup via `playerMarketsByEvent` computed getter (nested map: event_id → market_type → market object) for O(1) access in templates
+- Bet selections stored in `betSlipSelections[]` with `event_id`, `market_id`, `side`, `side_indicator`, `odds`, `event_name`, `market_type`
+- Bet slip submission: `submit_bets` for singles (partial success model), `submit_parlay` for multi-picks (combined_odds as American number)
+- American↔decimal odds: positive → `1 + odds/100`, negative → `1 + 100/abs(odds)`. Multiply decimals for parlay combined odds
+- CSS namespacing: `pg-` for player games, `bs-` for bet slip — prevents class collisions
+
+---
+
+## 2026-03-02 - US-001
+- Implemented Events tab with sport browsing and search
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: sidebar nav link with calendar SVG icon, `#/events` route, `loadEvents()` fetching shared events (last 14 days), `filteredEvents` computed getter with search + sport filter + 48h final-event hiding, `groupedFilteredEvents` grouping by sport/league, `eventSportOptions` dynamic sport chips, `formatSportName()`/`formatLeagueName()`/`eventStatusBadgeClass()`/`formatEventTime()` helpers, responsive `.event-row` CSS
+- **Learnings for future iterations:**
+  - Alpine.js computed getters use `get` keyword — they automatically re-evaluate when reactive data changes
+  - Sport filter uses display names (e.g., "Football") not DB keys (e.g., "americanfootball_nfl")
+  - Events query uses `.is('bookie_id', null)` for shared events, `.gte('start_time', ...)` for date filtering
+  - Event rows link to `#/events/{id}` which will be handled by US-002 (Event Detail)
+---
+
+## 2026-03-02 - US-002
+- Implemented Event Detail view with odds, exposure breakdown, and pick management
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `#/events/{id}` route in parseRoute(), `selectedEventId`/`eventDetail`/`eventDetailBets`/`eventDetailMarkets`/`isLoadingEventDetail` state, `loadEventDetail()` fetching event + markets (bookie_id IS NULL) + bets (by bookie_id), `eventExposureBreakdown` and `eventTotalExposure` computed getters, hero card with status/matchup/final_score, markets card with h2h/spreads/totals/outright display, exposure breakdown by side, picks table with member links
+- **Learnings for future iterations:**
+  - Markets are shared (`bookie_id IS NULL`) but bets are bookie-specific — query markets with `.is('bookie_id', null)` and bets with `.eq('bookie_id', bookie.id)`
+  - Spread lines: `spread_line` is from the away team's perspective. Home spread = negation of away spread
+  - Event detail route must be checked BEFORE the member/pick routes in parseRoute() to avoid `events/xxx` matching other patterns
+  - Odds display uses `.odds-mono` CSS class for monospace font
+---
+
+## 2026-03-02 - US-003
+- Implemented batch grading and event management actions on Event Detail
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: Actions card with Grade All Picks (Win Home/Win Away/Push), Void All Picks, Enter Final Score, Change Status. Batch grade/void modals with progress indicators, final score modal with pre-populated values, change status modal with cancel warning. Computed getters `eventGradableBets` and `eventVoidableBets` for filtering eligible bets. Sequential edge function calls with per-pick progress feedback.
+- **Learnings for future iterations:**
+  - Batch grading calls `grade_bet` sequentially (not parallel) to respect rate limits — use a for-loop with progress tracking
+  - Gradable bets: `['accepted', 'readyToGrade']`. Voidable bets: `['pending', 'accepted', 'readyToGrade']`
+  - Final score format in DB: `"away_score-home_score"` string
+  - Modals placed outside `<template x-if>` blocks to avoid being destroyed when data changes — they live at the same level as the event-detail section
+  - No new CSS needed — reused existing `.btn-grade`, `.btn-grade-win`, `.btn-grade-loss`, `.btn-grade-push`, `.btn-void`, `.modal-overlay`, `.modal`, `.modal-actions`
+  - `callEdgeFunction()` is the standard way to call edge functions — returns data with optional `.error`
+---
+
+## 2026-03-02 - US-005
+- Implemented CSV export for settlement reports
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: Export CSV button (btn-ghost with download SVG icon) inside settlement week selector div, `exportSettlementCSV()` method generating CSV with exact column headers (Member Name, Starting Balance, Bets Won, Bets Lost, Adjustments, Ending Balance, Status), TOTAL summary row, proper CSV field escaping, `booki-settlement-YYYY-MM-DD.csv` filename from week-ending Sunday, Blob download pattern, toast on success, button disabled when loading or empty
+- **Learnings for future iterations:**
+  - CSV field escaping: wrap in quotes and double internal quotes when field contains commas, quotes, or newlines
+  - Settlement week date (`this.settlementWeek`) is the Sunday; use it directly for the filename date
+  - The `settlementReports` array has `isPaid` boolean and `endingBalance` for determining Settled/Unpaid status
+  - Blob download pattern: create Blob → createObjectURL → createElement('a') → set href+download → click → revokeObjectURL
+---
+
+## 2026-03-02 - US-004
+- Implemented Settlement view with weekly periods and per-member reports
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: sidebar nav link with dollar sign SVG, `#/settlement` route, settlement state variables, `mostRecentSunday()`/`getWeekStart()`/`formatWeekRange()`/`navigateWeek()` helpers, `loadSettlement()` fetching ledger entries and computing per-member settlement reports (starting balance, bets won/lost, adjustments, ending balance), `filteredSettlementReports`/`settlementOwedToYou`/`settlementYouOwe` computed getters, `settlementMarkPaid()` calling `adjust_balance` edge function with `paymentLogged` type, settlement view with week navigator, summary row, filter chips (All/Unsettled/Settled/Needs Attention), data table, Mark Paid confirmation modal, shimmer loading skeleton, empty state
+- **Learnings for future iterations:**
+  - Settlement calculation splits ledger entries into "before week start" (starting balance) and "within week" (activity), by type
+  - Settlement types: `settlement` = grading results (positive = player lost, negative = player won from bookie perspective), `paymentLogged` = settle-ups, `adjustment` = manual adjustments
+  - Mark Paid calls `adjust_balance` with `amount: -endingBalance` and `type: 'paymentLogged'` — negating the balance to zero it out
+  - Week runs Mon–Sun: `mostRecentSunday()` gets the most recent Sunday, `getWeekStart()` subtracts 6 days for Monday
+  - Added `.table-responsive` wrapper for horizontal scrolling on mobile data tables
+---
+
+## 2026-03-02 - US-006
+- Implemented Attention Feed card on Dashboard, positioned above Members Grid
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `attentionExpanded` state, `attentionAlerts` computed getter (Overdue + Near Credit Limit categories from dashboardMembers/attentionTags), `attentionAlertCount` and `displayedAttentionAlerts` getters, "All clear" empty state with checkmark, alert rows with left-border severity coloring (urgent=danger, warning=orange), collapsible View All toggle at 5 items, `.attention-alert-row` CSS with colored left borders
+- **Learnings for future iterations:**
+  - Attention alerts reuse `attentionTags` already computed on `dashboardMembers` in `loadDashboard()` — no extra queries needed
+  - Event-level high exposure grouping would require storing `allBets` at dashboard scope (currently local to `loadDashboard()`). Consider persisting if US-007 needs it
+  - Computed getters that depend on `dashboardMembers` auto-update when `loadDashboard()` runs — Alpine reactivity handles this
+  - Alert rows use `<a>` tags with href for navigation — no `@click` + `location.hash` needed
+---
+
+## 2026-03-02 - US-007
+- Implemented Tonight's Open Activity card on Dashboard, positioned after stats grid and before Attention Feed
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `dashboardOpenBets` and `tonightEvents` state variables, added `event_id` and `side` to open bets select query, tonight's events fetch (today's date range, excluding final/canceled), `tonightsExposure` computed getter returning `{ gameCount, totalPotentialLoss, highestRiskGame, highExposure }`, card HTML with clock icon header, no-games empty state, stats row (Games Tonight + Total Potential Loss), highest risk game section with time/matchup/exposure and High Exposure badge at $1,000+, card clickable to `#/events`, `.tonight-exposure-card`/`.tonight-stats`/`.tonight-risk-game` CSS with responsive stacking
+- **Learnings for future iterations:**
+  - Open bets query in `loadDashboard()` now includes `event_id` and `side` — stored in `this.dashboardOpenBets` for reuse by computed getters
+  - Tonight's events filter: `gte(now) + lte(end-of-today)` with `.not('status', 'in', '("final","canceled")')` syntax for Supabase NOT IN
+  - The `calcPotentialReturn(bet)` helper returns total return (stake + profit), so potential loss to bookie = `calcPotentialReturn(b) - stake`
+  - Card-level `@click` with `cursor:pointer` works well for navigable dashboard cards
+---
+
+## 2026-03-02 - US-008
+- Implemented Risk Watchlist card on Dashboard (pro-gated), positioned after Attention Feed and before Members Grid
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `riskWatchlist` computed getter with 4 risk signals (Near Limit, Overdue, Hot Streak, Losing Big), top 5 members sorted by signal count, pro-gated card with blur overlay, credit utilization progress bars, clickable member rows, `.risk-watchlist-row` CSS
+- Fixed: Added `grade_result` to allBets query select in `loadDashboard()` — was missing, causing hot streak/cold streak detection in `computeAttentionTags` to silently fail on the dashboard
+- **Learnings for future iterations:**
+  - The `allBets` query in `loadDashboard()` must include all columns used by `computeAttentionTags()` — `grade_result` was missing, breaking heater/cold streak tags
+  - Risk signals reuse existing `attentionTags` for overdue/heater detection — no extra queries needed
+  - "Losing Big" uses ledger entries (excluding paymentLogged) from last 7 days — internal positive = player owes bookie (lost), so `sum > 500` means player losing big
+  - Pro-gated pattern: `.pro-gated-section` card with `position:relative;overflow:hidden`, content div with `:class="{ 'pro-blur': !isPro }"`, overlay div with `.pro-upgrade-overlay`
+  - `<template x-if>` wrapping the card ensures it's only rendered when `riskWatchlist.length > 0`
+---
+
+## 2026-03-02 - US-009
+- Implemented Settlement Snapshot card on Dashboard, positioned after Risk Watchlist and before Members Grid
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `snapshotWeekRange`, `snapshotOwedToYou`, `snapshotYouOwe`, `snapshotUnpaidCount`, `snapshotOverdueCount`, `snapshotTopUnpaid` computed getters, `openSnapshotPay()`/`snapshotMarkPaid()` methods with `showSnapshotPayModal`/`snapshotPayPlayer`/`isSnapshotPaying` state. Card HTML with calendar icon header showing overdue badge and week range, two-metric summary (Owed to You / You Owe), stats row (unpaid + overdue counts with icons), top 3 unpaid members with Mark Paid button, confirmation modal, "View Settlements" bottom link with chevron. CSS for `.snapshot-unpaid-row` and `.snapshot-view-link`.
+- **Learnings for future iterations:**
+  - Settlement Snapshot uses live balance data from `players` array (already computed in `loadPlayerBalances()`), not `settlementReports` — no extra settlement loading needed on dashboard
+  - `snapshotMarkPaid()` calls `adjust_balance` then refreshes both `loadPlayerBalances()` and `loadDashboard()` to update all dashboard cards
+  - View link uses accent rgba background (0, 245, 212) at 6%/12% opacity for subtle teal highlight — hardcoded since CSS custom properties don't work inside `rgba()`
+  - Overdue badge in card header uses `<template x-if>` to only render when count > 0
+---
+
+## 2026-03-02 - US-010
+- Implemented notification preferences section in Settings view, positioned after Change Password
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `notifPrefs` state object with 4 boolean fields (new_members, pick_submissions, risk_alerts, game_results), `isLoadingNotifPrefs` state, `loadNotifPrefs()` fetching from `notification_preferences` table with `.maybeSingle()` and fallback defaults, `toggleNotifPref(field)` with immediate UI toggle + Supabase upsert (reverts on error), bell icon SVG in card header, 4 toggle rows with descriptive labels using existing `.toggle-row`/`.toggle-switch`/`.toggle-label`/`.toggle-desc` CSS, loading state via `<template x-if>`, `loadNotifPrefs()` called from `loadSettings()`
+- **Learnings for future iterations:**
+  - `notification_preferences` table uses `user_id` as unique key — upsert with `{ onConflict: 'user_id' }`
+  - Use `.maybeSingle()` instead of `.single()` when the record may not exist yet — avoids error on first load
+  - Optimistic UI toggle: flip the boolean immediately, then revert on error for responsive feel
+  - No new CSS needed — all toggle styles already existed from Pick Management section
+---
+
+## 2026-03-02 - US-011
+- Implemented accept/decline actions for pending picks on Dashboard and Picks tab
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `acceptingBetId`/`decliningBetId`/`showDeclineModal`/`declineBetId` state variables, `acceptBet()` method calling `accept_bet` edge function, `openDeclineModal()`/`confirmDeclineBet()` methods calling `decline_bet` edge function, `_betId` and `_betStatus` fields on recentActivity bet items, Accept/Decline buttons on Dashboard Recent Activity rows (pending bets only, shown when `bookie.manual_bet_acceptance` is enabled), Accept/Decline buttons on Picks tab table rows (pending bets only), Decline confirmation modal with Cancel/Decline actions
+- **Learnings for future iterations:**
+  - `bookie.manual_bet_acceptance` is loaded via `loadBookie()` with `select('*')` — no extra query needed
+  - Accept/Decline buttons conditionally shown via `x-show="bookie && bookie.manual_bet_acceptance"` — auto-accept bookies see no extra column
+  - Reused existing `.btn-grade`, `.btn-grade-win`, `.btn-grade-loss` CSS classes with compact sizing (font-size:11px, padding:3px 10px)
+  - `@click.stop` on action buttons prevents the row click from navigating to pick detail
+  - `decline_bet` edge function takes `{ bet_id, idempotency_key }` — no `reason` field in the function signature
+  - After accept/decline, both `loadDashboard()` and `loadPicks()` are refreshed to update both views
+---
+
+## 2026-03-02 - US-012
+- Implemented acceptance policy settings in Settings view (pro-gated)
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `acceptancePolicy`/`isLoadingAcceptancePolicy`/`isSavingAcceptancePolicy` state variables, `loadAcceptancePolicy()` fetching from `acceptance_policies` table with `.maybeSingle()` and defaults, `saveAcceptancePolicy()` upserting with `onConflict: 'bookie_id'`, Acceptance Rules card in Settings with toggle rows (Auto-Accept Enabled, Auto-Accept New Members, Auto-Accept Multi-Picks), conditional Parlay Max Legs input, Max Stake / Require Approval Above / Event Lock Offset number inputs, Save Rules button, pro-gated with blur overlay and upgrade link
+- **Learnings for future iterations:**
+  - `acceptance_policies` table uses `bookie_id` as unique key — upsert with `{ onConflict: 'bookie_id' }`
+  - Use `.maybeSingle()` for tables where the record may not exist yet (avoids error on first load)
+  - Pro-gated pattern: outer `pro-gated-section` card with `position:relative;overflow:hidden`, inner content with `:class="{ 'pro-blur': !isPro }"`, overlay with `.pro-upgrade-overlay` using `<template x-if="!isPro">`
+  - `x-model.number` auto-coerces input values to numbers for Alpine.js — use for numeric fields
+  - `loadAcceptancePolicy()` called from `loadSettings()` alongside `loadNotifPrefs()`
+---
+
+## 2026-03-02 - US-013
+- Implemented dual-role auth routing for player and organizer login
+- Files changed: `landing/dashboard/index.html`, `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `userRole`/`playerId`/`playerBookieId`/`playerRecord`/`playerBookie` state variables, `detectUserRole()` method with bookie/player record checks + spurious bookie guard, updated `parseRoute()` with player routes (`player-home`, `player-games`, `player-track`, `player-account`, `player-ticket/{id}`) + role validation, role-conditional sidebar nav (x-show on all links), placeholder player view sections (Home, Games, Track, Account, Ticket Detail), removed organizer-only login gate from index.html, updated login/session check to allow any authenticated user
+- **Learnings for future iterations:**
+  - `detectUserRole()` replaces the old `loadBookie()` + non-organizer redirect — checks both `bookies` and `players` tables, applies spurious bookie guard
+  - `subscribeToRealtime()` already guards with `if (!this.bookie)` — safe for player role where bookie is null
+  - Player routes are prefixed with `player-` to avoid collision with organizer routes (e.g., `player-home` vs `dashboard`)
+  - Role-based default route: organizer defaults to `dashboard`, player/standalone defaults to `player-home`
+  - Organizer data loading (loadPlayers, loadDashboard) only runs for `userRole === 'organizer'` — player data loading will be added in US-014+
+  - Sign-up flow unchanged — new accounts still create bookie records (organizer role). Players are invite-only.
+---
+
+## 2026-03-02 - US-014
+- Implemented player home view with balance hero, performance card, credit utilization, and recent activity
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `playerLedgerEntries`/`playerBets`/`playerOpenStakes`/`isLoadingPlayerHome` state variables, `loadPlayerHome()` fetching ledger entries + bets for the player, computed getters (`playerBalance`, `playerDisplayBalance`, `playerWinRate`, `playerPnl`, `playerDisplayPnl`, `playerOpenPicksCount`, `playerCreditUtilization`, `playerAvailableCredit`, `playerCreditLimit`, `playerRecentActivity`), `computePlayerRecord()` W-L-P from grade_result, `playerActivityTypeColor()`/`playerActivityTypeBadge()`/`creditUtilizationColor()` helpers, balance hero with negated display (positive=green=credit, negative=red=debt), performance card with record dots + stats row, credit utilization bar (color-coded by percentage), recent activity list with color indicators and negated amounts, shimmer loading skeleton, CSS for `.player-balance-hero`, `.player-record-*`, `.player-stats-row`, `.credit-bar-*`, `.player-activity-*`, responsive mobile styles
+- **Learnings for future iterations:**
+  - `playerRecord` (state from detectUserRole) is the full player row — don't create a computed getter with the same name. Use `computePlayerRecord()` as a method instead
+  - Player balance negation: internal positive = player owes bookie. Display: negate so positive = credit (green). Same negation applies to ledger entry amounts in activity list
+  - `playerCreditUtilization` uses `Math.abs(balance) + openStakes` / `creditLimit` — includes open stakes in utilization
+  - `loadPlayerHome()` triggered both on init (for player role) and on route navigation to `player-home`
+  - Player data (ledger + bets) will be reused by US-015 (games/bet placement) and US-017 (track view)
+---
+
+## 2026-03-02 - US-015
+- Implemented player games view with odds browsing and bet selection
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `playerEvents`/`playerMarkets`/`betSlipSelections`/`isLoadingPlayerEvents`/`playerEventSearch`/`playerSportFilter`/`showBetSlip` state variables, `loadPlayerGames()` fetching upcoming events (non-final, future start_time) + markets (bookie_id IS NULL), `playerMarketsByEvent` computed getter for O(1) market lookup by event+type, `filteredPlayerEvents`/`groupedPlayerEvents`/`playerSportOptions` computed getters, `isEventLocked()`/`getMarketForEvent()`/`formatSpreadLine()`/`isSelectionActive()`/`toggleSelection()` methods, full game row layout with away/home team rows each showing 3 odds buttons (spread/money/total), odds buttons toggle into `betSlipSelections` array, lock detection for past-start events, floating bet slip indicator bar (fixed bottom, accent pill), shimmer loading skeleton, empty state, CSS for `.pg-*` classes (game row, team row, odds buttons with active/locked states, bet slip bar with hover animation)
+- **Learnings for future iterations:**
+  - Markets are shared (`bookie_id IS NULL`) — same query pattern as organizer events
+  - `playerMarketsByEvent` uses nested map: `{ event_id: { market_type: market } }` for O(1) lookup — avoids N*M iterations in template
+  - Spread line from DB is from away team perspective; home spread = negation (`-(spread_line || 0)`)
+  - `side_indicator` convention: 'a' = away/over, 'b' = home/under — must match `submit_bets` edge function expectations
+  - Selection state stored as objects in `betSlipSelections` array with `event_id`, `market_id`, `side`, `side_indicator`, `odds`, `event_name`, `market_type` — used by bet slip (US-016)
+  - `toggleSelection()` uses `findIndex` + `splice` for removal — Alpine reactivity tracks array mutations
+  - Event lock detection: `new Date(ev.start_time) <= new Date()` — simple comparison, no offset
+  - CSS prefix `pg-` used for player games to avoid collisions with other view styles
+---
+
+## 2026-03-02 - US-016
+- Implemented bet slip modal with singles and multi-pick submission
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `betSlipMode`/`betSlipStakes`/`betSlipMultiStake`/`isSubmittingBets`/`betSlipSuccess`/`betSlipSuccessMessage` state variables, `removeSelection()`/`clearBetSlip()`/`addQuickStake()`/`addQuickStakeMulti()` methods, `calcToWin()`/`americanToDecimal()`/`decimalToAmerican()` odds helpers, `combinedMultiOdds`/`combinedMultiOddsAmerican`/`multiToWin`/`betSlipTotalStakes`/`betSlipValid`/`betSlipValidationMessage`/`canSelectMulti`/`betSlipButtonText` computed getters, `submitBetSlip()` method calling `submit_bets` (singles) or `submit_parlay` (multi) edge functions, 34 randomized confirmation messages, success animation state with `closeBetSlipSuccess()`, full modal UI with mode toggle (Singles/Multi), selection cards with per-card stake input + quick stakes (+$1/+$5/+$25) + to-win display, multi-pick combined odds + single stake, available credit display, validation warnings, loading overlay with spinner, success checkmark animation, compliance disclaimer. CSS: `.bs-*` prefix classes for overlay/modal/cards/inputs/buttons with slide-up animation, desktop centered modal, mobile bottom sheet
+- **Learnings for future iterations:**
+  - American-to-decimal conversion: positive → `1 + odds/100`, negative → `1 + 100/abs(odds)`. Decimal-to-American: `>= 2` → `+(dec-1)*100`, `< 2` → `-100/(dec-1)`
+  - Combined parlay odds: multiply decimal odds of all legs, then convert back to American for display and submission
+  - `submit_bets` expects `{ player_id, bookie_id, bets: [{event_id, market_id, side, side_indicator, odds, stake}], idempotency_key }` — returns partial success model
+  - `submit_parlay` expects `{ player_id, bookie_id, stake, combined_odds (number, American), legs: [{event_id, market_id, side, side_indicator, odds}], idempotency_key }`
+  - Bet slip floating bar hidden when modal is open (added `&& !showBetSlip` condition)
+  - Alpine.js `x-model` works for simple two-way binding but `@input` with `:value` needed for object-keyed stakes (`betSlipStakes[idx]`) since Alpine doesn't support computed model paths
+  - Multi-pick disabled when fewer than 2 selections or when bookie disallows futures parlays and selections contain outrights
+  - Quick stakes use `addQuickStake(idx, amount)` pattern — adds to existing value rather than replacing
+  - CSS prefix `bs-` for bet slip to avoid collisions with other styles
+---
+
+## 2026-03-02 - US-017
+- Implemented player track view with open and past picks, performance stats, and ticket cards
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `playerTrackFilter`/`isLoadingPlayerTrack`/`playerTrackEvents` state variables, `loadPlayerTrack()` fetching events for bet enrichment (final scores, team names), `playerTickets` computed getter grouping bets by ticket_id into ticket objects with combined odds/PnL/potential return/event data, `playerTrackStats` (record + total staked + PnL), `playerTrackFilterCounts` for filter chip counts, `filteredPlayerTickets` filtering by all/open/won/lost/pushed, `playerTicketStatusBadgeClass()`/`playerTicketStatusText()`/`playerLegDotColor()` helpers, route trigger in `parseRoute()`, summary card with record/staked/PnL, filter chips with counts, ticket cards with title/subtitle/status badge/leg dots/stake/profit/final score, empty state, shimmer loading skeleton, refresh button. CSS: `.pt-*` prefix classes for ticket cards with hover effects, leg dots, responsive layout, generic `.positive`/`.negative` color classes
+- Added `bet_type` and `graded_at` to player bets query select for ticket type detection
+- **Learnings for future iterations:**
+  - Reuse `playerBets` from `loadPlayerHome()` — check if data exists before re-fetching to avoid duplicate queries
+  - Ticket grouping: `ticket_id` groups parlay legs, singles use bet.id as key. `bet_type === 'parlay'` also identifies parlays even with single-leg
+  - Event enrichment: batch fetch events by ID and store in `playerTrackEvents` object keyed by event.id for O(1) lookup
+  - Combined parlay odds: multiply decimal odds of all legs (excluding pushed legs for won parlays), convert back to American
+  - PnL for parlays: Won = stake * combinedDecimal - stake. Loss = -stake. Use `americanToDecimal`/`decimalToAmerican` helpers
+  - Filter counts use computed getter chaining — `playerTrackFilterCounts` reads from `playerTickets` which reads from `playerBets`
+  - CSS prefix `pt-` used for player track to avoid collisions with other view styles
+---
+
+## 2026-03-02 - US-018
+- Implemented player ticket detail view with hero card, parlay legs, financials, and activity timeline
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `playerTicketDetail`/`playerTicketLegs`/`isLoadingPlayerTicket` state variables, `loadPlayerTicketDetail()` method fetching bet by ID + parlay legs by ticket_id + event enrichment, hero card with status badge/title/subtitle/sport/league/final score, parlay legs card with colored dots + grade badges, financials card with stake/odds/potential return (open) or profit + total return (settled), activity timeline with placed + graded dates, shimmer loading, route trigger in `parseRoute()`
+- **Learnings for future iterations:**
+  - `playerTicketDetail` is a computed object (not raw DB row) — includes `bet`, `legs`, `isParlay`, `gradeResult`, `status`, `stake`, `combinedOdds`, `pnl`, `potentialReturn`, `timeline`
+  - Leg enrichment uses `_` prefixed properties (`_event_name`, `_sport`, `_league`, `_final_score`) to avoid colliding with DB columns
+  - Reused `playerTicketStatusBadgeClass()`/`playerTicketStatusText()`/`playerLegDotColor()` helpers from player track view
+  - No new CSS needed — all styles reused from existing pick detail and player track views
+  - Player-facing financials: no negation needed — profit is displayed as-is (positive = won, negative = lost)
+---
+
+## 2026-03-02 - US-019
+- Implemented player account view with profile, change password, activity, notifications, about, logout, and delete account
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`
+- Added: `isLoadingPlayerAccount`/`playerActivityFilter`/`playerActivity`/`playerAccountNotifPrefs`/`isLoadingPlayerNotifPrefs`/`isEditingPlayerName`/`editPlayerNameValue`/`playerCurrentPassword`/`playerNewPassword`/`playerConfirmPassword`/`isChangingPlayerPassword`/`playerPasswordError`/`showPlayerDeleteStep1`/`showPlayerDeleteStep2`/`playerDeleteConfirmText`/`isDeletingPlayerAccount` state variables, `loadPlayerAccount()` method, `filteredPlayerActivity` computed getter with All/Graded/Adjustments/Settled filters, `playerMemberSince` computed getter, `loadPlayerNotifPrefs()`/`togglePlayerNotifPref()` for player notification preferences (picks_graded, balance_changes, game_results), `startEditingPlayerName()`/`savePlayerName()` for inline name editing, `changePlayerPassword()` with current password re-auth, `deletePlayerAccount()` with two-step confirmation modals, Profile card (name edit, email readonly, organizer name, member since), Change Password card, Activity card with filter chips, Notifications card with toggle switches, About card (website/terms/privacy links), Log Out button, Delete Account muted button with 2-step modal
+- **Learnings for future iterations:**
+  - Player account reuses `playerLedgerEntries` from `loadPlayerHome()` — checks if data exists before re-fetching
+  - Player notification preferences use different fields than organizer: `picks_graded`, `balance_changes`, `game_results` (not `new_members`/`pick_submissions`/`risk_alerts`)
+  - Player name update via `display_name` column on `players` table — may be blocked by RLS, falls back to `name` column
+  - Separate state variables for player password change (`playerCurrentPassword`, etc.) to avoid colliding with organizer settings state
+  - Delete account modals use separate `showPlayerDeleteStep1`/`showPlayerDeleteStep2` state to avoid conflicting with organizer delete modals
+  - No new CSS needed — all styles reused from organizer settings, player home activity, and existing form/toggle/card patterns
+---
+
+## 2026-03-02 - US-020
+- Implemented persistent balance display in player header (sidebar + mobile)
+- Files changed: `landing/dashboard/app.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Added: `.sidebar-player-balance` section in sidebar (below logo, above nav) with large balance amount + label (Credit/You owe/Settled), `.mobile-balance` inline in mobile header between logo and hamburger, color-coded positive (green/success), negative (red/danger), settled (gray/muted), player-specific realtime subscription for `ledger_entries` filtered by `player_id` to keep balance live, CSS for `.sidebar-player-balance`, `.sidebar-balance-amount`, `.sidebar-balance-label`, `.mobile-balance` with Space Grotesk font
+- **Learnings for future iterations:**
+  - `subscribeToRealtime()` previously guarded with `if (!this.bookie)` which skipped players entirely — split into player and organizer branches
+  - Player realtime subscribes to `ledger_entries` with `player_id` filter, reloads `loadPlayerHome()` which updates `playerLedgerEntries` → `playerBalance` → `playerDisplayBalance` reactively
+  - `formatCurrency()` already exists in dashboard.js — reuse it in templates
+  - Sidebar balance uses `x-show="userRole === 'player'"` with `x-cloak` to prevent flash on organizer accounts
+---
+
+## 2026-03-03 - Win Limit Feature + Web Polish
+- Implemented full-stack win limit feature: per-member win limits that cap net winnings with block or require_approval actions
+- Files changed: `supabase/migrations/029_player_win_limit.sql`, `Booki/Models/Player.swift`, `Booki/Models/Bookie.swift`, `Booki/Services/SyncModels.swift`, `Booki/Services/BookieService.swift`, `Booki/Services/SyncService.swift`, `Booki/Services/BalanceService.swift`, `Booki/Views/PlayerAnalyticsDetailView.swift`, `Booki/Views/BetSlipSheet.swift`, `Booki/Views/SettingsView.swift`, `supabase/functions/submit_bets/index.ts`, `supabase/functions/submit_parlay/index.ts`, `supabase/functions/claim_invite/index.ts`, `landing/dashboard/index.html`, `landing/dashboard/dashboard.js`, `landing/dashboard/dashboard.css`
+- Web dashboard polish: 3-column member detail grid (Balance/Credit Limit/Win Limit), styled tooltips for column headers + Active badge using existing `showTagTooltip`/`hideTagTooltip` system, settlement table last-row border removed, `settlementMarkPaid()` bug fix (wasn't checking `response.error` from `callEdgeFunction`)
+- Desktop bet slip sidebar, bidirectional staking, odds button restyling, futures 2-column grid
+- Web-first landing page repositioning + become an organizer flow
+- **Learnings for future iterations:**
+  - `callEdgeFunction()` returns `data` without throwing when `!res.ok && data.error` — callers must check `response.error` explicitly
+  - Win limit logic: net winnings = `-balanceOwed`. Triggers when `-balanceOwed >= win_limit`
+  - Reuse `showTagTooltip(tag, event)` / `hideTagTooltip()` for styled tooltips — pass `{ label, desc }` object as tag
+  - Member detail grid: `grid-template-columns: repeat(3, 1fr)` for Balance/Credit/Win Limit columns
+  - Win limit integrates with existing acceptance policy flow via `policyViolations` array — no new approval workflow
+---

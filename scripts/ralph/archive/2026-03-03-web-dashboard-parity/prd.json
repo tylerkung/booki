@@ -1,0 +1,335 @@
+{
+  "project": "Booki",
+  "branchName": "ralph/web-dashboard-hardening",
+  "description": "Fix confirmed bugs, apply hardening improvements, and bring player experience to iOS parity on the web dashboard (landing/dashboard/). Bug fixes (credit calc, ticket detail security, attention feed), quality-of-life (explicit filters, parlay badge, UUID validation, edge function timeout, parlay leg filters), and player UX (games as default tab, sport pages with league sub-tabs + futures, track tab for standalone, time filters). All changes in landing/dashboard/ files: dashboard.js, app.html, dashboard.css. CRITICAL: The iOS app (Booki/ directory) is the reference implementation. Before building any web feature, READ the corresponding iOS Swift code. Key references: GamesView.swift (player games tab), SportPageView.swift (sport hub with league tabs), SportCategory.swift (sport/league enum), TrackView.swift (player picks).",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Fix credit calculation to not penalize winning players",
+      "description": "As a player, my available credit should increase when I'm winning (negative balance), not decrease. The current Math.abs() penalizes winning players identically to losing players.",
+      "acceptanceCriteria": [
+        "In playerCreditUtilization getter (~line 725), change Math.abs(this.playerBalance) to Math.max(0, this.playerBalance)",
+        "In playerAvailableCredit getter (~line 731), change Math.abs(this.playerBalance) to Math.max(0, this.playerBalance)",
+        "A player with -$500 balance (bookie owes them), $1000 credit limit, $200 open stakes should have: availableCredit = max(0, 1000 - max(0, -500) - 200) = $800, NOT $300",
+        "A player with +$500 balance (owes bookie), $1000 credit limit, $200 open stakes should have: availableCredit = max(0, 1000 - 500 - 200) = $300",
+        "Credit utilization percentage should use same formula: (max(0, balance) + openStakes) / creditLimit * 100",
+        "Reference: iOS BalanceService.swift line 60: creditLimit - stakes - owed (raw balance, no abs)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "iOS formula at BalanceService.swift:60 is `creditLimit - stakes - owed` where owed is the raw ledger sum. CLAUDE.md says max(0, balance). Either way, Math.abs is wrong — winning players should NOT have reduced credit."
+    },
+    {
+      "id": "US-002",
+      "title": "Add player_id filter to ticket detail query",
+      "description": "As a player, I should only be able to view my own bets. The current ticket detail query fetches any bet by ID without ownership check.",
+      "acceptanceCriteria": [
+        "In loadPlayerTicketDetail() (~line 943), add .eq('player_id', this.playerId) to the Supabase query chain after .eq('id', this.selectedBetId)",
+        "If the query returns 0 rows (bet doesn't belong to player), show toast 'Failed to load pick' and return early",
+        "This is a defense-in-depth measure — RLS also protects, but explicit filters are best practice",
+        "Test: navigating to #/player-ticket/{someone-elses-bet-id} should show error toast, not the bet"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "RLS on bets table already restricts to own bets via player_id = get_player_id(), but explicit filtering is defense-in-depth and optimizes query planning."
+    },
+    {
+      "id": "US-003",
+      "title": "Fix attention feed credit utilization to include open stakes",
+      "description": "As an organizer, the Near Limit alerts and Risk Watchlist should factor in open stakes, not just balance. A player with $0 balance but $900 in open stakes on a $1000 limit should trigger the 75% alert.",
+      "acceptanceCriteria": [
+        "In dashboardMembers mapping (~line 1807), ensure openStakes is included: openStakes: memberExposureMap[p.id]?.openStakes || 0",
+        "In memberExposureMap building (~line 1794), track openStakes per member: add openStakes to the map object, increment by Number(b.stake) for each open bet",
+        "In dashboardAlerts getter, Near Credit Limit section (~line 1927): change utilization formula from Math.abs(m.balance || 0) / limit * 100 to (Math.max(0, m.balance || 0) + (m.openStakes || 0)) / limit * 100",
+        "In riskWatchlist getter (~line 1983): apply same utilization formula fix",
+        "Both formulas must use Math.max(0, balance) not Math.abs(balance) — consistent with US-001 fix",
+        "Reference: iOS BalanceService.playerSummary() includes openStakes in credit utilization"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "The memberExposureMap already tracks exposure (potential payouts) and openPicks per member. Adding openStakes (sum of stakes) follows the same pattern. iOS BalanceService.playerSummary() bundles openStakes into credit utilization."
+    },
+    {
+      "id": "US-004",
+      "title": "Add explicit bookie_id filter to organizer pick detail and parlay leg queries",
+      "description": "As an organizer, pick detail and parlay leg queries should explicitly filter by bookie_id for clarity and query optimization, even though RLS already enforces isolation.",
+      "acceptanceCriteria": [
+        "In loadPickDetail() (~line 2674), add .eq('bookie_id', this.bookie.id) to the bets query after .eq('id', this.selectedBetId)",
+        "In the parlay legs fetch within loadPickDetail() (~line 2710), add .eq('bookie_id', this.bookie.id) to the query after .eq('ticket_id', ...)",
+        "Both changes are defense-in-depth — RLS already blocks cross-bookie access",
+        "Verify loadPickDetail still works: navigate to pick detail from picks tab, confirm bet data loads correctly",
+        "Verify parlay legs still load: navigate to a multi-pick detail, confirm all legs display"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Other organizer queries already use explicit bookie_id filters (e.g., loadMemberDetail at line 2576). These two queries are outliers. Adding the filter improves query planning and makes intent explicit."
+    },
+    {
+      "id": "US-005",
+      "title": "Suppress parlay partial badge when parlay has a losing leg",
+      "description": "As a user viewing a multi-pick, if any leg has lost, the parlay should show a normal 'Lost' appearance instead of 'Partial (X/Y)' — matching iOS behavior.",
+      "acceptanceCriteria": [
+        "Read iOS TrackView.swift and TicketDetailView.swift to understand the exact parlay badge suppression logic",
+        "In the pick card rendering (both organizer picks list and player track view), when displaying a parlay bet's status: if any leg has status 'lost' or 'graded' with a losing result, show 'Lost' badge (badge-danger) instead of 'Partial (X/Y)'",
+        "The 'Partial' badge should only show when all resolved legs are wins and some legs are still pending",
+        "For organizer pick detail view (loadPickDetail), apply same logic to the status display in the hero card",
+        "For player ticket detail view (loadPlayerTicketDetail), apply same logic",
+        "A parlay with 3 legs where 1 won and 1 lost should show 'Lost', not 'Partial (1/3)' or 'Partial (2/3)'",
+        "Reference: CLAUDE.md says 'Suppressed Partial (X/Y) badge and will lose warning when parlay already has a losing leg — shows normal Lost appearance'"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "This is a cosmetic fix matching iOS behavior documented in CLAUDE.md. The key insight: once any leg loses, the parlay outcome is determined (lost), so showing 'Partial' is misleading."
+    },
+    {
+      "id": "US-006",
+      "title": "Add UUID validation to hash route parsing",
+      "description": "As a user, navigating to an invalid route like #/picks/not-a-uuid should redirect to the parent view instead of sending garbage IDs to the database.",
+      "acceptanceCriteria": [
+        "Add a isValidUUID(str) helper function that validates UUID v4 format: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i",
+        "In parseRoute(), after each regex match (memberMatch, pickMatch, eventMatch, playerTicketMatch), validate the captured ID with isValidUUID() before setting the route",
+        "If UUID is invalid, redirect to the parent route: invalid member ID → #/members, invalid pick ID → #/picks, invalid event ID → #/events, invalid player-ticket ID → #/player-track",
+        "Do NOT show an error toast for invalid UUIDs — just silently redirect",
+        "Valid UUIDs in both uppercase and lowercase should be accepted (the regex uses case-insensitive flag)",
+        "Test: #/picks/abc → redirects to #/picks, #/picks/f3ad0fa1-1234-5678-9abc-def012345678 → loads pick detail"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "This prevents unnecessary database queries with invalid IDs. Currently these fail gracefully (toast error), but silent redirect is cleaner UX. The helper can be reused elsewhere."
+    },
+    {
+      "id": "US-007",
+      "title": "Add timeout and retry to callEdgeFunction",
+      "description": "As a user, edge function calls should timeout after 10 seconds instead of hanging indefinitely, and show user-friendly error messages.",
+      "acceptanceCriteria": [
+        "In callEdgeFunction(), wrap the fetch call with an AbortController and 10-second timeout",
+        "If the request times out (AbortError), throw an error with message 'Request timed out. Please try again.'",
+        "If the response is not ok AND has no error field in body, throw with a more descriptive message than just 'HTTP 500' — include the function name: 'Failed to call {name}. Please try again.'",
+        "If fetch throws a network error (TypeError from fetch), catch it and throw 'Network error. Check your connection and try again.'",
+        "Do NOT add retry logic — keep it simple, let the user retry manually",
+        "Ensure the AbortController is properly cleaned up (clearTimeout) in both success and error paths",
+        "Reference: iOS EdgeFunctionService.swift has retry logic, but for web a timeout is sufficient"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Keep this simple — just a timeout and better error messages. No retry logic needed since the user can retry manually. The iOS app has retry logic in EdgeFunctionService.swift but the web dashboard is simpler."
+    },
+    {
+      "id": "US-008",
+      "title": "Add explicit player_id filter to parlay leg queries in player ticket detail",
+      "description": "As a player viewing a multi-pick detail, the parlay leg query should explicitly filter by player_id for defense-in-depth.",
+      "acceptanceCriteria": [
+        "In loadPlayerTicketDetail() parlay legs fetch (~line 960), add .eq('player_id', this.playerId) to the query after .eq('ticket_id', ...)",
+        "This ensures only the current player's parlay legs are returned, matching the player_id filter already added in US-002 for the main bet query",
+        "Verify multi-pick detail still works: navigate to a multi-pick from player track, confirm all legs display correctly",
+        "This is defense-in-depth — RLS already restricts to own bets"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Complements US-002 (which added player_id to the main bet query). The parlay legs query should have the same filter for consistency."
+    },
+    {
+      "id": "US-009",
+      "title": "Make Games the default player tab instead of Home",
+      "description": "As a player, when I log in I should land on the Games view with odds and bet placement — not a balance summary page. The iOS app uses GAMES as tab 0. The current Home tab content (balance, record, recent activity) should move into a persistent header or into the Account tab.",
+      "acceptanceCriteria": [
+        "Read iOS PlayerMainView.swift and GamesView.swift to understand the player tab structure — GAMES is tab 0, the primary landing",
+        "Remove the 'Home' sidebar link and the player-home route entirely",
+        "Change the default player route from 'player-home' to 'player-games' — in parseRoute() line 422, change the fallback for non-organizer from 'player-home' to 'player-games'",
+        "In playerRoutes array (line 435), replace 'player-home' with 'player-games' as the first entry, remove 'player-home'",
+        "Move the key Home tab content into a persistent balance header on the Games page: show player display balance (formatted currency with Credit/You owe/Settled label) and available credit in a compact bar above the sport filter chips",
+        "The balance header should match the iOS PlayerTabView pattern: balance on the left, available credit on the right, single row, subtle background (var(--card-bg))",
+        "Move performance stats (record, open picks count) and recent activity into the Account tab — add a 'Performance' card at the top of player-account showing W-L-P record and open picks count",
+        "Remove the player-home HTML section from app.html and the loadPlayerHome() call from parseRoute routing",
+        "Keep loadPlayerHome() as a data-fetching method (it loads ledger + bets) but call it during init and when navigating to player-games instead",
+        "Update the standalone user redirect (in detectUserRole) from '#/player-home' to '#/player-games'",
+        "Sidebar nav order should be: Games, Track, Account (3 items, not 4)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "iOS PlayerMainView.swift line 60: Tab('GAMES', systemImage: 'house.fill', value: 0). Games is THE player home. The separate Home tab with balance summary is a web-only pattern that doesn't match iOS. Balance info should be persistent (visible from Games) not a separate tab. Reference: iOS PlayerTabView wraps each tab with a header showing balance."
+    },
+    {
+      "id": "US-010",
+      "title": "Add sport page with league sub-tabs and futures browsing",
+      "description": "As a player, I should be able to tap a sport header to navigate to a dedicated sport page with league sub-tabs (e.g., Basketball → NBA / NCAAB / WNBA) and a Futures tab for outright markets, matching the iOS SportPageView.",
+      "acceptanceCriteria": [
+        "Read iOS SportPageView.swift and SportCategory.swift thoroughly to understand the sport page structure, league tabs, futures display, and outright market rendering",
+        "Add a new route '#/player-sport/{sport}' (e.g., '#/player-sport/basketball') and add 'player-sport' to the player parameterized route matching in parseRoute()",
+        "Add state variables: selectedSportPage (string), selectedLeagueTab (string), isLoadingSportPage (boolean), sportPageEvents (array), sportPageMarkets (array)",
+        "Make sport section headers in the Games view tappable — clicking 'Basketball' navigates to '#/player-sport/basketball'",
+        "Also make the sport filter chips tappable as navigation (not just filter): clicking a sport chip navigates to the sport page instead of filtering inline",
+        "Create a sportCategories data structure matching iOS SportCategory.swift: { basketball: { displayName: 'Basketball', leagues: [{id: 'nba', displayName: 'NBA'}, {id: 'ncaab', displayName: 'NCAAB'}, {id: 'wnba', displayName: 'WNBA'}] }, football: { displayName: 'Football', leagues: [{id: 'nfl', displayName: 'NFL'}, {id: 'ncaaf', displayName: 'NCAAF'}] }, baseball: { displayName: 'Baseball', leagues: [{id: 'mlb', displayName: 'MLB'}] }, hockey: { displayName: 'Hockey', leagues: [{id: 'nhl', displayName: 'NHL'}] }, soccer: { displayName: 'Soccer', leagues: [{id: 'epl', displayName: 'EPL'}, {id: 'mls', displayName: 'MLS'}] }, mma: { displayName: 'MMA', leagues: [{id: 'ufc', displayName: 'UFC'}] }, tennis: { displayName: 'Tennis', leagues: [{id: 'atp', displayName: 'ATP'}, {id: 'wta', displayName: 'WTA'}] }, golf: { displayName: 'Golf', leagues: [{id: 'pga', displayName: 'PGA'}, {id: 'masters', displayName: 'Masters'}, {id: 'the_open', displayName: 'The Open'}, {id: 'us_open', displayName: 'US Open'}] } }",
+        "Sport page HTML: back button ('Back to Games' → '#/player-games'), sport title, horizontal league tab bar (pill-style tabs with accent underline on active), game cards for selected league filtered from sportPageEvents",
+        "League tabs filter events by matching sport display name AND league display name from the events table",
+        "Add a 'Futures' tab after the league tabs (except for golf where leagues ARE futures) — when selected, show outright markets for that sport: fetch markets with market_type='outright' and matching sport events",
+        "Futures display: each outright market as a card with the event name as header, list all outcomes with odds buttons (same toggleSelection pattern as regular odds)",
+        "For golf: league tabs render outrights directly (no separate Futures tab) since all golf markets are futures — reference iOS SportPageView.swift isOutrightOnlySport",
+        "Game cards on sport page should use the same 3-column odds grid (SPREAD/MONEY/TOTAL) as the main Games view, with the same toggleSelection/bet slip integration",
+        "Add a loadSportPage() method that fetches events and markets for the selected sport (filter events by sport display name, same bookie_id IS NULL filter as loadPlayerGames)",
+        "Empty state per league tab: 'No upcoming {league} games' or 'No futures available for {sport}'"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "iOS SportPageView is the key reference. It has: selectedLeagueId state, orderedLeagues computed, leagueEvents filtered, isOutrightOnlySport for golf. League tabs are text + accent underline, not chip-style. Sport-to-DB mapping: display names (Basketball/Football/etc.) map to events.sport column, league names (NBA/NFL/etc.) map to events.league column. Outright markets have market_type='outright' in the markets table."
+    },
+    {
+      "id": "US-011",
+      "title": "Fix Track tab visibility for standalone users",
+      "description": "As a standalone user (no bookie), I should be able to see the Track tab to view my pick history. Currently it's hidden because the x-show condition only checks for userRole === 'player'.",
+      "acceptanceCriteria": [
+        "In app.html, change the Track sidebar link x-show from 'userRole === \"player\"' to 'userRole === \"player\" || userRole === \"standalone\"'",
+        "In app.html, change the Track view container x-show from 'route === \"player-track\" && userRole === \"player\"' to 'route === \"player-track\" && (userRole === \"player\" || userRole === \"standalone\")'",
+        "In the route validation (parseRoute line 463), 'player-track' is already in playerRoutes so standalone users will be routed correctly",
+        "Verify: log in as standalone user, Track tab should appear in sidebar and be navigable"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Simple visibility fix. The loadPlayerTrack() method already works for standalone users since it uses this.playerId which is set for all player types. iOS shows Track for all players regardless of bookie association."
+    },
+    {
+      "id": "US-012",
+      "title": "Add time filter chips to Games view",
+      "description": "As a player, I should be able to filter games by time period (Today, Tomorrow, This Week) matching the iOS GamesView TimeFilter.",
+      "acceptanceCriteria": [
+        "Read iOS GamesView.swift TimeFilter enum to understand the filter options: All, Today, Tomorrow, This Week, Favorites",
+        "Add state variable: playerTimeFilter (string, default 'all') with options: 'all', 'today', 'tomorrow', 'thisWeek'",
+        "Add time filter chips below the sport filter chips on the Games view — use same .chip/.chip.active styling",
+        "Chip labels: 'All', 'Today', 'Tomorrow', 'This Week'",
+        "Update filteredPlayerEvents getter to apply time filtering: 'today' = start_time is today (local timezone), 'tomorrow' = start_time is tomorrow, 'thisWeek' = start_time within next 7 days",
+        "Time filter should compose with sport filter and search — all three filters apply together",
+        "Do NOT implement 'Favorites' filter (no favorites system on web yet)",
+        "Also apply time filtering on the sport page (US-010) if both are implemented — sport page should respect the same time filter",
+        "Update empty state message based on active time filter: 'No games today', 'No games tomorrow', 'No games this week'"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "iOS GamesView.swift lines 5-13: TimeFilter enum with all/today/tomorrow/thisWeek/favorites cases. Skip favorites for now since web has no favorites system. Time filtering uses Calendar.current for local timezone date checks."
+    },
+    {
+      "id": "US-013",
+      "title": "Fix toast notification overflow on mobile",
+      "description": "As a mobile user, toast notifications should be fully visible and readable, not clipped off the right edge of the screen.",
+      "acceptanceCriteria": [
+        "In dashboard.css, add a media query at max-width 480px for .toast-container: set right: 12px, left: 12px",
+        "Add max-width: 100% to .toast inside the same media query",
+        "Toast text should wrap within the container, not overflow",
+        "Test: trigger a long toast message like 'Failed to update notification preferences' on a 375px viewport — it should be fully readable"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Currently .toast-container is position:fixed; top:24px; right:24px with no left/max-width constraint. Long messages overflow the viewport on mobile."
+    },
+    {
+      "id": "US-014",
+      "title": "Add data-label attributes to all mobile card-layout tables",
+      "description": "As a mobile user viewing tables (Settlement, Picks, Members), each value should be labeled since table headers are hidden on mobile. Missing data-label attributes cause unlabeled values.",
+      "acceptanceCriteria": [
+        "In the settlement table (app.html ~lines 1545-1581), add data-label attributes to every <td>: 'Starting', 'Won', 'Lost', 'Adjustments', 'Ending', 'Status', 'Actions'",
+        "In the picks table (~lines 1042-1065), add data-label to every <td>: 'Date', 'Member', 'Type', 'Pick', 'Odds', 'Stake', 'Status', 'Actions'",
+        "In the members table (~lines 956-994), verify all <td> have data-label: 'Name', 'Balance', 'Credit', 'Status', 'Actions'",
+        "In the invite table (~lines 897-932), verify data-label: 'Code', 'Email', 'Credit Limit', 'Created', 'Actions'",
+        "In the event detail picks table (~lines 724-756), add data-label: 'Member', 'Side', 'Odds', 'Stake', 'Status'",
+        "In the dashboard recent activity table (~lines 483-515), add data-label: 'Date', 'Type', 'Description', 'Member', 'Amount'",
+        "Test at 375px: each table row should render as a card with label::before content on the left and value on the right"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "The CSS at max-width 768px converts .data-table to card layout using td[data-label]::before { content: attr(data-label) }. But many cells are missing the attribute, so they render as unlabeled values on mobile."
+    },
+    {
+      "id": "US-015",
+      "title": "Improve odds grid layout for narrow mobile screens",
+      "description": "As a mobile user browsing games, team names should be readable (not truncated to 4-5 chars) and odds buttons should fit without overflow.",
+      "acceptanceCriteria": [
+        "In dashboard.css, add a 480px breakpoint for the player games odds grid",
+        "At max-width 480px: reduce .pg-odds-btn width from 70px to 60px, font-size to 10px",
+        "At max-width 480px: hide .pg-odds-line (spread line text like '+3.5') inside odds buttons — show only the odds value. This frees up ~20px per button",
+        "At max-width 480px: reduce .pg-team-name font-size to 11px",
+        "At max-width 480px: reduce .pg-game-row padding from 10px 16px to 8px 12px",
+        "Team names should show at least 12-15 characters before truncating on a 375px screen",
+        "The SPREAD/MONEY/TOTAL column labels are already hidden at 768px — verify they stay hidden",
+        "Test on 375px: 'Los Angeles Lakers' should show as 'Los Angeles La...' (not 'Los A...')"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Current math at 375px: 343px available - 3×70px buttons - gaps = ~119px for team name. With 60px buttons and hidden spread lines: 343 - 3×60px - gaps = ~157px for team name. Much better."
+    },
+    {
+      "id": "US-016",
+      "title": "Fix member detail header button overflow on mobile",
+      "description": "As a mobile user viewing a member detail, the action buttons (Settle Up, Adjust Balance, overflow menu) should not squeeze the member name to a few characters.",
+      "acceptanceCriteria": [
+        "In the member detail header (~app.html line 875), replace the inline display:flex;justify-content:space-between with a CSS class",
+        "Add a 768px media query that stacks the header: name on top (full width), action buttons below in a row",
+        "Action buttons should be compact on mobile: use icon-only buttons ($ for Settle, +/- for Adjust) with the full text in the overflow menu",
+        "Or alternatively: move Settle Up and Adjust Balance into the overflow menu on mobile, leaving only the overflow (three-dot) button in the header",
+        "Member name should be fully visible (or truncate at 20+ chars, not 6)"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "The header has member name on left, 3 buttons on right in a space-between flex. On 375px the buttons take ~300px, leaving the name ~43px."
+    },
+    {
+      "id": "US-017",
+      "title": "Add page title to mobile header bar",
+      "description": "As a mobile user, the fixed header bar should show which page I'm on (Games, Track, Dashboard, etc.) instead of being blank space with just a hamburger icon.",
+      "acceptanceCriteria": [
+        "In the mobile-header element (app.html ~line 37-44), add a centered title element that displays the current page name",
+        "Map route to display name: 'dashboard' → 'Dashboard', 'members' → 'Members', 'picks' → 'Picks', 'events' → 'Events', 'settlement' → 'Settlement', 'settings' → 'Settings', 'player-games' → 'Games', 'player-track' → 'Track', 'player-account' → 'Account', 'member-detail' → member name, 'pick-detail' → 'Pick Detail', 'event-detail' → 'Event Detail', 'player-ticket' → 'Pick Detail', 'player-sport' → sport display name",
+        "Title should be centered between the hamburger and the right side content (balance or empty)",
+        "Style: font-size 15px, font-weight 600, color var(--text-primary), text-transform uppercase, letter-spacing 0.5px",
+        "Title should truncate with ellipsis if too long"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "iOS shows the page title in the navigation bar. The web mobile header currently just has a hamburger on the left and optional balance on the right. Adding the title provides wayfinding context."
+    },
+    {
+      "id": "US-018",
+      "title": "Fix financials grid collapse and stat tile overflow on mobile",
+      "description": "As a mobile user viewing pick/ticket detail, the financials grid should stack to 1-2 columns instead of staying at 4 columns. Dashboard stat values should not overflow their tiles.",
+      "acceptanceCriteria": [
+        "For pick detail and ticket detail financials cards that use inline grid-template-columns: repeat(4, 1fr), add a CSS class (e.g., .financials-grid) instead of inline styles",
+        "In dashboard.css, add responsive overrides: at 768px → repeat(2, 1fr), at 480px → 1fr (single column)",
+        "For .stat-value in .stat-tile, add overflow: hidden; text-overflow: ellipsis; white-space: nowrap as defensive styling",
+        "At 768px breakpoint, reduce .stat-value font-size from 28px to 24px",
+        "Test: a stat value of '-$99,999.99' should not overflow its tile on any screen size"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Multiple views use inline grid-template-columns that don't adapt. Dashboard stat-value at 28px Space Grotesk can overflow for large negative numbers on 2-column tablet layout."
+    },
+    {
+      "id": "US-019",
+      "title": "Improve filter chip scrolling and bet slip quick stakes on mobile",
+      "description": "As a mobile user, filter chip rows with 5+ items should scroll horizontally instead of wrapping unevenly. Bet slip quick stake buttons should have their own row.",
+      "acceptanceCriteria": [
+        "In dashboard.css at max-width 480px, change .filter-bar to flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px (for scrollbar space)",
+        "Add a subtle fade/gradient mask on the right edge of .filter-bar on mobile to hint at scrollability (optional, using ::after pseudo-element with gradient from transparent to bg color)",
+        "Hide scrollbar visually: .filter-bar::-webkit-scrollbar { display: none } and scrollbar-width: none",
+        "For bet slip quick stakes (.bs-quick-stakes), change from inline alongside the input to its own full-width row below the stake input at max-width 480px",
+        "Quick stake buttons should be evenly distributed (flex: 1 on each button) in their own row",
+        "Test on 375px: Track filter chips (All, Open, Won, Lost, Pushed) should scroll horizontally, not wrap to 2 rows"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Filter chips currently use flex-wrap:wrap which creates uneven 3-2 splits on narrow screens. Horizontal scroll matches the iOS pattern. Bet slip quick stakes crowd the input row on mobile."
+    },
+    {
+      "id": "US-020",
+      "title": "Fix sidebar logout overlap and reduce card padding on mobile",
+      "description": "As a mobile user, the sidebar logout button should not overlap navigation items on shorter screens. Card padding should be tighter for more content space.",
+      "acceptanceCriteria": [
+        "In dashboard.css, change .sidebar layout to display: flex; flex-direction: column. Move .sidebar-bottom from position: absolute to margin-top: auto (flex pushes it to bottom naturally, scrolls with content if nav is tall)",
+        "Remove position: absolute; bottom: 24px from .sidebar-bottom",
+        "At max-width 480px breakpoint, reduce .card padding from 20px to 16px",
+        "At max-width 480px, reduce .card-header margin-bottom from 16px to 12px",
+        "Test: on iPhone SE (667px height), open sidebar with 7+ nav items — logout should be visible below nav without overlapping"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Sidebar uses overflow-y:auto for the nav but .sidebar-bottom is position:absolute, so it doesn't participate in the scroll. On short screens they overlap. Flex column with margin-top:auto is the standard pattern."
+    }
+  ]
+}

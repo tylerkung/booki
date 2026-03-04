@@ -169,14 +169,6 @@ struct PaymentSheet: View {
         dismiss()
     }
 
-    // MARK: - Helpers
-
-    private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
-    }
 }
 
 #Preview {

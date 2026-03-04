@@ -359,6 +359,15 @@ The app is **local-first** with cloud sync:
 - **Sport duration estimates**: Only fetches scores when games are near ending (finishing window)
 - **Odds API upgrade**: 20,000 calls/month paid tier
 
+### Phase 19: Win Limit & Web Dashboard
+- **Win limit feature**: Per-member `win_limit` + `win_limit_action` (block/require_approval) on players table, bookie defaults on bookies table
+- **Server enforcement**: `submit_bets` and `submit_parlay` check net winnings against win limit — block returns 403, require_approval creates pending bets
+- **iOS UI**: Editable win limit on member detail, default win limit in Member Settings, bet slip warning/block banners
+- **Web dashboard**: 3-column member detail grid (Balance/Credit Limit/Win Limit), inline editing, styled tooltips, bet slip validation
+- **Web bet slip sidebar**: Desktop persistent sidebar with bidirectional staking (Stake/Potential fields), mobile keeps floating bar + modal
+- **Web-first repositioning**: Landing pages updated from iOS-first to web-first messaging, become an organizer flow
+- **Settlement fix**: Fixed `settlementMarkPaid()` error handling, removed last-row table border
+
 ### Branding & Design System
 - **App Icon**: Custom Booki wordmark on electric cyan background (1024x1024)
 - **Launch Screen**: Electric cyan background → SwiftUI loading view with logo and spinner
@@ -461,4 +470,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: February 28, 2026 - Bet slip UX polish, notification hardening, smart odds refresh (15-min windows), final scores on picks*
+*Last updated: March 3, 2026 - Win limit feature, web dashboard polish, desktop bet slip sidebar, web-first repositioning*

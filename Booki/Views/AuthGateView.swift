@@ -117,30 +117,6 @@ struct AuthGateView: View {
         } message: {
             Text(authManager.bookieError ?? "An error occurred setting up your account. Some features may not work correctly.")
         }
-        .onChange(of: authManager.currentBookieId) { _, newBookieId in
-            // Trigger initial sync and realtime subscription when bookie ID becomes available
-            if newBookieId != nil && !hasTriggeredInitialSync {
-                hasTriggeredInitialSync = true
-                Task {
-                    // First sync all data
-                    await syncService.sync()
-                    // Then subscribe to realtime updates
-                    await realtimeService.subscribe()
-                }
-            }
-        }
-        .onChange(of: authManager.currentPlayerId) { _, newPlayerId in
-            // Sync data when a player logs in (uses their bookie's ID for sync)
-            if newPlayerId != nil, authManager.userRole == .player && !hasTriggeredInitialSync {
-                hasTriggeredInitialSync = true
-                Task {
-                    // Players use the regular sync flow - their bookie_id is set in currentBookieId
-                    await syncService.sync()
-                    // Then subscribe to realtime updates
-                    await realtimeService.subscribe()
-                }
-            }
-        }
         .onChange(of: authManager.isStandaloneUser) { _, isStandalone in
             // Sync shared events for standalone users (no bookie/player record)
             if isStandalone && !hasTriggeredInitialSync {
