@@ -1360,8 +1360,7 @@ input, button, select, textarea { font: inherit; }
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--divider);
+    padding-top: 0;
 }
 .player-stat {
     text-align: center;

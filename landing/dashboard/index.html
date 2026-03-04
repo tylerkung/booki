@@ -2628,15 +2628,9 @@
 
             <!-- ── Player Track View ── -->
             <div x-show="route === 'player-track' && (userRole === 'player' || userRole === 'standalone')" x-cloak>
-                <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
-                    <div>
-                        <h1>Track</h1>
-                        <p x-text="isLoadingPlayerTrack ? 'Loading picks...' : filteredPlayerTickets.length + ' picks'"></p>
-                    </div>
-                    <button class="btn-ghost" @click="loadPlayerTrack()" :disabled="isLoadingPlayerTrack" style="font-size:13px;padding:6px 12px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px;"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                        Refresh
-                    </button>
+                <div class="page-header">
+                    <h1>Track</h1>
+                    <p x-text="isLoadingPlayerTrack ? 'Loading picks...' : filteredPlayerTickets.length + ' picks'"></p>
                 </div>
 
                 <!-- Shimmer Loading Skeleton -->
