@@ -259,6 +259,27 @@
         document.querySelector('.nav-hamburger').addEventListener('click', function() {
             document.querySelector('.site-nav').classList.toggle('nav-open');
         });
+        // Auth-aware nav: swap Log In / Get Started with profile link if logged in
+        (function() {
+            try {
+                var raw = localStorage.getItem('sb-vstfauqufwpdytmvjyfz-auth-token');
+                if (!raw) return;
+                var session = JSON.parse(raw);
+                var user = session && (session.user || (session.currentSession && session.currentSession.user));
+                if (!user) return;
+                var name = (user.user_metadata && user.user_metadata.name) || user.email.split('@')[0];
+                var profileHTML = '<a href="../dashboard/" class="btn-nav-profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' + name + '</a>';
+                var actions = document.querySelector('.nav-actions');
+                if (actions) actions.innerHTML = profileHTML;
+                var mobile = document.querySelector('.nav-mobile');
+                if (mobile) {
+                    var login = mobile.querySelector('a[href*="login"]');
+                    var cta = mobile.querySelector('.btn-primary');
+                    if (login) login.remove();
+                    if (cta) cta.outerHTML = profileHTML;
+                }
+            } catch(e) {}
+        })();
 
     </script>
 </body>
