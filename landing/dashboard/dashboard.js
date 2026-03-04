@@ -453,6 +453,8 @@ function dashboardApp() {
         isSubmittingBets: false,
         betSlipSuccess: false,
         betSlipSuccessMessage: '',
+        betSlipLastSelections: [],
+        betSlipLastMode: 'singles',
 
         // ── Toasts ──
         toasts: [],
@@ -2128,6 +2130,13 @@ function dashboardApp() {
                     if (response.error) throw new Error(response.error);
                 }
 
+                // Save selections for re-use, then clear slip
+                this.betSlipLastSelections = JSON.parse(JSON.stringify(this.betSlipSelections));
+                this.betSlipLastMode = this.betSlipMode;
+                this.betSlipSelections = [];
+                this.betSlipStakes = {};
+                this.betSlipMultiStake = '';
+
                 // Show success
                 const msgs = this.betSlipConfirmationMessages;
                 this.betSlipSuccessMessage = msgs[Math.floor(Math.random() * msgs.length)];
@@ -2146,7 +2155,14 @@ function dashboardApp() {
         closeBetSlipSuccess() {
             this.betSlipSuccess = false;
             this.showBetSlip = false;
-            this.clearBetSlip();
+        },
+
+        reuseSelections() {
+            this.betSlipSelections = JSON.parse(JSON.stringify(this.betSlipLastSelections));
+            this.betSlipMode = this.betSlipLastMode;
+            this.betSlipStakes = {};
+            this.betSlipMultiStake = '';
+            this.betSlipSuccess = false;
         },
 
         // ── Load Bookie ──
