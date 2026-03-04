@@ -1739,9 +1739,10 @@ input, button, select, textarea { font: inherit; }
 @media (max-width: 768px) {
     .pg-col-labels { display: none; }
     .pg-odds-cells { gap: 3px; }
-    .pg-odds-btn { width: 64px; padding: 6px 2px; font-size: 11px; flex-direction: column; gap: 0; white-space: normal; }
-    .pg-odds-line { font-size: 10px; }
+    .pg-odds-btn { width: 64px; padding: 6px 2px; font-size: 11px; flex-direction: column; gap: 0; }
+    .pg-odds-line { font-size: 10px; width: 100%; }
     .pg-odds-line::after { content: none; }
+    .pg-odds-val { width: 100%; }
     .pg-team-name { font-size: 12px; }
     .pg-betslip-bar { bottom: 16px; padding: 12px 24px; font-size: 14px; }
     .league-sub-header .pg-col-labels { display: none; }
