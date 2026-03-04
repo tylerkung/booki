@@ -1,0 +1,10 @@
+{
+  "name": "booki-stress-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "2.43.5",
+    "node-fetch": "^3.3.2"
+  }
+}

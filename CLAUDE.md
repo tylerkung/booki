@@ -84,6 +84,7 @@ List {
 
 - Xcode command line tools don't support full builds - use Xcode IDE
 - Delete app from Simulator when SwiftData schema changes
+- **Stress tests**: `cd tests && ./run.sh` — 15 suites, 142 assertions against live Supabase. Requires `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY` env vars. Keys retrievable via `npx supabase projects api-keys --project-ref vstfauqufwpdytmvjyfz`.
 
 ## Edge Functions
 
@@ -164,7 +165,7 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 | Profit/Loss | Performance |
 | Wager | Stake |
 
-## Current State (March 3, 2026)
+## Current State (March 4, 2026)
 
 - **Branch**: `ralph/web-dashboard-hardening`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
@@ -315,3 +316,4 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Win limit**: Per-member win limit (`win_limit` + `win_limit_action` on players table) caps net winnings. `block` = picks suspended, `require_approval` = picks go pending. Server-enforced in `submit_bets`/`submit_parlay` via ledger balance check. Bookie defaults on bookies table (`default_win_limit`/`default_win_limit_action`), applied via `claim_invite`. iOS: editable on member detail + MemberSettingsView defaults + bet slip warning/block. Web: inline editing on member detail + bet slip validation. Migration 029.
 - **Web member detail tooltips**: Styled tooltips on Credit Limit, Win Limit, and Active/Pending badge using existing `showTagTooltip`/`hideTagTooltip` system
 - **Settlement table fix**: Removed last-row bottom border, fixed `settlementMarkPaid()` to check `response.error` from `callEdgeFunction`
+- **Stress tests**: 15-suite Node.js test suite in `tests/` — 142 assertions against live Supabase covering auth, bets, parlays, idempotency, grading, settlement, overrides, balance adjustments, ledger integrity, concurrency, invites, accept/decline, credit/win limits. Known bug: `settle_bet_tx` RPC column mismatch.
