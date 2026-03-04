@@ -123,7 +123,7 @@ async function handleClientTransaction(
 
   const originalTransactionId = String(payload.originalTransactionId ?? payload.transactionId ?? '');
 
-  if (!originalTransactionId || originalTransactionId === '0' || originalTransactionId === 'undefined') {
+  if (!originalTransactionId || originalTransactionId === 'undefined' || originalTransactionId === 'null') {
     console.error('Invalid original transaction ID:', originalTransactionId);
     return new Response(
       JSON.stringify({ success: false, error: 'Invalid transaction ID' }),

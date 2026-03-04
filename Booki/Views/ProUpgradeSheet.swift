@@ -88,12 +88,17 @@ struct ProUpgradeSheet: View {
                 }
             }
             .navigationDestination(isPresented: $showingSuccess) {
-                ProSuccessView()
+                ProSuccessView(onDone: { dismiss() })
             }
         }
         .presentationDetents([.large])
         .task {
             await storeKit.loadProducts()
+        }
+        .onChange(of: bookies.first?.tier) { _, newTier in
+            if newTier?.isPro == true {
+                dismiss()
+            }
         }
     }
 

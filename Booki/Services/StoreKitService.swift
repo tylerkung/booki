@@ -67,10 +67,19 @@ final class StoreKitService {
     @discardableResult
     func purchase() async -> Bool {
         guard let product else {
-            errorMessage = "Product not available. Please try again."
-            return false
+            // Product not loaded yet — try loading before giving up
+            await loadProducts()
+            guard let product = self.product else {
+                errorMessage = "Product not available. Please try again."
+                return false
+            }
+            return await purchaseProduct(product)
         }
 
+        return await purchaseProduct(product)
+    }
+
+    private func purchaseProduct(_ product: Product) async -> Bool {
         isPurchasing = true
         errorMessage = nil
 
@@ -80,6 +89,7 @@ final class StoreKitService {
             switch result {
             case .success(let verification):
                 let transaction = try checkVerified(verification)
+                // Send to server (best-effort — don't block upgrade on server failure)
                 await sendTransactionToServer(transaction)
                 await transaction.finish()
                 isEntitled = true
@@ -96,7 +106,6 @@ final class StoreKitService {
                 return false
 
             @unknown default:
-                errorMessage = "An unexpected error occurred."
                 isPurchasing = false
                 return false
             }

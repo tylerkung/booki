@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Success confirmation shown after successful Pro subscription payment.
 struct ProSuccessView: View {
+    var onDone: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var checkmarkScale: CGFloat = 0.5
     @State private var checkmarkOpacity: Double = 0
@@ -36,7 +37,11 @@ struct ProSuccessView: View {
 
                 // Get Started button
                 Button {
-                    dismiss()
+                    if let onDone {
+                        onDone()
+                    } else {
+                        dismiss()
+                    }
                 } label: {
                     Text("Get Started")
                         .primaryButtonStyle()
