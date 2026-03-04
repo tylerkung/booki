@@ -3520,7 +3520,7 @@
                                                 :value="betSlipActiveField === 'multi-stake' ? undefined : ((Number(betSlipMultiStake) || 0) > 0 ? Number(betSlipMultiStake).toFixed(2) : '')"
                                                 @focus="betSlipActiveField = 'multi-stake'"
                                                 @blur="betSlipActiveField = null"
-                                                @input="betSlipMultiStake = sanitizeMoney($event.target.value)"
+                                                @input="betSlipMultiStake = sanitizeMoney($event.target.value)">
                                         </div>
                                     </div>
                                     <div class="bs-field bs-field-potential">
@@ -3701,7 +3701,7 @@
                                                 :value="betSlipActiveField === 'multi-stake' ? undefined : ((Number(betSlipMultiStake) || 0) > 0 ? Number(betSlipMultiStake).toFixed(2) : '')"
                                                 @focus="betSlipActiveField = 'multi-stake'"
                                                 @blur="betSlipActiveField = null"
-                                                @input="betSlipMultiStake = sanitizeMoney($event.target.value)"
+                                                @input="betSlipMultiStake = sanitizeMoney($event.target.value)">
                                         </div>
                                     </div>
                                     <div class="bs-field bs-field-potential">
