@@ -130,3 +130,14 @@ Started: Tue Mar  3 01:44:11 PST 2026
   - Ledger entries table has `description` not `reason`, `entry_hash` not `hash` — always verify column names against actual schema
   - Ledger immutability trigger blocks cleanup DELETEs — use unique identifiers per test run to avoid stale data collisions
 ---
+
+## 2026-03-04 - Blog Post, Win Limit Fix, Pricing CTA
+- Created "How We Built Booki" founder-journey blog post (`landing/blog/how-we-built-booki.html`) — origin story, tech stack, server-authoritative architecture, web dashboard, surprises
+- Added card to blog index (hidden with `data-publish="2099-01-01"` until ready to publish)
+- Applied migration 029 (win_limit columns on players + bookies tables) — was never run, causing silent save failures
+- Fixed Pro pricing CTA: "Start Free Trial" → "Upgrade to Pro" (no trial exists)
+- Files changed: landing/blog/how-we-built-booki.html (new), landing/blog/index.html, landing/index.html
+- **Learnings for future iterations:**
+  - Supabase `.update().execute()` returns success even when columns don't exist — always verify migrations are applied
+  - Migration 029 was in the repo but never run against production Supabase
+---

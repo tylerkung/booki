@@ -470,4 +470,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: March 4, 2026 - Launch stress tests (15 suites, 142 assertions against live Supabase)*
+*Last updated: March 4, 2026 - Blog post, win limit migration fix, pricing CTA update*

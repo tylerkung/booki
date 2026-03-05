@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon_io/favicon-16x16.png">
+    <link rel="icon" type="image/x-icon" href="../assets/favicon_io/favicon.ico">
+    <meta name="description" content="The story behind Booki — why we built a private sportsbook manager, the tech stack we chose, and the surprises along the way.">
+    <title>How We Built Booki: From Group Chat Chaos to a Real Platform — Booki</title>
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://bookisports.com/blog/how-we-built-booki.html">
+    <meta property="og:title" content="How We Built Booki: From Group Chat Chaos to a Real Platform — Booki">
+    <meta property="og:description" content="The story behind Booki — why we built a private sportsbook manager, the tech stack we chose, and the surprises along the way.">
+    <meta property="og:image" content="https://bookisports.com/assets/booki-og.jpg">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="How We Built Booki: From Group Chat Chaos to a Real Platform — Booki">
+    <meta name="twitter:description" content="The story behind Booki — why we built a private sportsbook manager, the tech stack we chose, and the surprises along the way.">
+    <meta name="twitter:image" content="https://bookisports.com/assets/booki-og.jpg">
+
+    <link rel="canonical" href="https://bookisports.com/blog/how-we-built-booki.html">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "How We Built Booki: From Group Chat Chaos to a Real Platform",
+        "description": "The story behind Booki — why we built a private sportsbook manager, the tech stack we chose, and the surprises along the way.",
+        "image": "https://bookisports.com/assets/booki-og.jpg",
+        "datePublished": "2026-03-04",
+        "dateModified": "2026-03-04",
+        "author": {
+            "@type": "Organization",
+            "name": "Booki",
+            "url": "https://bookisports.com"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "Booki",
+            "url": "https://bookisports.com",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://bookisports.com/assets/logo-booki-blk.svg"
+            }
+        }
+    }
+    </script>
+</head>
+<body>
+    <nav class="site-nav">
+        <div class="container nav-content">
+            <a href="../index.html" class="nav-logo">
+                <img src="../assets/logo-booki-blk.svg" alt="Booki" />
+            </a>
+            <div class="nav-links">
+                <a href="../features.html" class="nav-link">Features</a>
+                <a href="../blog/" class="nav-link active">Blog</a>
+                <a href="../index.html#pricing" class="nav-link">Pricing</a>
+            </div>
+            <div class="nav-actions">
+                <a href="../dashboard/login.html" class="btn-nav-login">Log In</a>
+                <a href="../dashboard/" class="btn-primary btn-nav">Get Started Free</a>
+            </div>
+            <button class="nav-hamburger" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+        <div class="nav-mobile">
+            <a href="../features.html" class="nav-link">Features</a>
+            <a href="../blog/" class="nav-link active">Blog</a>
+            <a href="../index.html#pricing" class="nav-link">Pricing</a>
+            <a href="../dashboard/login.html" class="nav-link">Log In</a>
+            <a href="../dashboard/" class="btn-primary btn-nav-mobile">Get Started Free</a>
+        </div>
+    </nav>
+
+    <main>
+        <article class="blog-article">
+            <div class="container">
+                <header class="blog-article-header">
+                    <a href="../blog/" class="blog-back-link">&larr; Back to Blog</a>
+                    <h1>How We Built Booki: From Group Chat Chaos to a Real Platform</h1>
+                    <div class="blog-article-meta">
+                        <span>March 4, 2026</span>
+                        <span class="blog-meta-sep">&middot;</span>
+                        <span>6 min read</span>
+                        <span class="blog-meta-sep">&middot;</span>
+                        <span>By the Booki Team</span>
+                    </div>
+                </header>
+
+                <div class="blog-prose">
+                    <p>Booki started the way most side projects start &mdash; with a problem nobody had built a good solution for. We were the friend group running bets through a group chat, and the whole thing was held together with screenshots and good intentions. This is the story of how we turned that mess into a real platform.</p>
+
+                    <h2>The Problem</h2>
+
+                    <p>Every Sunday during football season, our group chat turned into chaos. Someone would text "I got Niners -3 for $50." Forty minutes later, someone else would claim they texted their pick before kickoff but nobody saw it. By Monday, half the group couldn't agree on what they owed.</p>
+
+                    <p>The person running the book &mdash; our organizer &mdash; was spending more time managing a spreadsheet than watching the games. Every pick had to be manually logged. Every result had to be looked up and cross-referenced. Every settlement turned into a chain of Venmo requests and "did you get my payment?" texts. One wrong cell in the spreadsheet and trust evaporated.</p>
+
+                    <p>This is a universal problem. If you've ever organized bets among friends, you know. The <a href="how-to-be-a-bookie-for-friends.html">fundamentals of running a friend-group book</a> aren't complicated. The logistics are what kill you.</p>
+
+                    <h2>Why We Built It</h2>
+
+                    <p>We looked at what was already out there, and nothing fit. The options fell into two buckets:</p>
+
+                    <p><strong>Pay-per-head platforms.</strong> These are designed for professional operations running hundreds of players. They charge $10 or more per head per week, come with bloated feature sets, and look like they were designed in 2008. For a friend group of eight people, paying $80 a week to track some NFL picks is absurd. We did a <a href="pph-vs-manual-ledger-systems.html">full comparison of PPH vs manual systems</a> and neither side was compelling for our use case.</p>
+
+                    <p><strong>Social betting apps.</strong> These are fun for casual parlays and bragging rights, but they don't handle real money flows. No credit limits, no ledger, no settlements. They're games, not tools.</p>
+
+                    <p>What we wanted was something in between &mdash; a clean, modern tool that handled the actual work of running a small book. Real odds, real balances, real settlement tracking. No per-head fees. No enterprise onboarding. Just a tool that does what our spreadsheet was trying to do, but without the human error.</p>
+
+                    <p>So we built it.</p>
+
+                    <h2>Choosing the Stack</h2>
+
+                    <p>We went with iOS-first, built in SwiftUI with SwiftData for local persistence. The reasoning was simple: our friend group was on iPhones, and native iOS gave us the best shot at a fast, polished experience. React Native or Flutter would have given us cross-platform from day one, but we'd be fighting the framework instead of building the product. For a small team moving fast, that trade-off wasn't worth it.</p>
+
+                    <p>For the backend, we picked Supabase. Postgres database, built-in auth, Edge Functions for server-side logic, and Realtime for live updates. The alternative was Firebase, but we wanted a relational database &mdash; betting data is inherently relational (events have markets, markets have odds, bets reference events and players and bookies). Trying to model that in Firestore's document model would have been a constant fight.</p>
+
+                    <p>Supabase also gave us Edge Functions &mdash; Deno/TypeScript serverless functions that run close to the database. This turned out to be critical for the architecture we landed on.</p>
+
+                    <h2>Server-Authoritative Everything</h2>
+
+                    <p>Early on, we made a decision that shaped the entire product: all betting logic runs on the server. The client never calculates a balance, grades a bet, or creates a ledger entry. Every operation that touches money goes through an Edge Function that validates the request, checks business rules, and writes to the database atomically.</p>
+
+                    <p>This sounds obvious in hindsight, but the temptation with a mobile app is to do things locally for speed and sync later. That works fine for a notes app. It doesn't work when you're tracking who owes who $200. One inconsistency in a financial ledger and the whole system loses credibility.</p>
+
+                    <p>Here's what the server-side architecture looks like in practice:</p>
+
+                    <ul>
+                        <li><strong>Idempotency on every write.</strong> Every bet submission, settlement, and balance adjustment includes an idempotency key. If a request is retried (network hiccup, app backgrounded), the server returns the cached response instead of creating a duplicate entry. This is non-negotiable for financial operations.</li>
+                        <li><strong>Tamper-evident ledger.</strong> Every ledger entry includes a hash of the previous entry, forming a chain. If anyone modifies a row directly in the database, the chain breaks and it's immediately detectable. Immutability triggers prevent updates and deletes on ledger rows entirely.</li>
+                        <li><strong>Atomic settlements.</strong> When a bet is graded and settled, the grade, the ledger entry, and the balance update all happen in a single database transaction. No partial states, no orphaned records.</li>
+                        <li><strong>Audit trail.</strong> Every operation emits an audit event. Who did what, when, and why. This is essential for dispute resolution &mdash; which, in a friend group, means being able to pull up exactly what happened when someone says "that's not what I bet."</li>
+                    </ul>
+
+                    <p>We ended up with over 15 Edge Functions handling everything from bet submission to account deletion. Each one follows the same pattern: validate auth, check idempotency, validate business rules, execute atomically, emit audit event. It's repetitive by design.</p>
+
+                    <h2>The Web Dashboard</h2>
+
+                    <p>We couldn't wait for App Store review. While the iOS app was in the submission pipeline, we needed organizers to be able to manage their books from a browser. So we built a web dashboard in a weekend.</p>
+
+                    <p>The stack is intentionally simple: Alpine.js for reactivity, plain CSS for styling, and the Supabase JavaScript client for data. No build step, no bundler, no framework overhead. It's a single-page app with hash-based routing that talks to the same Edge Functions the iOS app uses.</p>
+
+                    <p>This was only possible because of the server-authoritative architecture. The web dashboard doesn't contain any betting logic. It just calls the same endpoints the mobile app calls. One backend, two clients, zero duplicated business logic.</p>
+
+                    <p>We added Stripe integration for web-based subscriptions (the iOS app uses Apple's In-App Purchase for the same tier) and a responsive sidebar layout. The whole thing is served as static files from the same domain. No separate deployment, no API gateway, no infrastructure to manage beyond what Supabase already provides.</p>
+
+                    <h2>What Surprised Us</h2>
+
+                    <p><strong>Compliance vocabulary.</strong> We built the entire app using standard sports betting terminology &mdash; bookie, player, bet, parlay, wager. Then we learned that the App Store has opinions about these words. We ended up doing a full vocabulary overhaul: bookie became "organizer," player became "member," bet became "pick," parlay became "multi-pick," wager became "stake." Every user-facing string in the app, every landing page, every email template. The internal code still uses the original terms because renaming every Swift type would have been a pointless refactor, but anything a user can see uses the approved language.</p>
+
+                    <p><strong>Live score timing.</strong> Auto-grading bets sounds straightforward &mdash; check if the game is final, look at the score, grade the bet. In practice, knowing <em>when</em> to check is the hard part. We built a system that estimates game end times by sport (an NFL game is roughly 3.5 hours, an NBA game about 2.5) and only calls the scores API when a game is in its finishing window. Most scheduled checks result in zero API calls because no games are close to ending. This cut our API usage dramatically while still grading bets within minutes of a game going final.</p>
+
+                    <p><strong>Getting IAP right.</strong> Apple's In-App Purchase system is powerful but unforgiving. Transaction IDs in sandbox vs production behave differently. Subscription status can change asynchronously. You need to handle renewals, cancellations, and billing retries gracefully. We ended up building a webhook-based system where Apple notifies our server of subscription changes, and the server updates the user's tier. The client just reads the current tier from the database. It took several iterations to get right, but the result is a system where subscription state is always consistent between Apple and our backend.</p>
+
+                    <h2>Where We Are Now</h2>
+
+                    <p>The iOS app is submitted and the web dashboard is live. Organizers can create a book, invite members, and start taking picks in under two minutes. Odds auto-import from major sportsbooks. Picks are graded automatically when games go final. Settlements are one tap. The ledger is tamper-evident and auditable.</p>
+
+                    <p>We're working on push notifications for real-time updates, expanding sport coverage, and refining the member experience. The foundation is solid &mdash; server-authoritative logic, atomic settlements, and a clean separation between the clients and the backend mean we can ship features fast without worrying about consistency bugs.</p>
+
+                    <p>If you've ever run a book out of a spreadsheet and a group chat, you know the pain. We built Booki because we lived it. The goal was never to build the next DraftKings &mdash; it was to build the tool we wished we had on Sunday morning when someone inevitably texts "wait, what did I bet?"</p>
+
+                    <p>You can <a href="../dashboard/">try Booki free</a> with up to three members. No credit card, no per-head fees. Just a clean way to run your book.</p>
+                </div>
+
+                <!-- Related Articles -->
+                <section class="blog-related">
+                    <h2>Related Articles</h2>
+                    <div class="blog-grid">
+                        <a href="how-to-be-a-bookie-for-friends.html" class="blog-card">
+                            <div class="blog-card-content">
+                                <span class="blog-card-date">February 27, 2026</span>
+                                <h3 class="blog-card-title">How to Be a Bookie for Your Friend Group (Without a Spreadsheet)</h3>
+                                <p class="blog-card-excerpt">A step-by-step guide to running a private sportsbook for your friend group — house rules, credit limits, grading, and settlements.</p>
+                            </div>
+                        </a>
+                        <a href="pph-vs-manual-ledger-systems.html" class="blog-card">
+                            <div class="blog-card-content">
+                                <span class="blog-card-date">February 24, 2026</span>
+                                <h3 class="blog-card-title">PPH vs Manual Ledger Systems: Which Is Right for You?</h3>
+                                <p class="blog-card-excerpt">A side-by-side comparison of pay-per-head services and manual ledger tracking — cost, features, and when to use each.</p>
+                            </div>
+                        </a>
+                        <a href="best-bookie-software-small-books.html" class="blog-card">
+                            <div class="blog-card-content">
+                                <span class="blog-card-date">March 5, 2026</span>
+                                <h3 class="blog-card-title">Best Bookie Software for Small Books (Under 25 Members)</h3>
+                                <p class="blog-card-excerpt">PPH platforms are overkill for small groups. A breakdown of what small-book organizers actually need and what each option costs.</p>
+                            </div>
+                        </a>
+                    </div>
+                </section>
+            </div>
+        </article>
+
+        <div class="section-divider"></div>
+
+        <!-- CTA -->
+        <section class="final-cta">
+            <div class="container">
+                <h2 class="final-cta-headline"><span class="gradient-text">Ready to upgrade?</span></h2>
+                <p class="final-cta-sub">Start tracking picks today.</p>
+                <div class="hero-buttons" style="justify-content: center; margin-top: 24px;"><a href="../dashboard/" class="btn-primary">Get Started Free</a></div>
+                <p class="waitlist-privacy">Free for up to 3 members. No credit card required.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-content">
+            <img src="../assets/logo-booki-blk.svg" alt="Booki" class="footer-logo" />
+            <p class="footer-copyright">&copy; 2026 Booki. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="../features.html">Features</a>
+                <a href="../blog/">Blog</a>
+                <a href="../pph-software-alternative.html">PPH Alternative</a>
+                <a href="../privacy.html">Privacy Policy</a>
+                <a href="../terms.html">Terms of Service</a>
+                <a href="https://x.com/booki_sports" target="_blank" rel="noopener">Twitter</a>
+            </div>
+        </div>
+    </footer>
+    <script>
+        // Mobile nav toggle
+        document.querySelector('.nav-hamburger').addEventListener('click', function() {
+            document.querySelector('.site-nav').classList.toggle('nav-open');
+        });
+        // Auth-aware nav: swap Log In / Get Started with profile link if logged in
+        (function() {
+            try {
+                var raw = localStorage.getItem('sb-vstfauqufwpdytmvjyfz-auth-token');
+                if (!raw) return;
+                var session = JSON.parse(raw);
+                var user = session && (session.user || (session.currentSession && session.currentSession.user));
+                if (!user) return;
+                var name = (user.user_metadata && user.user_metadata.name) || user.email.split('@')[0];
+                var profileHTML = '<a href="../dashboard/" class="btn-nav-profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' + name + '</a>';
+                var actions = document.querySelector('.nav-actions');
+                if (actions) actions.innerHTML = profileHTML;
+                var mobile = document.querySelector('.nav-mobile');
+                if (mobile) {
+                    var login = mobile.querySelector('a[href*="login"]');
+                    var cta = mobile.querySelector('.btn-primary');
+                    if (login) login.remove();
+                    if (cta) cta.outerHTML = profileHTML;
+                }
+            } catch(e) {}
+        })();
+
+    </script>
+</body>
+</html>
