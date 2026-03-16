@@ -14,6 +14,12 @@ struct AnalyticsDashboardView: View {
     @State private var showSkeleton = true
     @State private var showProUpgrade = false
     @State private var timeframe: Timeframe = .day
+    @State private var summaries: [PlayerAnalyticsSummary] = []
+    @State private var summariesReady = false
+    @State private var showDeferredSections = false
+    @State private var balanceLookup: [UUID: Decimal] = [:]
+    @State private var utilizationLookup: [UUID: Double] = [:]
+    @State private var recomputeTask: Task<Void, Never>?
 
     enum Timeframe: String, CaseIterable {
         case day = "1D"
@@ -59,15 +65,6 @@ struct AnalyticsDashboardView: View {
         return ledgerEntries
             .filter { $0.type != .paymentLogged && $0.createdAt >= start }
             .reduce(Decimal.zero) { $0 + $1.amount }
-    }
-
-    private var summaries: [PlayerAnalyticsSummary] {
-        let activePlayers = players.filter { $0.status == .active }
-        return PlayerAttentionService.generateSummaries(
-            players: activePlayers,
-            bets: bets,
-            ledgerEntries: ledgerEntries
-        )
     }
 
     // MARK: - Aggregated Metrics
@@ -162,24 +159,35 @@ struct AnalyticsDashboardView: View {
                     if players.filter({ $0.status == .active }).isEmpty {
                         emptyState
                     } else {
-                        summaryCardsGrid
-                            .padding(.horizontal, 16)
-
-                        playerListSection
-                            .padding(.horizontal, 16)
-                            .id("playerList")
-
-                        if bookieIsPro {
-                            FuturesTrackingCard(bets: bets)
+                        if summariesReady {
+                            summaryCardsGrid
                                 .padding(.horizontal, 16)
+
+                            playerListSection
+                                .padding(.horizontal, 16)
+                                .id("playerList")
+                        } else {
+                            skeletonSummaryCardsGrid
+                                .padding(.horizontal, 16)
+
+                            skeletonMembersSection
+                                .padding(.horizontal, 16)
+                                .id("playerList")
                         }
 
-                        sportPerformanceGated
-                            .padding(.horizontal, 16)
+                        if showDeferredSections {
+                            if bookieIsPro {
+                                FuturesTrackingCard(bets: bets)
+                                    .padding(.horizontal, 16)
+                            }
 
-                        if bookieIsPro {
-                            RecentActivitySection(bets: bets, ledgerEntries: ledgerEntries)
+                            sportPerformanceGated
                                 .padding(.horizontal, 16)
+
+                            if bookieIsPro {
+                                RecentActivitySection(bets: bets, ledgerEntries: ledgerEntries)
+                                    .padding(.horizontal, 16)
+                            }
                         }
 
                         Text("Last updated \(lastUpdated.formatted(date: .omitted, time: .shortened))")
@@ -201,6 +209,53 @@ struct AnalyticsDashboardView: View {
             }
         }
         .onAppear { lastUpdated = Date() }
+        .task { recomputeSummaries() }
+        .onChange(of: players.count) { scheduleRecompute() }
+        .onChange(of: bets.count) { scheduleRecompute() }
+        .onChange(of: ledgerEntries.count) { scheduleRecompute() }
+    }
+
+    private func recomputeSummaries() {
+        let activePlayers = players.filter { $0.status == .active }
+        let result = PlayerAttentionService.generateSummaries(
+            players: activePlayers,
+            bets: bets,
+            ledgerEntries: ledgerEntries
+        )
+
+        // Pre-compute per-player balance and utilization lookups
+        var balances: [UUID: Decimal] = [:]
+        var utilizations: [UUID: Double] = [:]
+        for summary in result {
+            let player = summary.player
+            let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
+            balances[player.id] = BalanceService.balanceOwed(from: playerLedger)
+
+            if player.creditLimit > 0 {
+                let playerBets = bets.filter { $0.player?.id == player.id }
+                let pSummary = BalanceService.playerSummary(for: player, bets: playerBets, ledgerEntries: playerLedger)
+                let used = player.creditLimit - pSummary.availableCredit
+                let util = (used as NSDecimalNumber).doubleValue / (player.creditLimit as NSDecimalNumber).doubleValue
+                utilizations[player.id] = max(0, min(1, util)) * 100
+            } else {
+                utilizations[player.id] = 0
+            }
+        }
+
+        summaries = result
+        balanceLookup = balances
+        utilizationLookup = utilizations
+        summariesReady = true
+        showDeferredSections = true
+    }
+
+    private func scheduleRecompute() {
+        recomputeTask?.cancel()
+        recomputeTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            recomputeSummaries()
+        }
     }
 
     // MARK: - Sport Performance (Tier-Gated)
@@ -521,18 +576,38 @@ struct AnalyticsDashboardView: View {
     }
 
     private func balanceForPlayer(_ player: Player) -> Decimal {
-        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
-        return BalanceService.balanceOwed(from: playerLedgerEntries)
+        balanceLookup[player.id] ?? .zero
     }
 
     private func utilizationForPlayer(_ player: Player) -> Double {
-        guard player.creditLimit > 0 else { return 0 }
-        let playerBets = bets.filter { $0.player?.id == player.id }
-        let playerLedgerEntries = ledgerEntries.filter { $0.player?.id == player.id }
-        let summary = BalanceService.playerSummary(for: player, bets: playerBets, ledgerEntries: playerLedgerEntries)
-        let used = player.creditLimit - summary.availableCredit
-        let utilization = (used as NSDecimalNumber).doubleValue / (player.creditLimit as NSDecimalNumber).doubleValue
-        return max(0, min(1, utilization)) * 100
+        utilizationLookup[player.id] ?? 0
+    }
+
+    // MARK: - Skeleton Sub-Views (inline)
+
+    private var skeletonSummaryCardsGrid: some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ], spacing: 12) {
+            ForEach(["NET EXPOSURE", "PENDING PICKS", "TOP RISK", "OUTSTANDING"], id: \.self) { label in
+                skeletonSummaryCard(label: label)
+            }
+        }
+    }
+
+    private var skeletonMembersSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("MEMBERS")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .tracking(1.0)
+                .padding(.leading, 4)
+
+            ForEach(0..<3, id: \.self) { _ in
+                skeletonPlayerRow
+            }
+        }
     }
 
 }

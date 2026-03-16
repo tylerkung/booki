@@ -273,15 +273,18 @@ Deno.serve(async (req) => {
                     }
 
                     // Singles: grade + settle + ledger entry
+                    // Convention: positive = player owes bookie, negative = bookie owes player
                     let payoutAmount = 0;
                     if (gradeOutcome.result === 'win') {
                       const stake = typeof bet.stake === 'number' ? bet.stake : parseFloat(String(bet.stake));
                       const odds = typeof bet.odds === 'number' ? bet.odds : parseFloat(String(bet.odds));
-                      if (odds > 0) payoutAmount = stake * (odds / 100);
-                      else if (odds < 0) payoutAmount = stake * (100 / Math.abs(odds));
+                      const profit = odds > 0
+                        ? stake * (odds / 100)
+                        : stake * (100 / Math.abs(odds));
+                      payoutAmount = -profit; // Bookie owes player
                     } else if (gradeOutcome.result === 'loss') {
                       const stake = typeof bet.stake === 'number' ? bet.stake : parseFloat(String(bet.stake));
-                      payoutAmount = -stake;
+                      payoutAmount = stake; // Player owes bookie
                     }
 
                     await client.from('bets').update({
@@ -388,6 +391,7 @@ Deno.serve(async (req) => {
           let payoutAmount = 0;
           let ticketResult = 'loss';
 
+          // Convention: positive = player owes bookie, negative = bookie owes player
           if (!hasLoss && winLegs.length > 0) {
             let combinedMultiplier = 1;
             for (const leg of winLegs) {
@@ -395,10 +399,11 @@ Deno.serve(async (req) => {
               if (odds > 0) combinedMultiplier *= (1 + odds / 100);
               else if (odds < 0) combinedMultiplier *= (1 + 100 / Math.abs(odds));
             }
-            payoutAmount = stake * (combinedMultiplier - 1);
+            const profit = stake * (combinedMultiplier - 1);
+            payoutAmount = -profit; // Bookie owes player
             ticketResult = 'win';
           } else if (hasLoss) {
-            payoutAmount = -stake;
+            payoutAmount = stake; // Player owes bookie
             ticketResult = 'loss';
           }
 
