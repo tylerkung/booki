@@ -124,7 +124,7 @@
 
                     <h2>Choosing the Stack</h2>
 
-                    <p>We went with iOS-first, built in SwiftUI with SwiftData for local persistence. The reasoning was simple: our friend group was on iPhones, and native iOS gave us the best shot at a fast, polished experience. React Native or Flutter would have given us cross-platform from day one, but we'd be fighting the framework instead of building the product. For a small team moving fast, that trade-off wasn't worth it.</p>
+                    <p>We started with a native iOS prototype in SwiftUI with SwiftData for local persistence. The reasoning was simple: our friend group was on iPhones, and native iOS gave us the best shot at a fast, polished experience. But we quickly realized the web needed to be the primary platform &mdash; it's accessible to everyone regardless of device, and there's no app store gatekeeping between us and our users.</p>
 
                     <p>For the backend, we picked Supabase. Postgres database, built-in auth, Edge Functions for server-side logic, and Realtime for live updates. The alternative was Firebase, but we wanted a relational database &mdash; betting data is inherently relational (events have markets, markets have odds, bets reference events and players and bookies). Trying to model that in Firestore's document model would have been a constant fight.</p>
 
@@ -134,7 +134,7 @@
 
                     <p>Early on, we made a decision that shaped the entire product: all betting logic runs on the server. The client never calculates a balance, grades a bet, or creates a ledger entry. Every operation that touches money goes through an Edge Function that validates the request, checks business rules, and writes to the database atomically.</p>
 
-                    <p>This sounds obvious in hindsight, but the temptation with a mobile app is to do things locally for speed and sync later. That works fine for a notes app. It doesn't work when you're tracking who owes who $200. One inconsistency in a financial ledger and the whole system loses credibility.</p>
+                    <p>This sounds obvious in hindsight, but the temptation with any client app is to do things locally for speed and sync later. That works fine for a notes app. It doesn't work when you're tracking who owes who $200. One inconsistency in a financial ledger and the whole system loses credibility.</p>
 
                     <p>Here's what the server-side architecture looks like in practice:</p>
 
@@ -149,27 +149,27 @@
 
                     <h2>The Web Dashboard</h2>
 
-                    <p>We couldn't wait for App Store review. While the iOS app was in the submission pipeline, we needed organizers to be able to manage their books from a browser. So we built a web dashboard in a weekend.</p>
+                    <p>We knew the web had to be the primary experience. Organizers needed to manage their books from any device, any browser, no download required. So we built the web dashboard.</p>
 
-                    <p>The stack is intentionally simple: Alpine.js for reactivity, plain CSS for styling, and the Supabase JavaScript client for data. No build step, no bundler, no framework overhead. It's a single-page app with hash-based routing that talks to the same Edge Functions the iOS app uses.</p>
+                    <p>The stack is intentionally simple: Alpine.js for reactivity, plain CSS for styling, and the Supabase JavaScript client for data. No build step, no bundler, no framework overhead. It's a single-page app with hash-based routing that talks to the same Edge Functions as every other client.</p>
 
-                    <p>This was only possible because of the server-authoritative architecture. The web dashboard doesn't contain any betting logic. It just calls the same endpoints the mobile app calls. One backend, two clients, zero duplicated business logic.</p>
+                    <p>This was only possible because of the server-authoritative architecture. The web dashboard doesn't contain any betting logic. It just calls the same server endpoints. One backend, zero duplicated business logic.</p>
 
-                    <p>We added Stripe integration for web-based subscriptions (the iOS app uses Apple's In-App Purchase for the same tier) and a responsive sidebar layout. The whole thing is served as static files from the same domain. No separate deployment, no API gateway, no infrastructure to manage beyond what Supabase already provides.</p>
+                    <p>We added Stripe integration for subscriptions and a responsive sidebar layout. The whole thing is served as static files from the same domain. No separate deployment, no API gateway, no infrastructure to manage beyond what Supabase already provides.</p>
 
                     <h2>What Surprised Us</h2>
 
-                    <p><strong>Compliance vocabulary.</strong> We built the entire app using standard sports betting terminology &mdash; bookie, player, bet, parlay, wager. Then we learned that the App Store has opinions about these words. We ended up doing a full vocabulary overhaul: bookie became "organizer," player became "member," bet became "pick," parlay became "multi-pick," wager became "stake." Every user-facing string in the app, every landing page, every email template. The internal code still uses the original terms because renaming every Swift type would have been a pointless refactor, but anything a user can see uses the approved language.</p>
+                    <p><strong>Compliance vocabulary.</strong> We built the entire product using standard sports betting terminology &mdash; bookie, player, bet, parlay, wager. Then we realized these words carry legal baggage in certain contexts. We ended up doing a full vocabulary overhaul: bookie became "organizer," player became "member," bet became "pick," parlay became "multi-pick," wager became "stake." Every user-facing string, every landing page, every email template. The internal code still uses the original terms because renaming every type would have been a pointless refactor, but anything a user can see uses the approved language.</p>
 
                     <p><strong>Live score timing.</strong> Auto-grading bets sounds straightforward &mdash; check if the game is final, look at the score, grade the bet. In practice, knowing <em>when</em> to check is the hard part. We built a system that estimates game end times by sport (an NFL game is roughly 3.5 hours, an NBA game about 2.5) and only calls the scores API when a game is in its finishing window. Most scheduled checks result in zero API calls because no games are close to ending. This cut our API usage dramatically while still grading bets within minutes of a game going final.</p>
 
-                    <p><strong>Getting IAP right.</strong> Apple's In-App Purchase system is powerful but unforgiving. Transaction IDs in sandbox vs production behave differently. Subscription status can change asynchronously. You need to handle renewals, cancellations, and billing retries gracefully. We ended up building a webhook-based system where Apple notifies our server of subscription changes, and the server updates the user's tier. The client just reads the current tier from the database. It took several iterations to get right, but the result is a system where subscription state is always consistent between Apple and our backend.</p>
+                    <p><strong>Getting payments right.</strong> Subscription billing is straightforward in theory but full of edge cases. Status can change asynchronously &mdash; renewals, cancellations, billing retries. We built a webhook-based system where Stripe notifies our server of subscription changes, and the server updates the user's tier. The client just reads the current tier from the database. The result is a system where subscription state is always consistent between the payment provider and our backend.</p>
 
                     <h2>Where We Are Now</h2>
 
-                    <p>The iOS app is submitted and the web dashboard is live. Organizers can create a book, invite members, and start taking picks in under two minutes. Odds auto-import from major sportsbooks. Picks are graded automatically when games go final. Settlements are one tap. The ledger is tamper-evident and auditable.</p>
+                    <p>The web dashboard is live and growing. Organizers can create a book, invite members, and start taking picks in under two minutes. Odds auto-import from major sportsbooks. Picks are graded automatically when games go final. Settlements are one tap. The ledger is tamper-evident and auditable.</p>
 
-                    <p>We're working on push notifications for real-time updates, expanding sport coverage, and refining the member experience. The foundation is solid &mdash; server-authoritative logic, atomic settlements, and a clean separation between the clients and the backend mean we can ship features fast without worrying about consistency bugs.</p>
+                    <p>We're working on push notifications for real-time updates, expanding sport coverage, and refining the member experience. A native mobile app is on the roadmap. The foundation is solid &mdash; server-authoritative logic, atomic settlements, and a clean separation between the clients and the backend mean we can ship new features and new platforms fast without worrying about consistency bugs.</p>
 
                     <p>If you've ever run a book out of a spreadsheet and a group chat, you know the pain. We built Booki because we lived it. The goal was never to build the next DraftKings &mdash; it was to build the tool we wished we had on Sunday morning when someone inevitably texts "wait, what did I bet?"</p>
 
