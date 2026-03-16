@@ -64,6 +64,10 @@
                     <label for="signup-password">Password</label>
                     <input type="password" id="signup-password" placeholder="Min 6 characters" autocomplete="new-password">
                 </div>
+                <div class="form-group">
+                    <label for="signup-password-confirm">Confirm Password</label>
+                    <input type="password" id="signup-password-confirm" placeholder="Re-enter password" autocomplete="new-password">
+                </div>
                 <label class="checkbox-label">
                     <input type="checkbox" id="signup-age">
                     <span>I confirm I am 18 years or older</span>
@@ -72,6 +76,21 @@
                 <button id="signup-btn" class="btn-primary-full" onclick="handleSignUp()">Create Account</button>
                 <div class="auth-links">
                     <a href="#" onclick="showLogin(); return false;">Back to Log In</a>
+                </div>
+            </div>
+
+            <!-- Verification Pending -->
+            <div id="verification-pending" style="display:none;">
+                <div style="text-align:center;padding:8px 0 16px;">
+                    <div style="width:56px;height:56px;border-radius:50%;background:rgba(0,245,212,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent, #00F5D4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                    </div>
+                    <p style="font-size:14px;color:var(--text-secondary, #A8A8B8);line-height:1.6;margin:0 0 4px;">We sent a verification link to</p>
+                    <p id="verification-email" style="font-size:15px;font-weight:600;color:var(--text-primary, #F8F8F8);margin:0 0 16px;"></p>
+                    <p id="verification-status" style="font-size:13px;color:var(--text-secondary, #A8A8B8);margin:0;">Waiting for verification<span id="verification-dots">...</span></p>
+                </div>
+                <div class="auth-links" style="margin-top:16px;">
+                    <a href="#" onclick="showLogin(); stopVerificationPolling(); return false;">Back to Log In</a>
                 </div>
             </div>
 
@@ -110,41 +129,17 @@
             return true;
         }
 
-        // Check if already logged in — redirect to app for any authenticated user
+        // Check if already logged in — redirect to app for confirmed users
         async function checkSession() {
             if (!initSupabase()) return;
             const { data: { session } } = await sbClient.auth.getSession();
             if (session) {
-                window.location.href = './';
-            }
-        }
-
-        // Check bookie record exists AND user isn't just a player with a spurious record
-        async function isOrganizer(userId) {
-            const { data: bookieRecord } = await sbClient
-                .from('bookies')
-                .select('id')
-                .eq('auth_user_id', userId)
-                .limit(1);
-
-            if (!bookieRecord || bookieRecord.length === 0) return false;
-
-            // Guard against spurious bookie records: if user is a player
-            // under a DIFFERENT bookie, they're not a real organizer
-            const { data: playerRecord } = await sbClient
-                .from('players')
-                .select('id, bookie_id')
-                .eq('auth_user_id', userId)
-                .limit(1);
-
-            if (playerRecord && playerRecord.length > 0) {
-                // Player exists — only allow if their bookie_id matches their own bookie record
-                if (playerRecord[0].bookie_id !== bookieRecord[0].id) {
-                    return false;
+                // Only redirect if email is confirmed
+                const { data: { user } } = await sbClient.auth.getUser();
+                if (user?.confirmed_at || user?.email_confirmed_at) {
+                    window.location.href = './';
                 }
             }
-
-            return true;
         }
 
         checkSession();
@@ -154,6 +149,7 @@
             document.getElementById('login-form').style.display = 'block';
             document.getElementById('signup-form').style.display = 'none';
             document.getElementById('forgot-form').style.display = 'none';
+            document.getElementById('verification-pending').style.display = 'none';
             document.querySelector('.auth-title').textContent = 'Welcome back';
             document.querySelector('.auth-subtitle').textContent = 'Log in to your dashboard';
         }
@@ -162,6 +158,7 @@
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('signup-form').style.display = 'block';
             document.getElementById('forgot-form').style.display = 'none';
+            document.getElementById('verification-pending').style.display = 'none';
             document.querySelector('.auth-title').textContent = 'Create account';
             document.querySelector('.auth-subtitle').textContent = 'Start managing your group';
         }
@@ -170,6 +167,7 @@
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('signup-form').style.display = 'none';
             document.getElementById('forgot-form').style.display = 'block';
+            document.getElementById('verification-pending').style.display = 'none';
             document.querySelector('.auth-title').textContent = 'Reset password';
             document.querySelector('.auth-subtitle').textContent = 'Enter your email to receive a reset link';
         }
@@ -221,8 +219,14 @@
                 errorEl.style.display = 'block';
                 return;
             }
+            const passwordConfirm = document.getElementById('signup-password-confirm').value;
             if (password.length < 6) {
                 errorEl.textContent = 'Password must be at least 6 characters';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (password !== passwordConfirm) {
+                errorEl.textContent = 'Passwords do not match';
                 errorEl.style.display = 'block';
                 return;
             }
@@ -250,17 +254,20 @@
             }
 
             if (data.user && !data.user.confirmed_at) {
-                errorEl.textContent = 'Check your email to verify your account, then log in.';
-                errorEl.style.display = 'block';
-                errorEl.style.color = 'var(--accent)';
-                btn.disabled = false;
-                btn.textContent = 'Create Account';
+                // Show verification pending UI
+                document.getElementById('signup-form').style.display = 'none';
+                document.getElementById('verification-pending').style.display = 'block';
+                document.querySelector('.auth-title').textContent = 'Check your email';
+                document.querySelector('.auth-subtitle').textContent = '';
+                document.getElementById('verification-email').textContent = email;
+
+                // Poll for verification — auto-redirect once confirmed
+                startVerificationPolling();
                 return;
             }
 
-            // Auto-confirmed — create bookie and redirect
+            // Auto-confirmed — redirect straight to dashboard
             if (data.user) {
-                await ensureBookieRecord(data.user, name);
                 window.location.href = './';
             }
         }
@@ -300,32 +307,58 @@
             }
         }
 
-        // ── Bookie Record ──
-        async function ensureBookieRecord(user, name) {
-            const { data: existing } = await sbClient
-                .from('bookies')
-                .select('id')
-                .eq('auth_user_id', user.id)
-                .limit(1);
+        // ── Verification Polling ──
+        let verificationInterval = null;
+        const VERIFICATION_POLL_MS = 3000;
+        const VERIFICATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
-            if (existing && existing.length > 0) return;
+        function startVerificationPolling() {
+            stopVerificationPolling();
+            let dotCount = 0;
+            const startTime = Date.now();
 
-            const displayName = name || user.user_metadata?.name || user.email?.split('@')[0] || 'Organizer';
+            verificationInterval = setInterval(async () => {
+                // Stop after 10 minutes
+                if (Date.now() - startTime > VERIFICATION_TIMEOUT_MS) {
+                    stopVerificationPolling();
+                    const statusEl = document.getElementById('verification-status');
+                    if (statusEl) {
+                        statusEl.innerHTML = 'Verification timed out. <a href="#" onclick="showLogin(); stopVerificationPolling(); return false;" style="color:var(--accent, #00F5D4);">Log in</a> if you already verified.';
+                    }
+                    return;
+                }
 
-            await sbClient
-                .from('bookies')
-                .insert({
-                    auth_user_id: user.id,
-                    name: displayName,
-                    email: user.email
-                });
+                // Animate dots
+                dotCount = (dotCount + 1) % 4;
+                const dotsEl = document.getElementById('verification-dots');
+                if (dotsEl) dotsEl.textContent = '.'.repeat(dotCount || 1);
+
+                // Check if user is now confirmed via existing session
+                const { data: { user } } = await sbClient.auth.getUser();
+                if (user?.confirmed_at || user?.email_confirmed_at) {
+                    stopVerificationPolling();
+                    const statusEl = document.getElementById('verification-status');
+                    if (statusEl) {
+                        statusEl.textContent = 'Verified! Setting up your account...';
+                        statusEl.style.color = 'var(--accent, #00F5D4)';
+                    }
+                    setTimeout(() => { window.location.href = './'; }, 600);
+                }
+            }, VERIFICATION_POLL_MS);
+        }
+
+        function stopVerificationPolling() {
+            if (verificationInterval) {
+                clearInterval(verificationInterval);
+                verificationInterval = null;
+            }
         }
 
         // Enter on password field submits
         document.getElementById('login-password')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') handleLogin();
         });
-        document.getElementById('signup-password')?.addEventListener('keydown', (e) => {
+        document.getElementById('signup-password-confirm')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') handleSignUp();
         });
     </script>

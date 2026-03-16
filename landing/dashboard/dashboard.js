@@ -756,8 +756,39 @@ function dashboardApp() {
                     this.playerBookie = bookieSettings[0];
                 }
             } else {
-                // Standalone — no player record with bookie, no real organizer record
-                this.userRole = 'standalone';
+                // No bookie or player record — auto-create organizer account
+                // (New signups from landing page are organizers; players arrive via invite links)
+                try {
+                    const userName = this.session.user.user_metadata?.name
+                        || this.session.user.email?.split('@')[0]
+                        || 'My Book';
+                    const { data: newBookie, error: createError } = await this.supabase
+                        .from('bookies')
+                        .insert({
+                            auth_user_id: userId,
+                            name: userName,
+                            tier: 'free',
+                            default_credit_limit: 1000,
+                            allow_futures_parlays: false,
+                        })
+                        .select()
+                        .single();
+
+                    if (createError) throw createError;
+
+                    this.bookie = newBookie;
+                    this.userRole = 'organizer';
+                    this.isPro = false;
+
+                    // Route to welcome page for first-time organizers
+                    this.route = 'organizer-welcome';
+                    window.location.hash = '#/organizer-welcome';
+                    return;
+                } catch (err) {
+                    console.error('Auto-create organizer failed:', err);
+                    // Fallback to standalone if creation fails
+                    this.userRole = 'standalone';
+                }
             }
 
             // Default route based on role
@@ -1146,7 +1177,7 @@ function dashboardApp() {
             }
 
             if (error || !data?.length) {
-                console.error('Failed to load ticket detail:', error);
+                console.error('Failed to load ticket detail');
                 this.toast('Failed to load pick', 'error');
                 this.isLoadingPlayerTicket = false;
                 return;
@@ -1424,7 +1455,7 @@ function dashboardApp() {
                 this.route = 'organizer-welcome';
                 window.location.hash = '#/organizer-welcome';
             } catch (err) {
-                console.error('Become organizer error:', err);
+                console.error('Become organizer error');
                 this.toast('Failed to create organizer account. Please try again.', 'error');
             } finally {
                 this.isBecomingOrganizer = false;
@@ -1941,7 +1972,7 @@ function dashboardApp() {
 
         get hasBetSlip() {
             return (this.route === 'player-games' || this.route === 'player-sport')
-                && this.betSlipSelections.length > 0;
+                && (this.betSlipSelections.length > 0 || this.betSlipSuccess);
         },
 
         get combinedMultiOdds() {
@@ -2145,7 +2176,7 @@ function dashboardApp() {
                 // Refresh player data
                 this.loadPlayerHome();
             } catch (err) {
-                console.error('Submit bet slip error:', err);
+                console.error('Submit bet slip error');
                 this.toast(err.message || 'Failed to place pick', 'error');
             }
 
@@ -2174,7 +2205,7 @@ function dashboardApp() {
                 .limit(1);
 
             if (error || !data?.length) {
-                console.error('Failed to load bookie:', error);
+                console.error('Failed to load bookie');
                 return;
             }
 
@@ -2194,7 +2225,7 @@ function dashboardApp() {
                 .order('name');
 
             if (error) {
-                console.error('Failed to load players:', error);
+                console.error('Failed to load players');
                 this.isLoadingPlayers = false;
                 return;
             }
@@ -2287,7 +2318,7 @@ function dashboardApp() {
                 .order('created_at', { ascending: false })
                 .limit(10);
 
-            if (betsErr) console.error('Recent bets query failed:', betsErr);
+            if (betsErr) console.error('Recent bets query failed');
 
             // Normalize both into a common shape and merge
             const ledgerTypeLabels = { settlement: 'graded', paymentLogged: 'settle up', adjustment: 'adjustment' };
@@ -2622,7 +2653,7 @@ function dashboardApp() {
                 .order('start_time', { ascending: true });
 
             if (error) {
-                console.error('Failed to load events:', error);
+                console.error('Failed to load events');
                 this.isLoadingEvents = false;
                 return;
             }
@@ -2785,7 +2816,7 @@ function dashboardApp() {
                 .lte('created_at', weekEnd.toISOString());
 
             if (error) {
-                console.error('Failed to load settlement:', error);
+                console.error('Failed to load settlement');
                 this.isLoadingSettlement = false;
                 return;
             }
@@ -3098,7 +3129,7 @@ function dashboardApp() {
                 .limit(1);
 
             if (evtErr || !evtData?.length) {
-                console.error('Failed to load event detail:', evtErr);
+                console.error('Failed to load event detail');
                 this.toast('Failed to load event', 'error');
                 this.isLoadingEventDetail = false;
                 return;
@@ -3193,7 +3224,7 @@ function dashboardApp() {
             const { data, error } = await query;
 
             if (error) {
-                console.error('Failed to load picks:', error);
+                console.error('Failed to load picks');
                 this.isLoadingPicks = false;
                 return;
             }
@@ -3229,7 +3260,7 @@ function dashboardApp() {
                 .limit(1);
 
             if (error || !data?.length) {
-                console.error('Failed to load pick detail:', error);
+                console.error('Failed to load pick detail');
                 this.toast('Failed to load pick', 'error');
                 this.isLoadingPickDetail = false;
                 return;
@@ -3307,7 +3338,7 @@ function dashboardApp() {
                     .limit(1);
 
                 if (error || !data?.length) {
-                    console.error('Failed to load member detail:', error);
+                    console.error('Failed to load member detail');
                     this.toast('Failed to load member', 'error');
                     this.isLoadingMemberDetail = false;
                     return;
@@ -4030,7 +4061,7 @@ function dashboardApp() {
                 .order('created_at', { ascending: false });
 
             if (error) {
-                console.error('Failed to load invites:', error);
+                console.error('Failed to load invites');
                 return;
             }
 
@@ -4047,7 +4078,7 @@ function dashboardApp() {
 
             if (error) {
                 this.toast('Failed to delete invite', 'error');
-                console.error('Delete invite error:', error);
+                console.error('Delete invite error');
             } else {
                 this.invites = this.invites.filter(i => i.id !== inviteId);
                 this.toast('Invite deleted', 'success');

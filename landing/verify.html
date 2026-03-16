@@ -90,8 +90,8 @@
     <div id="success" class="success">
       <div class="checkmark">&#10003;</div>
       <h1>Email Verified</h1>
-      <p>Your account is confirmed. You can now log in to Booki.</p>
-      <a href="/dashboard/" class="btn">Open Booki</a>
+      <p>Your account is confirmed. Redirecting you now...</p>
+      <a href="/dashboard/" class="btn">Go to Dashboard</a>
     </div>
 
     <!-- Error state -->
@@ -133,8 +133,13 @@
             showError();
           }
         } catch (e) {
-          // Network error or CORS redirect — likely means success
-          showSuccess();
+          // CORS redirect from Supabase = opaque response = TypeError
+          // This is expected behavior for successful verification
+          if (e instanceof TypeError) {
+            showSuccess();
+          } else {
+            showError();
+          }
         }
         return;
       }
@@ -146,6 +151,8 @@
     function showSuccess() {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('success').style.display = 'block';
+      // Auto-redirect after short delay (user already has session from signup)
+      setTimeout(() => { window.location.href = '/dashboard/'; }, 1500);
     }
 
     function showError() {
