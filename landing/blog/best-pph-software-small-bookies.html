@@ -40,9 +40,12 @@
         "datePublished": "2026-03-06",
         "dateModified": "2026-03-06",
         "author": {
-            "@type": "Organization",
-            "name": "Booki",
-            "url": "https://bookisports.com"
+            "@type": "Person",
+            "name": "Tyler Kung",
+            "url": "https://bookisports.com/about.html",
+            "sameAs": [
+                "https://x.com/tylerthekreator"
+            ]
         },
         "publisher": {
             "@type": "Organization",
@@ -137,14 +140,14 @@
                         <span class="blog-meta-sep">&middot;</span>
                         <span>8 min read</span>
                         <span class="blog-meta-sep">&middot;</span>
-                        <span>By the Booki Team</span>
+                        <span>By <a href="../about.html" style="color:var(--accent);text-decoration:none;">Tyler Kung</a></span>
                     </div>
                 </header>
 
                 <div class="blog-prose">
-                    <p>If you're searching for PPH software in 2026, you're probably comparing pricing, features, and whether a given platform actually fits your operation's size. Most "best PPH" lists focus on large-scale providers built for professional operations with hundreds of members. That's helpful if you're running a big book &mdash; less so if you have 10 to 50 members and your main concern is keeping overhead low while still having reliable tools.</p>
+                    <p>For small bookies with 10 to 50 members, the best PPH software in 2026 is a flat-rate sportsbook manager &mdash; not a traditional per-head platform. Per-head pricing ($3-12/week/member) costs $240 to $960 per month for just 20 members, while flat-rate tools with automated grading, credit limit enforcement, and settlement tracking run $0 to $50/month regardless of size.</p>
 
-                    <p>This guide covers seven options across different categories &mdash; traditional PPH providers, modern flat-rate tools, and DIY approaches &mdash; so you can compare what actually makes sense for a small operation.</p>
+                    <p>This guide covers seven options across different categories &mdash; traditional PPH providers, modern flat-rate tools, and DIY approaches &mdash; so you can compare what actually makes sense for a small operation. Each option is evaluated on odds integration, parlay tracking, ledger integrity, and cost structure.</p>
 
                     <h2>1. AcePerHead &mdash; Full-Service PPH for Growing Operations</h2>
 
@@ -161,7 +164,7 @@
 
                     <p><strong>Best for:</strong> Independent organizers with 5 to 50 members who want predictable pricing and modern UX.</p>
 
-                    <p>Booki takes a different approach from traditional PPH. Instead of hosting a full betting website, it's a web platform where one person &mdash; the organizer &mdash; runs the book and members place picks directly from any browser. Odds are auto-imported from the Odds API (moneylines, spreads, totals, and futures across major sports), picks are graded automatically from live scores, and settlements are tracked in a tamper-evident ledger.</p>
+                    <p>Booki takes a different approach from traditional PPH. Instead of hosting a full betting website, it's a web platform where one person &mdash; the organizer &mdash; runs the book and members place picks directly from any browser. Odds integration pulls real-time lines from the Odds API (moneylines, spreads, totals, and futures across major sports), automated grading resolves picks from live scores including full parlay tracking with combined odds, and settlement reconciliation is tracked in a tamper-evident ledger.</p>
 
                     <p>The pricing model is flat-rate: free for up to 3 members, $49.99/month for Pro (up to 50 members). No per-head charges, no revenue share, no minimums.</p>
 
@@ -174,7 +177,7 @@
                         <li>Hash-chained audit trail on every ledger entry</li>
                     </ul>
 
-                    <p><strong>Strengths:</strong> Predictable cost regardless of member count, modern web interface that works on any device, integrated settlement workflow, no operational overhead.<br>
+                    <p><strong>Strengths:</strong> Predictable cost regardless of member count, modern web interface that works on any device, integrated settlement reconciliation workflow, credit limit enforcement, bankroll management tools, no operational overhead.<br>
                     <strong>Consideration:</strong> Limited to moneyline/spread/totals/futures markets &mdash; no props or alt lines. Not a fit for operations that need casino products or a branded website.
 
                     <p><em>Full disclosure: Booki is our product. We've tried to represent it accurately here alongside the other options.</em></p>
@@ -229,10 +232,10 @@
 
                     <p>It's worth including the manual option because it's where most small-book organizers start. A <a href="spreadsheet-template-tracking-picks.html">well-structured spreadsheet</a> with columns for date, member, event, pick, odds, stake, and result can work for a handful of members. It costs nothing and you have full control over the format.</p>
 
-                    <p>The trade-offs are well documented: manual grading is time-consuming and error-prone, there's no credit limit enforcement, settlement tracking is manual, and the whole system depends on the organizer's discipline. Most organizers outgrow spreadsheets around 8 to 10 members, once the weekly time commitment for grading and settlement becomes unsustainable. For a detailed look at where this approach breaks down, see our post on <a href="common-mistakes-independent-organizers.html">common organizer mistakes</a>.</p>
+                    <p>The trade-offs are well documented: manual grading is time-consuming and error-prone, there's no credit limit enforcement, no parlay tracking with combined odds, settlement reconciliation is entirely manual, and the whole system depends on the organizer's discipline. Most organizers outgrow spreadsheets around 8 to 10 members, once the weekly time commitment for grading and settlement becomes unsustainable. For a detailed look at where this approach breaks down, see our post on <a href="common-mistakes-independent-organizers.html">common organizer mistakes</a>.</p>
 
                     <p><strong>Strengths:</strong> Free, fully customizable, no vendor dependency.<br>
-                    <strong>Consideration:</strong> Manual grading, no credit enforcement, no audit trail, doesn't scale. Fine as a starting point, but not a long-term solution if you're growing.</p>
+                    <strong>Consideration:</strong> Manual grading, no credit limit enforcement, no tamper-evident audit trail, no automated settlement reconciliation. Fine as a starting point, but not a long-term solution for any growing operation.</p>
 
                     <h2>Quick Comparison</h2>
 
@@ -311,13 +314,13 @@
 
                     <p>The right tool depends on your operation's scale and what you actually need. Here's a simple framework:</p>
 
-                    <p><strong>If you have under 10 members</strong> and your main concern is saving time on grading and settlements, a flat-rate tool or even a good spreadsheet gets the job done. You don't need a full PPH platform with casino products and a branded website.</p>
+                    <p><strong>If you have under 10 members</strong> and your main concern is saving time on grading and settlements, a flat-rate tool with automated grading and credit limit enforcement gets the job done. You don't need a full PPH platform with casino products and a branded website.</p>
 
                     <p><strong>If you have 10 to 50 members</strong> and want automation without high overhead, compare flat-rate options against the cheapest per-head providers. At 20 members, the gap between $50/month (flat rate) and $160-800/month (per-head) is significant enough to affect your margins. For a deeper dive on this math, see our breakdown of <a href="best-bookie-software-small-books.html">the best bookie software for small books</a>.</p>
 
                     <p><strong>If you have 50+ members</strong> and need live in-play betting, casino products, or a branded website, traditional PPH platforms are built for you. The per-head cost is justified by the infrastructure you're getting, and the feature depth is unmatched. Our comparison of <a href="pph-vs-manual-ledger-systems.html">PPH vs manual ledger systems</a> covers this trade-off in detail.</p>
 
-                    <p>The most common mistake is paying for a premium PPH service when your operation doesn't need most of its features. The second most common mistake is sticking with a spreadsheet long past the point where it's costing you hours every week. The right answer is almost always somewhere in between &mdash; enough automation to save time, without paying for infrastructure you'll never use.</p>
+                    <p>The most common mistake is paying for a premium PPH service when your operation doesn't need most of its features. The second most common mistake is sticking with a spreadsheet long past the point where it's costing you hours every week in manual grading and settlement reconciliation. The right answer is almost always somewhere in between &mdash; enough automation to save time, without paying for infrastructure you'll never use.</p>
 
                     <h2>Frequently Asked Questions</h2>
 
@@ -384,6 +387,7 @@
                 <a href="../features.html">Features</a>
                 <a href="../blog/">Blog</a>
                 <a href="../pph-software-alternative.html">PPH Alternative</a>
+                <a href="../about.html">About</a>
                 <a href="../privacy.html">Privacy Policy</a>
                 <a href="../terms.html">Terms of Service</a>
                 <a href="https://x.com/booki_sports" target="_blank" rel="noopener">Twitter</a>

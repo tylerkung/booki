@@ -1,0 +1,174 @@
+import { corsHeaders } from '../_shared/cors.ts';
+import { getUserIdFromAuthHeader } from '../_shared/supabase.ts';
+import { createServiceClient } from '../_shared/supabase.ts';
+
+function getWelcomeEmailHtml(name: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Booki</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0A0A12; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0A0A12; min-height: 100vh;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
+          <tr>
+            <td align="center" style="padding-bottom: 32px;">
+              <img src="https://bookisports.com/assets/logo-booki-wh.png" alt="Booki" width="140" style="display: block;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #14141F; border-radius: 16px; border: 1px solid #2A2A3A; padding: 40px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding-bottom: 12px;">
+                    <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #F8F8F8; letter-spacing: -0.3px;">
+                      Welcome to Booki, ${name}
+                    </h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-bottom: 28px;">
+                    <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #A8A8B8;">
+                      Your organizer account is live. You're ready to start tracking picks for your group.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 28px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="background-color: #0A0A12; border: 1px solid #2A2A3A; border-radius: 10px; padding: 20px;">
+                          <p style="margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #6B6B7B; font-weight: 600;">Quick Start</p>
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                            <tr><td style="padding-bottom: 12px;"><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">1.</span>&nbsp; Invite your first member from the Members tab</p></td></tr>
+                            <tr><td style="padding-bottom: 12px;"><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">2.</span>&nbsp; Members browse games and place picks</p></td></tr>
+                            <tr><td><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">3.</span>&nbsp; Picks grade automatically — settle up with one tap</p></td></tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-bottom: 24px;">
+                    <a href="https://bookisports.com/dashboard/" style="display: inline-block; background-color: #00F5D4; color: #0A0A12; font-size: 16px; font-weight: 700; text-decoration: none; padding: 16px 40px; border-radius: 10px; letter-spacing: 0.5px;">Go to Dashboard</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px 0;"><div style="height: 1px; background-color: #2A2A3A;"></div></td>
+                </tr>
+                <tr>
+                  <td>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #A8A8B8;">I'm Tyler, the founder of Booki. I built this because my friend group needed it — we were running our book out of a spreadsheet and group chat, and it was a mess.</p>
+                    <p style="margin: 16px 0 0; font-size: 14px; line-height: 1.7; color: #A8A8B8;">If you have any questions, hit any issues, or just want to share feedback — reply directly to this email. I read every message.</p>
+                    <p style="margin: 16px 0 0; font-size: 14px; color: #F8F8F8; font-weight: 600;">— Tyler</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding-top: 32px;">
+              <p style="margin: 0; font-size: 12px; color: #4A4A5A;">
+                <a href="https://bookisports.com" style="color: #4A4A5A; text-decoration: none;">bookisports.com</a>
+                &nbsp;&middot;&nbsp;
+                <a href="https://bookisports.com/terms.html" style="color: #4A4A5A; text-decoration: none;">Terms</a>
+                &nbsp;&middot;&nbsp;
+                <a href="https://bookisports.com/privacy.html" style="color: #4A4A5A; text-decoration: none;">Privacy</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    // Validate auth
+    const authHeader = req.headers.get('Authorization');
+    const userId = await getUserIdFromAuthHeader(authHeader);
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get user details
+    const client = createServiceClient();
+    const { data: { user }, error: userError } = await client.auth.admin.getUserById(userId);
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'User not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const email = user.email;
+    if (!email) {
+      return new Response(JSON.stringify({ error: 'No email on account' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const name = user.user_metadata?.name || email.split('@')[0];
+
+    // Send via Resend
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendApiKey) {
+      return new Response(JSON.stringify({ error: 'Email service not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const emailRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Tyler from Booki <tyler@bookisports.com>',
+        reply_to: 'tyler@bookisports.com',
+        to: [email],
+        subject: `Welcome to Booki, ${name}`,
+        html: getWelcomeEmailHtml(name),
+        scheduled_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
+    });
+
+    if (!emailRes.ok) {
+      const errBody = await emailRes.text();
+      console.error('Resend error:', errBody);
+      return new Response(JSON.stringify({ error: 'Failed to send email' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (err) {
+    console.error('send_welcome_email error:', err);
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});

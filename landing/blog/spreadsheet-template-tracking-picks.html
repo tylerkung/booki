@@ -40,9 +40,12 @@
         "datePublished": "2026-02-24",
         "dateModified": "2026-02-24",
         "author": {
-            "@type": "Organization",
-            "name": "Booki",
-            "url": "https://bookisports.com"
+            "@type": "Person",
+            "name": "Tyler Kung",
+            "url": "https://bookisports.com/about.html",
+            "sameAs": [
+                "https://x.com/tylerthekreator"
+            ]
         },
         "publisher": {
             "@type": "Organization",
@@ -95,20 +98,20 @@
                         <span class="blog-meta-sep">&middot;</span>
                         <span>7 min read</span>
                         <span class="blog-meta-sep">&middot;</span>
-                        <span>By the Booki Team</span>
+                        <span>By <a href="../about.html" style="color:var(--accent);text-decoration:none;">Tyler Kung</a></span>
                     </div>
                 </header>
 
                 <div class="blog-prose">
-                    <p>Every independent organizer needs a system for tracking picks. If you're just getting started or running a small operation, a well-structured spreadsheet can be surprisingly effective. It costs nothing, you control the data, and it forces you to understand the mechanics of pick tracking before investing in any software.</p>
+                    <p>A pick-tracking spreadsheet needs eight columns: Date, Member, Event, Pick, Odds, Stake, Result, and Payout. With the right formulas for American odds conversion and a SUMIF for per-member balances, this layout handles settlement reconciliation for operations with up to 10 members before manual grading becomes unsustainable.</p>
 
-                    <p>In this guide, we'll walk through a spreadsheet layout you can copy into Google Sheets or Excel today, explain the columns and formulas you need, and show you sample data so you can see exactly how it works in practice.</p>
+                    <p>Below is the complete spreadsheet layout you can copy into Google Sheets or Excel today, with formulas, sample data, and clear guidance on when it is time to upgrade to dedicated software with automated grading and a tamper-evident ledger.</p>
 
                     <h2>Why You Need a Tracking System</h2>
 
-                    <p>Running an operation without a tracking system is a recipe for disputes and lost money. Even with just three or four members, picks add up fast during a busy sports weekend. Without a clear record of who picked what, at which odds, and for how much &mdash; you're relying on memory and text message threads to settle up.</p>
+                    <p>Running an operation without a tracking system guarantees disputes and lost money. Even with three or four members, picks accumulate fast during a busy sports weekend. Without a clear record of who picked what, at which odds, and for how much &mdash; you are relying on memory and text message threads for settlement reconciliation.</p>
 
-                    <p>A spreadsheet gives you a single source of truth. Every pick is logged, every result is recorded, and every balance is calculated. When it's time to <a href="how-organizers-track-weekly-settlements.html">settle up at the end of the week</a>, there's no guesswork involved.</p>
+                    <p>A spreadsheet gives you a single source of truth. Every pick is logged, every result is recorded, and every balance is calculated. When it is time to <a href="how-organizers-track-weekly-settlements.html">settle up at the end of the week</a>, there is no guesswork involved.</p>
 
                     <h2>The Essential Columns</h2>
 
@@ -235,30 +238,32 @@
 
                     <h2>When Spreadsheets Start to Break Down</h2>
 
-                    <p>A spreadsheet works well for small operations, but it has real limitations that become painful as you grow. Here are the signs it's time to upgrade:</p>
+                    <p>A spreadsheet works well for small operations, but it has real limitations that become painful as you grow. Here are the signs it is time to upgrade:</p>
 
                     <ul>
-                        <li><strong>You're grading picks manually every weekend.</strong> Looking up scores for 30+ events and entering results by hand takes hours and introduces errors. One wrong result can cascade through multiple member balances. As we covered in our guide on <a href="common-mistakes-independent-organizers.html">common organizer mistakes</a>, manual grading errors are the number one cause of member disputes.</li>
-                        <li><strong>Members are messaging you picks in different formats.</strong> Some text "Lakers ML $50", others send "50 on LA". Without a standardized input method, you're transcribing and interpreting picks &mdash; another source of errors.</li>
-                        <li><strong>You can't enforce credit limits.</strong> Spreadsheets have no concept of a maximum stake or credit ceiling. A member can be deep in the red and you won't know until you manually check their running balance.</li>
-                        <li><strong>Settlement disputes are increasing.</strong> When there's no immutable record &mdash; just a spreadsheet that anyone with access could theoretically edit &mdash; trust erodes. Members start questioning results, and you have no audit trail to point to.</li>
-                        <li><strong>You have more than 10 active members.</strong> The volume of picks, the time spent grading, and the complexity of settlement calculations all grow linearly. What took 20 minutes with 5 members takes over an hour with 15.</li>
+                        <li><strong>Manual grading consumes every weekend.</strong> Looking up scores for 30+ events and entering results by hand takes hours and introduces errors. One wrong result cascades through multiple member balances. As we covered in our guide on <a href="common-mistakes-independent-organizers.html">common organizer mistakes</a>, manual grading errors are the number one cause of member disputes.</li>
+                        <li><strong>Picks arrive in inconsistent formats.</strong> Some members text "Lakers ML $50", others send "50 on LA". Without a standardized input method, you are transcribing and interpreting picks &mdash; another source of errors.</li>
+                        <li><strong>No credit limit enforcement.</strong> Spreadsheets have no concept of a maximum stake or credit ceiling. A member can be deep in the red and you will not know until you manually check their running balance. Proper bankroll management requires automated limits.</li>
+                        <li><strong>Settlement disputes are increasing.</strong> When there is no tamper-evident ledger &mdash; just a spreadsheet that anyone with access can edit &mdash; trust erodes. Members start questioning results, and you have no audit trail to point to.</li>
+                        <li><strong>Parlay tracking is unmanageable.</strong> Multi-leg parlays require combined odds calculation and leg-by-leg grading. Doing this manually in a spreadsheet is error-prone and time-consuming.</li>
+                        <li><strong>You have more than 10 active members.</strong> The volume of picks, the time spent grading, and the complexity of settlement reconciliation all grow linearly. What took 20 minutes with 5 members takes over an hour with 15.</li>
                     </ul>
 
                     <h2>Moving Beyond the Spreadsheet</h2>
 
-                    <p>When your spreadsheet starts holding you back, you have options. Traditional <a href="../pph-software-alternative.html">pay-per-head services</a> solve the automation problem but introduce per-head fees that scale with your member count. Modern alternatives like Booki offer the same automation &mdash; auto-grading, real-time balances, <a href="../bookie-ledger-software.html">immutable ledger tracking</a> &mdash; without the per-member pricing.</p>
+                    <p>When your spreadsheet starts holding you back, you have options. Traditional <a href="../pph-software-alternative.html">pay-per-head services</a> solve the automation problem but introduce per-head fees that scale with your member count. Modern alternatives like Booki offer the same automation &mdash; automated grading, real-time balances, <a href="../bookie-ledger-software.html">tamper-evident ledger tracking</a> &mdash; without the per-member pricing.</p>
 
                     <p>The key features to look for in any upgrade:</p>
 
                     <ul>
-                        <li><strong>Automatic grading</strong> that pulls live scores and settles picks without manual input</li>
-                        <li><strong>Credit limits</strong> that prevent members from overextending</li>
-                        <li><strong>An audit trail</strong> that records every pick, every result, and every settlement in a tamper-proof log</li>
+                        <li><strong>Automated grading</strong> with odds integration that pulls live scores and settles picks without manual input</li>
+                        <li><strong>Credit limit enforcement</strong> that blocks picks when a member reaches their ceiling</li>
+                        <li><strong>A tamper-evident audit trail</strong> that records every pick, every result, and every settlement in an immutable log</li>
                         <li><strong>Real-time balances</strong> so both you and your members always know where they stand</li>
+                        <li><strong>Parlay tracking</strong> with automatic leg-by-leg grading and combined odds calculation</li>
                     </ul>
 
-                    <p>Start with the spreadsheet. Learn the mechanics. And when you're ready to scale, upgrade to a tool that handles the grunt work so you can focus on running your operation.</p>
+                    <p>Start with the spreadsheet. Learn the mechanics. When you are ready to scale, upgrade to a tool that handles automated grading and settlement reconciliation so you can focus on running your operation.</p>
                 </div>
 
                 <!-- Related Articles -->
@@ -312,6 +317,7 @@
                 <a href="../features.html">Features</a>
                 <a href="../blog/">Blog</a>
                 <a href="../pph-software-alternative.html">PPH Alternative</a>
+                <a href="../about.html">About</a>
                 <a href="../privacy.html">Privacy Policy</a>
                 <a href="../terms.html">Terms of Service</a>
                 <a href="https://x.com/booki_sports" target="_blank" rel="noopener">Twitter</a>

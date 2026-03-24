@@ -1096,12 +1096,30 @@ Deno.serve(async (req) => {
       const eventIds = Array.from(eventAggregates.keys());
 
       // Fetch events that are not final/live/canceled (no bookie join — events are shared with bookie_id=NULL)
-      const { data: events, error: eventsQueryError } = await client
+      const { data: betEvents, error: eventsQueryError } = await client
         .from('events')
         .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id')
         .in('id', eventIds)
         .not('status', 'in', '("final","live","canceled")')
         .order('start_time', { ascending: true });
+
+      // Also fetch outright/futures events (may have no bets yet but still need odds refreshed)
+      const { data: outrightEvents } = await client
+        .from('events')
+        .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id')
+        .eq('away_team', 'Outright')
+        .not('status', 'in', '("final","live","canceled")')
+        .order('start_time', { ascending: true });
+
+      // Merge, deduplicate by event ID
+      const seenIds = new Set<string>();
+      const events: typeof betEvents = [];
+      for (const ev of [...(betEvents || []), ...(outrightEvents || [])]) {
+        if (!seenIds.has(ev.id)) {
+          seenIds.add(ev.id);
+          events.push(ev);
+        }
+      }
 
       if (eventsQueryError) {
         console.error('Error fetching events:', eventsQueryError);
@@ -1431,6 +1449,34 @@ Deno.serve(async (req) => {
                       odds_a: market.odds_a,
                       odds_b: 0,
                     });
+                }
+              }
+
+              // Remove markets for eliminated teams (no longer in API response)
+              const freshNames = new Set(newMarkets.map((m) => m.side_a));
+              const staleIds = (existingMarkets || [])
+                .filter((m) => !freshNames.has(m.side_a))
+                .map((m) => m.id);
+
+              if (staleIds.length > 0) {
+                // Only delete markets with no active bets
+                const { data: activeBets } = await client
+                  .from('bets')
+                  .select('market_id')
+                  .in('market_id', staleIds)
+                  .in('status', ['pending', 'accepted'])
+                  .limit(1);
+
+                const safeToDelete = activeBets && activeBets.length > 0
+                  ? staleIds.filter((id) => !activeBets.some((b) => b.market_id === id))
+                  : staleIds;
+
+                if (safeToDelete.length > 0) {
+                  await client
+                    .from('markets')
+                    .delete()
+                    .in('id', safeToDelete);
+                  console.log(`Removed ${safeToDelete.length} eliminated outright markets for event ${game.id}`);
                 }
               }
 

@@ -104,6 +104,60 @@ function dashboardApp() {
         memberPickFilter: 'open',
         memberActivityExpanded: false,
 
+        // ── Onboarding ──
+        onboardingRole: '',
+        onboardingUseCase: '',
+        onboardingGroupSize: '',
+        onboardingReferral: '',
+        isSubmittingOnboarding: false,
+
+        async submitOnboarding() {
+            this.isSubmittingOnboarding = true;
+            const responses = {
+                role_intent: this.onboardingRole,
+                use_case: this.onboardingUseCase,
+                group_size: this.onboardingGroupSize,
+                referral_source: this.onboardingReferral,
+                onboarded_at: new Date().toISOString(),
+            };
+
+            // Save to user_metadata (always works, no migration needed)
+            try {
+                await this.supabase.auth.updateUser({
+                    data: { onboarding: responses }
+                });
+            } catch (e) {
+                console.error('Failed to save onboarding to user_metadata:', e);
+            }
+
+            // Also try to save to onboarding_responses table (may not exist yet)
+            try {
+                await this.supabase.from('onboarding_responses').insert({
+                    auth_user_id: this.session.user.id,
+                    role_intent: this.onboardingRole || 'skipped',
+                    use_case: this.onboardingUseCase || 'skipped',
+                    group_size: this.onboardingGroupSize || 'skipped',
+                    referral_source: this.onboardingReferral || 'skipped',
+                });
+            } catch (e) {
+                // Table may not exist yet — that's fine
+            }
+
+            // Send welcome email (non-blocking)
+            this.callEdgeFunction('send_welcome_email', {}).catch(() => {});
+
+            this.isSubmittingOnboarding = false;
+            this.route = 'organizer-welcome';
+            window.location.hash = '#/organizer-welcome';
+        },
+
+        skipOnboarding() {
+            // Send welcome email even if they skip (non-blocking)
+            this.callEdgeFunction('send_welcome_email', {}).catch(() => {});
+            this.route = 'organizer-welcome';
+            window.location.hash = '#/organizer-welcome';
+        },
+
         // ── Inline Editing ──
         isEditingName: false,
         isEditingCredit: false,
@@ -528,7 +582,7 @@ function dashboardApp() {
             const playerSportMatch = path.match(/^player-sport\/(.+)$/);
 
             // Organizer routes
-            const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings', 'organizer-welcome', 'pro'];
+            const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings', 'onboarding', 'organizer-welcome', 'pro'];
             // Player routes
             const playerRoutes = ['player-games', 'player-track', 'player-account', 'player-sport', 'become-organizer', 'player-activity', 'player-change-password'];
 
@@ -780,9 +834,9 @@ function dashboardApp() {
                     this.userRole = 'organizer';
                     this.isPro = false;
 
-                    // Route to welcome page for first-time organizers
-                    this.route = 'organizer-welcome';
-                    window.location.hash = '#/organizer-welcome';
+                    // Route to onboarding questionnaire for first-time organizers
+                    this.route = 'onboarding';
+                    window.location.hash = '#/onboarding';
                     return;
                 } catch (err) {
                     console.error('Auto-create organizer failed:', err);
@@ -1451,9 +1505,9 @@ function dashboardApp() {
                 this.userRole = 'organizer';
                 this.isPro = false;
 
-                // Navigate to success page
-                this.route = 'organizer-welcome';
-                window.location.hash = '#/organizer-welcome';
+                // Navigate to onboarding questionnaire
+                this.route = 'onboarding';
+                window.location.hash = '#/onboarding';
             } catch (err) {
                 console.error('Become organizer error');
                 this.toast('Failed to create organizer account. Please try again.', 'error');

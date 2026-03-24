@@ -40,9 +40,12 @@
         "datePublished": "2026-03-01",
         "dateModified": "2026-03-01",
         "author": {
-            "@type": "Organization",
-            "name": "Booki",
-            "url": "https://bookisports.com"
+            "@type": "Person",
+            "name": "Tyler Kung",
+            "url": "https://bookisports.com/about.html",
+            "sameAs": [
+                "https://x.com/tylerthekreator"
+            ]
         },
         "publisher": {
             "@type": "Organization",
@@ -95,22 +98,22 @@
                         <span class="blog-meta-sep">&middot;</span>
                         <span>6 min read</span>
                         <span class="blog-meta-sep">&middot;</span>
-                        <span>By the Booki Team</span>
+                        <span>By <a href="../about.html" style="color:var(--accent);text-decoration:none;">Tyler Kung</a></span>
                     </div>
                 </header>
 
                 <div class="blog-prose">
-                    <p>If you've searched for a way to bet on sports with friends, you've probably come across WagerLab. It's a popular social betting app that lets groups make picks and track results together. Booki is something different &mdash; a private sportsbook manager where one person runs the book and manages real balances for their group.</p>
+                    <p>WagerLab is a social betting game with virtual currency and leaderboards. Booki is a private sportsbook manager with real balances, credit limit enforcement, and settlement tracking. They solve fundamentally different problems: WagerLab is for bragging rights, Booki is for running an actual book where money changes hands.</p>
 
-                    <p>They get compared a lot, but they're built for fundamentally different use cases. Here's an honest breakdown of where each one fits.</p>
+                    <p>If you've searched for a way to bet on sports with friends, you've likely come across both. Here's an honest breakdown of where each one fits and which one your group actually needs.</p>
 
                     <h2>Two Different Tools for Two Different Problems</h2>
 
                     <p>WagerLab is a social betting game. You create a group, make picks against your friends using virtual currency, and compete on a leaderboard. It's fun, casual, and free. Think of it like a fantasy sports app but for individual game picks. Nobody owes anyone money at the end of the week.</p>
 
-                    <p>Booki is an organizer tool for private sportsbooks. One person &mdash; the organizer &mdash; runs the operation. Members get credit lines, place picks against real odds, and build up real balances that get settled weekly. It's the digital version of what friend-group bookies have always done, minus the spreadsheets and group chat chaos.</p>
+                    <p>Booki is an organizer tool for private sportsbooks. One person &mdash; the organizer &mdash; runs the operation. Members get credit lines, place picks against real odds from live odds integration, and build up real balances that get settled weekly. It's the digital version of what friend-group bookies have always done, minus the spreadsheets and group chat chaos.</p>
 
-                    <p>The distinction matters because it determines everything about the feature set. WagerLab optimizes for social engagement &mdash; leaderboards, bragging rights, streaks. Booki optimizes for accurate bookkeeping &mdash; credit limits, ledger integrity, settlement workflows.</p>
+                    <p>The distinction matters because it determines everything about the feature set. WagerLab optimizes for social engagement &mdash; leaderboards, bragging rights, streaks. Booki optimizes for accurate bookkeeping &mdash; credit limit enforcement, tamper-evident ledger integrity, automated grading, and settlement reconciliation.</p>
 
                     <h2>Feature Comparison</h2>
 
@@ -186,20 +189,20 @@
 
                     <h2>When You Need Something More</h2>
 
-                    <p>The limitations of social betting apps show up the moment real money enters the picture. And for many friend groups, that's the natural progression &mdash; you start with "just for fun" picks and eventually someone says "let's make it interesting."</p>
+                    <p>The limitations of social betting apps surface the moment real money enters the picture. For many friend groups, that's the natural progression &mdash; you start with "just for fun" picks and eventually someone says "let's make it interesting."</p>
 
                     <p>Once real stakes are involved, you need answers to questions that social apps don't handle:</p>
 
                     <ul>
-                        <li><strong>Who owes who, and how much?</strong> You need a running balance for every member, updated in real time as picks are graded.</li>
-                        <li><strong>How do you prevent someone from going too deep?</strong> Credit limits that actually block picks once a member reaches their cap.</li>
-                        <li><strong>How do you settle up?</strong> A clear weekly process where everyone can see their net balance and payments are logged.</li>
-                        <li><strong>What if there's a dispute?</strong> An auditable record of every pick, every result, and every balance change &mdash; not just a leaderboard.</li>
+                        <li><strong>Who owes who, and how much?</strong> You need a running balance for every member, updated in real time as picks are graded. Bankroll management becomes critical.</li>
+                        <li><strong>How do you prevent someone from going too deep?</strong> Credit limit enforcement that blocks picks once a member reaches their cap &mdash; automatically, not by honor system.</li>
+                        <li><strong>How do you settle up?</strong> A clear weekly settlement reconciliation process where everyone sees their net balance and payments are logged.</li>
+                        <li><strong>What if there's a dispute?</strong> A tamper-evident audit trail of every pick, every result, and every balance change &mdash; not just a leaderboard.</li>
                     </ul>
 
                     <p>This is where a <a href="../bookie-ledger-software.html">dedicated ledger system</a> becomes essential. It's not about being "more serious" &mdash; it's about having the infrastructure to handle real money fairly. Even among close friends, financial transparency matters. The fastest way to ruin a friendship is a dispute over money with no clear record of what happened.</p>
 
-                    <p>Booki was built for exactly this scenario. The organizer manages credit lines, odds are imported automatically, picks are graded by live scores, and settlements happen with a single tap. Members see their own balance and pick history. The organizer sees everything &mdash; <a href="../features.html">performance analytics, member management, and a complete audit trail</a>.</p>
+                    <p>Booki was built for exactly this scenario. The organizer manages credit lines, odds integration pulls real-time lines automatically, automated grading resolves picks from live scores &mdash; including parlay tracking with combined odds &mdash; and settlements happen with a single tap. Members see their own balance and pick history. The organizer sees everything &mdash; <a href="../features.html">performance analytics, member management, and a complete audit trail</a>.</p>
 
                     <h2>The Bottom Line</h2>
 
@@ -210,7 +213,7 @@
                         <li><strong>Booki</strong> is the right tool if someone in your group is running a real book &mdash; managing credit, tracking balances, and settling up weekly.</li>
                     </ul>
 
-                    <p>If you've been using a social betting app and keep finding yourself opening a spreadsheet to track who actually owes what, that's a sign you've outgrown virtual currency. You don't need a full <a href="pph-vs-manual-ledger-systems.html">pay-per-head platform</a> &mdash; those are built for large-scale operations and priced accordingly. You need a tool that sits in the middle: real balances, real settlements, and the simplicity of managing a friend group, not a business.</p>
+                    <p>If you've been using a social betting app and keep finding yourself opening a spreadsheet to track who actually owes what, that's a clear sign you've outgrown virtual currency. You don't need a full <a href="pph-vs-manual-ledger-systems.html">pay-per-head platform</a> &mdash; those are built for large-scale operations and priced accordingly. You need a tool that sits in the middle: real balances, real settlements, and the simplicity of managing a friend group, not a business.</p>
                 </div>
 
                 <!-- Related Articles -->
@@ -263,6 +266,7 @@
                 <a href="../features.html">Features</a>
                 <a href="../blog/">Blog</a>
                 <a href="../pph-software-alternative.html">PPH Alternative</a>
+                <a href="../about.html">About</a>
                 <a href="../privacy.html">Privacy Policy</a>
                 <a href="../terms.html">Terms of Service</a>
                 <a href="https://x.com/booki_sports" target="_blank" rel="noopener">Twitter</a>

@@ -40,9 +40,12 @@
         "datePublished": "2026-03-04",
         "dateModified": "2026-03-04",
         "author": {
-            "@type": "Organization",
-            "name": "Booki",
-            "url": "https://bookisports.com"
+            "@type": "Person",
+            "name": "Tyler Kung",
+            "url": "https://bookisports.com/about.html",
+            "sameAs": [
+                "https://x.com/tylerthekreator"
+            ]
         },
         "publisher": {
             "@type": "Organization",
@@ -95,18 +98,18 @@
                         <span class="blog-meta-sep">&middot;</span>
                         <span>6 min read</span>
                         <span class="blog-meta-sep">&middot;</span>
-                        <span>By the Booki Team</span>
+                        <span>By <a href="../about.html" style="color:var(--accent);text-decoration:none;">Tyler Kung</a></span>
                     </div>
                 </header>
 
                 <div class="blog-prose">
-                    <p>Booki started the way most side projects start &mdash; with a problem nobody had built a good solution for. We were the friend group running bets through a group chat, and the whole thing was held together with screenshots and good intentions. This is the story of how we turned that mess into a real platform.</p>
+                    <p>Booki is a server-authoritative sportsbook management platform built on Supabase, with automated grading, a tamper-evident ledger, and atomic settlement reconciliation &mdash; designed for independent organizers who outgrew their spreadsheet. We built it because we were the friend group running picks through a group chat, and every existing solution was either overpriced enterprise PPH software or a toy that did not handle real money. This is how we turned that problem into a real platform.</p>
 
                     <h2>The Problem</h2>
 
                     <p>Every Sunday during football season, our group chat turned into chaos. Someone would text "I got Niners -3 for $50." Forty minutes later, someone else would claim they texted their pick before kickoff but nobody saw it. By Monday, half the group couldn't agree on what they owed.</p>
 
-                    <p>The person running the book &mdash; our organizer &mdash; was spending more time managing a spreadsheet than watching the games. Every pick had to be manually logged. Every result had to be looked up and cross-referenced. Every settlement turned into a chain of Venmo requests and "did you get my payment?" texts. One wrong cell in the spreadsheet and trust evaporated.</p>
+                    <p>The person running the book &mdash; our organizer &mdash; spent more time managing a spreadsheet than watching the games. Every pick had to be manually logged. Every result had to be looked up and cross-referenced. Every settlement turned into a chain of Venmo requests and "did you get my payment?" texts. One wrong cell in the spreadsheet and trust evaporated. There was no automated grading, no credit limit enforcement, no audit trail.</p>
 
                     <p>This is a universal problem. If you've ever organized bets among friends, you know. The <a href="how-to-be-a-bookie-for-friends.html">fundamentals of running a friend-group book</a> aren't complicated. The logistics are what kill you.</p>
 
@@ -118,7 +121,7 @@
 
                     <p><strong>Social betting apps.</strong> These are fun for casual parlays and bragging rights, but they don't handle real money flows. No credit limits, no ledger, no settlements. They're games, not tools.</p>
 
-                    <p>What we wanted was something in between &mdash; a clean, modern tool that handled the actual work of running a small book. Real odds, real balances, real settlement tracking. No per-head fees. No enterprise onboarding. Just a tool that does what our spreadsheet was trying to do, but without the human error.</p>
+                    <p>What we wanted was something in between &mdash; a clean, modern tool that handled the actual work of running a small book. Real odds integration, real balances, real settlement reconciliation. No per-head fees. No enterprise onboarding. Just a tool that does what our spreadsheet was failing to do: automated grading, credit limit enforcement, parlay tracking, and a tamper-evident ledger.</p>
 
                     <p>So we built it.</p>
 
@@ -132,9 +135,9 @@
 
                     <h2>Server-Authoritative Everything</h2>
 
-                    <p>Early on, we made a decision that shaped the entire product: all betting logic runs on the server. The client never calculates a balance, grades a bet, or creates a ledger entry. Every operation that touches money goes through an Edge Function that validates the request, checks business rules, and writes to the database atomically.</p>
+                    <p>Early on, we made the decision that shaped the entire product: all betting logic runs on the server. The client never calculates a balance, grades a bet, or creates a ledger entry. Every operation that touches money goes through an Edge Function that validates the request, checks business rules, and writes to the database atomically.</p>
 
-                    <p>This sounds obvious in hindsight, but the temptation with any client app is to do things locally for speed and sync later. That works fine for a notes app. It doesn't work when you're tracking who owes who $200. One inconsistency in a financial ledger and the whole system loses credibility.</p>
+                    <p>This is non-negotiable for financial software. The temptation with any client app is to do things locally for speed and sync later. That works for a notes app. It does not work when you are tracking who owes who $200. One inconsistency in a financial ledger and the whole system loses credibility.</p>
 
                     <p>Here's what the server-side architecture looks like in practice:</p>
 
@@ -161,17 +164,17 @@
 
                     <p><strong>Compliance vocabulary.</strong> We built the entire product using standard sports betting terminology &mdash; bookie, player, bet, parlay, wager. Then we realized these words carry legal baggage in certain contexts. We ended up doing a full vocabulary overhaul: bookie became "organizer," player became "member," bet became "pick," parlay became "multi-pick," wager became "stake." Every user-facing string, every landing page, every email template. The internal code still uses the original terms because renaming every type would have been a pointless refactor, but anything a user can see uses the approved language.</p>
 
-                    <p><strong>Live score timing.</strong> Auto-grading bets sounds straightforward &mdash; check if the game is final, look at the score, grade the bet. In practice, knowing <em>when</em> to check is the hard part. We built a system that estimates game end times by sport (an NFL game is roughly 3.5 hours, an NBA game about 2.5) and only calls the scores API when a game is in its finishing window. Most scheduled checks result in zero API calls because no games are close to ending. This cut our API usage dramatically while still grading bets within minutes of a game going final.</p>
+                    <p><strong>Live score timing.</strong> Automated grading sounds straightforward &mdash; check if the game is final, look at the score, grade the pick. In practice, knowing <em>when</em> to check is the hard part. We built a system that estimates game end times by sport (an NFL game is roughly 3.5 hours, an NBA game about 2.5) and only calls the scores API when a game is in its finishing window. Most scheduled checks result in zero API calls because no games are close to ending. This cut our odds integration API usage dramatically while still grading picks within minutes of a game going final.</p>
 
                     <p><strong>Getting payments right.</strong> Subscription billing is straightforward in theory but full of edge cases. Status can change asynchronously &mdash; renewals, cancellations, billing retries. We built a webhook-based system where Stripe notifies our server of subscription changes, and the server updates the user's tier. The client just reads the current tier from the database. The result is a system where subscription state is always consistent between the payment provider and our backend.</p>
 
                     <h2>Where We Are Now</h2>
 
-                    <p>The web dashboard is live and growing. Organizers can create a book, invite members, and start taking picks in under two minutes. Odds auto-import from major sportsbooks. Picks are graded automatically when games go final. Settlements are one tap. The ledger is tamper-evident and auditable.</p>
+                    <p>The web dashboard is live. Organizers create a book, invite members, and start taking picks in under two minutes. Odds integration auto-imports lines from major sportsbooks. Automated grading resolves picks within minutes of a game going final. Settlement reconciliation is one tap. The ledger is tamper-evident and auditable. Credit limit enforcement and parlay tracking work out of the box.</p>
 
-                    <p>We're working on push notifications for real-time updates, expanding sport coverage, and refining the member experience. A native mobile app is on the roadmap. The foundation is solid &mdash; server-authoritative logic, atomic settlements, and a clean separation between the clients and the backend mean we can ship new features and new platforms fast without worrying about consistency bugs.</p>
+                    <p>We continue shipping: push notifications for real-time updates, expanded sport coverage, refined member experience. The foundation is solid &mdash; server-authoritative logic, atomic settlements, and a clean separation between clients and backend mean we ship new features and new platforms fast without consistency bugs.</p>
 
-                    <p>If you've ever run a book out of a spreadsheet and a group chat, you know the pain. We built Booki because we lived it. The goal was never to build the next DraftKings &mdash; it was to build the tool we wished we had on Sunday morning when someone inevitably texts "wait, what did I bet?"</p>
+                    <p>If you have ever run a book out of a spreadsheet and a group chat, you know the pain. We built Booki because we lived it. The goal was never to build the next DraftKings &mdash; it was to build the tool we wished we had on Sunday morning when someone inevitably texts "wait, what did I bet?"</p>
 
                     <p>You can <a href="../dashboard/">try Booki free</a> with up to three members. No credit card, no per-head fees. Just a clean way to run your book.</p>
                 </div>
@@ -227,6 +230,7 @@
                 <a href="../features.html">Features</a>
                 <a href="../blog/">Blog</a>
                 <a href="../pph-software-alternative.html">PPH Alternative</a>
+                <a href="../about.html">About</a>
                 <a href="../privacy.html">Privacy Policy</a>
                 <a href="../terms.html">Terms of Service</a>
                 <a href="https://x.com/booki_sports" target="_blank" rel="noopener">Twitter</a>
