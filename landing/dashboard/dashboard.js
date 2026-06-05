@@ -4185,6 +4185,9 @@ function dashboardApp() {
                 this.showSettleModal = false;
                 await this.loadPlayers();
                 await this.loadDashboard();
+                if (this.memberDetail?.id === this.settlePlayer.id) {
+                    await this.loadMemberDetail();
+                }
             } catch (e) {
                 this.settleError = e.message || 'Failed to settle';
             }
@@ -4226,6 +4229,9 @@ function dashboardApp() {
                 this.showAdjustModal = false;
                 await this.loadPlayers();
                 await this.loadDashboard();
+                if (this.memberDetail?.id === this.adjustPlayer.id) {
+                    await this.loadMemberDetail();
+                }
             } catch (e) {
                 this.adjustError = e.message || 'Failed to adjust';
             }

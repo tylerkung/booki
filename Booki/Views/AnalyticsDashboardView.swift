@@ -209,28 +209,49 @@ struct AnalyticsDashboardView: View {
             }
         }
         .onAppear { lastUpdated = Date() }
-        .task { recomputeSummaries() }
+        .task { await recomputeSummaries() }
         .onChange(of: players.count) { scheduleRecompute() }
         .onChange(of: bets.count) { scheduleRecompute() }
         .onChange(of: ledgerEntries.count) { scheduleRecompute() }
     }
 
-    private func recomputeSummaries() {
+    private func recomputeSummaries() async {
         let activePlayers = players.filter { $0.status == .active }
-        let result = PlayerAttentionService.generateSummaries(
-            players: activePlayers,
-            bets: bets,
-            ledgerEntries: ledgerEntries
-        )
 
-        // Pre-compute per-player balance and utilization lookups
+        var newSummaries: [PlayerAnalyticsSummary] = []
+        newSummaries.reserveCapacity(activePlayers.count)
         var balances: [UUID: Decimal] = [:]
         var utilizations: [UUID: Double] = [:]
-        for summary in result {
-            let player = summary.player
-            let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
-            balances[player.id] = BalanceService.balanceOwed(from: playerLedger)
 
+        for player in activePlayers {
+            if Task.isCancelled { return }
+
+            let pas = PlayerAttentionService.calculatePAS(player: player, bets: bets, ledgerEntries: ledgerEntries)
+            let exposure = PlayerAttentionService.calculateExposure(player: player, bets: bets)
+            let playerLedger = ledgerEntries.filter { $0.player?.id == player.id }
+            let balance = BalanceService.balanceOwed(from: playerLedger)
+            let sevenDayPL = PlayerAttentionService.realizedPL(player: player, bets: bets, days: 7)
+            let thirtyDayPL = PlayerAttentionService.realizedPL(player: player, bets: bets, days: 30)
+            let allTimePL = PlayerAttentionService.realizedPL(player: player, bets: bets, days: 0)
+            let avgBet = PlayerAttentionService.avgBetSize(player: player, bets: bets, days: 30)
+            let (overdue, overdueAmt) = PlayerAttentionService.isOverdue(player: player, ledgerEntries: ledgerEntries)
+            let wr = PlayerAttentionService.winRate(player: player, bets: bets)
+
+            newSummaries.append(PlayerAnalyticsSummary(
+                player: player,
+                pas: pas,
+                exposure: exposure,
+                balanceOwed: balance,
+                sevenDayPL: sevenDayPL,
+                thirtyDayPL: thirtyDayPL,
+                allTimePL: allTimePL,
+                avgBetSize30d: avgBet,
+                isOverdue: overdue,
+                overdueAmount: overdueAmt,
+                winRate: wr
+            ))
+
+            balances[player.id] = balance
             if player.creditLimit > 0 {
                 let playerBets = bets.filter { $0.player?.id == player.id }
                 let pSummary = BalanceService.playerSummary(for: player, bets: playerBets, ledgerEntries: playerLedger)
@@ -240,9 +261,15 @@ struct AnalyticsDashboardView: View {
             } else {
                 utilizations[player.id] = 0
             }
+
+            await Task.yield()
         }
 
-        summaries = result
+        if Task.isCancelled { return }
+
+        newSummaries.sort { $0.pas.score > $1.pas.score }
+
+        summaries = newSummaries
         balanceLookup = balances
         utilizationLookup = utilizations
         summariesReady = true
@@ -254,7 +281,7 @@ struct AnalyticsDashboardView: View {
         recomputeTask = Task {
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled else { return }
-            recomputeSummaries()
+            await recomputeSummaries()
         }
     }
 

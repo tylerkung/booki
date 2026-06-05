@@ -84,6 +84,14 @@ class BetSlipManager {
     private let stakeKey = "betSlipStake"
     private let itemStakesKey = "betSlipItemStakes"
 
+    /// Reused haptic generator (creating a new one per tap warms up the Taptic Engine each time)
+    private let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
+    private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
+
+    /// Debounce token for persisting items to UserDefaults off the main thread
+    private var pendingItemsSave: Task<Void, Never>?
+    private var pendingItemStakesSave: Task<Void, Never>?
+
     /// Array of bet slip items (order preserved)
     private(set) var items: [BetSlipItem] = []
 
@@ -196,6 +204,8 @@ class BetSlipManager {
         loadBetMode()
         loadStake()
         loadItemStakes()
+        mediumHaptic.prepare()
+        lightHaptic.prepare()
     }
 
     // MARK: - Parlay Odds Calculation (US-041)
@@ -383,7 +393,8 @@ class BetSlipManager {
         guard !items.contains(where: { $0.asSelection == item.asSelection }) else { return }
         items.append(item)
         saveItems()
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        mediumHaptic.impactOccurred()
+        mediumHaptic.prepare()
 
         // US-003/US-005: If adding this item creates a conflict while in parlay mode, switch to singles
         if betMode == .parlay && hasConflictingSelections {
@@ -441,7 +452,8 @@ class BetSlipManager {
         if !hasConflictingSelections { modeSwitchMessage = nil }
         saveItems()
         saveItemStakes()
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        lightHaptic.impactOccurred()
+        lightHaptic.prepare()
     }
 
     /// Remove item at index
@@ -502,12 +514,19 @@ class BetSlipManager {
     }
 
     private func saveItems() {
-        do {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(items)
-            UserDefaults.standard.set(data, forKey: userDefaultsKey)
-        } catch {
-            print("Failed to encode bet slip items: \(error)")
+        // Snapshot on the main actor, encode + write off-main, debounced so rapid taps coalesce.
+        let snapshot = items
+        let key = userDefaultsKey
+        pendingItemsSave?.cancel()
+        pendingItemsSave = Task.detached(priority: .utility) {
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            do {
+                let data = try JSONEncoder().encode(snapshot)
+                UserDefaults.standard.set(data, forKey: key)
+            } catch {
+                print("Failed to encode bet slip items: \(error)")
+            }
         }
     }
 
@@ -549,16 +568,21 @@ class BetSlipManager {
     }
 
     private func saveItemStakes() {
-        do {
-            let encoder = JSONEncoder()
-            // Convert Decimal to Double for encoding
-            let stringDict = itemStakes.reduce(into: [String: Double]()) { result, pair in
-                result[pair.key] = NSDecimalNumber(decimal: pair.value).doubleValue
+        // Snapshot on the main actor, encode + write off-main, debounced for rapid numpad taps.
+        let snapshot = itemStakes.reduce(into: [String: Double]()) { result, pair in
+            result[pair.key] = NSDecimalNumber(decimal: pair.value).doubleValue
+        }
+        let key = itemStakesKey
+        pendingItemStakesSave?.cancel()
+        pendingItemStakesSave = Task.detached(priority: .utility) {
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            do {
+                let data = try JSONEncoder().encode(snapshot)
+                UserDefaults.standard.set(data, forKey: key)
+            } catch {
+                print("Failed to encode item stakes: \(error)")
             }
-            let data = try encoder.encode(stringDict)
-            UserDefaults.standard.set(data, forKey: itemStakesKey)
-        } catch {
-            print("Failed to encode item stakes: \(error)")
         }
     }
 }
