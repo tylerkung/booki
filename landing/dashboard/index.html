@@ -953,15 +953,15 @@
                             <tbody>
                                 <template x-for="inv in invites" :key="inv.id">
                                     <tr>
-                                        <td data-label="Code"><code style="font-size:13px;color:var(--accent);" x-text="inv.code"></code></td>
+                                        <td data-label="Code"><code style="font-size:13px;color:var(--accent);" x-text="inv.invite_code"></code></td>
                                         <td data-label="Email" x-text="inv.email || '—'"></td>
                                         <td data-label="Credit Limit" x-text="formatCurrency(inv.credit_limit || 1000)"></td>
                                         <td data-label="Created" x-text="formatDate(inv.created_at)"></td>
                                         <td data-label="Actions" style="display:flex;gap:4px;">
-                                            <button class="btn btn-ghost" title="Copy Code" @click="copyInviteCodeValue(inv.code)">
+                                            <button class="btn btn-ghost" title="Copy Code" @click="copyInviteCodeValue(inv.invite_code)">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                             </button>
-                                            <button class="btn btn-ghost" title="Copy Link" @click="copyInviteLink(inv.code)">
+                                            <button class="btn btn-ghost" title="Copy Link" @click="copyInviteLink(inv.invite_code)">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                                             </button>
                                             <button class="btn btn-ghost" title="Delete" style="color:var(--danger);"
