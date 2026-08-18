@@ -4,54 +4,72 @@ Status: draft for discussion · Created 2026-08-18
 
 ## Introduction
 
-There is currently no way to see Booki as a whole. Every existing view is
-tenant-scoped: an organizer sees their own members, an organizer's dashboard
-sums their own book. Answering "how many real organizers do I have", "is the
-Odds API about to run out", or "did the cron run last night" means opening the
-Supabase dashboard and writing SQL by hand.
+Supabase Studio works, but it shows the database as the database sees it, not as
+Booki sees it. A bet row reads `bookie_id: 5b85eb3c…`, `player_id: 9a1f…`,
+`event_id: 2df3…` — three UUIDs and no names. Answering "what did Andrew bet on
+Sunday" means writing a join by hand. That friction is the entire problem this
+solves.
 
-This PRD covers a single-operator admin view — one account, not a role system —
-that answers those questions in one place. It extends the existing Alpine.js
-SPA at `landing/dashboard/` rather than introducing a new app.
+This is a **read-only, domain-aware browser** for a single operator. It resolves
+identifiers to names, shows related records together, and makes the common
+lookups one click instead of one query. It extends the existing Alpine.js SPA at
+`landing/dashboard/`.
 
-**Scope note:** this is an internal tool. It should be plain and dense, not
-designed. Reuse the existing dashboard CSS and card patterns.
+**Explicitly out of scope for v1: writes of any kind.** No row editing, no
+actions, no calling edge functions. That decision is deliberate — see below.
 
-## The constraint that shapes the design
+## Two constraints that shape the design
+
+### 1. RLS blocks cross-tenant reads
 
 Every table is protected by RLS scoped to `bookie_id` or `auth_user_id`, and
 `get_user_bookie_id()` underpins most policies. An admin needs to read *across*
-tenants, which RLS is specifically built to prevent — so the admin views cannot
-be built from ordinary client queries the way the rest of the SPA is.
+tenants, which RLS exists to prevent — so these views cannot be built from
+ordinary client queries the way the rest of the SPA is.
 
-Two viable approaches, to decide before building:
+Two viable approaches:
 
-1. **`SECURITY DEFINER` RPCs**, one per panel, each starting with an explicit
-   email allowlist check. Reads stay in Postgres; the client calls RPCs.
-2. **A single `admin_metrics` edge function** using the service client, gated by
-   the same allowlist, returning one JSON payload.
+1. **`SECURITY DEFINER` RPCs**, one per view, each starting with an explicit
+   email allowlist check.
+2. **A single `admin_query` edge function** using the service client, gated by
+   the same allowlist, returning shaped JSON per view.
 
-Option 2 is likely simpler — one auth check, one deployment, and it matches how
-every other privileged operation in this codebase already works. Option 1 spreads
-the allowlist across many functions, and a missed check silently leaks
+Option 2 is likely simpler — one auth check, one deployment, matching how every
+other privileged operation in this codebase already works. Option 1 spreads the
+allowlist across many functions, and one missed check silently leaks
 cross-tenant data.
 
-**Whichever is chosen, the allowlist must be server-side.** Hiding a nav item in
-the SPA is not access control.
+**The allowlist must be server-side.** Hiding a nav item in the SPA is not
+access control.
+
+### 2. Read-only, on purpose
+
+Bets and ledger entries are written only through edge functions that enforce
+idempotency, business rules, audit trails and a tamper-evident hash chain on
+`ledger_entries`. A generic row editor bypasses all of it: editing a bet's
+status directly skips the balance recalculation and the audit event, leaving the
+ledger disagreeing with the bets table — corruption that surfaces weeks later and
+cannot be untangled. Editing a ledger row either breaks the hash chain or is
+rejected outright by the immutability trigger.
+
+So v1 reads and does not write. If actions are added later they must call the
+existing edge functions (`adjust_balance`, `settle_bet`, `override_grade`,
+`reverse_settlement`), never touch tables directly.
 
 ## Goals
 
-- One page answering "is the platform healthy right now"
-- Cross-tenant visibility: organizers, members, picks, volume
-- Third-party quota and credential status in one place, before something expires
-- No new app, no new design system, no role/permission framework
-- Read-only in v1 — no destructive actions from this surface
+- Browse Booki's data with names instead of UUIDs
+- Follow relationships without writing joins — organizer to members to picks to ledger
+- One search box that finds a person or a pick across all tenants
+- Reuse the existing dashboard CSS; this is an internal tool, plain and dense
+- Escape hatch for anything the UI doesn't cover
 
 ## Non-goals
 
-- Multi-admin roles or granular permissions (one operator today)
-- Impersonating an organizer
-- Anything that writes to another tenant's data
+- **Any write path** — no editing, no actions, no edge function calls (v1)
+- Replacing Supabase Studio for schema work, migrations or policy editing
+- Multi-admin roles or permissions (one operator today)
+- Charts and metrics dashboards — this is a browser, not analytics
 
 ## User Stories
 
@@ -61,54 +79,61 @@ the SPA is not access control.
 **Acceptance Criteria:**
 - [ ] Allowlist of admin emails held server-side (env var or a small `admin_users` table — not hardcoded in `dashboard.js`)
 - [ ] Caller's JWT resolved to an email and checked against the allowlist
-- [ ] Non-admin callers get 403 with no data leakage in the error body
+- [ ] Non-admin callers get 403 with no data in the error body
 - [ ] SPA hides admin nav for non-admins as a convenience only, never as the control
 - [ ] Verified by calling the endpoint with a non-admin token
 
-### US-002: Platform overview panel
-**Description:** As the operator, I want the headline numbers without writing SQL.
+### US-002: Entity resolution — the core of the whole thing
+**Description:** As the operator, I want to see names where the database stores UUIDs.
 
 **Acceptance Criteria:**
-- [ ] Organizers: total, active (has ≥1 member), dormant (0 invites and 0 members)
-- [ ] Members: total, claimed vs pending invite
-- [ ] Picks: total, open, settled, last 7 days
-- [ ] Handle: total staked, and net position across all books
-- [ ] Signups over time (simple counts by week is enough)
-- [ ] Test accounts excluded or clearly flagged — `test_stress_*` and personal accounts polluted every count during the 2026-08-18 audit
+- [ ] Every foreign key renders as a human label with the UUID available on hover or click
+- [ ] `bookie_id` → organizer name and email
+- [ ] `player_id` → member name (preferring `display_name`, falling back to `name`)
+- [ ] `event_id` → "Away @ Home", start time, status
+- [ ] `bet_id` → market, side, odds, stake
+- [ ] Every resolved label is a link to that record's own view
+- [ ] **This is what Supabase Studio cannot do and the main reason to build anything**
 
-### US-003: Third-party status panel
-**Description:** As the operator, I want to know a quota or credential is about to bite before it does.
-
-**Acceptance Criteria:**
-- [ ] **Odds API**: credits used / remaining this period, from the `quota` block now returned by `sync_games`, `auto_refresh_games` and `refresh_live_scores` (`_shared/odds_quota.ts`)
-- [ ] Requires persisting quota somewhere — the values exist only in responses and logs today. A small `odds_api_usage` table written once per run is enough
-- [ ] Trend, not just current: burn rate per day and projected end-of-period
-- [ ] **Stripe**: active subscriptions, MRR, failed payments
-- [ ] **Resend**: recent sends and any bounces (verify what the API exposes)
-- [ ] **APNs**: `.p8` key age, device token count, recent delivery failures
-- [ ] Anything approaching a limit is visually distinct, not just a number in a row
-
-### US-004: Cron and job health panel
-**Description:** As the operator, I want to see whether the scheduled jobs actually ran.
+### US-003: Organizer browser
+**Description:** As the operator, I want to open an organizer and see their whole world.
 
 **Acceptance Criteria:**
-- [ ] Last run time and outcome for each job: `sync_games`, `auto_refresh_games`, `refresh_live_scores`, `send_followup_email`
-- [ ] Reads `cron.job_run_details` (needs a `SECURITY DEFINER` wrapper — not exposed to PostgREST)
-- [ ] Flags a job that has not run in longer than its schedule allows
-- [ ] Surfaces recent edge function errors if reachable
-- [ ] **Motivating case:** `sync_games` silently exceeded the 150s edge limit for an unknown period in August. Nothing surfaced it; odds went stale and it read as a UI bug
+- [ ] List: name, email, tier, member count, pick count, created — sortable, searchable
+- [ ] Detail: members, recent picks, ledger totals, invites, subscription state, all resolved per US-002
+- [ ] Test accounts (`test_stress_*`, personal) filterable out with one toggle — they distorted every count during the 2026-08-18 audit
+- [ ] Dormant organizers (0 invites, 0 members) visibly marked
 
-### US-005: Organizer list and detail
-**Description:** As the operator, I want to look up a specific organizer and see their state.
+### US-004: Member and pick browsers
+**Description:** As the operator, I want to trace a member's activity without a join.
 
 **Acceptance Criteria:**
-- [ ] Searchable list: name, email, tier, member count, pick count, created date
-- [ ] Detail view: members, recent picks, ledger totals, subscription state
-- [ ] Read-only
-- [ ] Reuses existing member-detail card patterns rather than new components
+- [ ] Member detail: which organizer, credit and win limits, balance, picks, ledger entries
+- [ ] Pick detail: the event with names and score, the member, the organizer, stake, odds, grade, and any linked ledger entry
+- [ ] Parlays show their sibling legs (rows sharing a `ticket_id`)
+- [ ] Ledger entries shown chronologically with running balance
 
-### US-006: Data quality panel
-**Description:** As the operator, I want the integrity checks that have already caught real problems to run continuously.
+### US-005: Global search
+**Description:** As the operator, I want one box that finds whatever I'm looking for.
+
+**Acceptance Criteria:**
+- [ ] Single input searching across organizers, members, events and picks
+- [ ] Accepts a name, an email, or a raw UUID pasted from Supabase or a log line
+- [ ] Results grouped by type, each linking to its detail view
+- [ ] Pasting a UUID resolving to "this is a member of Andrew's book" is the single highest-value interaction here
+
+### US-006: Read-only SQL runner
+**Description:** As the operator, I want an escape hatch for anything the UI doesn't cover.
+
+**Acceptance Criteria:**
+- [ ] Text area, results rendered as a table
+- [ ] **`SELECT` only** — rejected server-side by inspecting the parsed statement, not by string matching, and executed on a read-only connection or role so a bypass still cannot write
+- [ ] Row cap and statement timeout so a bad query cannot take the database down
+- [ ] Results exportable as CSV
+- [ ] Means the tool never blocks you when a question doesn't have a page
+
+### US-007: Data quality views
+**Description:** As the operator, I want the integrity checks that have already caught real problems to be one click away.
 
 **Acceptance Criteria:**
 - [ ] Duplicate events by `external_id` (should be 0 since migration 032's unique index)
@@ -116,18 +141,26 @@ the SPA is not access control.
 - [ ] Markets attached to finished games (should stay near 0 given the prune sweep)
 - [ ] Events past start still marked `scheduled`
 - [ ] Ledger hash-chain validity — a validator already exists from migration 018
-- [ ] Each check shows a count and a link to the offending rows
+- [ ] Each check shows a count and the offending rows, resolved per US-002
 
 ## Open questions
 
-- **Alerting.** A dashboard only helps when opened. Is a daily digest email or a
-  push on threshold breach worth it, given push infrastructure already exists?
-- **Where does it live?** A `#/admin` route inside the member dashboard is
-  cheapest. A separate page is better isolated. Preference?
-- **Retention/history.** Most panels are "right now". Which of these need trend
-  data stored over time, and therefore a table plus a writer?
-- **Financial view.** Is the useful number platform handle, or Booki's own
-  revenue (subscriptions), or both?
+- **Is this worth building at all?** A native Postgres client (TablePlus,
+  Postico, Beekeeper) connected to Supabase gives a far better *generic*
+  browsing experience than a custom SPA — keyboard-driven, fast, real FK
+  navigation. The custom build only wins on US-002 and US-005: Booki-specific
+  entity resolution and cross-tenant search. Worth trying a native client first
+  to see whether the remaining gap justifies the work.
+- **How much of the data model needs covering?** Organizers, members, picks,
+  events and ledger cover most questions. Audit events, settlement events,
+  device tokens and idempotency keys are rarely browsed and could be left to the
+  SQL runner.
+- **Mobile?** Debugging from a phone is occasionally useful but doubles the
+  layout work.
+- **Does read-only stay read-only?** The obvious next want is "fix this stuck
+  bet from here". That's a real need but a different product with a much higher
+  bar — worth deciding now whether v1 is a stepping stone or a deliberate
+  endpoint.
 
 ## Prior art in this codebase
 
