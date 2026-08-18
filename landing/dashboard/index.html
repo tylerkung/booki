@@ -955,7 +955,7 @@
                                     <tr>
                                         <td data-label="Code"><code style="font-size:13px;color:var(--accent);" x-text="inv.invite_code"></code></td>
                                         <td data-label="Email" x-text="inv.email || '—'"></td>
-                                        <td data-label="Credit Limit" x-text="formatCurrency(inv.credit_limit || 1000)"></td>
+                                        <td data-label="Credit Limit" x-text="formatCurrency(bookie?.default_credit_limit || 1000)"></td>
                                         <td data-label="Created" x-text="formatDate(inv.created_at)"></td>
                                         <td data-label="Actions" style="display:flex;gap:4px;">
                                             <button class="btn btn-ghost" title="Copy Code" @click="copyInviteCodeValue(inv.invite_code)">
@@ -3913,10 +3913,11 @@
                 <label>Email (optional)</label>
                 <input type="email" x-model="inviteEmail" placeholder="member@example.com">
             </div>
-            <div class="form-group">
-                <label>Credit Limit</label>
-                <input type="number" x-model="inviteCreditLimit" placeholder="1000">
-            </div>
+            <p style="font-size:13px;color:var(--text-secondary);margin:-4px 0 16px;line-height:1.5;">
+                New members join with your default credit limit
+                (<span x-text="formatCurrency(bookie?.default_credit_limit || 1000)"></span>).
+                Change it in Member Settings, or per member after they join.
+            </p>
             <div x-show="inviteError" class="form-error" x-text="inviteError"></div>
             <div x-show="inviteCode" class="form-success">
                 Invite code: <strong x-text="inviteCode"></strong>

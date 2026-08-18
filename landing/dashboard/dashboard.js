@@ -397,7 +397,6 @@ function dashboardApp() {
         // ── Modals ──
         showInviteModal: false,
         inviteEmail: '',
-        inviteCreditLimit: 1000,
         inviteCode: '',
         inviteError: '',
         isCreatingInvite: false,
@@ -4074,7 +4073,6 @@ function dashboardApp() {
                 const response = await this.callEdgeFunction('create_invite', {
                     idempotency_key: crypto.randomUUID(),
                     email: this.inviteEmail || undefined,
-                    credit_limit: parseFloat(this.inviteCreditLimit) || 1000,
                 });
 
                 if (response.error) {
