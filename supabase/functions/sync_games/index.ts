@@ -653,18 +653,35 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Insert new events
+    // Insert new events.
+    //
+    // Upsert with ignoreDuplicates rather than a plain insert: the unique index
+    // on events.external_id (migration 032) is the last line of defence against
+    // the duplication bug, and without this a single stale existence-check would
+    // turn into a hard 23505 that fails the whole batch. Here a row that already
+    // exists is simply skipped.
+    //
+    // NOTE: deliberately NOT a blanket upsert of every field. The update path
+    // below preserves `status` and skips events already marked final — a full
+    // upsert would overwrite status and un-finalize graded games.
     if (eventsToInsert.length > 0) {
-      const { error: insertError } = await client
+      const { data: insertedRows, error: insertError } = await client
         .from('events')
-        .insert(eventsToInsert);
+        .upsert(eventsToInsert, { onConflict: 'external_id', ignoreDuplicates: true })
+        .select('id');
 
       if (insertError) {
         console.error('Error inserting events:', insertError);
         stats.errors.push(`Insert error: ${insertError.message}`);
       } else {
-        stats.events_inserted = eventsToInsert.length;
-        console.log(`Inserted ${eventsToInsert.length} new events`);
+        const actual = insertedRows?.length ?? 0;
+        stats.events_inserted = actual;
+        const skipped = eventsToInsert.length - actual;
+        console.log(`Inserted ${actual} new events${skipped > 0 ? ` (${skipped} already existed, skipped)` : ''}`);
+        if (skipped > 0) {
+          // Should be 0 — a non-zero value means the existence check missed rows.
+          console.warn(`Existence check missed ${skipped} events — investigate pagination`);
+        }
       }
     }
 

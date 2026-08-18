@@ -24,6 +24,8 @@ document covers the cleanup and the storage model that prevents a recurrence.
 
 ## Measured baseline (2026-08-18)
 
+Post-cleanup: 5,986 rows, 5,986 distinct external_ids, 0 duplicates.
+
 ```
 event rows            25,134      →  5,986 real games (76% duplicates)
   past                            →  5,396
@@ -52,7 +54,7 @@ new game; only the provider's event id distinguishes them reliably.
 
 ## Phases
 
-### Phase 1 — Dedupe (staged, awaiting go-ahead)
+### Phase 1 — Dedupe ✅ COMPLETE (2026-08-18)
 
 Per `external_id` group, canonical = the row with the most markets, tie-broken
 by oldest `created_at`, so the surviving row keeps its odds.
@@ -72,13 +74,24 @@ that exist nowhere in the table; all belong to `test_stress_Bookie` from
 
 Backup taken: `backups/events-2026-08-18.json`, `backups/markets-2026-08-18.json`.
 
-### Phase 2 — Prevent recurrence
+### Phase 2 — Prevent recurrence (in progress)
 
-- Unique index on `events.external_id`
-- `sync_games` switches to a true upsert (`onConflict: 'external_id'`) so the
-  database rejects a duplicate even if application logic regresses
-- Audit remaining unbounded selects: `refresh_live_scores:141`, several in
-  `auto_refresh_games`
+- Unique index on `events.external_id` — migration `032`. Plain, not partial:
+  PostgREST emits a bare `ON CONFLICT (external_id)` which cannot infer a
+  partial index's predicate. NULLs stay permitted (Postgres treats them as
+  distinct), so manually created events remain possible.
+- `sync_games` insert becomes `upsert(..., { onConflict: 'external_id',
+  ignoreDuplicates: true })`, so a stale existence check is silently skipped
+  instead of failing the batch with a 23505. It logs a warning when that
+  happens, which is the early-warning signal that pagination regressed.
+- **Not** a blanket upsert of all fields: the update path preserves `status`
+  and skips events already final. A full upsert would un-finalize graded games.
+- **Ordering hazard**: migration 032 must be applied BEFORE deploying the
+  function, or every sync fails with 42P10.
+- Audited `refresh_live_scores` and `auto_refresh_games`: every event query
+  there filters `.in('id', <ids derived from bets>)`, so results stay far below
+  the 1000-row cap at current volume. No change needed. Revisit if distinct
+  bet event ids ever approach 1000.
 
 ### Phase 3 — Odds lifecycle
 
