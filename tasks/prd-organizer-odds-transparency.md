@@ -56,14 +56,40 @@ advantage against pay-per-head services, where the pricing is opaque by design.
 - [ ] Links to the "How odds work" page
 - [ ] Wording checked against compliance vocabulary and against what the provider's terms permit regarding attribution
 
-### US-004: Explain the empty state
+### US-004: Explain the empty state (organizer-only, as of 2026-08-18)
 **Description:** As an organizer, I want a game with no odds to explain itself.
 
+**Context — this changed today.** The 48h member display window shipped on
+2026-08-18, so members no longer see games without prices at all. Measured
+immediately after:
+
+```
+MEMBER view (<=48h):        20 games,  0 without odds
+BOOKIE view (48h-14d):      22 games,  9 without odds
+```
+
+The remaining gap is structural: `EventsListView` (organizer Events tab) uses a
+14-day horizon, while `sync_games` only stores odds 7 days out. Organizers
+therefore see roughly a week of games with no prices, and nothing says why.
+Members are unaffected.
+
 **Acceptance Criteria:**
-- [ ] A game outside the 48h window shows a short reason, not a dash — e.g. "Lines open 48 hours before start"
-- [ ] A finished game's pick detail explains that odds are kept on the pick itself, so history is unaffected
-- [ ] Distinguishes expected-empty from genuinely-missing; a game starting today with no price is a fault and should not be reassuring
-- [ ] **This is the highest-value item here** — the dash with no explanation is what triggered the original investigation
+- [ ] Decide the horizon mismatch first — three options:
+      (a) narrow `EventsListView` to 7 days so the gap cannot occur; free, but
+          removes the organizer's forward view of the schedule
+      (b) keep 14 days and explain the empty state in copy; preserves planning
+          visibility, costs a small amount of UI
+      (c) widen the storage window to 14 days; costs storage and egress, and
+          partially undoes the Phase 3 reduction
+- [ ] Whichever is chosen, a priceless game inside the storage window shows a
+      short reason rather than a bare dash — e.g. "Lines open closer to start"
+- [ ] A finished game's pick detail explains that odds live on the pick itself,
+      so history is unaffected
+- [ ] Distinguishes expected-empty from genuinely-missing: a game starting
+      today with no price is a fault and must not read as normal
+- [ ] **Recommended: (b).** Organizers reasonably want to see next week's
+      schedule; the problem was never the missing price, it was the silence
+      about why
 
 ### US-005: Neutrality statement
 **Description:** As an organizer, I want to know the software is not playing against my members.
