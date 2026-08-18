@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon_io/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon_io/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon_io/favicon-16x16.png">
-    <link rel="icon" type="image/x-icon" href="assets/favicon_io/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon_io/favicon-16x16.png">
+    <link rel="icon" type="image/x-icon" href="/assets/favicon_io/favicon.ico">
     <meta name="description" content="You've been invited to join a group on Booki. Sign up and enter your invite code to get started.">
     <title>Join Invite — Booki</title>
     <link rel="canonical" href="https://bookisports.com/invite.html">
+    <meta name="robots" content="noindex">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
@@ -24,64 +25,160 @@
     <meta name="twitter:description" content="You've been invited to join a group on Booki. Sign up and enter your invite code to get started.">
     <meta name="twitter:image" content="https://bookisports.com/assets/booki-og.jpg">
 
-    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+
+    <!--
+      Deliberately self-contained: no link to styles.css.
+      This page is served at /invite/{CODE} via a Netlify rewrite, so a relative
+      stylesheet href resolves to /invite/styles.css, which the rewrite answers
+      with HTML. Combined with X-Content-Type-Options: nosniff the browser
+      refuses it and the page renders completely unstyled. Keeping the CSS
+      inline makes that failure mode impossible.
+    -->
     <style>
+        :root {
+            --bg: #0A0A12;
+            --bg-card: #14141F;
+            --border: #2A2A3A;
+            --accent: #00F5D4;
+            --text-primary: #F8F8F8;
+            --text-secondary: #A8A8B8;
+            --text-muted: #6B6B7B;
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
         .invite-page {
-            min-height: 100vh;
+            min-height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            text-align: center;
             padding: 24px;
+            background:
+                radial-gradient(circle at 50% 0%, rgba(0, 245, 212, 0.10), transparent 55%),
+                var(--bg);
         }
         .invite-card {
-            max-width: 400px;
             width: 100%;
+            max-width: 420px;
+            text-align: center;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 48px 32px 40px;
         }
         .invite-logo {
-            height: 64px;
-            margin-bottom: 32px;
+            height: 44px;
+            width: auto;
+            margin: 0 auto 28px;
             display: block;
-            margin-left: auto;
-            margin-right: auto;
+            filter: drop-shadow(0 0 24px rgba(0, 245, 212, 0.35));
         }
         .invite-title {
-            font-size: 1.5rem;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.65rem;
             font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+            margin: 0 0 10px;
         }
         .invite-sub {
             color: var(--text-secondary);
-            margin-bottom: 32px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin: 0 0 28px;
+        }
+        .invite-code-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin: 0 0 10px;
         }
         .invite-code {
-            display: inline-block;
-            font-family: 'Space Grotesk', monospace;
-            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-family: 'Space Grotesk', ui-monospace, monospace;
+            font-size: 1.6rem;
             font-weight: 700;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.18em;
             color: var(--accent);
-            background: var(--bg-card);
+            background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px 24px;
-            margin-bottom: 32px;
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 28px;
+            word-break: break-all;
         }
+        .copy-btn {
+            flex: 0 0 auto;
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            color: var(--text-muted);
+            line-height: 0;
+            transition: color 0.15s ease;
+        }
+        .copy-btn:hover { color: var(--accent); }
         .invite-btn {
-            display: inline-block;
-            padding: 14px 32px;
+            display: block;
+            width: 100%;
+            padding: 16px 32px;
             background: var(--accent);
             color: var(--bg);
+            font-family: 'Space Grotesk', sans-serif;
             font-weight: 700;
             font-size: 1rem;
             border-radius: 12px;
             text-decoration: none;
-            margin-bottom: 16px;
+            box-shadow: 0 6px 20px rgba(0, 245, 212, 0.18);
+            transition: transform 0.15s ease;
         }
+        .invite-btn:hover { transform: translateY(-1px); }
         .invite-fallback {
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             color: var(--text-muted);
+            line-height: 1.6;
+            margin: 18px 0 0;
+        }
+        .invite-footer {
+            margin: 28px 0 0;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .invite-footer a { color: var(--text-muted); text-decoration: none; }
+        .invite-footer a:hover { color: var(--text-secondary); }
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 32px;
+            transform: translateX(-50%) translateY(12px);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 10px 18px;
+            border-radius: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        @media (max-width: 420px) {
+            .invite-card { padding: 36px 22px 32px; }
+            .invite-code { font-size: 1.3rem; letter-spacing: 0.12em; }
         }
     </style>
 </head>
@@ -89,30 +186,72 @@
     <div class="invite-page">
         <div class="invite-card">
             <img src="/assets/logo-booki-blk.svg" alt="Booki" class="invite-logo">
-            <h1 class="invite-title">You've been invited</h1>
-            <p class="invite-sub">Sign in to Booki to join your group.</p>
-            <div class="invite-code" id="inviteCode"></div>
-            <br><br>
-            <a href="/dashboard/" id="openAppBtn" class="invite-btn">Open Booki</a>
-            <p class="invite-fallback">Copy the code above and enter it after signing up.</p>
+
+            <!-- Valid invite -->
+            <div id="inviteValid" hidden>
+                <h1 class="invite-title">You've been invited</h1>
+                <p class="invite-sub">Someone wants you in their group on Booki. Create your account with the code below to join.</p>
+                <p class="invite-code-label">Your invite code</p>
+                <div class="invite-code">
+                    <span id="inviteCode"></span>
+                    <button class="copy-btn" id="copyBtn" type="button" title="Copy code" aria-label="Copy invite code">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                </div>
+                <a href="/dashboard/" id="openAppBtn" class="invite-btn">Get Started</a>
+                <p class="invite-fallback">Sign up, then enter this code when prompted. It expires in 7 days.</p>
+            </div>
+
+            <!-- No code in the URL -->
+            <div id="inviteMissing" hidden>
+                <h1 class="invite-title">Invite link incomplete</h1>
+                <p class="invite-sub">This link is missing its invite code. Ask whoever invited you to resend it — or sign up and enter the code manually.</p>
+                <a href="/dashboard/" class="invite-btn">Go to Booki</a>
+            </div>
+
+            <p class="invite-footer">
+                <a href="https://bookisports.com">bookisports.com</a>
+                &nbsp;·&nbsp;
+                <a href="/terms.html">Terms</a>
+                &nbsp;·&nbsp;
+                <a href="/privacy.html">Privacy</a>
+            </p>
         </div>
     </div>
+
+    <div class="toast" id="toast">Code copied</div>
+
     <script>
-        // Extract invite code from URL path: /invite/ABC123
-        var pathParts = window.location.pathname.split('/');
-        var code = pathParts[pathParts.length - 1] || '';
+        (function () {
+            // Code comes from the path (/invite/ABC12345). Guard against the
+            // bare /invite.html case, which would otherwise render the filename
+            // as if it were the code.
+            var last = window.location.pathname.split('/').filter(Boolean).pop() || '';
+            var fromQuery = new URLSearchParams(window.location.search).get('code') || '';
+            var candidate = (fromQuery || last).toUpperCase();
+            var code = /^[A-Z0-9]{6,12}$/.test(candidate) ? candidate : '';
 
-        // Display the code
-        document.getElementById('inviteCode').textContent = code;
+            if (!code) {
+                document.getElementById('inviteMissing').hidden = false;
+                return;
+            }
 
-        // Set button to web dashboard
-        document.getElementById('openAppBtn').href = '/dashboard/';
+            document.getElementById('inviteValid').hidden = false;
+            document.getElementById('inviteCode').textContent = code;
 
-        // On iOS, try deep link first (falls back to web if app not installed)
-        if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-            var deepLink = 'booki://invite/' + code;
-            window.location.href = deepLink;
-        }
+            var toast = document.getElementById('toast');
+            document.getElementById('copyBtn').addEventListener('click', function () {
+                navigator.clipboard.writeText(code).then(function () {
+                    toast.classList.add('show');
+                    setTimeout(function () { toast.classList.remove('show'); }, 1600);
+                });
+            });
+
+            // On iOS, try the app first — falls through to this page if not installed.
+            if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+                window.location.href = 'booki://invite/' + code;
+            }
+        })();
     </script>
 </body>
 </html>
