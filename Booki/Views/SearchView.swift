@@ -36,17 +36,13 @@ struct SearchView: View {
         acceptancePolicies.first?.eventLockOffsetMinutes ?? 0
     }
 
-    private var upcomingHorizon: Date {
-        Date().addingTimeInterval(14 * 24 * 3600)
-    }
-
     /// Bettable events — same criteria as GamesView
     private var bettableEvents: [Event] {
         let now = Date()
         return events.filter { event in
             guard event.status == .scheduled else { return false }
             guard event.startTime > now else { return false }
-            guard event.startTime <= upcomingHorizon else { return false }
+            guard event.isWithinDisplayWindow(now: now) else { return false }
             guard !event.isLocked(offsetMinutes: lockOffsetMinutes) else { return false }
             return true
         }.sorted { $0.startTime < $1.startTime }

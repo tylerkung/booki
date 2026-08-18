@@ -102,6 +102,8 @@ struct SportPageView: View {
                 // Player view: only bettable events
                 guard event.status == .scheduled else { return false }
                 guard event.startTime > now else { return false }
+                // 48h member display window; outrights exempt so futures stay listed
+                guard event.isWithinDisplayWindow(now: now) else { return false }
                 guard !event.isLocked(offsetMinutes: lockOffsetMinutes) else { return false }
                 return true
             }

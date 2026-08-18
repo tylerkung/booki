@@ -140,4 +140,36 @@ final class Event: Syncable {
         // Check if current time is past the lock time
         return Date() >= lockTime(offsetMinutes: offsetMinutes)
     }
+
+    // MARK: - Betting Window
+
+    /// How far ahead members can see and bet games.
+    ///
+    /// Members rarely bet more than two days out, and beyond that a line is
+    /// speculative rather than useful. `sync_games` stores odds for 7 days —
+    /// wider than this on purpose, so a game already has a price by the time
+    /// it becomes visible.
+    ///
+    /// Bookie-facing views (EventsListView) keep their own longer horizon;
+    /// this bounds what members see.
+    static let displayWindow: TimeInterval = 48 * 3600
+
+    /// Latest start time a member can currently see.
+    static var displayHorizon: Date {
+        Date().addingTimeInterval(displayWindow)
+    }
+
+    /// Outright/futures events, which the sync marks with an "Outright" away
+    /// team sentinel. They are exempt from the display window — a futures
+    /// market is live for a whole season, so a start-time bound would hide
+    /// every one of them, including the Super Bowl and championship futures
+    /// that members most want to bet early.
+    var isOutrightEvent: Bool {
+        awayTeam == "Outright"
+    }
+
+    /// Whether this event falls inside the member-facing display window.
+    func isWithinDisplayWindow(now: Date = Date()) -> Bool {
+        isOutrightEvent || startTime <= now.addingTimeInterval(Event.displayWindow)
+    }
 }

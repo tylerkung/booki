@@ -6,6 +6,30 @@
 const SUPABASE_URL = 'https://vstfauqufwpdytmvjyfz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdGZhdXF1ZndwZHl0bXZqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMjcwNjcsImV4cCI6MjA4NDgwMzA2N30.uwimFkR3pN8BODjjM5KnusptdZz_vcrxKnK_2LKfZHI';
 
+/**
+ * How far ahead members can see and bet games.
+ *
+ * Members rarely bet more than two days out, and beyond that a line is
+ * speculative rather than useful. sync_games stores odds for 7 days — wider,
+ * so a game already has a price the moment it becomes visible here.
+ *
+ * Outrights are exempt. Futures (championship winners and similar) are drawn
+ * from the same events query the sport pages use, so bounding it by start_time
+ * alone would hide every future — 9 live ones sit beyond 48h today. They are
+ * matched back in by away_team, which is the sentinel the sync writes for an
+ * outright.
+ */
+const ODDS_DISPLAY_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+function oddsDisplayCutoff() {
+    return new Date(Date.now() + ODDS_DISPLAY_WINDOW_MS).toISOString();
+}
+
+/** PostgREST filter: inside the display window, OR an outright. */
+function oddsDisplayFilter() {
+    return `start_time.lte.${oddsDisplayCutoff()},away_team.eq.Outright`;
+}
+
 function dashboardApp() {
     return {
         // ── Auth ──
@@ -1603,6 +1627,7 @@ function dashboardApp() {
                 .is('bookie_id', null)
                 .not('status', 'eq', 'final').not('status', 'eq', 'canceled')
                 .gte('start_time', now)
+                .or(oddsDisplayFilter())
                 .order('start_time', { ascending: true });
 
             this.playerEvents = events || [];
@@ -1689,6 +1714,7 @@ function dashboardApp() {
                     .is('bookie_id', null)
                     .not('status', 'eq', 'final').not('status', 'eq', 'canceled')
                     .gte('start_time', now)
+                    .or(oddsDisplayFilter())
                     .order('start_time', { ascending: true });
                 this.playerEvents = events || [];
             }
