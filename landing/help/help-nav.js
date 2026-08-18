@@ -20,14 +20,25 @@ const KB_CONTENTS = [
             { href: 'how-odds-work.html', title: 'Where odds come from' },
         ],
     },
-    // Planned — see tasks/prd-knowledge-base.md
-    // {
-    //     group: 'Limits and rules',
-    //     items: [
-    //         { href: 'credit-and-win-limits.html', title: 'Credit and win limits' },
-    //         { href: 'how-picks-are-graded.html', title: 'How picks are graded' },
-    //     ],
-    // },
+    {
+        group: 'Running your group',
+        items: [
+            { href: 'settling-up.html', title: 'Settling up' },
+        ],
+    },
+    {
+        group: 'Limits and rules',
+        items: [
+            { href: 'credit-and-win-limits.html', title: 'Credit and win limits' },
+            { href: 'how-picks-are-graded.html', title: 'How picks are graded' },
+        ],
+    },
+    {
+        group: 'Billing',
+        items: [
+            { href: 'free-vs-pro.html', title: 'Free and Pro' },
+        ],
+    },
 ];
 
 (function renderKbRail() {
