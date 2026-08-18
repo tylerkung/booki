@@ -159,6 +159,23 @@ final class Event: Syncable {
         Date().addingTimeInterval(displayWindow)
     }
 
+    /// How far ahead ORGANIZERS see games in the Events tab.
+    ///
+    /// Deliberately a day inside the 7-day server-side storage window
+    /// (`ODDS_STORAGE_WINDOW_MS` in sync_games). Odds are stored 7 days out and
+    /// sync runs twice daily, so a game that has only just crossed into the
+    /// window may have no prices for up to 12 hours. Showing 6 days means
+    /// everything an organizer sees has been inside the storage window for at
+    /// least two syncs, so it has odds.
+    ///
+    /// Was 14 days, which sat a full week beyond the storage window and left
+    /// organizers looking at ~9 games with no prices and no explanation.
+    static let organizerWindow: TimeInterval = 6 * 24 * 3600
+
+    static var organizerHorizon: Date {
+        Date().addingTimeInterval(organizerWindow)
+    }
+
     /// Outright/futures events, which the sync marks with an "Outright" away
     /// team sentinel. They are exempt from the display window — a futures
     /// market is live for a whole season, so a start-time bound would hide

@@ -39,15 +39,6 @@ advantage against pay-per-head services, where the pricing is opaque by design.
 - [ ] Uses `.cardStyle()` and Theme tokens, consistent with other Settings detail pages
 - [ ] Mirrored in the web dashboard, not iOS-only
 
-### US-002: Odds freshness indicator
-**Description:** As an organizer, I want to see how current a price is, so a lag is visible rather than suspicious.
-
-**Acceptance Criteria:**
-- [ ] "Updated X ago" shown on odds surfaces, sourced from `events.last_odds_update` — already populated on every sync
-- [ ] Pattern already exists on the golf sport page; extend it rather than inventing a second treatment
-- [ ] Visually de-emphasized — informational, not an alarm
-- [ ] Consider a distinct state when a price is materially older than its tier's expected cadence (see `HIGH_FREQUENCY_LEAGUES` tiering in `auto_refresh_games`)
-
 ### US-003: Source attribution
 **Description:** As an organizer, I want to see that prices come from a real market.
 
@@ -56,40 +47,31 @@ advantage against pay-per-head services, where the pricing is opaque by design.
 - [ ] Links to the "How odds work" page
 - [ ] Wording checked against compliance vocabulary and against what the provider's terms permit regarding attribution
 
-### US-004: Explain the empty state (organizer-only, as of 2026-08-18)
-**Description:** As an organizer, I want a game with no odds to explain itself.
+### US-004: Empty state — RESOLVED 2026-08-18 (option a)
+**Description:** As an organizer, I don't want to see games with no prices.
 
-**Context — this changed today.** The 48h member display window shipped on
-2026-08-18, so members no longer see games without prices at all. Measured
-immediately after:
+Members were already unaffected after the 48h display window shipped. The
+organizer gap was structural: `EventsListView` used a 14-day horizon while
+`sync_games` stores odds for 7 days, leaving ~9 games priceless and unexplained.
+
+Resolved by narrowing the organizer horizon rather than explaining the gap.
+`Event.organizerWindow` is **6 days**, deliberately a day inside the 7-day
+storage window: sync runs twice daily, so a game that has only just crossed into
+storage can be priceless for up to 12 hours. Six days guarantees at least two
+syncs have covered anything shown.
 
 ```
-MEMBER view (<=48h):        20 games,  0 without odds
-BOOKIE view (48h-14d):      22 games,  9 without odds
+organizer sees at 14 days (before):  42 games,  9 without odds
+organizer sees at  6 days (after):   33 games,  0 without odds
 ```
-
-The remaining gap is structural: `EventsListView` (organizer Events tab) uses a
-14-day horizon, while `sync_games` only stores odds 7 days out. Organizers
-therefore see roughly a week of games with no prices, and nothing says why.
-Members are unaffected.
 
 **Acceptance Criteria:**
-- [ ] Decide the horizon mismatch first — three options:
-      (a) narrow `EventsListView` to 7 days so the gap cannot occur; free, but
-          removes the organizer's forward view of the schedule
-      (b) keep 14 days and explain the empty state in copy; preserves planning
-          visibility, costs a small amount of UI
-      (c) widen the storage window to 14 days; costs storage and egress, and
-          partially undoes the Phase 3 reduction
-- [ ] Whichever is chosen, a priceless game inside the storage window shows a
-      short reason rather than a bare dash — e.g. "Lines open closer to start"
-- [ ] A finished game's pick detail explains that odds live on the pick itself,
-      so history is unaffected
-- [ ] Distinguishes expected-empty from genuinely-missing: a game starting
-      today with no price is a fault and must not read as normal
-- [ ] **Recommended: (b).** Organizers reasonably want to see next week's
-      schedule; the problem was never the missing price, it was the silence
-      about why
+- [x] Organizer horizon narrowed to a value inside the storage window
+- [x] Verified 0 priceless games in the organizer view
+- [ ] Still worth a short line on a finished game's pick detail noting that odds
+      live on the pick itself, so history is unaffected
+- [ ] A game starting today with no price remains a genuine fault and must not
+      read as normal — no copy should make that case look expected
 
 ### US-005: Neutrality statement
 **Description:** As an organizer, I want to know the software is not playing against my members.
@@ -97,18 +79,59 @@ Members are unaffected.
 **Acceptance Criteria:**
 - [ ] Plain statement that Booki does not set lines, does not adjust them per member, does not take a position, and does not profit from member losses
 - [ ] Placed where an organizer forms trust — onboarding, the odds page, and the marketing site
-- [ ] Factually accurate as written; if any per-member adjustment ever ships, this copy must change with it
+- [x] Confirmed accurate 2026-08-18: per-member line adjustment is not planned, so the claim is safe to make unconditionally
+
+### US-006: "How to run your group" guide
+**Description:** As a new organizer, I want to understand how running a group actually works before I commit to it.
+
+This is the piece most likely to convert hesitation into a first invite. It
+explains the whole loop end to end, in order, in plain language:
+
+1. **Set up** — create your group, set defaults (credit limit, win limit)
+2. **Invite** — send a code or link; members sign up and are attached to you
+3. **Members pick** — they browse games and place picks themselves; no manual entry
+4. **You set the guardrails** — per-member credit and win limits, and what
+   happens when a limit is hit (suspend picks vs require approval)
+5. **You monitor** — open activity, exposure, who is up and who is down
+6. **Picks grade automatically** — results land, picks settle, balances update
+   with no action from you
+7. **You settle up off-platform** — cash, Venmo, whatever you already use — and
+   record it with Settle Up so balances zero out
+
+**Acceptance Criteria:**
+- [ ] Covers all seven steps above with the real UI names
+- [ ] States plainly that **Booki never touches money** — no deposits, no
+      payouts, no processing. Organizers settle off-platform and record it.
+      This is both the compliance position and a genuine reassurance
+- [ ] Explains that grading and balance updates are automatic, since manual
+      settlement is the single biggest chore this replaces
+- [ ] Uses approved compliance vocabulary throughout
+- [ ] Lives in-product (Settings, near US-001) *and* on the marketing site,
+      where it doubles as high-intent SEO content — see
+      `tasks/prd-seo-ai-ranking.md` US-003
+- [ ] Reachable from organizer onboarding, not just findable after the fact
 
 ## Open questions
 
-- **How much detail?** Full mechanics (storage windows, tiered refresh) risks
-  reading as complexity. Too little reads as evasive. Where's the line?
-- **Should members see it too?** The same explanation may build trust with
-  members, or may invite line-shopping arguments.
-- **Is freshness a liability?** "Updated 2 hours ago" is honest, but it also
-  advertises staleness. Does it increase trust or invite complaints?
-- **Onboarding placement.** Worth adding to the organizer onboarding flow, or
-  does that front-load complexity during signup?
+- **How much odds detail in US-001?** Full mechanics (storage windows, tiered
+  refresh) risks reading as complexity; too little reads as evasive.
+- **Should members see the odds explanation too?** It may build trust, or invite
+  line-shopping arguments.
+- **Where does US-006 sit in onboarding?** Before the first invite is where it
+  would do the most good, but that front-loads reading during signup.
+- **One guide or two?** US-001 (how odds work) and US-006 (how to run a group)
+  overlap at the edges. They may read better merged as a single "how Booki
+  works" guide with sections, rather than two Settings rows.
+
+## Decisions taken
+
+- **2026-08-18 — no per-member line adjustment.** Confirmed not planned, so the
+  neutrality claim in US-005 can be stated unconditionally.
+- **2026-08-18 — no freshness indicator.** US-002 (an "updated X ago" timestamp
+  on odds) was dropped: sportsbooks don't surface this, and advertising
+  staleness invites complaints rather than building trust.
+- **2026-08-18 — empty state fixed by narrowing, not explaining.** Option (a):
+  organizer horizon cut from 14 days to 6, inside the 7-day storage window.
 
 ## Prior art in this codebase
 

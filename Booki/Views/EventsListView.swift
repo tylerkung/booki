@@ -23,19 +23,20 @@ struct EventsListView: View {
         Date().addingTimeInterval(-48 * 3600)
     }
 
-    /// 14-day horizon — hide events further out than this
+    /// Organizer horizon — see `Event.organizerWindow` for why it sits inside
+    /// the server-side odds storage window.
     private var upcomingHorizon: Date {
-        Date().addingTimeInterval(14 * 24 * 3600)
+        Event.organizerHorizon
     }
 
-    /// Upcoming: non-final/non-canceled + finals from last 48h, within 14-day horizon. Sorted startTime ascending.
+    /// Upcoming: non-final/non-canceled + finals from last 48h, within the organizer horizon. Sorted startTime ascending.
     private var upcomingEvents: [Event] {
         events.filter { event in
             if event.status == .canceled { return false }
             if event.status == .final {
                 return event.startTime >= recentFinalsCutoff
             }
-            // Hide events more than 14 days out
+            // Hide events beyond the organizer horizon
             return event.startTime <= upcomingHorizon
         }
         .sorted { $0.startTime < $1.startTime }
