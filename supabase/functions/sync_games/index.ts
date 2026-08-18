@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { selectAllIn, selectAllPaged } from '../_shared/pagination.ts';
+import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
 
 /**
  * Sports to sync from the Odds API.
@@ -234,6 +235,7 @@ async function fetchScoresFromApi(
   console.log(`Fetching scores for ${sportKey}...`);
 
   const response = await fetch(url.toString());
+  recordQuota(response, `scores:${sportKey}`);
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`Scores API error for ${sportKey}: ${response.status} - ${errorText}`);
@@ -259,6 +261,7 @@ async function fetchOddsFromApi(
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());
+  recordQuota(response, `odds:${sportKey}`);
 
   if (!response.ok) {
     throw new Error(`Odds API error: ${response.status} ${response.statusText}`);
@@ -282,6 +285,7 @@ async function fetchOutrightsFromApi(
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());
+  recordQuota(response, `outrights:${sportKey}`);
 
   if (!response.ok) {
     throw new Error(`Outrights API error: ${response.status} ${response.statusText}`);
@@ -578,6 +582,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  // Isolates are reused between invocations, so per-run counters must be
+  // cleared or they accumulate across unrelated runs.
+  resetQuota();
 
   try {
     // No auth check - this function is called by cron and only manages shared events
@@ -1296,6 +1304,7 @@ Deno.serve(async (req) => {
       success: true,
       message: 'Games sync completed',
       stats,
+      quota: getQuotaSnapshot(),
     };
 
     const responseString = JSON.stringify(responseBody);

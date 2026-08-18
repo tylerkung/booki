@@ -4,6 +4,7 @@ import { emitAuditEvent } from '../_shared/audit.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { gradeBet, type BetInfo, type EventScores } from '../_shared/grading.ts';
 import { sendNotification } from '../_shared/notifications.ts';
+import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
 
 /**
  * Generates an idempotency key for auto-refresh operations.
@@ -314,6 +315,7 @@ async function fetchOddsFromApi(
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());
+  recordQuota(response, `odds:${sportKey}`);
 
   if (!response.ok) {
     throw new Error(`Odds API error: ${response.status} ${response.statusText}`);
@@ -336,6 +338,7 @@ async function fetchScoresFromApi(
   url.searchParams.set('daysFrom', String(daysFrom));
 
   const response = await fetch(url.toString());
+  recordQuota(response, `scores:${sportKey}`);
 
   if (!response.ok) {
     throw new Error(`Scores API error: ${response.status} ${response.statusText}`);
@@ -358,6 +361,7 @@ async function fetchOutrightsFromApi(
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());
+  recordQuota(response, `outrights:${sportKey}`);
 
   if (!response.ok) {
     throw new Error(`Outrights API error: ${response.status} ${response.statusText}`);
@@ -960,6 +964,10 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Isolates are reused between invocations, so per-run counters must be
+  // cleared or they accumulate across unrelated runs.
+  resetQuota();
+
   try {
     // Parse request body for force flag
     let force = false;
@@ -1053,6 +1061,7 @@ Deno.serve(async (req) => {
         }
         const responseBody = {
           success: true,
+          quota: getQuotaSnapshot(),
           message: 'No games with open bets found',
           games_selected: 0,
           odds_refreshed: 0,
@@ -1145,6 +1154,7 @@ Deno.serve(async (req) => {
         }
         const responseBody = {
           success: true,
+          quota: getQuotaSnapshot(),
           message: 'No eligible games found for refresh',
           games_selected: 0,
           odds_refreshed: 0,
@@ -1990,6 +2000,7 @@ Deno.serve(async (req) => {
       // Build response object
       const responseBody = {
         success: true,
+        quota: getQuotaSnapshot(),
         games_selected: finalSelection.length,
         odds_refreshed: oddsRefreshed,
         scores_refreshed: scoresRefreshed,

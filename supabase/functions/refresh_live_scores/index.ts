@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
 import { gradeBet, type BetInfo, type EventScores } from '../_shared/grading.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
+import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
 
 /**
  * refresh_live_scores Edge Function
@@ -90,6 +91,7 @@ async function fetchScoresFromApi(apiKey: string, sportKey: string, daysFrom: nu
   url.searchParams.set('daysFrom', String(daysFrom));
 
   const response = await fetch(url.toString());
+  recordQuota(response, `scores:${sportKey}`);
   if (!response.ok) {
     throw new Error(`Scores API error: ${response.status} ${response.statusText}`);
   }
@@ -100,6 +102,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  // Isolates are reused between invocations, so per-run counters must be
+  // cleared or they accumulate across unrelated runs.
+  resetQuota();
 
   try {
     const client = createServiceClient();
@@ -451,6 +457,7 @@ Deno.serve(async (req) => {
 
     const response = {
       success: true,
+      quota: getQuotaSnapshot(),
       live_games_total: liveEvents.length,
       games_in_finishing_window: finishingGames.length,
       games_skipped_not_near_end: skippedGames,
