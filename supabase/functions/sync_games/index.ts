@@ -1,6 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
+import { selectAllIn } from '../_shared/pagination.ts';
 
 /**
  * Sports to sync from the Odds API.
@@ -601,11 +602,12 @@ Deno.serve(async (req) => {
     // First, get all external_ids from fetched events to query existing records
     const externalIds = allFetchedEvents.map((e) => e.id);
 
-    // Query existing events by external_id
-    const { data: existingEvents, error: existingEventsError } = await client
-      .from('events')
-      .select('id, external_id')
-      .in('external_id', externalIds);
+    // Query existing events by external_id.
+    // MUST be paginated: a plain .in() is capped at 1000 rows, and anything
+    // past the cap looks new and gets inserted again as a duplicate.
+    const { data: existingEvents, error: existingEventsError } =
+      await selectAllIn<{ id: string; external_id: string | null }>(
+        client, 'events', 'id, external_id', 'external_id', externalIds);
 
     if (existingEventsError) {
       console.error('Error querying existing events:', existingEventsError);
@@ -686,10 +688,9 @@ Deno.serve(async (req) => {
 
     // US-004: Upsert markets for each event
     // First, we need to re-query events to get their database IDs for newly inserted events
-    const { data: allEventsWithIds, error: eventsWithIdsError } = await client
-      .from('events')
-      .select('id, external_id')
-      .in('external_id', externalIds);
+    const { data: allEventsWithIds, error: eventsWithIdsError } =
+      await selectAllIn<{ id: string; external_id: string | null }>(
+        client, 'events', 'id, external_id', 'external_id', externalIds);
 
     if (eventsWithIdsError) {
       console.error('Error querying events for market upsert:', eventsWithIdsError);
@@ -708,10 +709,9 @@ Deno.serve(async (req) => {
 
     // Get existing markets for all events to determine insert vs update
     const eventDbIds = Array.from(eventIdMap.values());
-    const { data: existingMarkets, error: existingMarketsError } = await client
-      .from('markets')
-      .select('id, event_id, type, side_a')
-      .in('event_id', eventDbIds);
+    const { data: existingMarkets, error: existingMarketsError } =
+      await selectAllIn<{ id: string; event_id: string; type: string; side_a: string }>(
+        client, 'markets', 'id, event_id, type, side_a', 'event_id', eventDbIds);
 
     if (existingMarketsError) {
       console.error('Error querying existing markets:', existingMarketsError);
