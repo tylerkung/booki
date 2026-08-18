@@ -1247,6 +1247,15 @@ Deno.serve(async (req) => {
       const MID_TIER_EVERY_HOURS = 2;
       const FUTURES_TIER_HOUR_UTC = 12;            // once a day, midday UTC
 
+      // Only these leagues get the fastest cadence close to kickoff. They carry
+      // the most volume and the most line movement, and their spreads/totals
+      // are the ones that actually move in the last few hours. Everything else
+      // near-start settles for hourly, which halves its cost.
+      //
+      // Add a league here to promote it — NCAAF and NCAAB are the obvious
+      // candidates once their seasons start.
+      const HIGH_FREQUENCY_LEAGUES = new Set(['NFL', 'NBA', 'MLB']);
+
       // Which optional tiers this particular run includes.
       const runHour = now.getUTCHours();
       const runMinute = now.getUTCMinutes();
@@ -1262,6 +1271,7 @@ Deno.serve(async (req) => {
       let skippedNotSoon = 0;
       let skippedMidTier = 0;
       let skippedFutures = 0;
+      let skippedLowFrequency = 0;
       for (const game of finalSelection) {
         // Skip odds refresh if event has already started (but not outrights — they have distant future dates)
         const isOutright = game.away_team === 'Outright';
@@ -1282,8 +1292,16 @@ Deno.serve(async (req) => {
             skippedNotSoon++;
             continue;
           }
-          if (untilStart > NEAR_WINDOW_MS && !includeMidTier) {
-            skippedMidTier++;
+          if (untilStart > NEAR_WINDOW_MS) {
+            // 4-48h band: every 2 hours regardless of league.
+            if (!includeMidTier) {
+              skippedMidTier++;
+              continue;
+            }
+          } else if (!HIGH_FREQUENCY_LEAGUES.has(game.league) && !isTopOfHour) {
+            // Near start, but a lower-volume league — hourly instead of every
+            // 30 minutes.
+            skippedLowFrequency++;
             continue;
           }
         }
@@ -1328,6 +1346,9 @@ Deno.serve(async (req) => {
       }
       if (skippedFutures > 0) {
         console.log(`Skipped ${skippedFutures} outrights (not the daily futures run)`);
+      }
+      if (skippedLowFrequency > 0) {
+        console.log(`Skipped ${skippedLowFrequency} near-start games in lower-volume leagues (hourly, not 30-min)`);
       }
       console.log(`Refreshing odds for ${gamesBySportKey.size} sports + ${gamesByFuturesKey.size} futures keys, ${Array.from(gamesBySportKey.values()).reduce((s, g) => s + g.length, 0)} games`);
 

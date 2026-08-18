@@ -60,8 +60,23 @@ over.
 | Job | Runs | What it does |
 |---|---|---|
 | Game sync | 2× daily | Finds newly scheduled games, refreshes prices inside the window, marks finished games final and deletes their odds. |
-| Odds refresh | Hourly | Re-prices games starting soon, grades and settles picks as results land. |
+| Odds refresh | Every 30 min | Re-prices games, at a rate that depends on how close they are (below). Also grades and settles picks as results land. |
 | Live scores | Every 5 min | Watches games that should be ending. Only calls the provider when a game is genuinely near its finish, so most runs cost nothing. |
+
+### How often a price is refreshed
+
+Not every game is re-priced at the same rate. Odds cost money to fetch — we pay
+per request — so effort goes where lines actually move.
+
+| Game | Refreshed |
+|---|---|
+| Starting within 4 hours, in the NFL, NBA or MLB | Every 30 minutes |
+| Starting within 4 hours, any other league | Hourly |
+| Starting in 4–48 hours | Every 2 hours |
+| Futures (championship winners) | Once a day |
+
+So a line can lag the market by up to half an hour on a big game about to start,
+and by a couple of hours on one that's still a day or two out.
 
 ## How we know two games are the same game
 
