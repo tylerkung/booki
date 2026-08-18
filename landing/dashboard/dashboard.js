@@ -821,6 +821,7 @@ function dashboardApp() {
                         .insert({
                             auth_user_id: userId,
                             name: userName,
+                            email: this.session.user.email,
                             tier: 'free',
                             default_credit_limit: 1000,
                             allow_futures_parlays: false,
@@ -1491,6 +1492,7 @@ function dashboardApp() {
                     .insert({
                         auth_user_id: userId,
                         name: userName,
+                        email: this.session.user.email,
                         tier: 'free',
                         default_credit_limit: 1000,
                         allow_futures_parlays: false,
@@ -4078,7 +4080,7 @@ function dashboardApp() {
                 if (response.error) {
                     this.inviteError = response.error;
                 } else {
-                    this.inviteCode = response.code;
+                    this.inviteCode = response.invite_code;
                     this.toast('Invite created', 'success');
                     this.loadInvites();
                 }
@@ -4100,7 +4102,7 @@ function dashboardApp() {
         },
 
         copyInviteLink(code) {
-            navigator.clipboard.writeText(`Download Booki and use invite code: ${code}`);
+            navigator.clipboard.writeText(`https://bookisports.com/invite/${code}`);
             this.toast('Link copied', 'success');
         },
 

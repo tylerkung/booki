@@ -470,4 +470,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: March 4, 2026 - Blog post, win limit migration fix, pricing CTA update*
+*Last updated: August 17, 2026 - Dormant-organizer follow-up email (lifecycle_emails, send_followup_email, daily cron)*

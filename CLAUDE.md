@@ -84,7 +84,7 @@ List {
 
 - Xcode command line tools don't support full builds - use Xcode IDE
 - Delete app from Simulator when SwiftData schema changes
-- **Stress tests**: `cd tests && ./run.sh` — 15 suites, 142 assertions against live Supabase. Requires `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY` env vars. Keys retrievable via `npx supabase projects api-keys --project-ref vstfauqufwpdytmvjyfz`.
+- **Stress tests**: `cd tests && ./run.sh` — 15 suites, 142 assertions against live Supabase. Requires `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY` env vars. Keys retrievable via `supabase projects api-keys --project-ref vstfauqufwpdytmvjyfz`.
 
 ## Edge Functions
 
@@ -93,7 +93,7 @@ All critical betting operations are server-authoritative via Supabase Edge Funct
 - **Location**: `supabase/functions/`
 - **Shared helpers**: `_shared/cors.ts`, `_shared/supabase.ts`, `_shared/idempotency.ts`, `_shared/audit.ts`, `_shared/grading.ts`
 - **Functions**: `submit_bet`, `accept_bet`, `grade_bet`, `settle_bet`, `adjust_balance`, `reverse_settlement`, `override_grade`, `auto_refresh_games`, `claim_player`
-- **Deploy**: `npx supabase functions deploy <function-name> --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
+- **Deploy**: `supabase functions deploy <function-name> --no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`
 - **JWT note**: All functions deployed with `--no-verify-jwt` (Supabase gateway ES256 incompatibility). Function code still validates auth via `getUserIdFromAuthHeader` → `getUser()`.
 
 All functions:
@@ -317,3 +317,8 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Web member detail tooltips**: Styled tooltips on Credit Limit, Win Limit, and Active/Pending badge using existing `showTagTooltip`/`hideTagTooltip` system
 - **Settlement table fix**: Removed last-row bottom border, fixed `settlementMarkPaid()` to check `response.error` from `callEdgeFunction`
 - **Stress tests**: 15-suite Node.js test suite in `tests/` — 142 assertions against live Supabase covering auth, bets, parlays, idempotency, grading, settlement, overrides, balance adjustments, ledger integrity, concurrency, invites, accept/decline, credit/win limits. Known bug: `settle_bet_tx` RPC column mismatch.
+- **Lifecycle emails**: `lifecycle_emails` table (one row per user+type, unique constraint prevents double sends) + `get_dormant_organizers()` RPC + daily cron at 17:00 UTC. First use: `send_followup_email` edge function emails organizers 10+ days old with zero invites and zero members, 50 per run. Migration 030.
+- **Email architecture note**: Two separate systems. (1) Supabase Auth emails (confirm/reset/email-change) — templates in Supabase Dashboard, delivered over Resend SMTP as `noreply@bookisports.com`. (2) Direct Resend API calls from edge functions (`send_welcome_email`, `create_invite`, `send_followup_email`) — HTML inlined in the function as a TS template literal, sent as `tyler@bookisports.com`. The `landing/email-*.html` files are browser-previewable copies only and are NOT read at send time, so edits must be made in both places.
+- **bookies.email fix**: Both `dashboard.js` bookie-creation paths (auto-create on first login ~line 821, `becomeOrganizer()` ~line 1492) omitted the `email` column, leaving it NULL for every web-created organizer — iOS (`BookieService.swift:172`) always set it. Both sites now pass `this.session.user.email`. Migration 031 backfills existing rows from `auth.users` (27 rows corrected; auth.users is the source of truth, so it syncs stale values too, not just NULLs).
+- **Follow-up email PAUSED**: `send_followup_email` has a `PAUSED = true` kill switch at the top of `index.ts`. The daily cron still fires but returns `{paused: true, sent: 0}` without sending or writing `lifecycle_emails` rows. Manual `{"force": true}` and `{"dry_run": true}` calls still work. To resume: flip to `false` and redeploy. Paused pending end-to-end verification of the invite flow. 13 suppression rows pre-seeded (5 personal/synthetic + 9 stress-test accounts, 1 overlap) so only 12 real dormant organizers are targeted. NOTE: a fresh `tests/run.sh` run creates NEW `test_stress_*` auth users that are not suppressed.
+- **Invite code display fix**: `create_invite` returns `invite_code`, but `dashboard.js` `createInvite()` read `response.code` — always `undefined`, so the success block (`x-show="inviteCode"`) never rendered and the modal looked like it failed. The invite was created correctly every time; only the web display was broken (iOS reads `response.inviteCode`, unaffected). Also fixed `copyInviteLink()`, which copied "Download Booki and use invite code: X" instead of the actual `https://bookisports.com/invite/{code}` URL.
