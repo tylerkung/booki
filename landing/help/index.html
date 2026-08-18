@@ -13,16 +13,22 @@
     <meta name="robots" content="noindex">
     <link rel="canonical" href="https://bookisports.com/help/">
 
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="article">
     <meta property="og:url" content="https://bookisports.com/help/">
     <meta property="og:title" content="Help — Booki">
     <meta property="og:description" content="How Booki works: running your group, how odds work, limits, grading and settling up.">
     <meta property="og:image" content="https://bookisports.com/assets/bookie-og.jpg">
 
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Help — Booki">
+    <meta name="twitter:description" content="How Booki works: running your group, how odds work, limits, grading and settling up.">
+    <meta name="twitter:image" content="https://bookisports.com/assets/bookie-og.jpg">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="help.css">
 </head>
 <body>
     <nav class="site-nav">
@@ -43,31 +49,44 @@
         </div>
     </nav>
 
-    <main>
-        <section class="blog-hero">
-            <div class="container">
-                <h1>Help</h1>
-                <p class="blog-hero-sub">How Booki actually works — the mechanics, not the pitch.</p>
-            </div>
-        </section>
+    <main class="kb">
+        <button class="kb-rail-toggle" id="kb-rail-toggle" type="button">Contents</button>
+        <aside class="kb-rail" id="kb-rail"></aside>
 
-        <section class="blog-list">
-            <div class="container">
-                <h2 style="font-size:1.1rem;margin-bottom:16px;">Getting started</h2>
-                <div class="blog-grid">
-                    <a href="how-to-run-your-group.html" class="blog-card">
-                        <div class="blog-card-content">
-                            <span class="blog-card-date">Getting started</span>
-                            <h2 class="blog-card-title">How to Run Your Group</h2>
-                            <p class="blog-card-excerpt">The full loop: setting up, inviting members, setting limits, monitoring activity, automatic grading, and settling up off-platform.</p>
-                            <div class="blog-card-meta">
-                                <span class="blog-card-read-time">6 min read</span>
-                            </div>
-                        </div>
-                    </a>
-                </div>
+        <div class="kb-main">
+            <p class="kb-eyebrow">Help</p>
+            <h1>How Booki works</h1>
+            <p class="kb-lede">
+                The mechanics, not the pitch. How a group runs, where the odds come
+                from, what the limits do, and who handles the money.
+            </p>
+
+            <h2>Start here</h2>
+            <p>
+                If you're new, read <a href="how-to-run-your-group.html">How to run your
+                group</a>. It walks the whole loop once, in order — from setting your
+                defaults through to settling up — and answers most of what people ask
+                before they send their first invite.
+            </p>
+
+            <h2>The short version</h2>
+            <div class="kb-note">
+                <p>
+                    <strong>Booki keeps the record. It never touches the money.</strong>
+                    There are no deposits, no payouts and no payment processing. Your
+                    members place their own picks, results grade themselves, and balances
+                    update automatically. When your group settles up, you pay each other
+                    however you already do — and record it so the balance clears.
+                </p>
             </div>
-        </section>
+
+            <h2>Can't find something?</h2>
+            <p>
+                This section is new and still growing. If an answer isn't here, email
+                <a href="mailto:support@bookisports.com">support@bookisports.com</a> —
+                the gaps people write in about are the next articles.
+            </p>
+        </div>
     </main>
 
     <footer class="footer">
@@ -80,5 +99,7 @@
             </p>
         </div>
     </footer>
+
+    <script src="help-nav.js"></script>
 </body>
 </html>

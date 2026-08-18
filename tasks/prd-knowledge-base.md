@@ -58,9 +58,15 @@ existing URLs and mis-file them besides.
 **Description:** As an organizer, I want one place to look things up.
 
 **Acceptance Criteria:**
-- [ ] `landing/help/` with an index grouping articles by category
+- [ ] `landing/help/` using a **two-column docs layout**: a sticky contents rail
+      on the left, article on the right. Not the blog's card grid — a knowledge
+      base is navigated by index, not browsed by feed
 - [ ] Categories: Getting started · Running your group · How odds work · Limits and rules · Billing
-- [ ] Reuses blog card patterns, nav bar and styling — no parallel design
+- [ ] Contents rail rendered from a single registry (`help-nav.js`) so adding an
+      article never means editing the sidebar on every existing page
+- [ ] Rail collapses behind a toggle below 900px
+- [ ] Inherits all colours from `styles.css`; layout scoped under `.kb` so it
+      cannot leak into the marketing pages
 - [ ] Nav link added across landing pages alongside Features and Blog
 - [ ] Client-side search over titles and excerpts (static site, so no backend)
 - [ ] Every article in `sitemap.xml`

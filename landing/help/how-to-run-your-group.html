@@ -28,6 +28,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="help.css">
 
     <script type="application/ld+json">
     {
@@ -66,34 +67,27 @@
         </div>
     </nav>
 
-    <main>
-        <article class="blog-article">
-            <div class="container">
-                <header class="blog-article-header">
-                    <a href="../help/" class="blog-back-link">&larr; Back to Help</a>
-                    <h1>How to Run Your Group</h1>
-                    <div class="blog-article-meta">
-                        <span>Getting started</span>
-                        <span class="blog-meta-sep">&middot;</span>
-                        <span>6 min read</span>
+    <main class="kb">
+        <button class="kb-rail-toggle" id="kb-rail-toggle" type="button">Contents</button>
+        <aside class="kb-rail" id="kb-rail"></aside>
+
+        <div class="kb-main">
+            <p class="kb-eyebrow">Getting started</p>
+            <h1>How to Run Your Group</h1>
+            <p class="kb-lede">Running a group on Booki is a loop: you set the rules, your members place their own picks, results grade themselves, and you settle up whenever your group normally settles up. This walks through the whole cycle once, in order.</p>
+
+                    
+
+                    <div class="kb-note">
+                        <p>
+                            <strong>One thing to be clear about up front: Booki never
+                            touches money.</strong> There are no deposits, no payouts, and
+                            no payment processing of any kind. Booki keeps the record of
+                            who owes what. The money moves between you and your members
+                            exactly the way it does now &mdash; cash, Venmo, whatever you
+                            already use.
+                        </p>
                     </div>
-                </header>
-
-                <div class="blog-prose">
-                    <p>
-                        Running a group on Booki is a loop: you set the rules, your members
-                        place their own picks, results grade themselves, and you settle up
-                        whenever your group normally settles up. This walks through the whole
-                        cycle once, in order.
-                    </p>
-
-                    <p>
-                        <strong>One thing to be clear about up front: Booki never touches
-                        money.</strong> There are no deposits, no payouts, and no payment
-                        processing of any kind. Booki keeps the record of who owes what.
-                        The money moves between you and your members exactly the way it
-                        does now — cash, Venmo, whatever you already use.
-                    </p>
 
                     <h2>1. Set up your group</h2>
                     <p>
@@ -219,9 +213,8 @@
                         <strong>How many members can I have?</strong> Three on the free plan,
                         fifty on Pro.
                     </p>
-                </div>
-            </div>
-        </article>
+                
+        </div>
     </main>
 
     <footer class="footer">
@@ -234,5 +227,7 @@
             </p>
         </div>
     </footer>
+
+    <script src="help-nav.js"></script>
 </body>
 </html>
