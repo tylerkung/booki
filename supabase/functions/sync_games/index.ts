@@ -150,6 +150,13 @@ interface OddsEvent {
 const ODDS_FETCH_CONCURRENCY = 5;
 
 /**
+ * How far ahead odds are stored. Members see odds 48h ahead; storing a wider
+ * window means a game already has lines when it becomes visible instead of
+ * showing a blank price. Outrights are exempt — see the market sync below.
+ */
+const ODDS_STORAGE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
  * Runs `fn` over `items` with at most `limit` promises in flight, preserving
  * input order in the result. Used to parallelise Odds API fetches, which are
  * the dominant cost of a sync run.
@@ -854,10 +861,25 @@ Deno.serve(async (req) => {
     // that already exist.
     const marketsToUpdate: (MarketRecord & { id: string })[] = [];
 
+    let marketsSkippedFarOut = 0;
+
     for (const oddsEvent of allFetchedEvents) {
       const eventId = eventIdMap.get(oddsEvent.id);
       if (!eventId) {
         // Event wasn't found in database - skip markets
+        continue;
+      }
+
+      // Odds are only stored inside the storage window. Members see odds 48h
+      // ahead; the window is wider so a game already has lines by the time it
+      // becomes visible, rather than appearing with a blank price.
+      //
+      // Outrights are exempt — futures are long-dated by definition and would
+      // be wiped out entirely by a start-time rule.
+      const startsAt = Date.parse(oddsEvent.commence_time);
+      const isOutright = oddsEvent.away_team === null || oddsEvent.home_team === null;
+      if (!isOutright && startsAt > Date.now() + ODDS_STORAGE_WINDOW_MS) {
+        marketsSkippedFarOut++;
         continue;
       }
 
@@ -1105,6 +1127,38 @@ Deno.serve(async (req) => {
       const finalizedCount = updatedToFinal?.length || 0;
       console.log(`Marked ${finalizedCount} past events as final`);
       (stats as any).events_finalized = finalizedCount;
+
+      // Drop the odds for games that just finished.
+      //
+      // Grading never reads these: every bet stores its own market, side and
+      // odds at placement, so a settled bet renders identically without them.
+      // Left in place they accumulate indefinitely — 16,643 of 19,813 markets
+      // were odds on games already played before this was added.
+      //
+      // Outrights are exempt. A futures market stays live long after its
+      // nominal start_time has passed.
+      const finalizedIds = (updatedToFinal ?? []).map((e: { id: string }) => e.id);
+      let prunedMarkets = 0;
+      for (let i = 0; i < finalizedIds.length; i += 200) {
+        const chunk = finalizedIds.slice(i, i + 200);
+        const { data: deleted, error: pruneError } = await client
+          .from('markets')
+          .delete()
+          .in('event_id', chunk)
+          .neq('type', 'outright')
+          .select('id');
+
+        if (pruneError) {
+          console.error('Error pruning markets for finished games:', pruneError);
+          stats.errors.push(`Market prune error: ${pruneError.message}`);
+          break;
+        }
+        prunedMarkets += deleted?.length ?? 0;
+      }
+      if (prunedMarkets > 0) {
+        console.log(`Pruned ${prunedMarkets} markets from finished games`);
+      }
+      (stats as any).markets_pruned = prunedMarkets;
     }
 
     // US-006: Fetch scores for final events that don't have scores yet

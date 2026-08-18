@@ -93,7 +93,7 @@ Backup taken: `backups/events-2026-08-18.json`, `backups/markets-2026-08-18.json
   the 1000-row cap at current volume. No change needed. Revisit if distinct
   bet event ids ever approach 1000.
 
-### Phase 3 — Odds lifecycle
+### Phase 3 — Odds lifecycle ✅ COMPLETE (2026-08-18)
 
 - **Store** odds for games starting within 7 days
 - **Display** odds 48 hours ahead
@@ -105,9 +105,15 @@ Backup taken: `backups/events-2026-08-18.json`, `backups/markets-2026-08-18.json
 Storing wider than the display window is deliberate: storage is cheap, and a
 game whose odds are missing renders as "—", the exact symptom being fixed.
 
-Expected: markets 20,531 → ~3,000.
+Result: markets 19,813 → 1,333 (1,257 outrights + 76 live games). A one-time
+sweep removed 18,480 rows — 16,643 on finished games, 1,837 beyond the window.
+Verified a subsequent sync does not rebuild them: 1,333 before, 1,333 after,
+0 inserted, 76 updated.
 
-### Phase 4 — Client sync efficiency
+The prune-on-finalization hook is the part that matters long term. The sweep
+fixed today; the hook is what stops odds for finished games accumulating again.
+
+### Phase 4 — Client sync efficiency (DEFERRED — not needed)
 
 `SyncService.swift:278` pages every shared event and every shared market with
 no time filter, so each device sync pulls 21.6 MB — including March games.
@@ -116,7 +122,23 @@ no time filter, so each device sync pulls 21.6 MB — including March games.
 - Union with events referenced by that user's own bets, so history still renders
 - Project only needed columns rather than `select()`
 
-Expected: 21.6 MB → under 1 MB per sync; egress ~6 GB/mo → well under 2 GB.
+Expected: 21.6 MB → under 1 MB per sync.
+
+**Deferred deliberately.** Phases 1 and 3 already solved the overage:
+
+| stage | markets | sync payload | projected/mo |
+|---|---|---|---|
+| session start | 20,531 | 21.6 MB | ~6.3 GB — over the 5 GB limit |
+| after dedupe | 19,813 | 9.8 MB | ~2.9 GB |
+| after Phase 3 | 1,333 | ~4.5 MB | ~1.4 GB |
+
+That is a 3.7x margin. Phase 4 would reach ~0.4 GB, but it changes
+`SyncService.swift`, so the saving only lands as users install a new build —
+whereas Phases 1 and 3 are server-side and applied to every client the moment
+they shipped, old builds included.
+
+Revisit when approaching ~50 organizers, or when an iOS release is happening
+anyway.
 
 ## Open item: missing final scores
 
