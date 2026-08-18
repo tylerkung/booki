@@ -14,13 +14,13 @@ const KB_CONTENTS = [
             { href: 'how-to-run-your-group.html', title: 'How to run your group' },
         ],
     },
+    {
+        group: 'How odds work',
+        items: [
+            { href: 'how-odds-work.html', title: 'Where odds come from' },
+        ],
+    },
     // Planned — see tasks/prd-knowledge-base.md
-    // {
-    //     group: 'How odds work',
-    //     items: [
-    //         { href: 'how-odds-work.html', title: 'Where odds come from' },
-    //     ],
-    // },
     // {
     //     group: 'Limits and rules',
     //     items: [

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon_io/favicon-16x16.png">
+    <link rel="icon" type="image/x-icon" href="../assets/favicon_io/favicon.ico">
+    <title>How Odds Work — Booki Help</title>
+    <meta name="description" content="Where Booki’s odds come from, how often they update, why some games have no price, and why Booki never takes a position.">
+    <!-- DRAFT: remove this noindex once the content is approved -->
+    <meta name="robots" content="noindex">
+    <link rel="canonical" href="https://bookisports.com/help/how-odds-work.html">
+
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://bookisports.com/help/how-odds-work.html">
+    <meta property="og:title" content="How Odds Work — Booki Help">
+    <meta property="og:description" content="Where the odds come from, how often they update, and why Booki never takes a position.">
+    <meta property="og:image" content="https://bookisports.com/assets/bookie-og.jpg">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="How Odds Work — Booki Help">
+    <meta name="twitter:description" content="Where the odds come from, how often they update, and why Booki never takes a position.">
+    <meta name="twitter:image" content="https://bookisports.com/assets/bookie-og.jpg">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="help.css">
+
+</head>
+<body>
+    <nav class="site-nav">
+        <div class="container nav-content">
+            <a href="../index.html" class="nav-logo">
+                <img src="../assets/logo-booki-blk.svg" alt="Booki" />
+            </a>
+            <div class="nav-links">
+                <a href="../features.html" class="nav-link">Features</a>
+                <a href="../help/" class="nav-link active">Help</a>
+                <a href="../blog/" class="nav-link">Blog</a>
+                <a href="../index.html#pricing" class="nav-link">Pricing</a>
+            </div>
+            <div class="nav-actions">
+                <a href="../dashboard/login.html" class="btn-nav-login">Log In</a>
+                <a href="../dashboard/" class="btn-primary btn-nav">Get Started Free</a>
+            </div>
+            <button class="nav-hamburger" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+        <div class="nav-mobile">
+            <a href="../features.html" class="nav-link">Features</a>
+            <a href="../help/" class="nav-link active">Help</a>
+            <a href="../blog/" class="nav-link">Blog</a>
+            <a href="../index.html#pricing" class="nav-link">Pricing</a>
+            <a href="../dashboard/login.html" class="nav-link">Log In</a>
+            <a href="../dashboard/" class="btn-primary btn-nav-mobile">Get Started Free</a>
+        </div>
+    </nav>
+
+    <main class="kb">
+        <button class="kb-rail-toggle" id="kb-rail-toggle" type="button">Contents</button>
+        <aside class="kb-rail" id="kb-rail"></aside>
+
+        <div class="kb-main">
+            <p class="kb-eyebrow">How odds work</p>
+            <h1>Where the Odds Come From</h1>
+            <p class="kb-lede">
+                Booki does not set your lines. It buys them from a data provider that
+                aggregates prices from real sportsbooks, and shows them to your members
+                unchanged. Here is what that means in practice.
+            </p>
+
+            <div class="kb-note">
+                <p>
+                    <strong>Booki takes no position in your book.</strong> It does not set
+                    lines, does not adjust them for individual members, does not take the
+                    other side of anyone&rsquo;s pick, and does not make money when a member
+                    loses. Booki charges you a flat subscription and nothing else. Your
+                    book&rsquo;s outcome is entirely between you and your members.
+                </p>
+            </div>
+
+            <h2>Where the numbers come from</h2>
+            <p>
+                Odds are bought from a commercial data provider that collects prices from
+                licensed US sportsbooks and publishes a consensus. They are the same
+                numbers a mainstream betting app would show, arriving through the same
+                kind of feed.
+            </p>
+            <p>
+                Nobody at Booki types in a line, and there is no setting anywhere that
+                shades a price. If you want to run different numbers than the market, that
+                is not something Booki currently supports.
+            </p>
+
+            <h2>When a game becomes bettable</h2>
+            <p>
+                Games open for betting roughly <strong>48 hours before they start</strong>.
+                Before that they are not shown, because a line that far out moves
+                constantly and is rarely useful.
+            </p>
+            <p>
+                Futures are the exception. Season-long markets &mdash; championship
+                winners and similar &mdash; stay open for months, because that is the
+                entire point of them.
+            </p>
+
+            <h2>How often prices update</h2>
+            <p>
+                Not every game refreshes at the same rate. Fetching odds costs money, so
+                the effort goes where lines actually move.
+            </p>
+            <p>
+                A marquee game about to start is re-priced every half hour. A game a day
+                or two out is checked every couple of hours. Futures update once a day,
+                since they drift over weeks rather than minutes.
+            </p>
+            <p>
+                The practical consequence: a line can trail the live market slightly.
+                Minutes on a big game near kickoff, a couple of hours on something further
+                out. Your members are betting a recent price, not a live one.
+            </p>
+
+            <h2>Why a finished game shows no odds</h2>
+            <p>
+                Once a game ends, its odds are deleted. This looks alarming and is
+                completely safe, because <strong>every pick stores its own price at the
+                moment it was placed</strong>.
+            </p>
+            <p>
+                When a member takes a team at &minus;140, that number is copied onto their
+                pick and never changes, even if the line moves to &minus;165 an hour later.
+                Grading uses the final score and the price saved on the pick &mdash; it
+                never looks up the old market. A settled pick from three months ago shows
+                exactly what it always showed.
+            </p>
+
+            <h2>Why a game sometimes shows no price</h2>
+            <p>
+                Almost always it is simply more than 48 hours away, and it will have a
+                price when it gets closer.
+            </p>
+            <p>
+                A game starting <em>today</em> with no price is a genuine fault, not
+                expected behaviour. If you see that, it is worth reporting &mdash; it means
+                something did not sync.
+            </p>
+
+            <h2>What this means for you</h2>
+            <p>
+                You are not responsible for pricing your book, and you also cannot tilt it.
+                The lines your members see are the market&rsquo;s lines. Your edge, if you
+                want one, comes from the limits you set and who you invite &mdash; not from
+                the numbers.
+            </p>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-content">
+            <p>&copy; 2026 Booki. All rights reserved.</p>
+            <p>
+                <a href="../terms.html">Terms</a> &middot;
+                <a href="../privacy.html">Privacy</a> &middot;
+                <a href="../about.html">About</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile nav toggle
+        document.querySelector('.nav-hamburger').addEventListener('click', function() {
+            document.querySelector('.site-nav').classList.toggle('nav-open');
+        });
+        // Auth-aware nav: swap Log In / Get Started with profile link if logged in
+        (function() {
+            try {
+                var raw = localStorage.getItem('sb-vstfauqufwpdytmvjyfz-auth-token');
+                if (!raw) return;
+                var session = JSON.parse(raw);
+                var user = session && (session.user || (session.currentSession && session.currentSession.user));
+                if (!user) return;
+                var name = (user.user_metadata && user.user_metadata.name) || user.email.split('@')[0];
+                var profileHTML = '<a href="../dashboard/" class="btn-nav-profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' + name + '</a>';
+                var actions = document.querySelector('.nav-actions');
+                if (actions) actions.innerHTML = profileHTML;
+                var mobile = document.querySelector('.nav-mobile');
+                if (mobile) {
+                    var login = mobile.querySelector('a[href*="login"]');
+                    var cta = mobile.querySelector('.btn-primary');
+                    if (login) login.remove();
+                    if (cta) cta.outerHTML = profileHTML;
+                }
+            } catch(e) {}
+        })();
+    </script>
+
+    <script src="help-nav.js"></script>
+</body>
+</html>
