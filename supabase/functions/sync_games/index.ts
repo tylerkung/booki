@@ -1127,39 +1127,88 @@ Deno.serve(async (req) => {
       const finalizedCount = updatedToFinal?.length || 0;
       console.log(`Marked ${finalizedCount} past events as final`);
       (stats as any).events_finalized = finalizedCount;
+    }
 
-      // Drop the odds for games that just finished.
-      //
-      // Grading never reads these: every bet stores its own market, side and
-      // odds at placement, so a settled bet renders identically without them.
-      // Left in place they accumulate indefinitely — 16,643 of 19,813 markets
-      // were odds on games already played before this was added.
-      //
-      // Outrights are exempt. A futures market stays live long after its
-      // nominal start_time has passed.
-      const finalizedIds = (updatedToFinal ?? []).map((e: { id: string }) => e.id);
-      let prunedMarkets = 0;
-      for (let i = 0; i < finalizedIds.length; i += 200) {
-        const chunk = finalizedIds.slice(i, i + 200);
-        const { data: deleted, error: pruneError } = await client
+    // Drop the odds for games that have finished.
+    //
+    // Grading never reads these: every bet stores its own market, side and
+    // odds at placement, so a settled bet renders identically without them.
+    // Left in place they accumulate indefinitely — 16,643 of 19,813 markets
+    // were odds on games already played before this was added.
+    //
+    // This is a sweep over every final game, NOT a hook on the finalization
+    // step above. Three separate code paths mark a game final: that step, plus
+    // refresh_live_scores and auto_refresh_games when a real result lands.
+    // Hooking only the step here missed the other two — which are precisely
+    // the games people bet on, since those are the ones actively watched for
+    // a result. Sweeping catches all three regardless of who set the status.
+    //
+    // Cheap: the markets table holds ~1,300 rows in steady state, so reading it
+    // whole costs a couple of requests.
+    //
+    // Self-contained on purpose. This also runs when the odds sync was skipped
+    // by the idempotency window, so it must not reference anything scoped to
+    // that branch. It starts from the markets that exist and asks which of
+    // their events are final, rather than starting from events.
+    //
+    // Outrights are exempt. A futures market stays live long after its
+    // nominal start_time has passed.
+    const { data: liveMarkets, error: liveMarketsError } =
+      await selectAllPaged<{ id: string; event_id: string }>(
+        () => client.from('markets').select('id, event_id').neq('type', 'outright'));
+
+    let prunedMarkets = 0;
+    if (liveMarketsError) {
+      console.error('Error loading markets for prune:', liveMarketsError);
+      stats.errors.push(`Market prune query error: ${liveMarketsError.message}`);
+    } else {
+      const marketEventIds = Array.from(new Set(liveMarkets.map((m) => m.event_id)));
+
+      // Status is read fresh rather than from the snapshot taken earlier in the
+      // run: the finalization step above, refresh_live_scores, and
+      // auto_refresh_games can each have marked a game final since then.
+      const finalEventIds = new Set<string>();
+      let statusQueryFailed = false;
+      for (let i = 0; i < marketEventIds.length; i += 200) {
+        const chunk = marketEventIds.slice(i, i + 200);
+        const { data: rows, error: statusError } = await client
+          .from('events')
+          .select('id')
+          .in('id', chunk)
+          .eq('status', 'final');
+
+        if (statusError) {
+          console.error('Error loading event status for prune:', statusError);
+          stats.errors.push(`Market prune status error: ${statusError.message}`);
+          statusQueryFailed = true;
+          break;
+        }
+        for (const row of rows ?? []) finalEventIds.add(row.id);
+      }
+
+      const staleMarketIds = statusQueryFailed ? [] : liveMarkets
+        .filter((m) => finalEventIds.has(m.event_id))
+        .map((m) => m.id);
+
+      for (let i = 0; i < staleMarketIds.length; i += 200) {
+        const chunk = staleMarketIds.slice(i, i + 200);
+        const { error: pruneError } = await client
           .from('markets')
           .delete()
-          .in('event_id', chunk)
-          .neq('type', 'outright')
-          .select('id');
+          .in('id', chunk);
 
         if (pruneError) {
           console.error('Error pruning markets for finished games:', pruneError);
           stats.errors.push(`Market prune error: ${pruneError.message}`);
           break;
         }
-        prunedMarkets += deleted?.length ?? 0;
+        prunedMarkets += chunk.length;
       }
       if (prunedMarkets > 0) {
         console.log(`Pruned ${prunedMarkets} markets from finished games`);
       }
-      (stats as any).markets_pruned = prunedMarkets;
     }
+    (stats as any).markets_pruned = prunedMarkets;
 
     // US-006: Fetch scores for final events that don't have scores yet
     // Only fetch for events with external_id (imported from The Odds API)
