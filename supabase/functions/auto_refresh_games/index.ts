@@ -1230,25 +1230,60 @@ Deno.serve(async (req) => {
       let oddsRefreshed = 0;
       const oddsErrors: { eventId: string; error: string }[] = [];
 
-      // Group games by sport key for efficient API calls
-      // Outright events use separate futures API keys
-      // Only refresh odds for games starting within 4 hours (sync_games handles the rest)
-      const ODDS_REFRESH_WINDOW_MS = 4 * 60 * 60 * 1000; // 4 hours
+      // Tiered refresh. The cron fires every 30 minutes; how often a given
+      // game is actually re-priced depends on how close it is to starting.
+      //
+      //   within 4h    every run          (30 min) — lines move fastest here
+      //   4h to 48h    every 2 hours                — visible to members, but slow moving
+      //   outrights    once a day                   — futures drift over weeks
+      //
+      // Cost is per distinct sport key per run, not per game: one call returns
+      // every game for its sport. Outrights are the exception — each futures
+      // market has its own key, so refreshing them on every run was costing
+      // one call each, every hour, for prices that barely move. Measured
+      // 2026-08-18: 9 selected games produced 9 calls, mostly outrights.
+      const NEAR_WINDOW_MS = 4 * 60 * 60 * 1000;   // 4 hours
+      const MID_WINDOW_MS = 48 * 60 * 60 * 1000;   // 48 hours — the member display window
+      const MID_TIER_EVERY_HOURS = 2;
+      const FUTURES_TIER_HOUR_UTC = 12;            // once a day, midday UTC
+
+      // Which optional tiers this particular run includes.
+      const runHour = now.getUTCHours();
+      const runMinute = now.getUTCMinutes();
+      const isTopOfHour = runMinute < 30;
+      const includeMidTier = runHour % MID_TIER_EVERY_HOURS === 0 && isTopOfHour;
+      const includeFutures = runHour === FUTURES_TIER_HOUR_UTC && isTopOfHour;
+      console.log(
+        `Refresh tiers — near: always, mid(4-48h): ${includeMidTier}, futures: ${includeFutures}`,
+      );
+
       const gamesBySportKey = new Map<string, SelectedGame[]>();
       const gamesByFuturesKey = new Map<string, SelectedGame[]>();
       let skippedNotSoon = 0;
+      let skippedMidTier = 0;
+      let skippedFutures = 0;
       for (const game of finalSelection) {
         // Skip odds refresh if event has already started (but not outrights — they have distant future dates)
         const isOutright = game.away_team === 'Outright';
-        if (!isOutright) {
+        if (isOutright) {
+          if (!includeFutures) {
+            skippedFutures++;
+            continue;
+          }
+        } else {
           const startTime = new Date(game.start_time);
           if (startTime <= now) {
             console.log(`Skipping odds refresh for ${game.id} - event has started`);
             continue;
           }
-          // Only refresh odds for games starting within the window
-          if (startTime.getTime() - now.getTime() > ODDS_REFRESH_WINDOW_MS) {
+          const untilStart = startTime.getTime() - now.getTime();
+          if (untilStart > MID_WINDOW_MS) {
+            // Beyond what members can even see — sync_games keeps it current.
             skippedNotSoon++;
+            continue;
+          }
+          if (untilStart > NEAR_WINDOW_MS && !includeMidTier) {
+            skippedMidTier++;
             continue;
           }
         }
@@ -1286,9 +1321,15 @@ Deno.serve(async (req) => {
       }
 
       if (skippedNotSoon > 0) {
-        console.log(`Skipped ${skippedNotSoon} games starting >4h from now (handled by sync_games)`);
+        console.log(`Skipped ${skippedNotSoon} games starting >48h from now (handled by sync_games)`);
       }
-      console.log(`Refreshing odds for ${gamesBySportKey.size} sports, ${Array.from(gamesBySportKey.values()).reduce((s, g) => s + g.length, 0)} games within 4h window`);
+      if (skippedMidTier > 0) {
+        console.log(`Skipped ${skippedMidTier} games in the 4-48h band (not a 2-hourly run)`);
+      }
+      if (skippedFutures > 0) {
+        console.log(`Skipped ${skippedFutures} outrights (not the daily futures run)`);
+      }
+      console.log(`Refreshing odds for ${gamesBySportKey.size} sports + ${gamesByFuturesKey.size} futures keys, ${Array.from(gamesBySportKey.values()).reduce((s, g) => s + g.length, 0)} games`);
 
       // Fetch odds for each sport and update markets
       for (const [sportKey, games] of gamesBySportKey) {
