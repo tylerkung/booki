@@ -19,10 +19,22 @@ that earns search traffic on the way.
 It mirrors the existing blog rather than inventing a parallel system: same nav,
 same card patterns, same static-page approach under `landing/`.
 
-**The distinction from the blog:** the blog is marketing — opinion, comparison,
-persuasion. The knowledge base is reference — how the thing actually works,
-written for someone already using it. They should look related and read
-differently.
+**The dividing line with the blog is subject, not tone.** The blog covers the
+category and the problem space — how independent organizers handle settlements,
+whether a spreadsheet is enough, what pay-per-head services actually charge. It
+stands on its own without Booki existing. The knowledge base covers **Booki's
+own mechanics** — what this button does, why that game has no price, what
+happens when a limit is hit.
+
+That line also keeps them out of each other's way in search: the blog targets
+problem-shaped queries from people who don't know the category name, the
+knowledge base targets product queries from people already using Booki. Two of
+your own pages never compete for the same intent.
+
+Existing blog posts stay where they are. `how-organizers-track-weekly-settlements`
+and `spreadsheet-template-tracking-picks` are editorial pieces about the general
+practice, not documentation of a Booki feature — moving them would cost their
+existing URLs and mis-file them besides.
 
 ## Goals
 
@@ -144,9 +156,9 @@ organizer sees at  6 days (after):   33 games,  0 without odds
 
 ## Open questions
 
-- **Does the knowledge base replace some blog posts?** Several existing posts
-  (`how-organizers-track-weekly-settlements`, `spreadsheet-template-tracking-picks`)
-  are closer to reference than marketing. Move, cross-link, or leave?
+- **Cross-linking between the two.** A blog post on weekly settlement practice
+  should probably link to the KB article on Settle Up, and vice versa. Worth a
+  convention so it happens consistently rather than ad hoc.
 - **Public or gated?** Public is better for search and for prospects evaluating
   Booki; it also means competitors read it.
 - **Who writes it?** Voice matters — the founder voice in `how-we-built-booki`
@@ -155,6 +167,12 @@ organizer sees at  6 days (after):   33 games,  0 without odds
   audiences with clear labelling?
 
 ## Decisions taken
+
+- **2026-08-18 — blog and knowledge base split by subject.** The blog covers the
+  category and problem space and stands alone without Booki; the knowledge base
+  documents Booki's mechanics. Existing blog posts stay put — they are editorial
+  pieces about general practice, not feature documentation. This also prevents
+  the two from competing for the same search intent.
 
 - **2026-08-18 — no per-member line adjustment.** Confirmed not planned, so the
   neutrality claim in US-005 can be stated unconditionally.
@@ -173,5 +191,5 @@ organizer sees at  6 days (after):   33 games,  0 without odds
   language
 - `Booki/Views/SettingsView.swift` — navigable-row pattern for US-005
 - `tasks/prd-seo-ai-ranking.md` — US-003 there (category and concept pages)
-  overlaps this PRD; a knowledge base article and an SEO landing page can be the
-  same page, and duplicating them would compete with each other in search
+  targets problem-shaped queries and belongs to the blog side of the split
+  above, not the knowledge base
