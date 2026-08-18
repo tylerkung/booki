@@ -1,7 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
-import { selectAllIn } from '../_shared/pagination.ts';
+import { selectAllIn, selectAllPaged } from '../_shared/pagination.ts';
 
 /**
  * Sports to sync from the Odds API.
@@ -140,6 +140,57 @@ interface OddsEvent {
   home_team: string | null;
   away_team: string | null;
   bookmakers?: OddsBookmaker[];
+}
+
+/**
+ * How many Odds API requests may be in flight at once. The provider is fine
+ * with modest concurrency; the cap exists to stay polite rather than to
+ * satisfy a documented limit.
+ */
+const ODDS_FETCH_CONCURRENCY = 5;
+
+/**
+ * Runs `fn` over `items` with at most `limit` promises in flight, preserving
+ * input order in the result. Used to parallelise Odds API fetches, which are
+ * the dominant cost of a sync run.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+
+  const workers = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (true) {
+        const index = cursor++;
+        if (index >= items.length) return;
+        results[index] = await fn(items[index]);
+      }
+    },
+  );
+
+  await Promise.all(workers);
+  return results;
+}
+
+/**
+ * Existing events row, as loaded for the change-detection pass. Carries the
+ * comparable columns so a sync can skip rows the provider has not changed.
+ */
+interface ExistingEventRow {
+  id: string;
+  external_id: string | null;
+  name: string;
+  sport: string;
+  league: string | null;
+  home_team: string;
+  away_team: string;
+  start_time: string;
+  status: string;
 }
 
 /**
@@ -581,19 +632,34 @@ Deno.serve(async (req) => {
     const allFetchedEvents: OddsEvent[] = [];
 
     if (!skipOddsSync) {
-      for (const sportKey of SPORTS_TO_SYNC) {
-        try {
-          console.log(`Fetching odds for sport: ${sportKey}`);
-          const events = await fetchOddsFromApi(oddsApiKey, sportKey);
-          console.log(`Fetched ${events.length} events for ${sportKey}`);
-          allFetchedEvents.push(...events);
-          stats.sports_fetched++;
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          console.error(`Error fetching ${sportKey}: ${errorMessage}`);
-          stats.errors.push(`${sportKey}: ${errorMessage}`);
-          // Continue with other sports
+      // Fetched with bounded concurrency, not one at a time. 15 sports plus 10
+      // futures is 25 sequential Odds API round trips, which alone consumed
+      // most of the 150s edge-function budget and made the run fail outright
+      // depending on upstream latency. Concurrency is capped rather than
+      // unbounded to stay polite to the provider's rate limits.
+      const sportResults = await mapWithConcurrency(
+        SPORTS_TO_SYNC,
+        ODDS_FETCH_CONCURRENCY,
+        async (sportKey) => {
+          try {
+            const events = await fetchOddsFromApi(oddsApiKey, sportKey);
+            console.log(`Fetched ${events.length} events for ${sportKey}`);
+            return { sportKey, events, error: null as string | null };
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error(`Error fetching ${sportKey}: ${errorMessage}`);
+            return { sportKey, events: [] as OddsEvent[], error: errorMessage };
+          }
+        },
+      );
+
+      for (const result of sportResults) {
+        if (result.error) {
+          stats.errors.push(`${result.sportKey}: ${result.error}`);
+          continue; // Continue with other sports
         }
+        allFetchedEvents.push(...result.events);
+        stats.sports_fetched++;
       }
 
       console.log(`Total events fetched: ${allFetchedEvents.length}`);
@@ -602,24 +668,33 @@ Deno.serve(async (req) => {
     // First, get all external_ids from fetched events to query existing records
     const externalIds = allFetchedEvents.map((e) => e.id);
 
-    // Query existing events by external_id.
-    // MUST be paginated: a plain .in() is capped at 1000 rows, and anything
+    // Load the id -> external_id map for the whole table.
+    //
+    // MUST be paginated: a plain select is capped at 1000 rows, and anything
     // past the cap looks new and gets inserted again as a duplicate.
+    //
+    // Reading the whole table beats chunking an .in() list here. A chunked IN
+    // over ~2,000 fetched ids is 10-20 sequential round trips; the full table
+    // is ~6 (1000 rows each) and only two narrow columns. Round trips are what
+    // push this function toward the 150s edge-function ceiling. This stays
+    // cheap as long as retention keeps the table small — see Phase 3 of
+    // docs/games-sync-redesign.md.
     const { data: existingEvents, error: existingEventsError } =
-      await selectAllIn<{ id: string; external_id: string | null }>(
-        client, 'events', 'id, external_id', 'external_id', externalIds);
+      await selectAllPaged<ExistingEventRow>(
+        () => client.from('events').select(
+          'id, external_id, name, sport, league, home_team, away_team, start_time, status'));
 
     if (existingEventsError) {
       console.error('Error querying existing events:', existingEventsError);
       stats.errors.push(`Database error: ${existingEventsError.message}`);
     }
 
-    // Build a map of external_id -> database id for existing events
-    const existingEventsMap = new Map<string, string>();
+    // Build a map of external_id -> existing row
+    const existingEventsMap = new Map<string, ExistingEventRow>();
     if (existingEvents) {
       for (const event of existingEvents) {
         if (event.external_id) {
-          existingEventsMap.set(event.external_id, event.id);
+          existingEventsMap.set(event.external_id, event);
         }
       }
     }
@@ -627,15 +702,44 @@ Deno.serve(async (req) => {
     // Track which events were inserted vs updated
     const eventsToInsert: EventRecord[] = [];
     const eventsToUpdate: { id: string; record: Partial<EventRecord> }[] = [];
+    let unchanged = 0;
 
     for (const oddsEvent of allFetchedEvents) {
-      const existingId = existingEventsMap.get(oddsEvent.id);
+      const existing = existingEventsMap.get(oddsEvent.id);
       const eventRecord = mapOddsEventToRecord(oddsEvent);
 
-      if (existingId) {
+      if (existing) {
+        // Skip rows the provider has not actually changed.
+        //
+        // Updates run one request per row, and a sync touches hundreds of
+        // games whose name/teams/start time are identical to what is already
+        // stored. Those writes are pure round-trip cost and push the function
+        // toward the 150s ceiling. Semantics are unchanged — an update that
+        // sets a column to its current value is a no-op.
+        //
+        // last_odds_update is intentionally excluded from the comparison: it
+        // changes on every fetch and would defeat the check entirely.
+        // start_time is compared as an instant, not as a string. The Odds API
+        // returns "2026-11-09T01:20:00Z" while PostgREST returns
+        // "2026-11-09T01:20:00+00:00" — the same moment, different text. A
+        // string comparison marks every event as changed and defeats the skip.
+        const same =
+          existing.name === eventRecord.name &&
+          existing.sport === eventRecord.sport &&
+          existing.league === eventRecord.league &&
+          existing.home_team === eventRecord.home_team &&
+          existing.away_team === eventRecord.away_team &&
+          Date.parse(existing.start_time) === Date.parse(eventRecord.start_time);
+
+        // Final events are never updated (the query below also guards this).
+        if (same || existing.status === 'final') {
+          unchanged++;
+          continue;
+        }
+
         // Event exists - update it (don't overwrite id or status if already final)
         eventsToUpdate.push({
-          id: existingId,
+          id: existing.id,
           record: {
             name: eventRecord.name,
             sport: eventRecord.sport,
@@ -653,6 +757,8 @@ Deno.serve(async (req) => {
       }
     }
 
+    console.log(`Events: ${eventsToInsert.length} to insert, ${eventsToUpdate.length} to update, ${unchanged} unchanged`);
+
     // Insert new events.
     //
     // Upsert with ignoreDuplicates rather than a plain insert: the unique index
@@ -664,16 +770,18 @@ Deno.serve(async (req) => {
     // NOTE: deliberately NOT a blanket upsert of every field. The update path
     // below preserves `status` and skips events already marked final — a full
     // upsert would overwrite status and un-finalize graded games.
+    const insertedEventRows: { id: string; external_id: string | null }[] = [];
     if (eventsToInsert.length > 0) {
       const { data: insertedRows, error: insertError } = await client
         .from('events')
         .upsert(eventsToInsert, { onConflict: 'external_id', ignoreDuplicates: true })
-        .select('id');
+        .select('id, external_id');
 
       if (insertError) {
         console.error('Error inserting events:', insertError);
         stats.errors.push(`Insert error: ${insertError.message}`);
       } else {
+        insertedEventRows.push(...(insertedRows ?? []));
         const actual = insertedRows?.length ?? 0;
         stats.events_inserted = actual;
         const skipped = eventsToInsert.length - actual;
@@ -704,23 +812,16 @@ Deno.serve(async (req) => {
     console.log(`Events: ${stats.events_inserted} inserted, ${stats.events_updated} updated`);
 
     // US-004: Upsert markets for each event
-    // First, we need to re-query events to get their database IDs for newly inserted events
-    const { data: allEventsWithIds, error: eventsWithIdsError } =
-      await selectAllIn<{ id: string; external_id: string | null }>(
-        client, 'events', 'id, external_id', 'external_id', externalIds);
-
-    if (eventsWithIdsError) {
-      console.error('Error querying events for market upsert:', eventsWithIdsError);
-      stats.errors.push(`Events query error for markets: ${eventsWithIdsError.message}`);
-    }
-
-    // Build map of external_id -> database id for all events
-    const eventIdMap = new Map<string, string>();
-    if (allEventsWithIds) {
-      for (const event of allEventsWithIds) {
-        if (event.external_id) {
-          eventIdMap.set(event.external_id, event.id);
-        }
+    //
+    // No re-query needed. The map loaded before the insert already covers every
+    // pre-existing event, and the upsert above returned the ids of the rows it
+    // created — merging the two is exact and saves a second full table read.
+    const eventIdMap = new Map<string, string>(
+      Array.from(existingEventsMap, ([ext, row]) => [ext, row.id]),
+    );
+    for (const row of insertedEventRows) {
+      if (row.external_id) {
+        eventIdMap.set(row.external_id, row.id);
       }
     }
 
@@ -747,7 +848,11 @@ Deno.serve(async (req) => {
 
     // Process markets for each fetched event
     const marketsToInsert: MarketRecord[] = [];
-    const marketsToUpdate: { id: string; record: Partial<MarketRecord> }[] = [];
+    // Carries full rows, not partials: these are written back with a batched
+    // upsert on the primary key, and the INSERT arm of that statement needs
+    // every NOT NULL column to be present even though it never fires for rows
+    // that already exist.
+    const marketsToUpdate: (MarketRecord & { id: string })[] = [];
 
     for (const oddsEvent of allFetchedEvents) {
       const eventId = eventIdMap.get(oddsEvent.id);
@@ -772,12 +877,13 @@ Deno.serve(async (req) => {
           // Market exists - update it
           marketsToUpdate.push({
             id: existingMarketId,
-            record: {
-              side_a: market.side_a,
-              side_b: market.side_b,
-              odds_a: market.odds_a,
-              odds_b: market.odds_b,
-            },
+            event_id: eventId,
+            bookie_id: null, // Shared markets
+            type: market.type,
+            side_a: market.side_a,
+            side_b: market.side_b,
+            odds_a: market.odds_a,
+            odds_b: market.odds_b,
           });
         } else {
           // New market - insert it
@@ -809,18 +915,29 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Update existing markets
-    for (const { id, record } of marketsToUpdate) {
+    // Update existing markets.
+    //
+    // Batched, not one request per row. This loop was the reason a sync could
+    // not finish inside the 150s edge-function budget: odds move constantly,
+    // so a steady-state run refreshes thousands of markets, and issuing one
+    // UPDATE per market meant thousands of sequential round trips. The single
+    // run that ever completed did so only because every market was new that
+    // day (1,449 inserted, 0 updated) and this loop never executed.
+    //
+    // Upserting on the primary key is an UPDATE for every row here, since all
+    // of them already exist. Chunked to keep any single request modest.
+    const MARKET_UPSERT_CHUNK = 500;
+    for (let i = 0; i < marketsToUpdate.length; i += MARKET_UPSERT_CHUNK) {
+      const chunk = marketsToUpdate.slice(i, i + MARKET_UPSERT_CHUNK);
       const { error: updateMarketError } = await client
         .from('markets')
-        .update(record)
-        .eq('id', id);
+        .upsert(chunk, { onConflict: 'id' });
 
       if (updateMarketError) {
-        console.error(`Error updating market ${id}:`, updateMarketError);
-        stats.errors.push(`Market update error for ${id}: ${updateMarketError.message}`);
+        console.error(`Error updating markets (chunk at ${i}):`, updateMarketError);
+        stats.errors.push(`Market update error: ${updateMarketError.message}`);
       } else {
-        stats.markets_updated++;
+        stats.markets_updated += chunk.length;
       }
     }
 
@@ -833,11 +950,32 @@ Deno.serve(async (req) => {
     let futuresEventsInserted = 0;
     let futuresMarketsInserted = 0;
 
-    for (const futuresKey of FUTURES_TO_SYNC) {
+    // Prefetch every futures feed concurrently, then process sequentially.
+    // Only the API calls are parallelised — the per-event database work below
+    // is left serial, since interleaving those writes has no latency benefit
+    // and would make failures much harder to reason about.
+    const futuresFetched = await mapWithConcurrency(
+      FUTURES_TO_SYNC,
+      ODDS_FETCH_CONCURRENCY,
+      async (futuresKey) => {
+        try {
+          const events = await fetchOutrightsFromApi(oddsApiKey, futuresKey);
+          console.log(`Fetched ${events.length} futures events for ${futuresKey}`);
+          return { futuresKey, events, error: null as string | null };
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error(`Error fetching futures ${futuresKey}: ${errorMessage}`);
+          return { futuresKey, events: [] as OddsEvent[], error: errorMessage };
+        }
+      },
+    );
+
+    for (const { futuresKey, events: futuresEvents, error: fetchError } of futuresFetched) {
+      if (fetchError) {
+        stats.errors.push(`futures ${futuresKey}: ${fetchError}`);
+        continue;
+      }
       try {
-        console.log(`Fetching outrights for: ${futuresKey}`);
-        const futuresEvents = await fetchOutrightsFromApi(oddsApiKey, futuresKey);
-        console.log(`Fetched ${futuresEvents.length} futures events for ${futuresKey}`);
 
         for (const oddsEvent of futuresEvents) {
           const eventRecord = mapOddsEventToRecord(oddsEvent);
