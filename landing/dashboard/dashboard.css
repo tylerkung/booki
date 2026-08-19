@@ -67,8 +67,8 @@ input, button, select, textarea { font: inherit; }
 .onboarding-option {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
+    gap: var(--s-md);
+    padding: var(--s-md) var(--s-lg);
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
     background: var(--bg);
@@ -148,7 +148,7 @@ input, button, select, textarea { font: inherit; }
 .auth-title {
     text-align: center;
     font-size: 26px;
-    margin-bottom: 6px;
+    margin-bottom: var(--s-sm);
     letter-spacing: -0.02em;
 }
 
@@ -168,12 +168,12 @@ input, button, select, textarea { font: inherit; }
     font-size: 13px;
     font-weight: 500;
     color: var(--text-secondary);
-    margin-bottom: 6px;
+    margin-bottom: var(--s-sm);
 }
 
 .form-group input {
     width: 100%;
-    padding: var(--s-md) 14px;
+    padding: var(--s-md) var(--s-lg);
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -212,7 +212,7 @@ input, button, select, textarea { font: inherit; }
     background: rgba(255, 77, 106, 0.1);
     border: 1px solid var(--danger);
     border-radius: var(--radius-sm);
-    padding: 10px 14px;
+    padding: var(--s-md) var(--s-lg);
     font-size: 13px;
     color: var(--danger);
     margin-bottom: var(--s-lg);
@@ -222,7 +222,7 @@ input, button, select, textarea { font: inherit; }
     background: rgba(0, 245, 212, 0.1);
     border: 1px solid var(--accent);
     border-radius: var(--radius-sm);
-    padding: 10px 14px;
+    padding: var(--s-md) var(--s-lg);
     font-size: 13px;
     color: var(--accent);
     margin-bottom: var(--s-lg);
@@ -354,7 +354,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     gap: var(--s-md);
-    padding: 10px var(--s-md);
+    padding: var(--s-md) var(--s-md);
     border-radius: var(--radius-sm);
     color: var(--text-secondary);
     font-size: 14px;
@@ -381,9 +381,9 @@ input, button, select, textarea { font: inherit; }
 .sidebar-organizer-cta {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--s-md);
     margin: var(--s-lg) 0 0;
-    padding: 10px 14px;
+    padding: var(--s-md) var(--s-lg);
     border-radius: var(--radius-sm);
     background: var(--accent);
     color: var(--bg);
@@ -403,7 +403,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     gap: var(--s-md);
-    padding: 10px var(--s-md);
+    padding: var(--s-md) var(--s-md);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-size: 14px;
@@ -621,7 +621,7 @@ input, button, select, textarea { font: inherit; }
 }
 
 .chip {
-    padding: 6px 14px;
+    padding: var(--s-sm) var(--s-lg);
     border-radius: 999px;
     font-size: 13px;
     font-weight: 500;
@@ -643,7 +643,7 @@ input, button, select, textarea { font: inherit; }
 .btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--s-sm);
     padding: var(--s-sm) var(--s-lg);
     border-radius: var(--radius-sm);
     font-size: 13px;
@@ -664,17 +664,17 @@ input, button, select, textarea { font: inherit; }
 .btn-danger-outline { background: none; color: var(--danger); border: 1px solid var(--danger); }
 .btn-danger-outline:hover { background: rgba(255,77,106,0.1); }
 
-.btn-grade { font-weight: 700; padding: 10px 20px; font-size: 14px; }
+.btn-grade { font-weight: 700; padding: var(--s-md) 20px; font-size: 14px; }
 .btn-grade-win { background: rgba(0,245,212,0.15); color: var(--success); border: 1px solid var(--success); }
 .btn-grade-loss { background: rgba(255,77,106,0.15); color: var(--danger); border: 1px solid var(--danger); }
 .btn-grade-push { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); }
-.btn-void { background: none; color: var(--danger); border: 1px solid var(--danger); padding: 10px 20px; font-size: 14px; font-weight: 700; }
+.btn-void { background: none; color: var(--danger); border: 1px solid var(--danger); padding: var(--s-md) 20px; font-size: 14px; font-weight: 700; }
 
 /* ── Search ── */
 .search-input {
     width: 100%;
     max-width: 300px;
-    padding: var(--s-sm) 14px;
+    padding: var(--s-sm) var(--s-lg);
     padding-left: 36px;
     background: var(--bg-elevated);
     border: 1px solid var(--border);
@@ -973,7 +973,7 @@ input, button, select, textarea { font: inherit; }
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 14px 20px;
+    padding: var(--s-lg) 20px;
     margin-bottom: var(--s-lg);
 }
 
@@ -1010,7 +1010,7 @@ input, button, select, textarea { font: inherit; }
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 14px;
+    padding: var(--s-lg);
     transition: border-color 0.15s;
 }
 
@@ -1048,7 +1048,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     flex-wrap: wrap;
     gap: var(--s-xs);
-    margin-top: 6px;
+    margin-top: var(--s-sm);
 }
 
 .attention-tag {
@@ -1129,7 +1129,7 @@ input, button, select, textarea { font: inherit; }
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 6px 0;
+        padding: var(--s-sm) 0;
         border-bottom: 1px solid var(--divider);
         font-size: 13px;
     }
@@ -1168,12 +1168,12 @@ input, button, select, textarea { font: inherit; }
 
     /* Filter bar wrapping */
     .filter-bar {
-        gap: 6px;
+        gap: var(--s-sm);
     }
 
     .chip {
         font-size: 12px;
-        padding: var(--s-xs) 10px;
+        padding: var(--s-xs) var(--s-md);
     }
 
     /* US-018: Stat value size at tablet */
@@ -1219,7 +1219,7 @@ input, button, select, textarea { font: inherit; }
 @media (max-width: 768px) {
     .event-row {
         flex-wrap: wrap;
-        gap: 6px;
+        gap: var(--s-sm);
     }
     .event-time {
         min-width: auto;
@@ -1250,7 +1250,7 @@ input, button, select, textarea { font: inherit; }
     align-items: center;
     justify-content: space-between;
     gap: var(--s-md);
-    padding: 10px 14px;
+    padding: var(--s-md) var(--s-lg);
     border-left: 4px solid var(--border);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     margin-bottom: var(--s-sm);
@@ -1270,7 +1270,7 @@ input, button, select, textarea { font: inherit; }
 /* ── Risk Watchlist ── */
 .risk-watchlist-row {
     display: block;
-    padding: var(--s-md) 14px;
+    padding: var(--s-md) var(--s-lg);
     border-radius: var(--radius-sm);
     margin-bottom: var(--s-sm);
     background: var(--bg-elevated);
@@ -1285,7 +1285,7 @@ input, button, select, textarea { font: inherit; }
 .snapshot-unpaid-row {
     display: flex;
     align-items: center;
-    padding: 10px 0;
+    padding: var(--s-md) 0;
     border-bottom: 1px solid var(--border);
 }
 .snapshot-unpaid-row:last-child { border-bottom: none; }
@@ -1294,7 +1294,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: var(--s-sm);
     padding: var(--s-md) var(--s-lg);
     border-top: 1px solid var(--border);
     color: var(--accent);
@@ -1446,7 +1446,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     gap: var(--s-md);
-    padding: 10px 0;
+    padding: var(--s-md) 0;
     border-bottom: 1px solid var(--divider);
 }
 .player-activity-row:last-child {
@@ -1497,7 +1497,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--s-md) 14px;
+    padding: var(--s-md) var(--s-lg);
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -1527,8 +1527,8 @@ input, button, select, textarea { font: inherit; }
 }
 
 @media (max-width: 768px) {
-    .games-sport-nav { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
-    .games-sport-card { padding: 10px var(--s-md); }
+    .games-sport-nav { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: var(--s-sm); }
+    .games-sport-card { padding: var(--s-md) var(--s-md); }
     .games-sport-card-name { font-size: 12px; }
     .games-toolbar { flex-direction: column; align-items: stretch; }
     .games-toolbar .search-input { max-width: 100% !important; }
@@ -1585,7 +1585,7 @@ input, button, select, textarea { font: inherit; }
 .league-sub-link {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--s-sm);
     font-size: 12px;
     font-weight: 600;
     color: var(--accent);
@@ -1609,7 +1609,7 @@ input, button, select, textarea { font: inherit; }
 .show-more-btn {
     display: block;
     width: 100%;
-    padding: 10px;
+    padding: var(--s-md);
     background: none;
     border: none;
     border-top: 1px solid var(--divider);
@@ -1638,7 +1638,7 @@ input, button, select, textarea { font: inherit; }
 }
 
 .pg-game-row {
-    padding: 10px var(--s-lg);
+    padding: var(--s-md) var(--s-lg);
     border-bottom: 1px solid var(--divider);
     position: relative;
 }
@@ -1648,7 +1648,7 @@ input, button, select, textarea { font: inherit; }
 .pg-game-time {
     font-size: 11px;
     color: var(--text-muted);
-    margin-bottom: 6px;
+    margin-bottom: var(--s-sm);
 }
 
 .pg-game-grid {
@@ -1682,7 +1682,7 @@ input, button, select, textarea { font: inherit; }
 
 .pg-odds-btn {
     width: 90px;
-    padding: 6px var(--s-xs);
+    padding: var(--s-sm) var(--s-xs);
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -1695,7 +1695,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: var(--s-sm);
     white-space: nowrap;
 }
 .pg-odds-btn:hover:not(:disabled) {
@@ -1768,7 +1768,7 @@ input, button, select, textarea { font: inherit; }
     transform: translateX(-50%);
     background: var(--accent);
     color: var(--bg);
-    padding: 14px var(--s-xxl);
+    padding: var(--s-lg) var(--s-xxl);
     border-radius: 999px;
     font-size: 15px;
     font-weight: 700;
@@ -1794,7 +1794,7 @@ input, button, select, textarea { font: inherit; }
 @media (max-width: 768px) {
     .pg-col-labels { display: none; }
     .pg-odds-cells { gap: var(--s-xs); }
-    .pg-odds-btn { width: 64px; padding: 6px var(--s-xxs); font-size: 11px; }
+    .pg-odds-btn { width: 64px; padding: var(--s-sm) var(--s-xxs); font-size: 11px; }
     .pg-odds-line { font-size: 10px; display: block; }
     .pg-odds-line::after { content: none; }
     .pg-odds-val { display: block; }
@@ -1881,7 +1881,7 @@ input, button, select, textarea { font: inherit; }
 .bs-selections {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--s-md);
     margin-bottom: var(--s-lg);
 }
 
@@ -1937,7 +1937,7 @@ input, button, select, textarea { font: inherit; }
 .bs-remove-btn:hover { color: var(--danger); }
 
 .bs-stake-row {
-    margin-top: 10px;
+    margin-top: var(--s-md);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1950,7 +1950,7 @@ input, button, select, textarea { font: inherit; }
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 0 10px;
+    padding: 0 var(--s-md);
     flex: 1;
     min-width: 100px;
 }
@@ -1988,7 +1988,7 @@ input, button, select, textarea { font: inherit; }
     gap: var(--s-xs);
 }
 .bs-quick-stakes button {
-    padding: var(--s-xs) 10px;
+    padding: var(--s-xs) var(--s-md);
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -2007,7 +2007,7 @@ input, button, select, textarea { font: inherit; }
 .bs-to-win {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--s-sm);
     width: 100%;
     padding-top: var(--s-xs);
 }
@@ -2015,14 +2015,14 @@ input, button, select, textarea { font: inherit; }
 .bs-stake-pair {
     display: flex;
     gap: var(--s-sm);
-    margin-top: 10px;
+    margin-top: var(--s-md);
 }
 .bs-stake-pair .bs-field {
     flex: 1;
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: var(--s-sm) 10px;
+    padding: var(--s-sm) var(--s-md);
 }
 .bs-stake-pair .bs-field:focus-within {
     border-color: var(--accent);
@@ -2075,7 +2075,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 0;
+    padding: var(--s-sm) 0;
     font-size: 13px;
     color: var(--text-secondary);
 }
@@ -2099,7 +2099,7 @@ input, button, select, textarea { font: inherit; }
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 14px;
+    padding: var(--s-lg);
     margin-bottom: var(--s-lg);
 }
 
@@ -2113,7 +2113,7 @@ input, button, select, textarea { font: inherit; }
 
 .bs-submit-btn {
     width: 100%;
-    padding: 14px;
+    padding: var(--s-lg);
     background: linear-gradient(180deg, #00F5D4 0%, #00D4B8 100%);
     color: var(--bg);
     border: none;
@@ -2376,7 +2376,7 @@ input, button, select, textarea { font: inherit; }
     .member-detail-header .btn-accent,
     .member-detail-header .btn-secondary {
         font-size: 0;
-        padding: 6px 10px;
+        padding: var(--s-sm) var(--s-md);
     }
     .member-detail-header .btn-accent::before {
         content: '$';
@@ -2430,7 +2430,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: var(--s-md);
 }
 .sp-tab::after {
     content: '';
@@ -2456,7 +2456,7 @@ input, button, select, textarea { font: inherit; }
     background: rgba(255, 176, 32, 0.08);
     border: 1px solid rgba(255, 176, 32, 0.35);
     border-radius: 10px;
-    padding: 14px var(--s-lg);
+    padding: var(--s-lg) var(--s-lg);
     margin-bottom: var(--s-md);
 }
 .bs-line-change-title {
@@ -2476,7 +2476,7 @@ input, button, select, textarea { font: inherit; }
     align-items: baseline;
     justify-content: space-between;
     gap: var(--s-md);
-    padding: 6px 0;
+    padding: var(--s-sm) 0;
     border-top: 1px solid rgba(255, 176, 32, 0.18);
 }
 .bs-line-change-side {

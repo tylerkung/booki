@@ -34,13 +34,24 @@ Nothing in the dashboard mapped to these, so status colours for upcoming/final
 events and gold highlights were improvised per use site or simply absent. All
 three are now defined as `--gold`, `--scheduled` and `--final-status`.
 
-## P2 — No spacing scale
+## P2 — No spacing scale — RESOLVED 2026-08-19
 
-The dashboard defines no spacing tokens. Consequences:
+The dashboard defined no spacing tokens.
 
-- **71 of 217** spacing values in `dashboard.css` are off the 4pt grid
-- **129 of 524** inline spacing values are off the grid
-- Off-grid values in use: `1, 2, 3, 5, 6, 10, 11, 13, 14`
+Resolved for `dashboard.css`: `--s-xxs` through `--s-xxxl` added, 264 token
+references, **zero off-grid values remaining**. Migrated in two passes — 194
+exact matches converted with no visual change, then 60 off-grid values rounded
+up (6→8, 10→12, 14→16) after checking the running app.
+
+Verified against live data: no element overflows, the body does not scroll
+horizontally, and the odds buttons — the tightest component, and the one that
+carried three of the 6px values — render cleanly in their three-column row.
+
+The 20 raw px values left (`16, 20, 28, 36, 40, 72`) are all divisible by 4 and
+compliant; they simply have no name in a scale that jumps 16 → 24 → 32 → 48.
+
+**Inline styles in `index.html` are untouched** — 129 off-grid values remain
+there.
 
 ## P3 — Type off the scale
 
@@ -81,7 +92,7 @@ against a token.
    spec's corners are rounder and its red and orange warmer. No other file
    hardcoded the old values, so the change was contained to `:root`.
 2. ~~Add the missing status tokens~~ — **done**.
-3. **Introduce a spacing scale** and migrate the CSS; leave inline styles until
-   there is a reason to touch each file.
+3. ~~Introduce a spacing scale~~ — **done** for `dashboard.css`. Inline styles
+   in `index.html` still carry 129 off-grid values.
 4. **Snap the loose radii** to the two tokens.
 5. **Type scale** last — the largest mechanical change for the least visible gain.
