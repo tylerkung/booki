@@ -196,6 +196,10 @@ body {
   align-items: center;
 }
 .ds-demo--col { flex-direction: column; align-items: stretch; gap: var(--s3); }
+/* Stacked meters and other two-part components need more air than the default
+   column gap: each one is a track plus a legend, so at --s3 the legend of one
+   sits against the track of the next and they read as a single block. */
+.ds-demo--roomy { gap: var(--s5); }
 .ds-demo--start { align-items: flex-start; }
 .ds-demo--top { align-items: flex-start; }
 .ds-demo--flush { padding: 0; background: none; border: none; }
@@ -574,6 +578,64 @@ code.t {
 .ds-skel--line { height: var(--s3); }
 .ds-skel--title { height: var(--s4); }
 .ds-skel--pill { height: var(--s6); border-radius: var(--radius-full); }
+
+
+/* ── avatars ─────────────────────────────────────────────────────────────
+   Initials on a tinted ground, never a photo. Members are people the organizer
+   already knows, so an initial is enough to identify a row at a glance. */
+.ds-avatar {
+  display: inline-grid; place-items: center; flex: 0 0 auto;
+  width: var(--s8); height: var(--s8);
+  border-radius: var(--radius-full);
+  background: var(--fill-faint);
+  color: var(--text-secondary);
+  font-size: var(--t-footnote); font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.ds-avatar--sm { width: var(--s6); height: var(--s6); font-size: var(--t-micro); }
+.ds-avatar--lg { width: var(--s12); height: var(--s12); font-size: var(--t-callout); }
+.ds-avatar--accent { background: var(--fill-accent); color: var(--accent); }
+.ds-avatar--warn { background: var(--fill-warning); color: var(--warning); }
+.ds-avatar--danger { background: var(--fill-danger); color: var(--danger); }
+.ds-avatar-stack { display: flex; }
+.ds-avatar-stack .ds-avatar { margin-left: calc(var(--s3) * -1); border: 2px solid var(--card); }
+.ds-avatar-stack .ds-avatar:first-child { margin-left: 0; }
+
+/* ── data display ────────────────────────────────────────────────────────
+   Figures are the product. They are monospaced, aligned, and signed — never
+   coloured for emphasis, only for direction. */
+.ds-stat { display: flex; flex-direction: column; gap: var(--s1); min-width: 140px; }
+.ds-stat__label { font-family: var(--mono); font-size: var(--t-micro); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+.ds-stat__value { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: var(--t-title1); font-weight: 700; line-height: 1.1; }
+.ds-stat__sub { font-size: var(--t-caption); color: var(--text-secondary); }
+
+.ds-meter { width: 100%; }
+.ds-meter__track { height: var(--s2); background: var(--background); border-radius: var(--radius-full); overflow: hidden; border: var(--border-w) solid var(--border); }
+.ds-meter__fill { height: 100%; background: var(--accent); border-radius: var(--radius-full); }
+.ds-meter__fill--warn { background: var(--warning); }
+.ds-meter__fill--danger { background: var(--danger); }
+.ds-meter__legend { display: flex; justify-content: space-between; font-size: var(--t-micro); color: var(--text-muted); margin-top: var(--s1); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.ds-bars { display: flex; flex-direction: column; gap: var(--s2); }
+.ds-bars__row { display: grid; grid-template-columns: 76px 1fr 72px; gap: var(--s3); align-items: center; font-size: var(--t-footnote); }
+.ds-bars__track { height: var(--s3); background: var(--background); border-radius: var(--s1); overflow: hidden; }
+.ds-bars__fill { height: 100%; background: var(--accent); }
+.ds-bars__fill--neg { background: var(--danger); }
+.ds-bars__val { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ── validation ──────────────────────────────────────────────────────── */
+.ds-input--error { border-color: var(--danger); }
+.ds-input--ok { border-color: var(--accent); }
+.ds-field__msg { display: block; font-size: var(--t-caption); margin-top: var(--s1); color: var(--text-muted); }
+.ds-field__msg--error { color: var(--danger); }
+.ds-field__msg--ok { color: var(--accent); }
+
+/* ── focus ───────────────────────────────────────────────────────────── */
+.ds-focus-demo { display: flex; gap: var(--s3); flex-wrap: wrap; align-items: center; }
+.ds-focus-ring { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ds-target { position: relative; display: inline-grid; place-items: center; width: var(--s6); height: var(--s6); background: var(--elevated); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); color: var(--text-secondary); }
+.ds-target { margin: var(--s3); }
+.ds-target::after { content: ''; position: absolute; width: 44px; height: 44px; border: 1px dashed var(--warning); border-radius: var(--radius-sm); }
 
 /* ── menus ───────────────────────────────────────────────────────────── */
 .ds-menu { background: var(--elevated); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); padding: var(--s1); min-width: 200px; }

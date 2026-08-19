@@ -56,6 +56,13 @@ const alertBox = (variant, glyph, title, text) => `
 const icon = (glyph, name) => `
   <div class="ds-icon"><div class="ds-icon__glyph">${glyph}</div><div class="ds-icon__name">${name}</div></div>`;
 
+const barRow = (label, pct, value, neg) => `
+  <div class="ds-bars__row">
+    <span class="ds-sub">${label}</span>
+    <span class="ds-bars__track"><span class="ds-bars__fill${neg ? ' ds-bars__fill--neg' : ''}" style="width:${pct}%"></span></span>
+    <span class="ds-bars__val ${neg ? 'ds-lose' : 'ds-win'}">${value}</span>
+  </div>`;
+
 const spec = (token, meta, sample, cls) => `
   <div class="ds-spec">
     <div class="ds-spec__meta"><b>${token}</b>${meta}</div>
@@ -727,6 +734,250 @@ const DS_SECTIONS = [
     </table></div>
   </div>
   <p class="ds-note">Numeric columns are monospaced and right-aligned so figures compare down the column. Text columns stay left.</p>
+` },
+
+{ id: 'avatars', label: 'Avatars', html: `
+  <h1 class="ds-h1">Avatars</h1>
+  <p class="ds-intro">
+    Initials on a tinted ground — never a photo. Members are people the organizer
+    already knows by name, so an initial identifies a row without the upload flow,
+    the storage, or the empty-state problem a photo would bring.
+  </p>
+
+  <p class="ds-label">Sizes</p>
+  <div class="ds-demo">
+    <div class="ds-center"><span class="ds-avatar ds-avatar--sm">AS</span><p class="ds-anno">24 &middot; dense rows</p></div>
+    <div class="ds-center"><span class="ds-avatar">AS</span><p class="ds-anno">32 &middot; default</p></div>
+    <div class="ds-center"><span class="ds-avatar ds-avatar--lg">AS</span><p class="ds-anno">48 &middot; member detail</p></div>
+  </div>
+
+  <p class="ds-label">Tints carry state, not identity</p>
+  <div class="ds-demo">
+    <span class="ds-avatar">MK</span>
+    <span class="ds-avatar ds-avatar--accent">JS</span>
+    <span class="ds-avatar ds-avatar--warn">AS</span>
+    <span class="ds-avatar ds-avatar--danger">TB</span>
+  </div>
+  <p class="ds-note">
+    Neutral by default. A tint means something is true of that member right now —
+    up, needs attention, overdue — and uses the same semantic colours as
+    everything else. Never assign a colour per person: a colour that means
+    "Andrew" cannot also mean "overdue".
+  </p>
+
+  <p class="ds-label">In a row</p>
+  <div class="ds-list ds-w-md">
+    <div class="ds-row">
+      <div class="ds-split" style="gap:var(--s3);justify-content:flex-start">
+        <span class="ds-avatar">AS</span>
+        <span><span class="ds-body">Andrew Sandos</span><span class="ds-dim" style="display:block">3 open picks</span></span>
+      </div>
+      <span class="ds-num ds-lose">&minus;$180.00</span>
+    </div>
+    <div class="ds-row">
+      <div class="ds-split" style="gap:var(--s3);justify-content:flex-start">
+        <span class="ds-avatar ds-avatar--accent">JM</span>
+        <span><span class="ds-body">Joseph Molina</span><span class="ds-dim" style="display:block">On heater</span></span>
+      </div>
+      <span class="ds-num ds-win">+$45.00</span>
+    </div>
+  </div>
+
+  <p class="ds-label">Group</p>
+  <div class="ds-demo">
+    <div class="ds-avatar-stack">
+      <span class="ds-avatar ds-avatar--sm">AS</span>
+      <span class="ds-avatar ds-avatar--sm">JM</span>
+      <span class="ds-avatar ds-avatar--sm">MK</span>
+      <span class="ds-avatar ds-avatar--sm">+9</span>
+    </div>
+  </div>
+  <p class="ds-note">Overlap by 12, ringed in the card colour so they read as a stack. The overflow count is the last chip, never a separate label.</p>
+` },
+
+{ id: 'data', label: 'Data Display', html: `
+  <h1 class="ds-h1">Data Display</h1>
+  <p class="ds-intro">
+    Figures are the product. Every number is monospaced, right-aligned in a
+    column, and signed. Colour indicates direction — up or down — and nothing
+    else. A number is never coloured to draw the eye.
+  </p>
+
+  <p class="ds-label">Stat</p>
+  <div class="ds-demo">
+    <div class="ds-stat">
+      <span class="ds-stat__label">Net position</span>
+      <span class="ds-stat__value ds-win">+$1,284.50</span>
+      <span class="ds-stat__sub">Across 12 members</span>
+    </div>
+    <div class="ds-stat">
+      <span class="ds-stat__label">Open activity</span>
+      <span class="ds-stat__value">$3,150.00</span>
+      <span class="ds-stat__sub">22 picks unresolved</span>
+    </div>
+    <div class="ds-stat">
+      <span class="ds-stat__label">This week</span>
+      <span class="ds-stat__value ds-lose">&minus;$310.00</span>
+      <span class="ds-stat__sub">Down from +$95.00</span>
+    </div>
+  </div>
+  <p class="ds-note">
+    A stat is label, figure, context — in that order and never fewer than three.
+    A number with no comparison cannot be judged, so the sub-line is not optional.
+  </p>
+
+  <p class="ds-label">Credit utilisation</p>
+  <div class="ds-demo ds-demo--col ds-demo--roomy ds-w-sm">
+    <div class="ds-meter">
+      <div class="ds-meter__track"><div class="ds-meter__fill" style="width:34%"></div></div>
+      <div class="ds-meter__legend"><span>$340 used</span><span>$1,000 limit</span></div>
+    </div>
+    <div class="ds-meter">
+      <div class="ds-meter__track"><div class="ds-meter__fill ds-meter__fill--warn" style="width:78%"></div></div>
+      <div class="ds-meter__legend"><span>$780 used</span><span>$1,000 limit</span></div>
+    </div>
+    <div class="ds-meter">
+      <div class="ds-meter__track"><div class="ds-meter__fill ds-meter__fill--danger" style="width:100%"></div></div>
+      <div class="ds-meter__legend"><span>$1,000 used</span><span>At limit</span></div>
+    </div>
+  </div>
+  <p class="ds-note">
+    Accent below 75%, warning to 99%, danger at the limit. The thresholds are
+    fixed so the same bar means the same thing on every screen. Credit used
+    includes open stakes, not just settled balance.
+  </p>
+
+  <p class="ds-label">Performance by sport</p>
+  <div class="ds-demo ds-demo--flush ds-w-md">
+    <div class="ds-bars">
+      ${barRow('MLB', 82, '+$640', false)}
+      ${barRow('NFL', 45, '+$355', false)}
+      ${barRow('NBA', 28, '&minus;$220', true)}
+      ${barRow('NCAAB', 12, '&minus;$95', true)}
+    </div>
+  </div>
+  <p class="ds-note">
+    Bars are proportional to absolute value, so a loss and a win of the same size
+    read as the same length. Direction comes from colour and the sign, not from
+    bar length.
+  </p>
+
+  <ul class="ds-rules">
+    <li>Always <code class="t">tabular-nums</code>. Figures that shift width as they change are unreadable.</li>
+    <li>Always signed. "+$45.00" and "&minus;$45.00", never a bare "45.00" whose meaning depends on context.</li>
+    <li>Currency to two decimals everywhere, including zero — "$0.00", not "$0".</li>
+    <li>Colour means direction. A large number is not coloured for being large.</li>
+  </ul>
+` },
+
+{ id: 'validation', label: 'Validation', html: `
+  <h1 class="ds-h1">Validation</h1>
+  <p class="ds-intro">
+    A message says what is wrong and what to do about it. Validate on submit, not
+    on every keystroke — telling someone their email is invalid while they are
+    still typing it is noise, not help.
+  </p>
+
+  <p class="ds-label">Field states</p>
+  <div class="ds-demo ds-demo--col ds-demo--roomy ds-w-sm">
+    <label class="ds-field">
+      <span class="ds-field__label">Email</span>
+      <input class="ds-input" type="email" placeholder="member@example.com">
+      <span class="ds-field__msg">They will receive an invite with a join link.</span>
+    </label>
+    <label class="ds-field">
+      <span class="ds-field__label">Email</span>
+      <input class="ds-input ds-input--error" type="email" value="andrew@">
+      <span class="ds-field__msg ds-field__msg--error">Add the part after the @ &mdash; for example andrew@gmail.com.</span>
+    </label>
+    <label class="ds-field">
+      <span class="ds-field__label">Credit limit</span>
+      <input class="ds-input ds-input--num ds-input--ok" value="1000">
+      <span class="ds-field__msg ds-field__msg--ok">Applies to new members from now on.</span>
+    </label>
+  </div>
+  <p class="ds-note">
+    Helper text occupies the same slot as the error, so the layout does not shift
+    when validation fires. The slot is reserved even when empty.
+  </p>
+
+  <p class="ds-label">Writing the message</p>
+  <div class="ds-scroll"><table class="ds-table">
+    <thead><tr><th>Instead of</th><th>Write</th></tr></thead>
+    <tbody>
+      <tr><td class="ds-lose">Invalid input</td><td class="ds-win">Add the part after the @</td></tr>
+      <tr><td class="ds-lose">Error: limit must be numeric</td><td class="ds-win">Enter an amount, like 500</td></tr>
+      <tr><td class="ds-lose">Something went wrong</td><td class="ds-win">The line moved &mdash; confirm the new price</td></tr>
+      <tr><td class="ds-lose">Required field</td><td class="ds-win">Add an email, or copy the code instead</td></tr>
+    </tbody>
+  </table></div>
+  <p class="ds-note">
+    Every one of these names the fix. A message that only names the problem makes
+    the reader do the translation.
+  </p>
+
+  <ul class="ds-rules">
+    <li>Validate on submit or on blur. Never on every keystroke.</li>
+    <li>Move focus to the first failing field, so a long form does not need hunting.</li>
+    <li>Server rules are the truth. Client validation is a courtesy, and both must agree.</li>
+    <li>Success needs a message only when something non-obvious happened.</li>
+  </ul>
+` },
+
+{ id: 'a11y', label: 'Focus & Access', html: `
+  <h1 class="ds-h1">Focus &amp; Access</h1>
+  <p class="ds-intro">
+    Booki is used one-handed, often quickly, sometimes by someone who has just
+    watched a bad beat. The system's job is to stay operable under those
+    conditions — which is the same work as being accessible.
+  </p>
+
+  <p class="ds-label">Focus ring</p>
+  <div class="ds-demo">
+    <button class="ds-btn ds-btn--accent ds-focus-ring">Focused</button>
+    <button class="ds-btn ds-btn--secondary ds-focus-ring">Focused</button>
+    <span class="ds-badge ds-badge--live ds-focus-ring">Focusable</span>
+  </div>
+  <p class="ds-note">
+    2px accent, 2px offset, on every interactive element. Applied through
+    <code class="t">:focus-visible</code> so it appears for keyboard users without
+    ringing every mouse click. Never removed without a replacement.
+  </p>
+
+  <p class="ds-label">Tap targets</p>
+  <div class="ds-demo">
+    <div class="ds-center"><span class="ds-target">&times;</span><p class="ds-anno">24 visual<br>44 target</p></div>
+    <div class="ds-center"><span class="ds-target">&#9881;</span><p class="ds-anno">dashed = the hit area</p></div>
+  </div>
+  <p class="ds-note">
+    A control may look 24px but must accept a 44px touch. Small dismiss and
+    overflow controls are the usual offenders — they are visually quiet by
+    design, which makes it easy to forget they still have to be hittable.
+  </p>
+
+  <p class="ds-label">Contrast</p>
+  <div class="ds-scroll"><table class="ds-table">
+    <thead><tr><th>Pair</th><th>Ratio</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td>textPrimary on background</td><td class="ds-num">18.1&thinsp;:&thinsp;1</td><td>Any size</td></tr>
+      <tr><td>textSecondary on background</td><td class="ds-num">8.9&thinsp;:&thinsp;1</td><td>Any size</td></tr>
+      <tr><td>textMuted on background</td><td class="ds-num">4.1&thinsp;:&thinsp;1</td><td>Large or non-essential only</td></tr>
+      <tr><td>accent on background</td><td class="ds-num">13.4&thinsp;:&thinsp;1</td><td>Any size</td></tr>
+      <tr><td>background on accent</td><td class="ds-num">13.4&thinsp;:&thinsp;1</td><td>Button labels</td></tr>
+    </tbody>
+  </table></div>
+  <p class="ds-note">
+    <code class="t">textMuted</code> is the one to watch — it clears 4.5:1 only at
+    large sizes, so it is for hints and timestamps, never for anything a decision
+    depends on.
+  </p>
+
+  <ul class="ds-rules">
+    <li>Colour is never the only signal. A win says "Won" as well as being cyan.</li>
+    <li>Every animation honours reduce-motion, including the shimmer on skeletons.</li>
+    <li>Icon-only controls carry a label for screen readers.</li>
+    <li>Focus order follows reading order. A dialog traps focus until it closes.</li>
+  </ul>
 ` },
 
 { id: 'spacing', label: 'Spacing & Motion', html: `
