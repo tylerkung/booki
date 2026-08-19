@@ -158,6 +158,7 @@ MIRRORED = [
 ]
 DS_CSS = os.path.join(ROOT, "landing", "design", "ds.css")
 TOKENS = os.path.join(ROOT, "landing", "tokens.css")
+SITE_CSS = os.path.join(ROOT, "landing", "styles.css")
 THEME = os.path.join(ROOT, "Booki", "Theme.swift")
 
 # Values a consumer stylesheet is allowed to define itself, with the reason.
@@ -235,7 +236,7 @@ def scan_consumer_literals():
     """A consumer stylesheet may only alias. Defining a value there recreates
     the second-source-of-truth problem this architecture removed."""
     out = []
-    for path in (CSS, DS_CSS):
+    for path in (CSS, DS_CSS, SITE_CSS):
         if not os.path.exists(path): continue
         src = open(path).read()
         m = re.search(r':root\s*\{.*?\n\}', src, re.S)
@@ -260,6 +261,10 @@ def scan_unresolved():
     for consumer, extras in (
         (CSS, ["landing/dashboard/index.html", "landing/dashboard/login.html"]),
         (DS_CSS, ["landing/design/index.html", "landing/design/ds-content.js"]),
+        # The marketing stylesheet is the fourth consumer. Only the
+        # architecture checks apply to it — its own values are not linted yet,
+        # because it predates the token layer and uses a rem-based scale.
+        (SITE_CSS, []),
     ):
         if not os.path.exists(consumer): continue
         # A custom property may be declared on ANY selector, not just :root —

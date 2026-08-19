@@ -37,6 +37,7 @@
       refuses it and the page renders completely unstyled. Keeping the CSS
       inline makes that failure mode impossible.
     -->
+    <link rel="stylesheet" href="/tokens.css">
     <style>
         :root {
             --bg: #0A0A12;
@@ -137,9 +138,17 @@
             padding: 16px 32px;
             background: var(--accent);
             color: var(--bg);
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-            font-size: 1rem;
+            /* CTA type. Values carry fallbacks because this page is
+               deliberately self-contained — it is served for /invite/{CODE} by
+               a Netlify rewrite, and a relative stylesheet link resolved to
+               /invite/styles.css and came back as HTML. /tokens.css is absolute
+               so the rewrite cannot catch it, but the fallbacks mean a failure
+               there degrades the type rather than the page. */
+            font-family: var(--font-cta, 'Space Grotesk', sans-serif);
+            font-size: var(--fs-cta, 14px);
+            font-weight: var(--fw-cta, 700);
+            letter-spacing: var(--ls-cta, 0.1em);
+            text-transform: uppercase;
             border-radius: 12px;
             text-decoration: none;
             box-shadow: 0 6px 20px rgba(0, 245, 212, 0.18);

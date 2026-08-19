@@ -48,17 +48,13 @@ ul, ol {
 
 /* Theme Custom Properties */
 :root {
-    --bg: #0A0A12;
-    --bg-card: #14141F;
-    --bg-elevated: #1E1E2D;
-    --accent: #00F5D4;
-    --accent-secondary: #9D4EDD;
-    --accent-tertiary: #FF006E;
-    --border: #2A2A3A;
-    --divider: #22222E;
-    --text-primary: #F8F8F8;
-    --text-secondary: #A8A8B8;
-    --text-muted: #6B6B7B;
+    /* Aliases onto landing/tokens.css, the single source of truth, which every
+       marketing page links ahead of this file. Nothing here may define a value.
+       These 11 used to be an independent copy of the palette — they happened to
+       agree, but nothing made them. */
+    --bg: var(--background);
+    --bg-card: var(--card);
+    --bg-elevated: var(--elevated);
 }
 
 /* Base Styles */
@@ -100,14 +96,15 @@ main {
     padding: 14px 32px;
     background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
     color: var(--bg);
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    font-size: 1rem;
     border: none;
     border-radius: 12px;
     cursor: pointer;
     transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-    letter-spacing: 0.01em;
+    font-family: var(--font-cta);
+    font-size: var(--fs-cta);
+    font-weight: var(--fw-cta);
+    letter-spacing: var(--ls-cta);
+    text-transform: uppercase;
 }
 
 .btn-primary:hover {
@@ -121,13 +118,15 @@ main {
     padding: 14px 32px;
     background: transparent;
     color: var(--text-primary);
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 600;
-    font-size: 1rem;
     border: 1px solid var(--border);
     border-radius: 12px;
     cursor: pointer;
     transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    font-family: var(--font-cta);
+    font-size: var(--fs-cta);
+    font-weight: var(--fw-cta);
+    letter-spacing: var(--ls-cta);
+    text-transform: uppercase;
 }
 
 .btn-secondary:hover {
@@ -895,12 +894,15 @@ main {
     text-align: center;
     margin-top: auto;
     padding: 14px 24px;
-    font-size: 0.95rem;
-    font-weight: 600;
     color: var(--text-secondary);
     border: 1px solid var(--border);
     border-radius: 12px;
     cursor: default;
+    /* Not a CTA. The label is a status sentence — "Not available on Booki" — on
+       an element nobody can click, and setting a sentence in tracked caps reads
+       as shouting. Caps is for actions. */
+    font-size: 0.95rem;
+    font-weight: 600;
 }
 
 /* 7. Compliance */
