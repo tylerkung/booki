@@ -11,11 +11,17 @@
     --text-primary: #F8F8F8;
     --text-secondary: #A8A8B8;
     --text-muted: #6B6B7B;
-    --danger: #FF4D6A;
+    --danger: #FF6B6B;
     --success: #00F5D4;
-    --warning: #FFB347;
-    --radius: 12px;
-    --radius-sm: 8px;
+    /* Aligned to Booki/DESIGN_SYSTEM.md — see docs/web-design-system-audit.md.
+       These three had no equivalent here, so event status colour was improvised
+       per use site. */
+    --gold: #FFE66D;
+    --scheduled: #7B68EE;
+    --final-status: #5C5C6F;
+    --warning: #FFA94D;
+    --radius: 16px;
+    --radius-sm: 12px;
     --sidebar-width: 240px;
     --betslip-width: 340px;
 }

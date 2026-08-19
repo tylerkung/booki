@@ -12,7 +12,7 @@ consistently wrong against the spec.
 
 Spacing and radius have no token layer at all.
 
-## P1 — Token values that disagree
+## P1 — Token values that disagree — RESOLVED 2026-08-19
 
 Every error state, warning and rounded corner in the web app differs from iOS.
 
@@ -26,12 +26,13 @@ Every error state, warning and rounded corner in the web app differs from iOS.
 The radius pair is the most visible: it applies to essentially every surface, so
 the web app reads as a slightly different product to the iOS app side by side.
 
-## P2 — System tokens with no equivalent
+## P2 — System tokens with no equivalent — RESOLVED 2026-08-19
 
 `gold` `#FFE66D`, `scheduled` `#7B68EE`, `finalStatus` `#5C5C6F`
 
-Nothing in the dashboard maps to these, so status colours for upcoming/final
-events and gold highlights are improvised per use site or simply absent.
+Nothing in the dashboard mapped to these, so status colours for upcoming/final
+events and gold highlights were improvised per use site or simply absent. All
+three are now defined as `--gold`, `--scheduled` and `--final-status`.
 
 ## P2 — No spacing scale
 
@@ -76,9 +77,10 @@ against a token.
 
 ## Suggested order
 
-1. **Align the four token values** — four lines, but visibly changes every
-   corner, error and warning. Do it deliberately and look at the result.
-2. **Add the missing status tokens** so event status stops being improvised.
+1. ~~Align the four token values~~ — **done**. Compared side by side first: the
+   spec's corners are rounder and its red and orange warmer. No other file
+   hardcoded the old values, so the change was contained to `:root`.
+2. ~~Add the missing status tokens~~ — **done**.
 3. **Introduce a spacing scale** and migrate the CSS; leave inline styles until
    there is a reason to touch each file.
 4. **Snap the loose radii** to the two tokens.
