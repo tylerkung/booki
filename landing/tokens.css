@@ -1,0 +1,222 @@
+/* ============================================================================
+   Booki design tokens — single source of truth.
+
+   Every styled surface on the web reads from this file: the dashboard app
+   (landing/dashboard/dashboard.css) and the design system reference
+   (landing/design/ds.css) both link it and define only aliases on top.
+
+   Before this existed the two files each carried their own copy of the palette.
+   They happened to agree, but by care rather than by construction — which is
+   exactly how the stale colour literals inside the dashboard happened one level
+   down: rgba(255,77,106) matched --danger when it was written, and nothing
+   noticed when --danger moved.
+
+   The iOS app is the third consumer and cannot link CSS. Booki/Theme.swift is
+   therefore checked against the colour block below by
+   scripts/check-design-tokens.py, which fails when they disagree.
+
+   Adding a token: put it here, not in a consumer. A consumer may only alias.
+   ========================================================================= */
+
+:root {
+  /* ── colour — mirrors Booki/Theme.swift, enforced ───────────────────── */
+  --background: #0A0A12;          /* Theme.background */
+  --card: #14141F;                /* Theme.cardBackground */
+  --card-deep: #0E0E18;           /* cardGradient end stop */
+  --elevated: #1E1E2D;            /* Theme.elevatedBackground */
+  --border: #2A2A3A;              /* Theme.border */
+  --divider: #22222E;             /* Theme.divider */
+
+  --text-primary: #F8F8F8;        /* Theme.textPrimary */
+  --text-secondary: #A8A8B8;      /* Theme.textSecondary */
+  --text-muted: #6B6B7B;          /* Theme.textMuted */
+
+  --accent: #00F5D4;              /* Theme.accent */
+  --accent-deep: #00D4B8;         /* gradient end stop — NOT interchangeable */
+  --accent-secondary: #9D4EDD;    /* Theme.accentSecondary */
+  --accent-tertiary: #FF006E;     /* Theme.accentTertiary */
+  --gold: #FFE66D;                /* Theme.gold */
+  --danger: #FF6B6B;              /* Theme.danger */
+  --warning: #FFA94D;             /* Theme.warning */
+  --scheduled: #7B68EE;           /* Theme.scheduled */
+  --final: #5C5C6F;               /* Theme.finalStatus */
+  --success: var(--accent);       /* Theme.win */
+
+  --gradient-accent: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+
+  /* ── channel triplets ──
+     Every translucent fill derives from these, so a palette change reaches the
+     tints too. Tints used to be frozen literals and went stale silently. */
+  --accent-rgb: 0, 245, 212;
+  --accent-secondary-rgb: 157, 78, 221;
+  --accent-tertiary-rgb: 255, 0, 110;
+  --danger-rgb: 255, 107, 107;
+  --warning-rgb: 255, 169, 77;
+  --scheduled-rgb: 123, 104, 238;
+  --final-rgb: 92, 92, 111;
+  --neutral-rgb: 168, 168, 184;
+  --white-rgb: 255, 255, 255;
+  --black-rgb: 0, 0, 0;
+
+  /* ── opacity ladder ── */
+  --o-hairline: 0.03;
+  --o-faint: 0.05;
+  --o-soft: 0.10;
+  --o-med: 0.15;
+  --o-strong: 0.20;
+  --o-heavy: 0.25;
+  --o-glow: 0.30;
+  --o-intense: 0.40;
+  --o-opaque: 0.80;
+
+  /* ── tinted fills ── */
+  --fill-accent-faint: rgba(var(--accent-rgb), var(--o-faint));
+  --fill-accent-soft: rgba(var(--accent-rgb), var(--o-soft));
+  --fill-accent: rgba(var(--accent-rgb), var(--o-med));
+  --fill-accent-strong: rgba(var(--accent-rgb), var(--o-strong));
+  --fill-accent-heavy: rgba(var(--accent-rgb), var(--o-heavy));
+  --fill-accent-secondary: rgba(var(--accent-secondary-rgb), var(--o-med));
+  --fill-accent-tertiary: rgba(var(--accent-tertiary-rgb), var(--o-med));
+  --fill-danger-soft: rgba(var(--danger-rgb), var(--o-soft));
+  --fill-danger: rgba(var(--danger-rgb), var(--o-med));
+  --fill-warning-soft: rgba(var(--warning-rgb), var(--o-soft));
+  --fill-warning: rgba(var(--warning-rgb), var(--o-med));
+  --fill-scheduled: rgba(var(--scheduled-rgb), var(--o-med));
+  --fill-final: rgba(var(--final-rgb), var(--o-med));
+  --fill-neutral: rgba(var(--neutral-rgb), var(--o-med));
+  --fill-white-hairline: rgba(var(--white-rgb), var(--o-hairline));
+  --fill-white-faint: rgba(var(--white-rgb), var(--o-faint));
+  --fill-white-soft: rgba(var(--white-rgb), var(--o-soft));
+  --fill-white: rgba(var(--white-rgb), var(--o-med));
+  --fill-card-opaque: rgba(20, 20, 31, var(--o-opaque));
+  --scrim: rgba(var(--black-rgb), 0.6);
+  --scrim-light: rgba(var(--black-rgb), 0.5);
+  --text-on-accent: var(--background);
+
+  /* ── spacing — 4pt grid ──
+     Numbered by grid unit: --s4 is four units, 16px. The 2px step is the one
+     exception, kept because the iOS spec defines it and it is in use. */
+  --s05: 2px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+  --s14: 56px;
+  --s16: 64px;
+
+  /* ── radius ──
+     full and circle are NOT interchangeable: on a non-square element 50%
+     yields an ellipse and 999px a stadium. Pick by intent. */
+  --radius-xs: 4px;
+  --radius-sm: 12px;
+  --radius: 16px;
+  --radius-full: 999px;
+  --radius-circle: 50%;
+
+  /* ── type — iOS scale (Apple text styles, 17px body) ── */
+  --t-display: 34px;
+  --t-title1: 28px;
+  --t-title2: 22px;
+  --t-headline: 17px;
+  --t-body: 17px;
+  --t-callout: 16px;
+  --t-subhead: 15px;
+  --t-footnote: 13px;
+  --t-caption: 12px;
+  --t-micro: 11px;
+
+  /* ── type — web scale (dense desktop UI, 13px body) ──
+     Deliberately not the iOS scale. Colour, spacing and radius are genuinely
+     shared with iOS; type sizes are not, and treating them as shared is what
+     let 18 ad-hoc sizes accumulate in the dashboard. */
+  --fs-micro: 11px;
+  --fs-caption: 12px;
+  --fs-sm: 13px;
+  --fs-body: 14px;
+  --fs-lg: 16px;
+  --fs-title3: 18px;
+  --fs-title2: 22px;
+  --fs-title1: 28px;
+  --fs-display: 40px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-heavy: 800;
+
+  --lh-none: 1;
+  --lh-tight: 1.2;
+  --lh-normal: 1.5;
+  --lh-loose: 1.6;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', var(--font-sans);
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ── elevation — the accent glow, never black alone ── */
+  --shadow-focus: 0 0 0 3px var(--fill-accent-soft);
+  --shadow-btn: 0 2px 8px rgba(var(--accent-rgb), var(--o-heavy)), inset 0 1px 0 var(--fill-white);
+  --shadow-btn-hover: 0 4px 16px rgba(var(--accent-rgb), var(--o-glow)), inset 0 1px 0 var(--fill-white);
+  --shadow-raised: 0 4px 24px rgba(var(--accent-rgb), var(--o-glow)), 0 2px 8px rgba(var(--black-rgb), var(--o-glow));
+  --shadow-float: 0 6px 32px rgba(var(--accent-rgb), var(--o-intense)), 0 4px 12px rgba(var(--black-rgb), var(--o-glow));
+  --shadow-modal: 0 0 80px rgba(var(--accent-rgb), var(--o-faint)), 0 24px 48px rgba(var(--black-rgb), var(--o-intense));
+
+  /* ── motion ──
+     Web durations. iOS runs slower (0.1 / 0.2 / 0.3 / 0.5) because touch
+     tolerates more latency than a pointer does. */
+  --dur-fast: 0.15s;
+  --dur-base: 0.2s;
+  --dur-slow: 0.3s;
+  --ease: ease;
+
+  /* ── layers ──
+     Never write a raw z-index. If nothing here fits, the layer is missing. */
+  --z-base: 1;
+  --z-dropdown: 50;
+  --z-sticky: 100;
+  --z-betslip: 150;
+  --z-overlay: 200;
+  --z-modal: 250;
+  --z-toast: 300;
+
+  /* ── dimensions ──
+     Sizes, not spacing, so deliberately not on the 4pt grid: an 18px icon
+     rendered at 16 is a worse icon. A size used three or more times gets a
+     name; a one-off container width stays a literal. */
+  --hairline: 1px;
+  --bar-thin: 3px;
+  --dot-sm: 4px;
+  --dot: 6px;
+  --dot-lg: 8px;
+  --icon-xs: 16px;
+  --icon-sm: 18px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
+  --hamburger-w: 22px;
+  --badge: 28px;
+  --avatar-xs: 32px;
+  --tile: 36px;
+  --control: 48px;
+  --avatar-sm: 56px;
+  --avatar: 64px;
+  --avatar-lg: 80px;
+  --odds-col: 90px;              /* odds button AND its column label — shared
+                                    so they cannot drift out of alignment */
+  --w-panel: 280px;
+  --w-panel-lg: 320px;
+  --w-form: 480px;
+  --w-content: 768px;
+  --sidebar-width: 240px;
+  --betslip-width: 340px;
+  --toast-w: 360px;
+
+  /* Breakpoint kept here as documentation only — custom properties are not
+     valid inside a media query condition, so it cannot be referenced. */
+  --bp-md: 768px;
+}

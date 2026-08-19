@@ -1,93 +1,34 @@
 /* ============================================================================
-   Booki Design System — internal reference
+   Booki Design System — internal reference.
 
-   This page is bound by the system it documents. Every value below comes from a
-   token; there are no ad-hoc numbers. Spacing is 4pt throughout, radius is one
-   of two values, and type comes from the documented scale. If a rule cannot be
+   Tokens come from landing/tokens.css, the single source of truth, linked ahead
+   of this file. This page is bound by the system it documents: no ad-hoc
+   numbers, spacing on the 4pt grid, radius from the scale. If a rule cannot be
    followed here, the rule is wrong.
+
+   The block below is aliases plus the two values that are genuinely local to
+   this page's own chrome.
    ========================================================================= */
 
 :root {
-  /* ── colour — mirrors Booki/Theme.swift ── */
-  --background: #0A0A12;
-  --card: #14141F;
-  --card-deep: #0E0E18;          /* cardGradient end stop */
+  /* aliases onto canonical names */
+  --sans: var(--font-sans);
+  --display: var(--font-display);
+  --mono: var(--font-mono);
+  --tint: var(--o-med);
+  --border-w: var(--hairline);
+  --fill-faint: var(--fill-white-faint);
+  --btn-h: var(--control);
+
+  /* web type scale, used by the Typography → Web roles specimens */
+  --w-micro: var(--fs-micro);
+  --w-caption: var(--fs-caption);
+  --w-sm: var(--fs-sm);
+  --w-body: var(--fs-body);
+  --w-title3: var(--fs-title3);
+
+  /* local to this page's chrome — not part of the product */
   --chrome: #0D0D16;             /* rail ground, between background and card */
-  --elevated: #1E1E2D;
-  --border: #2A2A3A;
-  --divider: #22222E;
-
-  --text-primary: #F8F8F8;
-  --text-secondary: #A8A8B8;
-  --text-muted: #6B6B7B;
-
-  --accent: #00F5D4;
-  --accent-secondary: #9D4EDD;
-  --accent-tertiary: #FF006E;
-  --gold: #FFE66D;
-  --danger: #FF6B6B;
-  --warning: #FFA94D;
-  --scheduled: #7B68EE;
-  --final: #5C5C6F;
-
-  /* Tinted fills. Derived from the tokens above at a single opacity so every
-     badge, well and callout shares one recipe rather than each picking a value. */
-  --tint: 0.15;
-  --fill-accent: rgba(0, 245, 212, var(--tint));
-  --fill-danger: rgba(255, 107, 107, var(--tint));
-  --fill-warning: rgba(255, 169, 77, var(--tint));
-  --fill-scheduled: rgba(123, 104, 238, var(--tint));
-  --fill-final: rgba(92, 92, 111, var(--tint));
-  --fill-neutral: rgba(168, 168, 184, var(--tint));
-  --fill-faint: rgba(255, 255, 255, 0.05);
-
-  /* ── spacing — 4pt grid, no exceptions ── */
-  --s1: 4px;
-  --s2: 8px;
-  --s3: 12px;
-  --s4: 16px;
-  --s5: 20px;
-  --s6: 24px;
-  --s8: 32px;
-  --s10: 40px;
-  --s12: 48px;
-  --s14: 56px;
-
-  /* ── radius — the system defines two, plus full ── */
-  --radius-sm: 12px;
-  --radius: 16px;
-  --radius-full: 999px;
-
-  /* ── type scale — from DESIGN_SYSTEM.md ── */
-  --t-display: 34px;
-  --t-title1: 28px;
-  --t-title2: 22px;
-  --t-headline: 17px;
-  --t-body: 17px;
-  --t-callout: 16px;
-  --t-subhead: 15px;
-  --t-footnote: 13px;
-  --t-caption: 12px;
-  --t-micro: 11px;
-
-  /* ── web dashboard type scale ──
-     Distinct from the iOS scale above: that one is Apple text styles with a
-     17px body, this is the dense desktop UI whose body size is 13px. Kept here
-     so the Web Roles specimens render at their true sizes rather than
-     approximating with the iOS classes. */
-  --w-micro: 11px;
-  --w-caption: 12px;
-  --w-sm: 13px;
-  --w-body: 14px;
-  --w-title3: 18px;
-
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --display: 'Space Grotesk', var(--sans);
-  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
-
-  --border-w: 1px;
-  --btn-h: 48px;
-  --toast-w: 360px;     /* every toast, always */        /* spec says 50pt; 48 keeps the 4pt grid */
   --rail: 248px;
 }
 

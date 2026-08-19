@@ -157,6 +157,28 @@ MIRRORED = [
     ("--s-xl", "--s6"), ("--s-xxl", "--s8"), ("--s-xxxl", "--s12"),
 ]
 DS_CSS = os.path.join(ROOT, "landing", "design", "ds.css")
+TOKENS = os.path.join(ROOT, "landing", "tokens.css")
+THEME = os.path.join(ROOT, "Booki", "Theme.swift")
+
+# Values a consumer stylesheet is allowed to define itself, with the reason.
+# Everything else in a consumer :root must be an alias — `var(--canonical)`.
+CONSUMER_LOCAL = {
+    "--chrome": "design-system page chrome, not a product surface",
+    "--rail": "design-system page nav width, not a product surface",
+}
+
+# tokens.css name -> Theme.swift constant. The iOS app cannot link CSS, so this
+# is what keeps the third consumer honest.
+THEME_MAP = {
+    "--background": "background", "--card": "cardBackground",
+    "--elevated": "elevatedBackground", "--border": "border",
+    "--divider": "divider", "--text-primary": "textPrimary",
+    "--text-secondary": "textSecondary", "--text-muted": "textMuted",
+    "--accent": "accent", "--accent-secondary": "accentSecondary",
+    "--accent-tertiary": "accentTertiary", "--gold": "gold",
+    "--danger": "danger", "--warning": "warning",
+    "--scheduled": "scheduled", "--final": "finalStatus",
+}
 
 def root_tokens(path):
     src = open(path).read()
@@ -165,14 +187,64 @@ def root_tokens(path):
     return {a: b.strip() for a, b in re.findall(r'(--[\w-]+)\s*:\s*([^;]+);', m.group(0))}
 
 def scan_drift():
-    if not os.path.exists(DS_CSS): return []
-    app, ds = root_tokens(CSS), root_tokens(DS_CSS)
+    """Theme.swift is the one consumer that cannot link tokens.css, so compare
+    its palette against the canonical block instead."""
     out = []
-    for a, b in MIRRORED:
-        if a in app and b in ds and app[a].lower() != ds[b].lower():
-            out.append((os.path.relpath(DS_CSS, ROOT), 0, "drift",
-                        f"{b} = {ds[b]} but dashboard {a} = {app[a]}",
-                        "design system disagrees with the app"))
+    if not (os.path.exists(TOKENS) and os.path.exists(THEME)):
+        return out
+    tok = root_tokens(TOKENS)
+    swift = {m.group(1): "#" + m.group(2).upper() for m in
+             re.finditer(r'static let (\w+)\s*=\s*Color\(hex:\s*0x([0-9A-Fa-f]{6})\)',
+                         open(THEME).read())}
+    for name, const in THEME_MAP.items():
+        if name in tok and const in swift and tok[name].upper() != swift[const]:
+            out.append((os.path.relpath(THEME, ROOT), 0, "drift",
+                        f"Theme.{const} = {swift[const]} but {name} = {tok[name]}",
+                        "iOS palette disagrees with tokens.css"))
+    return out
+
+def scan_consumer_literals():
+    """A consumer stylesheet may only alias. Defining a value there recreates
+    the second-source-of-truth problem this architecture removed."""
+    out = []
+    for path in (CSS, DS_CSS):
+        if not os.path.exists(path): continue
+        src = open(path).read()
+        m = re.search(r':root\s*\{.*?\n\}', src, re.S)
+        if not m: continue
+        base = src[:m.start()].count("\n") + 1
+        for d in re.finditer(r'(--[\w-]+)\s*:\s*([^;]+);', m.group(0)):
+            name, val = d.group(1), d.group(2).strip()
+            if name in CONSUMER_LOCAL or val.startswith("var("):
+                continue
+            out.append((os.path.relpath(path, ROOT),
+                        base + m.group(0)[:d.start()].count("\n"), "second-source",
+                        f"{name} defines a value ({val[:28]}) instead of aliasing",
+                        "move it to landing/tokens.css"))
+    return out
+
+def scan_unresolved():
+    """A var() with no fallback that names nothing renders as an invalid
+    declaration — silently, with no console error. .games-sport-card sat
+    transparent for months on a var(--card-bg) that was never defined."""
+    defined = set(root_tokens(TOKENS))
+    out = []
+    for consumer, extras in (
+        (CSS, ["landing/dashboard/index.html", "landing/dashboard/login.html"]),
+        (DS_CSS, ["landing/design/index.html", "landing/design/ds-content.js"]),
+    ):
+        if not os.path.exists(consumer): continue
+        known = defined | set(root_tokens(consumer))
+        for rel in [os.path.relpath(consumer, ROOT)] + extras:
+            fp = os.path.join(ROOT, rel)
+            if not os.path.exists(fp): continue
+            src = open(fp).read()
+            for mm in re.finditer(r'var\(\s*(--[\w-]+)\s*(,)?', src):
+                if mm.group(2) or mm.group(1) in known:
+                    continue
+                out.append((rel, src[:mm.start()].count("\n") + 1, "unresolved",
+                            f"var({mm.group(1)}) names no token",
+                            "declaration is silently invalid"))
     return out
 
 def main():
@@ -182,6 +254,8 @@ def main():
         findings += scan_inline(os.path.join(DASH, f))
     findings += scan_dimensions()
     findings += scan_drift()
+    findings += scan_consumer_literals()
+    findings += scan_unresolved()
 
     if not findings:
         print("design tokens: clean — every styled value routes through a token")

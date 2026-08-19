@@ -29,6 +29,24 @@
     window.scrollTo(0, 0);
   }
 
+  // Fill each swatch's hex label from the resolved token, so the page always
+  // shows what landing/tokens.css actually says rather than a copy of it.
+  const rootStyle = getComputedStyle(document.documentElement);
+  const toHex = (v) => {
+    v = v.trim();
+    if (v.startsWith('#')) return v.toUpperCase();
+    const m = v.match(/^rgba?\(([^)]+)\)$/);
+    if (!m) return v;
+    const [r, g, b] = m[1].split(',').map(x => parseInt(x, 10));
+    return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+  };
+  main.querySelectorAll('.ds-swatch[data-token]').forEach(el => {
+    const hex = toHex(rootStyle.getPropertyValue(el.dataset.token));
+    el.dataset.copy = hex;
+    const label = el.querySelector('.ds-swatch__hex');
+    if (label) label.textContent = hex;
+  });
+
   window.addEventListener('hashchange', () => show(location.hash.slice(1)));
   show(location.hash.slice(1));
 

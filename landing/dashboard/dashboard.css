@@ -1,202 +1,33 @@
-/* Dashboard CSS — Reuses landing theme variables */
+/* ============================================================================
+   Dashboard styles.
+
+   Tokens live in landing/tokens.css — the single source of truth, linked ahead
+   of this file in index.html and login.html. Nothing here may define a value;
+   the block below contains only aliases, mapping this file's historical names
+   onto canonical ones so ~1,500 existing references did not have to be
+   rewritten.
+
+   Adding a token means editing landing/tokens.css, not this file.
+   scripts/check-design-tokens.py enforces both halves of that rule.
+   ========================================================================= */
+
 :root {
-    /* ========================================================================
-       Booki web design tokens.
+    /* colour — canonical names differ only in spelling */
+    --bg: var(--background);
+    --bg-card: var(--card);
+    --bg-elevated: var(--elevated);
+    --final-status: var(--final);
 
-       Every value the dashboard renders comes from this block. Nothing below
-       this block should contain a raw colour, size, radius, duration or layer
-       — scripts/check-design-tokens.py enforces that on commit.
-
-       The type scale here is deliberately NOT the iOS scale in
-       Booki/DESIGN_SYSTEM.md. That scale is built on Apple text styles with a
-       17px body; this is a dense desktop UI whose body size is 13px. Sharing
-       colour, spacing and radius with iOS is correct — sharing type sizes is
-       not, and pretending otherwise is what caused 18 ad-hoc sizes to appear.
-       ===================================================================== */
-
-    /* ── colour ── */
-    --bg: #0A0A12;
-    --bg-card: #14141F;
-    --bg-elevated: #1E1E2D;
-    --accent: #00F5D4;
-    --accent-deep: #00D4B8;        /* gradient end stop — NOT interchangeable with --accent */
-    --accent-secondary: #9D4EDD;
-    --accent-tertiary: #FF006E;
-    --border: #2A2A3A;
-    --divider: #22222E;
-    --text-primary: #F8F8F8;
-    --text-secondary: #A8A8B8;
-    --text-muted: #6B6B7B;
-    --danger: #FF6B6B;
-    --success: #00F5D4;
-    --gold: #FFE66D;
-    --scheduled: #7B68EE;
-    --final-status: #5C5C6F;
-    --warning: #FFA94D;
-
-    /* Channel triplets. Every translucent fill is derived from these, so a
-       palette change reaches the tints too. Before this existed the tints were
-       frozen literals: the danger tint was still rgba(255,77,106) — the colour
-       --danger used to be — and the warning tint was rgba(255,193,7), which was
-       never any Booki colour at all. */
-    --accent-rgb: 0, 245, 212;
-    --danger-rgb: 255, 107, 107;
-    --warning-rgb: 255, 169, 77;
-    --scheduled-rgb: 123, 104, 238;
-    --accent-secondary-rgb: 157, 78, 221;
-    --accent-tertiary-rgb: 255, 0, 110;
-    --white-rgb: 255, 255, 255;
-    --black-rgb: 0, 0, 0;
-
-    /* Opacity ladder for tinted fills, borders and glows. */
-    --o-hairline: 0.03;
-    --o-faint: 0.05;
-    --o-soft: 0.10;
-    --o-med: 0.15;
-    --o-strong: 0.20;
-    --o-heavy: 0.25;
-    --o-glow: 0.30;
-    --o-intense: 0.40;
-    --o-opaque: 0.80;
-
-    --fill-accent-faint: rgba(var(--accent-rgb), var(--o-faint));
-    --fill-accent-soft: rgba(var(--accent-rgb), var(--o-soft));
-    --fill-accent: rgba(var(--accent-rgb), var(--o-med));
-    --fill-accent-strong: rgba(var(--accent-rgb), var(--o-strong));
-    --fill-accent-heavy: rgba(var(--accent-rgb), var(--o-heavy));
-    --fill-danger-soft: rgba(var(--danger-rgb), var(--o-soft));
-    --fill-danger: rgba(var(--danger-rgb), var(--o-med));
-    --fill-warning-soft: rgba(var(--warning-rgb), var(--o-soft));
-    --fill-warning: rgba(var(--warning-rgb), var(--o-med));
-    --fill-scheduled: rgba(var(--scheduled-rgb), var(--o-med));
-    --fill-accent-secondary: rgba(var(--accent-secondary-rgb), var(--o-med));
-    --fill-accent-tertiary: rgba(var(--accent-tertiary-rgb), var(--o-med));
-    --fill-white-faint: rgba(var(--white-rgb), var(--o-faint));
-    --fill-white-soft: rgba(var(--white-rgb), var(--o-soft));
-    --fill-white: rgba(var(--white-rgb), var(--o-med));
-    --fill-white-hairline: rgba(var(--white-rgb), var(--o-hairline));
-    --fill-card-opaque: rgba(20, 20, 31, var(--o-opaque));
-    --scrim: rgba(var(--black-rgb), 0.6);
-    --scrim-light: rgba(var(--black-rgb), 0.5);
-    --text-on-accent: var(--bg);
-
-    /* ── spacing — 4pt grid ──
-       The spec lists xxs as 2pt while also requiring divisibility by 4. 2 is
-       kept because the spec defines it and it is in use; it is the exception. */
-    --s-xxs: 2px;
-    --s-xs: 4px;
-    --s-sm: 8px;
-    --s-md: 12px;
-    --s-lg: 16px;
-    --s-xl: 24px;
-    --s-xxl: 32px;
-    --s-xxxl: 48px;
-    --s-huge: 64px;
-
-    /* ── type — web scale, 9 steps ── */
-    --fs-micro: 11px;
-    --fs-caption: 12px;
-    --fs-sm: 13px;
-    --fs-body: 14px;
-    --fs-lg: 16px;
-    --fs-title3: 18px;
-    --fs-title2: 22px;
-    --fs-title1: 28px;
-    --fs-display: 40px;
-
-    --fw-regular: 400;
-    --fw-medium: 500;
-    --fw-semibold: 600;
-    --fw-bold: 700;
-    --fw-heavy: 800;
-
-    --lh-none: 1;                  /* no leading — numerals and icons that must sit flush */
-    --lh-tight: 1.2;
-    --lh-normal: 1.5;
-    --lh-loose: 1.6;
-
-    --gradient-accent: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
-
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-display: 'Space Grotesk', var(--font-sans);
-
-    /* ── radius ──
-       full and circle are NOT interchangeable: on a non-square element 50%
-       yields an ellipse and 999px yields a stadium. Pick by intent. */
-    --radius-xs: 4px;
-    --radius-sm: 12px;
-    --radius: 16px;
-    --radius-full: 999px;
-    --radius-circle: 50%;
-
-    /* ── elevation ── */
-    --shadow-focus: 0 0 0 3px var(--fill-accent-soft);
-    --shadow-btn: 0 2px 8px rgba(var(--accent-rgb), var(--o-heavy)), inset 0 1px 0 var(--fill-white);
-    --shadow-btn-hover: 0 4px 16px rgba(var(--accent-rgb), 0.30), inset 0 1px 0 var(--fill-white);
-    --shadow-raised: 0 4px 24px rgba(var(--accent-rgb), 0.30), 0 2px 8px rgba(var(--black-rgb), 0.30);
-    --shadow-float: 0 6px 32px rgba(var(--accent-rgb), var(--o-intense)), 0 4px 12px rgba(var(--black-rgb), 0.30);
-    --shadow-modal: 0 0 80px rgba(var(--accent-rgb), var(--o-faint)), 0 24px 48px rgba(var(--black-rgb), var(--o-intense));
-
-    /* ── motion ── */
-    --dur-fast: 0.15s;
-    --dur-base: 0.2s;
-    --dur-slow: 0.3s;
-    --ease: ease;
-
-    /* ── layers ──
-       Was eight ad-hoc values between 2 and 300 with no ordering rationale. */
-    --z-base: 1;
-    --z-dropdown: 50;
-    --z-sticky: 100;
-    --z-betslip: 150;
-    --z-overlay: 200;
-    --z-modal: 250;
-    --z-toast: 300;
-
-    /* ── component dimensions ──
-       Not spacing, so not on the 4pt grid: an 18px icon snapped to 16 or 20
-       renders worse, not more consistent. --odds-col is shared by the odds
-       button and its column label deliberately — they must stay equal or the
-       odds columns misalign, and coupling them makes that impossible to break. */
-    --hairline: 1px;               /* rules, dividers, 1px borders */
-    --bar-thin: 3px;
-    --dot: 6px;
-    --icon-sm: 18px;
-    --hamburger-w: 22px;
-    --odds-col: 90px;
-
-    /* Square element sizes. Only sizes used three or more times get a name — a
-       one-off container width stays a literal, since naming it moves the number
-       without making it reusable. Every one of these landed on the 4pt grid on
-       its own; the off-grid dimensions in this file were all skeleton geometry,
-       which is filler mimicking text and is exempt by design. */
-    --dot-sm: 4px;
-    --dot-lg: 8px;
-    --icon-xs: 16px;
-    --icon-md: 20px;
-    --icon-lg: 24px;
-    --badge: 28px;                 /* numbered step badge */
-    --avatar-xs: 32px;
-    --tile: 36px;                  /* rounded icon tile */
-    --control: 48px;               /* button / input height */
-    --avatar-sm: 56px;
-    --avatar: 64px;
-    --avatar-lg: 80px;
-
-    /* Container widths. */
-    --w-panel: 280px;
-    --w-panel-lg: 320px;
-    --w-form: 480px;
-    --w-content: 768px;
-
-    /* ── breakpoints ──
-       Literal by necessity: custom properties are not valid inside a media
-       query condition. Kept here as documentation only. */
-    --bp-md: 768px;
-
-    /* ── fixed chrome ── */
-    --sidebar-width: 240px;
-    --betslip-width: 340px;
+    /* spacing — canonical scale is numbered by grid unit (--s4 = 4 units = 16px) */
+    --s-xxs: var(--s05);
+    --s-xs: var(--s1);
+    --s-sm: var(--s2);
+    --s-md: var(--s3);
+    --s-lg: var(--s4);
+    --s-xl: var(--s6);
+    --s-xxl: var(--s8);
+    --s-xxxl: var(--s12);
+    --s-huge: var(--s16);
 }
 
 *, *::before, *::after {
@@ -1658,7 +1489,7 @@ input, button, select, textarea { font: inherit; }
     align-items: center;
     justify-content: space-between;
     padding: var(--s-md) var(--s-lg);
-    background: var(--card-bg);
+    background: var(--bg-card);
     border: var(--hairline) solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);

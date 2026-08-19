@@ -8,11 +8,15 @@
  * system it documents.
  */
 
-const swatch = (name, hex, use) => `
-  <button class="ds-swatch" data-copy="${hex}">
-    <div class="ds-swatch__chip" style="background:${hex}"></div>
+// The chip paints from the token and the hex label is filled in at runtime by
+// ds.js reading the resolved value. Writing the hex here would make this page a
+// third copy of the palette, free to disagree with landing/tokens.css the
+// moment a colour changes — which is the exact failure this architecture removes.
+const swatch = (name, token, use) => `
+  <button class="ds-swatch" data-token="${token}">
+    <div class="ds-swatch__chip" style="background:var(${token})"></div>
     <div class="ds-swatch__name">${name}</div>
-    <div class="ds-swatch__hex">${hex}</div>
+    <div class="ds-swatch__hex"></div>
     <div class="ds-swatch__use">${use}</div>
   </button>`;
 
@@ -137,34 +141,34 @@ const DS_SECTIONS = [
 
   <p class="ds-label">Core surfaces</p>
   <div class="ds-grid">
-    ${swatch('background', '#0A0A12', 'App background, sheets')}
-    ${swatch('cardBackground', '#14141F', 'Cards, containers')}
-    ${swatch('elevatedBackground', '#1E1E2D', 'Modals, popovers, inputs')}
-    ${swatch('border', '#2A2A3A', 'Dividers, card edges')}
-    ${swatch('divider', '#22222E', 'Subtle separation')}
+    ${swatch('background', '--background', 'App background, sheets')}
+    ${swatch('cardBackground', '--card', 'Cards, containers')}
+    ${swatch('elevatedBackground', '--elevated', 'Modals, popovers, inputs')}
+    ${swatch('border', '--border', 'Dividers, card edges')}
+    ${swatch('divider', '--divider', 'Subtle separation')}
   </div>
 
   <p class="ds-label">Text</p>
   <div class="ds-grid">
-    ${swatch('textPrimary', '#F8F8F8', 'Headlines, primary content')}
-    ${swatch('textSecondary', '#A8A8B8', 'Supporting text, labels')}
-    ${swatch('textMuted', '#6B6B7B', 'Disabled, hints')}
+    ${swatch('textPrimary', '--text-primary', 'Headlines, primary content')}
+    ${swatch('textSecondary', '--text-secondary', 'Supporting text, labels')}
+    ${swatch('textMuted', '--text-muted', 'Disabled, hints')}
   </div>
 
   <p class="ds-label">Accent</p>
   <div class="ds-grid">
-    ${swatch('accent', '#00F5D4', 'Actions, links, focus, wins')}
-    ${swatch('accentSecondary', '#9D4EDD', 'Gradients, secondary emphasis')}
-    ${swatch('accentTertiary', '#FF006E', 'Highlights, special elements')}
-    ${swatch('gold', '#FFE66D', 'Streaks, achievements')}
+    ${swatch('accent', '--accent', 'Actions, links, focus, wins')}
+    ${swatch('accentSecondary', '--accent-secondary', 'Gradients, secondary emphasis')}
+    ${swatch('accentTertiary', '--accent-tertiary', 'Highlights, special elements')}
+    ${swatch('gold', '--gold', 'Streaks, achievements')}
   </div>
 
   <p class="ds-label">Semantic &amp; status</p>
   <div class="ds-grid">
-    ${swatch('danger', '#FF6B6B', 'Losses, destructive, errors')}
-    ${swatch('warning', '#FFA94D', 'Pending, attention needed')}
-    ${swatch('scheduled', '#7B68EE', 'Upcoming events')}
-    ${swatch('finalStatus', '#5C5C6F', 'Completed events')}
+    ${swatch('danger', '--danger', 'Losses, destructive, errors')}
+    ${swatch('warning', '--warning', 'Pending, attention needed')}
+    ${swatch('scheduled', '--scheduled', 'Upcoming events')}
+    ${swatch('finalStatus', '--final', 'Completed events')}
   </div>
 
   <p class="ds-label">Tinted fills</p>

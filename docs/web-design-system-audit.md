@@ -179,6 +179,40 @@ count from 219 to 290 and invented a phantom cluster of 65 "1px dimensions"
 that were really borders. The fix is a `(?<![-\w])` guard before every
 dimension property name.
 
+## Single source of truth — 2026-08-19
+
+`landing/tokens.css` is now the only place a token value is defined. Both web
+consumers link it and declare **aliases only**:
+
+    landing/tokens.css          152 tokens — canonical
+      ├─ dashboard/dashboard.css  13 aliases (--bg → --background, --s-lg → --s4 …)
+      └─ design/ds.css            12 aliases + 2 page-local values
+
+Aliases exist so ~1,500 existing references did not have to be rewritten;
+`--bg` and `--background` are the same token, spelled two ways for history.
+
+`Booki/Theme.swift` is the third consumer and cannot link CSS, so the linter
+parses its `Color(hex:)` constants and fails when they disagree with the
+canonical colour block.
+
+The design system page was a **fourth** copy: its 16 colour swatches had their
+hex values written by hand, so a palette change would leave the reference page
+confidently displaying the old colour. Swatches now paint from `var(--token)`
+and `ds.js` fills the hex label from the resolved value, so the page renders
+what `tokens.css` says rather than a copy of it.
+
+Three new linter checks hold the architecture in place:
+
+- `scan_drift` — Theme.swift vs tokens.css
+- `scan_consumer_literals` — a consumer may only alias, never define
+- `scan_unresolved` — a `var()` naming no token
+
+That last one immediately found a pre-existing bug: `.games-sport-card` used
+`var(--card-bg)`, which was never defined. An unresolved custom property makes
+the declaration invalid at computed-value time with no console error, so the
+sport category cards had been rendering transparent instead of `#14141F`.
+Fixing it is a visible change.
+
 ## Design system coverage — 2026-08-19
 
 The design system page mirrors `Theme.swift`, so it covered only what iOS and
