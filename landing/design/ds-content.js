@@ -1031,6 +1031,13 @@ const DS_SECTIONS = [
   </table></div>
 
   <p class="ds-label">Motion</p>
+  <p class="ds-anno ds-anno--lead">
+    iOS durations. The web dashboard runs faster and on three steps rather than
+    four &mdash; <code class="t">--dur-fast</code> 0.15s,
+    <code class="t">--dur-base</code> 0.2s, <code class="t">--dur-slow</code>
+    0.3s &mdash; because pointer interactions tolerate less latency than touch.
+    See Web&nbsp;Tokens.
+  </p>
   <div class="ds-scroll"><table class="ds-table">
     <thead><tr><th>Token</th><th>Duration</th><th>Easing</th><th>Usage</th></tr></thead>
     <tbody>
@@ -1050,6 +1057,120 @@ const DS_SECTIONS = [
     ${gradient('cardGradient', 'linear-gradient(180deg,#14141F,#0E0E18)', '#14141F → #0E0E18', 'Subtle card depth')}
   </div>
   <p class="ds-note">Gradients on primary buttons only. Cards stay solid — cardGradient is depth, never colour.</p>
+` },
+
+{ id: 'web-tokens', label: 'Web Tokens', html: `
+  <h1 class="ds-h1">Web Tokens</h1>
+  <p class="ds-intro">
+    The sections above mirror <code class="t">Theme.swift</code>, so they cover
+    what iOS and web genuinely share &mdash; colour, spacing, radius. These are
+    the token groups the web dashboard needs that have no iOS counterpart:
+    translucent fills, elevation, motion, stacking order and element dimensions.
+    All defined in <code class="t">landing/dashboard/dashboard.css</code> and
+    enforced by <code class="t">scripts/check-design-tokens.py</code>.
+  </p>
+
+  <p class="ds-label">Opacity ladder</p>
+  <p class="ds-anno ds-anno--lead">
+    Every translucent fill is derived from a channel triplet
+    (<code class="t">--accent-rgb</code> and friends) at one of these steps, so a
+    palette change reaches the tints. Before this existed the tints were frozen
+    literals: the danger tint was still the red <code class="t">--danger</code>
+    had been months earlier, and the warning tint was a colour that was never a
+    Booki token at all.
+  </p>
+  <div class="ds-scroll"><table class="ds-table">
+    <thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td><code class="t">--o-hairline</code></td><td>0.03</td><td>Row hover</td></tr>
+      <tr><td><code class="t">--o-faint</code></td><td>0.05</td><td>Ambient glow, faint wells</td></tr>
+      <tr><td><code class="t">--o-soft</code></td><td>0.10</td><td>Badge and chip fills</td></tr>
+      <tr><td><code class="t">--o-med</code></td><td>0.15</td><td>Default tint &mdash; status fills</td></tr>
+      <tr><td><code class="t">--o-strong</code></td><td>0.20</td><td>Selected states</td></tr>
+      <tr><td><code class="t">--o-heavy</code></td><td>0.25</td><td>Borders on tinted surfaces</td></tr>
+      <tr><td><code class="t">--o-glow</code></td><td>0.30</td><td>Accent shadows</td></tr>
+      <tr><td><code class="t">--o-intense</code></td><td>0.40</td><td>Float shadows, scrims</td></tr>
+      <tr><td><code class="t">--o-opaque</code></td><td>0.80</td><td>Loading veil over content</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="ds-label">Elevation</p>
+  <p class="ds-anno ds-anno--lead">
+    Shadows are the accent glow, never black alone &mdash; consistent with
+    Surfaces &amp; Elevation, where depth comes from colour.
+  </p>
+  <div class="ds-scroll"><table class="ds-table">
+    <thead><tr><th>Token</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td><code class="t">--shadow-focus</code></td><td>Focus ring, 3px accent halo</td></tr>
+      <tr><td><code class="t">--shadow-btn</code></td><td>Primary button at rest</td></tr>
+      <tr><td><code class="t">--shadow-btn-hover</code></td><td>Primary button hover</td></tr>
+      <tr><td><code class="t">--shadow-raised</code></td><td>Lifted card</td></tr>
+      <tr><td><code class="t">--shadow-float</code></td><td>Floating bet slip bar</td></tr>
+      <tr><td><code class="t">--shadow-modal</code></td><td>Modal, wide ambient glow</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="ds-label">Motion</p>
+  <div class="ds-scroll"><table class="ds-table">
+    <thead><tr><th>Token</th><th>Duration</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td><code class="t">--dur-fast</code></td><td>0.15s</td><td>Hover, colour and opacity changes</td></tr>
+      <tr><td><code class="t">--dur-base</code></td><td>0.2s</td><td>Borders, transforms</td></tr>
+      <tr><td><code class="t">--dur-slow</code></td><td>0.3s</td><td>Panel slide, bet slip reflow</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="ds-label">Stacking order</p>
+  <p class="ds-anno ds-anno--lead">
+    Was eight ad-hoc values between 2 and 1000 with no ordering rationale. Never
+    write a raw <code class="t">z-index</code> &mdash; if nothing here fits, the
+    layer is missing and belongs in this list.
+  </p>
+  <div class="ds-scroll"><table class="ds-table">
+    <thead><tr><th>Token</th><th>Value</th><th>Layer</th></tr></thead>
+    <tbody>
+      <tr><td><code class="t">--z-base</code></td><td>1</td><td>Raised in-flow content</td></tr>
+      <tr><td><code class="t">--z-dropdown</code></td><td>50</td><td>Menus, popovers</td></tr>
+      <tr><td><code class="t">--z-sticky</code></td><td>100</td><td>Sticky headers</td></tr>
+      <tr><td><code class="t">--z-betslip</code></td><td>150</td><td>Bet slip sidebar and bar</td></tr>
+      <tr><td><code class="t">--z-overlay</code></td><td>200</td><td>Modal scrim</td></tr>
+      <tr><td><code class="t">--z-modal</code></td><td>250</td><td>Modal above another overlay</td></tr>
+      <tr><td><code class="t">--z-toast</code></td><td>300</td><td>Toasts &mdash; always on top</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="ds-label">Dimensions</p>
+  <p class="ds-anno ds-anno--lead">
+    Sizes, not spacing, so deliberately not snapped to the 4pt grid &mdash; an
+    18px icon rendered at 16 is a worse icon. A size used three or more times
+    gets a name; a one-off container width stays a literal, because naming it
+    moves the number without making it reusable.
+  </p>
+  <div class="ds-scroll"><table class="ds-table">
+    <thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td><code class="t">--hairline</code></td><td>1px</td><td>Borders, rules, dividers</td></tr>
+      <tr><td><code class="t">--bar-thin</code></td><td>3px</td><td>Toast accent bar, progress</td></tr>
+      <tr><td><code class="t">--dot-sm / --dot / --dot-lg</code></td><td>4 / 6 / 8px</td><td>Status dots, leg indicators</td></tr>
+      <tr><td><code class="t">--icon-xs … --icon-lg</code></td><td>16 / 18 / 20 / 24px</td><td>Inline and nav icons</td></tr>
+      <tr><td><code class="t">--badge</code></td><td>28px</td><td>Numbered step badge</td></tr>
+      <tr><td><code class="t">--avatar-xs</code></td><td>32px</td><td>Compact avatar</td></tr>
+      <tr><td><code class="t">--tile</code></td><td>36px</td><td>Rounded icon tile</td></tr>
+      <tr><td><code class="t">--control</code></td><td>48px</td><td>Button and input height</td></tr>
+      <tr><td><code class="t">--avatar-sm / --avatar / --avatar-lg</code></td><td>56 / 64 / 80px</td><td>Avatars, feature icons, logo</td></tr>
+      <tr><td><code class="t">--odds-col</code></td><td>90px</td><td>Odds button and its column label &mdash; shared so they cannot drift apart</td></tr>
+      <tr><td><code class="t">--w-panel … --w-content</code></td><td>280 / 320 / 480 / 768px</td><td>Container widths</td></tr>
+      <tr><td><code class="t">--sidebar-width</code></td><td>240px</td><td>Fixed sidebar</td></tr>
+      <tr><td><code class="t">--betslip-width</code></td><td>340px</td><td>Bet slip sidebar</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="ds-anno">
+    Skeleton geometry is deliberately exempt from all of this. A shimmer bar is
+    100px wide because that is roughly how wide a name looks; those values are
+    arbitrary and tokenising them would invent meaning that is not there.
+  </p>
 ` },
 
 { id: 'dont', label: 'Anti-patterns', html: `

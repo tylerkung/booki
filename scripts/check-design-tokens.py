@@ -140,12 +140,48 @@ def scan_dimensions():
                             f"{px}px used {len(uses)}× — needs a name", ctx))
     return out
 
+# Concepts the dashboard and the design-system page both define, under
+# different names. They are two hand-maintained copies, so nothing structural
+# stops them drifting — this check is what stops it. If a pair legitimately
+# diverges (as the motion scales do), remove it here and say why on the page.
+MIRRORED = [
+    ("--bg", "--background"), ("--bg-card", "--card"), ("--bg-elevated", "--elevated"),
+    ("--border", "--border"), ("--divider", "--divider"),
+    ("--text-primary", "--text-primary"), ("--text-secondary", "--text-secondary"),
+    ("--text-muted", "--text-muted"), ("--accent", "--accent"),
+    ("--accent-secondary", "--accent-secondary"), ("--accent-tertiary", "--accent-tertiary"),
+    ("--gold", "--gold"), ("--danger", "--danger"), ("--warning", "--warning"),
+    ("--scheduled", "--scheduled"), ("--final-status", "--final"),
+    ("--radius", "--radius"), ("--radius-sm", "--radius-sm"), ("--radius-full", "--radius-full"),
+    ("--s-xs", "--s1"), ("--s-sm", "--s2"), ("--s-md", "--s3"), ("--s-lg", "--s4"),
+    ("--s-xl", "--s6"), ("--s-xxl", "--s8"), ("--s-xxxl", "--s12"),
+]
+DS_CSS = os.path.join(ROOT, "landing", "design", "ds.css")
+
+def root_tokens(path):
+    src = open(path).read()
+    m = re.search(r':root\s*\{.*?\n\}', src, re.S)
+    if not m: return {}
+    return {a: b.strip() for a, b in re.findall(r'(--[\w-]+)\s*:\s*([^;]+);', m.group(0))}
+
+def scan_drift():
+    if not os.path.exists(DS_CSS): return []
+    app, ds = root_tokens(CSS), root_tokens(DS_CSS)
+    out = []
+    for a, b in MIRRORED:
+        if a in app and b in ds and app[a].lower() != ds[b].lower():
+            out.append((os.path.relpath(DS_CSS, ROOT), 0, "drift",
+                        f"{b} = {ds[b]} but dashboard {a} = {app[a]}",
+                        "design system disagrees with the app"))
+    return out
+
 def main():
     summary = "--summary" in sys.argv
     findings = scan_css(CSS)
     for f in ("index.html", "login.html"):
         findings += scan_inline(os.path.join(DASH, f))
     findings += scan_dimensions()
+    findings += scan_drift()
 
     if not findings:
         print("design tokens: clean — every styled value routes through a token")

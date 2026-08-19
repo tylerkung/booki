@@ -179,6 +179,25 @@ count from 219 to 290 and invented a phantom cluster of 65 "1px dimensions"
 that were really borders. The fix is a `(?<![-\w])` guard before every
 dimension property name.
 
+## Design system coverage — 2026-08-19
+
+The design system page mirrors `Theme.swift`, so it covered only what iOS and
+web genuinely share: colour, spacing, radius, type. Six token groups the web
+needs had no counterpart and were undocumented — opacity ladder, tinted fills,
+elevation, motion, stacking order, dimensions. Added as a **Web Tokens**
+section.
+
+Where the page *did* cover an area it disagreed: it documents motion as
+`instant 0.1s / fast 0.2s / normal 0.3s / slow 0.5s`, while the web app runs
+`--dur-fast 0.15s / --dur-base 0.2s / --dur-slow 0.3s`. Pointer interactions
+tolerate less latency than touch, so this is a real divergence rather than a
+bug; it is now stated on the page instead of being silently different.
+
+The two token sets are hand-maintained copies. They agreed on all 26 shared
+concepts when checked, but by care rather than by construction — the same
+failure mode as the stale colour literals, one level up. `scan_drift()` in the
+linter now compares them and fails when they disagree.
+
 ## Verification method
 
 A mechanical rewrite of this size needs proof, not a spot check. Two passes:
