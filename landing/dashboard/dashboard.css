@@ -20,6 +20,19 @@
     --scheduled: #7B68EE;
     --final-status: #5C5C6F;
     --warning: #FFA94D;
+    /* Spacing — 4pt grid, mirroring Booki/DESIGN_SYSTEM.md.
+       Note the spec lists xxs as 2pt while also requiring everything be
+       divisible by 4. 2 is kept because the spec defines it and it is in use,
+       but it is the one exception. */
+    --s-xxs: 2px;
+    --s-xs: 4px;
+    --s-sm: 8px;
+    --s-md: 12px;
+    --s-lg: 16px;
+    --s-xl: 24px;
+    --s-xxl: 32px;
+    --s-xxxl: 48px;
+
     --radius: 16px;
     --radius-sm: 12px;
     --sidebar-width: 240px;
@@ -93,7 +106,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px;
+    padding: var(--s-xl);
     background: radial-gradient(ellipse at 50% 0%, rgba(0, 245, 212, 0.06) 0%, transparent 60%);
 }
 
@@ -103,7 +116,7 @@ input, button, select, textarea { font: inherit; }
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 48px 36px 40px;
+    padding: var(--s-xxxl) 36px 40px;
     position: relative;
     box-shadow: 0 0 80px rgba(0, 245, 212, 0.04), 0 24px 48px rgba(0, 0, 0, 0.4);
 }
@@ -143,11 +156,11 @@ input, button, select, textarea { font: inherit; }
     text-align: center;
     color: var(--text-muted);
     font-size: 14px;
-    margin-bottom: 32px;
+    margin-bottom: var(--s-xxl);
 }
 
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .form-group label {
@@ -160,7 +173,7 @@ input, button, select, textarea { font: inherit; }
 
 .form-group input {
     width: 100%;
-    padding: 11px 14px;
+    padding: var(--s-md) 14px;
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -182,10 +195,10 @@ input, button, select, textarea { font: inherit; }
 .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--s-sm);
     font-size: 13px;
     color: var(--text-secondary);
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
     cursor: pointer;
 }
 
@@ -202,7 +215,7 @@ input, button, select, textarea { font: inherit; }
     padding: 10px 14px;
     font-size: 13px;
     color: var(--danger);
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .form-success {
@@ -212,12 +225,12 @@ input, button, select, textarea { font: inherit; }
     padding: 10px 14px;
     font-size: 13px;
     color: var(--accent);
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .btn-primary-full {
     width: 100%;
-    padding: 13px;
+    padding: var(--s-md);
     background: linear-gradient(180deg, #00F5D4 0%, #00D4B8 100%);
     color: var(--bg);
     border: none;
@@ -227,7 +240,7 @@ input, button, select, textarea { font: inherit; }
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
     box-shadow: 0 2px 8px rgba(0, 245, 212, 0.25), inset 0 1px 0 rgba(255,255,255,0.15);
-    margin-top: 4px;
+    margin-top: var(--s-xs);
 }
 
 .btn-primary-full:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0, 245, 212, 0.3), inset 0 1px 0 rgba(255,255,255,0.15); }
@@ -236,7 +249,7 @@ input, button, select, textarea { font: inherit; }
 
 .auth-links {
     text-align: center;
-    margin-top: 16px;
+    margin-top: var(--s-lg);
     font-size: 13px;
 }
 
@@ -249,7 +262,7 @@ input, button, select, textarea { font: inherit; }
 
 .auth-divider {
     color: var(--text-muted);
-    margin: 0 8px;
+    margin: 0 var(--s-sm);
 }
 
 .auth-disclaimer {
@@ -271,7 +284,7 @@ input, button, select, textarea { font: inherit; }
     width: var(--sidebar-width);
     background: var(--bg-card);
     border-right: 1px solid var(--border);
-    padding: 24px 16px;
+    padding: var(--s-xl) var(--s-lg);
     position: fixed;
     top: 0;
     left: 0;
@@ -285,8 +298,8 @@ input, button, select, textarea { font: inherit; }
 
 .sidebar-logo {
     display: block;
-    margin-bottom: 32px;
-    padding: 0 4px;
+    margin-bottom: var(--s-xxl);
+    padding: 0 var(--s-xs);
 }
 
 .sidebar-logo img {
@@ -297,8 +310,8 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    padding: 12px 16px;
-    margin: -16px 0 16px;
+    padding: var(--s-md) var(--s-lg);
+    margin: -16px 0 var(--s-lg);
     border-radius: var(--radius-sm);
     background: var(--bg-elevated);
 }
@@ -317,7 +330,7 @@ input, button, select, textarea { font: inherit; }
 .sidebar-balance-label {
     font-size: 12px;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: var(--s-xxs);
 }
 
 .mobile-balance {
@@ -334,14 +347,14 @@ input, button, select, textarea { font: inherit; }
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--s-xs);
 }
 
 .sidebar-nav a {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
+    gap: var(--s-md);
+    padding: 10px var(--s-md);
     border-radius: var(--radius-sm);
     color: var(--text-secondary);
     font-size: 14px;
@@ -369,7 +382,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 16px 0 0;
+    margin: var(--s-lg) 0 0;
     padding: 10px 14px;
     border-radius: var(--radius-sm);
     background: var(--accent);
@@ -383,14 +396,14 @@ input, button, select, textarea { font: inherit; }
 
 .sidebar-bottom {
     margin-top: auto;
-    padding-top: 16px;
+    padding-top: var(--s-lg);
 }
 
 .sidebar-bottom a {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
+    gap: var(--s-md);
+    padding: 10px var(--s-md);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-size: 14px;
@@ -407,7 +420,7 @@ input, button, select, textarea { font: inherit; }
     margin-left: var(--sidebar-width);
     flex: 1;
     transition: margin-right 0.3s ease;
-    padding: 32px;
+    padding: var(--s-xxl);
     max-width: 1200px;
 }
 
@@ -422,7 +435,7 @@ input, button, select, textarea { font: inherit; }
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     z-index: 99;
-    padding: 0 16px;
+    padding: 0 var(--s-lg);
     align-items: center;
     justify-content: space-between;
 }
@@ -435,8 +448,8 @@ input, button, select, textarea { font: inherit; }
     cursor: pointer;
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    padding: 8px;
+    gap: var(--s-xs);
+    padding: var(--s-sm);
 }
 
 .hamburger span {
@@ -468,7 +481,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .card-title {
@@ -483,8 +496,8 @@ input, button, select, textarea { font: inherit; }
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: var(--s-lg);
+    margin-bottom: var(--s-xl);
 }
 
 .stat-tile {
@@ -500,7 +513,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    margin-bottom: var(--s-sm);
 }
 
 .stat-value {
@@ -529,12 +542,12 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 12px 16px;
+    padding: var(--s-md) var(--s-lg);
     border-bottom: 1px solid var(--border);
 }
 
 .data-table td {
-    padding: 12px 16px;
+    padding: var(--s-md) var(--s-lg);
     border-bottom: 1px solid var(--divider);
     font-size: 14px;
     color: var(--text-secondary);
@@ -562,18 +575,18 @@ input, button, select, textarea { font: inherit; }
 
 .sort-indicator {
     font-size: 10px;
-    margin-left: 2px;
+    margin-left: var(--s-xxs);
     color: var(--accent);
 }
 
 /* ── Page Header ── */
 .page-header {
-    margin-bottom: 24px;
+    margin-bottom: var(--s-xl);
 }
 
 .page-header h1 {
     font-size: 24px;
-    margin-bottom: 4px;
+    margin-bottom: var(--s-xs);
 }
 
 .page-header p {
@@ -585,7 +598,7 @@ input, button, select, textarea { font: inherit; }
 .badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
+    padding: var(--s-xxs) var(--s-sm);
     border-radius: 999px;
     font-size: 10px;
     font-weight: 600;
@@ -602,9 +615,9 @@ input, button, select, textarea { font: inherit; }
 .filter-bar {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--s-sm);
     flex-wrap: wrap;
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .chip {
@@ -631,7 +644,7 @@ input, button, select, textarea { font: inherit; }
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 16px;
+    padding: var(--s-sm) var(--s-lg);
     border-radius: var(--radius-sm);
     font-size: 13px;
     font-weight: 600;
@@ -646,7 +659,7 @@ input, button, select, textarea { font: inherit; }
 .btn-accent { background: var(--accent); color: var(--bg); }
 .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); }
 .btn-danger { background: var(--danger); color: white; }
-.btn-ghost { background: none; color: var(--text-secondary); padding: 8px; }
+.btn-ghost { background: none; color: var(--text-secondary); padding: var(--s-sm); }
 .btn-ghost:hover { color: var(--text-primary); }
 .btn-danger-outline { background: none; color: var(--danger); border: 1px solid var(--danger); }
 .btn-danger-outline:hover { background: rgba(255,77,106,0.1); }
@@ -661,7 +674,7 @@ input, button, select, textarea { font: inherit; }
 .search-input {
     width: 100%;
     max-width: 300px;
-    padding: 8px 14px;
+    padding: var(--s-sm) 14px;
     padding-left: 36px;
     background: var(--bg-elevated);
     border: 1px solid var(--border);
@@ -686,7 +699,7 @@ input, button, select, textarea { font: inherit; }
     align-items: center;
     justify-content: center;
     z-index: 200;
-    padding: 24px;
+    padding: var(--s-xl);
 }
 
 .modal {
@@ -700,13 +713,13 @@ input, button, select, textarea { font: inherit; }
 
 .modal h2 {
     font-size: 20px;
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .modal-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 8px;
+    gap: var(--s-sm);
     margin-top: 20px;
 }
 
@@ -718,14 +731,14 @@ input, button, select, textarea { font: inherit; }
     z-index: 300;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--s-sm);
 }
 
 .toast {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 12px 20px;
+    padding: var(--s-md) 20px;
     font-size: 13px;
     color: var(--text-primary);
     animation: toast-in 0.3s ease-out;
@@ -754,7 +767,7 @@ input, button, select, textarea { font: inherit; }
 
 .shimmer-line {
     height: 16px;
-    margin-bottom: 12px;
+    margin-bottom: var(--s-md);
 }
 
 .shimmer-stat {
@@ -764,8 +777,8 @@ input, button, select, textarea { font: inherit; }
 .skeleton-row {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 12px 0;
+    gap: var(--s-lg);
+    padding: var(--s-md) 0;
     border-bottom: 1px solid var(--divider);
 }
 
@@ -776,14 +789,14 @@ input, button, select, textarea { font: inherit; }
 /* ── Time Filter ── */
 .time-filter {
     display: inline-flex;
-    gap: 4px;
+    gap: var(--s-xs);
     background: var(--bg-elevated);
     border-radius: var(--radius-sm);
-    padding: 3px;
+    padding: var(--s-xs);
 }
 
 .time-filter button {
-    padding: 5px 12px;
+    padding: var(--s-xs) var(--s-md);
     border: none;
     background: none;
     color: var(--text-muted);
@@ -802,14 +815,14 @@ input, button, select, textarea { font: inherit; }
 /* ── Empty State ── */
 .empty-state {
     text-align: center;
-    padding: 48px 24px;
+    padding: var(--s-xxxl) var(--s-xl);
     color: var(--text-muted);
 }
 
 .empty-state svg {
     width: 48px;
     height: 48px;
-    margin: 0 auto 16px;
+    margin: 0 auto var(--s-lg);
     opacity: 0.4;
 }
 
@@ -822,20 +835,20 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    padding: 24px;
+    padding: var(--s-xl);
 }
 
 .plan-features {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 16px;
+    gap: var(--s-md);
+    margin-top: var(--s-lg);
 }
 
 .plan-feature {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--s-sm);
     font-size: 13px;
     color: var(--text-secondary);
 }
@@ -862,7 +875,7 @@ input, button, select, textarea { font: inherit; }
 
     .main-content {
         margin-left: 0;
-        padding: 72px 16px 24px;
+        padding: 72px var(--s-lg) var(--s-xl);
     }
 
     .stats-grid {
@@ -879,13 +892,13 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 0;
+    padding: var(--s-md) 0;
 }
 
 .toggle-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--s-xxs);
 }
 
 .toggle-label {
@@ -961,7 +974,7 @@ input, button, select, textarea { font: inherit; }
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 14px 20px;
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .capacity-banner.capacity-warning {
@@ -990,7 +1003,7 @@ input, button, select, textarea { font: inherit; }
 .dashboard-members-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 12px;
+    gap: var(--s-md);
 }
 
 .dashboard-member-card {
@@ -1024,7 +1037,7 @@ input, button, select, textarea { font: inherit; }
 .badge-pro {
     background: var(--accent);
     color: var(--bg);
-    padding: 2px 8px;
+    padding: var(--s-xxs) var(--s-sm);
     border-radius: 4px;
     font-weight: 600;
     white-space: nowrap;
@@ -1034,14 +1047,14 @@ input, button, select, textarea { font: inherit; }
 .attention-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--s-xs);
     margin-top: 6px;
 }
 
 .attention-tag {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
+    padding: var(--s-xxs) var(--s-sm);
     border-radius: 999px;
     font-size: 10px;
     font-weight: 600;
@@ -1068,7 +1081,7 @@ input, button, select, textarea { font: inherit; }
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 8px 12px;
+    padding: var(--s-sm) var(--s-md);
     max-width: 240px;
     pointer-events: none;
     transform: translateX(-50%);
@@ -1078,7 +1091,7 @@ input, button, select, textarea { font: inherit; }
     font-size: 12px;
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 2px;
+    margin-bottom: var(--s-xxs);
 }
 
 .tag-tooltip-desc {
@@ -1096,7 +1109,7 @@ input, button, select, textarea { font: inherit; }
     .data-table tbody {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: var(--s-md);
     }
 
     .data-table tr {
@@ -1105,7 +1118,7 @@ input, button, select, textarea { font: inherit; }
         background: var(--bg-elevated);
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
-        padding: 12px 16px;
+        padding: var(--s-md) var(--s-lg);
     }
 
     .data-table tr:hover td {
@@ -1133,13 +1146,13 @@ input, button, select, textarea { font: inherit; }
         text-transform: uppercase;
         letter-spacing: 0.3px;
         flex-shrink: 0;
-        margin-right: 12px;
+        margin-right: var(--s-md);
     }
 
     /* Modal near-full-screen on mobile */
     .modal {
         max-width: 100%;
-        margin: 16px;
+        margin: var(--s-lg);
         max-height: calc(100vh - 32px);
         overflow-y: auto;
     }
@@ -1160,7 +1173,7 @@ input, button, select, textarea { font: inherit; }
 
     .chip {
         font-size: 12px;
-        padding: 5px 10px;
+        padding: var(--s-xs) 10px;
     }
 
     /* US-018: Stat value size at tablet */
@@ -1177,8 +1190,8 @@ input, button, select, textarea { font: inherit; }
 .event-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
+    gap: var(--s-md);
+    padding: var(--s-md) 20px;
     border-bottom: 1px solid var(--divider);
     cursor: pointer;
     transition: background 0.15s;
@@ -1221,7 +1234,7 @@ input, button, select, textarea { font: inherit; }
 .market-odds-cell {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--s-xxs);
     min-width: 100px;
 }
 .odds-mono {
@@ -1236,11 +1249,11 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--s-md);
     padding: 10px 14px;
     border-left: 4px solid var(--border);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    margin-bottom: 8px;
+    margin-bottom: var(--s-sm);
     background: var(--bg-elevated);
     cursor: pointer;
     transition: background 0.15s;
@@ -1257,9 +1270,9 @@ input, button, select, textarea { font: inherit; }
 /* ── Risk Watchlist ── */
 .risk-watchlist-row {
     display: block;
-    padding: 12px 14px;
+    padding: var(--s-md) 14px;
     border-radius: var(--radius-sm);
-    margin-bottom: 8px;
+    margin-bottom: var(--s-sm);
     background: var(--bg-elevated);
     cursor: pointer;
     transition: background 0.15s;
@@ -1282,7 +1295,7 @@ input, button, select, textarea { font: inherit; }
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 12px 16px;
+    padding: var(--s-md) var(--s-lg);
     border-top: 1px solid var(--border);
     color: var(--accent);
     font-size: 13px;
@@ -1298,18 +1311,18 @@ input, button, select, textarea { font: inherit; }
 .tonight-exposure-card:hover { border-color: var(--accent); transition: border-color 0.2s; }
 .tonight-stats {
     display: flex;
-    gap: 24px;
-    padding: 12px 0;
+    gap: var(--s-xl);
+    padding: var(--s-md) 0;
 }
 .tonight-stat { flex: 1; }
 .tonight-risk-game {
-    padding: 12px;
+    padding: var(--s-md);
     background: rgba(255,255,255,0.03);
     border-radius: 8px;
-    margin-top: 4px;
+    margin-top: var(--s-xs);
 }
 @media (max-width: 768px) {
-    .tonight-stats { flex-direction: column; gap: 12px; }
+    .tonight-stats { flex-direction: column; gap: var(--s-md); }
 }
 
 /* ── Settlement ── */
@@ -1317,8 +1330,8 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: var(--s-lg);
+    margin-bottom: var(--s-xl);
 }
 .settlement-week-label {
     font-size: 15px;
@@ -1330,8 +1343,8 @@ input, button, select, textarea { font: inherit; }
 .settlement-summary {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: var(--s-lg);
+    margin-bottom: var(--s-xl);
 }
 .table-responsive {
     overflow-x: auto;
@@ -1364,13 +1377,13 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--s-sm);
 }
 .player-record-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: var(--s-xs);
     min-width: 48px;
 }
 .player-record-num {
@@ -1394,15 +1407,15 @@ input, button, select, textarea { font: inherit; }
 .player-record-divider {
     font-size: 20px;
     color: var(--text-muted);
-    margin: 0 4px;
+    margin: 0 var(--s-xs);
     align-self: flex-start;
-    padding-top: 4px;
+    padding-top: var(--s-xs);
 }
 
 .player-stats-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    gap: var(--s-lg);
     padding-top: 0;
 }
 .player-stat {
@@ -1427,12 +1440,12 @@ input, button, select, textarea { font: inherit; }
 .player-activity-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--s-xxs);
 }
 .player-activity-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--s-md);
     padding: 10px 0;
     border-bottom: 1px solid var(--divider);
 }
@@ -1459,7 +1472,7 @@ input, button, select, textarea { font: inherit; }
 .player-activity-date {
     font-size: 12px;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: var(--s-xxs);
 }
 .player-activity-amount {
     flex-shrink: 0;
@@ -1468,7 +1481,7 @@ input, button, select, textarea { font: inherit; }
 @media (max-width: 768px) {
     .player-balance-amount { font-size: 32px; }
     .player-record-num { font-size: 24px; }
-    .player-stats-row { grid-template-columns: 1fr; gap: 12px; }
+    .player-stats-row { grid-template-columns: 1fr; gap: var(--s-md); }
 }
 
 /* ── Player Games ── */
@@ -1477,14 +1490,14 @@ input, button, select, textarea { font: inherit; }
 .games-sport-nav {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: var(--s-sm);
+    margin-bottom: var(--s-lg);
 }
 .games-sport-card {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
+    padding: var(--s-md) 14px;
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -1508,14 +1521,14 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--s-md);
     margin-bottom: 20px;
     flex-wrap: wrap;
 }
 
 @media (max-width: 768px) {
     .games-sport-nav { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
-    .games-sport-card { padding: 10px 12px; }
+    .games-sport-card { padding: 10px var(--s-md); }
     .games-sport-card-name { font-size: 12px; }
     .games-toolbar { flex-direction: column; align-items: stretch; }
     .games-toolbar .search-input { max-width: 100% !important; }
@@ -1526,7 +1539,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: var(--s-md) var(--s-lg);
     background: var(--bg-elevated);
     cursor: pointer;
     border-bottom: 1px solid var(--divider);
@@ -1535,7 +1548,7 @@ input, button, select, textarea { font: inherit; }
 .sport-section-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--s-sm);
     cursor: pointer;
 }
 .sport-section-name {
@@ -1559,7 +1572,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 16px;
+    padding: var(--s-sm) var(--s-lg);
     border-bottom: 1px solid var(--divider);
     cursor: pointer;
     user-select: none;
@@ -1567,7 +1580,7 @@ input, button, select, textarea { font: inherit; }
 .league-sub-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--s-sm);
 }
 .league-sub-link {
     display: flex;
@@ -1613,7 +1626,7 @@ input, button, select, textarea { font: inherit; }
 
 .pg-col-labels {
     display: flex;
-    gap: 4px;
+    gap: var(--s-xs);
 }
 .pg-col-labels span {
     width: 90px;
@@ -1625,7 +1638,7 @@ input, button, select, textarea { font: inherit; }
 }
 
 .pg-game-row {
-    padding: 10px 16px;
+    padding: 10px var(--s-lg);
     border-bottom: 1px solid var(--divider);
     position: relative;
 }
@@ -1641,13 +1654,13 @@ input, button, select, textarea { font: inherit; }
 .pg-game-grid {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--s-xs);
 }
 
 .pg-team-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--s-sm);
 }
 
 .pg-team-name {
@@ -1663,13 +1676,13 @@ input, button, select, textarea { font: inherit; }
 
 .pg-odds-cells {
     display: flex;
-    gap: 4px;
+    gap: var(--s-xs);
     flex-shrink: 0;
 }
 
 .pg-odds-btn {
     width: 90px;
-    padding: 6px 4px;
+    padding: 6px var(--s-xs);
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -1736,7 +1749,7 @@ input, button, select, textarea { font: inherit; }
 .pg-lock-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--s-xs);
     position: absolute;
     top: 10px;
     right: 16px;
@@ -1755,14 +1768,14 @@ input, button, select, textarea { font: inherit; }
     transform: translateX(-50%);
     background: var(--accent);
     color: var(--bg);
-    padding: 14px 32px;
+    padding: 14px var(--s-xxl);
     border-radius: 999px;
     font-size: 15px;
     font-weight: 700;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--s-sm);
     box-shadow: 0 4px 24px rgba(0, 245, 212, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
     z-index: 150;
     transition: transform 0.15s, box-shadow 0.15s;
@@ -1780,13 +1793,13 @@ input, button, select, textarea { font: inherit; }
 
 @media (max-width: 768px) {
     .pg-col-labels { display: none; }
-    .pg-odds-cells { gap: 3px; }
-    .pg-odds-btn { width: 64px; padding: 6px 2px; font-size: 11px; }
+    .pg-odds-cells { gap: var(--s-xs); }
+    .pg-odds-btn { width: 64px; padding: 6px var(--s-xxs); font-size: 11px; }
     .pg-odds-line { font-size: 10px; display: block; }
     .pg-odds-line::after { content: none; }
     .pg-odds-val { display: block; }
     .pg-team-name { font-size: 12px; }
-    .pg-betslip-bar { bottom: 16px; padding: 12px 24px; font-size: 14px; }
+    .pg-betslip-bar { bottom: 16px; padding: var(--s-md) var(--s-xl); font-size: 14px; }
     .league-sub-header .pg-col-labels { display: none; }
     .sport-section-name { font-size: 13px; }
 }
@@ -1824,19 +1837,19 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .bs-mode-toggle {
     display: flex;
     background: var(--bg-elevated);
     border-radius: var(--radius-sm);
-    padding: 3px;
-    margin-bottom: 16px;
+    padding: var(--s-xs);
+    margin-bottom: var(--s-lg);
 }
 .bs-mode-toggle button {
     flex: 1;
-    padding: 8px 16px;
+    padding: var(--s-sm) var(--s-lg);
     border: none;
     background: none;
     color: var(--text-muted);
@@ -1859,31 +1872,31 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
+    padding: var(--s-sm) var(--s-md);
     background: var(--bg-elevated);
     border-radius: var(--radius-sm);
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .bs-selections {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .bs-card {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 12px;
+    padding: var(--s-md);
 }
 
 .bs-card-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--s-sm);
 }
 
 .bs-card-side {
@@ -1898,7 +1911,7 @@ input, button, select, textarea { font: inherit; }
 .bs-card-event {
     font-size: 12px;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: var(--s-xxs);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1917,7 +1930,7 @@ input, button, select, textarea { font: inherit; }
     border: none;
     color: var(--text-muted);
     cursor: pointer;
-    padding: 2px;
+    padding: var(--s-xxs);
     transition: color 0.15s;
     flex-shrink: 0;
 }
@@ -1928,7 +1941,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--s-sm);
 }
 
 .bs-input-group {
@@ -1950,7 +1963,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-muted);
     font-size: 14px;
     font-weight: 600;
-    margin-right: 4px;
+    margin-right: var(--s-xs);
 }
 
 .bs-stake-input {
@@ -1960,7 +1973,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-primary);
     font-size: 14px;
     font-weight: 600;
-    padding: 8px 0;
+    padding: var(--s-sm) 0;
     outline: none;
     -moz-appearance: textfield;
 }
@@ -1972,10 +1985,10 @@ input, button, select, textarea { font: inherit; }
 
 .bs-quick-stakes {
     display: flex;
-    gap: 4px;
+    gap: var(--s-xs);
 }
 .bs-quick-stakes button {
-    padding: 5px 10px;
+    padding: var(--s-xs) 10px;
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -1996,12 +2009,12 @@ input, button, select, textarea { font: inherit; }
     align-items: center;
     gap: 6px;
     width: 100%;
-    padding-top: 4px;
+    padding-top: var(--s-xs);
 }
 
 .bs-stake-pair {
     display: flex;
-    gap: 8px;
+    gap: var(--s-sm);
     margin-top: 10px;
 }
 .bs-stake-pair .bs-field {
@@ -2009,7 +2022,7 @@ input, button, select, textarea { font: inherit; }
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 8px 10px;
+    padding: var(--s-sm) 10px;
 }
 .bs-stake-pair .bs-field:focus-within {
     border-color: var(--accent);
@@ -2021,12 +2034,12 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 2px;
+    margin-bottom: var(--s-xxs);
 }
 .bs-field-input {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: var(--s-xxs);
 }
 .bs-field-input .bs-input-prefix {
     margin-right: 0;
@@ -2056,7 +2069,7 @@ input, button, select, textarea { font: inherit; }
 
 .bs-summary {
     padding-top: 0;
-    margin-bottom: 12px;
+    margin-bottom: var(--s-md);
 }
 .bs-summary-row {
     display: flex;
@@ -2072,8 +2085,8 @@ input, button, select, textarea { font: inherit; }
 }
 .bs-summary-total {
     border-top: 1px solid var(--border);
-    margin-top: 4px;
-    padding-top: 8px;
+    margin-top: var(--s-xs);
+    padding-top: var(--s-sm);
     font-size: 15px;
     font-weight: 700;
 }
@@ -2087,15 +2100,15 @@ input, button, select, textarea { font: inherit; }
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 14px;
-    margin-bottom: 16px;
+    margin-bottom: var(--s-lg);
 }
 
 .bs-validation {
     font-size: 12px;
     color: var(--danger);
     text-align: center;
-    padding: 8px;
-    margin-bottom: 8px;
+    padding: var(--s-sm);
+    margin-bottom: var(--s-sm);
 }
 
 .bs-submit-btn {
@@ -2124,7 +2137,7 @@ input, button, select, textarea { font: inherit; }
 
 .bs-success {
     text-align: center;
-    padding: 24px 0;
+    padding: var(--s-xl) 0;
 }
 
 .bs-success-check {
@@ -2190,7 +2203,7 @@ input, button, select, textarea { font: inherit; }
 }
 
 .bs-sidebar-header {
-    padding: 20px 16px 12px;
+    padding: 20px var(--s-lg) var(--s-md);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
@@ -2198,11 +2211,11 @@ input, button, select, textarea { font: inherit; }
 .bs-sidebar-body {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
+    padding: var(--s-lg);
 }
 
 .bs-sidebar-footer {
-    padding: 12px 16px 16px;
+    padding: var(--s-md) var(--s-lg) var(--s-lg);
     border-top: 1px solid var(--border);
     flex-shrink: 0;
 }
@@ -2226,8 +2239,8 @@ input, button, select, textarea { font: inherit; }
 /* ── Player Track ── */
 .pt-ticket-card {
     display: block;
-    padding: 16px;
-    margin-bottom: 12px;
+    padding: var(--s-lg);
+    margin-bottom: var(--s-md);
     text-decoration: none;
     color: inherit;
     cursor: pointer;
@@ -2240,8 +2253,8 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 8px;
+    gap: var(--s-md);
+    margin-bottom: var(--s-sm);
 }
 .pt-ticket-info {
     flex: 1;
@@ -2258,12 +2271,12 @@ input, button, select, textarea { font: inherit; }
 .pt-ticket-subtitle {
     font-size: 12px;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: var(--s-xxs);
 }
 .pt-leg-dots {
     display: flex;
-    gap: 4px;
-    margin-bottom: 8px;
+    gap: var(--s-xs);
+    margin-bottom: var(--s-sm);
 }
 .pt-leg-dot {
     width: 8px;
@@ -2275,13 +2288,13 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--s-md);
 }
 .pt-ticket-stake,
 .pt-ticket-profit {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--s-xxs);
     font-size: 13px;
     color: var(--text-primary);
 }
@@ -2307,7 +2320,7 @@ input, button, select, textarea { font: inherit; }
     .member-detail-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 12px;
+        gap: var(--s-md);
     }
     .member-detail-header > div:last-child {
         align-self: flex-start;
@@ -2340,11 +2353,11 @@ input, button, select, textarea { font: inherit; }
     }
 
     /* US-015: Odds grid narrow screens — stack line + odds vertically */
-    .pg-odds-btn { width: 56px; font-size: 10px; padding: 5px 2px; }
+    .pg-odds-btn { width: 56px; font-size: 10px; padding: var(--s-xs) var(--s-xxs); }
     .pg-odds-line { font-size: 9px; }
     .pg-odds-val { font-size: 10px; }
     .pg-team-name { font-size: 11px; }
-    .pg-game-row { padding: 8px 12px; }
+    .pg-game-row { padding: var(--s-sm) var(--s-md); }
 
     /* US-018: Stat value font-size */
     .stat-value { font-size: 22px; }
@@ -2354,7 +2367,7 @@ input, button, select, textarea { font: inherit; }
         flex-wrap: nowrap;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        padding-bottom: 4px;
+        padding-bottom: var(--s-xs);
         scrollbar-width: none;
     }
     .filter-bar::-webkit-scrollbar { display: none; }
@@ -2386,8 +2399,8 @@ input, button, select, textarea { font: inherit; }
     }
 
     /* US-020: Card padding tighter */
-    .card { padding: 16px; }
-    .card-header { margin-bottom: 12px; }
+    .card { padding: var(--s-lg); }
+    .card-header { margin-bottom: var(--s-md); }
 }
 
 /* ── Sport Page Tab Bar (US-010) ── */
@@ -2399,7 +2412,7 @@ input, button, select, textarea { font: inherit; }
     scrollbar-width: none;
     border-bottom: 1px solid var(--divider);
     margin-bottom: 0;
-    padding: 0 4px;
+    padding: 0 var(--s-xs);
 }
 .sp-tab-bar::-webkit-scrollbar { display: none; }
 .sp-tab {
@@ -2407,7 +2420,7 @@ input, button, select, textarea { font: inherit; }
     background: none;
     border: none;
     cursor: pointer;
-    padding: 12px 16px 0;
+    padding: var(--s-md) var(--s-lg) 0;
     font-size: 13px;
     font-weight: 500;
     letter-spacing: 0.8px;
@@ -2443,17 +2456,17 @@ input, button, select, textarea { font: inherit; }
     background: rgba(255, 176, 32, 0.08);
     border: 1px solid rgba(255, 176, 32, 0.35);
     border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 12px;
+    padding: 14px var(--s-lg);
+    margin-bottom: var(--s-md);
 }
 .bs-line-change-title {
-    margin: 0 0 4px;
+    margin: 0 0 var(--s-xs);
     font-size: 13px;
     font-weight: 700;
     color: #FFB020;
 }
 .bs-line-change-sub {
-    margin: 0 0 12px;
+    margin: 0 0 var(--s-md);
     font-size: 12px;
     line-height: 1.5;
     color: var(--text-secondary);
@@ -2462,7 +2475,7 @@ input, button, select, textarea { font: inherit; }
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--s-md);
     padding: 6px 0;
     border-top: 1px solid rgba(255, 176, 32, 0.18);
 }
@@ -2484,7 +2497,7 @@ input, button, select, textarea { font: inherit; }
 .bs-line-change-odds strong { color: var(--text-primary); }
 .bs-line-change-actions {
     display: flex;
-    gap: 8px;
-    margin-top: 12px;
+    gap: var(--s-sm);
+    margin-top: var(--s-md);
 }
 .bs-line-change-actions .btn { flex: 1; justify-content: center; }
