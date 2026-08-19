@@ -34,6 +34,28 @@ const btnRow = (variant, name, use) => {
   </tr>`;
 };
 
+const toast = (variant, glyph, title, text) => `
+  <div class="ds-toastbox ds-toastbox--${variant}">
+    <span class="ds-toastbox__icon">${glyph}</span>
+    <span class="ds-toastbox__body">
+      <span class="ds-toastbox__title">${title}</span>
+      <span class="ds-toastbox__text">${text}</span>
+    </span>
+    <button class="ds-toastbox__x" aria-label="Dismiss">&times;</button>
+  </div>`;
+
+const alertBox = (variant, glyph, title, text) => `
+  <div class="ds-toastbox ds-alert ds-toastbox--${variant}">
+    <span class="ds-toastbox__icon">${glyph}</span>
+    <span class="ds-toastbox__body">
+      <span class="ds-toastbox__title">${title}</span>
+      <span class="ds-toastbox__text">${text}</span>
+    </span>
+  </div>`;
+
+const icon = (glyph, name) => `
+  <div class="ds-icon"><div class="ds-icon__glyph">${glyph}</div><div class="ds-icon__name">${name}</div></div>`;
+
 const spec = (token, meta, sample, cls) => `
   <div class="ds-spec">
     <div class="ds-spec__meta"><b>${token}</b>${meta}</div>
@@ -450,11 +472,12 @@ const DS_SECTIONS = [
 ` },
 
 { id: 'overlay', label: 'Dialogs & Toasts', html: `
-  <h1 class="ds-h1">Dialogs &amp; Toasts</h1>
+  <h1 class="ds-h1">Dialogs, Toasts &amp; Alerts</h1>
   <p class="ds-intro">
-    A dialog interrupts and requires an answer; a toast reports something already
-    finished and disappears. Anything irreversible gets a dialog naming the
-    consequence — never a generic "Are you sure?".
+    A dialog interrupts and needs an answer. A toast reports something already
+    finished and leaves. An alert belongs to the content around it and stays.
+    Anything irreversible gets a dialog naming the consequence — never a generic
+    "Are you sure?".
   </p>
 
   <p class="ds-label">Dialog</p>
@@ -467,18 +490,243 @@ const DS_SECTIONS = [
       </div>
       <div class="ds-dialog__actions">
         <button class="ds-btn ds-btn--secondary ds-btn--grow">Cancel</button>
-        <button class="ds-btn ds-btn--flat ds-btn--grow">Settle up</button>
+        <button class="ds-btn ds-btn--accent ds-btn--grow">Settle up</button>
       </div>
     </div>
   </div>
   <p class="ds-note">The confirm button repeats the verb. "Settle up", never "OK".</p>
 
   <p class="ds-label">Toasts</p>
-  <div class="ds-demo ds-demo--col ds-demo--start ds-w-sm">
-    <div class="ds-callout ds-callout--accent">Pick placed</div>
-    <div class="ds-callout ds-callout--danger">Couldn't place pick — try again</div>
-    <div class="ds-callout ds-callout--warn">Invite expires in 2 days</div>
+  <div class="ds-demo ds-demo--col ds-demo--start">
+    ${toast('success', '&check;', 'Pick placed', '$25.00 on Magic +7 at &minus;110.')}
+    ${toast('info', 'i', 'Code copied', 'SNW92TQR is on your clipboard.')}
+    ${toast('warn', '!', 'Invite expiring', 'Andrew&rsquo;s invite expires in 2 days.')}
+    ${toast('error', '&times;', 'Couldn&rsquo;t place pick', 'The line moved. Try again.')}
   </div>
+  <p class="ds-note">
+    <strong>Every toast is the same width</strong> — 360px, regardless of message
+    length. Toasts stack in a corner, and variable widths read as debris rather
+    than as a system. Long text wraps; the box does not grow.
+  </p>
+
+  <p class="ds-label">Alerts</p>
+  <div class="ds-demo ds-demo--col ds-demo--start">
+    ${alertBox('info', 'i', 'Lines open 48 hours out', 'Games further away are listed without prices.')}
+    ${alertBox('warn', '!', 'Approaching member limit', 'You have 3 of 3 members on the free plan.')}
+    ${alertBox('error', '!', 'Sync failed', 'Couldn&rsquo;t reach the odds provider. Prices may be stale.')}
+  </div>
+  <p class="ds-note">
+    An alert takes the full width of its container, because it belongs to the
+    content it interrupts. It has no dismiss — it goes away when the condition does.
+  </p>
+
+  <p class="ds-label">Which to use</p>
+  <div class="ds-scroll"><table class="ds-table">
+    <thead><tr><th></th><th>Toast</th><th>Alert</th><th>Dialog</th></tr></thead>
+    <tbody>
+      <tr><td>Interrupts</td><td>No</td><td>No</td><td>Yes</td></tr>
+      <tr><td>Dismisses itself</td><td>Yes</td><td>No</td><td>No</td></tr>
+      <tr><td>Needs an answer</td><td>No</td><td>No</td><td>Yes</td></tr>
+      <tr><td>Width</td><td>Fixed 360</td><td>Container</td><td>Max 400</td></tr>
+      <tr><td>Use for</td><td>It happened</td><td>It is true right now</td><td>Decide before continuing</td></tr>
+    </tbody>
+  </table></div>
+` },
+
+{ id: 'icons', label: 'Icons', html: `
+  <h1 class="ds-h1">Icons</h1>
+  <p class="ds-intro">
+    SF Symbols throughout — no custom icon set, no second family. An icon labels
+    a thing that recurs; it never decorates, and it never replaces a word the
+    user would have to guess at.
+  </p>
+
+  <p class="ds-label">Sports</p>
+  <div class="ds-icons">
+    ${icon('&#127936;', 'basketball.fill')}
+    ${icon('&#127944;', 'football.fill')}
+    ${icon('&#9917;', 'soccerball')}
+    ${icon('&#9918;', 'baseball.diamond.bases')}
+    ${icon('&#127954;', 'hockey.puck.fill')}
+    ${icon('&#129354;', 'figure.martial.arts')}
+    ${icon('&#127934;', 'tennisball.fill')}
+    ${icon('&#9971;', 'figure.golf')}
+    ${icon('&#127967;', 'sportscourt.fill')}
+  </div>
+
+  <p class="ds-label">Interface</p>
+  <div class="ds-icons">
+    ${icon('&#128202;', 'chart.bar.fill')}
+    ${icon('&#128100;', 'person.fill')}
+    ${icon('&#9881;', 'gearshape.fill')}
+    ${icon('&#127915;', 'ticket.fill')}
+    ${icon('&#128274;', 'lock.fill')}
+    ${icon('&#9888;', 'exclamationmark.triangle')}
+    ${icon('&#10003;', 'checkmark.circle.fill')}
+    ${icon('&#10005;', 'xmark.circle.fill')}
+    ${icon('&#9003;', 'delete.left')}
+    ${icon('&#8250;', 'chevron.right')}
+    ${icon('&#8249;', 'chevron.left')}
+    ${icon('&#128269;', 'magnifyingglass')}
+    ${icon('&#9733;', 'star.fill')}
+    ${icon('&#128273;', 'person.badge.key')}
+    ${icon('&#8593;', 'square.and.arrow.up')}
+  </div>
+
+  <p class="ds-note">
+    Glyphs above are stand-ins for the SF Symbol named beneath them — this page
+    is HTML and cannot render SF Symbols. The name is the contract; use it
+    verbatim in Swift.
+  </p>
+
+  <ul class="ds-rules">
+    <li>Filled variants for selected and active states, outline for the rest.</li>
+    <li>An icon alone is only acceptable where the meaning is unambiguous — a chevron, a close, a search.</li>
+    <li>Icons inherit the text colour of their row. They are not separately coloured.</li>
+  </ul>
+` },
+
+{ id: 'nav', label: 'Tabs & Navigation', html: `
+  <h1 class="ds-h1">Tabs &amp; Navigation</h1>
+  <p class="ds-intro">
+    Three levels, and they are not interchangeable. The tab bar switches the
+    whole context. Underline tabs move between peer views inside one context. A
+    segmented control filters what is already on screen.
+  </p>
+
+  <p class="ds-label">Tab bar &mdash; switches context</p>
+  <div class="ds-demo ds-demo--flush ds-w-md">
+    <div>
+      <div class="ds-tabbar">
+        <div class="ds-tabbar__item is-active">Dashboard</div>
+        <div class="ds-tabbar__item">Events</div>
+        <div class="ds-tabbar__item">Picks<span class="ds-tabbar__badge">3</span></div>
+        <div class="ds-tabbar__item">Members</div>
+      </div>
+    </div>
+  </div>
+  <p class="ds-note">All-caps labels, accent for the active item, and a count badge only where something is waiting on the organizer.</p>
+
+  <p class="ds-label">Underline tabs &mdash; peer views</p>
+  <div class="ds-demo ds-demo--flush">
+    <div class="ds-tabs">
+      <button class="ds-tab is-active">NFL</button>
+      <button class="ds-tab">NCAAF</button>
+      <button class="ds-tab">Futures</button>
+    </div>
+  </div>
+
+  <p class="ds-label">Segmented &mdash; filters the current view</p>
+  <div class="ds-demo">
+    <div class="ds-seg">
+      <button class="ds-seg__item is-active">Open</button>
+      <button class="ds-seg__item">Past</button>
+    </div>
+    <div class="ds-seg">
+      <button class="ds-seg__item is-active">All</button>
+      <button class="ds-seg__item">Singles</button>
+      <button class="ds-seg__item">Multi-Pick</button>
+      <button class="ds-seg__item">Futures</button>
+    </div>
+  </div>
+  <p class="ds-note">A segmented control never navigates. If choosing an option changes the screen, it should have been tabs.</p>
+` },
+
+{ id: 'states', label: 'Empty & Loading', html: `
+  <h1 class="ds-h1">Empty &amp; Loading</h1>
+  <p class="ds-intro">
+    The two states a screen spends most of its early life in, and the two most
+    often left to chance. An empty state says what would be here and how to get
+    it. A loading state holds the shape of what is coming, so nothing jumps when
+    it arrives.
+  </p>
+
+  <p class="ds-label">Empty &mdash; first run</p>
+  <div class="ds-demo ds-demo--flush ds-w-md">
+    <div class="ds-list">
+      <div class="ds-empty">
+        <div class="ds-empty__glyph">&#128100;</div>
+        <div class="ds-empty__title">No members yet</div>
+        <div class="ds-empty__text">Invite someone and they will appear here with their balance and open picks.</div>
+        <div style="margin-top:var(--s4)"><button class="ds-btn ds-btn--accent ds-btn--sm">Invite your first member</button></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="ds-label">Empty &mdash; filtered to nothing</p>
+  <div class="ds-demo ds-demo--flush ds-w-md">
+    <div class="ds-list">
+      <div class="ds-empty">
+        <div class="ds-empty__glyph">&#128269;</div>
+        <div class="ds-empty__title">No picks match</div>
+        <div class="ds-empty__text">Try a different filter, or clear it to see everything.</div>
+      </div>
+    </div>
+  </div>
+  <p class="ds-note">
+    These are different states and must read differently. "Nothing here yet"
+    invites an action; "nothing matches" invites undoing a filter. Showing the
+    first-run copy to someone with an active filter is the common mistake.
+  </p>
+
+  <p class="ds-label">Loading &mdash; skeletons</p>
+  <div class="ds-demo ds-demo--flush ds-w-md">
+    <div class="ds-list">
+      <div class="ds-row">
+        <div style="flex:1">
+          <div class="ds-skel ds-skel--title" style="width:45%"></div>
+          <div class="ds-skel ds-skel--line" style="width:28%;margin-top:var(--s2)"></div>
+        </div>
+        <div class="ds-skel ds-skel--line" style="width:64px"></div>
+      </div>
+      <div class="ds-row">
+        <div style="flex:1">
+          <div class="ds-skel ds-skel--title" style="width:36%"></div>
+          <div class="ds-skel ds-skel--line" style="width:22%;margin-top:var(--s2)"></div>
+        </div>
+        <div class="ds-skel ds-skel--line" style="width:64px"></div>
+      </div>
+    </div>
+  </div>
+  <p class="ds-note">
+    A skeleton mirrors the row it replaces — same height, same rhythm — so
+    content does not shift when it lands. Never a spinner where the shape is
+    known. Skeletons are skipped entirely when local data is already cached.
+  </p>
+` },
+
+{ id: 'menus', label: 'Menus & Tables', html: `
+  <h1 class="ds-h1">Menus &amp; Tables</h1>
+  <p class="ds-intro">
+    A menu holds actions that would clutter the surface. A table is for data
+    dense enough that alignment matters more than shape — on mobile the same
+    data becomes rows.
+  </p>
+
+  <p class="ds-label">Overflow menu</p>
+  <div class="ds-demo ds-demo--start">
+    <div class="ds-menu">
+      <div class="ds-menu__item">Edit credit limit</div>
+      <div class="ds-menu__item">Edit win limit</div>
+      <div class="ds-menu__item">Settle up</div>
+      <div class="ds-menu__sep"></div>
+      <div class="ds-menu__item">Archive member</div>
+      <div class="ds-menu__item ds-menu__item--danger">Remove from group</div>
+    </div>
+  </div>
+  <p class="ds-note">Destructive actions sit last, below a separator. Never first, where a mis-tap lands.</p>
+
+  <p class="ds-label">Table</p>
+  <div class="ds-demo ds-demo--flush">
+    <div class="ds-scroll"><table class="ds-table">
+      <thead><tr><th>Code</th><th>Email</th><th>Credit limit</th><th>Created</th></tr></thead>
+      <tbody>
+        <tr><td><code class="t">SNW92TQR</code></td><td>andrew@example.com</td><td class="ds-num">$1,000.00</td><td>Aug 17</td></tr>
+        <tr><td><code class="t">3ESHFJNX</code></td><td>&mdash;</td><td class="ds-num">$1,000.00</td><td>Aug 18</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <p class="ds-note">Numeric columns are monospaced and right-aligned so figures compare down the column. Text columns stay left.</p>
 ` },
 
 { id: 'spacing', label: 'Spacing & Motion', html: `

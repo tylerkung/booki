@@ -75,7 +75,8 @@
   --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 
   --border-w: 1px;
-  --btn-h: 48px;        /* spec says 50pt; 48 keeps the 4pt grid */
+  --btn-h: 48px;
+  --toast-w: 360px;     /* every toast, always */        /* spec says 50pt; 48 keeps the 4pt grid */
   --rail: 248px;
 }
 
@@ -493,7 +494,95 @@ code.t {
 
 .ds-specimen { width: 104px; height: 64px; background: var(--elevated); border: var(--border-w) solid var(--border); }
 
-/* ── toast ───────────────────────────────────────────────────────────── */
+
+/* ── toasts & alerts ─────────────────────────────────────────────────────
+   A toast floats, is transient, and is ALWAYS the same width — variable-width
+   toasts stacking in a corner read as debris. An alert is inline and takes the
+   width of its container, because it belongs to the content it interrupts. */
+
+.ds-toastbox {
+  width: var(--toast-w);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  background: var(--elevated);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--s3) var(--s4);
+}
+.ds-toastbox__icon { flex: 0 0 auto; width: var(--s5); height: var(--s5); display: grid; place-items: center; border-radius: var(--radius-full); font-size: var(--t-caption); }
+.ds-toastbox__body { display: block; flex: 1 1 auto; min-width: 0; }
+.ds-toastbox__title { display: block; font-size: var(--t-footnote); font-weight: 600; color: var(--text-primary); }
+.ds-toastbox__text { display: block; font-size: var(--t-caption); color: var(--text-secondary); margin-top: var(--s1); }
+.ds-toastbox__x { flex: 0 0 auto; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: var(--t-footnote); line-height: 1; padding: 0; }
+.ds-toastbox__x:hover { color: var(--text-primary); }
+
+.ds-toastbox--success .ds-toastbox__icon { background: var(--fill-accent); color: var(--accent); }
+.ds-toastbox--warn .ds-toastbox__icon { background: var(--fill-warning); color: var(--warning); }
+.ds-toastbox--error .ds-toastbox__icon { background: var(--fill-danger); color: var(--danger); }
+.ds-toastbox--info .ds-toastbox__icon { background: var(--fill-neutral); color: var(--text-secondary); }
+
+.ds-alert { width: 100%; }
+.ds-alert.ds-toastbox { width: 100%; }
+
+/* ── icons ───────────────────────────────────────────────────────────── */
+.ds-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: var(--s2); }
+.ds-icon {
+  background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm);
+  padding: var(--s3); text-align: center;
+}
+.ds-icon__glyph { font-size: var(--t-title2); color: var(--accent); line-height: 1.4; }
+.ds-icon__name { font-family: var(--mono); font-size: 10px; color: var(--text-muted); word-break: break-all; line-height: 1.4; }
+
+/* ── tabs & segmented ────────────────────────────────────────────────── */
+.ds-tabs { display: flex; gap: var(--s6); border-bottom: var(--border-w) solid var(--border); }
+.ds-tab {
+  background: none; border: none; padding: 0 0 var(--s3); cursor: pointer;
+  font-family: var(--sans); font-size: var(--t-subhead); font-weight: 600;
+  color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.ds-tab.is-active { color: var(--accent); border-bottom-color: var(--accent); }
+.ds-tab:hover { color: var(--text-primary); }
+
+.ds-seg { display: inline-flex; background: var(--background); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); padding: var(--s1); gap: var(--s1); }
+.ds-seg__item {
+  background: none; border: none; cursor: pointer; border-radius: var(--s2);
+  padding: var(--s1) var(--s3); font-family: var(--sans); font-size: var(--t-footnote);
+  font-weight: 600; color: var(--text-secondary);
+}
+.ds-seg__item.is-active { background: var(--accent); color: var(--background); }
+
+.ds-tabbar { display: flex; background: var(--chrome); border: var(--border-w) solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.ds-tabbar__item { flex: 1; text-align: center; padding: var(--s3) var(--s2); font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); position: relative; white-space: nowrap; }
+.ds-tabbar__item.is-active { color: var(--accent); }
+.ds-tabbar__badge { display: inline-block; margin-left: var(--s1); background: var(--accent); color: var(--background); border-radius: var(--radius-full); font-size: 9px; padding: 0 var(--s1); font-weight: 700; vertical-align: top; }
+
+/* ── empty & loading ─────────────────────────────────────────────────── */
+.ds-empty { text-align: center; padding: var(--s8) var(--s5); }
+.ds-empty__glyph { font-size: var(--t-title1); color: var(--text-muted); }
+.ds-empty__title { font-size: var(--t-headline); font-weight: 600; margin-top: var(--s3); }
+.ds-empty__text { font-size: var(--t-footnote); color: var(--text-secondary); margin-top: var(--s1); max-width: 40ch; margin-left: auto; margin-right: auto; }
+
+.ds-skel { background: var(--elevated); border-radius: var(--s1); position: relative; overflow: hidden; }
+.ds-skel::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, var(--fill-faint), transparent);
+  animation: dsShimmer 1.4s infinite;
+}
+@keyframes dsShimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .ds-skel::after { animation: none; } }
+.ds-skel--line { height: var(--s3); }
+.ds-skel--title { height: var(--s4); }
+.ds-skel--pill { height: var(--s6); border-radius: var(--radius-full); }
+
+/* ── menus ───────────────────────────────────────────────────────────── */
+.ds-menu { background: var(--elevated); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); padding: var(--s1); min-width: 200px; }
+.ds-menu__item { display: flex; justify-content: space-between; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--s2); font-size: var(--t-footnote); color: var(--text-primary); cursor: pointer; }
+.ds-menu__item:hover { background: var(--fill-faint); }
+.ds-menu__item--danger { color: var(--danger); }
+.ds-menu__sep { height: var(--border-w); background: var(--divider); margin: var(--s1) 0; }
+
+/* ── page toast ───────────────────────────────────────────────────────────── */
 #ds-toast {
   position: fixed;
   left: calc(50% + var(--rail) / 2);
