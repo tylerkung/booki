@@ -56,19 +56,27 @@ const DS_SECTIONS = [
       <div class="ds-callout ds-ground--dark">
         <img src="../assets/logo-booki-blk.svg" alt="Booki" class="ds-logo">
       </div>
-      <p class="ds-anno">logo-booki-blk.svg &middot; primary, dark grounds</p>
+      <p class="ds-anno">logo-booki-blk.svg<br>primary &middot; dark grounds</p>
+    </div>
+    <div class="ds-center">
+      <div class="ds-callout ds-ground--dark">
+        <img src="../assets/logo-booki-wh.svg" alt="Booki" class="ds-logo">
+      </div>
+      <p class="ds-anno">logo-booki-wh.svg<br>flat white &middot; dark or coloured grounds</p>
     </div>
     <div class="ds-center">
       <div class="ds-callout ds-ground--light">
-        <img src="../assets/logo-booki-wh.svg" alt="Booki" class="ds-logo">
+        <img src="../assets/logo-booki.svg" alt="Booki" class="ds-logo">
       </div>
-      <p class="ds-anno">logo-booki-wh.svg &middot; flat, light grounds</p>
+      <p class="ds-anno">logo-booki.svg<br>light grounds only</p>
     </div>
   </div>
   <p class="ds-note">
-    Despite the name, <code class="t">blk</code> is the one used on dark — white letters with a
-    #0A0A12 outline. <code class="t">wh</code> is a flat single-fill version. Reaching for the
-    wrong one is the most common brand mistake in this codebase.
+    The names mislead. <code class="t">blk</code> is white letters with a #0A0A12 outline and
+    belongs on dark; <code class="t">wh</code> is flat white and also belongs on dark.
+    The only asset for a light ground is the unsuffixed
+    <code class="t">logo-booki.svg</code>, which is dark letters with a cyan accent.
+    Reaching for the wrong one is the most common brand mistake in this codebase.
   </p>
 
   <p class="ds-label">Voice</p>
@@ -274,9 +282,12 @@ const DS_SECTIONS = [
 { id: 'badges', label: 'Badges & Chips', html: `
   <h1 class="ds-h1">Badges &amp; Chips</h1>
   <p class="ds-intro">
-    A badge states a fact about one record; a chip filters a list. Both are pills
-    at the same size. Badge colour is semantic and comes from the status tokens —
-    never chosen to look good against the surrounding card.
+    A badge states a fact about one record; a tag describes a pattern across
+    several. Both are pills, but they are deliberately not interchangeable: a
+    badge is uppercase monospace, because it labels a state machine value, and a
+    tag is sentence-case sans, because it is a human judgement. Badge colour is
+    semantic and comes from the status tokens — never chosen to look good
+    against the surrounding card.
   </p>
 
   <p class="ds-label">Event status</p>
@@ -318,11 +329,13 @@ const DS_SECTIONS = [
 
   <p class="ds-label">Odds buttons</p>
   <div class="ds-demo">
+   <div class="ds-odds-row">
     <div class="ds-odds"><span class="ds-odds__line">&minus;1.5</span><span class="ds-odds__price">(&minus;110)</span></div>
     <div class="ds-odds ds-odds--sel"><span class="ds-odds__line">+1.5</span><span class="ds-odds__price">(&minus;110)</span></div>
     <div class="ds-odds"><span class="ds-odds__price">&minus;140</span></div>
     <div class="ds-odds"><span class="ds-odds__line">O 9.5</span><span class="ds-odds__price">(&minus;115)</span></div>
     <div class="ds-odds ds-odds--empty"><span class="ds-odds__price">&mdash;</span></div>
+   </div>
   </div>
   <p class="ds-note">
     Line in secondary, price in primary with parentheses. The dash means no price
@@ -352,7 +365,7 @@ const DS_SECTIONS = [
   </p>
 
   <p class="ds-label">Pick card anatomy</p>
-  <div class="ds-demo">
+  <div class="ds-demo ds-demo--top">
     <div class="ds-card">
       <div class="ds-card__head">
         <span class="ds-strong">Orlando Magic +7</span>
