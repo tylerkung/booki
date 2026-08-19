@@ -553,20 +553,37 @@ code.t {
    already knows, so an initial is enough to identify a row at a glance. */
 .ds-avatar {
   display: inline-grid; place-items: center; flex: 0 0 auto;
-  width: var(--s8); height: var(--s8);
+  /* Size and stack overlap travel together, and the overlap is bounded by the
+     width of two initials rather than by the chip. These are letters, not
+     photographs: a stack may cover the empty margin around the initials but not
+     the initials themselves, or MK reads as MI. Measured ceilings are 4.3, 6.9
+     and 12.7px for the three sizes; these sit inside them and on the grid.
+     The original flat -12px was past the ceiling for every size. */
+  --avatar-size: var(--s8);
+  --avatar-overlap: var(--s1);
+  width: var(--avatar-size); height: var(--avatar-size);
   border-radius: var(--radius-full);
-  background: var(--fill-faint);
+  /* The tint is a background-IMAGE layer, not a background-color, so a stack
+     can slide an opaque colour underneath it. Every tint here is translucent —
+     without an opaque base a covered chip shows its initials straight through
+     the chip covering it, which is what made the group stack unreadable. */
+  background-color: transparent;
+  background-image: linear-gradient(var(--fill-faint), var(--fill-faint));
   color: var(--text-secondary);
   font-size: var(--t-footnote); font-weight: 600;
   letter-spacing: 0.02em;
 }
-.ds-avatar--sm { width: var(--s6); height: var(--s6); font-size: var(--t-micro); }
-.ds-avatar--lg { width: var(--s12); height: var(--s12); font-size: var(--t-callout); }
-.ds-avatar--accent { background: var(--fill-accent); color: var(--accent); }
-.ds-avatar--warn { background: var(--fill-warning); color: var(--warning); }
-.ds-avatar--danger { background: var(--fill-danger); color: var(--danger); }
+.ds-avatar--sm { --avatar-size: var(--s6); --avatar-overlap: var(--s1); font-size: var(--t-micro); }
+.ds-avatar--lg { --avatar-size: var(--s12); --avatar-overlap: var(--s3); font-size: var(--t-callout); }
+.ds-avatar--accent { background-image: linear-gradient(var(--fill-accent), var(--fill-accent)); color: var(--accent); }
+.ds-avatar--warn { background-image: linear-gradient(var(--fill-warning), var(--fill-warning)); color: var(--warning); }
+.ds-avatar--danger { background-image: linear-gradient(var(--fill-danger), var(--fill-danger)); color: var(--danger); }
 .ds-avatar-stack { display: flex; }
-.ds-avatar-stack .ds-avatar { margin-left: calc(var(--s3) * -1); border: 2px solid var(--card); }
+.ds-avatar-stack .ds-avatar {
+  margin-left: calc(var(--avatar-overlap) * -1);
+  border: var(--s05) solid var(--card);
+  background-color: var(--card);   /* opaque, so each chip occludes the one behind it */
+}
 .ds-avatar-stack .ds-avatar:first-child { margin-left: 0; }
 
 /* ── data display ────────────────────────────────────────────────────────

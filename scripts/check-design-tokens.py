@@ -262,7 +262,11 @@ def scan_unresolved():
         (DS_CSS, ["landing/design/index.html", "landing/design/ds-content.js"]),
     ):
         if not os.path.exists(consumer): continue
-        known = defined | set(root_tokens(consumer))
+        # A custom property may be declared on ANY selector, not just :root —
+        # component-scoped ones like --avatar-size are how a variant passes a
+        # value down to a rule it does not own. Collect every declaration.
+        local = set(re.findall(r'(--[\w-]+)\s*:', open(consumer).read()))
+        known = defined | local
         for rel in [os.path.relpath(consumer, ROOT)] + extras:
             fp = os.path.join(ROOT, rel)
             if not os.path.exists(fp): continue

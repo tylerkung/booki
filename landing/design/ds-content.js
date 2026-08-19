@@ -846,15 +846,36 @@ const DS_SECTIONS = [
   </div>
 
   <p class="ds-label">Group</p>
-  <div class="ds-demo">
+  <div class="ds-demo ds-demo--roomy">
     <div class="ds-avatar-stack">
       <span class="ds-avatar ds-avatar--sm">AS</span>
       <span class="ds-avatar ds-avatar--sm">JM</span>
       <span class="ds-avatar ds-avatar--sm">MK</span>
       <span class="ds-avatar ds-avatar--sm">+9</span>
     </div>
+    <div class="ds-avatar-stack">
+      <span class="ds-avatar">AS</span>
+      <span class="ds-avatar">JM</span>
+      <span class="ds-avatar">MK</span>
+      <span class="ds-avatar">+9</span>
+    </div>
+    <div class="ds-avatar-stack">
+      <span class="ds-avatar ds-avatar--lg">AS</span>
+      <span class="ds-avatar ds-avatar--lg">JM</span>
+      <span class="ds-avatar ds-avatar--lg">+9</span>
+    </div>
   </div>
-  <p class="ds-note">Overlap by 12, ringed in the card colour so they read as a stack. The overflow count is the last chip, never a separate label.</p>
+  <p class="ds-note">
+    Chips overlap by 4, 4 and 12 across the three sizes, each ringed in the card
+    colour so the stack reads as a stack. Two rules make it work, and both were
+    once wrong here. <b>The overlap is bounded by the width of two initials, not
+    by the chip.</b> These are letters, not photographs &mdash; a stack may
+    cover the empty margin around the initials but not the initials themselves,
+    or MK reads as MI. <b>And a chip must be opaque.</b> Every tint in this
+    system is translucent, so without an opaque base underneath, a covered chip
+    shows its initials straight through the chip covering it and the whole group
+    turns to mush. The overflow count is the last chip, never a separate label.
+  </p>
 ` },
 
 { id: 'data', label: 'Data Display', html: `
