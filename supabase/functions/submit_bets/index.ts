@@ -23,6 +23,34 @@ interface FailedBet {
   index: number;
   event_id: string;
   error: string;
+  submitted_odds?: number;
+  current_odds?: number;
+}
+
+/**
+ * American odds -> decimal payout multiplier, so two prices can be compared on
+ * one scale. Higher is always better for the member.
+ */
+function americanToDecimal(odds: number): number {
+  return odds > 0 ? 1 + odds / 100 : 1 + 100 / Math.abs(odds);
+}
+
+/**
+ * Is `submitted` a better price for the member than `current`?
+ *
+ * Phase 1 of the line-change guardrails is deliberately one-sided: a bet is
+ * refused only when the member would get a BETTER price than the one currently
+ * offered. Taking the same or a worse price is allowed through, so a line
+ * moving against a member never turns into a failed submission on a client that
+ * cannot yet explain why. See tasks/prd-line-change-guardrails.md.
+ *
+ * Without this the server stored whatever odds the request contained, so any
+ * price at all could be submitted — a coin flip at +5000 would have been
+ * accepted and paid.
+ */
+function isBetterForMember(submitted: number, current: number): boolean {
+  const EPSILON = 0.001; // absorbs float noise, not a real tolerance
+  return americanToDecimal(submitted) > americanToDecimal(current) + EPSILON;
 }
 
 Deno.serve(async (req) => {
@@ -255,7 +283,7 @@ Deno.serve(async (req) => {
 
     const { data: markets, error: marketsError } = await client
       .from('markets')
-      .select('id, type, side_a, side_b')
+      .select('id, type, side_a, side_b, odds_a, odds_b')
       .in('id', uniqueMarketIds);
 
     if (marketsError) {
@@ -309,6 +337,26 @@ Deno.serve(async (req) => {
       // Resolve side label and market type
       const resolvedSide = bet.side === 'a' ? market.side_a : market.side_b;
       const marketType = market.type;
+
+      // Price guardrail — the server decides what price is on offer.
+      const currentOdds = bet.side === 'a' ? market.odds_a : market.odds_b;
+      if (typeof currentOdds !== 'number') {
+        failed.push({ index: i, event_id: bet.event_id, error: 'Market has no price' });
+        continue;
+      }
+      if (isBetterForMember(bet.odds, currentOdds)) {
+        console.warn(
+          `Price mismatch on ${normalizedMarketId}: submitted ${bet.odds}, offered ${currentOdds}`,
+        );
+        failed.push({
+          index: i,
+          event_id: bet.event_id,
+          error: 'price_mismatch',
+          submitted_odds: bet.odds,
+          current_odds: currentOdds,
+        });
+        continue;
+      }
 
       // Per-bet policy violations
       const policyViolations: string[] = [];

@@ -20,6 +20,25 @@ interface SubmitParlayRequest {
   idempotency_key: string;
 }
 
+/**
+ * American odds -> decimal payout multiplier, so two prices compare on one
+ * scale. Higher is always better for the member.
+ */
+function americanToDecimal(odds: number): number {
+  return odds > 0 ? 1 + odds / 100 : 1 + 100 / Math.abs(odds);
+}
+
+/**
+ * Phase 1 price guardrail — refuse only a price BETTER for the member than the
+ * one currently offered, so a line moving against them never fails a
+ * submission on a client that cannot yet explain it.
+ * See tasks/prd-line-change-guardrails.md.
+ */
+function isBetterForMember(submitted: number, current: number): boolean {
+  const EPSILON = 0.001;
+  return americanToDecimal(submitted) > americanToDecimal(current) + EPSILON;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -323,7 +342,7 @@ Deno.serve(async (req) => {
     const marketIds = body.legs.map(leg => leg.market_id.toLowerCase());
     const { data: markets, error: marketsError } = await client
       .from('markets')
-      .select('id, type, side_a, side_b')
+      .select('id, type, side_a, side_b, odds_a, odds_b')
       .in('id', marketIds);
 
     if (marketsError) {
@@ -337,6 +356,24 @@ Deno.serve(async (req) => {
     // Build insert records for all legs
     const betInserts = body.legs.map(leg => {
       const market = marketMap.get(leg.market_id.toLowerCase());
+      // Price guardrail, per leg — one mispriced leg poisons the whole ticket.
+      if (market) {
+        const currentLegOdds = leg.side_indicator === 'a' ? market.odds_a : market.odds_b;
+        if (typeof currentLegOdds === 'number' && isBetterForMember(leg.odds, currentLegOdds)) {
+          console.warn(`Parlay leg price mismatch: submitted ${leg.odds}, offered ${currentLegOdds}`);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'price_mismatch',
+              market_id: leg.market_id,
+              submitted_odds: leg.odds,
+              current_odds: currentLegOdds,
+            }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
       const resolvedSide = market
         ? (leg.side_indicator === 'a' ? market.side_a : market.side_b)
         : leg.side; // fallback to client-provided side
