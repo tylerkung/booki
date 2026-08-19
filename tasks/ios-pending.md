@@ -99,6 +99,37 @@ old line lingers as its own row).
 - [ ] Show something better than a raw error string — e.g. "That line is no
       longer offered" with the pick removed or re-pointed to the current line
 
+### B4. Corner radius — iOS has diverged from web
+
+Web tightened its radius on 2026-08-19 (`d54e512`, `f3263d9`):
+`--radius` 16 → **12**, `--radius-sm` 12 → **8**. iOS was deliberately left
+alone, so the two platforms now disagree.
+
+`Booki/Theme.swift`:
+
+```swift
+static let cornerRadius: CGFloat = 16        // web is now 12
+static let cornerRadiusSmall: CGFloat = 12   // web is now 8
+```
+
+- [ ] Decide whether iOS follows. If it does, the two constants are the only
+      edit — 13 call sites read them and need no change
+- [ ] **Fold in the two bare literals.** `Theme.swift:474` and `:478` use
+      `RoundedRectangle(cornerRadius: 8)` directly rather than a constant. They
+      are already inconsistent; if `cornerRadiusSmall` becomes 8 they would
+      silently become "correct" by coincidence, which is worse than being
+      wrong. Point them at the constant either way
+- [ ] Adopt the nesting rule while there. Radius is chosen by **depth, not
+      element type**: the outermost rounded view takes `cornerRadius`, anything
+      rounded inside it steps down to `cornerRadiusSmall`. No exemption for
+      controls — a top-level button or field takes the full radius exactly like
+      a card. Documented under Surfaces & Elevation in the design system
+- [ ] Auditing this on iOS has no equivalent of the DOM walk used on web (830
+      views checked automatically). Expect to do it by reading the view tree
+
+Not urgent: the platforms looking slightly different is cosmetic, and this
+needs an Xcode build plus a release either way.
+
 ---
 
 ## Notes for whoever picks this up
