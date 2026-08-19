@@ -199,7 +199,13 @@ body {
 .ds-swatch__chip {
   height: var(--s12);
   border-radius: var(--radius-sm);
-  border: var(--border-w) solid var(--fill-faint);
+  /* The edge is an OUTER ring, not a border. A border here sat on top of the
+     swatch: background-clip is border-box, so the colour paints through a
+     translucent border and the outer pixel came back lighter than the value
+     printed underneath it — visible as a rim on the gradients, and quietly
+     wrong on the solids, which is worse on a page whose whole job is to show
+     the colour. A ring outside the box tints nothing and costs no layout. */
+  box-shadow: 0 0 0 var(--border-w) var(--fill-faint);
   margin-bottom: var(--s2);
 }
 .ds-swatch__name { font-family: var(--mono); font-size: var(--t-caption); }

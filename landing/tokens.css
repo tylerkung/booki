@@ -36,13 +36,21 @@
   --accent-secondary: #9D4EDD;    /* Theme.accentSecondary */
   --accent-tertiary: #FF006E;     /* Theme.accentTertiary */
   --gold: #FFE66D;                /* Theme.gold */
+  --gold-deep: #FFAA00;           /* goldGradient end stop — a bare literal in Theme.swift */
   --danger: #FF6B6B;              /* Theme.danger */
   --warning: #FFA94D;             /* Theme.warning */
   --scheduled: #7B68EE;           /* Theme.scheduled */
   --final: #5C5C6F;               /* Theme.finalStatus */
   --success: var(--accent);       /* Theme.win */
 
+  /* Gradients. --gradient-accent is what the web dashboard actually paints on
+     its primary CTA; --gradient-button is Theme.buttonGradient. They are NOT
+     the same — see the note in the design system's Gradients block. */
   --gradient-accent: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+  --gradient-button: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  --gradient-rainbow: linear-gradient(135deg, var(--accent), var(--accent-secondary), var(--accent-tertiary));
+  --gradient-gold: linear-gradient(135deg, var(--gold), var(--gold-deep));
+  --gradient-card: linear-gradient(180deg, var(--card), var(--card-deep));
 
   /* ── channel triplets ──
      Every translucent fill derives from these, so a palette change reaches the

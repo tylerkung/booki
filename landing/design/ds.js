@@ -40,6 +40,24 @@
     const [r, g, b] = m[1].split(',').map(x => parseInt(x, 10));
     return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
   };
+  // Gradient labels: read the stops back out of the computed value so the
+  // label cannot drift from the token. The browser resolves nested var()s to
+  // rgb() for us, so this only has to convert rgb -> hex.
+  const probe = document.createElement('div');
+  probe.style.position = 'absolute';
+  probe.style.visibility = 'hidden';
+  document.body.appendChild(probe);
+  main.querySelectorAll('[data-gradient]').forEach(el => {
+    probe.style.backgroundImage = 'var(' + el.dataset.gradient + ')';
+    const resolved = getComputedStyle(probe).backgroundImage;
+    const stops = [...resolved.matchAll(/rgba?\(([^)]+)\)/g)].map(m => {
+      const [r, g, b] = m[1].split(',').map(x => parseInt(x, 10));
+      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    });
+    el.textContent = stops.join(' \u2192 ');
+  });
+  probe.remove();
+
   main.querySelectorAll('[data-radius]').forEach(el => {
     el.textContent = rootStyle.getPropertyValue(el.dataset.radius).trim();
   });

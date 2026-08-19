@@ -20,11 +20,14 @@ const swatch = (name, token, use) => `
     <div class="ds-swatch__use">${use}</div>
   </button>`;
 
-const gradient = (name, css, stops, use) => `
+// Paints from the gradient token; ds.js reads the resolved stops back out of
+// the computed value for the label. Writing the hexes here made this block a
+// third copy of the palette — free to keep showing an old colour forever.
+const gradient = (name, token, use) => `
   <div class="ds-swatch ds-swatch--static">
-    <div class="ds-swatch__chip" style="background:${css}"></div>
+    <div class="ds-swatch__chip" style="background:var(${token})"></div>
     <div class="ds-swatch__name">${name}</div>
-    <div class="ds-swatch__hex">${stops}</div>
+    <div class="ds-swatch__hex" data-gradient="${token}"></div>
     <div class="ds-swatch__use">${use}</div>
   </div>`;
 
@@ -1107,12 +1110,24 @@ const DS_SECTIONS = [
 
   <p class="ds-label">Gradients</p>
   <div class="ds-grid">
-    ${gradient('buttonGradient', 'linear-gradient(135deg,#00F5D4,#9D4EDD)', '#00F5D4 → #9D4EDD', 'Primary CTAs')}
-    ${gradient('rainbowGradient', 'linear-gradient(135deg,#00F5D4,#9D4EDD,#FF006E)', '#00F5D4 → #9D4EDD → #FF006E', 'Special / featured')}
-    ${gradient('goldGradient', 'linear-gradient(135deg,#FFE66D,#FFAA00)', '#FFE66D → #FFAA00', 'Achievements')}
-    ${gradient('cardGradient', 'linear-gradient(180deg,#14141F,#0E0E18)', '#14141F → #0E0E18', 'Subtle card depth')}
+    ${gradient('buttonGradient', '--gradient-button', 'Primary CTAs on iOS')}
+    ${gradient('rainbowGradient', '--gradient-rainbow', 'Special / featured')}
+    ${gradient('goldGradient', '--gradient-gold', 'Achievements')}
+    ${gradient('cardGradient', '--gradient-card', 'Subtle card depth')}
+    ${gradient('gradient-accent', '--gradient-accent', 'Primary CTAs on web — see below')}
   </div>
-  <p class="ds-note">Gradients on primary buttons only. Cards stay solid — cardGradient is depth, never colour.</p>
+  <p class="ds-note">
+    Gradients on primary buttons only. Cards stay solid &mdash; cardGradient is
+    depth, never colour.
+  </p>
+  <p class="ds-note">
+    <b>iOS and web do not paint the same primary CTA.</b>
+    <code class="t">--gradient-button</code> is Theme.buttonGradient, cyan into
+    purple. The web dashboard paints
+    <code class="t">--gradient-accent</code>, cyan into a deeper cyan, on every
+    primary button it has. Both are shown above so the difference is visible
+    rather than assumed. Unresolved: one of them should win.
+  </p>
 ` },
 
 { id: 'web-tokens', label: 'Web Tokens', html: `
