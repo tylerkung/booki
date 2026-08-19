@@ -54,29 +54,30 @@ const DS_SECTIONS = [
   <div class="ds-demo">
     <div class="ds-center">
       <div class="ds-callout ds-ground--dark">
+        <img src="../assets/logo-booki.svg" alt="Booki" class="ds-logo">
+      </div>
+      <p class="ds-anno">logo-booki.svg<br>primary &middot; dark grounds</p>
+    </div>
+    <div class="ds-center">
+      <div class="ds-callout ds-ground--light">
         <img src="../assets/logo-booki-blk.svg" alt="Booki" class="ds-logo">
       </div>
-      <p class="ds-anno">logo-booki-blk.svg<br>primary &middot; dark grounds</p>
+      <p class="ds-anno">logo-booki-blk.svg<br>light and white grounds</p>
     </div>
     <div class="ds-center">
       <div class="ds-callout ds-ground--dark">
         <img src="../assets/logo-booki-wh.svg" alt="Booki" class="ds-logo">
       </div>
-      <p class="ds-anno">logo-booki-wh.svg<br>flat white &middot; dark or coloured grounds</p>
-    </div>
-    <div class="ds-center">
-      <div class="ds-callout ds-ground--light">
-        <img src="../assets/logo-booki.svg" alt="Booki" class="ds-logo">
-      </div>
-      <p class="ds-anno">logo-booki.svg<br>light grounds only</p>
+      <p class="ds-anno">logo-booki-wh.svg<br>flat white &middot; dark grounds only</p>
     </div>
   </div>
   <p class="ds-note">
-    The names mislead. <code class="t">blk</code> is white letters with a #0A0A12 outline and
-    belongs on dark; <code class="t">wh</code> is flat white and also belongs on dark.
-    The only asset for a light ground is the unsuffixed
-    <code class="t">logo-booki.svg</code>, which is dark letters with a cyan accent.
-    Reaching for the wrong one is the most common brand mistake in this codebase.
+    The mark is a sticker: letterforms with a hard offset behind them. That is why
+    <code class="t">blk</code> reads as dark on white — you are seeing the offset, not the
+    fill — and it is the variant for light grounds. <code class="t">logo-booki.svg</code>
+    carries the cyan offset and is the primary mark on dark.
+    <code class="t">wh</code> is flat white with no offset: it is
+    <strong>invisible on white</strong> and belongs only on dark.
   </p>
 
   <p class="ds-label">Voice</p>
