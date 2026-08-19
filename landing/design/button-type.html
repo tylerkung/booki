@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Button Type — Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: var(--s12) var(--s8) var(--s14);
+    background: var(--background); color: var(--text-primary);
+    font-family: var(--font-sans); font-size: var(--fs-sm); line-height: var(--lh-normal);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  h1 { font-family: var(--font-display); font-size: var(--t-title1); margin: 0 0 var(--s2); }
+  .lede { color: var(--text-secondary); max-width: 62ch; margin: 0 0 var(--s12); }
+  .lede b { color: var(--text-primary); font-weight: 600; }
+
+  .eyebrow {
+    font-family: var(--font-mono); font-size: var(--t-micro); color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.14em; margin: var(--s12) 0 var(--s4);
+  }
+  .eyebrow:first-of-type { margin-top: 0; }
+  .note { color: var(--text-muted); font-size: var(--t-caption); margin: var(--s3) 0 0; max-width: 72ch; }
+  .note b { color: var(--text-secondary); }
+
+  .panel {
+    background: var(--card); border: var(--hairline) solid var(--border);
+    border-radius: var(--radius); padding: var(--s6);
+  }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s6); }
+  .col-head {
+    font-family: var(--font-mono); font-size: var(--t-caption); color: var(--text-secondary);
+    padding-bottom: var(--s3); border-bottom: var(--hairline) solid var(--divider); margin-bottom: var(--s5);
+  }
+  .col-head b { color: var(--text-primary); }
+
+  .row { display: flex; align-items: center; gap: var(--s4); margin-bottom: var(--s4); }
+  .row:last-child { margin-bottom: 0; }
+  .tag {
+    font-family: var(--font-mono); font-size: var(--t-micro); color: var(--text-muted);
+    width: 84px; flex: 0 0 84px; text-align: right;
+  }
+
+  /* ── the button under test ───────────────────────────────────────────── */
+  .b {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: var(--control); padding: 0 var(--s6);
+    border: none; border-radius: var(--radius-sm);
+    background: var(--gradient-button); color: var(--background);
+    cursor: pointer; white-space: nowrap; line-height: var(--lh-none);
+    font-family: var(--font-sans); font-size: var(--fs-lg); font-weight: 600;
+  }
+  .b--ghost { background: none; color: var(--text-primary); box-shadow: inset 0 0 0 var(--hairline) var(--border); }
+
+  /* candidates */
+  .inter   { font-family: var(--font-sans); }
+  .grotesk { font-family: var(--font-display); }
+  .caps    { text-transform: uppercase; }
+  .w700 { font-weight: 700; } .w800 { font-weight: 800; }
+  .t0  { letter-spacing: 0; }
+  .t2  { letter-spacing: 0.02em; }
+  .t4  { letter-spacing: 0.04em; }
+  .t6  { letter-spacing: 0.06em; }
+  .t8  { letter-spacing: 0.08em; }
+  /* all-caps has no descenders and reads larger — a step down keeps mass equal */
+  .sz  { font-size: var(--fs-body); }
+
+  .sizes { display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap; }
+  .b--sm { height: var(--s8); padding: 0 var(--s4); font-size: var(--fs-sm); }
+  .b--lg { height: var(--s14); padding: 0 var(--s8); font-size: var(--fs-title3); }
+
+  /* in-context card */
+  .ctx { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s6); }
+  .ctx-card {
+    background: var(--card); border: var(--hairline) solid var(--border);
+    border-radius: var(--radius); padding: var(--s6);
+  }
+  .ctx-label { font-size: var(--fs-caption); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .ctx-amount { font-family: var(--font-display); font-size: var(--t-title1); font-weight: 700; margin: var(--s2) 0 var(--s1); }
+  .ctx-sub { font-size: var(--fs-sm); color: var(--text-secondary); margin-bottom: var(--s5); }
+  .ctx-card .b { width: 100%; }
+
+  .labels { display: flex; flex-direction: column; gap: var(--s3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Button CTA type — proposal</h1>
+  <p class="lede">
+    Bolder and all-caps, in <b>Inter</b> against <b>Space Grotesk</b>. Not part of
+    the system yet. Every row uses the same button — only family, weight,
+    tracking and size change, so what you are comparing is the type and nothing
+    else.
+  </p>
+
+  <p class="eyebrow">Control — what ships today</p>
+  <div class="panel">
+    <div class="row">
+      <span class="tag">current</span>
+      <button class="b">Place Pick</button>
+      <button class="b">Settle Up</button>
+      <button class="b">Get Started Free</button>
+    </div>
+    <p class="note">Inter 600, 16px, sentence case, no tracking.</p>
+  </div>
+
+  <p class="eyebrow">Tracking — the variable that decides this</p>
+  <div class="split">
+    <div class="panel">
+      <p class="col-head"><b>Inter</b> · 700 · caps · 14px</p>
+      <div class="labels">
+        <div class="row"><span class="tag">0</span><button class="b inter caps w700 sz t0">Place Pick</button></div>
+        <div class="row"><span class="tag">0.02em</span><button class="b inter caps w700 sz t2">Place Pick</button></div>
+        <div class="row"><span class="tag">0.04em</span><button class="b inter caps w700 sz t4">Place Pick</button></div>
+        <div class="row"><span class="tag">0.06em</span><button class="b inter caps w700 sz t6">Place Pick</button></div>
+        <div class="row"><span class="tag">0.08em</span><button class="b inter caps w700 sz t8">Place Pick</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="col-head"><b>Space Grotesk</b> · 700 · caps · 14px</p>
+      <div class="labels">
+        <div class="row"><span class="tag">0</span><button class="b grotesk caps w700 sz t0">Place Pick</button></div>
+        <div class="row"><span class="tag">0.02em</span><button class="b grotesk caps w700 sz t2">Place Pick</button></div>
+        <div class="row"><span class="tag">0.04em</span><button class="b grotesk caps w700 sz t4">Place Pick</button></div>
+        <div class="row"><span class="tag">0.06em</span><button class="b grotesk caps w700 sz t6">Place Pick</button></div>
+        <div class="row"><span class="tag">0.08em</span><button class="b grotesk caps w700 sz t8">Place Pick</button></div>
+      </div>
+    </div>
+  </div>
+  <p class="note">
+    <b>All-caps needs tracking.</b> Capitals were designed with more space around
+    them than lowercase; set solid they crowd. Space Grotesk is already wide, so
+    it wants less than Inter does.
+  </p>
+
+  <p class="eyebrow">Weight — Inter can go heavier, Grotesk stops at 700</p>
+  <div class="split">
+    <div class="panel">
+      <p class="col-head"><b>Inter</b> · caps · 0.04em</p>
+      <div class="labels">
+        <div class="row"><span class="tag">600</span><button class="b inter caps sz t4">Place Pick</button></div>
+        <div class="row"><span class="tag">700</span><button class="b inter caps w700 sz t4">Place Pick</button></div>
+        <div class="row"><span class="tag">800</span><button class="b inter caps w800 sz t4">Place Pick</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="col-head"><b>Space Grotesk</b> · caps · 0.04em</p>
+      <div class="labels">
+        <div class="row"><span class="tag">500</span><button class="b grotesk caps sz t4" style="font-weight:500">Place Pick</button></div>
+        <div class="row"><span class="tag">600</span><button class="b grotesk caps sz t4">Place Pick</button></div>
+        <div class="row"><span class="tag">700</span><button class="b grotesk caps w700 sz t4">Place Pick</button></div>
+      </div>
+    </div>
+  </div>
+  <p class="note">
+    Space Grotesk ships 300–700 only; 700 is as bold as it gets. If the direction
+    is <b>heavier than Inter 700</b>, Grotesk cannot follow.
+  </p>
+
+  <p class="eyebrow">Real labels — where all-caps gets tested</p>
+  <div class="split">
+    <div class="panel">
+      <p class="col-head"><b>Inter</b> 700 · caps · 0.04em</p>
+      <div class="labels">
+        <div class="row"><button class="b inter caps w700 sz t4">Place Pick</button></div>
+        <div class="row"><button class="b inter caps w700 sz t4">Settle Up</button></div>
+        <div class="row"><button class="b inter caps w700 sz t4">Confirm New Odds</button></div>
+        <div class="row"><button class="b inter caps w700 sz t4">Get Started Free</button></div>
+        <div class="row"><button class="b inter caps w700 sz t4">Become an Organizer</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="col-head"><b>Space Grotesk</b> 700 · caps · 0.04em</p>
+      <div class="labels">
+        <div class="row"><button class="b grotesk caps w700 sz t4">Place Pick</button></div>
+        <div class="row"><button class="b grotesk caps w700 sz t4">Settle Up</button></div>
+        <div class="row"><button class="b grotesk caps w700 sz t4">Confirm New Odds</button></div>
+        <div class="row"><button class="b grotesk caps w700 sz t4">Get Started Free</button></div>
+        <div class="row"><button class="b grotesk caps w700 sz t4">Become an Organizer</button></div>
+      </div>
+    </div>
+  </div>
+  <p class="note">
+    Measured, not estimated. Against today's Inter 600 at 16px sentence case,
+    <b>Inter caps at 14px runs about 7% wider</b> and
+    <b>Space Grotesk caps at 14px is within 1%</b> — the step down from 16 to 14
+    pays for most of what capitals cost. Grotesk is consistently 5–7% narrower
+    than Inter here.<br><br>
+    "Become an Organizer" is the longest CTA in the product: 229px in Inter,
+    214px in Grotesk. The bet slip gives 292px of usable width, so
+    <b>neither direction overflows</b> — width is not the deciding factor.
+  </p>
+
+  <p class="eyebrow">At all three button sizes</p>
+  <div class="split">
+    <div class="panel">
+      <p class="col-head"><b>Inter</b> 700 · caps · 0.04em</p>
+      <div class="sizes">
+        <button class="b b--sm inter caps w700 t4">Small</button>
+        <button class="b inter caps w700 sz t4">Default</button>
+        <button class="b b--lg inter caps w700 t4">Large</button>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="col-head"><b>Space Grotesk</b> 700 · caps · 0.04em</p>
+      <div class="sizes">
+        <button class="b b--sm grotesk caps w700 t4">Small</button>
+        <button class="b grotesk caps w700 sz t4">Default</button>
+        <button class="b b--lg grotesk caps w700 t4">Large</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="eyebrow">In context — a bet slip footer, which is where this lives</p>
+  <div class="ctx">
+    <div class="ctx-card">
+      <p class="ctx-label">Potential return</p>
+      <p class="ctx-amount">$248.50</p>
+      <p class="ctx-sub">3 picks · $100.00 stake</p>
+      <button class="b inter caps w700 sz t4">Place Pick</button>
+      <p class="note">Inter 700 caps</p>
+    </div>
+    <div class="ctx-card">
+      <p class="ctx-label">Potential return</p>
+      <p class="ctx-amount">$248.50</p>
+      <p class="ctx-sub">3 picks · $100.00 stake</p>
+      <button class="b grotesk caps w700 sz t4">Place Pick</button>
+      <p class="note">Space Grotesk 700 caps</p>
+    </div>
+  </div>
+  <p class="note">
+    Booki already sets headings and figures in Space Grotesk. A Grotesk CTA sits
+    in the same voice as the number above it; an Inter CTA deliberately separates
+    the action from the data. That is the actual choice here — the tracking and
+    weight follow from it.
+  </p>
+
+  <p class="eyebrow">Secondary buttons, same treatment</p>
+  <div class="split">
+    <div class="panel">
+      <p class="col-head"><b>Inter</b></p>
+      <div class="row">
+        <button class="b inter caps w700 sz t4">Place Pick</button>
+        <button class="b b--ghost inter caps w700 sz t4">Cancel</button>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="col-head"><b>Space Grotesk</b></p>
+      <div class="row">
+        <button class="b grotesk caps w700 sz t4">Place Pick</button>
+        <button class="b b--ghost grotesk caps w700 sz t4">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <p class="note">
+    Whatever wins applies to every button, not just the primary — a caps primary
+    beside a sentence-case secondary reads as two different systems.
+  </p>
+</div>
+</body>
+</html>
