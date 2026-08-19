@@ -272,10 +272,12 @@ code.t {
   border-radius: var(--radius-sm);
   padding: 0 var(--s6);
   height: var(--btn-h);
-  font-family: var(--sans);
-  font-size: var(--t-callout);
-  font-weight: 600;
-  line-height: 1;
+  font-family: var(--font-cta);
+  font-size: var(--fs-cta);
+  font-weight: var(--fw-cta);
+  letter-spacing: var(--ls-cta);
+  text-transform: uppercase;
+  line-height: var(--lh-none);
   white-space: nowrap;
   cursor: pointer;
   /* No border. A filled button used to carry a transparent 1px border so the

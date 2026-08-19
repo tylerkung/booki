@@ -226,12 +226,15 @@ input, button, select, textarea { font: inherit; }
     color: var(--bg);
     border: none;
     border-radius: var(--radius-sm);
-    font-weight: var(--fw-bold);
-    font-size: var(--fs-body);
     cursor: pointer;
     transition: transform var(--dur-fast), box-shadow var(--dur-fast);
     box-shadow: 0 2px 8px var(--fill-accent-heavy), inset 0 1px 0 var(--fill-white);
     margin-top: var(--s-xs);
+    font-family: var(--font-cta);
+    font-size: var(--fs-cta);
+    font-weight: var(--fw-cta);
+    letter-spacing: var(--ls-cta);
+    text-transform: uppercase;
 }
 
 .btn-primary-full:hover { transform: translateY(-1px); box-shadow: var(--shadow-btn-hover); }
@@ -637,11 +640,14 @@ input, button, select, textarea { font: inherit; }
     gap: var(--s-sm);
     padding: var(--s-sm) var(--s-lg);
     border-radius: var(--radius-sm);
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-semibold);
     border: none;
     cursor: pointer;
     transition: opacity var(--dur-fast);
+    font-family: var(--font-cta);
+    font-size: var(--fs-cta);
+    font-weight: var(--fw-cta);
+    letter-spacing: var(--ls-cta);
+    text-transform: uppercase;
 }
 
 .btn:hover { opacity: 0.85; }
@@ -655,7 +661,7 @@ input, button, select, textarea { font: inherit; }
 .btn-danger-outline { background: none; color: var(--danger); border: var(--hairline) solid var(--danger); }
 .btn-danger-outline:hover { background: var(--fill-danger-soft); }
 
-.btn-grade { font-weight: var(--fw-bold); padding: var(--s-md) 20px; font-size: var(--fs-body); }
+.btn-grade { font-family: var(--font-cta); font-size: var(--fs-cta); font-weight: var(--fw-cta); letter-spacing: var(--ls-cta); text-transform: uppercase; padding: var(--s-md) 20px; }
 .btn-grade-win { background: var(--fill-accent); color: var(--success); border: var(--hairline) solid var(--success); }
 .btn-grade-loss { background: var(--fill-danger); color: var(--danger); border: var(--hairline) solid var(--danger); }
 .btn-grade-push { background: var(--bg-elevated); color: var(--text-muted); border: var(--hairline) solid var(--border); }
@@ -2109,11 +2115,14 @@ input, button, select, textarea { font: inherit; }
     color: var(--bg);
     border: none;
     border-radius: var(--radius);
-    font-weight: var(--fw-bold);
-    font-size: var(--fs-body);
     cursor: pointer;
     transition: transform var(--dur-fast), box-shadow var(--dur-fast);
     box-shadow: 0 2px 8px var(--fill-accent-heavy), inset 0 1px 0 var(--fill-white);
+    font-family: var(--font-cta);
+    font-size: var(--fs-cta);
+    font-weight: var(--fw-cta);
+    letter-spacing: var(--ls-cta);
+    text-transform: uppercase;
 }
 .bs-submit-btn:hover:not(:disabled) {
     transform: translateY(-1px);

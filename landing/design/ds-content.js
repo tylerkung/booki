@@ -329,6 +329,21 @@ const DS_SECTIONS = [
     quieter, and the quietest variants exist so that a screen can offer several
     actions without any of them competing.
   </p>
+  <p class="ds-note">
+    <b>Buttons are set in Space Grotesk, 700, all caps, tracked 0.1em.</b> The
+    same face as headings and figures, so an action reads as part of the
+    product&rsquo;s voice rather than as interface furniture. Capitals were drawn
+    with more room around them than lowercase and crowd when set solid; at this
+    weight the 0.1em is what keeps them legible rather than decorative. Size
+    steps down to 14px because caps have no descenders and read larger &mdash;
+    the drop keeps the optical mass of the 16px sentence case it replaces.
+  </p>
+  <p class="ds-note">
+    This is for <b>actions</b>. Odds buttons are data
+    (<code class="t">+1.5 (&minus;167)</code>) and filter or toggle chips are
+    navigation &mdash; both keep sentence case and Inter. Capitalising a number
+    changes nothing and tracking one makes it harder to read.
+  </p>
 
   <p class="ds-label">Variants &times; states</p>
   <div class="ds-demo ds-demo--flush">
