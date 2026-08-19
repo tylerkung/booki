@@ -14,7 +14,7 @@ frozen at a red that had not been --danger for months.
 
 Add to a pre-commit hook or CI to keep the audit from being a manual job.
 """
-import re, sys, os
+import re, sys, os, collections
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DASH = os.path.join(ROOT, "landing", "dashboard")
@@ -101,11 +101,51 @@ def scan_inline(path):
                             f"{px}px not from the scale", decls[:78]))
     return out
 
+DIMPROP = (r'(?<![-\w])(?:width|height|min-width|min-height|max-width'
+           r'|max-height|flex-basis)\s*:\s*([^;{}"\']+)')
+
+def scan_dimensions():
+    """A dimension used three or more times is a design decision and needs a
+    name. A one-off container width is a bespoke layout constraint — naming it
+    would move the number without making it reusable, so it stays a literal.
+
+    Skeleton geometry is exempt: a shimmer bar is 100px wide because that is
+    roughly how wide a name looks, and every such value is deliberately
+    arbitrary. Tokenising them would invent meaning that is not there."""
+    seen = collections.defaultdict(list)
+    for path in (CSS, os.path.join(DASH, "index.html"), os.path.join(DASH, "login.html")):
+        raw = open(path).read()
+        if path.endswith(".css"):
+            m = re.search(r':root\s*\{.*?\n\}', raw, re.S)
+            chunks = [(raw[:m.end()].count("\n") if m else 0,
+                       re.sub(r'/\*.*?\*/', '', raw[m.end():] if m else raw, flags=re.S))]
+        else:
+            chunks = []
+            for mm in re.finditer(r'<[^>]*\sstyle="([^"]*)"[^>]*>', raw):
+                ctx = raw[max(0, mm.start() - 400):mm.end()]
+                if re.search(r'skeleton|shimmer|sk-', ctx[-500:], re.I):
+                    continue
+                chunks.append((raw[:mm.start()].count("\n") + 1, mm.group(1)))
+        for base, text in chunks:
+            for d in re.finditer(DIMPROP, text):
+                val = re.sub(r'var\([^()]*\)', '', d.group(1))
+                ln = base + text[:d.start()].count("\n")
+                for px in re.findall(r'(\d+)px', val):
+                    seen[int(px)].append((os.path.relpath(path, ROOT), ln, d.group(0).strip()[:70]))
+    out = []
+    for px, uses in seen.items():
+        if len(uses) >= 3:
+            for path, ln, ctx in uses:
+                out.append((path, ln, "dimension",
+                            f"{px}px used {len(uses)}× — needs a name", ctx))
+    return out
+
 def main():
     summary = "--summary" in sys.argv
     findings = scan_css(CSS)
     for f in ("index.html", "login.html"):
         findings += scan_inline(os.path.join(DASH, f))
+    findings += scan_dimensions()
 
     if not findings:
         print("design tokens: clean — every styled value routes through a token")

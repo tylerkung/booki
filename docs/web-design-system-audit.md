@@ -142,12 +142,42 @@ transition, and spacing — in `dashboard.css` and in inline styles.
 Run it in a pre-commit hook or CI. The point is that this audit does not have to
 be repeated by hand.
 
-**Not covered, deliberately:** component *dimensions* (`width`, `height`,
-`max-width`, border widths). 216 raw px remain inline under those properties.
-An 18px icon or a 90px odds column is a size, not spacing — snapping it to the
-4pt grid renders worse, so these want named dimension tokens (as
-`--dot`, `--icon-sm`, `--odds-col` already are in the stylesheet) rather than a
-grid rule. That is the next tranche.
+**Dimensions** are covered by a different rule than spacing: a size used **three
+or more times** is a design decision and must be named; a size used once or
+twice is a bespoke layout constraint and stays a literal, because naming it
+moves the number without making it reusable.
+
+**Skeleton geometry is exempt.** A shimmer bar is 100px wide because that is
+roughly how wide a name looks. Those values are deliberately arbitrary and
+tokenising them would invent meaning that is not there. 88 of the 151 inline
+dimension values turned out to be skeletons — and every off-grid dimension in
+the file (14, 22, 70, 90) was one of them. The real dimensions were already on
+the 4pt grid without being asked.
+
+## Dimension tokens — added 2026-08-19
+
+19 named sizes covering 200 values, plus `--hairline` for the 107 one-pixel
+borders:
+
+    --dot-sm 4   --dot 6   --dot-lg 8   --icon-xs 16   --icon-sm 18
+    --icon-md 20   --icon-lg 24   --badge 28   --avatar-xs 32   --tile 36
+    --control 48   --avatar-sm 56   --avatar 64   --avatar-lg 80
+    --odds-col 90   --w-panel 280   --w-panel-lg 320   --w-form 480
+    --w-content 768
+
+Named by role, which required looking at the markup rather than the numbers:
+36px is the rounded icon tile, 28px the numbered step badge, 20px the sidebar
+nav icon, 56px the circular avatar, 80px the auth logo.
+
+Value-preserving by construction — each token equals the literal it replaced —
+and confirmed by the resolved-value diff: **0 changed values across all three
+files**, with declaration counts unchanged (1551, 1989, 30).
+
+A counting bug in the first inventory is worth recording: `\bbottom:` also
+matches inside `border-bottom: 1px solid`, which inflated the apparent dimension
+count from 219 to 290 and invented a phantom cluster of 65 "1px dimensions"
+that were really borders. The fix is a `(?<![-\w])` guard before every
+dimension property name.
 
 ## Verification method
 
