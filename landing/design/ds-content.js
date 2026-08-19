@@ -24,6 +24,16 @@ const gradient = (name, css, stops, use) => `
     <div class="ds-swatch__use">${use}</div>
   </div>`;
 
+
+const btnRow = (variant, name, use) => {
+  const cell = (mod) => `<td><button class="ds-btn ds-btn--${variant}${mod}">Call to Action</button></td>`;
+  return `<tr>
+    <td><div class="ds-matrix__name">${name}</div><div class="ds-matrix__use">${use}</div></td>
+    ${cell('')}${cell(' is-hover')}${cell(' is-pressed')}
+    <td><button class="ds-btn ds-btn--${variant}" disabled>Call to Action</button></td>
+  </tr>`;
+};
+
 const spec = (token, meta, sample, cls) => `
   <div class="ds-spec">
     <div class="ds-spec__meta"><b>${token}</b>${meta}</div>
@@ -220,31 +230,69 @@ const DS_SECTIONS = [
 { id: 'buttons', label: 'Buttons', html: `
   <h1 class="ds-h1">Buttons</h1>
   <p class="ds-intro">
-    One primary action per screen. The gradient is reserved for it — a screen
-    with two gradient buttons has no primary action. Secondary actions are
-    outlined; destructive ones are outlined in red rather than filled, because a
-    filled red button invites the click it is warning about.
+    One primary action per screen. The gradient is reserved for it — a screen with
+    two gradient buttons has no primary action. Everything else is progressively
+    quieter, and the quietest variants exist so that a screen can offer several
+    actions without any of them competing.
   </p>
 
-  <p class="ds-label">Variants</p>
-  <div class="ds-demo">
-    <button class="ds-btn ds-btn--primary">Primary</button>
-    <button class="ds-btn ds-btn--flat">Flat accent</button>
-    <button class="ds-btn ds-btn--secondary">Secondary</button>
-    <button class="ds-btn ds-btn--danger">Delete account</button>
+  <p class="ds-label">Variants &times; states</p>
+  <div class="ds-demo ds-demo--flush">
+    <div class="ds-scroll"><table class="ds-matrix">
+      <thead><tr><th>Variant</th><th>Default</th><th>Hover</th><th>Pressed</th><th>Disabled</th></tr></thead>
+      <tbody>
+        ${btnRow('primary', 'primary', 'the one main action')}
+        ${btnRow('accent', 'accent', 'inside a card that already carries emphasis')}
+        ${btnRow('secondary', 'secondary', 'the alternative in a pair')}
+        ${btnRow('ghost', 'ghost', 'toolbar and row actions')}
+        ${btnRow('link', 'link', 'inline in prose')}
+        ${btnRow('destructive', 'destructive', 'confirmed deletion')}
+        ${btnRow('quiet', 'quiet destructive', 'an exit that is not the point of the screen')}
+      </tbody>
+    </table></div>
   </div>
   <p class="ds-note">
-    Gradient for the main CTA; flat accent where a gradient would compete, such
-    as inside a card that already carries emphasis.
+    Filled variants shift brightness on hover and press; transparent ones gain a
+    fill. Pressed additionally displaces 1px — Booki uses no shadows, so
+    brightness alone does not read as a press. Two treatments across seven
+    variants, so a new variant inherits an obvious state behaviour rather than
+    inventing one.
   </p>
 
-  <p class="ds-label">States</p>
+  <p class="ds-label">Sizes</p>
   <div class="ds-demo">
-    <button class="ds-btn ds-btn--primary">Default</button>
-    <button class="ds-btn ds-btn--primary" disabled>Disabled</button>
-    <button class="ds-btn ds-btn--primary">Placing&hellip;</button>
+    <button class="ds-btn ds-btn--accent ds-btn--sm">Small</button>
+    <button class="ds-btn ds-btn--accent">Default</button>
+    <button class="ds-btn ds-btn--accent ds-btn--lg">Large</button>
+    <button class="ds-btn ds-btn--accent ds-btn--icon" aria-label="Settings">&#9881;</button>
+    <button class="ds-btn ds-btn--secondary ds-btn--icon ds-btn--sm" aria-label="Copy">&#9112;</button>
   </div>
-  <p class="ds-note">A loading button states the verb in progress — "Placing…", never a spinner alone.</p>
+  <p class="ds-note">
+    Height is the only dimension that changes — 32, 48 and 56. Padding and type
+    follow it. The spec says 50pt; 48 is used so the control stays on the 4pt grid.
+  </p>
+
+  <p class="ds-label">Full width</p>
+  <div class="ds-demo ds-demo--col ds-w-sm">
+    <button class="ds-btn ds-btn--primary ds-btn--block">Place 3 Picks &middot; $75.00</button>
+    <div class="ds-dialog__actions">
+      <button class="ds-btn ds-btn--secondary ds-btn--grow">Cancel</button>
+      <button class="ds-btn ds-btn--accent ds-btn--grow">Settle up</button>
+    </div>
+  </div>
+  <p class="ds-note">
+    Sheets and bet slips use full width. A pair splits the row evenly with the
+    confirming action on the right, matching the platform convention.
+  </p>
+
+  <p class="ds-label">Rules</p>
+  <ul class="ds-rules">
+    <li>One gradient button per screen. If two are needed, one of them is not primary.</li>
+    <li>The label is the verb that happens. "Settle up", never "OK" or "Submit".</li>
+    <li>A working button states the verb in progress — "Placing&hellip;" — never a bare spinner.</li>
+    <li>Destructive is filled only behind a confirmation. The quiet variant is for the entry point.</li>
+    <li>Disabled is 40% opacity and keeps its shape, so the layout does not move when it enables.</li>
+  </ul>
 ` },
 
 { id: 'inputs', label: 'Inputs & Forms', html: `
