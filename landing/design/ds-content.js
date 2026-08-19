@@ -73,10 +73,13 @@ const spec = (token, meta, sample, cls) => `
     <div class="${cls}">${sample}</div>
   </div>`;
 
-const radiusDemo = (px, token, use) => `
+// Paints from the token and labels itself from the resolved value, filled in by
+// ds.js — writing the px here would make this page disagree with tokens.css the
+// moment a radius changes.
+const radiusDemo = (token, use) => `
   <div class="ds-center">
-    <div class="ds-specimen" style="border-radius:${px === '999' ? '999px' : px + 'px'}"></div>
-    <p class="ds-anno"><b>${px}</b> ${token}<br>${use}</p>
+    <div class="ds-specimen" style="border-radius:var(${token})"></div>
+    <p class="ds-anno"><b data-radius="${token}"></b> ${token}<br>${use}</p>
   </div>`;
 
 const spaceRow = (token, px, use) => `
@@ -274,11 +277,32 @@ const DS_SECTIONS = [
 
   <p class="ds-label">Radius</p>
   <div class="ds-demo">
-    ${radiusDemo('12', 'cornerRadiusSmall', 'buttons, chips, inputs')}
-    ${radiusDemo('16', 'cornerRadius', 'cards, modals, sheets')}
-    ${radiusDemo('999', 'full', 'pills, avatars')}
+    ${radiusDemo('--radius-xs', 'tags, the smallest chips')}
+    ${radiusDemo('--radius-sm', 'anything inside a rounded container')}
+    ${radiusDemo('--radius', 'the container itself')}
+    ${radiusDemo('--radius-full', 'pills, avatars')}
   </div>
-  <p class="ds-note">Two radii and a pill. Never mix them within one element — all four corners match.</p>
+  <p class="ds-note">
+    <b>Radius is chosen by nesting depth, not by element type.</b> The outer
+    container — card, panel, sheet — takes <code class="t">--radius</code>.
+    Anything rounded sitting inside it steps down to
+    <code class="t">--radius-sm</code>. A child that repeats its parent&rsquo;s
+    radius reads as though its corner bulges outward, because the gap between
+    the two arcs is narrowest exactly at the corner; stepping down keeps the
+    curves concentric.
+  </p>
+  <p class="ds-note">
+    Controls keep <code class="t">--radius-sm</code> wherever they sit &mdash; a
+    button is the same shape inside a card or on its own, and promoting the
+    stray ones would make buttons inconsistent across the app. The rule governs
+    <em>surfaces</em>. Never mix radii within one element: all four corners match.
+  </p>
+  <p class="ds-note">
+    <code class="t">--radius-full</code> (999px) and 50% are not
+    interchangeable. On a non-square element 999px gives a stadium and 50% gives
+    an ellipse &mdash; hence the separate
+    <code class="t">--radius-circle</code>.
+  </p>
 
   <p class="ds-label">Shadow</p>
   <div class="ds-demo">

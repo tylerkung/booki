@@ -40,6 +40,9 @@
     const [r, g, b] = m[1].split(',').map(x => parseInt(x, 10));
     return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
   };
+  main.querySelectorAll('[data-radius]').forEach(el => {
+    el.textContent = rootStyle.getPropertyValue(el.dataset.radius).trim();
+  });
   main.querySelectorAll('.ds-swatch[data-token]').forEach(el => {
     const hex = toHex(rootStyle.getPropertyValue(el.dataset.token));
     el.dataset.copy = hex;

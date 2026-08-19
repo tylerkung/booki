@@ -303,7 +303,7 @@ input, button, select, textarea { font: inherit; }
     align-items: flex-start;
     padding: var(--s-md) var(--s-lg);
     margin: -16px 0 var(--s-lg);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     background: var(--bg-elevated);
 }
 
@@ -1491,7 +1491,7 @@ input, button, select, textarea { font: inherit; }
     padding: var(--s-md) var(--s-lg);
     background: var(--bg-card);
     border: var(--hairline) solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     color: var(--text-primary);
     text-decoration: none;
     transition: border-color var(--dur-fast), background var(--dur-fast);

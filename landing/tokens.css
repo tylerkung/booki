@@ -113,8 +113,8 @@
      full and circle are NOT interchangeable: on a non-square element 50%
      yields an ellipse and 999px a stadium. Pick by intent. */
   --radius-xs: 4px;
-  --radius-sm: 12px;
-  --radius: 16px;
+  --radius-sm: 8px;              /* anything rounded INSIDE a rounded container */
+  --radius: 12px;                /* the container itself — cards, panels, sheets */
   --radius-full: 999px;
   --radius-circle: 50%;
 
