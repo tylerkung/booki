@@ -272,8 +272,15 @@ code.t {
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  border: var(--border-w) solid transparent;
-  transition: filter .12s ease, background-color .12s ease, border-color .12s ease, transform .1s ease;
+  /* No border. A filled button used to carry a transparent 1px border so the
+     outlined variant could add a colour without changing size — but the
+     background paints through a transparent border (background-clip is
+     border-box), and the border-box corner curve is a larger arc than the
+     padding-box one, so a gradient fill showed a pale fringe that read as a
+     square-cornered outline. The outlined variant now uses an inset ring
+     instead, which costs no layout and cannot be clipped by the radius. */
+  border: none;
+  transition: filter .12s ease, background-color .12s ease, box-shadow .12s ease, transform .1s ease;
 }
 
 /* filled */
@@ -292,9 +299,10 @@ code.t {
 .ds-btn--accent:active, .ds-btn--accent.is-pressed,
 .ds-btn--destructive:active, .ds-btn--destructive.is-pressed { filter: brightness(0.85); transform: translateY(1px); }
 
-/* outlined */
-.ds-btn--secondary { background: transparent; color: var(--text-primary); border-color: var(--border); }
-.ds-btn--secondary:hover, .ds-btn--secondary.is-hover { border-color: var(--text-muted); background: var(--fill-faint); }
+/* outlined — the ring is an inset shadow, not a border, so it follows the
+   radius exactly and every button in the matrix stays the same size */
+.ds-btn--secondary { background: transparent; color: var(--text-primary); box-shadow: inset 0 0 0 var(--border-w) var(--border); }
+.ds-btn--secondary:hover, .ds-btn--secondary.is-hover { box-shadow: inset 0 0 0 var(--border-w) var(--text-muted); background: var(--fill-faint); }
 .ds-btn--secondary:active, .ds-btn--secondary.is-pressed { background: var(--fill-neutral); transform: translateY(1px); }
 
 /* quiet */
