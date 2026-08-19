@@ -106,6 +106,32 @@ So this ships in two phases, and **phase 1 is asymmetric on purpose**:
 - **How long is a confirmed price honoured?** If a member sits on the prompt for
   two minutes, is the confirmation still valid, or does it re-check?
 
+## Backlog: on-demand refresh (not started)
+
+Discussed 2026-08-19, never specced or built. Refresh a sport's odds when a
+member actually opens it, throttled by a server-side TTL, instead of on a timer.
+
+Why it is attractive: cost follows usage rather than sports-in-season, so
+nothing is spent at 3am or on NCAAB in July. Measured shape — one sport refresh
+is ~1 call, 3 credits, and a purpose-built endpoint would be ~1-2s, so it must
+be fired non-blocking with the page rendering from stored prices immediately.
+
+Why it is not urgent: it was originally attractive because stale lines were a
+money leak. With submission-time pricing (US-001/US-002 above) a stale display
+costs a confirmation prompt, not money. It is now a UX and cost optimisation.
+
+Why it is not started: it needs client work on web AND iOS. Building it web-only
+would leave two refresh paths — web on-demand, iOS on the cron — which is more
+moving parts than the problem justifies. Worth picking up when iOS work resumes.
+
+Design sketch:
+- `refresh_sport_odds` edge function: no-op if the sport's stored odds are inside
+  the TTL, otherwise one Odds API call and a batched market upsert
+- TTL enforced server-side, never client-side — without it cost is unbounded
+  (1,000 page views a day at no TTL is ~450% of the monthly allowance)
+- 5 minutes is the sweet spot; 1 minute prices out at >100% on a single sport
+- Keep `sync_games` as the floor so markets exist for sports nobody has viewed
+
 ## Prior art in this codebase
 
 - `supabase/functions/submit_bets/index.ts:257` — where the market is loaded today

@@ -1294,7 +1294,17 @@ Deno.serve(async (req) => {
       // 2026-08-18: 9 selected games produced 9 calls, mostly outrights.
       const NEAR_WINDOW_MS = 4 * 60 * 60 * 1000;   // 4 hours
       const MID_WINDOW_MS = 48 * 60 * 60 * 1000;   // 48 hours — the member display window
-      const MID_TIER_EVERY_HOURS = 2;
+      // Cadence, chosen against measured cost (see tasks/prd-line-change-guardrails.md
+      // and the costing in CLAUDE.md). An odds call costs 3 credits and covers a
+      // whole sport, so spend scales with SPORTS IN SEASON x runs — which is why
+      // the aggressive 30-minute cadence priced out at ~139% of the monthly
+      // allowance once football, basketball and hockey overlap.
+      //
+      // These numbers are affordable year-round (~58% at peak) and, now that the
+      // server prices every bet at submission, a slightly older display costs a
+      // confirmation prompt rather than money.
+      const NEAR_TIER_EVERY_HOURS = 2;   // NFL/NBA/MLB inside 4h
+      const MID_TIER_EVERY_HOURS = 4;    // everything else in the window
       const FUTURES_TIER_HOUR_UTC = 12;            // once a day, midday UTC
 
       // Only these leagues get the fastest cadence close to kickoff. They carry
@@ -1310,10 +1320,11 @@ Deno.serve(async (req) => {
       const runHour = now.getUTCHours();
       const runMinute = now.getUTCMinutes();
       const isTopOfHour = runMinute < 30;
+      const includeNearTier = runHour % NEAR_TIER_EVERY_HOURS === 0 && isTopOfHour;
       const includeMidTier = runHour % MID_TIER_EVERY_HOURS === 0 && isTopOfHour;
       const includeFutures = runHour === FUTURES_TIER_HOUR_UTC && isTopOfHour;
       console.log(
-        `Refresh tiers — near: always, mid(4-48h): ${includeMidTier}, futures: ${includeFutures}`,
+        `Refresh tiers — near(<4h, NFL/NBA/MLB): ${includeNearTier}, mid: ${includeMidTier}, futures: ${includeFutures}`,
       );
 
       const gamesBySportKey = new Map<string, SelectedGame[]>();
@@ -1348,9 +1359,15 @@ Deno.serve(async (req) => {
               skippedMidTier++;
               continue;
             }
-          } else if (!HIGH_FREQUENCY_LEAGUES.has(game.league) && !isTopOfHour) {
-            // Near start, but a lower-volume league — hourly instead of every
-            // 30 minutes.
+          } else if (HIGH_FREQUENCY_LEAGUES.has(game.league)) {
+            // Inside 4h in a major league — the fastest tier we run.
+            if (!includeNearTier) {
+              skippedLowFrequency++;
+              continue;
+            }
+          } else if (!includeMidTier) {
+            // Inside 4h but a lower-volume league — same cadence as the rest of
+            // the window. These lines move far less and are bet far less.
             skippedLowFrequency++;
             continue;
           }
