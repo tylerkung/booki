@@ -165,6 +165,7 @@ THEME = os.path.join(ROOT, "Booki", "Theme.swift")
 CONSUMER_LOCAL = {
     "--chrome": "design-system page chrome, not a product surface",
     "--rail": "design-system page nav width, not a product surface",
+    "--demo-radius": "design-system specimen box; sits above --radius so specimens keep their true radius",
 }
 
 # tokens.css name -> Theme.swift constant. The iOS app cannot link CSS, so this
@@ -185,6 +186,33 @@ def root_tokens(path):
     m = re.search(r':root\s*\{.*?\n\}', src, re.S)
     if not m: return {}
     return {a: b.strip() for a, b in re.findall(r'(--[\w-]+)\s*:\s*([^;]+);', m.group(0))}
+
+def scan_radius_tokens():
+    """border-radius must come from the radius scale.
+
+    A spacing token in a radius slot is valid CSS and can be exactly the right
+    number by accident: .ds-seg__item used var(--s2), which is 8px, so it looked
+    correct while bypassing the radius scale entirely — and would not have
+    followed a radius change. This cannot live in CHECKS, because scan_css
+    strips var() before matching and a pattern looking for var() never fires.
+    """
+    out = []
+    for path in (CSS, DS_CSS):
+        if not os.path.exists(path): continue
+        # blank comments rather than delete them, so reported line numbers
+        # still match the real file
+        src = re.sub(r'/\*.*?\*/',
+                     lambda m: "\n" * m.group(0).count("\n"),
+                     open(path).read(), flags=re.S)
+        for mm in re.finditer(r'border-radius\s*:\s*([^;{}]+)', src):
+            for ref in re.finditer(r'var\(\s*(--[\w-]+)', mm.group(1)):
+                if "radius" in ref.group(1):
+                    continue
+                out.append((os.path.relpath(path, ROOT),
+                            src[:mm.start()].count("\n") + 1, "radius-token",
+                            f"{ref.group(1)} is not from the radius scale",
+                            mm.group(0).strip()[:70]))
+    return out
 
 def scan_drift():
     """Theme.swift is the one consumer that cannot link tokens.css, so compare
@@ -253,6 +281,7 @@ def main():
     for f in ("index.html", "login.html"):
         findings += scan_inline(os.path.join(DASH, f))
     findings += scan_dimensions()
+    findings += scan_radius_tokens()
     findings += scan_drift()
     findings += scan_consumer_literals()
     findings += scan_unresolved()

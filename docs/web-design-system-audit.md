@@ -203,6 +203,27 @@ Rules promoted to `--radius`: `.games-sport-card`, `.sidebar-player-balance`,
 `.bs-credit`, `.bs-card`, `.bs-submit-btn`. `.bs-mode-toggle button` stayed
 `sm` — it nests inside `.bs-mode-toggle`.
 
+The design system page itself was audited the same way and had violations in
+both directions: `.ds-swatch` (20) and `.ds-icon` (24) were `sm` while being
+outermost, and the elevation stack, segmented control and menu each repeated
+their parent's radius exactly.
+
+Specimens are the interesting case. `.ds-card` inside `.ds-demo` looked like a
+violation but is not — a card specimen must show the *real* product radius or
+the reference documents the wrong shape. Fixed by raising the documentation
+container to a page-local `--demo-radius` (16px), one step above `--radius`, so
+specimens keep true values and the nesting still reads correctly.
+
+That audit also exposed a token-type bug worth its own check: `.ds-seg__item`,
+`.ds-menu__item`, `.ds-bar`, `.ds-skel` and two others set `border-radius` from
+a **spacing** token (`var(--s2)`, `var(--s1)`). Valid CSS, and the right number
+by accident — 8px and 4px — so nothing looked wrong, but they bypassed the
+radius scale entirely and would not have followed the 16→12 change.
+`scan_radius_tokens` now fails on any `border-radius` whose token name does not
+contain "radius".
+
+Final: **298 elements compliant across all 21 sections, 0 violations.**
+
 **iOS has not followed.** `Booki/Theme.swift` still has `cornerRadius` 16 and
 `cornerRadiusSmall` 12, plus two bare `cornerRadius: 8` literals at lines 474
 and 478. iOS and web now disagree on radius pending a decision, since changing

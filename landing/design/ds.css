@@ -30,6 +30,11 @@
   /* local to this page's chrome — not part of the product */
   --chrome: #0D0D16;             /* rail ground, between background and card */
   --rail: 248px;
+  /* The demo box is documentation chrome, not a product surface. It sits one
+     step ABOVE --radius so a card specimen inside it still shows its true
+     product radius while the nesting still reads correctly. Shrinking the
+     specimens instead would make this page document the wrong shape. */
+  --demo-radius: 16px;
 }
 
 * { box-sizing: border-box; }
@@ -143,7 +148,7 @@ body {
 .ds-demo {
   background: var(--card);
   border: var(--border-w) solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--demo-radius);
   padding: var(--s5);
   display: flex;
   flex-wrap: wrap;
@@ -180,7 +185,7 @@ body {
 .ds-swatch {
   background: var(--card);
   border: var(--border-w) solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   padding: var(--s3);
   cursor: pointer;
   text-align: left;
@@ -230,7 +235,7 @@ code.t {
   color: var(--accent);
   background: rgba(0, 245, 212, 0.08);
   padding: 0 var(--s1);
-  border-radius: var(--s1);
+  border-radius: var(--radius-xs);
   white-space: nowrap;
 }
 
@@ -242,8 +247,8 @@ code.t {
 
 /* ── elevation stack ─────────────────────────────────────────────────── */
 .ds-elev { background: var(--background); border: var(--border-w) solid var(--border); border-radius: var(--radius); padding: var(--s5); }
-.ds-elev__l1 { background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); padding: var(--s5); margin-top: var(--s3); }
-.ds-elev__l2 { background: var(--elevated); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); padding: var(--s4); margin-top: var(--s3); }
+.ds-elev__l1 { background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); padding: var(--s5); margin-top: var(--s3); }
+.ds-elev__l2 { background: var(--elevated); border: var(--border-w) solid var(--border); border-radius: var(--radius-xs); padding: var(--s4); margin-top: var(--s3); }
 .ds-elev__cap { font-family: var(--mono); font-size: var(--t-micro); color: var(--text-muted); }
 
 /* ── buttons ─────────────────────────────────────────────────────────────
@@ -449,7 +454,7 @@ code.t {
 .ds-rules--dont { border-left-color: var(--danger); }
 .ds-rules li { margin-bottom: var(--s2); color: var(--text-secondary); font-size: var(--t-footnote); }
 
-.ds-bar { background: var(--accent); height: var(--s3); border-radius: var(--s1); display: inline-block; vertical-align: middle; }
+.ds-bar { background: var(--accent); height: var(--s3); border-radius: var(--radius-xs); display: inline-block; vertical-align: middle; }
 
 .ds-specimen { width: 104px; height: 64px; background: var(--elevated); border: var(--border-w) solid var(--border); }
 
@@ -487,7 +492,7 @@ code.t {
 /* ── icons ───────────────────────────────────────────────────────────── */
 .ds-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: var(--s2); }
 .ds-icon {
-  background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm);
+  background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius);
   padding: var(--s3); text-align: center;
 }
 .ds-icon__glyph { font-size: var(--t-title2); color: var(--accent); line-height: 1.4; }
@@ -505,7 +510,7 @@ code.t {
 
 .ds-seg { display: inline-flex; background: var(--background); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); padding: var(--s1); gap: var(--s1); }
 .ds-seg__item {
-  background: none; border: none; cursor: pointer; border-radius: var(--s2);
+  background: none; border: none; cursor: pointer; border-radius: var(--radius-xs);
   padding: var(--s1) var(--s3); font-family: var(--sans); font-size: var(--t-footnote);
   font-weight: 600; color: var(--text-secondary);
 }
@@ -522,7 +527,7 @@ code.t {
 .ds-empty__title { font-size: var(--t-headline); font-weight: 600; margin-top: var(--s3); }
 .ds-empty__text { font-size: var(--t-footnote); color: var(--text-secondary); margin-top: var(--s1); max-width: 40ch; margin-left: auto; margin-right: auto; }
 
-.ds-skel { background: var(--elevated); border-radius: var(--s1); position: relative; overflow: hidden; }
+.ds-skel { background: var(--elevated); border-radius: var(--radius-xs); position: relative; overflow: hidden; }
 .ds-skel::after {
   content: ''; position: absolute; inset: 0;
   background: linear-gradient(90deg, transparent, var(--fill-faint), transparent);
@@ -573,7 +578,7 @@ code.t {
 
 .ds-bars { display: flex; flex-direction: column; gap: var(--s2); }
 .ds-bars__row { display: grid; grid-template-columns: 76px 1fr 72px; gap: var(--s3); align-items: center; font-size: var(--t-footnote); }
-.ds-bars__track { height: var(--s3); background: var(--background); border-radius: var(--s1); overflow: hidden; }
+.ds-bars__track { height: var(--s3); background: var(--background); border-radius: var(--radius-xs); overflow: hidden; }
 .ds-bars__fill { height: 100%; background: var(--accent); }
 .ds-bars__fill--neg { background: var(--danger); }
 .ds-bars__val { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
@@ -594,7 +599,7 @@ code.t {
 
 /* ── menus ───────────────────────────────────────────────────────────── */
 .ds-menu { background: var(--elevated); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); padding: var(--s1); min-width: 200px; }
-.ds-menu__item { display: flex; justify-content: space-between; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--s2); font-size: var(--t-footnote); color: var(--text-primary); cursor: pointer; }
+.ds-menu__item { display: flex; justify-content: space-between; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--radius-xs); font-size: var(--t-footnote); color: var(--text-primary); cursor: pointer; }
 .ds-menu__item:hover { background: var(--fill-faint); }
 .ds-menu__item--danger { color: var(--danger); }
 .ds-menu__sep { height: var(--border-w); background: var(--divider); margin: var(--s1) 0; }
