@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Booki Design System</title>
+<meta name="description" content="Internal reference for Booki's design tokens: colour, type, spacing, radius, motion and components.">
+<!-- Internal reference, not marketing. Kept out of search. -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/x-icon" href="assets/favicon_io/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  /* The tokens, as tokens. This page is styled by the system it documents, so
+     a change here is visible immediately rather than described second-hand. */
+  :root {
+    --background: #0A0A12;
+    --card: #14141F;
+    --elevated: #1E1E2D;
+    --border: #2A2A3A;
+    --divider: #22222E;
+
+    --text-primary: #F8F8F8;
+    --text-secondary: #A8A8B8;
+    --text-muted: #6B6B7B;
+
+    --accent: #00F5D4;
+    --accent-secondary: #9D4EDD;
+    --accent-tertiary: #FF006E;
+    --gold: #FFE66D;
+
+    --danger: #FF6B6B;
+    --warning: #FFA94D;
+
+    --scheduled: #7B68EE;
+    --final: #5C5C6F;
+
+    --radius-sm: 12px;
+    --radius: 16px;
+
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --display: 'Space Grotesk', var(--sans);
+    --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 24px 96px;
+    display: grid;
+    grid-template-columns: 168px minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+  }
+
+  /* ── rail ── */
+  .rail { position: sticky; top: 40px; }
+  .rail-title {
+    font-family: var(--display);
+    font-size: 15px;
+    margin: 0 0 4px;
+  }
+  .rail-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 20px;
+  }
+  .rail a {
+    display: block;
+    padding: 5px 0 5px 12px;
+    border-left: 2px solid transparent;
+    margin-left: -2px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+  .rail a:hover { color: var(--text-primary); border-left-color: var(--border); }
+
+  /* ── sections ── */
+  section { margin-bottom: 52px; scroll-margin-top: 32px; }
+  h1 {
+    font-family: var(--display);
+    font-size: 30px;
+    letter-spacing: -0.02em;
+    margin: 0 0 6px;
+  }
+  .lede { color: var(--text-secondary); margin: 0 0 40px; max-width: 62ch; }
+  h2 {
+    font-family: var(--display);
+    font-size: 18px;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .note {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0 0 18px;
+  }
+  h3 {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin: 26px 0 10px;
+  }
+
+  /* ── swatches ── */
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+    gap: 10px;
+  }
+  .swatch {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    display: block;
+    width: 100%;
+  }
+  .swatch:hover { border-color: var(--accent); }
+  .swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chip {
+    height: 46px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 9px;
+  }
+  .swatch-name { font-family: var(--mono); font-size: 12px; }
+  .swatch-hex {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .swatch-use { font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; }
+
+  /* ── tables ── */
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 0 14px 8px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 14px 9px 0;
+    border-bottom: 1px solid var(--divider);
+    color: var(--text-secondary);
+    vertical-align: middle;
+  }
+  td code, .tok {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(0,245,212,0.08);
+    padding: 1px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  td:first-child { color: var(--text-primary); }
+  tr:last-child td { border-bottom: none; }
+
+  /* ── specimens ── */
+  .spec-row {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 20px;
+    align-items: baseline;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--divider);
+  }
+  .spec-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .spec-meta b { display: block; color: var(--accent); font-weight: 500; }
+
+  .bar { background: var(--accent); height: 12px; border-radius: 3px; display: inline-block; vertical-align: middle; }
+
+  .demo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+    color: var(--background);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 11px 22px;
+    font: 600 14px var(--sans);
+    cursor: pointer;
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 22px;
+    font: 600 14px var(--sans);
+    cursor: pointer;
+  }
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .card-demo {
+    background: linear-gradient(180deg, #14141F, #0E0E18);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    min-width: 210px;
+  }
+  .card-demo.elevated { box-shadow: 0 0 12px rgba(0,245,212,0.15); }
+  .grad {
+    height: 42px;
+    border-radius: 8px;
+    margin-bottom: 7px;
+  }
+
+  .dont { border-left: 2px solid var(--danger); padding-left: 14px; }
+  .dont li { margin-bottom: 5px; color: var(--text-secondary); font-size: 13px; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 28px;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--elevated);
+    border: 1px solid var(--accent);
+    color: var(--text-primary);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 860px) {
+    .wrap { grid-template-columns: 1fr; gap: 24px; padding-top: 28px; }
+    .rail { position: static; }
+    .rail a { display: inline-block; margin-right: 12px; border-left: none; padding-left: 0; }
+    .spec-row { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <aside class="rail">
+    <p class="rail-title">Booki</p>
+    <p class="rail-sub">Design System</p>
+    <a href="#colour">Colour</a>
+    <a href="#type">Typography</a>
+    <a href="#spacing">Spacing</a>
+    <a href="#radius">Radius &amp; shadow</a>
+    <a href="#gradients">Gradients</a>
+    <a href="#motion">Motion</a>
+    <a href="#components">Components</a>
+    <a href="#dont">Anti-patterns</a>
+  </aside>
+
+  <main>
+    <h1>Design System</h1>
+    <p class="lede">
+      Internal reference. Every value here is the one in
+      <span class="tok">Booki/Theme.swift</span> and
+      <span class="tok">landing/styles.css</span> — click any swatch or token to
+      copy it.
+    </p>
+
+    <!-- ── COLOUR ── -->
+    <section id="colour">
+      <h2>Colour</h2>
+      <p class="note">Electric cyan is the signature. Semantic colours carry data meaning and are never decorative.</p>
+
+      <h3>Core</h3>
+      <div class="swatches">
+        <button class="swatch" data-copy="#0A0A12"><div class="chip" style="background:#0A0A12"></div><div class="swatch-name">background</div><div class="swatch-hex">#0A0A12</div><div class="swatch-use">App background, sheets</div></button>
+        <button class="swatch" data-copy="#14141F"><div class="chip" style="background:#14141F"></div><div class="swatch-name">cardBackground</div><div class="swatch-hex">#14141F</div><div class="swatch-use">Cards, elevated containers</div></button>
+        <button class="swatch" data-copy="#1E1E2D"><div class="chip" style="background:#1E1E2D"></div><div class="swatch-name">elevatedBackground</div><div class="swatch-hex">#1E1E2D</div><div class="swatch-use">Modals, popovers, nested</div></button>
+        <button class="swatch" data-copy="#2A2A3A"><div class="chip" style="background:#2A2A3A"></div><div class="swatch-name">border</div><div class="swatch-hex">#2A2A3A</div><div class="swatch-use">Dividers, card edges</div></button>
+        <button class="swatch" data-copy="#22222E"><div class="chip" style="background:#22222E"></div><div class="swatch-name">divider</div><div class="swatch-hex">#22222E</div><div class="swatch-use">Subtle separation</div></button>
+      </div>
+
+      <h3>Text</h3>
+      <div class="swatches">
+        <button class="swatch" data-copy="#F8F8F8"><div class="chip" style="background:#F8F8F8"></div><div class="swatch-name">textPrimary</div><div class="swatch-hex">#F8F8F8</div><div class="swatch-use">Headlines, primary content</div></button>
+        <button class="swatch" data-copy="#A8A8B8"><div class="chip" style="background:#A8A8B8"></div><div class="swatch-name">textSecondary</div><div class="swatch-hex">#A8A8B8</div><div class="swatch-use">Supporting text, labels</div></button>
+        <button class="swatch" data-copy="#6B6B7B"><div class="chip" style="background:#6B6B7B"></div><div class="swatch-name">textMuted</div><div class="swatch-hex">#6B6B7B</div><div class="swatch-use">Disabled, hints</div></button>
+      </div>
+
+      <h3>Accent</h3>
+      <div class="swatches">
+        <button class="swatch" data-copy="#00F5D4"><div class="chip" style="background:#00F5D4"></div><div class="swatch-name">accent</div><div class="swatch-hex">#00F5D4</div><div class="swatch-use">Actions, links, focus, wins</div></button>
+        <button class="swatch" data-copy="#9D4EDD"><div class="chip" style="background:#9D4EDD"></div><div class="swatch-name">accentSecondary</div><div class="swatch-hex">#9D4EDD</div><div class="swatch-use">Gradients, secondary emphasis</div></button>
+        <button class="swatch" data-copy="#FF006E"><div class="chip" style="background:#FF006E"></div><div class="swatch-name">accentTertiary</div><div class="swatch-hex">#FF006E</div><div class="swatch-use">Highlights, special elements</div></button>
+        <button class="swatch" data-copy="#FFE66D"><div class="chip" style="background:#FFE66D"></div><div class="swatch-name">gold</div><div class="swatch-hex">#FFE66D</div><div class="swatch-use">Streaks, achievements</div></button>
+      </div>
+
+      <h3>Semantic &amp; status</h3>
+      <div class="swatches">
+        <button class="swatch" data-copy="#FF6B6B"><div class="chip" style="background:#FF6B6B"></div><div class="swatch-name">danger</div><div class="swatch-hex">#FF6B6B</div><div class="swatch-use">Losses, destructive, errors</div></button>
+        <button class="swatch" data-copy="#FFA94D"><div class="chip" style="background:#FFA94D"></div><div class="swatch-name">warning</div><div class="swatch-hex">#FFA94D</div><div class="swatch-use">Pending, attention needed</div></button>
+        <button class="swatch" data-copy="#7B68EE"><div class="chip" style="background:#7B68EE"></div><div class="swatch-name">scheduled</div><div class="swatch-hex">#7B68EE</div><div class="swatch-use">Upcoming events</div></button>
+        <button class="swatch" data-copy="#5C5C6F"><div class="chip" style="background:#5C5C6F"></div><div class="swatch-name">finalStatus</div><div class="swatch-hex">#5C5C6F</div><div class="swatch-use">Completed events</div></button>
+      </div>
+
+      <h3>Aliases — same value, different meaning</h3>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Token</th><th>Resolves to</th><th>Why it exists separately</th></tr></thead>
+          <tbody>
+            <tr><td><code>live</code></td><td><code>accent</code> #00F5D4</td><td>In-progress indicators</td></tr>
+            <tr><td><code>win</code></td><td><code>accent</code> #00F5D4</td><td>Winning picks</td></tr>
+            <tr><td><code>loss</code></td><td><code>danger</code> #FF6B6B</td><td>Losing picks</td></tr>
+            <tr><td><code>push</code></td><td><code>textSecondary</code> #A8A8B8</td><td>Push / void picks</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── TYPE ── -->
+    <section id="type">
+      <h2>Typography</h2>
+      <p class="note">System font. Three weights maximum per screen. Monospaced digits for every number.</p>
+      <div class="spec-row"><div class="spec-meta"><b>display</b>34 / Bold / 1.1</div><div style="font-size:34px;font-weight:700;line-height:1.1;">$1,284.50</div></div>
+      <div class="spec-row"><div class="spec-meta"><b>title1</b>28 / Bold / 1.2</div><div style="font-size:28px;font-weight:700;">Screen title</div></div>
+      <div class="spec-row"><div class="spec-meta"><b>title2</b>22 / Semibold / 1.25</div><div style="font-size:22px;font-weight:600;">Section header</div></div>
+      <div class="spec-row"><div class="spec-meta"><b>headline</b>17 / Semibold / 1.3</div><div style="font-size:17px;font-weight:600;">Card title</div></div>
+      <div class="spec-row"><div class="spec-meta"><b>body</b>17 / Regular / 1.4</div><div style="font-size:17px;">Primary content sits at body size.</div></div>
+      <div class="spec-row"><div class="spec-meta"><b>callout</b>16 / Regular / 1.4</div><div style="font-size:16px;color:var(--text-secondary)">Secondary content</div></div>
+      <div class="spec-row"><div class="spec-meta"><b>subheadline</b>15 / Regular / 1.35</div><div style="font-size:15px;color:var(--text-secondary)">Supporting information</div></div>
+      <div class="spec-row"><div class="spec-meta"><b>footnote</b>13 / Regular / 1.3</div><div style="font-size:13px;color:var(--text-secondary)">Timestamps and metadata</div></div>
+      <div class="spec-row"><div class="spec-meta"><b>caption</b>12 / Regular / 1.25</div><div style="font-size:12px;color:var(--text-muted)">Labels and badges</div></div>
+      <div class="spec-row"><div class="spec-meta"><b>micro</b>11 / Medium / 1.2</div><div style="font-size:11px;font-weight:500;color:var(--text-muted)">CHIP TEXT</div></div>
+    </section>
+
+    <!-- ── SPACING ── -->
+    <section id="spacing">
+      <h2>Spacing</h2>
+      <p class="note">4pt grid, no exceptions. Cards inset 16. Lists inset 16 horizontally.</p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Token</th><th>Value</th><th style="width:45%">Scale</th><th>Usage</th></tr></thead>
+          <tbody>
+            <tr><td><code>xxs</code></td><td>2</td><td><span class="bar" style="width:2px"></span></td><td>Icon-to-text tight</td></tr>
+            <tr><td><code>xs</code></td><td>4</td><td><span class="bar" style="width:4px"></span></td><td>Inline elements</td></tr>
+            <tr><td><code>sm</code></td><td>8</td><td><span class="bar" style="width:8px"></span></td><td>Related items</td></tr>
+            <tr><td><code>md</code></td><td>12</td><td><span class="bar" style="width:12px"></span></td><td>Standard padding</td></tr>
+            <tr><td><code>lg</code></td><td>16</td><td><span class="bar" style="width:16px"></span></td><td>Section spacing</td></tr>
+            <tr><td><code>xl</code></td><td>24</td><td><span class="bar" style="width:24px"></span></td><td>Major sections</td></tr>
+            <tr><td><code>xxl</code></td><td>32</td><td><span class="bar" style="width:32px"></span></td><td>Screen margins</td></tr>
+            <tr><td><code>xxxl</code></td><td>48</td><td><span class="bar" style="width:48px"></span></td><td>Hero spacing</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── RADIUS ── -->
+    <section id="radius">
+      <h2>Radius &amp; shadow</h2>
+      <p class="note">Never mix radii within one element. Shadows are rare — elevate with colour, not shadow.</p>
+      <div class="demo">
+        <div style="text-align:center">
+          <div style="width:96px;height:60px;background:var(--elevated);border:1px solid var(--border);border-radius:12px;"></div>
+          <div class="spec-meta" style="margin-top:7px"><b>12</b>cornerRadiusSmall</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:96px;height:60px;background:var(--elevated);border:1px solid var(--border);border-radius:16px;"></div>
+          <div class="spec-meta" style="margin-top:7px"><b>16</b>cornerRadius</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:96px;height:60px;background:var(--elevated);border:1px solid var(--border);border-radius:999px;"></div>
+          <div class="spec-meta" style="margin-top:7px"><b>full</b>pills, avatars</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:96px;height:60px;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 0 12px rgba(0,245,212,0.15);"></div>
+          <div class="spec-meta" style="margin-top:7px"><b>elevated</b>accent glow 15%</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── GRADIENTS ── -->
+    <section id="gradients">
+      <h2>Gradients</h2>
+      <p class="note">Primary buttons only. Cards stay solid — <code>cardGradient</code> is for subtle depth, never colour.</p>
+      <div class="swatches">
+        <div class="swatch" style="cursor:default"><div class="grad" style="background:linear-gradient(135deg,#00F5D4,#9D4EDD)"></div><div class="swatch-name">buttonGradient</div><div class="swatch-hex">#00F5D4 → #9D4EDD</div><div class="swatch-use">Primary CTAs</div></div>
+        <div class="swatch" style="cursor:default"><div class="grad" style="background:linear-gradient(135deg,#00F5D4,#9D4EDD,#FF006E)"></div><div class="swatch-name">rainbowGradient</div><div class="swatch-hex">#00F5D4 → #9D4EDD → #FF006E</div><div class="swatch-use">Special / featured</div></div>
+        <div class="swatch" style="cursor:default"><div class="grad" style="background:linear-gradient(135deg,#FFE66D,#FFAA00)"></div><div class="swatch-name">goldGradient</div><div class="swatch-hex">#FFE66D → #FFAA00</div><div class="swatch-use">Achievements</div></div>
+        <div class="swatch" style="cursor:default"><div class="grad" style="background:linear-gradient(180deg,#14141F,#0E0E18)"></div><div class="swatch-name">cardGradient</div><div class="swatch-hex">#14141F → #0E0E18</div><div class="swatch-use">Subtle card depth</div></div>
+        <div class="swatch" style="cursor:default"><div class="grad" style="background:linear-gradient(180deg,#12121A,#0A0A12)"></div><div class="swatch-name">backgroundGradient</div><div class="swatch-hex">#12121A → #0A0A12</div><div class="swatch-use">Screen backgrounds</div></div>
+      </div>
+    </section>
+
+    <!-- ── MOTION ── -->
+    <section id="motion">
+      <h2>Motion</h2>
+      <p class="note">Motion shows causality, never decoration. Critically damped springs, damping 0.7–0.8 — nothing bounces.</p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Token</th><th>Duration</th><th>Easing</th><th>Usage</th></tr></thead>
+          <tbody>
+            <tr><td><code>instant</code></td><td>0.1s</td><td>ease-out</td><td>Micro-interactions, taps</td></tr>
+            <tr><td><code>fast</code></td><td>0.2s</td><td>ease-out</td><td>State changes, toggles</td></tr>
+            <tr><td><code>normal</code></td><td>0.3s</td><td>ease-in-out</td><td>Navigation, modals</td></tr>
+            <tr><td><code>slow</code></td><td>0.5s</td><td>ease-in-out</td><td>Complex transitions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── COMPONENTS ── -->
+    <section id="components">
+      <h2>Components</h2>
+      <p class="note">Card: cardGradient background, 1px border, radius 16, padding 16.</p>
+      <div class="demo">
+        <div class="card-demo">
+          <div style="font-size:12px;color:var(--text-muted);font-family:var(--mono)">STANDARD</div>
+          <div style="font-size:17px;font-weight:600;margin-top:4px">Yankees @ Orioles</div>
+          <div style="font-size:13px;color:var(--text-secondary)">Today, 7:05 PM</div>
+        </div>
+        <div class="card-demo elevated">
+          <div style="font-size:12px;color:var(--accent);font-family:var(--mono)">ELEVATED</div>
+          <div style="font-size:17px;font-weight:600;margin-top:4px">Featured card</div>
+          <div style="font-size:13px;color:var(--text-secondary)">Adds accent glow</div>
+        </div>
+      </div>
+
+      <h3>Buttons</h3>
+      <div class="demo">
+        <button class="btn-primary">Primary</button>
+        <button class="btn-secondary">Secondary</button>
+        <button class="btn-secondary" style="color:var(--danger);border-color:rgba(255,107,107,0.4)">Destructive</button>
+      </div>
+
+      <h3>Status badges</h3>
+      <div class="demo">
+        <span class="badge" style="background:rgba(0,245,212,0.15);color:var(--accent)">Live</span>
+        <span class="badge" style="background:rgba(123,104,238,0.15);color:var(--scheduled)">Scheduled</span>
+        <span class="badge" style="background:rgba(92,92,111,0.2);color:var(--final)">Final</span>
+        <span class="badge" style="background:rgba(255,169,77,0.15);color:var(--warning)">Pending</span>
+        <span class="badge" style="background:rgba(0,245,212,0.15);color:var(--accent)">Won</span>
+        <span class="badge" style="background:rgba(255,107,107,0.15);color:var(--danger)">Lost</span>
+        <span class="badge" style="background:rgba(168,168,184,0.15);color:var(--text-secondary)">Push</span>
+      </div>
+
+      <h3>Odds — always monospaced digits</h3>
+      <div class="demo">
+        <div style="font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:17px;">
+          <span style="color:var(--accent)">−110</span>
+          &nbsp;&nbsp;<span style="color:var(--accent)">+240</span>
+          &nbsp;&nbsp;<span style="color:var(--text-secondary)">O 9.5</span>
+          &nbsp;&nbsp;<span style="color:var(--text-secondary)">−3.5</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── ANTI-PATTERNS ── -->
+    <section id="dont">
+      <h2>Anti-patterns</h2>
+      <p class="note">Things that look like improvements and are not.</p>
+      <ul class="dont">
+        <li>Gradient backgrounds on cards — solid or <code>cardGradient</code> only</li>
+        <li>Decorative shadows or coloured glows on anything not featured</li>
+        <li>Animated gradients</li>
+        <li>Colour for emphasis — use weight or size instead</li>
+        <li>Busy backgrounds</li>
+        <li>More than three font weights on one screen</li>
+        <li>Bouncy animation — critically damped springs only</li>
+        <li>Skeuomorphic elements</li>
+        <li>Default iOS colours — always a Theme token</li>
+      </ul>
+    </section>
+  </main>
+</div>
+
+<div id="toast">copied</div>
+
+<script>
+  // Click any swatch to copy its hex. The point of an internal reference is
+  // getting a value into your editor without retyping it.
+  const toast = document.getElementById('toast');
+  let timer;
+  document.querySelectorAll('[data-copy]').forEach(el => {
+    el.addEventListener('click', () => {
+      navigator.clipboard.writeText(el.dataset.copy).then(() => {
+        toast.textContent = el.dataset.copy + ' copied';
+        toast.classList.add('show');
+        clearTimeout(timer);
+        timer = setTimeout(() => toast.classList.remove('show'), 1400);
+      });
+    });
+  });
+</script>
+</body>
+</html>
