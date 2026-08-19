@@ -64,7 +64,7 @@ function getFollowupEmailHtml(name: string): string {
                           <p style="margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #6B6B7B; font-weight: 600;">How To Invite</p>
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                             <tr><td style="padding-bottom: 12px;"><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">1.</span>&nbsp; Open the <strong style="color: #F8F8F8;">Members</strong> tab and hit <strong style="color: #F8F8F8;">+ Invite</strong></p></td></tr>
-                            <tr><td style="padding-bottom: 12px;"><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">2.</span>&nbsp; Enter their email and a credit limit, then tap <strong style="color: #F8F8F8;">Create Invite</strong></p></td></tr>
+                            <tr><td style="padding-bottom: 12px;"><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">2.</span>&nbsp; Add their email (optional), then hit <strong style="color: #F8F8F8;">Create Invite</strong></p></td></tr>
                             <tr><td><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">3.</span>&nbsp; They get an invite link — or copy the code and drop it in your group chat</p></td></tr>
                           </table>
                         </td>
@@ -85,11 +85,19 @@ function getFollowupEmailHtml(name: string): string {
                   </td>
                 </tr>
                 <tr>
+                  <td style="padding-bottom: 24px;">
+                    <p style="margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #6B6B7B; font-weight: 600;">If you'd rather read first</p>
+                    <p style="margin: 0 0 6px; font-size: 14px; line-height: 1.6;"><a href="https://bookisports.com/help/how-to-run-your-group.html" style="color: #00F5D4; text-decoration: none;">How to run your group</a><span style="color: #6B6B7B;"> &mdash; the whole loop in one page</span></p>
+                    <p style="margin: 0 0 6px; font-size: 14px; line-height: 1.6;"><a href="https://bookisports.com/help/credit-and-win-limits.html" style="color: #00F5D4; text-decoration: none;">Credit and win limits</a><span style="color: #6B6B7B;"> &mdash; how you cap what a member can risk</span></p>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6;"><a href="https://bookisports.com/help/settling-up.html" style="color: #00F5D4; text-decoration: none;">Settling up</a><span style="color: #6B6B7B;"> &mdash; you handle the money, Booki keeps the record</span></p>
+                  </td>
+                </tr>
+                <tr>
                   <td style="padding: 20px 0;"><div style="height: 1px; background-color: #2A2A3A;"></div></td>
                 </tr>
                 <tr>
                   <td>
-                    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #A8A8B8;">If something's holding you up — a question about how credit limits work, whether this fits how your group already does things, or anything else — just reply to this email and ask. It comes straight to me.</p>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #A8A8B8;">If something's holding you up — a question about <a href="https://bookisports.com/help/credit-and-win-limits.html" style="color: #00F5D4; text-decoration: none;">how credit limits work</a>, whether this fits how your group already does things, or anything else — just reply to this email and ask. It comes straight to me.</p>
                     <p style="margin: 16px 0 0; font-size: 14px; line-height: 1.7; color: #A8A8B8;">And if you tried it and it wasn't what you expected, I'd genuinely like to hear that too. That feedback is the most useful thing I get.</p>
                     <p style="margin: 16px 0 0; font-size: 14px; color: #F8F8F8; font-weight: 600;">— Tyler</p>
                   </td>
