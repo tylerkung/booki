@@ -68,15 +68,25 @@ over.
 Not every game is re-priced at the same rate. Odds cost money to fetch — we pay
 per request — so effort goes where lines actually move.
 
-| Game | Refreshed |
+**Every game inside the storage window** is re-priced by `sync_games`, twice a
+day. That is the floor for any game.
+
+**Games that already have picks on them** are refreshed far more often by
+`auto_refresh_games`, which selects candidates from `eventsWithBets` — so this
+tier only ever applies to games someone has already bet:
+
+| Game with picks on it | Refreshed |
 |---|---|
 | Starting within 4 hours, in the NFL, NBA or MLB | Every 30 minutes |
 | Starting within 4 hours, any other league | Hourly |
 | Starting in 4–48 hours | Every 2 hours |
 | Futures (championship winners) | Once a day |
 
-So a line can lag the market by up to half an hour on a big game about to start,
-and by a couple of hours on one that's still a day or two out.
+**The gap this leaves:** a game nobody has bet yet is only refreshed twice a
+day, so its line can be up to ~12 hours stale — and that is precisely the state
+a game is in while a member is deciding whether to bet it. Closing the gap means
+either running `sync_games` more often or making `auto_refresh_games` cover the
+48h window regardless of bets, both of which cost Odds API credits.
 
 ## How we know two games are the same game
 
