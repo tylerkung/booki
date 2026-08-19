@@ -25,6 +25,8 @@ interface FailedBet {
   error: string;
   submitted_odds?: number;
   current_odds?: number;
+  market_id?: string;
+  current_side?: string;
 }
 
 /**
@@ -374,19 +376,29 @@ Deno.serve(async (req) => {
         });
         continue;
       }
+      // The line moved against the member since they saw it: they are asking
+      // for a better price than is now on offer. Report it with everything the
+      // client needs to render a confirmation, rather than a bare failure.
       if (isBetterForMember(bet.odds, currentOdds)) {
         console.warn(
-          `Price mismatch on ${normalizedMarketId}: submitted ${bet.odds}, offered ${currentOdds}`,
+          `Line changed on ${normalizedMarketId}: submitted ${bet.odds}, offered ${currentOdds}`,
         );
         failed.push({
           index: i,
           event_id: bet.event_id,
-          error: 'price_mismatch',
+          error: 'line_changed',
+          market_id: bet.market_id,
           submitted_odds: bet.odds,
           current_odds: currentOdds,
+          current_side: resolvedSide,
         });
         continue;
       }
+
+      // The line moved in the member's favour. Give them the better price
+      // rather than the one they submitted — a book that quietly holds someone
+      // to a worse number than it is currently offering is not one people trust.
+      const priceToStore = isBetterForMember(currentOdds, bet.odds) ? currentOdds : bet.odds;
 
       // Per-bet policy violations
       const policyViolations: string[] = [];
@@ -420,7 +432,7 @@ Deno.serve(async (req) => {
         ticket_id: ticketId,
         market: marketType,
         side: resolvedSide,
-        odds: bet.odds,
+        odds: priceToStore,
         stake: stakeNum,
         status: betStatus,
         accepted_at: acceptedAt,

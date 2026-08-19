@@ -307,17 +307,22 @@ Deno.serve(async (req) => {
       );
     }
     if (isBetterForMember(body.odds, currentOdds)) {
-      console.warn(`Price mismatch: submitted ${body.odds}, offered ${currentOdds}`);
+      console.warn(`Line changed: submitted ${body.odds}, offered ${currentOdds}`);
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'price_mismatch',
+          error: 'line_changed',
+          market_id: body.market_id,
           submitted_odds: body.odds,
           current_odds: currentOdds,
+          current_side: resolvedSide,
         }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Line moved in the member's favour — give them the better price.
+    const priceToStore = isBetterForMember(currentOdds, body.odds) ? currentOdds : body.odds;
     const marketType = market.type; // 'moneyline', 'spread', 'total'
 
     // Generate ticket_id for this bet submission
@@ -334,7 +339,7 @@ Deno.serve(async (req) => {
         ticket_id: ticketId,
         market: marketType,
         side: resolvedSide,
-        odds: body.odds,
+        odds: priceToStore,
         stake: stakeNum,
         status: betStatus,
         accepted_at: acceptedAt,

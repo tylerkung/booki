@@ -1221,7 +1221,57 @@ Deno.serve(async (req) => {
       });
 
       // Limit to 50 games
-      const finalSelection = gamesWithStats.slice(0, 50);
+      const betSelection = gamesWithStats.slice(0, 50);
+
+      // Odds refresh is deliberately NOT limited to games with picks.
+      //
+      // gamesWithStats is built from bets, so before this every refresh tier —
+      // 30-minute, hourly, 2-hourly — only applied to games someone had already
+      // bet. A game with no picks was refreshed solely by sync_games, twice a
+      // day, leaving its line up to ~12h stale. That is exactly the state a
+      // game is in while a member is deciding whether to bet it.
+      //
+      // Adding un-bet games is close to free. Credits are charged per request
+      // and one request returns every game for its sport, so a sport already
+      // being called costs nothing extra — only sports with no bet games in the
+      // window add a call. The tier rules below still decide what qualifies, so
+      // the targeting agreed for the bet-driven tiers carries over unchanged.
+      const windowStart = new Date();
+      const windowEnd = new Date(windowStart.getTime() + 48 * 60 * 60 * 1000);
+      const betEventIds = new Set(betSelection.map((g) => g.id));
+
+      const { data: windowEvents, error: windowEventsError } = await client
+        .from('events')
+        .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id')
+        .eq('status', 'scheduled')
+        .gt('start_time', windowStart.toISOString())
+        .lte('start_time', windowEnd.toISOString());
+
+      if (windowEventsError) {
+        console.error('Error loading window events for odds refresh:', windowEventsError);
+      }
+
+      const unbetInWindow: SelectedGame[] = (windowEvents ?? [])
+        .filter((e: { id: string }) => !betEventIds.has(e.id))
+        .map((e: Record<string, string | null>) => ({
+          id: e.id as string,
+          external_id: e.external_id,
+          sport: e.sport as string,
+          league: e.league as string,
+          home_team: e.home_team as string,
+          away_team: e.away_team as string,
+          start_time: e.start_time as string,
+          status: e.status as string,
+          bookie_id: e.bookie_id,
+          bookie_auth_user_id: null,
+          total_wagered: 0,
+          accepted_bet_count: 0,
+        })) as SelectedGame[];
+
+      const finalSelection = [...betSelection, ...unbetInWindow];
+      console.log(
+        `Odds refresh candidates: ${betSelection.length} with picks + ${unbetInWindow.length} without = ${finalSelection.length}`,
+      );
 
       // ========================================
       // US-004: Odds Refresh Logic
@@ -1596,9 +1646,13 @@ Deno.serve(async (req) => {
       let betsGraded = 0;
       let betsSettled = 0;
 
-      // Group games by sport key for score fetching
+      // Group games by sport key for score fetching.
+      //
+      // betSelection, NOT finalSelection. Odds refresh covers un-bet games too,
+      // but scores exist to grade picks — fetching them for a game nobody bet
+      // costs credits and grades nothing.
       const gamesForScoresBySportKey = new Map<string, SelectedGame[]>();
-      for (const game of finalSelection) {
+      for (const game of betSelection) {
         // Skip score refresh for outright events (no scores)
         if (game.away_team === 'Outright') {
           console.log(`Skipping score refresh for ${game.id} - outright/futures event`);
@@ -2063,7 +2117,8 @@ Deno.serve(async (req) => {
       const responseBody = {
         success: true,
         quota: getQuotaSnapshot(),
-        games_selected: finalSelection.length,
+        games_selected: betSelection.length,
+        odds_refresh_candidates: finalSelection.length,
         odds_refreshed: oddsRefreshed,
         scores_refreshed: scoresRefreshed,
         events_finalized: eventsFinalized,

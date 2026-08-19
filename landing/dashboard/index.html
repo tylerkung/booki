@@ -3696,8 +3696,32 @@
                         <!-- Validation Warning -->
                         <div class="bs-validation" x-show="betSlipValidationMessage && betSlipTotalStakes > 0" x-text="betSlipValidationMessage"></div>
 
+                        <!-- Line change confirmation -->
+                        <template x-if="lineChanges.length > 0">
+                            <div class="bs-line-change">
+                                <p class="bs-line-change-title" x-text="lineChanges.length === 1 ? 'The line moved' : 'Some lines moved'"></p>
+                                <p class="bs-line-change-sub">The price changed before this was placed. Confirm to place at the new price.</p>
+                                <template x-for="c in lineChanges" :key="c.market_id">
+                                    <div class="bs-line-change-row">
+                                        <span class="bs-line-change-side" x-text="c.current_side || ''"></span>
+                                        <span class="bs-line-change-odds">
+                                            <s x-text="formatOddsChange(c.submitted_odds)"></s>
+                                            <span aria-hidden="true">&rarr;</span>
+                                            <strong x-text="formatOddsChange(c.current_odds)"></strong>
+                                        </span>
+                                    </div>
+                                </template>
+                                <div class="bs-line-change-actions">
+                                    <button class="btn btn-secondary" @click="dismissLineChanges()">Cancel</button>
+                                    <button class="btn btn-accent" :disabled="isConfirmingLineChange" @click="confirmLineChanges()">
+                                        <span x-text="isConfirmingLineChange ? 'Placing...' : 'Accept new price'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+
                         <!-- Submit Button -->
-                        <button class="bs-submit-btn"
+                        <button class="bs-submit-btn" x-show="lineChanges.length === 0"
                             :disabled="!betSlipValid || isSubmittingBets"
                             @click="submitBetSlip()">
                             <template x-if="isSubmittingBets">
@@ -3878,8 +3902,32 @@
                         <!-- Validation Warning -->
                         <div class="bs-validation" x-show="betSlipValidationMessage && betSlipTotalStakes > 0" x-text="betSlipValidationMessage"></div>
 
+                        <!-- Line change confirmation -->
+                        <template x-if="lineChanges.length > 0">
+                            <div class="bs-line-change">
+                                <p class="bs-line-change-title" x-text="lineChanges.length === 1 ? 'The line moved' : 'Some lines moved'"></p>
+                                <p class="bs-line-change-sub">The price changed before this was placed. Confirm to place at the new price.</p>
+                                <template x-for="c in lineChanges" :key="c.market_id">
+                                    <div class="bs-line-change-row">
+                                        <span class="bs-line-change-side" x-text="c.current_side || ''"></span>
+                                        <span class="bs-line-change-odds">
+                                            <s x-text="formatOddsChange(c.submitted_odds)"></s>
+                                            <span aria-hidden="true">&rarr;</span>
+                                            <strong x-text="formatOddsChange(c.current_odds)"></strong>
+                                        </span>
+                                    </div>
+                                </template>
+                                <div class="bs-line-change-actions">
+                                    <button class="btn btn-secondary" @click="dismissLineChanges()">Cancel</button>
+                                    <button class="btn btn-accent" :disabled="isConfirmingLineChange" @click="confirmLineChanges()">
+                                        <span x-text="isConfirmingLineChange ? 'Placing...' : 'Accept new price'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+
                         <!-- Submit Button -->
-                        <button class="bs-submit-btn"
+                        <button class="bs-submit-btn" x-show="lineChanges.length === 0"
                             :disabled="!betSlipValid || isSubmittingBets"
                             @click="submitBetSlip()">
                             <template x-if="isSubmittingBets">

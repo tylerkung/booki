@@ -419,6 +419,10 @@ function dashboardApp() {
         isDeletingInvite: null,
 
         // ── Modals ──
+        // Line-change confirmation. Populated when the server reports that a
+        // price moved between the member seeing it and submitting.
+        lineChanges: [],          // [{ market_id, submitted_odds, current_odds, current_side }]
+        isConfirmingLineChange: false,
         showInviteModal: false,
         inviteEmail: '',
         inviteCode: '',
@@ -2211,6 +2215,20 @@ function dashboardApp() {
                         idempotency_key: crypto.randomUUID(),
                     });
 
+                    // A moved line is not a failure — it needs the member's
+                    // confirmation at the new price. This MUST be checked before
+                    // the generic error throw: when every bet in the batch hits a
+                    // moved line the server returns 'All bets failed validation'
+                    // with the details in `failed`, and throwing first would show
+                    // a dead-end error instead of the prompt.
+                    const moved = (response.failed || []).filter(f => f.error === 'line_changed');
+                    if (moved.length > 0) {
+                        this.lineChanges = moved;
+                        this.applyLineChangesToSlip(moved);
+                        this.isSubmittingBets = false;
+                        return;
+                    }
+
                     if (response.error) throw new Error(response.error);
 
                     // Check partial success
@@ -2239,6 +2257,12 @@ function dashboardApp() {
                         idempotency_key: crypto.randomUUID(),
                     });
 
+                    if (response.error === 'line_changed') {
+                        this.lineChanges = [response];
+                        this.applyLineChangesToSlip([response]);
+                        this.isSubmittingBets = false;
+                        return;
+                    }
                     if (response.error) throw new Error(response.error);
                 }
 
@@ -4113,6 +4137,50 @@ function dashboardApp() {
             }
 
             this.isCreatingInvite = false;
+        },
+
+
+        /**
+         * Update the slip in place with the prices the server is actually
+         * offering, so confirming resubmits the new numbers rather than the
+         * stale ones. The member sees what changed before deciding.
+         */
+        applyLineChangesToSlip(changes) {
+            for (const change of changes) {
+                const idx = this.betSlipSelections.findIndex(
+                    sel => String(sel.market_id).toLowerCase() === String(change.market_id).toLowerCase()
+                );
+                if (idx === -1) continue;
+                const sel = this.betSlipSelections[idx];
+                sel.previous_odds = change.submitted_odds;
+                sel.odds = change.current_odds;
+                if (change.current_side) sel.side = change.current_side;
+            }
+        },
+
+        /**
+         * Confirm at the new price. This is an ordinary resubmission — it runs
+         * through exactly the same server-side validation, so if the line moved
+         * again in the meantime the member is prompted again rather than being
+         * held to a price that is already gone.
+         */
+        async confirmLineChanges() {
+            this.lineChanges = [];
+            this.isConfirmingLineChange = true;
+            try {
+                await this.submitBetSlip();
+            } finally {
+                this.isConfirmingLineChange = false;
+            }
+        },
+
+        dismissLineChanges() {
+            this.lineChanges = [];
+        },
+
+        formatOddsChange(odds) {
+            const n = Number(odds);
+            return n > 0 ? `+${n}` : String(n);
         },
 
         copyInviteCode() {

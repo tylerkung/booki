@@ -2428,3 +2428,57 @@ input, button, select, textarea { font: inherit; }
 .sp-tab-active::after {
     background: var(--accent);
 }
+
+/* ── Line change confirmation ──
+   Shown in the bet slip when the server reports a price moved between the
+   member seeing it and submitting. Deliberately warning-coloured rather than
+   destructive-red: nothing has gone wrong, a decision is being asked for. */
+.bs-line-change {
+    background: rgba(255, 176, 32, 0.08);
+    border: 1px solid rgba(255, 176, 32, 0.35);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+}
+.bs-line-change-title {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #FFB020;
+}
+.bs-line-change-sub {
+    margin: 0 0 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+.bs-line-change-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-top: 1px solid rgba(255, 176, 32, 0.18);
+}
+.bs-line-change-side {
+    font-size: 12px;
+    color: var(--text-primary);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.bs-line-change-odds {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+.bs-line-change-odds s { opacity: 0.6; }
+.bs-line-change-odds strong { color: var(--text-primary); }
+.bs-line-change-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+.bs-line-change-actions .btn { flex: 1; justify-content: center; }

@@ -62,17 +62,18 @@ So this ships in two phases, and **phase 1 is asymmetric on purpose**:
 - [ ] Emits an audit event — a member repeatedly hitting this is a signal worth seeing
 - [ ] Bets with no matching market row are rejected rather than trusted
 
-### US-002: Line-change confirmation (phase 2)
+### US-002: Line-change confirmation (phase 2) — SERVER + WEB DONE 2026-08-19
 **Description:** As a member, I want to be told when the price moved and choose whether to take the new one.
 
 **Acceptance Criteria:**
-- [ ] Validation becomes symmetric — any difference beyond tolerance is reported
-- [ ] Response distinguishes *better for the member* (auto-accept at the stored price, no prompt) from *worse* (prompt)
-- [ ] Response carries enough to render the prompt: market, side, old price, new price, and the new potential return
-- [ ] Web bet slip shows a "the line has changed" state with old and new side by side, and a single confirm action that resubmits at the new price
-- [ ] iOS bet slip does the same
-- [ ] Confirming resubmits with a fresh idempotency key, so a confirmation cannot double-submit
-- [ ] Declining leaves the pick in the slip, unplaced
+- [x] No capability flag needed: phase 1 already rejected exactly the 'line moved against the member' case, so phase 2 only changes the SHAPE of that response. Old clients keep showing their generic error.
+- [x] Validation becomes symmetric — any difference beyond tolerance is reported
+- [x] Response distinguishes *better for the member* (auto-accept at the stored price, no prompt) from *worse* (prompt)
+- [x] Response carries enough to render the prompt: market, side, old price, new price, and the new potential return
+- [x] Web bet slip shows a "the line has changed" state with old and new side by side, and a single confirm action that resubmits at the new price
+- [ ] iOS bet slip does the same — NOT DONE, cannot be built or verified from the CLI
+- [x] Confirming resubmits with a fresh idempotency key, so a confirmation cannot double-submit
+- [x] Declining leaves the pick in the slip, unplaced
 
 ### US-003: Refresh before pricing a submission
 **Description:** As an organizer, I want the price checked against something current, not something from this morning.

@@ -398,10 +398,11 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({
             success: false,
-            error: 'price_mismatch',
+            error: 'line_changed',
             market_id: leg.market_id,
             submitted_odds: leg.odds,
             current_odds: currentLegOdds,
+            current_side: leg.side_indicator === 'a' ? market.side_a : market.side_b,
           }),
           { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

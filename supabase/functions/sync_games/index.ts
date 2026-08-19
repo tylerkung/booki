@@ -552,8 +552,18 @@ function generateIdempotencyKey(): string {
   const month = String(now.getUTCMonth() + 1).padStart(2, '0');
   const day = String(now.getUTCDate()).padStart(2, '0');
   const dateStr = `${year}-${month}-${day}`;
-  const window = now.getUTCHours() < 12 ? 'morning' : 'afternoon';
-  return `sync_games_${dateStr}_${window}`;
+
+  // 4-hour buckets, aligned to the cron (00,04,08,12,16,20 UTC).
+  //
+  // MUST match the cron cadence. This was previously a half-day window
+  // (morning/afternoon), which meant that if the schedule were made more
+  // frequent, every run after the first in each half-day would find the key
+  // already stored and silently skip the odds sync — doing only scores and
+  // finalization. The schedule would look busier while odds stayed 12h stale.
+  //
+  // If the cron in migration 035 changes, change this to match.
+  const bucket = String(Math.floor(now.getUTCHours() / 4) * 4).padStart(2, '0');
+  return `sync_games_${dateStr}_h${bucket}`;
 }
 
 /**
