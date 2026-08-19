@@ -31,6 +31,24 @@ interface BetRecord {
 }
 
 /**
+ * Has this line been superseded?
+ *
+ * Market rows are keyed by event + type + LINE VALUE, so when a spread moves
+ * -3 -> -3.5 the sync inserts a NEW row and never touches the old one again.
+ * The -3 row lingers, still bettable, frozen at its old price — and it passes a
+ * pure odds comparison, because its odds genuinely are what that row says.
+ *
+ * A superseded row is identifiable without help from the client: its updated_at
+ * falls behind the event's last_odds_update, because the latest feed did not
+ * contain that line. The grace window absorbs clock skew and sync batching.
+ */
+function isSupersededLine(marketUpdatedAt: string | null, eventLastOddsUpdate: string | null): boolean {
+  if (!marketUpdatedAt || !eventLastOddsUpdate) return false;
+  const GRACE_MS = 15 * 60 * 1000;
+  return new Date(marketUpdatedAt).getTime() < new Date(eventLastOddsUpdate).getTime() - GRACE_MS;
+}
+
+/**
  * American odds -> decimal payout multiplier, so two prices compare on one
  * scale. Higher is always better for the member.
  */
@@ -165,7 +183,7 @@ Deno.serve(async (req) => {
 
     const { data: event, error: eventError } = await client
       .from('events')
-      .select('id, status, start_time, bookie_id')
+      .select('id, status, start_time, bookie_id, last_odds_update')
       .eq('id', normalizedEventId)
       .single();
 
@@ -258,7 +276,7 @@ Deno.serve(async (req) => {
     const normalizedMarketId = body.market_id?.toLowerCase();
     const { data: market, error: marketError } = await client
       .from('markets')
-      .select('id, type, side_a, side_b, odds_a, odds_b')
+      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at')
       .eq('id', normalizedMarketId)
       .single();
 
@@ -271,6 +289,14 @@ Deno.serve(async (req) => {
 
     // Resolve the full side label from the market
     const resolvedSide = body.side === 'a' ? market.side_a : market.side_b;
+
+    if (isSupersededLine(market.updated_at, event.last_odds_update)) {
+      console.warn('Superseded line rejected');
+      return new Response(
+        JSON.stringify({ success: false, error: 'line_no_longer_offered' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Price guardrail — the server decides what price is on offer.
     const currentOdds = body.side === 'a' ? market.odds_a : market.odds_b;

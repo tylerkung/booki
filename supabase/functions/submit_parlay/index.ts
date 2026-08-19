@@ -21,6 +21,24 @@ interface SubmitParlayRequest {
 }
 
 /**
+ * Has this line been superseded?
+ *
+ * Market rows are keyed by event + type + LINE VALUE, so when a spread moves
+ * -3 -> -3.5 the sync inserts a NEW row and never touches the old one again.
+ * The -3 row lingers, still bettable, frozen at its old price — and it passes a
+ * pure odds comparison, because its odds genuinely are what that row says.
+ *
+ * A superseded row is identifiable without help from the client: its updated_at
+ * falls behind the event's last_odds_update, because the latest feed did not
+ * contain that line. The grace window absorbs clock skew and sync batching.
+ */
+function isSupersededLine(marketUpdatedAt: string | null, eventLastOddsUpdate: string | null): boolean {
+  if (!marketUpdatedAt || !eventLastOddsUpdate) return false;
+  const GRACE_MS = 15 * 60 * 1000;
+  return new Date(marketUpdatedAt).getTime() < new Date(eventLastOddsUpdate).getTime() - GRACE_MS;
+}
+
+/**
  * American odds -> decimal payout multiplier, so two prices compare on one
  * scale. Higher is always better for the member.
  */
@@ -211,7 +229,7 @@ Deno.serve(async (req) => {
 
     const { data: events, error: eventsError } = await client
       .from('events')
-      .select('id, status, start_time, bookie_id')
+      .select('id, status, start_time, bookie_id, last_odds_update')
       .in('id', uniqueEventIds);
 
     if (eventsError || !events) {
@@ -342,7 +360,7 @@ Deno.serve(async (req) => {
     const marketIds = body.legs.map(leg => leg.market_id.toLowerCase());
     const { data: markets, error: marketsError } = await client
       .from('markets')
-      .select('id, type, side_a, side_b, odds_a, odds_b')
+      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at')
       .in('id', marketIds);
 
     if (marketsError) {
@@ -353,27 +371,46 @@ Deno.serve(async (req) => {
       (markets ?? []).map(m => [m.id.toLowerCase(), m])
     );
 
+    // Price guardrails, validated BEFORE building the inserts.
+    //
+    // This must not live inside the .map() below: returning a Response from a
+    // map callback puts the Response into the array instead of aborting the
+    // request, which would corrupt the insert rather than reject the parlay.
+    const eventById = new Map((events ?? []).map((e: { id: string }) => [e.id.toLowerCase(), e]));
+    for (const leg of body.legs) {
+      const market = marketMap.get(leg.market_id.toLowerCase());
+      if (!market) continue; // existing handling covers a missing market
+
+      const legEvent = eventById.get(String(leg.event_id ?? '').toLowerCase()) as
+        { last_odds_update?: string | null } | undefined;
+
+      if (isSupersededLine(market.updated_at, legEvent?.last_odds_update ?? null)) {
+        console.warn(`Parlay leg on a superseded line: ${leg.market_id}`);
+        return new Response(
+          JSON.stringify({ success: false, error: 'line_no_longer_offered', market_id: leg.market_id }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const currentLegOdds = leg.side_indicator === 'a' ? market.odds_a : market.odds_b;
+      if (typeof currentLegOdds === 'number' && isBetterForMember(leg.odds, currentLegOdds)) {
+        console.warn(`Parlay leg price mismatch: submitted ${leg.odds}, offered ${currentLegOdds}`);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'price_mismatch',
+            market_id: leg.market_id,
+            submitted_odds: leg.odds,
+            current_odds: currentLegOdds,
+          }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Build insert records for all legs
     const betInserts = body.legs.map(leg => {
       const market = marketMap.get(leg.market_id.toLowerCase());
-      // Price guardrail, per leg — one mispriced leg poisons the whole ticket.
-      if (market) {
-        const currentLegOdds = leg.side_indicator === 'a' ? market.odds_a : market.odds_b;
-        if (typeof currentLegOdds === 'number' && isBetterForMember(leg.odds, currentLegOdds)) {
-          console.warn(`Parlay leg price mismatch: submitted ${leg.odds}, offered ${currentLegOdds}`);
-          return new Response(
-            JSON.stringify({
-              success: false,
-              error: 'price_mismatch',
-              market_id: leg.market_id,
-              submitted_odds: leg.odds,
-              current_odds: currentLegOdds,
-            }),
-            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      }
-
       const resolvedSide = market
         ? (leg.side_indicator === 'a' ? market.side_a : market.side_b)
         : leg.side; // fallback to client-provided side

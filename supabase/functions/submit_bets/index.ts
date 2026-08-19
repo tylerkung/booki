@@ -28,6 +28,25 @@ interface FailedBet {
 }
 
 /**
+ * Has this line been superseded?
+ *
+ * Market rows are keyed by event + type + LINE VALUE, so when a spread moves
+ * -3 -> -3.5 the sync inserts a NEW row and never touches the old one again.
+ * The -3 row lingers, still bettable, frozen at its old price — and it passes a
+ * pure odds comparison, because its odds genuinely are what that row says.
+ *
+ * A superseded row is identifiable without any help from the client: its
+ * updated_at falls behind the event's last_odds_update, because the latest feed
+ * did not contain that line. The grace window absorbs clock skew and the time a
+ * sync run takes to work through its batches.
+ */
+function isSupersededLine(marketUpdatedAt: string | null, eventLastOddsUpdate: string | null): boolean {
+  if (!marketUpdatedAt || !eventLastOddsUpdate) return false; // cannot tell — let it through
+  const GRACE_MS = 15 * 60 * 1000;
+  return new Date(marketUpdatedAt).getTime() < new Date(eventLastOddsUpdate).getTime() - GRACE_MS;
+}
+
+/**
  * American odds -> decimal payout multiplier, so two prices can be compared on
  * one scale. Higher is always better for the member.
  */
@@ -214,7 +233,7 @@ Deno.serve(async (req) => {
 
     const { data: events, error: eventsError } = await client
       .from('events')
-      .select('id, status, start_time, bookie_id')
+      .select('id, status, start_time, bookie_id, last_odds_update')
       .in('id', uniqueEventIds);
 
     if (eventsError || !events) {
@@ -225,7 +244,7 @@ Deno.serve(async (req) => {
     }
 
     const eventMap = new Map(
-      events.map((e: { id: string; status: string; start_time: string; bookie_id: string | null }) => [e.id.toLowerCase(), e])
+      events.map((e: { id: string; status: string; start_time: string; bookie_id: string | null; last_odds_update: string | null }) => [e.id.toLowerCase(), e])
     );
 
     // Validate events belong to bookie or are shared
@@ -283,7 +302,7 @@ Deno.serve(async (req) => {
 
     const { data: markets, error: marketsError } = await client
       .from('markets')
-      .select('id, type, side_a, side_b, odds_a, odds_b')
+      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at')
       .in('id', uniqueMarketIds);
 
     if (marketsError) {
@@ -342,6 +361,17 @@ Deno.serve(async (req) => {
       const currentOdds = bet.side === 'a' ? market.odds_a : market.odds_b;
       if (typeof currentOdds !== 'number') {
         failed.push({ index: i, event_id: bet.event_id, error: 'Market has no price' });
+        continue;
+      }
+      if (isSupersededLine(market.updated_at, event.last_odds_update)) {
+        console.warn(
+          `Superseded line on ${normalizedMarketId}: market ${market.updated_at}, event ${event.last_odds_update}`,
+        );
+        failed.push({
+          index: i,
+          event_id: bet.event_id,
+          error: 'line_no_longer_offered',
+        });
         continue;
       }
       if (isBetterForMember(bet.odds, currentOdds)) {
