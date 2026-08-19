@@ -70,6 +70,17 @@
   --t-caption: 12px;
   --t-micro: 11px;
 
+  /* ── web dashboard type scale ──
+     Distinct from the iOS scale above: that one is Apple text styles with a
+     17px body, this is the dense desktop UI whose body size is 13px. Kept here
+     so the Web Roles specimens render at their true sizes rather than
+     approximating with the iOS classes. */
+  --w-micro: 11px;
+  --w-caption: 12px;
+  --w-sm: 13px;
+  --w-body: 14px;
+  --w-title3: 18px;
+
   --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --display: 'Space Grotesk', var(--sans);
   --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
@@ -681,3 +692,15 @@ code.t {
 .ds-swatch--static { cursor: default; }
 .ds-swatch--static:hover { border-color: var(--border); }
 .ds-col-scale { width: 42%; }
+
+/* ── web role specimens (Typography → Web roles) ─────────────────────────── */
+.ds-w-title       { font-size: var(--w-title3); font-weight: 700; color: var(--text-primary); }
+.ds-w-bodystrong  { font-size: var(--w-body); font-weight: 600; color: var(--text-primary); }
+.ds-w-strong      { font-size: var(--w-sm); font-weight: 600; color: var(--text-primary); }
+.ds-w-body        { font-size: var(--w-sm); color: var(--text-secondary); }
+.ds-w-bodymuted   { font-size: var(--w-sm); color: var(--text-muted); }
+.ds-w-caption     { font-size: var(--w-caption); color: var(--text-muted); }
+.ds-w-label       { font-size: var(--w-caption); color: var(--text-muted);
+                    text-transform: uppercase; letter-spacing: 0.5px; }
+.ds-w-micro       { font-size: var(--w-micro); color: var(--text-primary); }
+.ds-w-micromuted  { font-size: var(--w-micro); color: var(--text-muted); }

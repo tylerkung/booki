@@ -37,6 +37,7 @@ CHECKS = [
     ("radius",     r'\bborder-radius\s*:\s*([^;{}]+)',        r'\b\d+(?:px|%)\b'),
     ("z-index",    r'\bz-index\s*:\s*([^;{}]+)',              r'\b-?\d+\b'),
     ("transition", r'\btransition(?:-duration)?\s*:\s*([^;{}]+)', r'\b\d+(?:\.\d+)?m?s\b'),
+    ("line-height", r'\bline-height\s*:\s*([^;{}]+)',        r'\b\d+(?:\.\d+)?\b'),
 ]
 SPACING_PROPS = (r'(?:margin|padding|gap|top|right|bottom|left|width|height'
                  r'|min-width|min-height|max-width|max-height|inset)'
@@ -88,6 +89,16 @@ def scan_inline(path):
                 for bad in re.finditer(lit_pat, val):
                     out.append((os.path.relpath(path, ROOT), ln, name,
                                 bad.group(0), decls[:78]))
+        # margin/padding/gap must come from the spacing scale, not a literal.
+        # Dimensions (width/height/...) are deliberately excluded: a 90px column
+        # or a 28px avatar is a size, not spacing, and belongs in a named
+        # dimension token instead of being forced onto the 4pt grid.
+        for mm in re.finditer(r'\b(?:margin|padding|gap|row-gap|column-gap)'
+                              r'(?:-(?:top|right|bottom|left))?\s*:\s*([^;]+)', decls):
+            val = re.sub(r'var\([^()]*\)', '', mm.group(1))
+            for px in re.findall(r'(\d+)px', val):
+                out.append((os.path.relpath(path, ROOT), ln, "spacing",
+                            f"{px}px not from the scale", decls[:78]))
     return out
 
 def main():

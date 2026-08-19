@@ -110,6 +110,7 @@
     --fw-bold: 700;
     --fw-heavy: 800;
 
+    --lh-none: 1;                  /* no leading — numerals and icons that must sit flush */
     --lh-tight: 1.2;
     --lh-normal: 1.5;
     --lh-loose: 1.6;
@@ -184,14 +185,14 @@ body {
     background-color: var(--bg);
     color: var(--text-secondary);
     font-size: var(--fs-body);
-    line-height: 1.5;
+    line-height: var(--lh-normal);
     -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', sans-serif;
     color: var(--text-primary);
-    line-height: 1.2;
+    line-height: var(--lh-tight);
 }
 
 a { text-decoration: none; color: inherit; }
@@ -1231,7 +1232,7 @@ input, button, select, textarea { font: inherit; }
 .tag-tooltip-desc {
     font-size: var(--fs-micro);
     color: var(--text-secondary);
-    line-height: 1.4;
+    line-height: var(--lh-normal);
 }
 
 /* ── Responsive: Table-to-Card ── */
@@ -1502,7 +1503,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-display);
     font-weight: var(--fw-bold);
     color: var(--text-muted);
-    line-height: 1.1;
+    line-height: var(--lh-tight);
 }
 .player-balance-amount.positive { color: var(--success); }
 .player-balance-amount.negative { color: var(--danger); }
@@ -1524,7 +1525,7 @@ input, button, select, textarea { font: inherit; }
     font-family: 'Space Grotesk', sans-serif;
     font-size: var(--fs-title1);
     font-weight: var(--fw-bold);
-    line-height: 1;
+    line-height: var(--lh-none);
 }
 .player-record-dot {
     width: var(--dot);
@@ -1698,7 +1699,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-muted);
     width: 24px;
     text-align: center;
-    line-height: 1;
+    line-height: var(--lh-none);
 }
 
 /* League sub-header */
@@ -1736,7 +1737,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-body);
     font-weight: var(--fw-semibold);
     color: var(--text-muted);
-    line-height: 1;
+    line-height: var(--lh-none);
 }
 
 /* Show More / Show Less button */
@@ -2602,7 +2603,7 @@ input, button, select, textarea { font: inherit; }
 .bs-line-change-sub {
     margin: 0 0 var(--s-md);
     font-size: var(--fs-caption);
-    line-height: 1.5;
+    line-height: var(--lh-normal);
     color: var(--text-secondary);
 }
 .bs-line-change-row {
@@ -2635,3 +2636,23 @@ input, button, select, textarea { font: inherit; }
     margin-top: var(--s-md);
 }
 .bs-line-change-actions .btn { flex: 1; justify-content: center; }
+
+/* ============================================================================
+   Typography
+
+   Generic, role-named type styles. Before these existed there were 31
+   component-scoped classes (.pg-odds-na, .toggle-desc, .tag-tooltip-desc,
+   .event-time …) describing the same handful of styles, plus 142 repeated
+   inline strings — so every new element got a new one-off. Reach for one of
+   these first; only add a component-scoped type class when the role genuinely
+   is not here.
+   ========================================================================= */
+.t-label { font-size: var(--fs-caption); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.t-caption { font-size: var(--fs-caption); color: var(--text-muted); }
+.t-micro { font-size: var(--fs-micro); }
+.t-micro-muted { font-size: var(--fs-micro); color: var(--text-muted); }
+.t-body { font-size: var(--fs-sm); color: var(--text-secondary); }
+.t-body-muted { font-size: var(--fs-sm); color: var(--text-muted); }
+.t-strong { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.t-body-strong { font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.t-title { font-size: var(--fs-title3); font-weight: var(--fw-bold); color: var(--text-primary); }

@@ -219,6 +219,33 @@ const DS_SECTIONS = [
     <div class="ds-num ds-strong ds-lose">&minus;$100.00</div>
     <p class="ds-anno">American odds. Minus is a true minus sign, not a hyphen.</p>
   </div>
+
+  <p class="ds-label">Web roles</p>
+  <p class="ds-anno" style="margin-bottom:var(--s4)">
+    The scale above is the iOS scale — Apple text styles, 17px body. The web
+    dashboard is a denser desktop UI whose body size is 13px, so it carries its
+    own 9-step scale. Colour, spacing and radius are shared with iOS; type sizes
+    deliberately are not. These are the role classes in
+    <code>landing/dashboard/dashboard.css</code> — reach for one before writing
+    a new component-scoped type style.
+  </p>
+  <div class="ds-demo ds-demo--col ds-demo--start">
+    ${spec('.t-title', '18 / Bold / primary', 'Section heading', 'ds-w-title')}
+    ${spec('.t-body-strong', '14 / Semibold / primary', 'Row title', 'ds-w-bodystrong')}
+    ${spec('.t-strong', '13 / Semibold / primary', 'Compact row title', 'ds-w-strong')}
+    ${spec('.t-body', '13 / Regular / secondary', 'Supporting copy sits here.', 'ds-w-body')}
+    ${spec('.t-body-muted', '13 / Regular / muted', 'De-emphasised detail', 'ds-w-bodymuted')}
+    ${spec('.t-caption', '12 / Regular / muted', 'Timestamps and metadata', 'ds-w-caption')}
+    ${spec('.t-label', '12 / Regular / muted / upper', 'SECTION LABEL', 'ds-w-label')}
+    ${spec('.t-micro', '11 / Regular', 'Chip text', 'ds-w-micro')}
+    ${spec('.t-micro-muted', '11 / Regular / muted', 'Fine print', 'ds-w-micromuted')}
+  </div>
+  <p class="ds-anno">
+    These replaced 142 repeated inline style strings and sit alongside 31
+    component-scoped type classes that predate them. The component-scoped ones
+    are largely the same nine roles under different names — fold them in when
+    you next touch the component rather than adding a tenth.
+  </p>
 ` },
 
 { id: 'surfaces', label: 'Surfaces & Elevation', html: `

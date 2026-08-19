@@ -106,6 +106,28 @@ paired with `color: var(--warning)` — the tint and the text were different
 oranges. This is the concrete argument for the token layer: these did not look
 broken, so no visual review would have caught them.
 
+## Typography layer — added 2026-08-19
+
+Nine role-named classes in `dashboard.css`, replacing 170 repeated inline
+strings:
+
+    .t-title  .t-body-strong  .t-strong  .t-body  .t-body-muted
+    .t-caption  .t-label  .t-micro  .t-micro-muted
+
+Nothing generic existed to reuse. All 244 classes in `dashboard.css` were
+component-scoped, and 31 of them were purely typographic — `.pg-odds-na`,
+`.event-time`, `.bs-card-event`, `.toggle-desc`, `.tag-tooltip-desc` are the
+same few styles under different names. That absence is *why* inline styles kept
+being written: there was no generic style to reach for, so every new element got
+a new one-off.
+
+Those 31 component-scoped classes are left in place. They are largely the same
+nine roles, and should be folded in when the component is next touched rather
+than in a blind sweep.
+
+Documented in the design system under Typography → Web roles, with specimens
+that render at their true sizes rather than approximating with the iOS classes.
+
 ## Enforcement
 
 `scripts/check-design-tokens.py` fails on any literal that bypasses the token
@@ -114,8 +136,18 @@ off-grid spacing — across `dashboard.css` and the inline styles in
 `index.html` / `login.html`. Deliberate exceptions live in an `ALLOW` table at
 the top of the script with a stated reason.
 
+It covers colour, font-size, font-weight, line-height, radius, z-index,
+transition, and spacing — in `dashboard.css` and in inline styles.
+
 Run it in a pre-commit hook or CI. The point is that this audit does not have to
 be repeated by hand.
+
+**Not covered, deliberately:** component *dimensions* (`width`, `height`,
+`max-width`, border widths). 216 raw px remain inline under those properties.
+An 18px icon or a 90px odds column is a size, not spacing — snapping it to the
+4pt grid renders worse, so these want named dimension tokens (as
+`--dot`, `--icon-sm`, `--odds-col` already are in the stylesheet) rather than a
+grid rule. That is the next tranche.
 
 ## Verification method
 
