@@ -179,6 +179,35 @@ count from 219 to 290 and invented a phantom cluster of 65 "1px dimensions"
 that were really borders. The fix is a `(?<![-\w])` guard before every
 dimension property name.
 
+## Radius — 2026-08-19
+
+`--radius` 16 → 12, `--radius-sm` 12 → 8. Two lines in `landing/tokens.css`.
+
+Radius is chosen by **nesting depth**, not element type: the outermost rounded
+element takes `--radius`, anything rounded inside it steps down to
+`--radius-sm`. A child repeating its parent's radius reads as though its corner
+bulges outward, because the gap between the two arcs is narrowest exactly at the
+corner.
+
+There is no exemption for controls. A top-level search input or nav link takes
+the default radius exactly like a card. Since a CSS class is not contextual,
+`.r-outer` exists for a component that normally nests but sometimes stands
+alone.
+
+Nesting is invisible from CSS, so this was audited by walking the rendered DOM
+across 13 routes and comparing each rounded element to its nearest rounded
+ancestor. Final state: **830 compliant, 0 violations in either direction.**
+
+Rules promoted to `--radius`: `.games-sport-card`, `.sidebar-player-balance`,
+`.sidebar-nav a`, `.sidebar-bottom a`, `.search-input`, `.bs-mode-toggle`,
+`.bs-credit`, `.bs-card`, `.bs-submit-btn`. `.bs-mode-toggle button` stayed
+`sm` — it nests inside `.bs-mode-toggle`.
+
+**iOS has not followed.** `Booki/Theme.swift` still has `cornerRadius` 16 and
+`cornerRadiusSmall` 12, plus two bare `cornerRadius: 8` literals at lines 474
+and 478. iOS and web now disagree on radius pending a decision, since changing
+it needs an Xcode build and a release.
+
 ## Single source of truth — 2026-08-19
 
 `landing/tokens.css` is now the only place a token value is defined. Both web

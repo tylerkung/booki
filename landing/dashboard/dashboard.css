@@ -346,7 +346,7 @@ input, button, select, textarea { font: inherit; }
     align-items: center;
     gap: var(--s-md);
     padding: var(--s-md) var(--s-md);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     color: var(--text-secondary);
     font-size: var(--fs-body);
     font-weight: var(--fw-medium);
@@ -395,7 +395,7 @@ input, button, select, textarea { font: inherit; }
     align-items: center;
     gap: var(--s-md);
     padding: var(--s-md) var(--s-md);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     color: var(--text-muted);
     font-size: var(--fs-body);
     font-weight: var(--fw-medium);
@@ -669,7 +669,7 @@ input, button, select, textarea { font: inherit; }
     padding-left: 36px;
     background: var(--bg-elevated);
     border: var(--hairline) solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     color: var(--text-primary);
     font-size: var(--fs-sm);
     outline: none;
@@ -1834,7 +1834,7 @@ input, button, select, textarea { font: inherit; }
 .bs-mode-toggle {
     display: flex;
     background: var(--bg-elevated);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     padding: var(--s-xs);
     margin-bottom: var(--s-lg);
 }
@@ -1865,7 +1865,7 @@ input, button, select, textarea { font: inherit; }
     justify-content: space-between;
     padding: var(--s-sm) var(--s-md);
     background: var(--bg-elevated);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     margin-bottom: var(--s-lg);
 }
 
@@ -1879,7 +1879,7 @@ input, button, select, textarea { font: inherit; }
 .bs-card {
     background: var(--bg-elevated);
     border: var(--hairline) solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     padding: var(--s-md);
 }
 
@@ -2108,7 +2108,7 @@ input, button, select, textarea { font: inherit; }
     background: var(--gradient-accent);
     color: var(--bg);
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     font-weight: var(--fw-bold);
     font-size: var(--fs-body);
     cursor: pointer;
@@ -2512,3 +2512,9 @@ input, button, select, textarea { font: inherit; }
 .t-strong { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-primary); }
 .t-body-strong { font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text-primary); }
 .t-title { font-size: var(--fs-title3); font-weight: var(--fw-bold); color: var(--text-primary); }
+
+/* Radius is contextual, but a CSS class is not. A component whose own rule sets
+   --radius-sm because it usually sits inside a card becomes the outermost
+   rounded surface when it stands alone, and must step up. Apply this there.
+   See the Surfaces & Elevation section of the design system. */
+.r-outer { border-radius: var(--radius); }

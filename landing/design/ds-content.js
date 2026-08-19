@@ -292,10 +292,17 @@ const DS_SECTIONS = [
     curves concentric.
   </p>
   <p class="ds-note">
-    Controls keep <code class="t">--radius-sm</code> wherever they sit &mdash; a
-    button is the same shape inside a card or on its own, and promoting the
-    stray ones would make buttons inconsistent across the app. The rule governs
-    <em>surfaces</em>. Never mix radii within one element: all four corners match.
+    <b>There is no exemption for controls.</b> A search input, a nav link or a
+    button that is the outermost rounded element takes
+    <code class="t">--radius</code>, exactly like a card does &mdash; radius
+    follows position in the tree, not what kind of thing an element is. The same
+    button takes <code class="t">--radius-sm</code> once it sits inside a card.
+    Never mix radii within one element: all four corners match.
+  </p>
+  <p class="ds-note">
+    A CSS class is not contextual, so a component whose own rule sets
+    <code class="t">--radius-sm</code> because it usually sits inside a card
+    needs <code class="t">.r-outer</code> when it stands alone.
   </p>
   <p class="ds-note">
     <code class="t">--radius-full</code> (999px) and 50% are not
