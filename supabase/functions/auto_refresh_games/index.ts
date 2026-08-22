@@ -315,13 +315,16 @@ async function fetchOddsFromApi(
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());
-  recordQuota(response, `odds:${sportKey}`);
+  // Read as text first so the payload can be measured. Egress is billed on
+  // these bytes, and response.json() discards the length.
+  const body = await response.text();
+  recordQuota(response, `odds:${sportKey}`, body.length);
 
   if (!response.ok) {
     throw new Error(`Odds API error: ${response.status} ${response.statusText}`);
   }
 
-  return await response.json();
+  return JSON.parse(body);
 }
 
 /**
@@ -338,13 +341,16 @@ async function fetchScoresFromApi(
   url.searchParams.set('daysFrom', String(daysFrom));
 
   const response = await fetch(url.toString());
-  recordQuota(response, `scores:${sportKey}`);
+  // Read as text first so the payload can be measured. Egress is billed on
+  // these bytes, and response.json() discards the length.
+  const body = await response.text();
+  recordQuota(response, `scores:${sportKey}`, body.length);
 
   if (!response.ok) {
     throw new Error(`Scores API error: ${response.status} ${response.statusText}`);
   }
 
-  return await response.json();
+  return JSON.parse(body);
 }
 
 /**
@@ -361,13 +367,16 @@ async function fetchOutrightsFromApi(
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());
-  recordQuota(response, `outrights:${sportKey}`);
+  // Read as text first so the payload can be measured. Egress is billed on
+  // these bytes, and response.json() discards the length.
+  const body = await response.text();
+  recordQuota(response, `outrights:${sportKey}`, body.length);
 
   if (!response.ok) {
     throw new Error(`Outrights API error: ${response.status} ${response.statusText}`);
   }
 
-  return await response.json();
+  return JSON.parse(body);
 }
 
 /**

@@ -23,12 +23,15 @@ export interface QuotaSnapshot {
   used: number | null;
   /** Credits left this billing period, as of the most recent response. */
   remaining: number | null;
+  /** Bytes received from the Odds API this run, summed across responses. */
+  bytes: number;
 }
 
 let runCost = 0;
 let calls = 0;
 let latestUsed: number | null = null;
 let latestRemaining: number | null = null;
+let bytes = 0;
 
 /**
  * Reset the per-run counters.
@@ -42,11 +45,21 @@ export function resetQuota(): void {
   calls = 0;
   latestUsed = null;
   latestRemaining = null;
+  bytes = 0;
 }
 
-/** Record the quota headers from one Odds API response. */
-export function recordQuota(response: Response, label: string): void {
+/**
+ * Record the quota headers from one Odds API response.
+ *
+ * `size` is the byte length of the decoded body. Credits measure what the Odds
+ * API bills; bytes measure what moves across Supabase's network, and the two
+ * are unrelated — a one-credit scores call for a busy sport can return more
+ * data than a three-credit odds call for a quiet one. Egress is billed on the
+ * bytes, so the credit count alone cannot explain an egress figure.
+ */
+export function recordQuota(response: Response, label: string, size?: number): void {
   calls++;
+  if (typeof size === 'number' && Number.isFinite(size)) bytes += size;
 
   const num = (name: string): number | null => {
     const raw = response.headers.get(name);
@@ -68,7 +81,8 @@ export function recordQuota(response: Response, label: string): void {
   if (last === null && used === null && remaining === null) return;
 
   console.log(
-    `[odds-quota] ${label} cost=${last ?? '?'} used=${used ?? '?'} remaining=${remaining ?? '?'}`,
+    `[odds-quota] ${label} cost=${last ?? '?'} used=${used ?? '?'} ` +
+      `remaining=${remaining ?? '?'} bytes=${size ?? '?'}`,
   );
 }
 
@@ -79,5 +93,6 @@ export function getQuotaSnapshot(): QuotaSnapshot {
     calls,
     used: latestUsed,
     remaining: latestRemaining,
+    bytes,
   };
 }

@@ -235,14 +235,19 @@ async function fetchScoresFromApi(
   console.log(`Fetching scores for ${sportKey}...`);
 
   const response = await fetch(url.toString());
-  recordQuota(response, `scores:${sportKey}`);
+  // Read as text first so the payload can be measured. Egress is billed on
+  // these bytes, and response.json() discards the length.
+  // A response body can only be consumed once, so read it here and reuse it
+  // for both the error path and the parse — calling .text() or .json() again
+  // throws "Body already consumed".
+  const body = await response.text();
+  recordQuota(response, `scores:${sportKey}`, body.length);
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Scores API error for ${sportKey}: ${response.status} - ${errorText}`);
+    console.error(`Scores API error for ${sportKey}: ${response.status} - ${body}`);
     return [];
   }
 
-  const data: ScoreEvent[] = await response.json();
+  const data: ScoreEvent[] = JSON.parse(body);
   console.log(`Got ${data.length} score events for ${sportKey}`);
   return data;
 }
@@ -261,13 +266,16 @@ async function fetchOddsFromApi(
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());
-  recordQuota(response, `odds:${sportKey}`);
+  // Read as text first so the payload can be measured. Egress is billed on
+  // these bytes, and response.json() discards the length.
+  const body = await response.text();
+  recordQuota(response, `odds:${sportKey}`, body.length);
 
   if (!response.ok) {
     throw new Error(`Odds API error: ${response.status} ${response.statusText}`);
   }
 
-  return await response.json();
+  return JSON.parse(body);
 }
 
 /**
@@ -285,13 +293,16 @@ async function fetchOutrightsFromApi(
   url.searchParams.set('oddsFormat', 'american');
 
   const response = await fetch(url.toString());
-  recordQuota(response, `outrights:${sportKey}`);
+  // Read as text first so the payload can be measured. Egress is billed on
+  // these bytes, and response.json() discards the length.
+  const body = await response.text();
+  recordQuota(response, `outrights:${sportKey}`, body.length);
 
   if (!response.ok) {
     throw new Error(`Outrights API error: ${response.status} ${response.statusText}`);
   }
 
-  return await response.json();
+  return JSON.parse(body);
 }
 
 /**

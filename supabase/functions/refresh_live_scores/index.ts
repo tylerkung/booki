@@ -91,11 +91,15 @@ async function fetchScoresFromApi(apiKey: string, sportKey: string, daysFrom: nu
   url.searchParams.set('daysFrom', String(daysFrom));
 
   const response = await fetch(url.toString());
-  recordQuota(response, `scores:${sportKey}`);
+  // Read as text first so the payload can be measured. Egress is billed on
+  // these bytes, and response.json() discards the length.
+  const body = await response.text();
+  recordQuota(response, `scores:${sportKey}`, body.length);
   if (!response.ok) {
     throw new Error(`Scores API error: ${response.status} ${response.statusText}`);
   }
-  return await response.json();
+
+  return JSON.parse(body);
 }
 
 Deno.serve(async (req) => {
