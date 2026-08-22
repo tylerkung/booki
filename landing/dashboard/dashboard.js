@@ -2749,12 +2749,21 @@ function dashboardApp() {
             this.isLoadingEvents = true;
 
             const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+            // Upper bound deliberately 6 days, one inside sync_games' 7-day odds
+            // storage window. Beyond it a game has no odds stored, so listing it
+            // shows an organizer a priceless row. iOS has had this horizon since
+            // 6788a6c; the web query never got it and was fetching every future
+            // event on each load — 853 rows where 281 are renderable.
+            // Outrights are exempt: they are long-dated by nature and would all
+            // disappear under a plain upper bound.
+            const organizerHorizon = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString();
 
             const { data, error } = await this.supabase
                 .from('events')
                 .select('*')
                 .is('bookie_id', null)
                 .gte('start_time', fourteenDaysAgo)
+                .or(`start_time.lte.${organizerHorizon},away_team.eq.Outright`)
                 .order('start_time', { ascending: true });
 
             if (error) {
