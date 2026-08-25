@@ -225,9 +225,70 @@ part — no shared player IDs), a new settlement path that grades on a statline
 rather than a final score, and the audit and reversal story for when a stat is
 corrected after the fact, which happens.
 
-Revisit when either (a) members are actually asking for props, rather than us
-assuming they are, or (b) a stats provider is being brought in for another
-reason and props ride along.
+### 2026-08-25 update — balldontlie changes the premise
+
+The deferral above rests on "there is no player statline available". That is
+true of the Odds API and no longer true of the stack: balldontlie's NFL API
+returns per-player per-game stats, and its **ALL-STAR tier is $9.99/month**.
+
+The fields map almost exactly onto the props the Odds API sells:
+
+| Odds API market | balldontlie field | Settleable |
+|---|---|---|
+| `player_pass_yds` | `passing_yards` | yes |
+| `player_pass_tds` | `passing_touchdowns` | yes |
+| `player_rush_yds` | `rushing_yards` | yes |
+| `player_reception_yds` | `receiving_yards` | yes |
+| `player_receptions` | `receptions` | yes |
+| `player_anytime_td` | `rushing_touchdowns` + `receiving_touchdowns` | yes, with a caveat |
+| `player_tds_over` | sum of TD fields | yes |
+| `player_pass_rush_yds` | `passing_yards` + `rushing_yards` | yes |
+| `player_1st_td` / `player_last_td` | needs play-by-play | GOAT tier only ($39.99) |
+| `player_reception_longest` | not in the base stat set | no |
+
+So most of the core prop board becomes auto-gradeable for $10/month. The cost
+argument is over. What is left is correctness, and it is not trivial.
+
+**Player identity is the hazard, not the integration.** The Odds API identifies a
+prop's subject with a NAME STRING in `description`; balldontlie has numeric ids.
+There is no shared key, so this is name matching, and name matching in the NFL
+fails in a specific and dangerous way: **there are two prominent Josh Allens — a
+quarterback and a linebacker.** Grading a passing-yards prop against the wrong
+one is a silent, confident, wrong settlement, which is worse than no settlement.
+
+The mitigation is available and should be non-negotiable: a prop belongs to a
+known GAME, so the candidate set is the two rosters, not the league. Match
+within those, and require position to be consistent with the prop type (a
+passing prop resolves only to a quarterback). Anything still ambiguous must fail
+to `pending` for the organizer, never guess. Suffixes, punctuation and
+initialisms (Ja'Marr, D.K., Jr./III) are the routine cases and are handled by
+normalising both sides.
+
+**Stat corrections are the second hazard.** NFL statlines are revised after the
+fact — a reception reclassified on Monday changes a Sunday settlement. Booki
+already has `override_grade` and `reverse_settlement` over a tamper-evident
+hash chain, so the path exists, but the policy does not: grade immediately and
+correct later, or hold props for a settling window. That is a product decision
+and should be made before the first prop is graded, not after the first dispute.
+
+**A DNP is a void, not a loss.** A player who does not appear has no stat row.
+Treating an absent row as zero would settle every Over as a loss, which is wrong
+and would be noticed immediately.
+
+**Suggested order if this goes ahead:**
+
+1. Spike the mapping only — no betting. Take one completed NFL week, resolve
+   every prop-eligible name from the Odds API against balldontlie rosters, and
+   report the match rate and every ambiguity. This is the whole risk; measure it
+   before building anything on top.
+2. Team and game mapping (32 teams, matched by date + both sides).
+3. `player_prop` market type, storage, and a UI grouped by player rather than by
+   line — props are the one market where the subject is a person.
+4. A statline-based settlement path, DNP voids, and the correction policy.
+
+Revisit the rest when either (a) members are actually asking for props, rather
+than us assuming they are, or (b) the spike in step 1 shows the match rate is
+high enough to trust.
 
 ### US-004: Provider evaluation, only if warranted
 **Description:** As the operator, I want to know whether another provider is a better fit before paying for more of this one.
