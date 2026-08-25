@@ -192,12 +192,42 @@ scores. That is the decision this PRD actually turns on — not cost.
 ### US-003: Decide on player props
 **Description:** As a member, I want to bet player props, which are the most-asked-for market type.
 
+**Status: DEFERRED 2026-08-25.** Not on cost — on settlement. See below.
+
 **Acceptance Criteria:**
-- [ ] Cost model established — props are fetched **per event**, not per sport, which inverts the economics: cost scales with the number of games, not the number of sports
-- [ ] Projected monthly credits at a realistic slate size
-- [ ] Grading feasibility assessed: props settle on player statlines, which the current pipeline does not ingest at all. This is materially more work than alternate lines
-- [ ] New `MarketType` cases and UI treatment scoped
-- [ ] Explicit go/no-go — this is the story most likely to be deferred
+- [x] Cost model established — per event, 1 credit per market. All 19 prop keys = 19 credits/game; a core six = 6
+- [x] Projected monthly credits at a realistic slate size — a 16-game NFL week at 6 refreshes is ~1,850/month for six props, ~5,900 for all 19. Affordable; this was never the obstacle
+- [x] Grading feasibility assessed — **not feasible.** `/scores` returns aggregate team scores only: no period splits, no player statistics of any kind. There is no price at which the Odds API can settle a prop
+- [ ] New `MarketType` cases and UI treatment scoped — not started, and correctly blocked on the decision below
+- [x] Explicit go/no-go — **NO GO for auto-graded props.** Deferred in favour of markets that settle from the final score
+
+### Why deferred, and what would change it
+
+Three numbers decided this:
+
+- **19** prop markets are available on a Week 1 NFL game today, growing closer
+  to kickoff. Availability is not the constraint.
+- **551 rows per game** for all 19 — 75% of everything a game would carry.
+- **0** player statistics available from the odds provider.
+
+So props are the most expensive market type to store, and the only one the
+platform cannot settle. Shipping them means one of two things:
+
+**Manual grading.** Technically the smallest change — futures already work this
+way. But 551 lines a game is not "the organizer settles a few props"; it is an
+unbounded weekly workload landing on one person, where every mistake is a ledger
+correction. It also inverts Booki's pitch: auto-pilot exists so the organizer
+does not do this.
+
+**A second provider for statlines.** The real answer, and a genuinely different
+project: a stats feed, player identity mapping between two providers (the hard
+part — no shared player IDs), a new settlement path that grades on a statline
+rather than a final score, and the audit and reversal story for when a stat is
+corrected after the fact, which happens.
+
+Revisit when either (a) members are actually asking for props, rather than us
+assuming they are, or (b) a stats provider is being brought in for another
+reason and props ride along.
 
 ### US-004: Provider evaluation, only if warranted
 **Description:** As the operator, I want to know whether another provider is a better fit before paying for more of this one.
