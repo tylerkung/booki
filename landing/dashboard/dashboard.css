@@ -414,7 +414,12 @@ input, button, select, textarea { font: inherit; }
     margin-left: var(--sidebar-width);
     flex: 1;
     transition: margin-right var(--dur-slow) ease;
-    padding: var(--s-xxl);
+    /* Named so a descendant can cancel it. A full-bleed background inside the
+       content column has no other way to reach the column's edges: CSS cannot
+       read an ancestor's padding, so the value has to be published. */
+    --main-pad-top: var(--s-xxl);
+    --main-pad-x: var(--s-xxl);
+    padding: var(--main-pad-top) var(--main-pad-x) var(--s-xxl);
     max-width: 1200px;
 }
 
@@ -874,7 +879,10 @@ input, button, select, textarea { font: inherit; }
 
     .main-content {
         margin-left: 0;
-        padding: 72px var(--s-lg) var(--s-xl);
+        /* Top padding clears the fixed mobile header. */
+        --main-pad-top: 72px;
+        --main-pad-x: var(--s-lg);
+        padding: var(--main-pad-top) var(--main-pad-x) var(--s-xl);
     }
 
     .stats-grid {
@@ -2292,6 +2300,15 @@ input, button, select, textarea { font: inherit; }
 }
 
 .wave-page::before {
+    /* Bleed out of .main-content's padding. The wash belongs to the page, not
+       to the content column, and stopping at the route element's box left a
+       bare strip across the top (and down each side) where the padding sits.
+       The fallbacks keep this harmless if the class is ever used outside
+       .main-content, where those variables are not defined. */
+    top: calc(-1 * var(--main-pad-top, 0px));
+    left: calc(-1 * var(--main-pad-x, 0px));
+    right: calc(-1 * var(--main-pad-x, 0px));
+
     /* Reach the fold at minimum, so a short page — or the loading skeleton —
        does not end the wash mid-viewport. */
     min-height: 100vh;
