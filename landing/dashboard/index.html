@@ -2303,8 +2303,15 @@
                                             <div x-show="!collapsedLeagues[sportGroup.sport + '|' + leagueGroup.league]" x-transition.opacity>
                                             <template x-for="ev in leagueGroup.events.slice(0, 3)" :key="ev.id">
                                                 <div class="pg-game-row" :class="{ 'pg-locked': isEventLocked(ev) }">
-                                                    <!-- Time -->
-                                                    <div class="pg-game-time" x-text="formatEventTime(ev.start_time)"></div>
+                                                    <!-- Time. Doubles as the way into the full board for this
+                                                         game: the row's odds cells are all buttons, so the time
+                                                         column is the only place a whole-row link can live
+                                                         without swallowing the taps that place a bet. -->
+                                                    <a class="pg-game-time pg-game-more" :href="'#/player-game/' + ev.id"
+                                                       :title="'All lines for ' + (ev.away_team || '') + ' @ ' + (ev.home_team || '')">
+                                                        <span x-text="formatEventTime(ev.start_time)"></span>
+                                                        <span class="pg-more-lines">More lines ›</span>
+                                                    </a>
 
                                                     <!-- Teams + Odds grid -->
                                                     <div class="pg-game-grid">
@@ -2655,6 +2662,72 @@
             </div>
 
             <!-- ── Player Track View ── -->
+            <!-- Game detail: every line for one game (player) -->
+            <div x-show="route === 'player-game' && (userRole === 'player' || userRole === 'standalone')" x-cloak class="wave-page">
+                <div style="margin-bottom:var(--s-xl);">
+                    <a href="#/player-games" class="btn btn-ghost" style="gap:var(--s-sm);padding-left:0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Back to Games
+                    </a>
+                </div>
+
+                <template x-if="isLoadingGameDetail">
+                    <div>
+                        <div class="card" style="margin-bottom:var(--s-lg);"><div class="shimmer" style="height:90px;"></div></div>
+                        <div class="card"><div class="shimmer" style="height:220px;"></div></div>
+                    </div>
+                </template>
+
+                <template x-if="!isLoadingGameDetail && gameDetail">
+                    <div>
+                        <div class="card" style="margin-bottom:var(--s-lg);">
+                            <div class="t-label" x-text="(gameDetail.league || gameDetail.sport || '')"></div>
+                            <h2 style="font-size:var(--fs-title3);margin:var(--s-xs) 0;"
+                                x-text="(gameDetail.away_team || '') + ' @ ' + (gameDetail.home_team || '')"></h2>
+                            <div class="t-body-muted" x-text="formatEventTime(gameDetail.start_time)"></div>
+                            <div class="t-body-muted" x-show="gameDetail.away_score !== null && gameDetail.home_score !== null"
+                                 x-text="'Score ' + gameDetail.away_score + '-' + gameDetail.home_score"></div>
+                            <div class="badge badge-warning" style="margin-top:var(--s-md);" x-show="isEventLocked(gameDetail)">
+                                Betting closed
+                            </div>
+                        </div>
+
+                        <template x-if="!gameDetailSections.length">
+                            <div class="card"><div class="empty-state"><p>No lines posted for this game yet.</p></div></div>
+                        </template>
+
+                        <template x-for="section in gameDetailSections" :key="section.key">
+                            <div class="card" style="margin-bottom:var(--s-lg);">
+                                <div class="card-header">
+                                    <span class="card-title" x-text="section.title"></span>
+                                    <span class="t-body-muted" x-text="section.markets.length + (section.markets.length === 1 ? ' line' : ' lines')"></span>
+                                </div>
+                                <div class="gd-lines">
+                                    <template x-for="mkt in section.markets" :key="mkt.id">
+                                        <div class="gd-line">
+                                            <button class="pg-odds-btn gd-side"
+                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, mkt.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) }"
+                                                :disabled="isEventLocked(gameDetail) || mkt.odds_a === null"
+                                                @click="toggleSelection(gameDetail, mkt, 'a', mkt.side_a, mkt.odds_a)">
+                                                <span class="gd-side-label" x-text="mkt.side_a"></span>
+                                                <span class="pg-odds-val" x-text="mkt.odds_a === null ? '—' : formatOdds(mkt.odds_a)"></span>
+                                            </button>
+                                            <button class="pg-odds-btn gd-side" x-show="mkt.side_b && mkt.type !== 'outright'"
+                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, mkt.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) }"
+                                                :disabled="isEventLocked(gameDetail) || mkt.odds_b === null"
+                                                @click="toggleSelection(gameDetail, mkt, 'b', mkt.side_b, mkt.odds_b)">
+                                                <span class="gd-side-label" x-text="mkt.side_b"></span>
+                                                <span class="pg-odds-val" x-text="mkt.odds_b === null ? '—' : formatOdds(mkt.odds_b)"></span>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+
             <div x-show="route === 'player-track' && (userRole === 'player' || userRole === 'standalone')" x-cloak>
                 <div class="page-header">
                     <h1>Track</h1>
@@ -3777,7 +3850,7 @@
 
     <!-- ── Shared Bet Slip Bar + Modal (player-games & player-sport) ── -->
     <div class="pg-betslip-bar"
-        x-show="(route === 'player-games' || route === 'player-sport') && betSlipSelections.length > 0 && !showBetSlip"
+        x-show="isBettingRoute && betSlipSelections.length > 0 && !showBetSlip"
         x-cloak
         @click="showBetSlip = true">
         <span x-text="betSlipSelections.length + ' Selection' + (betSlipSelections.length !== 1 ? 's' : '')"></span>

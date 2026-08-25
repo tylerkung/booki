@@ -4,6 +4,15 @@
  */
 
 const SUPABASE_URL = 'https://vstfauqufwpdytmvjyfz.supabase.co';
+/**
+ * The only market types the game board renders: one moneyline, one spread and
+ * one total per game. Alternate lines, team totals and odd/even are loaded per
+ * game by the detail view, never in bulk — a single NFL game carries ~160
+ * market rows, so pulling them into the board would truncate the query and
+ * bloat every member's payload for lines the board cannot display anyway.
+ */
+const BOARD_MARKET_TYPES = ['moneyline', 'spread', 'total'];
+
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdGZhdXF1ZndwZHl0bXZqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMjcwNjcsImV4cCI6MjA4NDgwMzA2N30.uwimFkR3pN8BODjjM5KnusptdZz_vcrxKnK_2LKfZHI';
 
 /**
@@ -479,6 +488,12 @@ function dashboardApp() {
         // ── Player Games ──
         playerEvents: [],
         playerMarkets: [],
+
+        // Game detail — the full board for ONE game, loaded on demand.
+        selectedGameId: null,
+        gameDetail: null,
+        gameDetailMarkets: [],
+        isLoadingGameDetail: false,
         betSlipSelections: [],
         isLoadingPlayerEvents: true,
         playerEventSearch: '',
@@ -616,13 +631,21 @@ function dashboardApp() {
             // Player parameterized routes
             const playerTicketMatch = path.match(/^player-ticket\/(.+)$/);
             const playerSportMatch = path.match(/^player-sport\/(.+)$/);
+            const playerGameMatch = path.match(/^player-game\/(.+)$/);
 
             // Organizer routes
             const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings', 'onboarding', 'organizer-welcome', 'pro'];
             // Player routes
-            const playerRoutes = ['player-games', 'player-track', 'player-account', 'player-sport', 'become-organizer', 'player-activity', 'player-change-password'];
+            const playerRoutes = ['player-games', 'player-track', 'player-account', 'player-sport', 'player-game', 'become-organizer', 'player-activity', 'player-change-password'];
 
-            if (eventMatch) {
+            if (playerGameMatch) {
+                if (!this.isValidUUID(playerGameMatch[1])) {
+                    window.location.hash = '#/player-games';
+                    return;
+                }
+                this.route = 'player-game';
+                this.selectedGameId = playerGameMatch[1];
+            } else if (eventMatch) {
                 if (!this.isValidUUID(eventMatch[1])) {
                     window.location.hash = '#/events';
                     return;
@@ -699,6 +722,7 @@ function dashboardApp() {
             if (this.route === 'player-account') this.loadPlayerAccount();
             if (this.route === 'player-activity') this.loadPlayerAccount();
             if (this.route === 'player-sport') this.loadSportPage();
+            if (this.route === 'player-game') this.loadGameDetail(this.selectedGameId);
         },
 
         // ── Auth ──
@@ -1699,10 +1723,17 @@ function dashboardApp() {
                 for (let i = 0; i < eventIds.length; i += BATCH) {
                     batches.push(
                         this.supabase
+                            // Board queries fetch ONLY the three types the
+                            // board renders. The deep markets add ~160 rows a
+                            // game, so a batch of four games would blow past
+                            // this .limit() and silently drop core lines for
+                            // everything after it. The full set is loaded per
+                            // game by the game detail view instead, which also
+                            // keeps them out of every member's sync payload.
                             .from('markets')
                             .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
                             .in('event_id', eventIds.slice(i, i + BATCH))
-                            .neq('type', 'outright')
+                            .in('type', BOARD_MARKET_TYPES)
                             .limit(500)
                     );
                 }
@@ -1779,6 +1810,7 @@ function dashboardApp() {
                         .from('markets')
                         .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
                         .in('event_id', sportEventIds)
+                        .in('type', BOARD_MARKET_TYPES)
                         .limit(500)
                 );
             } else {
@@ -1956,6 +1988,91 @@ function dashboardApp() {
             return new Date(ev.start_time) <= Date.now();
         },
 
+        /**
+         * Loads every market for a single game.
+         *
+         * Deliberately per-game and on demand. The board query is capped to
+         * three types precisely so this data never travels in bulk; an NFL
+         * game carries ~160 market rows and nobody needs them until they ask
+         * for this screen.
+         */
+        async loadGameDetail(eventId) {
+            if (!eventId) return;
+            this.isLoadingGameDetail = true;
+            this.gameDetail = null;
+            this.gameDetailMarkets = [];
+            try {
+                const [{ data: ev }, { data: mk }] = await Promise.all([
+                    this.supabase.from('events')
+                        .select('id, away_team, home_team, start_time, status, league, sport, away_score, home_score')
+                        .eq('id', eventId).maybeSingle(),
+                    this.supabase.from('markets')
+                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                        .eq('event_id', eventId)
+                        .limit(1000),
+                ]);
+                if (!ev) { this.toast('Game not found', 'error'); return; }
+                this.gameDetail = ev;
+                this.gameDetailMarkets = mk || [];
+            } catch (err) {
+                console.error('loadGameDetail failed:', err);
+                this.toast('Could not load this game', 'error');
+            } finally {
+                this.isLoadingGameDetail = false;
+            }
+        },
+
+        /**
+         * Groups a game's markets into the sections the screen renders.
+         *
+         * Ordering is by line value, not by insertion: the API returns
+         * alternate lines in whatever order the book listed them, and a ladder
+         * that jumps around is unreadable. Team totals sort by team first so a
+         * team's ladder stays together.
+         */
+        get gameDetailSections() {
+            const all = this.gameDetailMarkets;
+            if (!all.length) return [];
+            const byType = (t) => all.filter((m) => m.type === t);
+            const lineOf = (m) => {
+                const n = Number(this.extractLine(m.side_a));
+                return Number.isFinite(n) ? n : 0;
+            };
+            const teamOf = (m) => String(m.side_a || '').replace(/\s+(Over|Under)\s+[-+\d.]+$/i, '');
+
+            const sections = [];
+            const main = ['moneyline', 'spread', 'total']
+                .map((t) => byType(t)[0]).filter(Boolean);
+            if (main.length) sections.push({ key: 'main', title: 'Main lines', markets: main });
+
+            const alts = byType('alternate_spread').sort((a, b) => lineOf(a) - lineOf(b));
+            if (alts.length) sections.push({ key: 'alt_spread', title: 'Alternate spreads', markets: alts });
+
+            const altTotals = byType('alternate_total').sort((a, b) => lineOf(a) - lineOf(b));
+            if (altTotals.length) sections.push({ key: 'alt_total', title: 'Alternate totals', markets: altTotals });
+
+            const teamTotals = byType('team_total').sort((a, b) =>
+                teamOf(a).localeCompare(teamOf(b)) || lineOf(a) - lineOf(b));
+            if (teamTotals.length) sections.push({ key: 'team_total', title: 'Team totals', markets: teamTotals });
+
+            const oddEven = byType('odd_even');
+            if (oddEven.length) sections.push({ key: 'odd_even', title: 'Odd / Even', markets: oddEven });
+
+            const outrights = byType('outright');
+            if (outrights.length) sections.push({ key: 'outright', title: 'Futures', markets: outrights });
+
+            return sections;
+        },
+
+        /**
+         * Every game opens its detail view, whether or not it has extra lines.
+         *
+         * A per-game count on the board would need the market rows the board
+         * deliberately does not load, and deriving "this league has deep
+         * markets" client-side would duplicate the sync's allowlist and drift
+         * from it. The detail view is worth opening regardless — it carries the
+         * main lines, the start time and the score.
+         */
         getMarketForEvent(eventId, marketType) {
             return this.playerMarketsByEvent[eventId]?.[marketType] || null;
         },
@@ -2093,8 +2210,21 @@ function dashboardApp() {
             return '+100';
         },
 
+        /**
+         * Routes where a member can pick lines, and therefore where the bet
+         * slip must be reachable. Named because it is checked in three places —
+         * this getter, the mobile bar and the sidebar — and adding the game
+         * detail route to only some of them let a member select lines with no
+         * way to see or submit them.
+         */
+        get isBettingRoute() {
+            return this.route === 'player-games'
+                || this.route === 'player-sport'
+                || this.route === 'player-game';
+        },
+
         get hasBetSlip() {
-            return (this.route === 'player-games' || this.route === 'player-sport')
+            return this.isBettingRoute
                 && (this.betSlipSelections.length > 0 || this.betSlipSuccess);
         },
 

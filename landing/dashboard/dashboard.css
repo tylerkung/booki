@@ -2677,3 +2677,72 @@ input, button, select, textarea { font: inherit; }
     border-radius: var(--radius-sm);
 }
 
+
+/* ── Game detail: every line for one game ──────────────────────────────────
+   A ladder of alternate lines is read down a column, so each line is one row
+   with its two sides side by side. The board's compact three-column grid does
+   not work here: a side label is "Seattle Seahawks Over 24.5", not "-3.5". */
+.gd-lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-xs);
+}
+
+.gd-line {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-xs);
+}
+
+.gd-side {
+    /* .pg-odds-btn is fixed at --odds-col for the board's three-column grid.
+       Here the cell is a full-width ladder row and the label is a phrase
+       ("Seattle Seahawks Over 24.5"), not a number, so the fixed width has to
+       be overridden or every label truncates to two characters. */
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-sm);
+    /* Taller than a board cell because the label is a phrase, not a number. */
+    padding: var(--s-sm) var(--s-md);
+    text-align: left;
+}
+
+.gd-side-label {
+    /* Takes the slack; the price keeps its natural width so the numbers stay
+       aligned down the ladder. */
+    flex: 1;
+    min-width: 0;
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gd-side .pg-odds-val {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+.gd-side.pg-odds-active .gd-side-label { color: inherit; }
+
+/* The board row's time column doubles as the link into this page. */
+.pg-game-more {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-xxs);
+    text-decoration: none;
+    color: inherit;
+}
+.pg-more-lines {
+    font-size: var(--fs-micro);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.pg-game-more:hover .pg-more-lines { color: var(--accent); }
+
+/* One column on a phone: two long labels do not fit side by side. */
+@media (max-width: 600px) {
+    .gd-line { grid-template-columns: 1fr; }
+}
