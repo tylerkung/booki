@@ -1071,16 +1071,29 @@ Deno.serve(async (req) => {
             const res = await fetch(url);
             const text = await res.text();
             let returnedMarkets = 0;
+            // Distinct (market, line) pairs, because that is what a stored row
+            // is: markets are keyed event + type + LINE VALUE, so one
+            // alternate_spreads market becomes as many rows as it has lines.
+            // Credits measure the API bill; rows measure the Supabase one, and
+            // egress is the constraint that has already been breached once.
+            let distinctLines = 0;
             try {
               const parsed = JSON.parse(text);
               const rows = Array.isArray(parsed) ? parsed : [parsed];
               const keys = new Set<string>();
+              const lines = new Set<string>();
               for (const row of rows) {
                 for (const bm of (row?.bookmakers ?? [])) {
-                  for (const m of (bm.markets ?? [])) keys.add(m.key);
+                  for (const m of (bm.markets ?? [])) {
+                    keys.add(m.key);
+                    for (const o of (m.outcomes ?? [])) {
+                      lines.add(`${m.key}|${o.description ?? ''}|${o.point ?? ''}`);
+                    }
+                  }
                 }
               }
               returnedMarkets = keys.size;
+              distinctLines = lines.size;
             } catch { /* error body */ }
 
             measured.push({
@@ -1088,6 +1101,7 @@ Deno.serve(async (req) => {
               per_event: set.per_event !== false,
               requested: markets.split(',').length,
               returned_markets: returnedMarkets,
+              rows_per_game: distinctLines,
               status: res.status,
               credits: Number(res.headers.get('x-requests-last') ?? 0),
               bytes: text.length,

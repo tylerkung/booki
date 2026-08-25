@@ -107,6 +107,48 @@ but CLAUDE.md projects ~50% baseline at peak season overlap (NFL + NCAAF + NBA +
 NHL), leaving ~10,000. **The full 29-market bundle does not fit at peak; a
 curated 8–15 does.**
 
+### Storage is the second bill, and it is the larger one
+
+Credits measure the Odds API bill. Stored ROWS measure the Supabase bill, and
+markets are keyed `event + type + LINE VALUE` — so one `alternate_spreads`
+market becomes as many rows as it has lines. Measured on the same game:
+
+| Bundle | Credits/game | Rows/game | KB |
+|---|---|---|---|
+| Core — today | 3 | **6** | 5 |
+| Alt lines + team totals | 3 | **157** | 26 |
+| Halves + quarters (15) | 15 | **20** | 7 |
+| Player props (all 19) | 19 | **551** | 75 |
+| **Everything** | **~69** | **~734** | ~113 |
+
+Two things fall out that the credit table completely hides:
+
+**Alternate lines are cheap in credits and expensive in rows** — 3 credits buys
+157 rows. **Quarters and halves are the opposite** — 15 credits buys only 20
+rows. Cost per unit of board density differs by two orders of magnitude between
+market types.
+
+**Player props are 75% of the data.** 551 of ~734 rows per game.
+
+For scale: the whole `markets` table is currently **1,333 rows across every
+sport**. One NFL week with everything switched on is 16 x 734 = **11,744 rows** —
+nine times the entire table today. Held across a 7-day storage window that is
+roughly 15,000 market rows, which returns the client sync payload to
+approximately where it sat before the Phase 3 cleanup — the cleanup that was
+done specifically because egress had been exceeded. Projected egress roughly
+doubles, from ~1.4 GB/mo to ~2.6 GB of a 5 GB allowance.
+
+That is survivable, but it is the constraint to watch, and it argues for
+Phase 4 (the client sync date filter, currently deferred) landing alongside any
+large market expansion.
+
+### The Odds API bill is not the obstacle
+
+20K credits is $30/mo; 100K is **$59/mo**. Everything, for NFL, at twice-daily
+refreshes over a three-day pre-game window is ~28,500 credits/month — over the
+current plan, comfortably inside the next one. **The entire question of Odds API
+cost is a $29/month decision.**
+
 ### The real constraint is settlement, not odds
 
 `/scores` returns only aggregate team scores — no period splits, no player
