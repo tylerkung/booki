@@ -1,6 +1,6 @@
 # PRD: Market Coverage — More Lines, and Whether to Change Provider
 
-Status: draft for discussion · Created 2026-08-18
+Status: US-001 measured · Created 2026-08-18 · Measured 2026-08-25
 
 ## Introduction
 
@@ -46,17 +46,95 @@ The open question is whether adding markets to an existing request multiplies
 its cost. If it does not, alternate lines are close to free. If it does, the
 tiered refresh already built becomes the lever for affording them.
 
+## US-001 RESULT — measured 2026-08-25
+
+Probed against a real Week 1 NFL game (NE @ SEA, 10 Sep), `regions=us`, via the
+`odds_probe` view in `admin_query`. Numbers are `x-requests-last` off each
+response, not estimates.
+
+### What the Odds API actually offers
+
+**69 distinct market keys** on that single NFL game, discoverable for **1
+credit** via `/events/{id}/markets`. Availability grows closer to kickoff, so 69
+is a floor, not a ceiling.
+
+| Group | Count | Examples (books quoting) |
+|---|---|---|
+| Core — already live | 3 | `h2h`(10) `spreads`(10) `totals`(10) |
+| Alternate lines | 3 | `alternate_spreads`(4) `alternate_totals`(5) `alternate_team_totals`(2) |
+| Quarters & halves | 36 | `spreads_h1`(4) `totals_h1`(4) `h2h_q1`(3) `totals_q4`(2) |
+| Player props | 19 | `player_1st_td`(4) `player_pass_yds`(3) `player_anytime_td`(3) `player_rush_yds`(3) |
+| Exotics | 8 | `odd_even`(3) `team_totals`(3) `first_team_to_score`(2) `overtime`(2) `halftime_fulltime`(1) |
+
+**Not offered at all: coin toss, and winning margin.** Neither appears among the
+69 keys. If those are wanted they need a different provider.
+
+### Cost — the formula holds exactly
+
+| Request | Scope | Markets | Credits | Bytes |
+|---|---|---|---|---|
+| `h2h,spreads,totals` | per-SPORT, all 272 games | 3 | **3** | 492 KB |
+| `alternate_spreads,alternate_totals` | per-EVENT | 2 | **2** | 26 KB |
+| Halves (6 keys) | per-EVENT | 6 | **6** | 3.7 KB |
+| Quarters (9 keys) | per-EVENT | 9 | **9** | 3.7 KB |
+| Player props (6 keys) | per-EVENT | 6 | **6** | 14 KB |
+| Exotics (6 keys) | per-EVENT | 6 | **6** | 2.9 KB |
+
+Cost is exactly `markets returned x regions`, per request. The open question in
+this PRD — "does adding markets to a request multiply its cost" — is answered:
+**yes, linearly.**
+
+The economics turn entirely on scope, not on the multiplier. Only
+`h2h/spreads/totals/outrights` are served per-SPORT, where 3 credits covers all
+272 NFL games. **Everything else — including the alternate lines this app
+already supports — is per-EVENT.** Cost therefore scales with the slate.
+
+Per full 16-game NFL week, one refresh of every game:
+
+| Bundle | Markets | Credits per slate refresh |
+|---|---|---|
+| Auto-gradeable extras (alt spreads, alt totals, team totals) | 3 | 48 |
+| \+ halves | 9 | 144 |
+| \+ quarters | 18 | 288 |
+| \+ core props | 24 | 384 |
+| \+ exotics | 29 | 464 |
+
+At 6 refreshes per game per week (twice daily over a 3-day window), monthly:
+3 markets ~1,240 · 8 markets ~3,300 · 15 markets ~6,200 · 29 markets ~12,000.
+
+Current baseline is ~4,840 credits/month of 20,000. Headroom today is ~15,000,
+but CLAUDE.md projects ~50% baseline at peak season overlap (NFL + NCAAF + NBA +
+NHL), leaving ~10,000. **The full 29-market bundle does not fit at peak; a
+curated 8–15 does.**
+
+### The real constraint is settlement, not odds
+
+`/scores` returns only aggregate team scores — no period splits, no player
+statistics of any kind. So of the 69 markets on offer:
+
+- **Auto-gradeable from the final score:** alternate spreads, alternate totals,
+  team totals, `odd_even`. Grading in `_shared/grading.ts` already handles
+  `alternate_spread`, `alternate_total` and `team_total`, and
+  `Booki/Models/Market.swift` already defines all three.
+- **Odds available, settlement impossible with current data:** every quarter and
+  half market, every player prop, `total_tds`, `first_team_to_score`,
+  `overtime`, `halftime_fulltime`.
+
+Those second-category markets can only ship as **manually graded**, the way
+futures already do, or behind a second data provider for statlines and period
+scores. That is the decision this PRD actually turns on — not cost.
+
 ## User Stories
 
 ### US-001: Measure the real cost of additional markets
 **Description:** As the operator, I need the actual credit cost before committing to any market expansion.
 
 **Acceptance Criteria:**
-- [ ] One controlled request per variant, reading `x-requests-last` from the response
-- [ ] Variants: current three; plus `alternate_spreads`; plus `alternate_totals`; plus `team_totals`; a player-prop request for a single event
-- [ ] Result recorded as a table of market set → credits per request
-- [ ] Confirms which markets the current plan actually permits (a 401/422 is itself an answer)
-- [ ] **Blocks every other story here** — no expansion decision without this
+- [x] One controlled request per variant, reading `x-requests-last` from the response
+- [x] Variants: current three; plus `alternate_spreads`; plus `alternate_totals`; plus `team_totals`; a player-prop request for a single event
+- [x] Result recorded as a table of market set → credits per request
+- [x] Confirms which markets the current plan actually permits — the paid plan permits all 69, including props
+- [x] **Blocks every other story here** — resolved; see US-001 RESULT above
 
 ### US-002: Enable the markets the app already supports
 **Description:** As a member, I want alternate lines and team totals, which the app can already display and grade.

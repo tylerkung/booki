@@ -29,6 +29,8 @@ interface AdminRequest {
   id?: string;
   q?: string;
   sql?: string;
+  sport_key?: string;
+  market_sets?: Array<{ label?: string; markets: string; per_event?: boolean }>;
   max_rows?: number;
   /** Include synthetic and load-test accounts. Off by default: they distorted
    *  every count during the 2026-08-18 audit. */
@@ -998,6 +1000,105 @@ Deno.serve(async (req) => {
           }, 503);
         }
         return json({ view, ...out });
+      }
+
+      // ── Odds API market discovery + cost measurement (PRD US-001) ────────
+      //
+      // Answers "what markets can we actually sell, and what would they cost"
+      // with measurements instead of estimates. The last attempt to reason
+      // about Odds API cost was ~40% high, so every number here comes from the
+      // x-requests-last header on a real response.
+      //
+      // This SPENDS CREDITS. Discovery is 1 credit per event; a cost probe is
+      // (markets returned x regions) per event. Both are bounded below.
+      case 'odds_probe': {
+        const apiKey = Deno.env.get('ODDS_API_KEY');
+        if (!apiKey) return json({ error: 'ODDS_API_KEY not set' }, 500);
+
+        const sportKey = String(body.sport_key ?? 'americanfootball_nfl');
+        const region = 'us';
+        const base = 'https://api.the-odds-api.com/v4/sports';
+
+        // Resolve one real, upcoming event to probe against.
+        const evRes = await fetch(`${base}/${sportKey}/events?apiKey=${apiKey}`);
+        const evCost = Number(evRes.headers.get('x-requests-last') ?? 0);
+        if (!evRes.ok) {
+          return json({ error: `events lookup failed: ${evRes.status}`, detail: await evRes.text() }, 502);
+        }
+        const events = await evRes.json();
+        if (!Array.isArray(events) || events.length === 0) {
+          return json({ error: `no upcoming events for ${sportKey}` }, 404);
+        }
+        const target = events[0];
+
+        // 1 credit: which market keys does each bookmaker currently offer?
+        const mkRes = await fetch(
+          `${base}/${sportKey}/events/${target.id}/markets?apiKey=${apiKey}&regions=${region}`,
+        );
+        const mkCost = Number(mkRes.headers.get('x-requests-last') ?? 0);
+        const mkBody = mkRes.ok ? await mkRes.json() : null;
+
+        // Flatten to a distinct key list with how many books offer each — a key
+        // one book quotes is not the same product as one twenty books quote.
+        const byKey = new Map<string, number>();
+        for (const bm of (mkBody?.bookmakers ?? [])) {
+          for (const m of (bm.markets ?? [])) {
+            byKey.set(m.key, (byKey.get(m.key) ?? 0) + 1);
+          }
+        }
+        const available = Array.from(byKey.entries())
+          .map(([key, books]) => ({ key, books }))
+          .sort((a, b) => b.books - a.books || a.key.localeCompare(b.key));
+
+        const result: Record<string, unknown> = {
+          sport_key: sportKey,
+          event: { id: target.id, label: `${target.away_team} @ ${target.home_team}`,
+                   start: target.commence_time },
+          discovery_credits: evCost + mkCost,
+          markets_available: available,
+          markets_count: available.length,
+        };
+
+        // Optional cost probe: only when explicitly asked, since it spends more.
+        if (Array.isArray(body.market_sets) && body.market_sets.length) {
+          const measured = [];
+          for (const set of body.market_sets.slice(0, 8)) {
+            const markets = String(set.markets ?? '');
+            if (!markets) continue;
+            const url = set.per_event === false
+              ? `${base}/${sportKey}/odds?apiKey=${apiKey}&regions=${region}&markets=${markets}`
+              : `${base}/${sportKey}/events/${target.id}/odds?apiKey=${apiKey}&regions=${region}&markets=${markets}`;
+            const res = await fetch(url);
+            const text = await res.text();
+            let returnedMarkets = 0;
+            try {
+              const parsed = JSON.parse(text);
+              const rows = Array.isArray(parsed) ? parsed : [parsed];
+              const keys = new Set<string>();
+              for (const row of rows) {
+                for (const bm of (row?.bookmakers ?? [])) {
+                  for (const m of (bm.markets ?? [])) keys.add(m.key);
+                }
+              }
+              returnedMarkets = keys.size;
+            } catch { /* error body */ }
+
+            measured.push({
+              label: set.label ?? markets,
+              per_event: set.per_event !== false,
+              requested: markets.split(',').length,
+              returned_markets: returnedMarkets,
+              status: res.status,
+              credits: Number(res.headers.get('x-requests-last') ?? 0),
+              bytes: text.length,
+              remaining: Number(res.headers.get('x-requests-remaining') ?? 0),
+              error: res.ok ? null : text.slice(0, 200),
+            });
+          }
+          result.cost_probes = measured;
+        }
+
+        return json({ view, ...result });
       }
 
       default:
