@@ -2690,7 +2690,12 @@ input, button, select, textarea { font: inherit; }
        is the entire point of the matrix. */
     --gd-label-col: 160px;
     --gd-cell-min: 84px;
+
+    /* Owned by the component rather than set inline per instance, which is how
+       the ladder rewrite lost it and left the cards touching. */
+    margin-bottom: var(--s-lg);
 }
+.gd-section:last-child { margin-bottom: 0; }
 
 .gd-section-head {
     display: flex;
