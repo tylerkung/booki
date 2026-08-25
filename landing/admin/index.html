@@ -44,17 +44,18 @@
             <img src="/assets/logo-booki-wh.svg" alt="Booki">
             <span class="admin-tag">ADMIN</span>
         </div>
-        <nav class="sidebar-nav">
-            <ul>
-                <template x-for="v in views" :key="v.id">
-                    <li>
-                        <a :href="'#/' + v.id" :class="{ active: route === v.id }" x-text="v.label"></a>
-                    </li>
-                </template>
-                <li><a href="#/data_quality" :class="{ active: route === 'data_quality' }">Data quality</a></li>
-                <li><a href="#/sql" :class="{ active: route === 'sql' }">SQL</a></li>
-            </ul>
-        </nav>
+        <!-- sidebar-nav belongs on the <ul>, as in the dashboard: that is where
+             its list-style:none applies. On a <nav> wrapper the rule styles the
+             wrapper and the inner list keeps its bullets. -->
+        <ul class="sidebar-nav">
+            <template x-for="v in views" :key="v.id">
+                <li>
+                    <a :href="'#/' + v.id" :class="{ active: route === v.id }" x-text="v.label"></a>
+                </li>
+            </template>
+            <li><a href="#/data_quality" :class="{ active: route === 'data_quality' }">Data quality</a></li>
+            <li><a href="#/sql" :class="{ active: route === 'sql' }">SQL</a></li>
+        </ul>
         <div class="sidebar-bottom">
             <label class="admin-toggle">
                 <input type="checkbox" x-model="includeTest" @change="load()">
