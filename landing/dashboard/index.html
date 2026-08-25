@@ -18,7 +18,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body x-data="dashboardApp()" x-init="init()" style="visibility: hidden;">
+<!-- No x-init here: Alpine 3 automatically calls an init() method on the
+     x-data object, so x-init="init()" ran it a SECOND time. -->
+<body x-data="dashboardApp()" style="visibility: hidden;">
 
     <!-- Tag Tooltip -->
     <div x-show="tagTooltip" x-cloak class="tag-tooltip"
