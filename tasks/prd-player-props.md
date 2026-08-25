@@ -57,27 +57,55 @@ the check belongs at the door.
 
 ---
 
-## US-001: Verify the NFL statline shape
+## US-001: Verify the NFL statline shape — DONE 2026-08-25
 
-**Blocks everything.** The spike proved the mechanism against NBA field names.
-The NFL response is documented but unconfirmed — the 401 told us the endpoint
-exists and nothing else.
+Verified against a real completed game: balldontlie NFL game 423945, Cowboys at
+Eagles, 2025-09-05, 60 statlines. All criteria answered.
 
-**Acceptance Criteria:**
-- [ ] Fetch one completed NFL game's stats and record the exact field names
-- [ ] Confirm each mapping in US-003's table resolves to a real field
-- [ ] Confirm whether a DNP is an absent row or a row of zeroes. **These require
-      opposite handling** — absent means void, zeroes mean the Over lost — and
-      guessing wrong mis-settles every prop for every inactive player
-- [ ] Confirm whether kicking and defensive stats are present at ALL-STAR
-- [ ] **Confirm how `player_anytime_td` can be settled.** `rushing_touchdowns +
-      receiving_touchdowns` misses kick-return, punt-return and fumble-recovery
-      touchdowns. A book pays those; if balldontlie exposes no total-TD field,
-      this market must be EXCLUDED rather than approximated, because it is one
-      of the most popular props and would be wrong in exactly the cases people
-      remember
+- [x] Field names recorded (56 stat fields — considerably more than documented)
+- [x] Every mapping below resolves to a real field
+- [x] **DNP is an ABSENT ROW.** 60 statlines across a game where the two gameday
+      rosters total ~96. Only players with recorded involvement appear, so a
+      player who did not play simply has no row → void, as intended
+- [x] Kicking and defensive stats ARE present at ALL-STAR
+- [x] `player_anytime_td` **is settleable** — see below
 
-## US-002: Identity — teams, players, games
+### Two findings that would each have mis-settled bets
+
+**1. An all-zero row is NOT a DNP.** Dante Fowler Jr. (LB, DAL) appears with
+every stat field at zero. He dressed and recorded nothing. So:
+
+| Shape | Meaning | Verdict |
+|---|---|---|
+| No row at all | did not play | **void** |
+| Row, all zeroes | played, recorded nothing | **grade normally** (an Over loses) |
+
+Collapsing these would void props that should have lost — refunding stakes on
+bets the book won. The presence of the row is the signal, never the values in
+it. `~30 statlines per team against a ~48 gameday roster` is the corroborating
+evidence that rows track involvement rather than activation.
+
+**2. `passing_touchdowns` must never count toward an anytime TD.** The
+quarterback throws it; the receiver scores it. Including it would credit every
+QB with anytime touchdowns they did not score — on one of the most popular prop
+markets. Verified against this game: Jalen Hurts shows `anytime_td=2` from
+rushing alone, and passing TDs are correctly excluded from the sum.
+
+Anytime TD is therefore:
+
+    rushing_touchdowns + receiving_touchdowns + kick_return_touchdowns
+      + punt_return_touchdowns + interception_touchdowns + fumbles_touchdowns
+
+All six exist, which resolves the concern that return and fumble-recovery scores
+would be missed. `player_anytime_td` moves from EXCLUDED to shippable.
+
+### Also: `total_points` is not populated
+
+Present in the schema, zero non-null values across all 60 statlines. Kicking
+points must be derived from `field_goals_made` and `extra_points_made` rather
+than read from it.
+
+## US-002: Identity — teams, players, games## US-002: Identity — teams, players, games
 
 **Acceptance Criteria:**
 - [ ] `bdl_teams` map: Odds API team name → balldontlie team id. 32 rows, seeded
@@ -94,19 +122,39 @@ exists and nothing else.
 
 ## US-003: Ingest — prices from The Odds API
 
-Markets to carry, all settleable from an ALL-STAR statline:
+Markets to carry, all verified settleable against real statline fields:
 
-| Odds API market | Stat |
+| Odds API market | Stat expression |
 |---|---|
 | `player_pass_yds` | `passing_yards` |
 | `player_pass_tds` | `passing_touchdowns` |
+| `player_pass_completions` | `passing_completions` |
+| `player_pass_attempts` | `passing_attempts` |
+| `player_pass_interceptions` | `passing_interceptions` |
 | `player_rush_yds` | `rushing_yards` |
-| `player_reception_yds` | `receiving_yards` |
+| `player_rush_attempts` | `rushing_attempts` |
 | `player_receptions` | `receptions` |
-| `player_rush_reception_yds` | `rushing_yards` + `receiving_yards` |
+| `player_reception_yds` | `receiving_yards` |
+| `player_rush_reception_yds` | `rushing_yards + receiving_yards` |
+| `player_anytime_td` | sum of the six SCORING td fields, **excluding passing** |
+| `player_tds_over` | same sum |
+| `player_reception_longest` | `long_reception` |
+| `player_rush_longest` | `long_rushing` |
+| `player_field_goals` | `field_goals_made` |
+| `player_pats` | `extra_points_made` |
+| `player_kicking_points` | `field_goals_made * 3 + extra_points_made` |
+| `player_sacks` | `defensive_sacks` |
+| `player_solo_tackles` | `solo_tackles` |
+| `player_tackles_assists` | `total_tackles` |
+| `player_defensive_interceptions` | `defensive_interceptions` |
 
-Six markets — chosen because each maps to one field with no interpretation.
-`player_anytime_td` is deliberately absent pending US-001.
+Still out of reach at ALL-STAR: `player_1st_td` and `player_last_td`, which
+need play-by-play (GOAT tier).
+
+**Ship a subset first.** Every market above is gradeable, but ~200 rows a game
+was the estimate for six markets, not twenty. Start with the six skill-position
+yardage and reception markets plus `player_anytime_td`, measure the real row
+count, and widen from there.
 
 **Acceptance Criteria:**
 - [ ] Fetched per event from `/events/{id}/odds`, alongside the existing deep
@@ -178,9 +226,8 @@ box score that is late, partial, or briefly wrong.
 
 ## Open questions
 
-- **Does `player_anytime_td` ship at all?** It is among the most popular props
-  and the hardest of the six to settle correctly. US-001 decides it. Shipping it
-  wrong is worse than not shipping it.
+- ~~Does `player_anytime_td` ship at all?~~ **Resolved: yes.** All six scoring
+  touchdown fields exist, and passing touchdowns are excluded from the sum.
 - **How many props is too many?** 200 rows a game is a real board, but Booki's
   pitch is a friend group, not a sportsbook. Six markets may already be more
   than anyone wants.
