@@ -232,11 +232,16 @@ Deno.serve(async (req) => {
 
     // Check bookie's manual_bet_acceptance setting for auto-pilot mode
     // Default is false (auto-accept enabled), meaning bets are accepted immediately
-    const { data: bookie } = await client
+    const { data: bookie, error: bookieReadError } = await client
       .from('bookies')
       .select('manual_bet_acceptance, auth_user_id')
       .eq('id', requestBookieId)
       .single();
+
+    // A failed read here costs the organizer their notification, silently.
+    // PostgREST fails the whole select if one column is missing, which is
+    // exactly how manual_bet_acceptance went unnoticed for so long.
+    if (bookieReadError) console.error('Bookie settings read failed:', bookieReadError);
 
     // Collect policy violation reasons
     const policyViolations: string[] = [];

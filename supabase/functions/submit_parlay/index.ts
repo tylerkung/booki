@@ -295,14 +295,29 @@ Deno.serve(async (req) => {
     };
 
     // Check bookie's tier and manual_bet_acceptance setting
-    const { data: bookie } = await client
+    const { data: bookie, error: bookieError } = await client
       .from('bookies')
       .select('manual_bet_acceptance, tier')
       .eq('id', requestBookieId)
       .single();
 
+    // Never infer a tier from a failed read. `bookie?.tier ?? 'free'` looks
+    // like a safe default, but PostgREST fails the ENTIRE select if any one
+    // column in the list is missing — so when manual_bet_acceptance did not
+    // exist on the table, this read returned null for every organizer and the
+    // fallback quietly downgraded paying Pro customers to 'free', rejecting
+    // every Multi-Pick with 'pro_required'. A tier we could not read is an
+    // error to surface, not a value to guess.
+    if (bookieError || !bookie) {
+      console.error('Could not read bookie tier:', bookieError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Could not verify your subscription. Please try again.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Tier enforcement: parlays require Pro
-    const bookieTier = bookie?.tier ?? 'free';
+    const bookieTier = bookie.tier ?? 'free';
     if (bookieTier !== 'pro') {
       return new Response(
         JSON.stringify({ success: false, error: 'pro_required' }),

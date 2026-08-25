@@ -275,11 +275,16 @@ Deno.serve(async (req) => {
     };
 
     // 5. Bookie manual mode
-    const { data: bookie } = await client
+    const { data: bookie, error: bookieReadError } = await client
       .from('bookies')
       .select('manual_bet_acceptance, auth_user_id')
       .eq('id', requestBookieId)
       .single();
+
+    // A failed read here costs the organizer their notification, silently.
+    // PostgREST fails the whole select if one column is missing, which is
+    // exactly how manual_bet_acceptance went unnoticed for so long.
+    if (bookieReadError) console.error('Bookie settings read failed:', bookieReadError);
 
     const manualMode = bookie?.manual_bet_acceptance === true;
 
