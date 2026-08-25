@@ -101,6 +101,30 @@
   --scrim-light: rgba(var(--black-rgb), 0.5);
   --text-on-accent: var(--background);
 
+  /* ── wave texture ──
+     The iOS bet-slip treatment: Assets.xcassets/WaveBackground overlaid at 10%
+     opacity on pick cards (PickCardCompact, TicketCardView) and as a page-level
+     wash on detail screens (TicketDetailView, BetDetailView).
+
+     The source art is pure white with a varying alpha — three of its four
+     channels carry no information. The web copy therefore stores the alpha
+     channel alone and tints it through a mask, which is 78 KB against the
+     original's 380 KB and lets the tint follow the theme rather than being
+     baked white. --wave-opacity defaults to --o-soft, which is already exactly
+     the 0.1 iOS uses — it exists as a named dial so the wash can be tuned
+     without touching the shared opacity ladder, and because it references that
+     ladder rather than restating 0.1, it cannot silently drift from it. */
+  /* Absolute, deliberately. A relative url() inside a custom property is not
+     resolved against the stylesheet that DECLARES it — Chrome resolves it
+     against the stylesheet that USES it, so 'assets/wave.png' became
+     /dashboard/assets/wave.png and silently 404'd. landing/ is the site root
+     in both local serving and production, so /assets/ is stable for every
+     consumer regardless of how deep it sits. */
+  --wave-texture: url('/assets/wave.png');
+  --wave-tint: rgb(var(--white-rgb));
+  --wave-opacity: var(--o-soft);
+  --wave-page-scale: 1.25;       /* iOS: geo.size.width * 1.25 on detail screens */
+
   /* ── spacing — 4pt grid ──
      Numbered by grid unit: --s4 is four units, 16px. The 2px step is the one
      exception, kept because the iOS spec defines it and it is in use. */

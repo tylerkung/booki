@@ -1154,7 +1154,7 @@
             </div>
 
             <!-- ── Pick Detail View ── -->
-            <div x-show="route === 'pick-detail'" x-cloak>
+            <div x-show="route === 'pick-detail'" x-cloak class="wave-page">
                 <div style="margin-bottom:var(--s-xl);">
                     <a :href="pickBackRoute" class="btn btn-ghost" style="gap:var(--s-sm);padding-left:0;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -2729,7 +2729,7 @@
 
                     <!-- Ticket Cards -->
                     <template x-for="ticket in filteredPlayerTickets" :key="ticket.ticketId">
-                        <a :href="'#/player-ticket/' + ticket.ticketId" class="pt-ticket-card card">
+                        <a :href="'#/player-ticket/' + ticket.ticketId" class="pt-ticket-card card wave-card">
                             <div class="pt-ticket-top">
                                 <div class="pt-ticket-info">
                                     <div class="pt-ticket-title" x-text="ticket.title"></div>
@@ -2783,7 +2783,7 @@
             </div>
 
             <!-- ── Player Ticket Detail View ── -->
-            <div x-show="route === 'player-ticket' && (userRole === 'player' || userRole === 'standalone')" x-cloak>
+            <div x-show="route === 'player-ticket' && (userRole === 'player' || userRole === 'standalone')" x-cloak class="wave-page">
                 <div style="margin-bottom:var(--s-xl);">
                     <a href="#/player-track" class="btn btn-ghost" style="gap:var(--s-sm);padding-left:0;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>

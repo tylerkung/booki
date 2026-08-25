@@ -27,6 +27,12 @@ ALLOW = {
     "border-radius: 1px":         "hairline, below the smallest radius step",
     "@media":                     "custom properties are invalid in media conditions",
     "var(--":                     "already a token",
+    "z-index: -1":                "not a layer: drops a decorative ::before below "
+                                  "its own parent's content inside an isolated "
+                                  "stacking context. The --z-* ladder orders "
+                                  "page-level surfaces against each other; giving "
+                                  "this a rung would imply a global meaning it "
+                                  "does not have.",
 }
 # properties that must never carry a raw literal
 CHECKS = [
