@@ -118,12 +118,14 @@
      root both locally and in production, so /assets/ is stable for every
      consumer regardless of how deep it sits.
 
-     --wave-opacity defaults to --o-soft, which is already exactly the 0.1 iOS
-     uses. It exists as a named dial so the wash can be tuned without touching
-     the shared opacity ladder, and because it references that ladder rather
-     than restating 0.1, it cannot silently drift from it. */
+     --wave-opacity is --o-faint (0.05), half the 0.1 iOS uses. Web pick cards
+     are far larger than their iOS counterparts, so the same opacity reads as
+     considerably heavier here; the wash is dialled back deliberately rather
+     than by oversight. Keeping it as a named token pointing at a rung of the
+     shared opacity ladder means it can be retuned in one place and cannot
+     drift into an untracked literal. */
   --wave-texture: url('/assets/wave.png');
-  --wave-opacity: var(--o-soft);
+  --wave-opacity: var(--o-faint);
   --wave-page-scale: 1.25;       /* iOS: geo.size.width * 1.25 on detail screens */
 
   /* ── spacing — 4pt grid ──
