@@ -1,6 +1,13 @@
 # PRD: Platform Admin Dashboard
 
-Status: draft for discussion · Created 2026-08-18
+Status: **built** · Created 2026-08-18 · Implemented 2026-08-25
+
+US-001 through US-007 are implemented in `supabase/functions/admin_query`
+and `landing/admin/`. US-006's SELECT-only guarantee is migration 038
+(`admin_run_select`). The open questions below are left as written — they
+were the reasoning at the time, and the answer to the last one is that v1
+is a deliberate endpoint: writes must go through the existing edge
+functions or they bypass idempotency, audit and the ledger hash chain.
 
 ## Introduction
 

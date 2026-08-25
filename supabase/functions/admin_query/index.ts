@@ -26,6 +26,9 @@ const MAX_ROWS = 2000;
 interface AdminRequest {
   view?: string;
   id?: string;
+  q?: string;
+  sql?: string;
+  max_rows?: number;
   /** Include synthetic and load-test accounts. Off by default: they distorted
    *  every count during the 2026-08-18 audit. */
   include_test?: boolean;
@@ -446,6 +449,364 @@ Deno.serve(async (req) => {
             ) / 100,
           },
         });
+      }
+
+      // ── US-005: one box that finds a person, a game or a pick ────────────
+      case 'search': {
+        const q = (body.q ?? '').trim().toLowerCase();
+        if (q.length < 2) return json({ view, groups: [], query: q });
+
+        const hit = (hay: unknown) => String(hay ?? '').toLowerCase().includes(q);
+        // A pasted UUID should resolve even though it matches no name. This is
+        // the highest-value interaction in the whole tool: paste an id out of
+        // a log line and learn what it is and whose it is.
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q);
+
+        const groups: Array<{ type: string; rows: unknown[] }> = [];
+
+        const orgHits = (bookies as any[])
+          .filter((b) => hit(b.name) || hit(b.email) || (isUuid && String(b.id).toLowerCase() === q))
+          .slice(0, 25)
+          .map((b) => ({ id: b.id, label: b.name, sub: b.email, tier: b.tier, route: `organizer/${b.id}` }));
+        if (orgHits.length) groups.push({ type: 'Organizers', rows: orgHits });
+
+        const memberHits = (players as any[])
+          .filter((p) => hit(p.name) || hit(p.display_name) || hit(p.email) ||
+                         (isUuid && (String(p.id).toLowerCase() === q ||
+                                     String(p.auth_user_id ?? '').toLowerCase() === q)))
+          .slice(0, 25)
+          .map((p) => ({
+            id: p.id,
+            label: p.display_name || p.name,
+            sub: p.email,
+            organizer: orgLabel(p.bookie_id),
+            route: `member/${p.id}`,
+          }));
+        if (memberHits.length) groups.push({ type: 'Members', rows: memberHits });
+
+        // Events and bets are too large to hold in memory, so they are queried.
+        const evQuery = isUuid
+          ? client.from('events').select('id, away_team, home_team, start_time, status').eq('id', q)
+          : client.from('events')
+              .select('id, away_team, home_team, start_time, status')
+              .or(`away_team.ilike.%${q}%,home_team.ilike.%${q}%`)
+              .order('start_time', { ascending: false })
+              .limit(25);
+        const { data: evs } = await evQuery;
+        if (evs?.length) {
+          groups.push({
+            type: 'Games',
+            rows: evs.map((e: any) => ({
+              id: e.id,
+              label: `${e.away_team} @ ${e.home_team}`,
+              sub: `${e.status} · ${e.start_time}`,
+              route: null,
+            })),
+          });
+        }
+
+        if (isUuid) {
+          // A UUID could also be a bet id or a whole parlay ticket.
+          const { data: bets } = await client
+            .from('bets')
+            .select('id, player_id, bookie_id, side, market, stake, odds, status, ticket_id, created_at')
+            .or(`id.eq.${q},ticket_id.eq.${q}`)
+            .limit(25);
+          if (bets?.length) {
+            groups.push({
+              type: 'Picks',
+              rows: bets.map((b: any) => ({
+                id: b.id,
+                label: b.side || b.market || 'Pick',
+                sub: `${b.status} · $${b.stake}`,
+                organizer: orgLabel(b.bookie_id),
+                member: memberLabel(b.player_id),
+                route: `pick/${b.id}`,
+              })),
+            });
+          }
+
+          const invHit = (invites as any[]).filter((i) => String(i.id).toLowerCase() === q);
+          if (invHit.length) {
+            groups.push({
+              type: 'Invites',
+              rows: invHit.map((i) => ({
+                id: i.id, label: i.invite_code, sub: i.email || 'shared code',
+                organizer: orgLabel(i.bookie_id), route: null,
+              })),
+            });
+          }
+        }
+
+        return json({ view, query: q, is_uuid: isUuid, groups });
+      }
+
+      // ── US-003: an organizer and their whole world ───────────────────────
+      case 'organizer_detail': {
+        const id = String(body.id ?? '').toLowerCase();
+        const b: any = bookieById.get(id);
+        if (!b) return json({ error: 'Organizer not found' }, 404);
+
+        const mine = (players as any[]).filter((p) => String(p.bookie_id ?? '').toLowerCase() === id);
+        const { data: bets } = await client
+          .from('bets')
+          .select('id, player_id, event_id, side, market, odds, stake, status, is_parlay, parlay_legs, ticket_id, created_at, grade_result')
+          .eq('bookie_id', b.id)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        const { data: ledger } = await client
+          .from('ledger_entries')
+          .select('id, player_id, amount, type, description, created_at')
+          .eq('bookie_id', b.id)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        return json({
+          view,
+          organizer: {
+            ...b,
+            members: mine.filter((p) => p.status !== 'archived').length,
+            balance_owed: Math.round(
+              mine.reduce((s, p) => s + (balanceByPlayer.get(String(p.id).toLowerCase()) ?? 0), 0) * 100) / 100,
+          },
+          members: mine.map((p) => ({
+            id: p.id, name: p.display_name || p.name, email: p.email, status: p.status,
+            credit_limit: p.credit_limit, win_limit: p.win_limit,
+            balance_owed: balanceByPlayer.get(String(p.id).toLowerCase()) ?? 0,
+          })),
+          invites: (invites as any[])
+            .filter((i) => String(i.bookie_id ?? '').toLowerCase() === id && !i.claimed_at)
+            .map((i) => ({ id: i.id, invite_code: i.invite_code, email: i.email, expires_at: i.expires_at })),
+          picks: (bets ?? []).map((x: any) => ({ ...x, member: memberLabel(x.player_id) })),
+          ledger: (ledger ?? []).map((x: any) => ({ ...x, member: memberLabel(x.player_id) })),
+        });
+      }
+
+      // ── US-004: trace one member without writing a join ──────────────────
+      case 'member_detail': {
+        const id = String(body.id ?? '').toLowerCase();
+        const p: any = playerById.get(id);
+        if (!p) return json({ error: 'Member not found' }, 404);
+
+        const { data: bets } = await client
+          .from('bets')
+          .select('id, event_id, side, market, odds, stake, status, is_parlay, parlay_legs, ticket_id, created_at, grade_result')
+          .eq('player_id', p.id)
+          .order('created_at', { ascending: false })
+          .limit(100);
+        const { data: ledger } = await client
+          .from('ledger_entries')
+          .select('id, amount, type, description, created_at, bet_id')
+          .eq('player_id', p.id)
+          .order('created_at', { ascending: true });
+
+        // Running balance, oldest first, so a number can be traced to the entry
+        // that produced it rather than inferred from a total.
+        let running = 0;
+        const chain = (ledger ?? []).map((e: any) => {
+          running += Number(e.amount) || 0;
+          return { ...e, running_balance: Math.round(running * 100) / 100 };
+        }).reverse();
+
+        return json({
+          view,
+          member: {
+            ...p,
+            name: p.display_name || p.name,
+            organizer: orgLabel(p.bookie_id),
+            balance_owed: balanceByPlayer.get(id) ?? 0,
+            open_stake: (bets ?? [])
+              .filter((b: any) => b.status === 'pending' || b.status === 'accepted')
+              .reduce((s: number, b: any) => s + (Number(b.stake) || 0), 0),
+          },
+          picks: bets ?? [],
+          ledger: chain,
+        });
+      }
+
+      // ── US-004: one pick, with its siblings if it is a parlay ────────────
+      case 'pick_detail': {
+        const id = String(body.id ?? '').toLowerCase();
+        const { data: bet } = await client
+          .from('bets')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+        if (!bet) return json({ error: 'Pick not found' }, 404);
+
+        // Legs of a parlay are rows sharing a ticket_id, including this one.
+        let legs: any[] = [];
+        if (bet.ticket_id) {
+          const { data } = await client.from('bets').select('*').eq('ticket_id', bet.ticket_id);
+          legs = data ?? [];
+        }
+
+        const eventIds = Array.from(new Set([bet, ...legs].map((b) => b.event_id).filter(Boolean)));
+        const eventById = new Map<string, any>();
+        if (eventIds.length) {
+          const { data } = await client
+            .from('events')
+            .select('id, away_team, home_team, start_time, status, away_score, home_score, league, sport')
+            .in('id', eventIds);
+          for (const e of data ?? []) eventById.set(String(e.id).toLowerCase(), e);
+        }
+        const withEvent = (b: any) => ({
+          ...b,
+          event: b.event_id
+            ? (eventById.get(String(b.event_id).toLowerCase()) ?? { id: b.event_id, missing: true })
+            : null,
+        });
+
+        const { data: ledger } = await client
+          .from('ledger_entries')
+          .select('id, amount, type, description, created_at')
+          .eq('bet_id', bet.id);
+
+        return json({
+          view,
+          pick: {
+            ...withEvent(bet),
+            organizer: orgLabel(bet.bookie_id),
+            member: memberLabel(bet.player_id),
+          },
+          legs: legs.filter((l) => l.id !== bet.id).map(withEvent),
+          ledger: ledger ?? [],
+        });
+      }
+
+      // ── US-007: the integrity checks that have already caught real bugs ──
+      case 'data_quality': {
+        // Expressed as SQL rather than pulled into memory: these are aggregate
+        // questions over the events and bets tables, which are far larger than
+        // everything else this function reads.
+        const checks: Array<{ key: string; label: string; note: string; sql: string }> = [
+          {
+            key: 'duplicate_events',
+            label: 'Duplicate events by external_id',
+            note: 'Should be 0 since migration 032 added the unique index. Mass duplication once put 25,133 rows behind 5,964 real games.',
+            sql: `SELECT external_id, count(*) AS copies, min(created_at) AS first_seen
+                  FROM events WHERE external_id IS NOT NULL
+                  GROUP BY external_id HAVING count(*) > 1
+                  ORDER BY count(*) DESC`,
+          },
+          {
+            key: 'orphan_bets',
+            label: 'Picks referencing a missing event',
+            note: 'A pick whose event row is gone cannot be graded or displayed.',
+            sql: `SELECT b.id, b.bookie_id, b.player_id, b.event_id, b.status, b.stake, b.created_at
+                  FROM bets b LEFT JOIN events e ON e.id = b.event_id
+                  WHERE b.event_id IS NOT NULL AND e.id IS NULL
+                  ORDER BY b.created_at DESC`,
+          },
+          {
+            key: 'markets_on_final',
+            label: 'Markets still attached to finished games',
+            note: 'The prune sweep should keep this near 0; growth means a finalisation path is not being swept.',
+            sql: `SELECT m.id, m.event_id, m.type, e.away_team, e.home_team, e.status
+                  FROM markets m JOIN events e ON e.id = m.event_id
+                  WHERE e.status = 'final' AND e.away_team <> 'Outright'
+                  ORDER BY m.updated_at DESC`,
+          },
+          {
+            key: 'stale_scheduled',
+            label: 'Games past start still marked scheduled',
+            note: 'Either the score refresh missed them or they never started. Members can still see them as bettable.',
+            sql: `SELECT id, away_team, home_team, start_time, status, league
+                  FROM events
+                  WHERE status = 'scheduled' AND start_time < now() - interval '6 hours'
+                    AND away_team <> 'Outright'
+                  ORDER BY start_time DESC`,
+          },
+          {
+            key: 'unlinked_accounts',
+            label: 'Accounts that are neither organizer nor member',
+            note: 'Signed up and stranded — the shape that left three invitees as their own organizers in August.',
+            sql: `SELECT u.id, u.email, u.created_at, u.last_sign_in_at
+                  FROM auth.users u
+                  LEFT JOIN bookies b ON b.auth_user_id = u.id
+                  LEFT JOIN players p ON p.auth_user_id = u.id
+                  WHERE b.id IS NULL AND p.id IS NULL
+                  ORDER BY u.created_at DESC`,
+          },
+        ];
+
+        const results = [];
+        for (const c of checks) {
+          const { data, error } = await client.rpc('admin_run_select', {
+            p_query: c.sql, p_max_rows: 100,
+          });
+          if (error) {
+            results.push({ ...c, sql: undefined, error: error.message, unavailable: true });
+            continue;
+          }
+          results.push({
+            key: c.key, label: c.label, note: c.note,
+            error: (data as any)?.error ?? null,
+            count: (data as any)?.row_count ?? 0,
+            truncated: (data as any)?.truncated ?? false,
+            rows: (data as any)?.rows ?? [],
+          });
+        }
+
+        // The hash chain has its own validator from migration 018; run it for
+        // every ledger that actually has entries.
+        const { data: chainPairs, error: pairsError } = await client
+          .rpc('admin_run_select', {
+            p_query: `SELECT DISTINCT bookie_id, player_id FROM ledger_entries`,
+            p_max_rows: 500,
+          });
+        const bad: unknown[] = [];
+        let checked = 0;
+        // A check that could not run must not report clean. Without this the
+        // pair list came back empty from a failed RPC and the chain check
+        // announced "0 problems" having verified nothing — the most dangerous
+        // possible output for an integrity check.
+        if (pairsError) {
+          results.push({
+            key: 'ledger_chain',
+            label: 'Ledger hash-chain validity',
+            note: 'Could not run — the ledger pair list is unavailable.',
+            error: pairsError.message,
+            unavailable: true,
+            count: null,
+            rows: [],
+          });
+          return json({ view, checks: results });
+        }
+        for (const pair of ((chainPairs as any)?.rows ?? [])) {
+          const { data: verdict } = await client.rpc('validate_ledger_chain', {
+            p_bookie_id: pair.bookie_id, p_player_id: pair.player_id,
+          });
+          checked++;
+          if (verdict && (verdict as any).valid === false) {
+            bad.push({ ...pair, ...(verdict as any), member: memberLabel(pair.player_id), organizer: orgLabel(pair.bookie_id) });
+          }
+        }
+        results.push({
+          key: 'ledger_chain',
+          label: 'Ledger hash-chain validity',
+          note: `Tamper-evident chain from migration 017/018. ${checked} ledgers checked.`,
+          count: bad.length,
+          rows: bad,
+        });
+
+        return json({ view, checks: results });
+      }
+
+      // ── US-006: the escape hatch ─────────────────────────────────────────
+      case 'sql': {
+        const sql = String(body.sql ?? '').trim();
+        if (!sql) return json({ error: 'Empty query' }, 400);
+
+        const { data, error } = await client.rpc('admin_run_select', {
+          p_query: sql,
+          p_max_rows: Math.min(Number(body.max_rows) || 500, 5000),
+        });
+        if (error) {
+          // A missing function means migration 038 has not been applied.
+          return json({ error: error.message, needs_migration: /admin_run_select/.test(error.message) }, 400);
+        }
+        return json({ view, ...(data as Record<string, unknown>) });
       }
 
       default:

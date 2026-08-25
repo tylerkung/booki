@@ -40,14 +40,19 @@ const uuid = (id) => id
     ? `<code class="admin-uuid" title="${esc(id)}" data-copy="${esc(id)}">${esc(String(id).slice(0, 8))}</code>`
     : '—';
 
-/** US-002: a foreign key renders as a human label, never a bare UUID. */
-const entity = (e, fallback = '—') => {
+/** US-002: a foreign key renders as a human label, never a bare UUID — and
+ *  every resolved label is a link to that record's own view. `kind` is the
+ *  detail route it belongs to; omit it for entities with no page yet. */
+const entity = (e, fallback = '—', kind = null) => {
     if (!e) return fallback;
     if (e.missing) return `<span class="admin-missing" title="${esc(e.id)}">missing event</span>`;
     const name = e.name || e.label;
     if (!name) return uuid(e.id);
     const sub = e.email && e.email !== name ? `<span class="admin-sub">${esc(e.email)}</span>` : '';
-    return `<span class="admin-entity">${esc(name)}${sub}</span>`;
+    const inner = `${esc(name)}${sub}`;
+    return kind && e.id
+        ? `<a class="admin-entity admin-link" href="#/${kind}/${esc(e.id)}">${inner}</a>`
+        : `<span class="admin-entity">${inner}</span>`;
 };
 
 const badge = (text, tone = 'muted') =>
@@ -67,7 +72,7 @@ const VIEWS = [
                     : r.role === 'unlinked' ? 'warning' : 'danger';
                 return badge(r.role, tone);
             } },
-            { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer) },
+            { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer, '—', 'organizer') },
             { key: 'balance_owed', label: 'Balance', render: (r) => r.balance_owed === null ? '—' : money(r.balance_owed), numeric: true },
             { key: 'email_confirmed', label: 'Verified', render: (r) => r.email_confirmed ? '✓' : badge('no', 'warning') },
             { key: 'last_sign_in_at', label: 'Last seen', render: (r) => date(r.last_sign_in_at) },
@@ -78,7 +83,7 @@ const VIEWS = [
     {
         id: 'organizers', label: 'Organizers',
         columns: [
-            { key: 'name', label: 'Organizer', render: (r) => entity({ name: r.name, email: r.email }) },
+            { key: 'name', label: 'Organizer', render: (r) => entity({ id: r.id, name: r.name, email: r.email }, '—', 'organizer') },
             { key: 'tier', label: 'Tier', render: (r) => badge(r.tier || 'free', r.tier === 'pro' ? 'accent' : 'muted') },
             { key: 'members', label: 'Members', numeric: true },
             { key: 'pending_invites', label: 'Invites', numeric: true },
@@ -92,8 +97,8 @@ const VIEWS = [
     {
         id: 'members', label: 'Members',
         columns: [
-            { key: 'name', label: 'Member', render: (r) => entity({ name: r.name, email: r.email }) },
-            { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer) },
+            { key: 'name', label: 'Member', render: (r) => entity({ id: r.id, name: r.name, email: r.email }, '—', 'member') },
+            { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer, '—', 'organizer') },
             { key: 'status', label: 'Status', render: (r) => badge(r.status || '—', r.status === 'active' ? 'success' : 'muted') },
             { key: 'linked', label: 'Linked', render: (r) => r.linked ? '✓' : badge('no account', 'warning') },
             { key: 'balance_owed', label: 'Balance', render: (r) => money(r.balance_owed), numeric: true },
@@ -108,7 +113,7 @@ const VIEWS = [
             { key: 'invite_code', label: 'Code', render: (r) => `<code class="admin-uuid" data-copy="${esc(r.invite_code)}">${esc(r.invite_code)}</code>` },
             { key: 'kind', label: 'Kind', render: (r) => badge(r.kind, r.kind === 'email' ? 'accent' : 'muted') },
             { key: 'email', label: 'Sent to', render: (r) => r.email ? esc(r.email) : '<span class="admin-sub">shared code</span>' },
-            { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer) },
+            { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer, '—', 'organizer') },
             { key: 'age_days', label: 'Age', render: (r) => r.age_days == null ? '—' : `${r.age_days}d`, numeric: true },
             { key: 'expired', label: 'State', render: (r) => r.expired ? badge('expired', 'danger') : badge('pending', 'warning') },
             { key: 'expires_at', label: 'Expires', render: (r) => date(r.expires_at) },
@@ -117,8 +122,8 @@ const VIEWS = [
     {
         id: 'open_bets', label: 'Outstanding picks',
         columns: [
-            { key: 'member', label: 'Member', render: (r) => entity(r.member) },
-            { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer) },
+            { key: 'member', label: 'Member', render: (r) => entity(r.member, '—', 'member') },
+            { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer, '—', 'organizer') },
             { key: 'side', label: 'Pick', render: (r) => {
                 const legs = r.is_parlay ? `<span class="admin-sub">${r.parlay_legs}-leg multi</span>` : '';
                 return `<span class="admin-entity">${esc(r.side || r.market || '—')}${legs}</span>`;
@@ -133,8 +138,8 @@ const VIEWS = [
     {
         id: 'balances', label: 'Balances',
         columns: [
-            { key: 'name', label: 'Member', render: (r) => entity({ name: r.name, email: r.email }) },
-            { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer) },
+            { key: 'name', label: 'Member', render: (r) => entity({ id: r.id, name: r.name, email: r.email }, '—', 'member') },
+            { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer, '—', 'organizer') },
             { key: 'balance_owed', label: 'Settled', render: (r) => money(r.balance_owed), numeric: true },
             { key: 'open_stake', label: 'Open stake', render: (r) => money(r.open_stake), numeric: true },
             { key: 'credit_used', label: 'Credit used', render: (r) => money(r.credit_used), numeric: true },
@@ -148,8 +153,16 @@ const VIEWS = [
     },
 ];
 
+const TITLES = {
+    organizer: 'Organizer', member: 'Member', pick: 'Pick',
+    search: 'Search', data_quality: 'Data quality', sql: 'SQL',
+};
+
 function adminApp() {
     return {
+        // exposed so the template can format without duplicating helpers
+        fmt: { money, date, dateTime, odds, esc, entity, badge, uuid },
+
         supabase: null,
         session: null,
         adminEmail: '',
@@ -159,6 +172,13 @@ function adminApp() {
 
         views: VIEWS,
         route: 'overview',
+        routeId: null,
+        detail: null,
+        searchGroups: [],
+        searchTerm: '',
+        checks: [],
+        sqlText: 'select status, count(*)\nfrom bets\ngroup by status\norder by 2 desc',
+        sqlResult: null,
         rows: [],
         stats: null,
         meta: {},
@@ -179,9 +199,9 @@ function adminApp() {
             }
             this.adminEmail = this.session.user.email || '';
 
-            this.route = (window.location.hash.replace('#/', '') || 'overview');
+            this.applyHash();
             window.addEventListener('hashchange', () => {
-                this.route = window.location.hash.replace('#/', '') || 'overview';
+                this.applyHash();
                 this.query = '';
                 this.page = 1;
                 this.sort = { key: null, dir: -1 };
@@ -200,11 +220,23 @@ function adminApp() {
             await this.load();
         },
 
-        get currentView() {
-            return VIEWS.find((v) => v.id === this.route) || VIEWS[0];
+        /** A hash is either a view (#/members) or a record (#/member/<uuid>). */
+        applyHash() {
+            const raw = window.location.hash.replace(/^#\//, '');
+            const [head, ...rest] = raw.split('/');
+            this.route = head || 'overview';
+            this.routeId = rest.join('/') || null;
         },
 
-        async post(view) {
+        get currentView() {
+            return VIEWS.find((v) => v.id === this.route) || { id: this.route, label: TITLES[this.route] || this.route, columns: [] };
+        },
+
+        get isTableView() {
+            return VIEWS.some((v) => v.id === this.route) && this.route !== 'overview';
+        },
+
+        async post(view, extra = {}) {
             return fetch(`${SUPABASE_URL}/functions/v1/admin_query`, {
                 method: 'POST',
                 headers: {
@@ -212,14 +244,35 @@ function adminApp() {
                     'apikey': SUPABASE_ANON_KEY,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ view, include_test: this.includeTest }),
+                body: JSON.stringify({ view, include_test: this.includeTest, ...extra }),
             });
+        },
+
+        /** Route name -> the edge function view and its parameters. */
+        requestFor() {
+            switch (this.route) {
+                case 'organizer': return ['organizer_detail', { id: this.routeId }];
+                case 'member':    return ['member_detail', { id: this.routeId }];
+                case 'pick':      return ['pick_detail', { id: this.routeId }];
+                case 'search':    return ['search', { q: this.searchTerm }];
+                case 'sql':       return ['sql', { sql: this.sqlText }];
+                default:          return [this.route, {}];
+            }
         },
 
         async load() {
             this.loading = true;
             try {
-                let res = await this.post(this.route);
+                const [view, extra] = this.requestFor();
+
+                // The SQL runner must not fire on navigation — it only runs
+                // when the operator asks for it.
+                if (view === 'sql' && !this._runSql) { this.loading = false; return; }
+                if (view === 'search' && !this.searchTerm) {
+                    this.searchGroups = []; this.loading = false; return;
+                }
+
+                let res = await this.post(view, extra);
 
                 // 401 and 404 mean different things and must not share a
                 // branch. A Supabase access token lasts an hour, so leaving
@@ -247,7 +300,16 @@ function adminApp() {
                 }
 
                 const body = await res.json();
+
+                // The SQL runner reports its own errors in the results pane —
+                // a syntax error is an expected outcome there, not a failure
+                // of the page.
+                if (view === 'sql') { this.sqlResult = body; return; }
                 if (body.error) throw new Error(body.error);
+
+                if (view === 'search') { this.searchGroups = body.groups || []; return; }
+                if (view === 'data_quality') { this.checks = body.checks || []; return; }
+                if (view.endsWith('_detail')) { this.detail = body; return; }
 
                 this.rows = body.rows || [];
                 this.stats = body.stats || null;
@@ -354,6 +416,16 @@ function adminApp() {
             a.download = `booki-${this.route}-${new Date().toISOString().slice(0, 10)}.csv`;
             a.click();
             URL.revokeObjectURL(a.href);
+        },
+
+        async runSql() {
+            this._runSql = true;
+            try { await this.load(); } finally { this._runSql = false; }
+        },
+
+        async runSearch() {
+            window.location.hash = '#/search';
+            await this.load();
         },
 
         toast(message, type = 'success') {

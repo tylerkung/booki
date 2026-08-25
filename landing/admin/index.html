@@ -51,6 +51,8 @@
                         <a :href="'#/' + v.id" :class="{ active: route === v.id }" x-text="v.label"></a>
                     </li>
                 </template>
+                <li><a href="#/data_quality" :class="{ active: route === 'data_quality' }">Data quality</a></li>
+                <li><a href="#/sql" :class="{ active: route === 'sql' }">SQL</a></li>
             </ul>
         </nav>
         <div class="sidebar-bottom">
@@ -63,6 +65,15 @@
     </aside>
 
     <main class="main-content">
+        <!-- US-005: one box, always present, that finds a person or a pick.
+             Pasting a UUID from a log line and learning what it is and whose
+             it is is the highest-value interaction in this tool. -->
+        <form class="admin-global-search" @submit.prevent="runSearch()">
+            <input class="search-input" type="search" x-model="searchTerm"
+                   placeholder="Search anyone or anything — name, email, team, or a pasted UUID">
+            <button class="chip" type="submit" :disabled="searchTerm.trim().length < 2">Search</button>
+        </form>
+
         <div class="page-header">
             <h1 x-text="currentView.label"></h1>
             <p x-show="!loading && rows.length" x-text="summaryLine"></p>
@@ -82,8 +93,281 @@
             </div>
         </div>
 
+        <!-- Record detail (US-003 / US-004) -->
+        <div x-show="['organizer','member','pick'].includes(route)" x-cloak>
+            <template x-if="detail && detail.organizer">
+                <div>
+                    <div class="card" style="margin-bottom:var(--s-lg);">
+                        <h2 class="t-title" x-text="detail.organizer.name"></h2>
+                        <p class="t-body-muted" x-text="detail.organizer.email"></p>
+                        <div class="stats-grid" style="margin-top:var(--s-lg);">
+                            <div class="stat-tile"><div class="stat-label">Tier</div><div class="stat-value" x-text="detail.organizer.tier || 'free'"></div></div>
+                            <div class="stat-tile"><div class="stat-label">Members</div><div class="stat-value" x-text="detail.organizer.members"></div></div>
+                            <div class="stat-tile"><div class="stat-label">Owed</div><div class="stat-value" x-text="fmt.money(detail.organizer.balance_owed)"></div></div>
+                            <div class="stat-tile"><div class="stat-label">Subscription</div><div class="stat-value" x-text="detail.organizer.subscription_status || '—'"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-bottom:var(--s-lg);" x-show="detail.members.length">
+                        <div class="card-header"><span class="card-title">Members</span></div>
+                        <div class="table-responsive"><table class="data-table admin-table">
+                            <thead><tr><th>Member</th><th>Status</th><th>Balance</th><th>Credit</th><th>Win limit</th></tr></thead>
+                            <tbody><template x-for="m in detail.members" :key="m.id"><tr>
+                                <td data-label="Member" x-html="fmt.entity({ id: m.id, name: m.name, email: m.email }, '—', 'member')"></td>
+                                <td data-label="Status" x-text="m.status"></td>
+                                <td data-label="Balance" x-text="fmt.money(m.balance_owed)"></td>
+                                <td data-label="Credit" x-text="fmt.money(m.credit_limit)"></td>
+                                <td data-label="Win limit" x-text="m.win_limit == null ? '—' : fmt.money(m.win_limit)"></td>
+                            </tr></template></tbody>
+                        </table></div>
+                    </div>
+
+                    <div class="card" style="margin-bottom:var(--s-lg);" x-show="detail.invites.length">
+                        <div class="card-header"><span class="card-title">Pending invites</span></div>
+                        <div class="table-responsive"><table class="data-table admin-table">
+                            <thead><tr><th>Code</th><th>Sent to</th><th>Expires</th></tr></thead>
+                            <tbody><template x-for="i in detail.invites" :key="i.id"><tr>
+                                <td data-label="Code"><code class="admin-uuid" :data-copy="i.invite_code" x-text="i.invite_code"></code></td>
+                                <td data-label="Sent to" x-text="i.email || 'shared code'"></td>
+                                <td data-label="Expires" x-text="fmt.date(i.expires_at)"></td>
+                            </tr></template></tbody>
+                        </table></div>
+                    </div>
+
+                    <div class="card" style="margin-bottom:var(--s-lg);" x-show="detail.picks.length">
+                        <div class="card-header"><span class="card-title">Recent picks</span></div>
+                        <div class="table-responsive"><table class="data-table admin-table">
+                            <thead><tr><th>Member</th><th>Pick</th><th>Odds</th><th>Stake</th><th>Status</th><th>Placed</th></tr></thead>
+                            <tbody><template x-for="b in detail.picks" :key="b.id"><tr>
+                                <td data-label="Member" x-html="fmt.entity(b.member, '—', 'member')"></td>
+                                <td data-label="Pick"><a class="admin-link" :href="'#/pick/' + b.id" x-text="b.side || b.market || 'Pick'"></a></td>
+                                <td data-label="Odds" x-text="fmt.odds(b.odds)"></td>
+                                <td data-label="Stake" x-text="fmt.money(b.stake)"></td>
+                                <td data-label="Status" x-text="b.status"></td>
+                                <td data-label="Placed" x-text="fmt.dateTime(b.created_at)"></td>
+                            </tr></template></tbody>
+                        </table></div>
+                    </div>
+
+                    <div class="card" x-show="detail.ledger.length">
+                        <div class="card-header"><span class="card-title">Recent ledger</span></div>
+                        <div class="table-responsive"><table class="data-table admin-table">
+                            <thead><tr><th>Member</th><th>Type</th><th>Amount</th><th>Description</th><th>When</th></tr></thead>
+                            <tbody><template x-for="e in detail.ledger" :key="e.id"><tr>
+                                <td data-label="Member" x-html="fmt.entity(e.member, '—', 'member')"></td>
+                                <td data-label="Type" x-text="e.type"></td>
+                                <td data-label="Amount" x-text="fmt.money(e.amount)"></td>
+                                <td data-label="Description" x-text="e.description || '—'"></td>
+                                <td data-label="When" x-text="fmt.dateTime(e.created_at)"></td>
+                            </tr></template></tbody>
+                        </table></div>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="detail && detail.member">
+                <div>
+                    <div class="card" style="margin-bottom:var(--s-lg);">
+                        <h2 class="t-title" x-text="detail.member.name"></h2>
+                        <p class="t-body-muted" x-text="detail.member.email"></p>
+                        <p class="admin-inline" style="margin-top:var(--s-xs);">
+                            <span class="t-body-muted">Organizer</span>
+                            <span x-html="fmt.entity(detail.member.organizer, '—', 'organizer')"></span>
+                        </p>
+                        <div class="stats-grid" style="margin-top:var(--s-lg);">
+                            <div class="stat-tile"><div class="stat-label">Balance</div><div class="stat-value" x-text="fmt.money(detail.member.balance_owed)"></div></div>
+                            <div class="stat-tile"><div class="stat-label">Open stake</div><div class="stat-value" x-text="fmt.money(detail.member.open_stake)"></div></div>
+                            <div class="stat-tile"><div class="stat-label">Credit limit</div><div class="stat-value" x-text="fmt.money(detail.member.credit_limit)"></div></div>
+                            <div class="stat-tile"><div class="stat-label">Win limit</div><div class="stat-value" x-text="detail.member.win_limit == null ? '—' : fmt.money(detail.member.win_limit)"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-bottom:var(--s-lg);" x-show="detail.picks.length">
+                        <div class="card-header"><span class="card-title">Picks</span><span class="t-body-muted" x-text="detail.picks.length"></span></div>
+                        <div class="table-responsive"><table class="data-table admin-table">
+                            <thead><tr><th>Pick</th><th>Odds</th><th>Stake</th><th>Status</th><th>Result</th><th>Placed</th></tr></thead>
+                            <tbody><template x-for="b in detail.picks" :key="b.id"><tr>
+                                <td data-label="Pick"><a class="admin-link" :href="'#/pick/' + b.id" x-text="b.side || b.market || 'Pick'"></a></td>
+                                <td data-label="Odds" x-text="fmt.odds(b.odds)"></td>
+                                <td data-label="Stake" x-text="fmt.money(b.stake)"></td>
+                                <td data-label="Status" x-text="b.status"></td>
+                                <td data-label="Result" x-text="b.grade_result || '—'"></td>
+                                <td data-label="Placed" x-text="fmt.dateTime(b.created_at)"></td>
+                            </tr></template></tbody>
+                        </table></div>
+                    </div>
+
+                    <div class="card" x-show="detail.ledger.length">
+                        <div class="card-header"><span class="card-title">Ledger</span>
+                            <span class="t-body-muted">newest first, running balance oldest-first</span></div>
+                        <div class="table-responsive"><table class="data-table admin-table">
+                            <thead><tr><th>Type</th><th>Amount</th><th>Running</th><th>Description</th><th>When</th></tr></thead>
+                            <tbody><template x-for="e in detail.ledger" :key="e.id"><tr>
+                                <td data-label="Type" x-text="e.type"></td>
+                                <td data-label="Amount" x-text="fmt.money(e.amount)"></td>
+                                <td data-label="Running" x-text="fmt.money(e.running_balance)"></td>
+                                <td data-label="Description" x-text="e.description || '—'"></td>
+                                <td data-label="When" x-text="fmt.dateTime(e.created_at)"></td>
+                            </tr></template></tbody>
+                        </table></div>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="detail && detail.pick">
+                <div>
+                    <div class="card" style="margin-bottom:var(--s-lg);">
+                        <h2 class="t-title" x-text="detail.pick.side || detail.pick.market || 'Pick'"></h2>
+                        <p class="t-body-muted" x-text="detail.pick.event ? (detail.pick.event.away_team + ' @ ' + detail.pick.event.home_team) : '—'"></p>
+                        <p class="admin-inline" style="margin-top:var(--s-xs);">
+                            <span x-html="fmt.entity(detail.pick.member, '—', 'member')"></span>
+                            <span class="t-body-muted">·</span>
+                            <span x-html="fmt.entity(detail.pick.organizer, '—', 'organizer')"></span>
+                        </p>
+                        <div class="stats-grid" style="margin-top:var(--s-lg);">
+                            <div class="stat-tile"><div class="stat-label">Stake</div><div class="stat-value" x-text="fmt.money(detail.pick.stake)"></div></div>
+                            <div class="stat-tile"><div class="stat-label">Odds</div><div class="stat-value" x-text="fmt.odds(detail.pick.odds)"></div></div>
+                            <div class="stat-tile"><div class="stat-label">Status</div><div class="stat-value" x-text="detail.pick.status"></div></div>
+                            <div class="stat-tile"><div class="stat-label">Result</div><div class="stat-value" x-text="detail.pick.grade_result || '—'"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-bottom:var(--s-lg);" x-show="detail.legs.length">
+                        <div class="card-header"><span class="card-title">Sibling legs</span>
+                            <span class="t-body-muted">rows sharing this ticket_id</span></div>
+                        <div class="table-responsive"><table class="data-table admin-table">
+                            <thead><tr><th>Leg</th><th>Game</th><th>Odds</th><th>Status</th><th>Result</th></tr></thead>
+                            <tbody><template x-for="l in detail.legs" :key="l.id"><tr>
+                                <td data-label="Leg"><a class="admin-link" :href="'#/pick/' + l.id" x-text="l.side || l.market"></a></td>
+                                <td data-label="Game" x-text="l.event ? (l.event.away_team + ' @ ' + l.event.home_team) : '—'"></td>
+                                <td data-label="Odds" x-text="fmt.odds(l.odds)"></td>
+                                <td data-label="Status" x-text="l.status"></td>
+                                <td data-label="Result" x-text="l.grade_result || '—'"></td>
+                            </tr></template></tbody>
+                        </table></div>
+                    </div>
+
+                    <div class="card" x-show="detail.ledger.length">
+                        <div class="card-header"><span class="card-title">Linked ledger entries</span></div>
+                        <div class="table-responsive"><table class="data-table admin-table">
+                            <thead><tr><th>Type</th><th>Amount</th><th>Description</th><th>When</th></tr></thead>
+                            <tbody><template x-for="e in detail.ledger" :key="e.id"><tr>
+                                <td data-label="Type" x-text="e.type"></td>
+                                <td data-label="Amount" x-text="fmt.money(e.amount)"></td>
+                                <td data-label="Description" x-text="e.description || '—'"></td>
+                                <td data-label="When" x-text="fmt.dateTime(e.created_at)"></td>
+                            </tr></template></tbody>
+                        </table></div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Search results -->
+        <div x-show="route === 'search'" x-cloak>
+            <template x-if="!loading && !searchGroups.length && searchTerm">
+                <div class="card"><div class="empty-state"><p>Nothing matches that.</p></div></div>
+            </template>
+            <template x-for="g in searchGroups" :key="g.type">
+                <div class="card" style="margin-bottom:var(--s-lg);">
+                    <div class="card-header"><span class="card-title" x-text="g.type"></span>
+                        <span class="t-body-muted" x-text="g.rows.length"></span></div>
+                    <template x-for="r in g.rows" :key="r.id">
+                        <a class="admin-result" :href="r.route ? '#/' + r.route : '#'"
+                           @click="if (!r.route) $event.preventDefault()">
+                            <div>
+                                <div class="t-body-strong" x-text="r.label"></div>
+                                <div class="admin-sub" x-text="r.sub"></div>
+                            </div>
+                            <div class="admin-sub" x-html="r.organizer ? fmt.entity(r.organizer) : ''"></div>
+                        </a>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        <!-- Data quality -->
+        <div x-show="route === 'data_quality'" x-cloak>
+            <template x-for="c in checks" :key="c.key">
+                <div class="card" style="margin-bottom:var(--s-lg);">
+                    <div class="card-header">
+                        <span class="card-title" x-text="c.label"></span>
+                        <span class="badge" :class="c.error ? 'badge-danger' : (c.count ? 'badge-warning' : 'badge-success')"
+                              x-text="c.error ? 'unavailable' : (c.count + (c.truncated ? '+' : ''))"></span>
+                    </div>
+                    <p class="t-body-muted" style="margin-bottom:var(--s-md);" x-text="c.note"></p>
+                    <p class="admin-missing" x-show="c.error" x-text="c.error"></p>
+                    <div class="table-responsive" x-show="c.rows && c.rows.length">
+                        <table class="data-table admin-table">
+                            <thead><tr>
+                                <template x-for="k in Object.keys(c.rows[0] || {})" :key="k">
+                                    <th x-text="k"></th>
+                                </template>
+                            </tr></thead>
+                            <tbody>
+                                <template x-for="(row, i) in c.rows.slice(0, 20)" :key="i">
+                                    <tr>
+                                        <template x-for="k in Object.keys(c.rows[0] || {})" :key="k">
+                                            <td :data-label="k" x-text="typeof row[k] === 'object' ? JSON.stringify(row[k]) : row[k]"></td>
+                                        </template>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- SQL runner -->
+        <div x-show="route === 'sql'" x-cloak>
+            <div class="card" style="margin-bottom:var(--s-lg);">
+                <p class="t-body-muted" style="margin-bottom:var(--s-md);">
+                    SELECT only. Enforced by a read-only transaction and subquery wrapping, so a
+                    data-modifying CTE is rejected by Postgres itself rather than by pattern matching.
+                    Capped at 500 rows and a 5&nbsp;second statement timeout.
+                </p>
+                <textarea class="admin-sql" rows="7" x-model="sqlText" spellcheck="false"
+                          @keydown.meta.enter="runSql()" @keydown.ctrl.enter="runSql()"></textarea>
+                <div class="filter-bar" style="margin-top:var(--s-md);">
+                    <button class="chip" @click="runSql()" :disabled="loading">Run (⌘↵)</button>
+                    <span class="t-micro" x-show="sqlResult && sqlResult.elapsed_ms != null"
+                          x-text="`${sqlResult.row_count} rows · ${sqlResult.elapsed_ms} ms${sqlResult.truncated ? ' · truncated' : ''}`"></span>
+                </div>
+            </div>
+
+            <div class="card" x-show="sqlResult && sqlResult.error" style="margin-bottom:var(--s-lg);">
+                <div class="card-header"><span class="card-title">Error</span>
+                    <span class="badge badge-danger" x-show="sqlResult && sqlResult.read_only_violation">read-only</span></div>
+                <pre class="admin-sql-error" x-text="sqlResult && (sqlResult.error + (sqlResult.sqlstate ? ' [' + sqlResult.sqlstate + ']' : ''))"></pre>
+                <p class="t-body-muted" x-show="sqlResult && sqlResult.needs_migration">
+                    Migration 038 has not been applied yet.
+                </p>
+            </div>
+
+            <div class="card table-responsive" style="padding:0;"
+                 x-show="sqlResult && sqlResult.rows && sqlResult.rows.length">
+                <table class="data-table admin-table">
+                    <thead><tr>
+                        <template x-for="k in Object.keys((sqlResult && sqlResult.rows[0]) || {})" :key="k">
+                            <th x-text="k"></th>
+                        </template>
+                    </tr></thead>
+                    <tbody>
+                        <template x-for="(row, i) in (sqlResult ? sqlResult.rows : [])" :key="i">
+                            <tr>
+                                <template x-for="k in Object.keys(sqlResult.rows[0] || {})" :key="k">
+                                    <td :data-label="k" x-text="row[k] === null ? '—' : (typeof row[k] === 'object' ? JSON.stringify(row[k]) : row[k])"></td>
+                                </template>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Table views -->
-        <div x-show="route !== 'overview'" x-cloak>
+        <div x-show="isTableView" x-cloak>
             <div class="filter-bar" style="margin-bottom:var(--s-lg);">
                 <input class="search-input admin-search" type="search" placeholder="Filter — name, email, organizer, or paste a UUID"
                        x-model="query" @input="page = 1">
