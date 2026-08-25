@@ -323,10 +323,11 @@
         <div x-show="route === 'sql'" x-cloak>
             <div class="card" style="margin-bottom:var(--s-lg);">
                 <p class="t-body-muted" style="margin-bottom:var(--s-md);">
-                    SELECT only. The query runs inside a <code>FROM</code> subquery, so DML, DDL,
-                    a trailing statement and a data-modifying CTE are all rejected by the parser
-                    rather than by keyword matching. A function that writes is not blocked yet.
-                    Capped at 500 rows and a 5&nbsp;second statement timeout.
+                    SELECT only, enforced twice and never by keyword matching. The query runs
+                    inside a <code>FROM</code> subquery, so DML, DDL and a data-modifying CTE are
+                    rejected by the parser — and inside a <code>READ ONLY</code> transaction, so a
+                    write reached through a function call is rejected by the executor. One
+                    statement at a time. Capped at 500 rows and a 5&nbsp;second timeout.
                 </p>
                 <textarea class="admin-sql" rows="7" x-model="sqlText" spellcheck="false"
                           @keydown.meta.enter="runSql()" @keydown.ctrl.enter="runSql()"></textarea>

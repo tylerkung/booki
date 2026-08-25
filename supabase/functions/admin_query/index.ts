@@ -1,3 +1,4 @@
+import { Client as PgClient } from 'https://deno.land/x/postgres@v0.19.3/mod.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 
@@ -66,6 +67,193 @@ async function selectAll<T = Record<string, unknown>>(
     from += PAGE;
   }
   return out;
+}
+
+
+/**
+ * Run one statement inside a genuine READ ONLY transaction.
+ *
+ * Migration 038 blocks writes at the parser, by running the query inside a
+ * FROM subquery — that stops DML, DDL, a trailing statement and a
+ * data-modifying CTE. What it cannot stop is `SELECT some_function()`, which
+ * is a legal subquery, and 17 of this database's 20 public functions are
+ * SECURITY DEFINER. One of them is delete_bookie_data. A read-only ROLE would
+ * not help: SECURITY DEFINER runs as the function's owner, not the caller's.
+ *
+ * A read-only TRANSACTION does help, because the check lives in the executor
+ * and is independent of role — and a function cannot turn it off from the
+ * inside, since setting transaction_read_only to off inside a read-only
+ * transaction is itself an error.
+ *
+ * That mode can only be set on a connection, never inside a plpgsql function
+ * (Postgres: "cannot be set locally in functions"), which is why this opens
+ * its own connection rather than going through PostgREST.
+ */
+/**
+ * Postgres int8 arrives as a JavaScript BigInt, which JSON.stringify throws on
+ * rather than skipping — so a single count(*) took down the whole response.
+ * Rendered as a string beyond Number.MAX_SAFE_INTEGER so a real bigint is not
+ * silently rounded; below that a number keeps the client's formatting working.
+ */
+/**
+ * Is there more than one statement here?
+ *
+ * This endpoint runs exactly one statement. That is a structural rule about
+ * the shape of the input, not a guess at what the SQL does — no keyword list,
+ * no regex for DELETE — so it does not reintroduce the approach the PRD rules
+ * out.
+ *
+ * It exists because the driver does not fail gracefully on a multi-statement
+ * string: `select 1; drop table x` took the isolate down, so the operator saw
+ * a dead request instead of an error message. Nothing executed (the subquery
+ * wrapper's parentheses make it a syntax error, and the table was verified
+ * still present), but an unexplained connection failure is a bad way to learn
+ * you typed two statements.
+ *
+ * Semicolons inside string literals, dollar-quoted blocks and comments are not
+ * separators, so each is skipped rather than counted.
+ */
+function hasMultipleStatements(sql: string): boolean {
+  let i = 0;
+  let seenSeparator = false;
+
+  while (i < sql.length) {
+    const c = sql[i];
+
+    if (c === '-' && sql[i + 1] === '-') {
+      const nl = sql.indexOf('\n', i);
+      i = nl === -1 ? sql.length : nl + 1;
+      continue;
+    }
+    if (c === '/' && sql[i + 1] === '*') {
+      const close = sql.indexOf('*/', i + 2);
+      i = close === -1 ? sql.length : close + 2;
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      const quote = c;
+      i++;
+      while (i < sql.length) {
+        if (sql[i] === quote) {
+          // A doubled quote is an escaped quote, not the end of the literal.
+          if (sql[i + 1] === quote) { i += 2; continue; }
+          i++;
+          break;
+        }
+        i++;
+      }
+      continue;
+    }
+    if (c === '$') {
+      const tag = /^\$[A-Za-z_]*\$/.exec(sql.slice(i));
+      if (tag) {
+        const close = sql.indexOf(tag[0], i + tag[0].length);
+        i = close === -1 ? sql.length : close + tag[0].length;
+        continue;
+      }
+    }
+    if (c === ';') {
+      // A trailing semicolon is fine; anything after it is a second statement.
+      if (sql.slice(i + 1).trim().length > 0) { seenSeparator = true; break; }
+    }
+    i++;
+  }
+  return seenSeparator;
+}
+
+function toJsonSafe(row: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) {
+    if (typeof v === 'bigint') {
+      out[k] = v <= BigInt(Number.MAX_SAFE_INTEGER) && v >= -BigInt(Number.MAX_SAFE_INTEGER)
+        ? Number(v) : v.toString();
+    } else if (v instanceof Date) {
+      out[k] = v.toISOString();
+    } else if (v instanceof Uint8Array) {
+      out[k] = `\\x${Array.from(v).map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+async function runReadOnly(
+  sql: string,
+  maxRows: number,
+  timeoutMs = 5000,
+): Promise<Record<string, unknown>> {
+  const dbUrl = Deno.env.get('SUPABASE_DB_URL');
+  if (!dbUrl) {
+    return { error: 'SUPABASE_DB_URL is not available to this function', no_connection: true };
+  }
+
+  if (hasMultipleStatements(sql)) {
+    return {
+      error: 'Run one statement at a time.',
+      multiple_statements: true,
+      write_blocked: true,
+    };
+  }
+
+  // A trailing semicolon is how most people end a statement, but it lands
+  // inside the wrapper's parentheses and makes it a syntax error. Strip it
+  // rather than making the operator care where their query is embedded.
+  const body = sql.replace(/;\s*$/, '');
+
+  const started = Date.now();
+  const client = new PgClient(dbUrl);
+  try {
+    await client.connect();
+    // READ ONLY must be on the BEGIN itself — it cannot be turned on later in
+    // a transaction that has already run a command.
+    await client.queryArray('BEGIN READ ONLY');
+    await client.queryArray(`SET LOCAL statement_timeout = ${Math.min(Math.max(timeoutMs, 100), 15000)}`);
+
+    // Same subquery wrapping as migration 038: two independent controls, one
+    // at the parser and one in the executor.
+    const wrapped = `SELECT * FROM (${body}) q LIMIT ${Math.min(Math.max(maxRows, 1), 5000)}`;
+
+    // `args: []` forces the EXTENDED query protocol. Without it the driver uses
+    // the simple protocol, which accepts a multi-statement string — and on
+    // `select 1; drop table x` it did not reject cleanly, it took the isolate
+    // down, so the browser saw a connection failure rather than an error. The
+    // extended protocol permits exactly one statement and reports the rest as a
+    // normal server error. (The table was never dropped either way; the
+    // wrapper's parentheses made it a syntax error. The problem was the shape
+    // of the failure, not a breach.)
+    const res = await client.queryObject({ text: wrapped, args: [] });
+
+    return {
+      rows: (res.rows as Record<string, unknown>[]).map(toJsonSafe),
+      row_count: res.rows.length,
+      truncated: res.rows.length >= maxRows,
+      elapsed_ms: Date.now() - started,
+      read_only: true,
+    };
+  } catch (err) {
+    // The driver does not always throw an Error, and a thrown non-Error that
+    // escapes here would surface as a dead connection rather than a message.
+    const message = err instanceof Error
+      ? err.message
+      : (typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : String(err));
+    const code = (err as { fields?: { code?: string } })?.fields?.code ?? null;
+    return {
+      error: message,
+      sqlstate: code,
+      // 25006 read-only, 0A000 nested data-modifying CTE, 42601 a write shape
+      // that could not parse inside the wrapper.
+      write_blocked: ['25006', '0A000', '42601'].includes(String(code)),
+      read_only: true,
+    };
+  } finally {
+    // ROLLBACK rather than COMMIT: nothing should have changed, and if
+    // somehow it did, this is the last chance to discard it.
+    try { await client.queryArray('ROLLBACK'); } catch { /* connection may be gone */ }
+    try { await client.end(); } catch { /* ignore */ }
+  }
 }
 
 Deno.serve(async (req) => {
@@ -795,18 +983,21 @@ Deno.serve(async (req) => {
 
       // ── US-006: the escape hatch ─────────────────────────────────────────
       case 'sql': {
-        const sql = String(body.sql ?? '').trim();
-        if (!sql) return json({ error: 'Empty query' }, 400);
+        const sqlText = String(body.sql ?? '').trim();
+        if (!sqlText) return json({ error: 'Empty query' }, 400);
 
-        const { data, error } = await client.rpc('admin_run_select', {
-          p_query: sql,
-          p_max_rows: Math.min(Number(body.max_rows) || 500, 5000),
-        });
-        if (error) {
-          // A missing function means migration 038 has not been applied.
-          return json({ error: error.message, needs_migration: /admin_run_select/.test(error.message) }, 400);
+        const out = await runReadOnly(sqlText, Math.min(Number(body.max_rows) || 500, 5000));
+
+        // If the connection is unavailable the query is NOT quietly run
+        // through the weaker path — that would silently drop the control the
+        // page tells the operator is protecting them.
+        if ((out as any).no_connection) {
+          return json({
+            error: 'Read-only connection unavailable, so the query was not run.',
+            no_connection: true,
+          }, 503);
         }
-        return json({ view, ...(data as Record<string, unknown>) });
+        return json({ view, ...out });
       }
 
       default:
