@@ -35,6 +35,19 @@ function getFollowupEmailHtml(name: string, invitesCreated = 0): string {
     ? `I can see you sent ${invitesCreated === 1 ? 'an invite' : `${invitesCreated} invites`} and nobody landed. That was almost certainly us — invites created before 17 August hit a bug where the code never showed up properly and the invite page loaded unstyled. Both are fixed now, and any link from back then has expired.`
     : `I noticed you set up your organizer account but haven't invited anyone yet. Booki doesn't do much until your group is in it — and getting them there takes about a minute.`;
   const howLabel = tried ? 'Worth Another Go' : 'How To Invite';
+  const headline = tried
+    ? `That invite didn't work, ${name}`
+    : `Still just you in there, ${name}`;
+  const ctaLabel = tried ? 'Send Another Invite' : 'Invite Your First Member';
+  // The steps describe the invite modal, which now asks which kind of invite
+  // you want before anything else. Copy that still says "email (optional)" is
+  // describing a form that no longer exists.
+  const step2 = tried
+    ? 'Pick <strong style="color: #F8F8F8;">Send an email</strong> — it goes straight to them and only they can use it'
+    : 'Choose <strong style="color: #F8F8F8;">Send an email</strong>, or <strong style="color: #F8F8F8;">Create a link</strong> to paste in your group chat';
+  const step3 = tried
+    ? 'Links now last a week instead of a day, so nobody misses the window'
+    : 'An emailed invite never expires for them; a shared link lasts a week';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -58,7 +71,7 @@ function getFollowupEmailHtml(name: string, invitesCreated = 0): string {
                 <tr>
                   <td align="center" style="padding-bottom: 12px;">
                     <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #F8F8F8; letter-spacing: -0.3px;">
-                      Still just you in there, ${name}
+                      ${headline}
                     </h1>
                   </td>
                 </tr>
@@ -77,8 +90,8 @@ function getFollowupEmailHtml(name: string, invitesCreated = 0): string {
                           <p style="margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #6B6B7B; font-weight: 600;">${howLabel}</p>
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                             <tr><td style="padding-bottom: 12px;"><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">1.</span>&nbsp; Open the <strong style="color: #F8F8F8;">Members</strong> tab and hit <strong style="color: #F8F8F8;">+ Invite</strong></p></td></tr>
-                            <tr><td style="padding-bottom: 12px;"><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">2.</span>&nbsp; Add their email (optional), then hit <strong style="color: #F8F8F8;">Create Invite</strong></p></td></tr>
-                            <tr><td><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">3.</span>&nbsp; They get an invite link — or copy the code and drop it in your group chat</p></td></tr>
+                            <tr><td style="padding-bottom: 12px;"><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">2.</span>&nbsp; ${step2}</p></td></tr>
+                            <tr><td><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">3.</span>&nbsp; ${step3}</p></td></tr>
                           </table>
                         </td>
                       </tr>
@@ -94,7 +107,7 @@ function getFollowupEmailHtml(name: string, invitesCreated = 0): string {
                 </tr>
                 <tr>
                   <td align="center" style="padding-bottom: 24px;">
-                    <a href="https://bookisports.com/dashboard/#/members" style="display: inline-block; background-color: #00F5D4; color: #0A0A12; font-size: 16px; font-weight: 700; text-decoration: none; padding: 16px 40px; border-radius: 10px; letter-spacing: 0.5px;">Invite Your First Member</a>
+                    <a href="https://bookisports.com/dashboard/#/members" style="display: inline-block; background-color: #00F5D4; color: #0A0A12; font-size: 16px; font-weight: 700; text-decoration: none; padding: 16px 40px; border-radius: 10px; letter-spacing: 0.5px;">${ctaLabel}</a>
                   </td>
                 </tr>
                 <tr>
