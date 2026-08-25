@@ -368,6 +368,15 @@ The app is **local-first** with cloud sync:
 - **Web-first repositioning**: Landing pages updated from iOS-first to web-first messaging, become an organizer flow
 - **Settlement fix**: Fixed `settlementMarkPaid()` error handling, removed last-row table border
 
+### Phase 20: Platform Admin Dashboard
+- **Read-only admin browser**: `landing/admin/` served at `/admin/` — overview, users, organizers, members, pending invites, outstanding picks, balances
+- **Server-side gate**: `admin_query` edge function resolves the caller's email from their JWT and checks the `ADMIN_EMAILS` secret; non-admins receive 404 (not 403) so the endpoint's existence is not disclosed
+- **Entity resolution**: every foreign key renders as a name with its identifying detail, with the full UUID one click from the clipboard
+- **Read-only by design**: writes would bypass the idempotency, audit trail and ledger hash chain the edge functions enforce, so every query is a `SELECT`
+- **Test-account filter**: synthetic and load-test accounts hidden by default and applied consistently across the overview and its tables
+- **Wave texture**: iOS `WaveBackground` ported to web pick cards and pick detail pages via `--wave-texture` / `--wave-opacity` tokens
+- **Bet slip fixes**: toasts were never visible (`toast.visible` was never set), parlays were rejected for every organizer because `bookies.manual_bet_acceptance` did not exist (migration 037)
+
 ### Branding & Design System
 - **App Icon**: Custom Booki wordmark on electric cyan background (1024x1024)
 - **Launch Screen**: Electric cyan background → SwiftUI loading view with logo and spinner
@@ -470,4 +479,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: August 17, 2026 - Dormant-organizer follow-up email (lifecycle_emails, send_followup_email, daily cron)*
+*Last updated: August 25, 2026 - Platform admin dashboard (landing/admin/, admin_query), parlay fix (migration 037), wave texture on web pick cards*
