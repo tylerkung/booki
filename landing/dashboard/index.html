@@ -949,20 +949,38 @@
                         </div>
                         <table class="data-table">
                             <thead>
-                                <tr><th>Code</th><th>Email</th><th>Credit Limit</th><th>Created</th><th>Actions</th></tr>
+                                <tr><th>Kind</th><th>Sent to / Code</th><th>Credit Limit</th><th>Created</th><th>Expires</th><th>Actions</th></tr>
                             </thead>
                             <tbody>
                                 <template x-for="inv in invites" :key="inv.id">
                                     <tr>
-                                        <td data-label="Code"><code style="font-size:var(--fs-sm);color:var(--accent);" x-text="inv.invite_code"></code></td>
-                                        <td data-label="Email" x-text="inv.email || '—'"></td>
+                                        <!-- Kind is the whole story: an email invite is bound to one
+                                             address and never expires for them; a link is a bearer code
+                                             that anyone can use and does expire. "4 invites, 0 members"
+                                             means nothing until you can see which kind they were. -->
+                                        <td data-label="Kind">
+                                            <span class="badge" :class="inv.email ? 'badge-accent' : 'badge-muted'"
+                                                  x-text="inv.email ? 'Email' : 'Link'"></span>
+                                        </td>
+                                        <td data-label="Sent to / Code">
+                                            <template x-if="inv.email"><span x-text="inv.email"></span></template>
+                                            <template x-if="!inv.email">
+                                                <code style="font-size:var(--fs-sm);color:var(--accent);" x-text="inv.invite_code"></code>
+                                            </template>
+                                        </td>
                                         <td data-label="Credit Limit" x-text="formatCurrency(bookie?.default_credit_limit || 1000)"></td>
                                         <td data-label="Created" x-text="formatDate(inv.created_at)"></td>
+                                        <td data-label="Expires">
+                                            <span x-show="inv.email" class="t-caption" style="color:var(--text-muted);">Doesn't expire</span>
+                                            <span x-show="!inv.email" class="t-caption"
+                                                  :style="{ color: new Date(inv.expires_at) < new Date() ? 'var(--danger)' : 'var(--text-muted)' }"
+                                                  x-text="new Date(inv.expires_at) < new Date() ? 'Expired' : formatDate(inv.expires_at)"></span>
+                                        </td>
                                         <td data-label="Actions" style="display:flex;gap:var(--s-xs);">
-                                            <button class="btn btn-ghost" title="Copy Code" @click="copyInviteCodeValue(inv.invite_code)">
+                                            <button class="btn btn-ghost" title="Copy Code" x-show="!inv.email" @click="copyInviteCodeValue(inv.invite_code)">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                             </button>
-                                            <button class="btn btn-ghost" title="Copy Link" @click="copyInviteLink(inv.invite_code)">
+                                            <button class="btn btn-ghost" title="Copy Link" x-show="!inv.email" @click="copyInviteLink(inv.invite_code)">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                                             </button>
                                             <button class="btn btn-ghost" title="Delete" style="color:var(--danger);"
@@ -3955,27 +3973,107 @@
     </template>
 
     <!-- ── Invite Modal ── -->
-    <div class="modal-overlay" x-show="showInviteModal" x-cloak @click.self="showInviteModal = false" x-transition>
+    <div class="modal-overlay" x-show="showInviteModal" x-cloak
+         @click.self="showInviteModal = false; resetInviteModal()" x-transition>
         <div class="modal">
             <h2>Invite Member</h2>
-            <div class="form-group">
-                <label>Email (optional)</label>
-                <input type="email" x-model="inviteEmail" placeholder="member@example.com">
-            </div>
-            <p class="t-body" style="margin:-var(--s-xs) 0 var(--s-lg);line-height:var(--lh-normal);">
-                New members join with your default credit limit
-                (<span x-text="formatCurrency(bookie?.default_credit_limit || 1000)"></span>).
-                Change it in Member Settings, or per member after they join.
-            </p>
+
+            <!-- Step 1 — pick the kind. These are different objects on the
+                 server: an emailed invite is bound to one verified address and
+                 never expires for them; a link is a bearer code that anyone
+                 holding can claim, and does expire. -->
+            <template x-if="!inviteMethod">
+                <div>
+                    <p class="t-body" style="margin-bottom:var(--s-lg);color:var(--text-secondary);">
+                        How do you want to get them in?
+                    </p>
+                    <button class="invite-option" @click="inviteMethod = 'email'">
+                        <span class="invite-option__title">Send an email</span>
+                        <span class="invite-option__desc">
+                            We email them a link. Only that address can use it, and it
+                            won't expire on them.
+                        </span>
+                    </button>
+                    <button class="invite-option" @click="inviteMethod = 'link'">
+                        <span class="invite-option__title">Create a link</span>
+                        <span class="invite-option__desc">
+                            You share the code or link yourself — a group chat, a text.
+                            Anyone who has it can join, so it expires in 24 hours.
+                        </span>
+                    </button>
+                </div>
+            </template>
+
+            <!-- Step 2a — email, before sending -->
+            <template x-if="inviteMethod === 'email' && !inviteSentTo">
+                <div>
+                    <div class="form-group">
+                        <label>Their email address</label>
+                        <input type="email" x-model="inviteEmail" placeholder="member@example.com"
+                               @keydown.enter="createInvite()">
+                    </div>
+                    <p class="t-caption" style="color:var(--text-muted);line-height:var(--lh-normal);">
+                        Joins with your default credit limit
+                        (<span x-text="formatCurrency(bookie?.default_credit_limit || 1000)"></span>).
+                        Change it in Member Settings, or per member after they join.
+                    </p>
+                </div>
+            </template>
+
+            <!-- Step 2a — email, sent. No code: the code would not work for
+                 anyone but them, so showing it invites a support question. -->
+            <template x-if="inviteSentTo">
+                <div class="form-success">
+                    <strong>Invite sent to <span x-text="inviteSentTo"></span></strong>
+                    <p class="t-caption" style="margin-top:var(--s-xs);color:var(--text-secondary);">
+                        They'll get a link that only works for this address. If they sign up
+                        with it before opening the link, we'll put them in your group anyway.
+                    </p>
+                </div>
+            </template>
+
+            <!-- Step 2b — link, before creating -->
+            <template x-if="inviteMethod === 'link' && !inviteCode">
+                <div>
+                    <p class="t-body" style="color:var(--text-secondary);line-height:var(--lh-normal);">
+                        We'll generate a code and a link you can paste anywhere. Anyone who
+                        has it can join your group, so it expires in 24 hours.
+                    </p>
+                    <p class="t-caption" style="margin-top:var(--s-md);color:var(--text-muted);line-height:var(--lh-normal);">
+                        Joins with your default credit limit
+                        (<span x-text="formatCurrency(bookie?.default_credit_limit || 1000)"></span>).
+                    </p>
+                </div>
+            </template>
+
+            <!-- Step 2b — link, created -->
+            <template x-if="inviteCode">
+                <div class="form-success">
+                    <div class="invite-code-row">
+                        <code class="invite-code" x-text="inviteCode"></code>
+                        <button class="btn btn-ghost" @click="copyInviteCode()">Copy code</button>
+                        <button class="btn btn-ghost" @click="copyInviteLink(inviteCode)">Copy link</button>
+                    </div>
+                    <p class="t-caption" style="margin-top:var(--s-sm);color:var(--text-muted);">
+                        Expires <span x-text="inviteExpiryLabel()"></span>.
+                        Anyone with this code can join, so only share it with your group.
+                    </p>
+                </div>
+            </template>
+
             <div x-show="inviteError" class="form-error" x-text="inviteError"></div>
-            <div x-show="inviteCode" class="form-success">
-                Invite code: <strong x-text="inviteCode"></strong>
-                <button class="btn btn-ghost" style="margin-left:var(--s-sm);" @click="copyInviteCode()">Copy</button>
-            </div>
+
             <div class="modal-actions">
-                <button class="btn btn-secondary" @click="showInviteModal = false; inviteCode = ''; inviteError = '';">Close</button>
-                <button class="btn btn-accent" @click="createInvite()" :disabled="isCreatingInvite" x-show="!inviteCode">
-                    <span x-text="isCreatingInvite ? 'Creating...' : 'Create Invite'"></span>
+                <button class="btn btn-secondary"
+                        @click="inviteMethod && !inviteCode && !inviteSentTo
+                                ? resetInviteModal()
+                                : (showInviteModal = false, resetInviteModal())"
+                        x-text="inviteMethod && !inviteCode && !inviteSentTo ? 'Back' : 'Close'"></button>
+                <button class="btn btn-accent" @click="createInvite()" :disabled="isCreatingInvite"
+                        x-show="inviteMethod && !inviteCode && !inviteSentTo">
+                    <span x-text="isCreatingInvite
+                        ? (inviteMethod === 'email' ? 'Sending…' : 'Creating…')
+                        : (inviteMethod === 'email' ? 'Send Invite' : 'Create Link')"></span>
                 </button>
             </div>
         </div>

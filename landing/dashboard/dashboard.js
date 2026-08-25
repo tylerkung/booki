@@ -424,8 +424,17 @@ function dashboardApp() {
         lineChanges: [],          // [{ market_id, submitted_odds, current_odds, current_side }]
         isConfirmingLineChange: false,
         showInviteModal: false,
+        // '' until the organizer picks. An emailed invite and a shareable link
+        // are different objects on the server — one is addressed to a verified
+        // person and never expires for them, the other is a bearer code that
+        // does — so the choice is made up front rather than inferred from
+        // whether an optional field happened to be filled in.
+        inviteMethod: '',
         inviteEmail: '',
         inviteCode: '',
+        inviteUrl: '',
+        inviteSentTo: '',
+        inviteExpiresAt: '',
         inviteError: '',
         isCreatingInvite: false,
 
@@ -4152,22 +4161,53 @@ function dashboardApp() {
         },
 
         // ── Invite ──
-        async createInvite() {
-            this.isCreatingInvite = true;
+        resetInviteModal() {
+            this.inviteMethod = '';
+            this.inviteEmail = '';
+            this.inviteCode = '';
+            this.inviteUrl = '';
+            this.inviteSentTo = '';
+            this.inviteExpiresAt = '';
             this.inviteError = '';
+        },
+
+        async createInvite() {
+            this.inviteError = '';
+
+            if (this.inviteMethod === 'email') {
+                const email = (this.inviteEmail || '').trim();
+                if (!email || !email.includes('@')) {
+                    this.inviteError = 'Enter the email address to send it to.';
+                    return;
+                }
+            }
+
+            this.isCreatingInvite = true;
             this.inviteCode = '';
 
             try {
                 const response = await this.callEdgeFunction('create_invite', {
                     idempotency_key: crypto.randomUUID(),
-                    email: this.inviteEmail || undefined,
+                    // Only an email invite carries an address. A link invite must
+                    // not, or the server would bind it to one person and the
+                    // code would stop working for anyone else in the group chat.
+                    email: this.inviteMethod === 'email'
+                        ? this.inviteEmail.trim()
+                        : undefined,
                 });
 
                 if (response.error) {
                     this.inviteError = response.error;
+                } else if (this.inviteMethod === 'email') {
+                    this.inviteSentTo = this.inviteEmail.trim();
+                    this.toast('Invite sent', 'success');
+                    this.loadInvites();
                 } else {
                     this.inviteCode = response.invite_code;
-                    this.toast('Invite created', 'success');
+                    this.inviteUrl = response.invite_url
+                        || `https://bookisports.com/invite/${response.invite_code}`;
+                    this.inviteExpiresAt = response.expires_at || '';
+                    this.toast('Invite link created', 'success');
                     this.loadInvites();
                 }
             } catch (e) {
@@ -4175,6 +4215,17 @@ function dashboardApp() {
             }
 
             this.isCreatingInvite = false;
+        },
+
+        /** "in 23 hours" / "in 45 minutes" — a bearer code is short-lived. */
+        inviteExpiryLabel() {
+            if (!this.inviteExpiresAt) return '';
+            const ms = new Date(this.inviteExpiresAt).getTime() - Date.now();
+            if (ms <= 0) return 'expired';
+            const hours = Math.floor(ms / 3600000);
+            if (hours >= 1) return `in ${hours} hour${hours === 1 ? '' : 's'}`;
+            const mins = Math.max(1, Math.round(ms / 60000));
+            return `in ${mins} minute${mins === 1 ? '' : 's'}`;
         },
 
 

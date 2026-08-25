@@ -604,6 +604,8 @@ input, button, select, textarea { font: inherit; }
 .badge-danger { background: var(--fill-danger); color: var(--danger); }
 .badge-warning { background: var(--fill-warning); color: var(--warning); }
 .badge-muted { background: var(--bg-elevated); color: var(--text-muted); }
+/* An addressed invite — bound to one verified person, no expiry for them. */
+.badge-accent { background: var(--fill-accent); color: var(--accent); }
 
 /* ── Filter Chips ── */
 .filter-bar {
@@ -2527,3 +2529,57 @@ input, button, select, textarea { font: inherit; }
    rounded surface when it stands alone, and must step up. Apply this there.
    See the Surfaces & Elevation section of the design system. */
 .r-outer { border-radius: var(--radius); }
+
+/* ── invite modal ──────────────────────────────────────────────────────────
+   Two kinds of invite, chosen up front. The option cards are the outermost
+   rounded element inside the modal body, so they take --radius; the code chip
+   nested inside a success panel steps down to --radius-sm. */
+.invite-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: var(--s-md) var(--s-lg);
+    margin-bottom: var(--s-sm);
+    background: var(--bg-elevated);
+    border: var(--hairline) solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.invite-option:hover {
+    border-color: var(--accent);
+    background: var(--fill-accent-faint);
+}
+.invite-option:last-of-type { margin-bottom: 0; }
+.invite-option__title {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+    margin-bottom: var(--s-xxs);
+}
+.invite-option__desc {
+    display: block;
+    font-size: var(--fs-caption);
+    color: var(--text-secondary);
+    line-height: var(--lh-normal);
+}
+
+.invite-code-row {
+    display: flex;
+    align-items: center;
+    gap: var(--s-sm);
+    flex-wrap: wrap;
+}
+.invite-code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--fs-title3);
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    background: var(--bg-card);
+    padding: var(--s-sm) var(--s-md);
+    border-radius: var(--radius-sm);
+}
+
