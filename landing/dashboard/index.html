@@ -3713,7 +3713,13 @@
                         <div class="bs-validation" x-show="betSlipWinLimitWarning" x-text="betSlipWinLimitWarning" style="color:var(--warning);background:var(--fill-warning-soft);"></div>
 
                         <!-- Validation Warning -->
-                        <div class="bs-validation" x-show="betSlipValidationMessage && betSlipTotalStakes > 0" x-text="betSlipValidationMessage"></div>
+                        <!-- Gated on having a selection, NOT on having a stake. The message that
+                             matters most is "Enter a stake amount", and gating it on
+                             betSlipTotalStakes > 0 meant it could only appear once a stake
+                             existed — so the submit button sat disabled with nothing to
+                             explain why and the click did nothing. Worst on Multi, where
+                             switching modes leaves a separate empty stake field. -->
+                        <div class="bs-validation" x-show="betSlipValidationMessage && betSlipSelections.length > 0" x-text="betSlipValidationMessage"></div>
 
                         <!-- Line change confirmation -->
                         <template x-if="lineChanges.length > 0">
@@ -3919,7 +3925,13 @@
                         <div class="bs-validation" x-show="betSlipWinLimitWarning" x-text="betSlipWinLimitWarning" style="color:var(--warning);background:var(--fill-warning-soft);"></div>
 
                         <!-- Validation Warning -->
-                        <div class="bs-validation" x-show="betSlipValidationMessage && betSlipTotalStakes > 0" x-text="betSlipValidationMessage"></div>
+                        <!-- Gated on having a selection, NOT on having a stake. The message that
+                             matters most is "Enter a stake amount", and gating it on
+                             betSlipTotalStakes > 0 meant it could only appear once a stake
+                             existed — so the submit button sat disabled with nothing to
+                             explain why and the click did nothing. Worst on Multi, where
+                             switching modes leaves a separate empty stake field. -->
+                        <div class="bs-validation" x-show="betSlipValidationMessage && betSlipSelections.length > 0" x-text="betSlipValidationMessage"></div>
 
                         <!-- Line change confirmation -->
                         <template x-if="lineChanges.length > 0">
