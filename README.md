@@ -369,7 +369,10 @@ The app is **local-first** with cloud sync:
 - **Settlement fix**: Fixed `settlementMarkPaid()` error handling, removed last-row table border
 
 ### Phase 20: Platform Admin Dashboard
-- **Read-only admin browser**: `landing/admin/` served at `/admin/` — overview, users, organizers, members, pending invites, outstanding picks, balances
+- **Read-only admin browser**: `landing/admin/` served at `/admin/` — overview, users, organizers, members, pending invites, outstanding picks, balances, plus organizer/member/pick detail pages, global search, data-quality checks and a SQL runner
+- **Global search**: one box matching names, emails and teams, and resolving a pasted UUID against member, organizer, bet, ticket and invite ids
+- **Data quality**: duplicate events, picks with a missing event, markets on finished games, games past start still scheduled, stranded accounts, ledger hash-chain validity
+- **SQL runner**: SELECT-only, enforced twice and never by keyword matching — a `FROM` subquery wrapper (blocks DML, DDL, data-modifying CTEs) plus a `BEGIN READ ONLY` connection (blocks writes reached via a function call). Row cap, statement timeout, CSV export
 - **Server-side gate**: `admin_query` edge function resolves the caller's email from their JWT and checks the `ADMIN_EMAILS` secret; non-admins receive 404 (not 403) so the endpoint's existence is not disclosed
 - **Entity resolution**: every foreign key renders as a name with its identifying detail, with the full UUID one click from the clipboard
 - **Read-only by design**: writes would bypass the idempotency, audit trail and ledger hash chain the edge functions enforce, so every query is a `SELECT`
@@ -479,4 +482,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: August 25, 2026 - Platform admin dashboard (landing/admin/, admin_query), parlay fix (migration 037), wave texture on web pick cards*
+*Last updated: August 25, 2026 - Platform admin dashboard complete (landing/admin/, admin_query, migrations 037-038), parlay fix, wave texture on web pick cards, Alpine double-init fix*

@@ -396,26 +396,39 @@ function adminApp() {
             }
         },
 
-        exportCsv() {
-            const cols = this.currentView.columns;
+        /** Rows -> CSV download. Shared by the table views and the SQL runner so
+         *  an ad-hoc query is as exportable as a built-in view (US-006). */
+        downloadCsv(rows, columns, name) {
+            if (!rows.length) return;
             const flat = (v) => {
                 if (v === null || v === undefined) return '';
-                if (typeof v === 'object') return v.name || v.label || v.id || '';
+                if (typeof v === 'object') return v.name || v.label || v.id || JSON.stringify(v);
                 return String(v);
             };
-            const lines = [cols.map((c) => c.label).join(',')];
-            for (const r of this.filtered) {
-                lines.push(cols.map((c) => {
-                    const cell = flat(r[c.key]);
-                    return /[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
-                }).join(','));
+            const quote = (cell) => (/[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell);
+            const lines = [columns.map((c) => quote(c.label)).join(',')];
+            for (const r of rows) {
+                lines.push(columns.map((c) => quote(flat(r[c.key]))).join(','));
             }
             const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `booki-${this.route}-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.download = `booki-${name}-${new Date().toISOString().slice(0, 10)}.csv`;
             a.click();
             URL.revokeObjectURL(a.href);
+        },
+
+        exportCsv() {
+            this.downloadCsv(this.filtered, this.currentView.columns, this.route);
+        },
+
+        exportSqlCsv() {
+            const rows = (this.sqlResult && this.sqlResult.rows) || [];
+            if (!rows.length) return;
+            // An ad-hoc query has no column definitions, so derive them from the
+            // first row's keys.
+            const columns = Object.keys(rows[0]).map((k) => ({ key: k, label: k }));
+            this.downloadCsv(rows, columns, 'query');
         },
 
         async runSql() {

@@ -204,11 +204,17 @@
                         <div class="card-header"><span class="card-title">Ledger</span>
                             <span class="t-body-muted">newest first, running balance oldest-first</span></div>
                         <div class="table-responsive"><table class="data-table admin-table">
-                            <thead><tr><th>Type</th><th>Amount</th><th>Running</th><th>Description</th><th>When</th></tr></thead>
+                            <thead><tr><th>Type</th><th>Amount</th><th>Running</th><th>Pick</th><th>Description</th><th>When</th></tr></thead>
                             <tbody><template x-for="e in detail.ledger" :key="e.id"><tr>
                                 <td data-label="Type" x-text="e.type"></td>
                                 <td data-label="Amount" x-text="fmt.money(e.amount)"></td>
                                 <td data-label="Running" x-text="fmt.money(e.running_balance)"></td>
+                                <td data-label="Pick">
+                                    <template x-if="e.bet_id">
+                                        <a class="admin-link" :href="'#/pick/' + e.bet_id">view</a>
+                                    </template>
+                                    <template x-if="!e.bet_id"><span class="admin-sub">—</span></template>
+                                </td>
                                 <td data-label="Description" x-text="e.description || '—'"></td>
                                 <td data-label="When" x-text="fmt.dateTime(e.created_at)"></td>
                             </tr></template></tbody>
@@ -336,6 +342,8 @@
                           @keydown.meta.enter="runSql()" @keydown.ctrl.enter="runSql()"></textarea>
                 <div class="filter-bar" style="margin-top:var(--s-md);">
                     <button class="chip" @click="runSql()" :disabled="loading">Run (⌘↵)</button>
+                    <button class="chip" @click="exportSqlCsv()"
+                            :disabled="!(sqlResult && sqlResult.rows && sqlResult.rows.length)">Export CSV</button>
                     <span class="t-micro" x-show="sqlResult && sqlResult.elapsed_ms != null"
                           x-text="`${sqlResult.row_count} rows · ${sqlResult.elapsed_ms} ms${sqlResult.truncated ? ' · truncated' : ''}`"></span>
                 </div>

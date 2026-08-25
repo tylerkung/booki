@@ -1,13 +1,76 @@
 # PRD: Platform Admin Dashboard
 
-Status: **built** · Created 2026-08-18 · Implemented 2026-08-25
+Status: **shipped** · Created 2026-08-18 · Implemented 2026-08-25
 
-US-001 through US-007 are implemented in `supabase/functions/admin_query`
-and `landing/admin/`. US-006's SELECT-only guarantee is migration 038
-(`admin_run_select`). The open questions below are left as written — they
-were the reasoning at the time, and the answer to the last one is that v1
-is a deliberate endpoint: writes must go through the existing edge
-functions or they bypass idempotency, audit and the ledger hash chain.
+## What shipped
+
+| Where | What |
+|---|---|
+| `supabase/functions/admin_query/index.ts` | Every read, behind one allowlist check |
+| `supabase/migrations/038_admin_run_select.sql` | Parser-level SELECT-only for the SQL runner |
+| `landing/admin/` | The SPA, at `/admin/` |
+
+All seven user stories are implemented and their criteria met. Three decisions
+differ from what this document assumed, and the reasons are worth keeping:
+
+**The admin UI is its own page, not a route inside the dashboard.** The PRD
+said "extends the existing Alpine.js SPA at `landing/dashboard/`". It reuses
+that SPA's stylesheet wholesale, but lives at `landing/admin/` so no admin code
+or markup ships to members and organizers at all. Nothing to hide means nothing
+that can fail to be hidden.
+
+**US-006's read-only guarantee is enforced on a connection, not in the RPC.**
+The migration provides the parser-level control — the query runs inside a `FROM`
+subquery, so DML, DDL and data-modifying CTEs are rejected before execution. The
+read-only transaction could not go there: Postgres refuses
+`transaction_read_only` inside a function, as `SET LOCAL` and as a function
+`SET` clause alike. So `admin_query` opens its own connection and runs
+`BEGIN READ ONLY`.
+
+That second control is the one that matters, and this document's suggested
+alternative would not have provided it. A read-only **role** does not help here:
+17 of 20 public functions are `SECURITY DEFINER`, `delete_bookie_data` among
+them, and those run as their owner rather than the caller. A read-only
+**transaction** does, because the check is in the executor and role-independent.
+Verified in production with `nextval()` on a writable sequence — a write reached
+through a function call inside a legal subquery, which is exactly what the
+parser control cannot see:
+
+    25006  cannot execute nextval() in a read-only transaction
+
+**Admin identity is a secret, not a table.** `ADMIN_EMAILS` on the edge
+function. One operator today; a table is a migration away if that changes.
+
+## Answers to the open questions
+
+**Was it worth building?** Yes, and for the reason predicted: entity resolution
+and cross-tenant search. A native Postgres client is a better generic browser,
+but neither it nor Supabase Studio can tell you that `c76bb35b…` is a member of
+Tyler K.'s book, or show 24 organizers with their member counts, exposure and
+dormancy in one sorted list.
+
+**How much of the data model?** Organizers, members, picks, events, invites and
+ledger have pages. Audit events, settlement events, device tokens and
+idempotency keys are left to the SQL runner, as proposed.
+
+**Mobile?** Not attempted. The tables reuse `.table-responsive` and carry
+`data-label` on every cell, so they degrade rather than break, but the layout was
+not designed for a phone.
+
+**Does read-only stay read-only?** v1 is a deliberate endpoint, not a stepping
+stone. Any future action must call the existing edge functions — `adjust_balance`,
+`settle_bet`, `override_grade`, `reverse_settlement` — because writing to tables
+directly bypasses idempotency, the audit trail and the ledger hash chain.
+
+## Follow-ups, none blocking
+
+- The overview and its tables apply the test-account filter consistently; that
+  had to be fixed once already, and any new aggregate needs the same care.
+- `data_quality` runs its checks through the `admin_run_select` RPC rather than
+  the read-only connection. Those queries are fixed and trusted, but the two
+  paths should converge if any of them ever takes user input.
+- No pagination on detail pages: organizer picks and ledger are capped at 50,
+  member picks at 100. Fine at current volume, visibly wrong at 10x.
 
 ## Introduction
 
@@ -84,71 +147,71 @@ existing edge functions (`adjust_balance`, `settle_bet`, `override_grade`,
 **Description:** As the operator, I need admin data served only to me, enforced on the server.
 
 **Acceptance Criteria:**
-- [ ] Allowlist of admin emails held server-side (env var or a small `admin_users` table — not hardcoded in `dashboard.js`)
-- [ ] Caller's JWT resolved to an email and checked against the allowlist
-- [ ] Non-admin callers get 403 with no data in the error body
-- [ ] SPA hides admin nav for non-admins as a convenience only, never as the control
-- [ ] Verified by calling the endpoint with a non-admin token
+- [x] Allowlist of admin emails held server-side (env var or a small `admin_users` table — not hardcoded in `dashboard.js`)
+- [x] Caller's JWT resolved to an email and checked against the allowlist
+- [x] Non-admin callers get 403 with no data in the error body
+- [x] SPA hides admin nav for non-admins as a convenience only, never as the control
+- [x] Verified by calling the endpoint with a non-admin token
 
 ### US-002: Entity resolution — the core of the whole thing
 **Description:** As the operator, I want to see names where the database stores UUIDs.
 
 **Acceptance Criteria:**
-- [ ] Every foreign key renders as a human label with the UUID available on hover or click
-- [ ] `bookie_id` → organizer name and email
-- [ ] `player_id` → member name (preferring `display_name`, falling back to `name`)
-- [ ] `event_id` → "Away @ Home", start time, status
-- [ ] `bet_id` → market, side, odds, stake
-- [ ] Every resolved label is a link to that record's own view
-- [ ] **This is what Supabase Studio cannot do and the main reason to build anything**
+- [x] Every foreign key renders as a human label with the UUID available on hover or click
+- [x] `bookie_id` → organizer name and email
+- [x] `player_id` → member name (preferring `display_name`, falling back to `name`)
+- [x] `event_id` → "Away @ Home", start time, status
+- [x] `bet_id` → market, side, odds, stake
+- [x] Every resolved label is a link to that record's own view
+- [x] **This is what Supabase Studio cannot do and the main reason to build anything**
 
 ### US-003: Organizer browser
 **Description:** As the operator, I want to open an organizer and see their whole world.
 
 **Acceptance Criteria:**
-- [ ] List: name, email, tier, member count, pick count, created — sortable, searchable
-- [ ] Detail: members, recent picks, ledger totals, invites, subscription state, all resolved per US-002
-- [ ] Test accounts (`test_stress_*`, personal) filterable out with one toggle — they distorted every count during the 2026-08-18 audit
-- [ ] Dormant organizers (0 invites, 0 members) visibly marked
+- [x] List: name, email, tier, member count, pick count, created — sortable, searchable
+- [x] Detail: members, recent picks, ledger totals, invites, subscription state, all resolved per US-002
+- [x] Test accounts (`test_stress_*`, personal) filterable out with one toggle — they distorted every count during the 2026-08-18 audit
+- [x] Dormant organizers (0 invites, 0 members) visibly marked
 
 ### US-004: Member and pick browsers
 **Description:** As the operator, I want to trace a member's activity without a join.
 
 **Acceptance Criteria:**
-- [ ] Member detail: which organizer, credit and win limits, balance, picks, ledger entries
-- [ ] Pick detail: the event with names and score, the member, the organizer, stake, odds, grade, and any linked ledger entry
-- [ ] Parlays show their sibling legs (rows sharing a `ticket_id`)
-- [ ] Ledger entries shown chronologically with running balance
+- [x] Member detail: which organizer, credit and win limits, balance, picks, ledger entries
+- [x] Pick detail: the event with names and score, the member, the organizer, stake, odds, grade, and any linked ledger entry
+- [x] Parlays show their sibling legs (rows sharing a `ticket_id`)
+- [x] Ledger entries shown chronologically with running balance
 
 ### US-005: Global search
 **Description:** As the operator, I want one box that finds whatever I'm looking for.
 
 **Acceptance Criteria:**
-- [ ] Single input searching across organizers, members, events and picks
-- [ ] Accepts a name, an email, or a raw UUID pasted from Supabase or a log line
-- [ ] Results grouped by type, each linking to its detail view
-- [ ] Pasting a UUID resolving to "this is a member of Andrew's book" is the single highest-value interaction here
+- [x] Single input searching across organizers, members, events and picks
+- [x] Accepts a name, an email, or a raw UUID pasted from Supabase or a log line
+- [x] Results grouped by type, each linking to its detail view
+- [x] Pasting a UUID resolving to "this is a member of Andrew's book" is the single highest-value interaction here
 
 ### US-006: Read-only SQL runner
 **Description:** As the operator, I want an escape hatch for anything the UI doesn't cover.
 
 **Acceptance Criteria:**
-- [ ] Text area, results rendered as a table
-- [ ] **`SELECT` only** — rejected server-side by inspecting the parsed statement, not by string matching, and executed on a read-only connection or role so a bypass still cannot write
-- [ ] Row cap and statement timeout so a bad query cannot take the database down
-- [ ] Results exportable as CSV
-- [ ] Means the tool never blocks you when a question doesn't have a page
+- [x] Text area, results rendered as a table
+- [x] **`SELECT` only** — rejected server-side by inspecting the parsed statement, not by string matching, and executed on a read-only connection or role so a bypass still cannot write
+- [x] Row cap and statement timeout so a bad query cannot take the database down
+- [x] Results exportable as CSV
+- [x] Means the tool never blocks you when a question doesn't have a page
 
 ### US-007: Data quality views
 **Description:** As the operator, I want the integrity checks that have already caught real problems to be one click away.
 
 **Acceptance Criteria:**
-- [ ] Duplicate events by `external_id` (should be 0 since migration 032's unique index)
-- [ ] Bets referencing non-existent events (44 exist today, all `test_stress_Bookie`)
-- [ ] Markets attached to finished games (should stay near 0 given the prune sweep)
-- [ ] Events past start still marked `scheduled`
-- [ ] Ledger hash-chain validity — a validator already exists from migration 018
-- [ ] Each check shows a count and the offending rows, resolved per US-002
+- [x] Duplicate events by `external_id` (should be 0 since migration 032's unique index)
+- [x] Bets referencing non-existent events (44 exist today, all `test_stress_Bookie`)
+- [x] Markets attached to finished games (should stay near 0 given the prune sweep)
+- [x] Events past start still marked `scheduled`
+- [x] Ledger hash-chain validity — a validator already exists from migration 018
+- [x] Each check shows a count and the offending rows, resolved per US-002
 
 ## Open questions
 
