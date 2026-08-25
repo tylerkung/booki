@@ -2852,3 +2852,36 @@ input, button, select, textarea { font: inherit; }
     .gd-ladder-row { grid-template-columns: 1fr; gap: var(--s-xs); }
     .gd-line { grid-template-columns: 1fr; }
 }
+
+/* ── Preview page banner (landing/preview/nfl-game.html) ───────────────────
+   Lives here rather than inline on that page so the preview keeps using the
+   real stylesheet and cannot drift into looking like a mockup. */
+.preview-banner {
+    background: var(--fill-warning-soft);
+    border: var(--hairline) solid var(--warning);
+    border-radius: var(--radius);
+    padding: var(--s-md) var(--s-lg);
+    margin-bottom: var(--s-lg);
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    line-height: var(--lh-normal);
+}
+.preview-banner strong { color: var(--warning); }
+
+.preview-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-sm);
+    margin-top: var(--s-md);
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+}
+
+.preview-footer {
+    margin-top: var(--s-lg);
+    padding: var(--s-md) var(--s-lg);
+    border-left: var(--bar-thin) solid var(--border);
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-normal);
+}

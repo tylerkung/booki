@@ -1057,7 +1057,7 @@ Deno.serve(async (req) => {
         if (body.return_payload === true) {
           const rawRes = await fetch(
             `${base}/${sportKey}/events/${target.id}/odds/?apiKey=${apiKey}&regions=${region}` +
-            `&markets=alternate_spreads,alternate_totals,team_totals,odd_even&oddsFormat=american`,
+            `&markets=h2h,spreads,totals,alternate_spreads,alternate_totals,team_totals,odd_even&oddsFormat=american`,
           );
           rawBundle = rawRes.ok ? await rawRes.json() : { error: await rawRes.text() };
         }

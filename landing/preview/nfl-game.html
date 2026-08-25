@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Unlisted: not in the sitemap, not linked from anywhere. -->
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon_io/favicon-32x32.png">
+    <title>NFL Board Preview — Booki</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- The real stylesheets, so what this shows is what members will see.
+         Only the data is illustrative; none of the styling is a mockup. -->
+    <link rel="stylesheet" href="/tokens.css">
+    <link rel="stylesheet" href="/dashboard/dashboard.css">
+
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body x-data="preview()">
+
+<div class="app-layout">
+    <main class="main-content wave-page">
+        <div class="preview-banner">
+            <strong>Preview</strong> — illustrative prices for a Week&nbsp;1 game. The market
+            <em>types</em> and line counts are what the Odds API is already quoting; the numbers
+            are modelled, not live. Nothing here is bettable.
+        </div>
+
+        <div class="card" style="margin-bottom:var(--s-lg);">
+            <div class="t-label">NFL · WEEK 1</div>
+            <h2 style="font-size:var(--fs-title3);margin:var(--s-xs) 0;"
+                x-text="event.away + ' @ ' + event.home"></h2>
+            <div class="t-body-muted" x-text="event.kickoff"></div>
+            <div class="preview-counts">
+                <span x-text="markets.length + ' lines'"></span>
+                <span>·</span>
+                <span x-text="sections.length + ' markets'"></span>
+                <span>·</span>
+                <span>today the board shows 3</span>
+            </div>
+        </div>
+
+        <template x-for="section in sections" :key="section.key">
+            <div class="card gd-section">
+                <div class="gd-section-head">
+                    <span class="card-title" x-text="section.title"></span>
+                    <div class="gd-pager" x-show="section.kind === 'ladder'
+                         && section.count > ladderPageSize && !isLadderExpanded(section.key)">
+                        <button class="gd-page-btn" :disabled="ladderOffset(section.key) === 0"
+                                @click="ladderShift(section.key, -ladderPageSize, section.count)"
+                                aria-label="Previous lines">&lsaquo;</button>
+                        <button class="gd-page-btn"
+                                :disabled="ladderOffset(section.key) >= section.count - ladderPageSize"
+                                @click="ladderShift(section.key, ladderPageSize, section.count)"
+                                aria-label="More lines">&rsaquo;</button>
+                    </div>
+                    <span class="t-body-muted" x-show="section.kind !== 'ladder'"
+                          x-text="section.markets.length + (section.markets.length === 1 ? ' line' : ' lines')"></span>
+                </div>
+
+                <template x-if="section.kind === 'ladder'">
+                    <div>
+                        <template x-for="row in section.rows" :key="row.label">
+                            <div class="gd-ladder-row">
+                                <div class="gd-row-label" x-text="row.label"></div>
+                                <div class="gd-row-cells"
+                                     :class="{ 'gd-row-cells-all': isLadderExpanded(section.key) }">
+                                    <template x-for="c in ladderCells(section, row)" :key="c.marketId + c.indicator">
+                                        <button class="pg-odds-btn gd-cell"
+                                            :class="{ 'pg-odds-active': isPicked(c) }"
+                                            @click="pick(c)">
+                                            <span class="gd-cell-line" x-text="c.lineLabel"></span>
+                                            <span class="gd-cell-odds" x-text="formatOdds(c.odds)"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                        <button class="gd-view-all" x-show="section.count > ladderPageSize"
+                                @click="toggleLadder(section.key)"
+                                x-text="isLadderExpanded(section.key) ? 'Show fewer lines' : ('View all ' + section.count + ' lines')"></button>
+                    </div>
+                </template>
+
+                <template x-if="section.kind === 'pair'">
+                    <div class="gd-lines">
+                        <template x-for="mkt in section.markets" :key="mkt.id">
+                            <div class="gd-line">
+                                <button class="pg-odds-btn gd-side"
+                                    :class="{ 'pg-odds-active': isPicked({ marketId: mkt.id, indicator: 'a' }) }"
+                                    @click="pick({ marketId: mkt.id, indicator: 'a', side: mkt.side_a, odds: mkt.odds_a })">
+                                    <span class="gd-side-label" x-text="mkt.side_a"></span>
+                                    <span class="pg-odds-val" x-text="formatOdds(mkt.odds_a)"></span>
+                                </button>
+                                <button class="pg-odds-btn gd-side"
+                                    :class="{ 'pg-odds-active': isPicked({ marketId: mkt.id, indicator: 'b' }) }"
+                                    @click="pick({ marketId: mkt.id, indicator: 'b', side: mkt.side_b, odds: mkt.odds_b })">
+                                    <span class="gd-side-label" x-text="mkt.side_b"></span>
+                                    <span class="pg-odds-val" x-text="formatOdds(mkt.odds_b)"></span>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <div class="preview-footer">
+            Every market shown settles from the final score, so all of it grades automatically.
+            Quarters, halves and player props are purchasable from the same feed but cannot be
+            graded — the scores endpoint returns no period splits and no player statistics.
+        </div>
+    </main>
+</div>
+
+<script>
+/*
+ * PREVIEW ONLY.
+ *
+ * The ladder logic below mirrors dashboard.js. It is duplicated rather than
+ * imported because that file is an Alpine component wired to Supabase auth,
+ * and this page must open without a session. The STYLING is not duplicated —
+ * it links the real tokens.css and dashboard.css — so a design change lands
+ * here automatically and only the behaviour can drift.
+ */
+const MARKETS = [{"type":"moneyline","side_a":"New England Patriots","side_b":"Seattle Seahawks","odds_a":200,"odds_b":-245,"id":"m0"},{"type":"alternate_spread","side_a":"New England Patriots -7.5","side_b":"Seattle Seahawks +7.5","odds_a":1160,"odds_b":-2820,"id":"m1"},{"type":"alternate_spread","side_a":"New England Patriots -7","side_b":"Seattle Seahawks +7","odds_a":1035,"odds_b":-2225,"id":"m2"},{"type":"alternate_spread","side_a":"New England Patriots -6.5","side_b":"Seattle Seahawks +6.5","odds_a":925,"odds_b":-1800,"id":"m3"},{"type":"alternate_spread","side_a":"New England Patriots -6","side_b":"Seattle Seahawks +6","odds_a":825,"odds_b":-1485,"id":"m4"},{"type":"alternate_spread","side_a":"New England Patriots -5.5","side_b":"Seattle Seahawks +5.5","odds_a":735,"odds_b":-1240,"id":"m5"},{"type":"alternate_spread","side_a":"New England Patriots -5","side_b":"Seattle Seahawks +5","odds_a":655,"odds_b":-1045,"id":"m6"},{"type":"alternate_spread","side_a":"New England Patriots -4.5","side_b":"Seattle Seahawks +4.5","odds_a":585,"odds_b":-890,"id":"m7"},{"type":"alternate_spread","side_a":"New England Patriots -4","side_b":"Seattle Seahawks +4","odds_a":520,"odds_b":-765,"id":"m8"},{"type":"alternate_spread","side_a":"New England Patriots -3.5","side_b":"Seattle Seahawks +3.5","odds_a":465,"odds_b":-660,"id":"m9"},{"type":"alternate_spread","side_a":"New England Patriots -3","side_b":"Seattle Seahawks +3","odds_a":415,"odds_b":-570,"id":"m10"},{"type":"alternate_spread","side_a":"New England Patriots -2.5","side_b":"Seattle Seahawks +2.5","odds_a":370,"odds_b":-495,"id":"m11"},{"type":"alternate_spread","side_a":"New England Patriots -2","side_b":"Seattle Seahawks +2","odds_a":330,"odds_b":-435,"id":"m12"},{"type":"alternate_spread","side_a":"New England Patriots -1.5","side_b":"Seattle Seahawks +1.5","odds_a":295,"odds_b":-380,"id":"m13"},{"type":"alternate_spread","side_a":"New England Patriots -1","side_b":"Seattle Seahawks +1","odds_a":260,"odds_b":-330,"id":"m14"},{"type":"alternate_spread","side_a":"New England Patriots -0.5","side_b":"Seattle Seahawks +0.5","odds_a":235,"odds_b":-290,"id":"m15"},{"type":"alternate_spread","side_a":"New England Patriots 0","side_b":"Seattle Seahawks 0","odds_a":210,"odds_b":-255,"id":"m16"},{"type":"alternate_spread","side_a":"New England Patriots +0.5","side_b":"Seattle Seahawks -0.5","odds_a":185,"odds_b":-225,"id":"m17"},{"type":"alternate_spread","side_a":"New England Patriots +1","side_b":"Seattle Seahawks -1","odds_a":165,"odds_b":-200,"id":"m18"},{"type":"alternate_spread","side_a":"New England Patriots +1.5","side_b":"Seattle Seahawks -1.5","odds_a":145,"odds_b":-175,"id":"m19"},{"type":"alternate_spread","side_a":"New England Patriots +2","side_b":"Seattle Seahawks -2","odds_a":130,"odds_b":-155,"id":"m20"},{"type":"alternate_spread","side_a":"New England Patriots +2.5","side_b":"Seattle Seahawks -2.5","odds_a":115,"odds_b":-140,"id":"m21"},{"type":"alternate_spread","side_a":"New England Patriots +3","side_b":"Seattle Seahawks -3","odds_a":105,"odds_b":-125,"id":"m22"},{"type":"spread","side_a":"New England Patriots +3.5","side_b":"Seattle Seahawks -3.5","odds_a":-110,"odds_b":-110,"id":"m23"},{"type":"alternate_spread","side_a":"New England Patriots +4","side_b":"Seattle Seahawks -4","odds_a":-125,"odds_b":105,"id":"m24"},{"type":"alternate_spread","side_a":"New England Patriots +4.5","side_b":"Seattle Seahawks -4.5","odds_a":-140,"odds_b":115,"id":"m25"},{"type":"alternate_spread","side_a":"New England Patriots +5","side_b":"Seattle Seahawks -5","odds_a":-155,"odds_b":130,"id":"m26"},{"type":"alternate_spread","side_a":"New England Patriots +5.5","side_b":"Seattle Seahawks -5.5","odds_a":-175,"odds_b":145,"id":"m27"},{"type":"alternate_spread","side_a":"New England Patriots +6","side_b":"Seattle Seahawks -6","odds_a":-200,"odds_b":165,"id":"m28"},{"type":"alternate_spread","side_a":"New England Patriots +6.5","side_b":"Seattle Seahawks -6.5","odds_a":-225,"odds_b":185,"id":"m29"},{"type":"alternate_spread","side_a":"New England Patriots +7","side_b":"Seattle Seahawks -7","odds_a":-255,"odds_b":210,"id":"m30"},{"type":"alternate_spread","side_a":"New England Patriots +7.5","side_b":"Seattle Seahawks -7.5","odds_a":-290,"odds_b":235,"id":"m31"},{"type":"alternate_spread","side_a":"New England Patriots +8","side_b":"Seattle Seahawks -8","odds_a":-330,"odds_b":260,"id":"m32"},{"type":"alternate_spread","side_a":"New England Patriots +8.5","side_b":"Seattle Seahawks -8.5","odds_a":-380,"odds_b":295,"id":"m33"},{"type":"alternate_spread","side_a":"New England Patriots +9","side_b":"Seattle Seahawks -9","odds_a":-435,"odds_b":330,"id":"m34"},{"type":"alternate_spread","side_a":"New England Patriots +9.5","side_b":"Seattle Seahawks -9.5","odds_a":-495,"odds_b":370,"id":"m35"},{"type":"alternate_spread","side_a":"New England Patriots +10","side_b":"Seattle Seahawks -10","odds_a":-570,"odds_b":415,"id":"m36"},{"type":"alternate_spread","side_a":"New England Patriots +10.5","side_b":"Seattle Seahawks -10.5","odds_a":-660,"odds_b":465,"id":"m37"},{"type":"alternate_spread","side_a":"New England Patriots +11","side_b":"Seattle Seahawks -11","odds_a":-765,"odds_b":520,"id":"m38"},{"type":"alternate_spread","side_a":"New England Patriots +11.5","side_b":"Seattle Seahawks -11.5","odds_a":-890,"odds_b":585,"id":"m39"},{"type":"alternate_spread","side_a":"New England Patriots +12","side_b":"Seattle Seahawks -12","odds_a":-1045,"odds_b":655,"id":"m40"},{"type":"alternate_spread","side_a":"New England Patriots +12.5","side_b":"Seattle Seahawks -12.5","odds_a":-1240,"odds_b":735,"id":"m41"},{"type":"alternate_spread","side_a":"New England Patriots +13","side_b":"Seattle Seahawks -13","odds_a":-1485,"odds_b":825,"id":"m42"},{"type":"alternate_spread","side_a":"New England Patriots +13.5","side_b":"Seattle Seahawks -13.5","odds_a":-1800,"odds_b":925,"id":"m43"},{"type":"alternate_spread","side_a":"New England Patriots +14","side_b":"Seattle Seahawks -14","odds_a":-2225,"odds_b":1035,"id":"m44"},{"type":"alternate_spread","side_a":"New England Patriots +14.5","side_b":"Seattle Seahawks -14.5","odds_a":-2820,"odds_b":1160,"id":"m45"},{"type":"alternate_total","side_a":"Over 34.5","side_b":"Under 34.5","odds_a":-6565,"odds_b":2405,"id":"m46"},{"type":"alternate_total","side_a":"Over 35","side_b":"Under 35","odds_a":-6565,"odds_b":2045,"id":"m47"},{"type":"alternate_total","side_a":"Over 35.5","side_b":"Under 35.5","odds_a":-6565,"odds_b":1740,"id":"m48"},{"type":"alternate_total","side_a":"Over 36","side_b":"Under 36","odds_a":-5375,"odds_b":1480,"id":"m49"},{"type":"alternate_total","side_a":"Over 36.5","side_b":"Under 36.5","odds_a":-3400,"odds_b":1260,"id":"m50"},{"type":"alternate_total","side_a":"Over 37","side_b":"Under 37","odds_a":-2375,"odds_b":1070,"id":"m51"},{"type":"alternate_total","side_a":"Over 37.5","side_b":"Under 37.5","odds_a":-1755,"odds_b":910,"id":"m52"},{"type":"alternate_total","side_a":"Over 38","side_b":"Under 38","odds_a":-1340,"odds_b":775,"id":"m53"},{"type":"alternate_total","side_a":"Over 38.5","side_b":"Under 38.5","odds_a":-1050,"odds_b":660,"id":"m54"},{"type":"alternate_total","side_a":"Over 39","side_b":"Under 39","odds_a":-840,"odds_b":560,"id":"m55"},{"type":"alternate_total","side_a":"Over 39.5","side_b":"Under 39.5","odds_a":-675,"odds_b":475,"id":"m56"},{"type":"alternate_total","side_a":"Over 40","side_b":"Under 40","odds_a":-550,"odds_b":405,"id":"m57"},{"type":"alternate_total","side_a":"Over 40.5","side_b":"Under 40.5","odds_a":-455,"odds_b":345,"id":"m58"},{"type":"alternate_total","side_a":"Over 41","side_b":"Under 41","odds_a":-375,"odds_b":290,"id":"m59"},{"type":"alternate_total","side_a":"Over 41.5","side_b":"Under 41.5","odds_a":-310,"odds_b":250,"id":"m60"},{"type":"alternate_total","side_a":"Over 42","side_b":"Under 42","odds_a":-260,"odds_b":210,"id":"m61"},{"type":"alternate_total","side_a":"Over 42.5","side_b":"Under 42.5","odds_a":-220,"odds_b":180,"id":"m62"},{"type":"alternate_total","side_a":"Over 43","side_b":"Under 43","odds_a":-185,"odds_b":150,"id":"m63"},{"type":"alternate_total","side_a":"Over 43.5","side_b":"Under 43.5","odds_a":-155,"odds_b":130,"id":"m64"},{"type":"alternate_total","side_a":"Over 44","side_b":"Under 44","odds_a":-130,"odds_b":110,"id":"m65"},{"type":"total","side_a":"Over 44.5","side_b":"Under 44.5","odds_a":-110,"odds_b":-110,"id":"m66"},{"type":"alternate_total","side_a":"Over 45","side_b":"Under 45","odds_a":110,"odds_b":-130,"id":"m67"},{"type":"alternate_total","side_a":"Over 45.5","side_b":"Under 45.5","odds_a":130,"odds_b":-155,"id":"m68"},{"type":"alternate_total","side_a":"Over 46","side_b":"Under 46","odds_a":150,"odds_b":-185,"id":"m69"},{"type":"alternate_total","side_a":"Over 46.5","side_b":"Under 46.5","odds_a":180,"odds_b":-220,"id":"m70"},{"type":"alternate_total","side_a":"Over 47","side_b":"Under 47","odds_a":210,"odds_b":-260,"id":"m71"},{"type":"alternate_total","side_a":"Over 47.5","side_b":"Under 47.5","odds_a":250,"odds_b":-310,"id":"m72"},{"type":"alternate_total","side_a":"Over 48","side_b":"Under 48","odds_a":290,"odds_b":-375,"id":"m73"},{"type":"alternate_total","side_a":"Over 48.5","side_b":"Under 48.5","odds_a":345,"odds_b":-455,"id":"m74"},{"type":"alternate_total","side_a":"Over 49","side_b":"Under 49","odds_a":405,"odds_b":-550,"id":"m75"},{"type":"alternate_total","side_a":"Over 49.5","side_b":"Under 49.5","odds_a":475,"odds_b":-675,"id":"m76"},{"type":"alternate_total","side_a":"Over 50","side_b":"Under 50","odds_a":560,"odds_b":-840,"id":"m77"},{"type":"alternate_total","side_a":"Over 50.5","side_b":"Under 50.5","odds_a":660,"odds_b":-1050,"id":"m78"},{"type":"alternate_total","side_a":"Over 51","side_b":"Under 51","odds_a":775,"odds_b":-1340,"id":"m79"},{"type":"alternate_total","side_a":"Over 51.5","side_b":"Under 51.5","odds_a":910,"odds_b":-1755,"id":"m80"},{"type":"alternate_total","side_a":"Over 52","side_b":"Under 52","odds_a":1070,"odds_b":-2375,"id":"m81"},{"type":"alternate_total","side_a":"Over 52.5","side_b":"Under 52.5","odds_a":1260,"odds_b":-3400,"id":"m82"},{"type":"alternate_total","side_a":"Over 53","side_b":"Under 53","odds_a":1480,"odds_b":-5375,"id":"m83"},{"type":"alternate_total","side_a":"Over 53.5","side_b":"Under 53.5","odds_a":1740,"odds_b":-6565,"id":"m84"},{"type":"alternate_total","side_a":"Over 54","side_b":"Under 54","odds_a":2045,"odds_b":-6565,"id":"m85"},{"type":"alternate_total","side_a":"Over 54.5","side_b":"Under 54.5","odds_a":2405,"odds_b":-6565,"id":"m86"},{"type":"team_total","side_a":"New England Patriots Over 17.5","side_b":"New England Patriots Under 17.5","odds_a":-435,"odds_b":330,"id":"m87"},{"type":"team_total","side_a":"New England Patriots Over 18.5","side_b":"New England Patriots Under 18.5","odds_a":-270,"odds_b":215,"id":"m88"},{"type":"team_total","side_a":"New England Patriots Over 19.5","side_b":"New England Patriots Under 19.5","odds_a":-170,"odds_b":140,"id":"m89"},{"type":"team_total","side_a":"New England Patriots Over 20.5","side_b":"New England Patriots Under 20.5","odds_a":-110,"odds_b":-110,"id":"m90"},{"type":"team_total","side_a":"New England Patriots Over 21.5","side_b":"New England Patriots Under 21.5","odds_a":140,"odds_b":-170,"id":"m91"},{"type":"team_total","side_a":"New England Patriots Over 22.5","side_b":"New England Patriots Under 22.5","odds_a":215,"odds_b":-270,"id":"m92"},{"type":"team_total","side_a":"New England Patriots Over 23.5","side_b":"New England Patriots Under 23.5","odds_a":330,"odds_b":-435,"id":"m93"},{"type":"team_total","side_a":"Seattle Seahawks Over 21.5","side_b":"Seattle Seahawks Under 21.5","odds_a":-435,"odds_b":330,"id":"m94"},{"type":"team_total","side_a":"Seattle Seahawks Over 22.5","side_b":"Seattle Seahawks Under 22.5","odds_a":-270,"odds_b":215,"id":"m95"},{"type":"team_total","side_a":"Seattle Seahawks Over 23.5","side_b":"Seattle Seahawks Under 23.5","odds_a":-170,"odds_b":140,"id":"m96"},{"type":"team_total","side_a":"Seattle Seahawks Over 24.5","side_b":"Seattle Seahawks Under 24.5","odds_a":-110,"odds_b":-110,"id":"m97"},{"type":"team_total","side_a":"Seattle Seahawks Over 25.5","side_b":"Seattle Seahawks Under 25.5","odds_a":140,"odds_b":-170,"id":"m98"},{"type":"team_total","side_a":"Seattle Seahawks Over 26.5","side_b":"Seattle Seahawks Under 26.5","odds_a":215,"odds_b":-270,"id":"m99"},{"type":"team_total","side_a":"Seattle Seahawks Over 27.5","side_b":"Seattle Seahawks Under 27.5","odds_a":330,"odds_b":-435,"id":"m100"},{"type":"odd_even","side_a":"Odd","side_b":"Even","odds_a":-110,"odds_b":-105,"id":"m101"}];
+
+function preview() {
+    return {
+        event: { away: 'New England Patriots', home: 'Seattle Seahawks',
+                 kickoff: 'Thu, Sep 10 · 8:15 PM ET' },
+        markets: MARKETS,
+        ladderPageSize: 3,
+        ladderOffsets: {},
+        ladderExpanded: {},
+        picked: null,
+
+        formatOdds(n) { return n > 0 ? '+' + n : String(n); },
+        extractLine(s) { const m = String(s || '').match(/([+-]?\d+\.?\d*)\s*$/); return m ? m[1] : null; },
+        sideLabel(s) { return String(s || '').replace(/\s*[-+]?\d+(?:\.\d+)?\s*$/, '').trim(); },
+        formatSpreadLine(l) { const n = Number(l); return n > 0 ? '+' + n : String(n); },
+
+        buildLadder(key, title, markets, signed = false) {
+            if (!markets.length) return null;
+            const lineOf = (m) => { const n = Number(this.extractLine(m.side_a)); return Number.isFinite(n) ? n : 0; };
+            const seen = new Set();
+            const deduped = markets.filter((m) => {
+                const k = String(lineOf(m));
+                if (seen.has(k)) return false;
+                seen.add(k); return true;
+            });
+            const sorted = [...deduped].sort((a, b) => lineOf(a) - lineOf(b));
+            // Open on the main line — offset 0 is the most extreme line the
+            // book offers, which reads as broken. Mirrors dashboard.js.
+            // Only the featured spread/total counts as the main line. Testing
+            // for "not alternate_*" matched the first team_total too, anchoring
+            // those ladders at their lowest line instead of the middle — team
+            // totals have no featured line, so they centre.
+            const mainIndex = sorted.findIndex((m) => m.type === 'spread' || m.type === 'total');
+            const anchor = mainIndex >= 0 ? mainIndex : Math.floor(sorted.length / 2);
+            const defaultOffset = Math.max(0, Math.min(sorted.length - this.ladderPageSize,
+                anchor - Math.floor(this.ladderPageSize / 2)));
+            const cell = (m, side) => {
+                const raw = this.extractLine(side === 'a' ? m.side_a : m.side_b);
+                return {
+                    marketId: m.id, indicator: side,
+                    side: side === 'a' ? m.side_a : m.side_b,
+                    odds: side === 'a' ? m.odds_a : m.odds_b,
+                    lineLabel: raw === null ? '' : (signed ? this.formatSpreadLine(raw) : String(raw)),
+                };
+            };
+            return { key, title, count: sorted.length, defaultOffset, rows: [
+                { label: this.sideLabel(sorted[0].side_a), cells: sorted.map((m) => cell(m, 'a')) },
+                { label: this.sideLabel(sorted[0].side_b), cells: sorted.map((m) => cell(m, 'b')) },
+            ]};
+        },
+
+        get sections() {
+            const by = (t) => this.markets.filter((m) => m.type === t);
+            const out = [];
+            const ml = by('moneyline');
+            if (ml.length) out.push({ key: 'moneyline', title: 'Winner', kind: 'pair', markets: ml });
+
+            const sp = this.buildLadder('spread', 'Spread', [...by('spread'), ...by('alternate_spread')], true);
+            if (sp) out.push({ ...sp, kind: 'ladder' });
+
+            const to = this.buildLadder('total', 'Total', [...by('total'), ...by('alternate_total')]);
+            if (to) out.push({ ...to, kind: 'ladder' });
+
+            const tt = by('team_total');
+            const teams = [...new Set(tt.map((m) => this.sideLabel(m.side_a).replace(/\s+(Over|Under)$/i, '')))];
+            for (const team of teams) {
+                const forTeam = tt.filter((m) => this.sideLabel(m.side_a).replace(/\s+(Over|Under)$/i, '') === team);
+                const l = this.buildLadder('tt_' + team, team + ' total', forTeam);
+                if (l) { l.rows.forEach((r) => { r.label = r.label.replace(team, '').trim() || r.label; });
+                         out.push({ ...l, kind: 'ladder' }); }
+            }
+
+            const oe = by('odd_even');
+            if (oe.length) out.push({ key: 'odd_even', title: 'Odd / Even', kind: 'pair', markets: oe });
+            return out;
+        },
+
+        ladderOffset(k) {
+            if (k in this.ladderOffsets) return this.ladderOffsets[k];
+            return this.sections.find((s) => s.key === k)?.defaultOffset ?? 0;
+        },
+        ladderShift(k, d, count) {
+            const max = Math.max(0, count - this.ladderPageSize);
+            this.ladderOffsets = { ...this.ladderOffsets, [k]: Math.min(max, Math.max(0, this.ladderOffset(k) + d)) };
+        },
+        isLadderExpanded(k) { return !!this.ladderExpanded[k]; },
+        toggleLadder(k) { this.ladderExpanded = { ...this.ladderExpanded, [k]: !this.ladderExpanded[k] }; },
+        ladderCells(section, row) {
+            if (this.isLadderExpanded(section.key)) return row.cells;
+            const from = this.ladderOffset(section.key);
+            return row.cells.slice(from, from + this.ladderPageSize);
+        },
+        pick(c) {
+            const key = c.marketId + c.indicator;
+            this.picked = this.picked === key ? null : key;
+        },
+        isPicked(c) { return this.picked === c.marketId + c.indicator; },
+    };
+}
+</script>
+</body>
+</html>

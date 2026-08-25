@@ -2063,6 +2063,25 @@ function dashboardApp() {
                 return true;
             });
             const sorted = [...deduped].sort((a, b) => lineOf(a) - lineOf(b));
+
+            // Open on the main line, not on the end of the ladder.
+            //
+            // Offset 0 is the most extreme line the book offers — a 45-line NFL
+            // spread ladder starts at -7.5/+2820, which is not a number anyone
+            // came to see and reads as broken. The featured market is the one
+            // the board shows and the one members recognise, so the ladder
+            // opens centred on it and pages outward from there.
+            // Only the featured spread/total counts as the main line. Testing
+            // for "not alternate_*" matched the first team_total too, anchoring
+            // those ladders at their lowest line instead of the middle — team
+            // totals have no featured line, so they centre.
+            const mainIndex = sorted.findIndex((m) => m.type === 'spread' || m.type === 'total');
+            const anchor = mainIndex >= 0 ? mainIndex : Math.floor(sorted.length / 2);
+            const defaultOffset = Math.max(
+                0,
+                Math.min(sorted.length - this.ladderPageSize,
+                         anchor - Math.floor(this.ladderPageSize / 2)),
+            );
             const cell = (m, side) => ({
                 marketId: m.id,
                 market: m,
@@ -2087,6 +2106,7 @@ function dashboardApp() {
                     { label: this.sideLabel(sorted[0].side_b), cells: sorted.map((m) => cell(m, 'b')) },
                 ],
                 count: sorted.length,
+                defaultOffset,
             };
         },
 
@@ -2147,7 +2167,11 @@ function dashboardApp() {
         /** Columns visible before paging. Matches the reference layout. */
         ladderPageSize: 3,
 
-        ladderOffset(key) { return this.ladderOffsets[key] || 0; },
+        ladderOffset(key) {
+            if (key in this.ladderOffsets) return this.ladderOffsets[key];
+            const section = this.gameDetailSections.find((s) => s.key === key);
+            return section?.defaultOffset ?? 0;
+        },
 
         ladderShift(key, delta, count) {
             const max = Math.max(0, count - this.ladderPageSize);
