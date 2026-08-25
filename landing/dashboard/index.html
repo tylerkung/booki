@@ -31,7 +31,8 @@
     <div class="toast-container">
         <template x-for="(toast, i) in toasts" :key="i">
             <div class="toast" :class="'toast-' + toast.type" x-text="toast.message"
-                 x-transition x-show="toast.visible"></div>
+                 x-transition x-show="toast.visible"
+                 role="status" aria-live="polite"></div>
         </template>
     </div>
 

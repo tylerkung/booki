@@ -2267,6 +2267,14 @@ function dashboardApp() {
                         return;
                     }
 
+                    // When every single in the batch fails, the server wraps the
+                    // real reasons in a generic 'All bets failed validation'.
+                    // Surface the first actual reason instead, so the member gets
+                    // the same specific copy a parlay would give them.
+                    if (response.error === 'All bets failed validation' &&
+                        (response.failed || []).length > 0) {
+                        throw new Error(response.failed[0].error || response.error);
+                    }
                     if (response.error) throw new Error(response.error);
 
                     // Check partial success
@@ -2319,11 +2327,74 @@ function dashboardApp() {
                 // Refresh player data
                 this.loadPlayerHome();
             } catch (err) {
-                console.error('Submit bet slip error');
-                this.toast(err.message || 'Failed to place pick', 'error');
+                // Log the error itself. This used to log a bare string, which
+                // meant the one place the real server message surfaced threw it
+                // away — a 404 looked identical to a network drop.
+                console.error('Submit bet slip error:', err);
+                const raw = err && err.message;
+                this.toast(this.humanizeBetError(raw), 'error');
+
+                // A missing event or market means this page is holding a stale
+                // copy of the board: sync_games rewrites events twice daily, and
+                // a slip built before a rewrite points at ids that no longer
+                // exist. Singles absorb this as a partial failure; a parlay is
+                // all-or-nothing and 404s outright. Drop the dead selections and
+                // reload rather than leaving unbettable odds on screen.
+                if (this.isStaleBoardError(raw)) {
+                    this.betSlipSelections = [];
+                    this.betSlipStakes = {};
+                    this.betSlipMultiStake = '';
+                    this.showBetSlip = false;
+                    this.loadPlayerGames();
+                }
             }
 
             this.isSubmittingBets = false;
+        },
+
+        /**
+         * Does this error mean the board on screen no longer matches the server?
+         */
+        isStaleBoardError(raw) {
+            const msg = String(raw || '');
+            return /^Events? not found/.test(msg) ||
+                /^Market not found/.test(msg) ||
+                msg === 'line_no_longer_offered' ||
+                msg === 'Market has no price';
+        },
+
+        /**
+         * Server errors are written for a log, not for a member — 'Events not
+         * found: 0000...ff' is accurate and useless. Map the ones a member can
+         * actually hit onto copy that says what to do next, and pass anything
+         * unrecognised through so a new server error is never swallowed.
+         */
+        humanizeBetError(raw) {
+            const msg = String(raw || '');
+            if (this.isStaleBoardError(msg)) {
+                return 'One of these games is no longer available. Refreshing the board — please rebuild your pick.';
+            }
+            if (/^Events locked/.test(msg) || msg === 'Event is locked for betting') {
+                return 'Betting has closed on one of these games.';
+            }
+            if (msg === 'win_limit_reached') {
+                return "You've hit your win limit. Ask your organizer to raise it.";
+            }
+            if (msg === 'open_bet_limit_reached') {
+                return 'You have too many open picks. Wait for some to settle.';
+            }
+            if (msg === 'Player not found' || msg === 'Player does not belong to specified bookie' ||
+                msg === 'Cannot submit bet for another player') {
+                return 'Your account needs a refresh. Reload the page and try again.';
+            }
+            if (msg === 'Parlay requires at least 2 legs') {
+                return 'A Multi-Pick needs at least 2 selections.';
+            }
+            if (msg === 'pro_required') return 'That feature needs Booki Pro.';
+            if (msg === 'Unauthorized') return 'Your session has expired. Sign in again.';
+            if (/^Stake must be/.test(msg)) return 'Enter a stake amount.';
+            if (/^Odds must be/.test(msg)) return 'That price is no longer valid. Refresh and try again.';
+            return msg || 'Failed to place pick';
         },
 
         closeBetSlipSuccess() {
@@ -4877,11 +4948,21 @@ function dashboardApp() {
 
         // ── Toasts ──
         toast(message, type = 'success') {
+            // `visible` is not optional: the template binds x-show="toast.visible",
+            // so a toast pushed without it is undefined -> falsy -> rendered but
+            // permanently hidden. Every toast in the dashboard, success and error
+            // alike, was silently invisible because of that missing property.
             const id = Date.now() + Math.random();
-            this.toasts.push({ id, message, type });
+            this.toasts.push({ id, message, type, visible: true });
+            // Flip to hidden first so x-transition can play the leave animation,
+            // then drop the row once it has finished.
+            setTimeout(() => {
+                const t = this.toasts.find(x => x.id === id);
+                if (t) t.visible = false;
+            }, 3000);
             setTimeout(() => {
                 this.toasts = this.toasts.filter(x => x.id !== id);
-            }, 3000);
+            }, 3300);
         },
     };
 }
