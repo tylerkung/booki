@@ -2697,31 +2697,78 @@
                         </template>
 
                         <template x-for="section in gameDetailSections" :key="section.key">
-                            <div class="card" style="margin-bottom:var(--s-lg);">
-                                <div class="card-header">
+                            <div class="card gd-section">
+                                <div class="gd-section-head">
                                     <span class="card-title" x-text="section.title"></span>
-                                    <span class="t-body-muted" x-text="section.markets.length + (section.markets.length === 1 ? ' line' : ' lines')"></span>
+
+                                    <!-- Paging lives in the header, next to the
+                                         title it pages, and only appears when
+                                         there is more than one screenful. -->
+                                    <div class="gd-pager" x-show="section.kind === 'ladder'
+                                         && section.count > ladderPageSize && !isLadderExpanded(section.key)">
+                                        <button class="gd-page-btn" :disabled="ladderOffset(section.key) === 0"
+                                                @click="ladderShift(section.key, -ladderPageSize, section.count)"
+                                                aria-label="Previous lines">‹</button>
+                                        <button class="gd-page-btn"
+                                                :disabled="ladderOffset(section.key) >= section.count - ladderPageSize"
+                                                @click="ladderShift(section.key, ladderPageSize, section.count)"
+                                                aria-label="More lines">›</button>
+                                    </div>
+                                    <span class="t-body-muted" x-show="section.kind !== 'ladder'"
+                                          x-text="section.markets.length + (section.markets.length === 1 ? ' line' : ' lines')"></span>
                                 </div>
-                                <div class="gd-lines">
-                                    <template x-for="mkt in section.markets" :key="mkt.id">
-                                        <div class="gd-line">
-                                            <button class="pg-odds-btn gd-side"
-                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, mkt.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) }"
-                                                :disabled="isEventLocked(gameDetail) || mkt.odds_a === null"
-                                                @click="toggleSelection(gameDetail, mkt, 'a', mkt.side_a, mkt.odds_a)">
-                                                <span class="gd-side-label" x-text="mkt.side_a"></span>
-                                                <span class="pg-odds-val" x-text="mkt.odds_a === null ? '—' : formatOdds(mkt.odds_a)"></span>
-                                            </button>
-                                            <button class="pg-odds-btn gd-side" x-show="mkt.side_b && mkt.type !== 'outright'"
-                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, mkt.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) }"
-                                                :disabled="isEventLocked(gameDetail) || mkt.odds_b === null"
-                                                @click="toggleSelection(gameDetail, mkt, 'b', mkt.side_b, mkt.odds_b)">
-                                                <span class="gd-side-label" x-text="mkt.side_b"></span>
-                                                <span class="pg-odds-val" x-text="mkt.odds_b === null ? '—' : formatOdds(mkt.odds_b)"></span>
-                                            </button>
-                                        </div>
-                                    </template>
-                                </div>
+
+                                <!-- Ladder: one row per side, one column per line -->
+                                <template x-if="section.kind === 'ladder'">
+                                    <div>
+                                        <template x-for="row in section.rows" :key="row.label">
+                                            <div class="gd-ladder-row"
+                                                 :class="{ 'gd-ladder-row-wrap': isLadderExpanded(section.key) }">
+                                                <div class="gd-row-label" x-text="row.label"></div>
+                                                <div class="gd-row-cells"
+                                                     :class="{ 'gd-row-cells-all': isLadderExpanded(section.key) }">
+                                                    <template x-for="c in ladderCells(section, row)" :key="c.marketId + c.indicator">
+                                                        <button class="pg-odds-btn gd-cell"
+                                                            :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, c.marketId, c.indicator), 'pg-odds-locked': isEventLocked(gameDetail) }"
+                                                            :disabled="isEventLocked(gameDetail) || c.odds === null"
+                                                            @click="toggleSelection(gameDetail, c.market, c.indicator, c.side, c.odds)">
+                                                            <span class="gd-cell-line" x-text="c.lineLabel"></span>
+                                                            <span class="gd-cell-odds" x-text="c.odds === null ? '—' : formatOdds(c.odds)"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <button class="gd-view-all" x-show="section.count > ladderPageSize"
+                                                @click="toggleLadder(section.key)"
+                                                x-text="isLadderExpanded(section.key) ? 'Show fewer lines' : ('View all ' + section.count + ' lines')"></button>
+                                    </div>
+                                </template>
+
+                                <!-- Pair: a market with one line per side -->
+                                <template x-if="section.kind === 'pair'">
+                                    <div class="gd-lines">
+                                        <template x-for="mkt in section.markets" :key="mkt.id">
+                                            <div class="gd-line">
+                                                <button class="pg-odds-btn gd-side"
+                                                    :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, mkt.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) }"
+                                                    :disabled="isEventLocked(gameDetail) || mkt.odds_a === null"
+                                                    @click="toggleSelection(gameDetail, mkt, 'a', mkt.side_a, mkt.odds_a)">
+                                                    <span class="gd-side-label" x-text="mkt.side_a"></span>
+                                                    <span class="pg-odds-val" x-text="mkt.odds_a === null ? '—' : formatOdds(mkt.odds_a)"></span>
+                                                </button>
+                                                <button class="pg-odds-btn gd-side" x-show="mkt.side_b && mkt.type !== 'outright'"
+                                                    :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, mkt.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) }"
+                                                    :disabled="isEventLocked(gameDetail) || mkt.odds_b === null"
+                                                    @click="toggleSelection(gameDetail, mkt, 'b', mkt.side_b, mkt.odds_b)">
+                                                    <span class="gd-side-label" x-text="mkt.side_b"></span>
+                                                    <span class="pg-odds-val" x-text="mkt.odds_b === null ? '—' : formatOdds(mkt.odds_b)"></span>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
                             </div>
                         </template>
                     </div>

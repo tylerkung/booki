@@ -2679,9 +2679,115 @@ input, button, select, textarea { font: inherit; }
 
 
 /* ── Game detail: every line for one game ──────────────────────────────────
-   A ladder of alternate lines is read down a column, so each line is one row
-   with its two sides side by side. The board's compact three-column grid does
-   not work here: a side label is "Seattle Seahawks Over 24.5", not "-3.5". */
+   A ladder of alternate lines is a MATRIX, not a list: one row per side, one
+   column per line. As a flat list the team name repeats on every row and the
+   reader has to scan for the number they want; as a matrix the side is named
+   once and the lines run across it. */
+.gd-section {
+    /* Component-scoped, not global: these two only mean anything inside a
+       ladder. The label column is wide enough for a full team name
+       ("New England Patriots") so every row's cells align into columns, which
+       is the entire point of the matrix. */
+    --gd-label-col: 160px;
+    --gd-cell-min: 84px;
+}
+
+.gd-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-md);
+    margin-bottom: var(--s-md);
+}
+
+.gd-pager { display: flex; gap: var(--s-xs); }
+
+.gd-page-btn {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    border: var(--hairline) solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--fs-body);
+    line-height: var(--lh-none);
+    cursor: pointer;
+    transition: all var(--dur-fast);
+}
+.gd-page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.gd-page-btn:disabled { opacity: 0.5; cursor: default; }  /* matches .btn:disabled */
+
+.gd-ladder-row {
+    display: grid;
+    /* The label column is fixed so every row's cells line up into columns —
+       the whole point of the matrix. */
+    grid-template-columns: var(--gd-label-col) 1fr;
+    align-items: center;
+    gap: var(--s-md);
+    margin-bottom: var(--s-xs);
+}
+
+.gd-row-label {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gd-row-cells {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--s-xs);
+}
+/* Expanded: as many columns as fit, wrapping. The rows no longer align
+   column-for-column, which is the trade for seeing every line at once. */
+.gd-row-cells-all {
+    grid-template-columns: repeat(auto-fill, minmax(var(--gd-cell-min), 1fr));
+}
+
+.gd-cell {
+    /* .pg-odds-btn is pinned to --odds-col for the board's three-column grid;
+       here the cell fills its share of the ladder. */
+    width: 100%;
+    flex-direction: column;
+    gap: var(--s-xxs);
+    padding: var(--s-sm) var(--s-xs);
+}
+.gd-cell-line {
+    font-size: var(--fs-caption);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.gd-cell-odds {
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-semibold);
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
+.gd-cell.pg-odds-active .gd-cell-line,
+.gd-cell.pg-odds-active .gd-cell-odds { color: inherit; }
+
+.gd-view-all {
+    width: 100%;
+    margin-top: var(--s-sm);
+    padding: var(--s-sm);
+    background: var(--bg-elevated);
+    border: var(--hairline) solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    cursor: pointer;
+    transition: all var(--dur-fast);
+}
+.gd-view-all:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Pair markets (moneyline, odd/even) keep the simple two-button row. */
 .gd-lines {
     display: flex;
     flex-direction: column;
@@ -2695,23 +2801,16 @@ input, button, select, textarea { font: inherit; }
 }
 
 .gd-side {
-    /* .pg-odds-btn is fixed at --odds-col for the board's three-column grid.
-       Here the cell is a full-width ladder row and the label is a phrase
-       ("Seattle Seahawks Over 24.5"), not a number, so the fixed width has to
-       be overridden or every label truncates to two characters. */
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--s-sm);
-    /* Taller than a board cell because the label is a phrase, not a number. */
     padding: var(--s-sm) var(--s-md);
     text-align: left;
 }
 
 .gd-side-label {
-    /* Takes the slack; the price keeps its natural width so the numbers stay
-       aligned down the ladder. */
     flex: 1;
     min-width: 0;
     font-size: var(--fs-sm);
@@ -2720,12 +2819,12 @@ input, button, select, textarea { font: inherit; }
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.gd-side.pg-odds-active .gd-side-label { color: inherit; }
 
 .gd-side .pg-odds-val {
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
 }
-.gd-side.pg-odds-active .gd-side-label { color: inherit; }
 
 /* The board row's time column doubles as the link into this page. */
 .pg-game-more {
@@ -2742,7 +2841,9 @@ input, button, select, textarea { font: inherit; }
 }
 .pg-game-more:hover .pg-more-lines { color: var(--accent); }
 
-/* One column on a phone: two long labels do not fit side by side. */
 @media (max-width: 600px) {
+    /* Stack the label above its cells: a team name plus three cells does not
+       fit across a phone. */
+    .gd-ladder-row { grid-template-columns: 1fr; gap: var(--s-xs); }
     .gd-line { grid-template-columns: 1fr; }
 }

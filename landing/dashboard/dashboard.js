@@ -493,6 +493,8 @@ function dashboardApp() {
         selectedGameId: null,
         gameDetail: null,
         gameDetailMarkets: [],
+        ladderOffsets: {},
+        ladderExpanded: {},
         isLoadingGameDetail: false,
         betSlipSelections: [],
         isLoadingPlayerEvents: true,
@@ -2023,45 +2025,147 @@ function dashboardApp() {
         },
 
         /**
+         * Strips the line off a side label: "Boston Red Sox +2.5" -> "Boston
+         * Red Sox", "Over 7.5" -> "Over", "Red Sox Over 4.5" -> "Red Sox Over".
+         */
+        sideLabel(side) {
+            return String(side || '').replace(/\s*[-+]?\d+(?:\.\d+)?\s*$/, '').trim();
+        },
+
+        /**
+         * Builds a LADDER: one row per side, one column per line.
+         *
+         * Alternate lines listed as a flat list repeat the team name on every
+         * row and force the reader to scan for the number they want. As a
+         * matrix the side is named once and the lines run across it, which is
+         * how a sportsbook presents a handicap and how anyone actually reads
+         * one — pick the row, then scan for the price.
+         *
+         * Each cell keeps its own line, because the two sides of a spread do
+         * not share one: +2.5 for the underdog is -2.5 for the favourite.
+         */
+        buildLadder(key, title, markets, signed = false) {
+            if (!markets.length) return null;
+            const lineOf = (m) => {
+                const n = Number(this.extractLine(m.side_a));
+                return Number.isFinite(n) ? n : 0;
+            };
+            // The API's alternate_spreads and alternate_totals normally INCLUDE
+            // the main line, so merging them with the featured market yields a
+            // duplicate column. Keep-first dedupe by line: the featured market
+            // is passed first, so its row — the one the board shows and the one
+            // members recognise — is the one that survives.
+            const seen = new Set();
+            const deduped = markets.filter((m) => {
+                const k = String(lineOf(m));
+                if (seen.has(k)) return false;
+                seen.add(k);
+                return true;
+            });
+            const sorted = [...deduped].sort((a, b) => lineOf(a) - lineOf(b));
+            const cell = (m, side) => ({
+                marketId: m.id,
+                market: m,
+                indicator: side,
+                side: side === 'a' ? m.side_a : m.side_b,
+                odds: side === 'a' ? m.odds_a : m.odds_b,
+                line: this.extractLine(side === 'a' ? m.side_a : m.side_b),
+                // Only a handicap carries a sign. "+6.5" for a total reads as
+                // a price, not a line, and there is no such thing as a
+                // negative total.
+                lineLabel: (() => {
+                    const raw = this.extractLine(side === 'a' ? m.side_a : m.side_b);
+                    if (raw === null) return '';
+                    return signed ? this.formatSpreadLine(raw) : String(raw);
+                })(),
+            });
+            return {
+                key,
+                title,
+                rows: [
+                    { label: this.sideLabel(sorted[0].side_a), cells: sorted.map((m) => cell(m, 'a')) },
+                    { label: this.sideLabel(sorted[0].side_b), cells: sorted.map((m) => cell(m, 'b')) },
+                ],
+                count: sorted.length,
+            };
+        },
+
+        /**
          * Groups a game's markets into the sections the screen renders.
          *
-         * Ordering is by line value, not by insertion: the API returns
-         * alternate lines in whatever order the book listed them, and a ladder
-         * that jumps around is unreadable. Team totals sort by team first so a
-         * team's ladder stays together.
+         * Two shapes, not one. A market with a single line per side (moneyline,
+         * odd/even) is a pair of buttons. A market with a ladder of lines
+         * (spreads, totals, team totals) is a matrix — see buildLadder.
          */
         get gameDetailSections() {
             const all = this.gameDetailMarkets;
             if (!all.length) return [];
             const byType = (t) => all.filter((m) => m.type === t);
-            const lineOf = (m) => {
-                const n = Number(this.extractLine(m.side_a));
-                return Number.isFinite(n) ? n : 0;
-            };
-            const teamOf = (m) => String(m.side_a || '').replace(/\s+(Over|Under)\s+[-+\d.]+$/i, '');
-
             const sections = [];
-            const main = ['moneyline', 'spread', 'total']
-                .map((t) => byType(t)[0]).filter(Boolean);
-            if (main.length) sections.push({ key: 'main', title: 'Main lines', markets: main });
 
-            const alts = byType('alternate_spread').sort((a, b) => lineOf(a) - lineOf(b));
-            if (alts.length) sections.push({ key: 'alt_spread', title: 'Alternate spreads', markets: alts });
+            const push = (s) => { if (s) sections.push(s); };
+            const pair = (key, title, markets) =>
+                markets.length ? { key, title, kind: 'pair', markets } : null;
 
-            const altTotals = byType('alternate_total').sort((a, b) => lineOf(a) - lineOf(b));
-            if (altTotals.length) sections.push({ key: 'alt_total', title: 'Alternate totals', markets: altTotals });
+            // Moneyline first: it is what most people came for.
+            push(pair('moneyline', 'Winner', byType('moneyline')));
 
-            const teamTotals = byType('team_total').sort((a, b) =>
-                teamOf(a).localeCompare(teamOf(b)) || lineOf(a) - lineOf(b));
-            if (teamTotals.length) sections.push({ key: 'team_total', title: 'Team totals', markets: teamTotals });
+            // Spread and its alternates are one ladder, with the main line
+            // included — splitting them would put the headline number in a
+            // different card from the ladder it belongs to.
+            const spreads = [...byType('spread'), ...byType('alternate_spread')];
+            const spreadLadder = this.buildLadder('spread', 'Spread', spreads, true);
+            if (spreadLadder) push({ ...spreadLadder, kind: 'ladder' });
 
-            const oddEven = byType('odd_even');
-            if (oddEven.length) sections.push({ key: 'odd_even', title: 'Odd / Even', markets: oddEven });
+            const totals = [...byType('total'), ...byType('alternate_total')];
+            const totalLadder = this.buildLadder('total', 'Total', totals);
+            if (totalLadder) push({ ...totalLadder, kind: 'ladder' });
 
-            const outrights = byType('outright');
-            if (outrights.length) sections.push({ key: 'outright', title: 'Futures', markets: outrights });
+            // One ladder per team: a team's own lines belong together, and a
+            // combined matrix would need four rows with two different subjects.
+            const teamTotals = byType('team_total');
+            const teams = [...new Set(teamTotals.map((m) =>
+                this.sideLabel(m.side_a).replace(/\s+(Over|Under)$/i, '')))];
+            for (const team of teams) {
+                const forTeam = teamTotals.filter((m) => this.sideLabel(m.side_a)
+                    .replace(/\s+(Over|Under)$/i, '') === team);
+                const ladder = this.buildLadder(`team_total_${team}`, `${team} total`, forTeam);
+                if (ladder) {
+                    // Rows read "Over"/"Under"; the team is already the title.
+                    ladder.rows.forEach((r) => {
+                        r.label = r.label.replace(team, '').trim() || r.label;
+                    });
+                    push({ ...ladder, kind: 'ladder' });
+                }
+            }
 
+            push(pair('odd_even', 'Odd / Even', byType('odd_even')));
+            push(pair('outright', 'Futures', byType('outright')));
             return sections;
+        },
+
+        /** Columns visible before paging. Matches the reference layout. */
+        ladderPageSize: 3,
+
+        ladderOffset(key) { return this.ladderOffsets[key] || 0; },
+
+        ladderShift(key, delta, count) {
+            const max = Math.max(0, count - this.ladderPageSize);
+            const next = Math.min(max, Math.max(0, this.ladderOffset(key) + delta));
+            this.ladderOffsets = { ...this.ladderOffsets, [key]: next };
+        },
+
+        isLadderExpanded(key) { return !!this.ladderExpanded[key]; },
+
+        toggleLadder(key) {
+            this.ladderExpanded = { ...this.ladderExpanded, [key]: !this.ladderExpanded[key] };
+        },
+
+        /** The cells actually rendered for a row, honouring paging/expansion. */
+        ladderCells(section, row) {
+            if (this.isLadderExpanded(section.key)) return row.cells;
+            const from = this.ladderOffset(section.key);
+            return row.cells.slice(from, from + this.ladderPageSize);
         },
 
         /**
