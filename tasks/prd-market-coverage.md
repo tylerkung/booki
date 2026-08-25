@@ -275,6 +275,57 @@ and should be made before the first prop is graded, not after the first dispute.
 Treating an absent row as zero would settle every Over as a loss, which is wrong
 and would be noticed immediately.
 
+### 2026-08-25 spike result — VERIFIED, before buying anything
+
+The question was whether we could be confident *before* paying for the NFL
+tier. Both halves were tested without it.
+
+**Half 1: does a statline actually settle a prop?** Tested end to end against a
+real completed game — balldontlie NBA game 15907438, Knicks at Celtics, with a
+real 32-player box score — because the NBA tier was already on the key and the
+pipeline is identical in shape. All checks pass, including the ones that matter
+more than the happy path:
+
+- Over, Under, and an exact line landing on the number (a push, not a loss)
+- A player on the roster with no statline resolves to **void**, not loss.
+  Treating an absent row as zero would settle every Over as a loss
+- An unknown subject resolves to **pending**, which is deliberately a different
+  outcome from void: "I do not know who this is" and "this player did not play"
+  must not collapse into one verdict
+- An ambiguous name resolves to **pending**, never to a guess
+
+The spike is kept at `docs/spikes/prop-grading-spike.ts`.
+
+**Half 2: does the name matching hold on real NFL data?** All 32 rosters pulled
+from balldontlie's free tier — 3,200 player rows, which OVER-counts collisions
+because the endpoint returns historical players too.
+
+| Measure | Result |
+|---|---|
+| Collisions within a single team | **0** |
+| Names appearing on more than one team | 24 |
+| ...where position cannot disambiguate | **5** |
+
+Those five are `jaylon jones` (CHI/IND, both CB), `connor mcgovern` (BUF/NYJ,
+both C), `sam williams` (DAL/LV, both LB), `mike brown` (KC/NE, both S) and
+`cedrick wilson` (DET/PIT, both WR). Every one is a defensive back, lineman,
+linebacker or safety — positions that props are rarely written on — and each
+only matters if those two specific teams meet AND a prop names that player. Even
+then the resolver returns pending rather than guessing.
+
+Normalisation handles the routine cross-provider spellings: case, accents,
+`Ja'Marr` / `JaMarr`, `D.K.` / `DK`, and Jr./Sr./II/III suffixes.
+
+**Conclusion: yes.** Buying the NFL tier would let us grade the core prop board
+automatically. The residual risk is five ambiguous names league-wide, all of
+which fail safe.
+
+**Remaining unknown:** this proves the mechanism against NBA field names. The
+NFL response shape is documented but unverified — the 401 confirms the endpoint
+exists and nothing more. First task after subscribing is to fetch one NFL box
+score and confirm the field names match the documented set before wiring
+anything to it.
+
 **Suggested order if this goes ahead:**
 
 1. Spike the mapping only — no betting. Take one completed NFL week, resolve
