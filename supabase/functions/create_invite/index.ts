@@ -11,7 +11,15 @@ interface CreateInviteRequest {
 // Charset: A-Z (excluding O, I, L) + 2-9 (excluding 0, 1)
 const INVITE_CODE_CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const INVITE_CODE_LENGTH = 8;
-const INVITE_EXPIRY_HOURS = 24;
+// One week. 24 hours meant a link pasted into a group chat on Saturday was dead
+// by Sunday, and every one of the nine invites created through the web flow
+// before 17 Aug 2026 expired unclaimed. The window is not what makes a link
+// safe — the code is single-use and can only be claimed once — so a short
+// expiry bought very little and cost real signups.
+//
+// This bounds bearer links only. An invite addressed to a specific email never
+// expires for that addressee; see claim_invite.
+const INVITE_EXPIRY_HOURS = 24 * 7;
 const MAX_CODE_RETRIES = 5;
 const MAX_OPEN_INVITES = 5;
 const MEMBER_LIMIT_FREE = 3;
@@ -141,7 +149,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Calculate expiration (24 hours from now)
+    // Calculate expiration (see INVITE_EXPIRY_HOURS)
     const expiresAt = new Date(Date.now() + INVITE_EXPIRY_HOURS * 60 * 60 * 1000).toISOString();
 
     // Insert invite record
