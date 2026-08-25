@@ -165,6 +165,8 @@ MIRRORED = [
 DS_CSS = os.path.join(ROOT, "landing", "design", "ds.css")
 TOKENS = os.path.join(ROOT, "landing", "tokens.css")
 SITE_CSS = os.path.join(ROOT, "landing", "styles.css")
+ADMIN = os.path.join(ROOT, "landing", "admin")
+ADMIN_CSS = os.path.join(ADMIN, "admin.css")
 THEME = os.path.join(ROOT, "Booki", "Theme.swift")
 
 # Values a consumer stylesheet is allowed to define itself, with the reason.
@@ -242,7 +244,7 @@ def scan_consumer_literals():
     """A consumer stylesheet may only alias. Defining a value there recreates
     the second-source-of-truth problem this architecture removed."""
     out = []
-    for path in (CSS, DS_CSS, SITE_CSS):
+    for path in (CSS, DS_CSS, SITE_CSS, ADMIN_CSS):
         if not os.path.exists(path): continue
         src = open(path).read()
         m = re.search(r':root\s*\{.*?\n\}', src, re.S)
@@ -264,19 +266,30 @@ def scan_unresolved():
     transparent for months on a var(--card-bg) that was never defined."""
     defined = set(root_tokens(TOKENS))
     out = []
-    for consumer, extras in (
-        (CSS, ["landing/dashboard/index.html", "landing/dashboard/login.html"]),
-        (DS_CSS, ["landing/design/index.html", "landing/design/ds-content.js"]),
-        # The marketing stylesheet is the fourth consumer. Only the
-        # architecture checks apply to it — its own values are not linted yet,
-        # because it predates the token layer and uses a rem-based scale.
-        (SITE_CSS, []),
+    # (stylesheet, files that consume it, stylesheets it is loaded ALONGSIDE)
+    # The third element matters because custom properties live on the document,
+    # not on a stylesheet: admin.css is loaded on a page that also links
+    # dashboard.css, so dashboard.css's :root aliases resolve there at runtime.
+    # Without modelling that, every reused alias reads as unresolved and the
+    # only ways to silence it are duplicating the aliases or not linting the
+    # file — both worse than teaching the linter how the page is assembled.
+    for consumer, extras, alongside in (
+        (CSS, ["landing/dashboard/index.html", "landing/dashboard/login.html"], []),
+        (DS_CSS, ["landing/design/index.html", "landing/design/ds-content.js"], []),
+        # The marketing stylesheet is another consumer. Only the architecture
+        # checks apply to it — its own values are not linted yet, because it
+        # predates the token layer and uses a rem-based scale.
+        (SITE_CSS, [], []),
+        (ADMIN_CSS, ["landing/admin/index.html", "landing/admin/admin.js"], [CSS]),
     ):
         if not os.path.exists(consumer): continue
         # A custom property may be declared on ANY selector, not just :root —
         # component-scoped ones like --avatar-size are how a variant passes a
         # value down to a rule it does not own. Collect every declaration.
         local = set(re.findall(r'(--[\w-]+)\s*:', open(consumer).read()))
+        for sheet in alongside:
+            if os.path.exists(sheet):
+                local |= set(re.findall(r'(--[\w-]+)\s*:', open(sheet).read()))
         known = defined | local
         for rel in [os.path.relpath(consumer, ROOT)] + extras:
             fp = os.path.join(ROOT, rel)
@@ -293,8 +306,10 @@ def scan_unresolved():
 def main():
     summary = "--summary" in sys.argv
     findings = scan_css(CSS)
+    findings += scan_css(ADMIN_CSS)
     for f in ("index.html", "login.html"):
         findings += scan_inline(os.path.join(DASH, f))
+    findings += scan_inline(os.path.join(ADMIN, "index.html"))
     findings += scan_dimensions()
     findings += scan_radius_tokens()
     findings += scan_drift()

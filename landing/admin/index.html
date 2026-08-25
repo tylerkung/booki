@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon_io/favicon-32x32.png">
+    <title>Booki Admin</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/tokens.css">
+    <link rel="stylesheet" href="/dashboard/dashboard.css">
+    <link rel="stylesheet" href="admin.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body x-data="adminApp()" x-init="init()">
+
+<!-- Toasts -->
+<div class="toast-container">
+    <template x-for="(t, i) in toasts" :key="i">
+        <div class="toast" :class="'toast-' + t.type" x-text="t.message" x-show="t.visible" x-transition
+             role="status" aria-live="polite"></div>
+    </template>
+</div>
+
+<!-- Gate: not signed in, or signed in without admin rights -->
+<template x-if="gate">
+    <div class="admin-gate">
+        <div class="card admin-gate-card">
+            <h1 class="t-title">Booki Admin</h1>
+            <p class="t-body-muted" x-text="gate"></p>
+            <a href="/dashboard/" class="btn btn-primary" style="margin-top:var(--s-lg);">Go to dashboard</a>
+        </div>
+    </div>
+</template>
+
+<div class="app-layout" x-show="!gate" x-cloak>
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="/assets/logo-booki-wh.svg" alt="Booki">
+            <span class="admin-tag">ADMIN</span>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <template x-for="v in views" :key="v.id">
+                    <li>
+                        <a :href="'#/' + v.id" :class="{ active: route === v.id }" x-text="v.label"></a>
+                    </li>
+                </template>
+            </ul>
+        </nav>
+        <div class="sidebar-bottom">
+            <label class="admin-toggle">
+                <input type="checkbox" x-model="includeTest" @change="load()">
+                <span>Show test accounts</span>
+            </label>
+            <div class="t-micro admin-signed-in" x-text="adminEmail"></div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 x-text="currentView.label"></h1>
+            <p x-show="!loading && rows.length" x-text="summaryLine"></p>
+            <p x-show="loading">Loading…</p>
+        </div>
+
+        <!-- Overview -->
+        <div x-show="route === 'overview'" x-cloak>
+            <div class="stats-grid">
+                <template x-for="tile in overviewTiles" :key="tile.label">
+                    <div class="stat-tile">
+                        <div class="stat-label" x-text="tile.label"></div>
+                        <div class="stat-value" :class="tile.tone" x-text="tile.value"></div>
+                        <div class="t-micro" x-show="tile.sub" x-text="tile.sub"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Table views -->
+        <div x-show="route !== 'overview'" x-cloak>
+            <div class="filter-bar" style="margin-bottom:var(--s-lg);">
+                <input class="search-input admin-search" type="search" placeholder="Filter — name, email, organizer, or paste a UUID"
+                       x-model="query" @input="page = 1">
+                <button class="chip" @click="load()" :disabled="loading">Refresh</button>
+                <button class="chip" @click="exportCsv()" :disabled="!filtered.length">Export CSV</button>
+            </div>
+
+            <template x-if="!loading && !filtered.length">
+                <div class="card"><div class="empty-state"><p x-text="rows.length ? 'Nothing matches that filter.' : 'No rows.'"></p></div></div>
+            </template>
+
+            <div class="card table-responsive" x-show="filtered.length" style="padding:0;">
+                <table class="data-table admin-table">
+                    <thead>
+                        <tr>
+                            <template x-for="c in currentView.columns" :key="c.key">
+                                <th @click="sortBy(c.key)" :class="{ sortable: true, sorted: sort.key === c.key }">
+                                    <span x-text="c.label"></span>
+                                    <span class="sort-caret" x-show="sort.key === c.key" x-text="sort.dir === 1 ? '▲' : '▼'"></span>
+                                </th>
+                            </template>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="row in paged" :key="row.id || row.auth_user_id">
+                            <tr>
+                                <template x-for="c in currentView.columns" :key="c.key">
+                                    <td :data-label="c.label" x-html="cell(row, c)"></td>
+                                </template>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="admin-pager" x-show="filtered.length > pageSize">
+                <button class="chip" @click="page = Math.max(1, page - 1)" :disabled="page === 1">Prev</button>
+                <span class="t-micro" x-text="`${page} / ${totalPages} · ${filtered.length} rows`"></span>
+                <button class="chip" @click="page = Math.min(totalPages, page + 1)" :disabled="page === totalPages">Next</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>

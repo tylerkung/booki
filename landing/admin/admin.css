@@ -1,0 +1,101 @@
+/* Booki admin — the little that dashboard.css does not already provide.
+   This is an internal tool: dense, plain, and deliberately not designed.
+   Everything structural (app-layout, sidebar, data-table, badge, chip,
+   stat-tile, empty-state) is reused rather than restyled. */
+
+.admin-tag {
+    font-family: var(--font-display);
+    font-size: var(--fs-micro);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--ls-cta);
+    color: var(--warning);
+    border: var(--hairline) solid var(--warning);
+    border-radius: var(--radius-sm);
+    padding: var(--s-xxs) var(--s-xs);
+    margin-left: var(--s-sm);
+}
+
+/* Gate ------------------------------------------------------------------- */
+.admin-gate {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: var(--s-xl);
+}
+.admin-gate-card {
+    max-width: var(--w-form);
+    text-align: center;
+}
+
+/* Sidebar extras --------------------------------------------------------- */
+.admin-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--s-sm);
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    margin-bottom: var(--s-sm);
+}
+.admin-signed-in {
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Table ------------------------------------------------------------------ */
+/* The filter box reuses .search-input wholesale — same magnifier, padding and
+   focus ring as every other search in the product. Only the width differs:
+   admin filters take pasted UUIDs, which do not fit in 300px. */
+.search-input.admin-search {
+    flex: 1;
+    max-width: var(--w-form);
+}
+
+.admin-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+.admin-table th.sorted { color: var(--accent); }
+.sort-caret {
+    font-size: var(--fs-micro);
+    margin-left: var(--s-xxs);
+}
+.admin-table td { vertical-align: middle; }
+
+/* An entity is a name with its identifying detail underneath — the whole
+   point of this tool is that a foreign key never renders as a bare UUID. */
+.admin-entity {
+    display: flex;
+    flex-direction: column;
+    line-height: var(--lh-tight);
+}
+.admin-sub {
+    font-size: var(--fs-micro);
+    color: var(--text-muted);
+}
+.admin-missing {
+    color: var(--danger);
+    font-size: var(--fs-sm);
+}
+
+.admin-uuid {
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    padding: var(--s-xxs) var(--s-xs);
+    cursor: pointer;
+}
+.admin-uuid:hover { color: var(--accent); }
+
+.admin-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-md);
+    margin-top: var(--s-lg);
+}
