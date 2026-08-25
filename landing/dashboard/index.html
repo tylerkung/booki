@@ -2705,7 +2705,7 @@
                                          title it pages, and only appears when
                                          there is more than one screenful. -->
                                     <div class="gd-pager" x-show="section.kind === 'ladder'
-                                         && section.count > ladderPageSize && !isLadderExpanded(section.key)">
+                                         && section.count > ladderPageSize">
                                         <button class="gd-page-btn" :disabled="ladderOffset(section.key) === 0"
                                                 @click="ladderShift(section.key, -ladderPageSize, section.count)"
                                                 aria-label="Previous lines">‹</button>
@@ -2722,11 +2722,9 @@
                                 <template x-if="section.kind === 'ladder'">
                                     <div>
                                         <template x-for="row in section.rows" :key="row.label">
-                                            <div class="gd-ladder-row"
-                                                 :class="{ 'gd-ladder-row-wrap': isLadderExpanded(section.key) }">
+                                            <div class="gd-ladder-row">
                                                 <div class="gd-row-label" x-text="row.label"></div>
-                                                <div class="gd-row-cells"
-                                                     :class="{ 'gd-row-cells-all': isLadderExpanded(section.key) }">
+                                                <div class="gd-row-cells">
                                                     <template x-for="c in ladderCells(section, row)" :key="c.marketId + c.indicator">
                                                         <button class="pg-odds-btn gd-cell"
                                                             :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, c.marketId, c.indicator), 'pg-odds-locked': isEventLocked(gameDetail) }"
@@ -2740,9 +2738,30 @@
                                             </div>
                                         </template>
 
+                                        <!-- Expanded: a column per side, headed
+                                             by that side, listing every line.
+                                             The matrix above stays put so the
+                                             line being looked at does not move. -->
+                                        <div class="gd-expanded" x-show="isLadderExpanded(section.key)" x-cloak>
+                                            <template x-for="row in section.rows" :key="'x' + row.label">
+                                                <div class="gd-expanded-col">
+                                                    <div class="gd-expanded-head" x-text="row.label"></div>
+                                                    <template x-for="c in row.cells" :key="'x' + c.marketId + c.indicator">
+                                                        <button class="pg-odds-btn gd-side"
+                                                            :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, c.marketId, c.indicator), 'pg-odds-locked': isEventLocked(gameDetail) }"
+                                                            :disabled="isEventLocked(gameDetail) || c.odds === null"
+                                                            @click="toggleSelection(gameDetail, c.market, c.indicator, c.side, c.odds)">
+                                                            <span class="gd-side-label" x-text="c.lineLabel"></span>
+                                                            <span class="gd-cell-odds" x-text="c.odds === null ? '—' : formatOdds(c.odds)"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+
                                         <button class="gd-view-all" x-show="section.count > ladderPageSize"
                                                 @click="toggleLadder(section.key)"
-                                                x-text="isLadderExpanded(section.key) ? 'Show fewer lines' : ('View all ' + section.count + ' lines')"></button>
+                                                x-text="isLadderExpanded(section.key) ? 'Hide all lines' : ('View all ' + section.count + ' lines')"></button>
                                     </div>
                                 </template>
 

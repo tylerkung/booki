@@ -47,7 +47,7 @@
                 <div class="gd-section-head">
                     <span class="card-title" x-text="section.title"></span>
                     <div class="gd-pager" x-show="section.kind === 'ladder'
-                         && section.count > ladderPageSize && !isLadderExpanded(section.key)">
+                         && section.count > ladderPageSize">
                         <button class="gd-page-btn" :disabled="ladderOffset(section.key) === 0"
                                 @click="ladderShift(section.key, -ladderPageSize, section.count)"
                                 aria-label="Previous lines">&lsaquo;</button>
@@ -65,8 +65,7 @@
                         <template x-for="row in section.rows" :key="row.label">
                             <div class="gd-ladder-row">
                                 <div class="gd-row-label" x-text="row.label"></div>
-                                <div class="gd-row-cells"
-                                     :class="{ 'gd-row-cells-all': isLadderExpanded(section.key) }">
+                                <div class="gd-row-cells">
                                     <template x-for="c in ladderCells(section, row)" :key="c.marketId + c.indicator">
                                         <button class="pg-odds-btn gd-cell"
                                             :class="{ 'pg-odds-active': isPicked(c) }"
@@ -78,9 +77,26 @@
                                 </div>
                             </div>
                         </template>
+                        <!-- Expanded: a column per side, listing every line. -->
+                        <div class="gd-expanded" x-show="isLadderExpanded(section.key)" x-cloak>
+                            <template x-for="row in section.rows" :key="'x' + row.label">
+                                <div class="gd-expanded-col">
+                                    <div class="gd-expanded-head" x-text="row.label"></div>
+                                    <template x-for="c in row.cells" :key="'x' + c.marketId + c.indicator">
+                                        <button class="pg-odds-btn gd-side"
+                                            :class="{ 'pg-odds-active': isPicked(c) }"
+                                            @click="pick(c)">
+                                            <span class="gd-side-label" x-text="c.lineLabel"></span>
+                                            <span class="gd-cell-odds" x-text="formatOdds(c.odds)"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+
                         <button class="gd-view-all" x-show="section.count > ladderPageSize"
                                 @click="toggleLadder(section.key)"
-                                x-text="isLadderExpanded(section.key) ? 'Show fewer lines' : ('View all ' + section.count + ' lines')"></button>
+                                x-text="isLadderExpanded(section.key) ? 'Hide all lines' : ('View all ' + section.count + ' lines')"></button>
                     </div>
                 </template>
 
@@ -214,7 +230,6 @@ function preview() {
         isLadderExpanded(k) { return !!this.ladderExpanded[k]; },
         toggleLadder(k) { this.ladderExpanded = { ...this.ladderExpanded, [k]: !this.ladderExpanded[k] }; },
         ladderCells(section, row) {
-            if (this.isLadderExpanded(section.key)) return row.cells;
             const from = this.ladderOffset(section.key);
             return row.cells.slice(from, from + this.ladderPageSize);
         },

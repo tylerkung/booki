@@ -2185,9 +2185,15 @@ function dashboardApp() {
             this.ladderExpanded = { ...this.ladderExpanded, [key]: !this.ladderExpanded[key] };
         },
 
-        /** The cells actually rendered for a row, honouring paging/expansion. */
+        /**
+         * The cells in the paged matrix.
+         *
+         * Expanding no longer changes this. The matrix stays put and the full
+         * ladder appears BELOW it as a column per side, so the line a member
+         * was looking at does not move out from under them when they ask to
+         * see the rest.
+         */
         ladderCells(section, row) {
-            if (this.isLadderExpanded(section.key)) return row.cells;
             const from = this.ladderOffset(section.key);
             return row.cells.slice(from, from + this.ladderPageSize);
         },

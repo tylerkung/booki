@@ -2749,10 +2749,32 @@ input, button, select, textarea { font: inherit; }
     grid-template-columns: repeat(3, 1fr);
     gap: var(--s-xs);
 }
-/* Expanded: as many columns as fit, wrapping. The rows no longer align
-   column-for-column, which is the trade for seeing every line at once. */
-.gd-row-cells-all {
-    grid-template-columns: repeat(auto-fill, minmax(var(--gd-cell-min), 1fr));
+/* Expanded ladder: a column per side, each headed by that side and listing
+   every line. Deliberately NOT a reflow of the matrix above — that would move
+   the line a member is looking at the moment they ask to see more. The cells
+   reuse .gd-side, the same line-left / price-right row the pair markets use. */
+.gd-expanded {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-md);
+    margin-top: var(--s-md);
+    padding-top: var(--s-md);
+    border-top: var(--hairline) solid var(--border);
+}
+
+.gd-expanded-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-xs);
+    min-width: 0;
+}
+
+.gd-expanded-head {
+    text-align: center;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--text-secondary);
+    padding-bottom: var(--s-xxs);
 }
 
 .gd-cell {
@@ -2825,6 +2847,7 @@ input, button, select, textarea { font: inherit; }
     white-space: nowrap;
 }
 .gd-side.pg-odds-active .gd-side-label { color: inherit; }
+.gd-expanded .gd-side-label { font-variant-numeric: tabular-nums; }
 
 .gd-side .pg-odds-val {
     flex-shrink: 0;
@@ -2851,6 +2874,9 @@ input, button, select, textarea { font: inherit; }
        fit across a phone. */
     .gd-ladder-row { grid-template-columns: 1fr; gap: var(--s-xs); }
     .gd-line { grid-template-columns: 1fr; }
+    /* Two ladders side by side do not fit; stack them, headers still naming
+       which side each belongs to. */
+    .gd-expanded { grid-template-columns: 1fr; }
 }
 
 /* ── Preview page banner (landing/preview/nfl-game.html) ───────────────────
