@@ -19,9 +19,22 @@ interface DormantOrganizer {
   name: string | null;
   email: string | null;
   created_at: string;
+  /** Invites this organizer has ever created. >0 means they tried and it failed. */
+  invites_created?: number;
+  last_invite_at?: string | null;
 }
 
-function getFollowupEmailHtml(name: string): string {
+function getFollowupEmailHtml(name: string, invitesCreated = 0): string {
+  // Someone who already created an invite does not need to be told how. Their
+  // invites expired unclaimed because the flow was broken, not because they
+  // lost interest — every web invite created between 21 Mar and 17 Aug 2026
+  // failed that way. Saying "you haven't invited anyone yet" to that person is
+  // both wrong and insulting.
+  const tried = invitesCreated > 0;
+  const opener = tried
+    ? `I can see you sent ${invitesCreated === 1 ? 'an invite' : `${invitesCreated} invites`} and nobody landed. That was almost certainly us — invites created before 17 August hit a bug where the code never showed up properly and the invite page loaded unstyled. Both are fixed now, and any link from back then has expired.`
+    : `I noticed you set up your organizer account but haven't invited anyone yet. Booki doesn't do much until your group is in it — and getting them there takes about a minute.`;
+  const howLabel = tried ? 'Worth Another Go' : 'How To Invite';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,7 +65,7 @@ function getFollowupEmailHtml(name: string): string {
                 <tr>
                   <td align="center" style="padding-bottom: 28px;">
                     <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #A8A8B8;">
-                      I noticed you set up your organizer account but haven't invited anyone yet. Booki doesn't do much until your group is in it — and getting them there takes about a minute.
+                      ${opener}
                     </p>
                   </td>
                 </tr>
@@ -61,7 +74,7 @@ function getFollowupEmailHtml(name: string): string {
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="background-color: #0A0A12; border: 1px solid #2A2A3A; border-radius: 10px; padding: 20px;">
-                          <p style="margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #6B6B7B; font-weight: 600;">How To Invite</p>
+                          <p style="margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #6B6B7B; font-weight: 600;">${howLabel}</p>
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                             <tr><td style="padding-bottom: 12px;"><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">1.</span>&nbsp; Open the <strong style="color: #F8F8F8;">Members</strong> tab and hit <strong style="color: #F8F8F8;">+ Invite</strong></p></td></tr>
                             <tr><td style="padding-bottom: 12px;"><p style="margin: 0; font-size: 14px; color: #F8F8F8;"><span style="color: #00F5D4; font-weight: 700;">2.</span>&nbsp; Add their email (optional), then hit <strong style="color: #F8F8F8;">Create Invite</strong></p></td></tr>
@@ -227,7 +240,10 @@ Deno.serve(async (req: Request) => {
       const name = org.name || email.split('@')[0];
 
       if (dryRun) {
-        console.log(`[dry_run] would send to ${email} (${name})`);
+        console.log(
+          `[dry_run] would send to ${email} (${name}) ` +
+            `invites_created=${org.invites_created ?? 0}`,
+        );
         sent++;
         continue;
       }
@@ -242,8 +258,10 @@ Deno.serve(async (req: Request) => {
           from: 'Tyler from Booki <tyler@bookisports.com>',
           reply_to: 'tyler@bookisports.com',
           to: [email],
-          subject: `Still just you in there, ${name}`,
-          html: getFollowupEmailHtml(name),
+          subject: (org.invites_created ?? 0) > 0
+            ? `That invite didn't work, ${name} — that was our fault`
+            : `Still just you in there, ${name}`,
+          html: getFollowupEmailHtml(name, org.invites_created ?? 0),
           headers: {
             'List-Unsubscribe': '<mailto:tyler@bookisports.com?subject=unsubscribe>',
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
