@@ -137,3 +137,24 @@ needs an Xcode build plus a release either way.
 - Delete the app from the simulator if SwiftData schema changed (it has not, in any of the above)
 - `swiftc -parse <file>` is a cheap syntax check but proves very little
 - The stress suite (`tests/`) is Node and cannot run on the current machine — Node is not installed
+
+## MarketType.oddEven
+
+The web/backend now sync an `odd_even` market for NFL and NBA (combined final
+score odd or even). `MarketType` has no case for it, so `SyncService`'s
+`MarketType(rawValue:) ?? .moneyline` coerces it and iOS labels the market
+"Moneyline" with sides Odd / Even.
+
+**This is cosmetic, not a mis-grade.** The submit functions read `market.type`
+from the database row rather than from the client, so the bet is stored as
+`odd_even` and graded by `gradeOddEvenBet` regardless of what the app calls it.
+Existing App Store builds are therefore safe.
+
+Adding the case is small but touches eight exhaustive `switch` statements over
+`MarketType` — Market.swift, BetConfirmationSheet, SearchView, GameDetailView,
+GamesView, SportPageView, EventDetailView, AddMarketSheet — and none of them can
+be compiled from the CLI, so it was deliberately left for a session with Xcode
+rather than shipped unverified.
+
+Also worth doing in the same pass: `GameDetailView` already renders alternate
+spread and total sections, but nothing renders team totals or odd/even.

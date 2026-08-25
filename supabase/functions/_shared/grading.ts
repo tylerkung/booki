@@ -301,6 +301,41 @@ export function gradeTeamTotalBet(bet: BetInfo, scores: EventScores): GradeOutco
   }
 }
 
+
+/**
+ * Grades an odd/even bet on the combined final score.
+ *
+ * Included because it settles from the final score alone. The Odds API sells
+ * odds for quarters, halves and player props too, but /scores returns only
+ * aggregate team totals — so those cannot be graded here at any price, and
+ * shipping them would mean handing every settlement back to the organizer.
+ *
+ * There is no push: a total is either odd or even. A 0-0 game is even.
+ */
+export function gradeOddEvenBet(bet: BetInfo, scores: EventScores): GradeOutcome {
+  const { homeScore, awayScore } = scores;
+  const combined = homeScore + awayScore;
+  const isOdd = Math.abs(combined % 2) === 1;
+
+  // The side string is the label stored by the sync: 'Odd' or 'Even'.
+  const pickedOdd = /odd/i.test(bet.side);
+  const pickedEven = /even/i.test(bet.side);
+  if (!pickedOdd && !pickedEven) {
+    return {
+      result: 'push',
+      gradeDetails: `Odd/Even: could not read a side from "${bet.side}". Treating as push.`,
+    };
+  }
+
+  const won = pickedOdd ? isOdd : !isOdd;
+  const actual = isOdd ? 'odd' : 'even';
+  return {
+    result: won ? 'win' : 'loss',
+    gradeDetails: `Odd/Even: combined ${awayScore}+${homeScore}=${combined} is ${actual}; ` +
+      `bet was ${pickedOdd ? 'Odd' : 'Even'}.`,
+  };
+}
+
 /**
  * Main grading function that dispatches to the appropriate grading logic
  * based on market type.
@@ -329,7 +364,11 @@ export function gradeBet(bet: BetInfo, scores: EventScores): GradeOutcome {
       return gradeTotalBet(bet, scores);
 
     case 'team_total':
+    case 'team_totals':
       return gradeTeamTotalBet(bet, scores);
+
+    case 'odd_even':
+      return gradeOddEvenBet(bet, scores);
 
     case 'outright':
       return {

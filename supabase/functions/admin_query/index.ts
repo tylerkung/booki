@@ -32,6 +32,7 @@ interface AdminRequest {
   sport_key?: string;
   market_sets?: Array<{ label?: string; markets: string; per_event?: boolean }>;
   max_rows?: number;
+  return_payload?: boolean;
   /** Include synthetic and load-test accounts. Off by default: they distorted
    *  every count during the 2026-08-18 audit. */
   include_test?: boolean;
@@ -1050,7 +1051,19 @@ Deno.serve(async (req) => {
           .map(([key, books]) => ({ key, books }))
           .sort((a, b) => b.books - a.books || a.key.localeCompare(b.key));
 
+        // Raw bundle, on request, so the sync mapper can be exercised offline
+        // against a genuine payload instead of a hand-written fixture.
+        let rawBundle: unknown = null;
+        if (body.return_payload === true) {
+          const rawRes = await fetch(
+            `${base}/${sportKey}/events/${target.id}/odds/?apiKey=${apiKey}&regions=${region}` +
+            `&markets=alternate_spreads,alternate_totals,team_totals,odd_even&oddsFormat=american`,
+          );
+          rawBundle = rawRes.ok ? await rawRes.json() : { error: await rawRes.text() };
+        }
+
         const result: Record<string, unknown> = {
+          raw_bundle: rawBundle,
           sport_key: sportKey,
           event: { id: target.id, label: `${target.away_team} @ ${target.home_team}`,
                    start: target.commence_time },

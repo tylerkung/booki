@@ -118,6 +118,12 @@ interface OddsOutcome {
   name: string;
   price: number;
   point?: number;
+  /**
+   * Present on markets whose subject is not the outcome itself: team_totals
+   * puts the TEAM here and Over/Under in `name`, and player props put the
+   * player here. Absent on h2h/spreads/totals.
+   */
+  description?: string;
 }
 
 interface OddsMarket {
@@ -156,6 +162,39 @@ const ODDS_FETCH_CONCURRENCY = 5;
  * showing a blank price. Outrights are exempt — see the market sync below.
  */
 const ODDS_STORAGE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Sports that additionally get the per-event market bundle.
+ *
+ * The featured endpoint (h2h/spreads/totals) costs 3 credits and covers every
+ * game of a sport at once. Everything below is served ONLY per event, so cost
+ * is markets x games — deliberately limited to the two leagues where a deep
+ * board is worth paying for. MLB at ~100 games a week and NCAAF Saturdays
+ * would multiply this several times over for markets far fewer people bet.
+ */
+const DEEP_MARKET_SPORTS = ['americanfootball_nfl', 'basketball_nba'];
+
+/**
+ * Only markets that can be settled from the final score, which is all the
+ * Odds API /scores endpoint returns — no period splits, no player statistics.
+ *
+ * Quarters, halves and player props are all purchasable and none of them can
+ * be graded automatically, so they are deliberately absent: a market nobody can
+ * settle is a support burden, not a feature.
+ *
+ * Measured cost on an NFL game: 4 credits, ~159 stored rows.
+ */
+const DEEP_MARKETS = ['alternate_spreads', 'alternate_totals', 'team_totals', 'odd_even'];
+
+/**
+ * How close to kickoff a game must be to earn its per-event fetch.
+ *
+ * Tighter than ODDS_STORAGE_WINDOW_MS on purpose. Alternate lines are ~157
+ * rows per game against 6 for the core three, so fetching them for every game
+ * inside the 7-day storage window would multiply the markets table by an order
+ * of magnitude for lines nobody is looking at yet.
+ */
+const DEEP_MARKET_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 
 /**
  * Runs `fn` over `items` with at most `limit` promises in flight, preserving
@@ -276,6 +315,50 @@ async function fetchOddsFromApi(
   }
 
   return JSON.parse(body);
+}
+
+/**
+ * Fetches the per-event market bundle for one game.
+ *
+ * Separate from fetchOddsFromApi because the endpoint is different in kind:
+ * /events/{id}/odds returns one game and bills markets x regions per call,
+ * where /odds returns every game of a sport for the same price. That is the
+ * whole reason these markets are gated by sport and by proximity to kickoff.
+ *
+ * Returns null rather than throwing: one game missing its alternate lines must
+ * not fail a sync that is also carrying the core markets for 270 others.
+ */
+async function fetchEventMarketsFromApi(
+  apiKey: string,
+  sportKey: string,
+  eventExternalId: string,
+): Promise<OddsEvent | null> {
+  const url = new URL(
+    `https://api.the-odds-api.com/v4/sports/${sportKey}/events/${eventExternalId}/odds/`,
+  );
+  url.searchParams.set('apiKey', apiKey);
+  url.searchParams.set('regions', 'us');
+  url.searchParams.set('markets', DEEP_MARKETS.join(','));
+  url.searchParams.set('oddsFormat', 'american');
+
+  try {
+    const response = await fetch(url.toString());
+    const body = await response.text();
+    recordQuota(response, `deep:${sportKey}`, body.length);
+
+    if (!response.ok) {
+      // 422 is the normal answer for a game that offers none of these markets
+      // yet, not a fault worth surfacing.
+      if (response.status !== 422) {
+        console.error(`Deep markets ${eventExternalId}: ${response.status} ${body.slice(0, 120)}`);
+      }
+      return null;
+    }
+    return JSON.parse(body) as OddsEvent;
+  } catch (err) {
+    console.error(`Deep markets ${eventExternalId} failed:`, err);
+    return null;
+  }
 }
 
 /**
@@ -400,7 +483,7 @@ function extractLineValue(sideA: string): string {
  * Extracts markets from Odds API response for a specific event.
  * Returns array of market objects ready for database insertion.
  */
-function extractMarketsFromOddsEvent(
+export function extractMarketsFromOddsEvent(
   oddsEvent: OddsEvent,
   preferredBookmaker: string = 'draftkings'
 ): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number }[] {
@@ -520,10 +603,137 @@ function extractMarketsFromOddsEvent(
         }
         break;
       }
+      case 'team_totals': {
+        // One market per team per line. The Odds API carries the team in
+        // `description` here rather than in `name`, which holds Over/Under —
+        // the opposite of the featured `totals` market, where `name` is the
+        // side. Keying by team AND point matters: both teams commonly have a
+        // line at the same number, and collapsing them would silently graft
+        // one team's price onto the other's row.
+        const byTeamPoint = new Map<string, { team: string; point: number; over?: OddsOutcome; under?: OddsOutcome }>();
+        for (const outcome of market.outcomes) {
+          const team = outcome.description;
+          if (!team || outcome.point === undefined) continue;
+          const key = `${team}|${outcome.point}`;
+          const entry = byTeamPoint.get(key) ?? { team, point: outcome.point };
+          if (outcome.name === 'Over') entry.over = outcome;
+          else if (outcome.name === 'Under') entry.under = outcome;
+          byTeamPoint.set(key, entry);
+        }
+        for (const entry of byTeamPoint.values()) {
+          if (entry.over && entry.under) {
+            markets.push({
+              type: 'team_total',
+              // The team name leads so gradeTeamTotalBet can identify which
+              // side the line belongs to, and so the label reads as a bet.
+              side_a: `${entry.team} Over ${formatNumber(entry.point)}`,
+              side_b: `${entry.team} Under ${formatNumber(entry.point)}`,
+              odds_a: entry.over.price,
+              odds_b: entry.under.price,
+            });
+          }
+        }
+        break;
+      }
+      case 'odd_even': {
+        // Whether the combined final score is odd or even. Settles from the
+        // final score alone, which is the entire reason it is here and the
+        // quarter, half and player-prop markets are not.
+        const odd = market.outcomes.find((o) => /^odd$/i.test(o.name));
+        const even = market.outcomes.find((o) => /^even$/i.test(o.name));
+        if (odd && even) {
+          markets.push({
+            type: 'odd_even',
+            side_a: 'Odd',
+            side_b: 'Even',
+            odds_a: odd.price,
+            odds_b: even.price,
+          });
+        }
+        break;
+      }
     }
   }
 
   return markets;
+}
+
+
+
+/**
+ * The discriminator that makes a market row unique within its event and type.
+ *
+ * For spreads and totals the line value is enough: an event has one away side
+ * and one home side, so -3.5 identifies a row. For TEAM totals it is not —
+ * both teams routinely carry a line at the same number, and keying on the
+ * number alone would collide, letting one team's price silently overwrite the
+ * other's. Those use the full side label, which carries the team.
+ *
+ * Existing types keep their exact previous key. Changing it would make every
+ * stored market look new on the next run and duplicate the table.
+ */
+export function marketDiscriminator(type: string, sideA: string): string {
+  return type === 'team_total' ? sideA : String(extractLineValue(sideA));
+}
+
+/**
+ * Merge a per-event market bundle into the event the mapper will read.
+ *
+ * The mapper reads exactly one bookmaker per event (DraftKings, else the
+ * first), and the deep markets are spread unevenly across books. On the probed
+ * NFL game DraftKings quoted alternate spreads, alternate totals and odd/even
+ * but NOT team totals, while FanDuel quoted team totals and no odd/even. A
+ * strict same-book rule would therefore have dropped team totals from every
+ * game DraftKings prices, which is all of them.
+ *
+ * So each market key is filled from the selected book when it has it, and
+ * otherwise from ONE fallback book — the one carrying the most of what is
+ * still missing. That keeps a whole market's two sides priced by a single
+ * book. What it deliberately does not do is compare prices across books per
+ * line and take the best: that would assemble a board better than any real
+ * book offers and hand members an edge the organizer never agreed to carry.
+ */
+export function mergeDeepMarkets(
+  target: OddsEvent,
+  deep: OddsEvent,
+  preferredBookmaker: string = 'draftkings',
+): number {
+  const bookmakers = target.bookmakers;
+  if (!bookmakers?.length) return 0;
+
+  const selected = bookmakers.find((b) => b.key === preferredBookmaker) ?? bookmakers[0];
+  const deepBooks = deep.bookmakers ?? [];
+  if (!deepBooks.length) return 0;
+
+  const present = new Set(selected.markets.map((m) => m.key));
+  let added = 0;
+
+  // First pass: the selected book's own deep markets.
+  const sameBook = deepBooks.find((b) => b.key === selected.key);
+  for (const market of sameBook?.markets ?? []) {
+    if (present.has(market.key)) continue;
+    selected.markets.push(market);
+    present.add(market.key);
+    added++;
+  }
+
+  // Second pass: fill what is still missing from a single other book.
+  const missing = DEEP_MARKETS.filter((k) => !present.has(k));
+  if (missing.length > 0) {
+    const fallback = deepBooks
+      .filter((b) => b.key !== selected.key)
+      .map((b) => ({ book: b, hits: (b.markets ?? []).filter((m) => missing.includes(m.key)).length }))
+      .sort((a, b) => b.hits - a.hits)[0];
+
+    for (const market of fallback?.book.markets ?? []) {
+      if (present.has(market.key) || !missing.includes(market.key)) continue;
+      selected.markets.push(market);
+      present.add(market.key);
+      added++;
+    }
+  }
+
+  return added;
 }
 
 /**
@@ -595,6 +805,8 @@ interface SyncStats {
   events_skipped: number;
   markets_inserted: number;
   markets_updated: number;
+  /** Games given the per-event market bundle this run. */
+  deep_games_enriched?: number;
   errors: string[];
 }
 
@@ -699,6 +911,43 @@ Deno.serve(async (req) => {
       }
 
       console.log(`Total events fetched: ${allFetchedEvents.length}`);
+
+      // ── Per-event market bundle for the deep-board sports ────────────────
+      //
+      // Runs only here, inside the odds-sync branch, and only for games that
+      // are both in an eligible league and close to kickoff. Cost is markets x
+      // games rather than a flat 3 per sport, so both gates are load-bearing:
+      // dropping either would multiply the bill and the markets table by an
+      // order of magnitude.
+      const deepCutoff = Date.now() + DEEP_MARKET_WINDOW_MS;
+      const deepCandidates = allFetchedEvents.filter((e) =>
+        DEEP_MARKET_SPORTS.includes(e.sport_key) &&
+        e.away_team !== null &&
+        new Date(e.commence_time).getTime() <= deepCutoff &&
+        new Date(e.commence_time).getTime() > Date.now(),
+      );
+
+      if (deepCandidates.length > 0) {
+        console.log(`Deep markets: ${deepCandidates.length} eligible games`);
+        let enriched = 0;
+        let addedMarkets = 0;
+
+        // Same concurrency as the sport fetches — this is the step most likely
+        // to push the function toward the 150s ceiling, since it is one request
+        // per game rather than per sport.
+        const deepResults = await mapWithConcurrency(deepCandidates, 5, async (event) => {
+          const bundle = await fetchEventMarketsFromApi(oddsApiKey, event.sport_key, event.id);
+          return { event, bundle };
+        });
+
+        for (const { event, bundle } of deepResults) {
+          if (!bundle) continue;
+          const added = mergeDeepMarkets(event, bundle);
+          if (added > 0) { enriched++; addedMarkets += added; }
+        }
+        console.log(`Deep markets: enriched ${enriched} games with ${addedMarkets} market groups`);
+        stats.deep_games_enriched = enriched;
+      }
 
     // US-003: Upsert events to database
     // First, get all external_ids from fetched events to query existing records
@@ -877,7 +1126,7 @@ Deno.serve(async (req) => {
     const existingMarketsMap = new Map<string, string>();
     if (existingMarkets) {
       for (const market of existingMarkets) {
-        const key = `${market.event_id}_${market.type}_${extractLineValue(market.side_a)}`;
+        const key = `${market.event_id}_${market.type}_${marketDiscriminator(market.type, market.side_a)}`;
         existingMarketsMap.set(key, market.id);
       }
     }
@@ -921,7 +1170,7 @@ Deno.serve(async (req) => {
       }
 
       for (const market of extractedMarkets) {
-        const marketKey = `${eventId}_${market.type}_${extractLineValue(market.side_a)}`;
+        const marketKey = `${eventId}_${market.type}_${marketDiscriminator(market.type, market.side_a)}`;
         const existingMarketId = existingMarketsMap.get(marketKey);
 
         if (existingMarketId) {
