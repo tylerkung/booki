@@ -35,6 +35,25 @@ function generateInviteCode(): string {
   return code;
 }
 
+/**
+ * Is this address one we must never attempt to deliver to?
+ *
+ * RFC 2606 and RFC 6761 reserve these names precisely so they cannot resolve,
+ * and RFC 6762 does the same for .local. Handing one to Resend is a delivery
+ * attempt that can only fail, and repeated failures are what erodes a sending
+ * domain's reputation — bookisports.com also sends password resets and email
+ * confirmations, so that reputation is not something to spend on test data.
+ *
+ * The invite row is still created either way; only the send is skipped.
+ */
+function isUndeliverableDomain(email: string): boolean {
+  const domain = email.trim().toLowerCase().split('@')[1] ?? '';
+  if (!domain) return true;
+  const reserved = ['.test', '.example', '.invalid', '.localhost', '.local'];
+  if (reserved.some((suffix) => domain === suffix.slice(1) || domain.endsWith(suffix))) return true;
+  return ['example.com', 'example.net', 'example.org'].includes(domain);
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -184,7 +203,9 @@ Deno.serve(async (req) => {
     });
 
     // Send invite email via Resend if email provided
-    if (body.email) {
+    if (body.email && isUndeliverableDomain(body.email)) {
+      console.log(`Skipping invite email to reserved domain: ${body.email}`);
+    } else if (body.email) {
       const resendApiKey = Deno.env.get('RESEND_API_KEY');
       if (resendApiKey) {
         // Fetch bookie name for the email
