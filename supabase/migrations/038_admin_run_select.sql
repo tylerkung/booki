@@ -4,21 +4,22 @@
 -- The admin browser covers the common questions. This exists for the ones it
 -- does not, so the tool never dead-ends.
 --
--- SELECT-ONLY IS ENFORCED, NOT INSPECTED. Two independent controls, because
--- either one alone has a known hole:
+-- SELECT-ONLY IS ENFORCED, NOT INSPECTED. Two independent controls:
 --
 --   1. The query is wrapped as a subquery: SELECT ... FROM ( <query> ) sub.
 --      A second statement is then a syntax error rather than a second
---      statement, so `; DROP TABLE x` cannot be smuggled in. This alone is
---      NOT sufficient: Postgres permits data-modifying CTEs, and
---        WITH d AS (DELETE FROM t RETURNING *) SELECT * FROM d
---      is a perfectly legal subquery.
+--      statement, so `; DROP TABLE x` cannot be smuggled in. This also blocks
+--      data-modifying CTEs, because Postgres requires a WITH clause containing
+--      INSERT/UPDATE/DELETE to be at the TOP level — nested in a subquery it
+--      raises 0A000 before anything runs.
 --
---   2. The transaction is switched to read-only before the query runs, so
---      Postgres itself rejects every write path — including the CTE above,
---      which control 1 lets through. This is the control that actually holds;
---      string matching for the word 'delete' would not have caught it, which
---      is why the PRD rules that approach out.
+--   2. The transaction is read-only for the duration of the call, so Postgres
+--      rejects any write that reaches execution — a volatile function that
+--      writes, for instance, which parses perfectly well as a subquery and so
+--      passes control 1 untouched.
+--
+-- Neither control depends on recognising what the query *says*, which is the
+-- approach the PRD rules out: no keyword list, no regex for the word DELETE.
 --
 -- Also capped: a statement timeout so a bad query cannot pin the database,
 -- and a row limit so a careless SELECT * cannot return the whole events table
@@ -39,6 +40,11 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
+-- A function-level SET is saved and restored around the call. SET LOCAL would
+-- have leaked read-only to the rest of the caller's transaction, which is
+-- harmless per-request under PostgREST but would break any transaction that
+-- calls this and then writes.
+SET transaction_read_only = on
 AS $$
 DECLARE
     v_rows     JSONB;
@@ -50,10 +56,7 @@ BEGIN
         RETURN jsonb_build_object('error', 'Empty query');
     END IF;
 
-    -- Control 2. Must happen before the query executes. Postgres raises
-    -- "cannot execute INSERT in a read-only transaction" for any write, so
-    -- correctness here does not depend on recognising what the query is.
-    SET LOCAL transaction_read_only = ON;
+    -- Control 2 is armed by the SET clause above, before the body runs.
     PERFORM set_config('statement_timeout', v_timeout::TEXT, true);
 
     -- Control 1. The %s lands inside a FROM subquery, so a trailing statement
@@ -74,11 +77,17 @@ BEGIN
 EXCEPTION
     WHEN OTHERS THEN
         -- The message is the whole point of an escape hatch: a bad query has
-        -- to say why. SQLSTATE 25006 is the read-only rejection.
+        -- to say why. The two flags distinguish "you tried to write" from
+        -- "your query is wrong", which are very different things to see:
+        --   25006  a write reached execution and the read-only transaction
+        --          refused it (control 2)
+        --   0A000  a data-modifying CTE was nested by the wrapper and Postgres
+        --          refused to plan it (control 1)
         RETURN jsonb_build_object(
             'error', SQLERRM,
             'sqlstate', SQLSTATE,
-            'read_only_violation', SQLSTATE = '25006'
+            'read_only_violation', SQLSTATE = '25006',
+            'write_blocked', SQLSTATE IN ('25006', '0A000')
         );
 END;
 $$;
@@ -100,13 +109,32 @@ BEGIN
         RAISE EXCEPTION 'admin_run_select failed a trivial SELECT: %', r;
     END IF;
 
-    -- A data-modifying CTE is a legal subquery, so control 1 lets it parse.
-    -- Control 2 must be what stops it.
-    r := admin_run_select(
-        'WITH d AS (DELETE FROM lifecycle_emails WHERE false RETURNING 1 AS n) SELECT * FROM d');
-    IF coalesce((r->>'read_only_violation')::BOOLEAN, false) IS NOT TRUE THEN
-        RAISE EXCEPTION 'admin_run_select did NOT block a data-modifying CTE: %', r;
+    -- Control 2 is armed. Asserted directly rather than inferred from a write
+    -- that fails, because a write can fail for more than one reason and then
+    -- the test passes without the control being on at all.
+    r := admin_run_select('SELECT current_setting(''transaction_read_only'') AS ro');
+    IF r->'rows'->0->>'ro' IS DISTINCT FROM 'on' THEN
+        RAISE EXCEPTION 'admin_run_select did not enter a read-only transaction: %', r;
     END IF;
 
-    RAISE NOTICE 'admin_run_select: SELECT works, data-modifying CTE blocked';
+    -- Control 1. A data-modifying CTE must be rejected. Postgres refuses it
+    -- with 0A000 ("WITH clause containing a data-modifying statement must be
+    -- at the top level") because the wrapper nests it, so it never reaches the
+    -- read-only check. Assert only that it is BLOCKED — pinning the test to
+    -- one SQLSTATE asserts which control fired, which is not the guarantee
+    -- anyone depends on.
+    r := admin_run_select(
+        'WITH d AS (DELETE FROM lifecycle_emails WHERE false RETURNING 1 AS n) SELECT * FROM d');
+    IF r->>'error' IS NULL THEN
+        RAISE EXCEPTION 'admin_run_select did NOT block a data-modifying CTE: %', r;
+    END IF;
+    RAISE NOTICE 'data-modifying CTE blocked with SQLSTATE %', r->>'sqlstate';
+
+    -- A plain write, which parses as neither a subquery nor a CTE.
+    r := admin_run_select('DELETE FROM lifecycle_emails WHERE false');
+    IF r->>'error' IS NULL THEN
+        RAISE EXCEPTION 'admin_run_select did NOT block a bare DELETE: %', r;
+    END IF;
+
+    RAISE NOTICE 'admin_run_select: SELECT works, read-only armed, writes blocked';
 END $$;

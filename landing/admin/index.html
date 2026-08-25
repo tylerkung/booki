@@ -338,7 +338,7 @@
 
             <div class="card" x-show="sqlResult && sqlResult.error" style="margin-bottom:var(--s-lg);">
                 <div class="card-header"><span class="card-title">Error</span>
-                    <span class="badge badge-danger" x-show="sqlResult && sqlResult.read_only_violation">read-only</span></div>
+                    <span class="badge badge-danger" x-show="sqlResult && sqlResult.write_blocked">write blocked</span></div>
                 <pre class="admin-sql-error" x-text="sqlResult && (sqlResult.error + (sqlResult.sqlstate ? ' [' + sqlResult.sqlstate + ']' : ''))"></pre>
                 <p class="t-body-muted" x-show="sqlResult && sqlResult.needs_migration">
                     Migration 038 has not been applied yet.
