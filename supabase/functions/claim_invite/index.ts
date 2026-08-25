@@ -123,7 +123,31 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if invite is expired (code-based claims only — see above)
+    // An addressed invite belongs to one person. Until now the email on an
+    // invite was decorative — anyone holding the code could claim it — so an
+    // organizer who both emailed alice AND pasted the code in a group chat
+    // could have it taken by whoever typed it first, leaving alice to sign up
+    // and become her own organizer. That is the exact failure this whole change
+    // set exists to stop, and it survives unless the addressee is enforced.
+    //
+    // Two kinds of invite, two sets of rules:
+    //   email IS NULL  -> a bearer code. Anyone holding it may claim. Expires.
+    //   email IS SET   -> addressed. Only that verified address may claim,
+    //                     by code or automatically at signup. No expiry for
+    //                     the addressee, because our own bug is why these lapse.
+    if (invite.email !== null && !isAddressee) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'This invite was sent to a different email address',
+          invited_email: invite.email,
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if invite is expired (bearer codes only — an addressee is never
+    // locked out of an invite that names them)
     if (!isAddressee && new Date(invite.expires_at) < new Date()) {
       return new Response(
         JSON.stringify({ success: false, error: 'This invite has expired' }),
