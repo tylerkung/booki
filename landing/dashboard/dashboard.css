@@ -2243,14 +2243,14 @@ input, button, select, textarea { font: inherit; }
    Ports the iOS bet-slip treatment to the web. Two variants, matching the two
    ways SwiftUI applies it:
 
-     .wave-card  scaledToFill inside the card bounds, clipped to its corners
+     .wave-card  fills the card and clips to its corners
                  (PickCardCompact, TicketCardView)
      .wave-page  a page-level wash anchored to the top, overscanned 1.25x
                  (TicketDetailView, BetDetailView)
 
-   Both paint from a ::before rather than a background-image, because CSS has
-   no opacity control for a background layer and the card's own fill must stay
-   at full strength underneath.
+   Painted from a ::before rather than a background on the element itself,
+   because CSS has no opacity control for an individual background layer and
+   the card's own fill must stay at full strength underneath.
 
    The z-index pair is load-bearing. A positioned pseudo-element paints ABOVE
    its non-positioned siblings, so a plain absolute ::before would sit on top
@@ -2271,59 +2271,42 @@ input, button, select, textarea { font: inherit; }
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background-color: var(--wave-tint);
+    background-image: var(--wave-texture);
+    background-repeat: no-repeat;
     opacity: var(--wave-opacity);
-    -webkit-mask-repeat: no-repeat;
-            mask-repeat: no-repeat;
 }
 
 .wave-card::before {
     /* Inherit the card's corners so the texture is clipped exactly like the
        SwiftUI .clipShape(RoundedRectangle(...)) it is standing in for. */
     border-radius: inherit;
-    -webkit-mask-image: var(--wave-texture);
-            mask-image: var(--wave-texture);
-    -webkit-mask-size: cover;
-            mask-size: cover;
     /* Top, not centre. The art's line density and contrast sit in its upper
        third and fade toward the bottom, and a web pick card is far wider
        relative to the art than an iOS one — cover therefore crops to a thin
        horizontal band, and taking that band from the middle lands in the faded
        part. Measured over the rendered card, anchoring to the top gives a
        luminance spread of 25 against 15 for centre, at no extra cost.
-       (SwiftUI's scaledToFill centres; this is a deliberate divergence.)
-       Scaling the mask beyond cover was measured too and adds nothing. */
-    -webkit-mask-position: center top;
-            mask-position: center top;
+       (SwiftUI's scaledToFill centres; this is a deliberate divergence.) */
+    background-size: cover;
+    background-position: center top;
 }
 
 .wave-page::before {
-    /* Reach the fold at minimum. The layer is sized to the route element, and
-       a short page — or the loading skeleton — otherwise ended it mid-viewport
-       with a visible horizontal seam. */
+    /* Reach the fold at minimum, so a short page — or the loading skeleton —
+       does not end the wash mid-viewport. */
     min-height: 100vh;
-
-    /* Two mask layers, intersected: the wave itself, and a vertical gradient
-       that dissolves it. Without the gradient the wash stops dead at whatever
-       height the content happens to be, so every page length has a seam
-       somewhere. SwiftUI avoids this with .ignoresSafeArea(); the web needs
-       the falloff. Older WebKit spells the composite differently (source-in
-       rather than intersect), hence the prefixed pair. */
-    -webkit-mask-image: var(--wave-texture), linear-gradient(to bottom, #000 0%, #000 45%, transparent 95%);
-            mask-image: var(--wave-texture), linear-gradient(to bottom, #000 0%, #000 45%, transparent 95%);
-    -webkit-mask-composite: source-in;
-            mask-composite: intersect;
-
-    /* The 1.25x overscan the iOS detail screens use lives in the MASK size,
-       not in the element's width. Widening the element to 125% and pulling it
+    /* The 1.25x overscan the iOS detail screens use lives in background-size,
+       not the element's width. Widening the element to 125% and pulling it
        back with translateX put 12.5% of it past the container on each side; it
        happened not to raise a scrollbar at desktop width, which is luck rather
-       than correctness. Scaling the mask gives the identical enlarged crop
-       with nothing overflowing anything. */
-    -webkit-mask-size: calc(100% * var(--wave-page-scale)) auto, 100% 100%;
-            mask-size: calc(100% * var(--wave-page-scale)) auto, 100% 100%;
-    -webkit-mask-position: center top, center top;
-            mask-position: center top, center top;
+       than correctness.
+
+       auto height, not cover: the art fades to nothing along its own bottom
+       edge, so letting it draw at its natural ratio and simply end is what
+       avoids a hard horizontal seam. cover would crop that falloff away and
+       cut the wash off mid-pattern. */
+    background-size: calc(100% * var(--wave-page-scale)) auto;
+    background-position: center top;
 }
 
 /* A decorative wash carries no meaning, and a texture behind text is the first
