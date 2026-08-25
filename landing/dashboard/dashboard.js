@@ -837,8 +837,37 @@ function dashboardApp() {
                     this.playerBookie = bookieSettings[0];
                 }
             } else {
-                // No bookie or player record — auto-create organizer account
-                // (New signups from landing page are organizers; players arrive via invite links)
+                // Before assuming this is a new organizer, check whether someone
+                // already invited this address. Three people were invited, could
+                // not claim the link because the invite page was broken, and
+                // signed up directly the same day — at which point this branch
+                // made each of them their own organizer instead of a member of
+                // the book that invited them. Three groups became six empty ones.
+                try {
+                    const { data: claimed } = await this.supabase.functions.invoke('claim_invite', {
+                        body: { auth_user_id: userId },
+                    });
+                    if (claimed && claimed.success && !this._reresolvingRole) {
+                        // The player row now exists, so re-run detection rather
+                        // than duplicating the routing branch. It cannot recurse
+                        // past this point: the second pass takes the player
+                        // branch above and never reaches here.
+                        this._reresolvingRole = true;
+                        try {
+                            await this.detectUserRole();
+                        } finally {
+                            this._reresolvingRole = false;
+                        }
+                        return;
+                    }
+                } catch (err) {
+                    // No pending invite is the normal case — fall through to
+                    // creating an organizer account.
+                    console.debug('No pending invite for this address');
+                }
+
+                // No bookie, no player, and nobody invited them — a genuine new
+                // organizer signing up from the landing page.
                 try {
                     const userName = this.session.user.user_metadata?.name
                         || this.session.user.email?.split('@')[0]
