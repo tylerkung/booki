@@ -34,6 +34,27 @@ interface BdlPlayerRow {
   team?: { id: number } | null;
 }
 
+/**
+ * ONE PAGE PER TEAM, DELIBERATELY.
+ *
+ * balldontlie has no "active" flag, and /players?team_ids= returns everyone who
+ * has ever played for the franchise. The ordering is current roster first, then
+ * historical: Buffalo's page 1 opens with Josh Allen and James Cook, and page 2
+ * is Frank Gore and Jim Leonhard. 100 therefore covers a ~53-man roster with
+ * margin, verified by resolving eight current starters across eight teams after
+ * a sync.
+ *
+ * Two consequences worth knowing:
+ *
+ *   - Pulling MORE is not better. Every extra page adds retired players who can
+ *     collide by name with a current one on the same team, and a within-team
+ *     collision makes that player's props unofferable.
+ *
+ *   - This rests on an ordering the API does not promise. If it changed, current
+ *     players would fall off the end and their props would simply stop being
+ *     offered — fail-safe, but silent. The monitor for that is the count of
+ *     props skipped for an unresolved subject, which US-003 logs.
+ */
 async function fetchTeamRoster(
   apiKey: string,
   teamId: number,
