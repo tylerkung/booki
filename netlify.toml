@@ -7,3 +7,20 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+# The brief asked for a _redirects file; this project configures Netlify from
+# netlify.toml instead, so the redirect goes here. Same effect, one config file.
+[[redirects]]
+  from = "/blog/booki-vs-perhead-cr"
+  to = "/vs/perhead-cr"
+  status = 301
+
+[[redirects]]
+  from = "/blog/booki-vs-realbookies"
+  to = "/vs/realbookies"
+  status = 301
+
+[[redirects]]
+  from = "/blog/booki-vs-price-per-player"
+  to = "/vs/price-per-player"
+  status = 301
