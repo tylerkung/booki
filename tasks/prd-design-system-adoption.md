@@ -261,3 +261,58 @@ generic monospace the browser picked. It is now loaded (400/600/700 — the
 weights those rules actually declare) and routed through `--font-mono`.
 `check-design-tokens.py` did not catch the hardcoded family, which is a gap in
 the checker worth closing.
+
+
+---
+
+## Implemented 2026-08-25 — motion tokens
+
+**What was actually wrong.** Not the durations — the easing. `--ease` was defined
+as the literal keyword `ease` and referenced **zero times**, so all 66 transition
+declarations fell through to the CSS default, which is also `ease`: a curve that
+*accelerates* out of the gate before settling. Every hover in the product was
+starting slowly. That also silently contradicted the anti-patterns page, which
+already required critically damped motion.
+
+Measured after the change: **321 elements carry a transition, 0 still use the
+browser default curve.**
+
+**One curve.** `--ease-out: cubic-bezier(0.22, 1, 0.36, 1)` — easeOutQuint. It
+was already in the codebase, used four times on the marketing scroll reveals,
+and had never reached the product. A single curve is a system decision as much
+as an aesthetic one: with one, nobody has to choose, and motion cannot drift the
+way the tracking values did.
+
+**Durations graded by what moves,** not by taste:
+
+| token | was | now | for |
+|---|---|---|---|
+| `--dur-fast` | 0.15s | **0.12s** | feedback — colour, border, hover, focus |
+| `--dur-base` | 0.2s | **0.18s** | state — toggles, form focus, small transforms |
+| `--dur-slow` | 0.3s | 0.3s | layout — sidebar, width fills, accordions |
+| `--dur-entrance` | — | **0.6s** | an element arriving |
+
+`dashboard.css` turned out to already be fully tokenised on duration, so
+retuning `--dur-fast` alone sped up 37 interactions without touching a rule.
+`styles.css` held the raw values and was mapped by role — hover feedback on a
+card moved to `--dur-fast` even where it had been 0.3s, while scroll reveals
+kept their longer timing and their existing curve, because they are entrances
+and are watched rather than felt.
+
+**Reduced motion, structurally.** Rather than add a matching `@media` block to
+each stylesheet — the omission that left three of four surfaces uncovered — the
+guard re-points the four duration tokens inside one query in `tokens.css`. That
+disables transition motion on dashboard, admin, marketing and the DS site at
+once. `0.01ms` rather than `none`, because a zero-length transition still fires
+`transitionend` and `none` never does, which would hang any handler waiting on
+it.
+
+Keyframes do not read tokens, so `dashboard.css` names its six directly, drawing
+one distinction: entrances (toast, bet-slip bar, modal, check) are decoration and
+are simply placed; the shimmer sweep stops because a skeleton communicates
+through shape; **the spinner is kept and slowed**, because motion is its message
+and stopping it turns "working" into "frozen".
+
+**Not done.** `transition: all` appears 12 times in `dashboard.css`. It animates
+every property including layout ones, and narrowing each to explicit properties
+needs per-rule knowledge of what changes on hover — deferred rather than guessed.

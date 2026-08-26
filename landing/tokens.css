@@ -253,11 +253,35 @@
 
   /* ── motion ──
      Web durations. iOS runs slower (0.1 / 0.2 / 0.3 / 0.5) because touch
-     tolerates more latency than a pointer does. */
-  --dur-fast: 0.15s;
-  --dur-base: 0.2s;
-  --dur-slow: 0.3s;
-  --ease: ease;
+     tolerates more latency than a pointer does.
+
+     Durations are graded by what is moving, not by taste. Feedback — a colour,
+     a border, a hover — has no distance to travel and should read as instant;
+     anything slower than about 0.12s stops feeling like a response and starts
+     feeling like a delay. Layout moves further and needs the extra time to stay
+     legible. An entrance is the only case where a viewer is genuinely watching
+     the motion rather than the result.
+
+     --ease is gone. It was defined as the literal keyword `ease` and referenced
+     ZERO times, so every transition in the product silently fell back to the
+     CSS default — which is also `ease`, a curve that ACCELERATES out of the
+     gate before settling. That is precisely backwards for an interface: a
+     control should leave immediately on being touched and decelerate into
+     place. It also contradicted the system's own anti-patterns page, which
+     already required critically damped motion and said nothing in Booki
+     bounces.
+
+     One curve for everything. cubic-bezier(0.22, 1, 0.36, 1) is easeOutQuint —
+     it leaves instantly and settles without overshoot, which is what "critically
+     damped" means in a CSS timing function. It was already in the codebase, used
+     four times on the marketing page's scroll reveals, and never reached the
+     product. A single curve is also a system decision: with one, nobody has to
+     choose, and motion cannot drift apart the way the tracking values did. */
+  --dur-fast: 0.12s;      /* feedback — colour, border, hover, focus */
+  --dur-base: 0.18s;      /* state — toggles, form focus, small transforms */
+  --dur-slow: 0.3s;       /* layout — sidebar, width fills, accordions */
+  --dur-entrance: 0.6s;   /* an element arriving, watched rather than felt */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* ── layers ──
      Never write a raw z-index. If nothing here fits, the layer is missing. */
@@ -304,3 +328,25 @@
      valid inside a media query condition, so it cannot be referenced. */
   --bp-md: 768px;
 }
+
+/* ── reduced motion ──
+   Every transition in the product now takes its duration from one of the four
+   tokens above, so re-pointing them here disables transition motion across the
+   dashboard, admin, marketing and design-system surfaces in one place, rather
+   than needing a matching @media block in each stylesheet — which is how three
+   of the four came to have none at all.
+
+   0.01ms rather than `none`. A zero-length transition still fires transitionend,
+   so any JavaScript waiting on that event keeps working; `transition: none`
+   silently never fires it and hangs the handler.
+
+   Keyframe animations do not read these tokens and are handled per-file. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0.01ms;
+    --dur-base: 0.01ms;
+    --dur-slow: 0.01ms;
+    --dur-entrance: 0.01ms;
+  }
+}
+

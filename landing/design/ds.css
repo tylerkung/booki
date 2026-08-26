@@ -288,7 +288,7 @@ code.t {
      square-cornered outline. The outlined variant now uses an inset ring
      instead, which costs no layout and cannot be clipped by the radius. */
   border: none;
-  transition: filter .12s ease, background-color .12s ease, box-shadow .12s ease, transform .1s ease;
+  transition: filter var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 
 /* filled */
@@ -652,7 +652,7 @@ code.t {
   border-radius: var(--radius-sm);
   opacity: 0;
   pointer-events: none;
-  transition: opacity .18s ease, transform .18s ease;
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
   z-index: 50;
 }
 #ds-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

@@ -66,7 +66,7 @@ input, button, select, textarea { font: inherit; }
     cursor: pointer;
     font-size: var(--fs-body);
     color: var(--text-secondary);
-    transition: all var(--dur-fast) ease;
+    transition: all var(--dur-fast) var(--ease-out);
 }
 .onboarding-option:hover {
     border-color: var(--text-muted);
@@ -83,7 +83,7 @@ input, button, select, textarea { font: inherit; }
     border-radius: var(--radius-circle);
     border: 2px solid var(--border);
     flex-shrink: 0;
-    transition: all var(--dur-fast) ease;
+    transition: all var(--dur-fast) var(--ease-out);
 }
 .onboarding-option.selected .onboarding-option-dot {
     border-color: var(--accent);
@@ -171,7 +171,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-primary);
     font-size: var(--fs-body);
     outline: none;
-    transition: border-color var(--dur-base), box-shadow var(--dur-base);
+    transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
 
 .form-group input:focus {
@@ -227,7 +227,7 @@ input, button, select, textarea { font: inherit; }
     border: none;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
     box-shadow: 0 2px 8px var(--fill-accent-heavy), inset 0 1px 0 var(--fill-white);
     margin-top: var(--s-xs);
     font-family: var(--font-cta);
@@ -285,7 +285,7 @@ input, button, select, textarea { font: inherit; }
     bottom: 0;
     overflow-y: auto;
     z-index: var(--z-sticky);
-    transition: transform var(--dur-slow);
+    transition: transform var(--dur-slow) var(--ease-out);
     display: flex;
     flex-direction: column;
 }
@@ -353,7 +353,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-secondary);
     font-size: var(--fs-body);
     font-weight: var(--fw-medium);
-    transition: all var(--dur-fast);
+    transition: all var(--dur-fast) var(--ease-out);
 }
 
 .sidebar-nav a:hover {
@@ -384,7 +384,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-sm);
     font-weight: var(--fw-semibold);
     text-decoration: none;
-    transition: opacity var(--dur-fast);
+    transition: opacity var(--dur-fast) var(--ease-out);
 }
 .sidebar-organizer-cta:hover { opacity: 0.85; }
 
@@ -402,7 +402,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-muted);
     font-size: var(--fs-body);
     font-weight: var(--fw-medium);
-    transition: all var(--dur-fast);
+    transition: all var(--dur-fast) var(--ease-out);
 }
 
 .sidebar-bottom a:hover {
@@ -413,7 +413,7 @@ input, button, select, textarea { font: inherit; }
 .main-content {
     margin-left: var(--sidebar-width);
     flex: 1;
-    transition: margin-right var(--dur-slow) ease;
+    transition: margin-right var(--dur-slow) var(--ease-out);
     /* Named so a descendant can cancel it. A full-bleed background inside the
        content column has no other way to reach the column's edges: CSS cannot
        read an ancestor's padding, so the value has to be published. */
@@ -457,7 +457,7 @@ input, button, select, textarea { font: inherit; }
     height: 2px;
     background: var(--text-secondary);
     border-radius: 1px;
-    transition: transform var(--dur-base);
+    transition: transform var(--dur-base) var(--ease-out);
 }
 
 .sidebar-overlay {
@@ -565,7 +565,7 @@ input, button, select, textarea { font: inherit; }
 .data-table th.sortable {
     cursor: pointer;
     user-select: none;
-    transition: color var(--dur-fast);
+    transition: color var(--dur-fast) var(--ease-out);
 }
 
 .data-table th.sortable:hover {
@@ -630,7 +630,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-secondary);
     border: var(--hairline) solid var(--border);
     cursor: pointer;
-    transition: all var(--dur-fast);
+    transition: all var(--dur-fast) var(--ease-out);
 }
 
 .chip:hover { border-color: var(--text-muted); }
@@ -649,7 +649,7 @@ input, button, select, textarea { font: inherit; }
     border-radius: var(--radius-sm);
     border: none;
     cursor: pointer;
-    transition: opacity var(--dur-fast);
+    transition: opacity var(--dur-fast) var(--ease-out);
     font-family: var(--font-cta);
     font-size: var(--fs-cta);
     font-weight: var(--fw-cta);
@@ -808,7 +808,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all var(--dur-fast);
+    transition: all var(--dur-fast) var(--ease-out);
 }
 
 .time-filter button.active {
@@ -940,7 +940,7 @@ input, button, select, textarea { font: inherit; }
     border: var(--hairline) solid var(--border);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: background var(--dur-base), border-color var(--dur-base);
+    transition: background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
 }
 
 .toggle-slider::before {
@@ -952,7 +952,7 @@ input, button, select, textarea { font: inherit; }
     bottom: 2px;
     background: var(--text-secondary);
     border-radius: var(--radius-circle);
-    transition: transform var(--dur-base), background var(--dur-base);
+    transition: transform var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out);
 }
 
 .toggle-switch input:checked + .toggle-slider {
@@ -999,7 +999,7 @@ input, button, select, textarea { font: inherit; }
     height: 100%;
     background: var(--accent);
     border-radius: var(--radius-xs);
-    transition: width var(--dur-slow);
+    transition: width var(--dur-slow) var(--ease-out);
 }
 
 .capacity-fill.capacity-fill-warning {
@@ -1018,7 +1018,7 @@ input, button, select, textarea { font: inherit; }
     border: var(--hairline) solid var(--border);
     border-radius: var(--radius-sm);
     padding: var(--s-lg);
-    transition: border-color var(--dur-fast);
+    transition: border-color var(--dur-fast) var(--ease-out);
 }
 
 .dashboard-member-card:hover {
@@ -1068,7 +1068,7 @@ input, button, select, textarea { font: inherit; }
     text-transform: uppercase;
     letter-spacing: var(--ls-caps);
     cursor: pointer;
-    transition: opacity var(--dur-fast);
+    transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .attention-tag:hover { opacity: 0.8; }
@@ -1201,7 +1201,7 @@ input, button, select, textarea { font: inherit; }
     padding: var(--s-md) 20px;
     border-bottom: var(--hairline) solid var(--divider);
     cursor: pointer;
-    transition: background var(--dur-fast);
+    transition: background var(--dur-fast) var(--ease-out);
     text-decoration: none;
     color: inherit;
 }
@@ -1263,7 +1263,7 @@ input, button, select, textarea { font: inherit; }
     margin-bottom: var(--s-sm);
     background: var(--bg-elevated);
     cursor: pointer;
-    transition: background var(--dur-fast);
+    transition: background var(--dur-fast) var(--ease-out);
     text-decoration: none;
     color: inherit;
 }
@@ -1282,7 +1282,7 @@ input, button, select, textarea { font: inherit; }
     margin-bottom: var(--s-sm);
     background: var(--bg-elevated);
     cursor: pointer;
-    transition: background var(--dur-fast);
+    transition: background var(--dur-fast) var(--ease-out);
     text-decoration: none;
 }
 .risk-watchlist-row:last-child { margin-bottom: 0; }
@@ -1310,12 +1310,12 @@ input, button, select, textarea { font: inherit; }
     text-decoration: none;
     background: var(--fill-accent-faint);
     border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-    transition: background var(--dur-base);
+    transition: background var(--dur-base) var(--ease-out);
 }
 .snapshot-view-link:hover { background: var(--fill-accent-soft); }
 
 /* ── Tonight's Exposure ── */
-.tonight-exposure-card:hover { border-color: var(--accent); transition: border-color var(--dur-base); }
+.tonight-exposure-card:hover { border-color: var(--accent); transition: border-color var(--dur-base) var(--ease-out); }
 .tonight-stats {
     display: flex;
     gap: var(--s-xl);
@@ -1440,7 +1440,7 @@ input, button, select, textarea { font: inherit; }
 .credit-bar-fill {
     height: 100%;
     border-radius: var(--radius-xs);
-    transition: width var(--dur-slow) ease, background var(--dur-slow) ease;
+    transition: width var(--dur-slow) var(--ease-out), background var(--dur-slow) var(--ease-out);
 }
 
 /* Player Activity */
@@ -1510,7 +1510,7 @@ input, button, select, textarea { font: inherit; }
     border-radius: var(--radius);
     color: var(--text-primary);
     text-decoration: none;
-    transition: border-color var(--dur-fast), background var(--dur-fast);
+    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
 }
 .games-sport-card:hover {
     border-color: var(--accent);
@@ -1625,7 +1625,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     cursor: pointer;
     text-align: center;
-    transition: color var(--dur-fast);
+    transition: color var(--dur-fast) var(--ease-out);
 }
 .show-more-btn:hover {
     color: var(--accent);
@@ -1698,7 +1698,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     cursor: pointer;
     text-align: center;
-    transition: all var(--dur-fast);
+    transition: all var(--dur-fast) var(--ease-out);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1785,7 +1785,7 @@ input, button, select, textarea { font: inherit; }
     gap: var(--s-sm);
     box-shadow: var(--shadow-raised);
     z-index: var(--z-betslip);
-    transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
     animation: pg-bar-in 0.3s ease-out;
 }
 .pg-betslip-bar:hover {
@@ -1864,7 +1864,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all var(--dur-fast);
+    transition: all var(--dur-fast) var(--ease-out);
 }
 .bs-mode-toggle button.active {
     background: var(--bg-card);
@@ -1938,7 +1938,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-muted);
     cursor: pointer;
     padding: var(--s-xxs);
-    transition: color var(--dur-fast);
+    transition: color var(--dur-fast) var(--ease-out);
     flex-shrink: 0;
 }
 .bs-remove-btn:hover { color: var(--danger); }
@@ -2003,7 +2003,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-micro);
     font-weight: var(--fw-semibold);
     cursor: pointer;
-    transition: all var(--dur-fast);
+    transition: all var(--dur-fast) var(--ease-out);
     white-space: nowrap;
 }
 .bs-quick-stakes button:hover {
@@ -2126,7 +2126,7 @@ input, button, select, textarea { font: inherit; }
     border: none;
     border-radius: var(--radius);
     cursor: pointer;
-    transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
     box-shadow: 0 2px 8px var(--fill-accent-heavy), inset 0 1px 0 var(--fill-white);
     font-family: var(--font-cta);
     font-size: var(--fs-cta);
@@ -2340,7 +2340,7 @@ input, button, select, textarea { font: inherit; }
     text-decoration: none;
     color: inherit;
     cursor: pointer;
-    transition: border-color var(--dur-fast);
+    transition: border-color var(--dur-fast) var(--ease-out);
 }
 .pt-ticket-card:hover {
     border-color: var(--accent);
@@ -2638,7 +2638,7 @@ input, button, select, textarea { font: inherit; }
     border: var(--hairline) solid var(--border);
     border-radius: var(--radius);
     cursor: pointer;
-    transition: border-color var(--dur-fast), background var(--dur-fast);
+    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
 }
 .invite-option:hover {
     border-color: var(--accent);
@@ -2722,7 +2722,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-body);
     line-height: var(--lh-none);
     cursor: pointer;
-    transition: all var(--dur-fast);
+    transition: all var(--dur-fast) var(--ease-out);
 }
 .gd-page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .gd-page-btn:disabled { opacity: 0.5; cursor: default; }  /* matches .btn:disabled */
@@ -2812,7 +2812,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-sm);
     font-weight: var(--fw-medium);
     cursor: pointer;
-    transition: all var(--dur-fast);
+    transition: all var(--dur-fast) var(--ease-out);
 }
 .gd-view-all:hover { border-color: var(--accent); color: var(--accent); }
 
@@ -3028,4 +3028,44 @@ input, button, select, textarea { font: inherit; }
 .data-table td,
 .admin-table td {
     font-variant-numeric: tabular-nums;
+}
+
+
+/* ── reduced motion — keyframes ─────────────────────────────────────────────
+   Transitions are already handled: every duration comes from a token, and
+   tokens.css re-points all four under this same media query. Only keyframe
+   animations need naming here, because they do not read those tokens.
+
+   The distinction being drawn is decorative vs load-bearing. An entrance is
+   decoration — the toast, the bet-slip bar and the modal all say exactly the
+   same thing standing still, so they are simply placed. A spinner is not
+   decoration: motion IS the message, and stopping it turns "working" into
+   "frozen". It is kept and slowed, which is the accommodation reduced-motion
+   actually asks for — less vestibular provocation, not less information.
+
+   The shimmer sweep sits between the two and goes: a skeleton communicates
+   through its SHAPE, so the grey blocks still read as loading once the
+   highlight stops travelling across them. */
+@media (prefers-reduced-motion: reduce) {
+    .toast,
+    .pg-betslip-bar,
+    .bs-sheet,
+    .bs-check {
+        animation: none;
+    }
+
+    /* Skeletons keep their shape; only the travelling highlight stops. */
+    .shimmer,
+    .shimmer-line,
+    .shimmer-stat {
+        animation: none;
+        background-position: 0 0;
+    }
+
+    /* Load-bearing. Kept, but slowed well below the rate that provokes. */
+    .bs-spinner,
+    [class*="spin"] {
+        animation-duration: 1.8s !important;
+        animation-timing-function: linear !important;
+    }
 }
