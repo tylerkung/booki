@@ -151,3 +151,17 @@ BEGIN
     END IF;
     RAISE NOTICE 'ledger chain now ordered by seq at both ends';
 END $$;
+
+-- ----------------------------------------------------------------------------
+-- VERIFIED AFTER APPLYING, 2026-08-26. Both cases produce a valid chain:
+--
+--   6 separate inserts sharing one created_at   -> VALID (043 failed here)
+--   1 multi-row insert of 6 rows                -> VALID, seq 197..202 linked
+--
+-- The second result corrects something claimed in this migration's commit
+-- message: batch inserts were said to give every row the same predecessor
+-- because siblings are invisible in the statement snapshot. They do not. That
+-- earlier batch failure had the same cause as everything else here — 043's
+-- `< NEW` filter — and PostgreSQL fires the BEFORE trigger per row with the
+-- previous row already visible. Batching ledger entries is safe.
+-- ----------------------------------------------------------------------------
