@@ -3,6 +3,7 @@ import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabas
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { sendNotification } from '../_shared/notifications.ts';
+import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
 
 interface BatchBetInput {
   event_id: string;
@@ -29,50 +30,8 @@ interface FailedBet {
   current_side?: string;
 }
 
-/**
- * Has this line been superseded?
- *
- * Market rows are keyed by event + type + LINE VALUE, so when a spread moves
- * -3 -> -3.5 the sync inserts a NEW row and never touches the old one again.
- * The -3 row lingers, still bettable, frozen at its old price — and it passes a
- * pure odds comparison, because its odds genuinely are what that row says.
- *
- * A superseded row is identifiable without any help from the client: its
- * updated_at falls behind the event's last_odds_update, because the latest feed
- * did not contain that line. The grace window absorbs clock skew and the time a
- * sync run takes to work through its batches.
- */
-function isSupersededLine(marketUpdatedAt: string | null, eventLastOddsUpdate: string | null): boolean {
-  if (!marketUpdatedAt || !eventLastOddsUpdate) return false; // cannot tell — let it through
-  const GRACE_MS = 15 * 60 * 1000;
-  return new Date(marketUpdatedAt).getTime() < new Date(eventLastOddsUpdate).getTime() - GRACE_MS;
-}
 
-/**
- * American odds -> decimal payout multiplier, so two prices can be compared on
- * one scale. Higher is always better for the member.
- */
-function americanToDecimal(odds: number): number {
-  return odds > 0 ? 1 + odds / 100 : 1 + 100 / Math.abs(odds);
-}
 
-/**
- * Is `submitted` a better price for the member than `current`?
- *
- * Phase 1 of the line-change guardrails is deliberately one-sided: a bet is
- * refused only when the member would get a BETTER price than the one currently
- * offered. Taking the same or a worse price is allowed through, so a line
- * moving against a member never turns into a failed submission on a client that
- * cannot yet explain why. See tasks/prd-line-change-guardrails.md.
- *
- * Without this the server stored whatever odds the request contained, so any
- * price at all could be submitted — a coin flip at +5000 would have been
- * accepted and paid.
- */
-function isBetterForMember(submitted: number, current: number): boolean {
-  const EPSILON = 0.001; // absorbs float noise, not a real tolerance
-  return americanToDecimal(submitted) > americanToDecimal(current) + EPSILON;
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -327,6 +286,13 @@ Deno.serve(async (req) => {
       (markets ?? []).map(m => [m.id.toLowerCase(), m])
     );
 
+    // One RPC for the whole batch rather than one per bet — the loop below is
+    // deliberately free of DB calls.
+    const superseded = await supersededMarketIds(
+      client,
+      (markets ?? []).map(m => m.id),
+    );
+
     // 8. Per-bet validation loop — no DB calls, uses cached lookups
     const now = new Date();
     const failed: FailedBet[] = [];
@@ -370,7 +336,7 @@ Deno.serve(async (req) => {
         failed.push({ index: i, event_id: bet.event_id, error: 'Market has no price' });
         continue;
       }
-      if (isSupersededLine(market.updated_at, event.last_odds_update)) {
+      if (superseded.has(normalizedMarketId)) {
         console.warn(
           `Superseded line on ${normalizedMarketId}: market ${market.updated_at}, event ${event.last_odds_update}`,
         );

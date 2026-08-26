@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
+import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
 
 interface ParlayLeg {
   event_id: string;
@@ -20,42 +21,8 @@ interface SubmitParlayRequest {
   idempotency_key: string;
 }
 
-/**
- * Has this line been superseded?
- *
- * Market rows are keyed by event + type + LINE VALUE, so when a spread moves
- * -3 -> -3.5 the sync inserts a NEW row and never touches the old one again.
- * The -3 row lingers, still bettable, frozen at its old price — and it passes a
- * pure odds comparison, because its odds genuinely are what that row says.
- *
- * A superseded row is identifiable without help from the client: its updated_at
- * falls behind the event's last_odds_update, because the latest feed did not
- * contain that line. The grace window absorbs clock skew and sync batching.
- */
-function isSupersededLine(marketUpdatedAt: string | null, eventLastOddsUpdate: string | null): boolean {
-  if (!marketUpdatedAt || !eventLastOddsUpdate) return false;
-  const GRACE_MS = 15 * 60 * 1000;
-  return new Date(marketUpdatedAt).getTime() < new Date(eventLastOddsUpdate).getTime() - GRACE_MS;
-}
 
-/**
- * American odds -> decimal payout multiplier, so two prices compare on one
- * scale. Higher is always better for the member.
- */
-function americanToDecimal(odds: number): number {
-  return odds > 0 ? 1 + odds / 100 : 1 + 100 / Math.abs(odds);
-}
 
-/**
- * Phase 1 price guardrail — refuse only a price BETTER for the member than the
- * one currently offered, so a line moving against them never fails a
- * submission on a client that cannot yet explain it.
- * See tasks/prd-line-change-guardrails.md.
- */
-function isBetterForMember(submitted: number, current: number): boolean {
-  const EPSILON = 0.001;
-  return americanToDecimal(submitted) > americanToDecimal(current) + EPSILON;
-}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -386,6 +353,12 @@ Deno.serve(async (req) => {
       (markets ?? []).map(m => [m.id.toLowerCase(), m])
     );
 
+    // One RPC covering every leg, resolved before the validation loop.
+    const superseded = await supersededMarketIds(
+      client,
+      (markets ?? []).map(m => m.id),
+    );
+
     // Price guardrails, validated BEFORE building the inserts.
     //
     // This must not live inside the .map() below: returning a Response from a
@@ -399,7 +372,7 @@ Deno.serve(async (req) => {
       const legEvent = eventById.get(String(leg.event_id ?? '').toLowerCase()) as
         { last_odds_update?: string | null } | undefined;
 
-      if (isSupersededLine(market.updated_at, legEvent?.last_odds_update ?? null)) {
+      if (superseded.has(String(market.id).toLowerCase())) {
         console.warn(`Parlay leg on a superseded line: ${leg.market_id}`);
         return new Response(
           JSON.stringify({ success: false, error: 'line_no_longer_offered', market_id: leg.market_id }),
