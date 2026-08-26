@@ -2692,9 +2692,61 @@
                             </div>
                         </div>
 
-                        <template x-if="!gameDetailSections.length">
+                        <!-- Counts props too. Props arrive through a different
+                             query than the rest, so a game can have 15 of them
+                             and still show "no lines" if only the sections are
+                             checked — which is what it did. -->
+                        <template x-if="!gameDetailSections.length && !gameDetailPropGroups.length">
                             <div class="card"><div class="empty-state"><p>No lines posted for this game yet.</p></div></div>
                         </template>
+
+                        <!-- Player props: grouped by person, not by line. Reached
+                             through get_event_player_props() because migration 047
+                             hides this type from direct client reads — iOS coerces
+                             an unknown market type to .moneyline rather than
+                             skipping it. -->
+                        <div class="card gd-section" x-show="gameDetailPropGroups.length" x-cloak>
+                            <div class="gd-section-head">
+                                <span class="card-title">Player props</span>
+                                <span class="t-body-muted"
+                                      x-text="gameDetailPropGroups.reduce((n,g)=>n+g.markets.length,0) + ' lines · ' + gameDetailPropGroups.length + ' players'"></span>
+                            </div>
+
+                            <div class="filter-bar" style="margin-bottom:var(--s-md);">
+                                <input class="search-input" type="search" x-model="propSearch" placeholder="Find a player">
+                            </div>
+
+                            <template x-for="g in gameDetailPropGroups" :key="g.name">
+                                <div class="gd-player">
+                                    <div class="gd-player-head">
+                                        <span class="gd-player-name" x-text="g.name"></span>
+                                    </div>
+                                    <template x-for="m in g.markets" :key="m.id">
+                                        <div class="gd-prop-row">
+                                            <div class="gd-prop-stat">
+                                                <span x-text="propStatLabel(m.stat_key)"></span>
+                                                <span class="gd-prop-line" x-show="!isYesNoProp(m)"
+                                                      x-text="extractLine(m.side_a)"></span>
+                                            </div>
+                                            <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) }"
+                                                :disabled="isEventLocked(gameDetail) || m.odds_a === null"
+                                                @click="toggleSelection(gameDetail, m, 'a', m.side_a, m.odds_a)">
+                                                <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'Yes' : 'Over'"></span>
+                                                <span class="gd-cell-odds" x-text="m.odds_a === null ? '—' : formatOdds(m.odds_a)"></span>
+                                            </button>
+                                            <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) }"
+                                                :disabled="isEventLocked(gameDetail) || m.odds_b === null"
+                                                @click="toggleSelection(gameDetail, m, 'b', m.side_b, m.odds_b)">
+                                                <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'No' : 'Under'"></span>
+                                                <span class="gd-cell-odds" x-text="m.odds_b === null ? '—' : formatOdds(m.odds_b)"></span>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
 
                         <template x-for="section in gameDetailSections" :key="section.key">
                             <div class="card gd-section">

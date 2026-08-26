@@ -494,6 +494,8 @@ function dashboardApp() {
         gameDetail: null,
         gameDetailMarkets: [],
         ladderOffsets: {},
+        propSearch: '',
+        propTeamFilter: 'all',
         ladderExpanded: {},
         isLoadingGameDetail: false,
         betSlipSelections: [],
@@ -2205,6 +2207,53 @@ function dashboardApp() {
         ladderCells(section, row) {
             const from = this.ladderOffset(section.key);
             return row.cells.slice(from, from + this.ladderPageSize);
+        },
+
+        /**
+         * Props grouped by PERSON, then by stat.
+         *
+         * The ladder model does not fit them. A spread's subject is the game and
+         * its columns are lines; a prop's subject is a player and its rows are
+         * different stats about him. Someone scanning a prop board looks for a
+         * name first and a number second, so the name is the heading and never
+         * repeats inside its group.
+         */
+        get gameDetailPropGroups() {
+            const q = this.propSearch.trim().toLowerCase();
+            const byPlayer = new Map();
+            for (const m of this.gameDetailMarkets) {
+                if (m.type !== 'player_prop' || !m.subject_name) continue;
+                if (q && !m.subject_name.toLowerCase().includes(q)) continue;
+                if (!byPlayer.has(m.subject_name)) {
+                    byPlayer.set(m.subject_name, { name: m.subject_name, markets: [] });
+                }
+                byPlayer.get(m.subject_name).markets.push(m);
+            }
+            for (const g of byPlayer.values()) {
+                g.markets.sort((a, b) => String(a.stat_key).localeCompare(String(b.stat_key)));
+            }
+            return [...byPlayer.values()].sort((a, b) => a.name.localeCompare(b.name));
+        },
+
+        /** Human label for a stat_key. Falls back to the raw key rather than
+         *  hiding a market we have no label for — a missing label is a caption
+         *  bug, but a missing market looks like the book does not offer it. */
+        propStatLabel(statKey) {
+            return ({
+                player_pass_yds: 'Passing yards',
+                player_pass_tds: 'Passing TDs',
+                player_rush_yds: 'Rushing yards',
+                player_reception_yds: 'Receiving yards',
+                player_receptions: 'Receptions',
+                player_rush_reception_yds: 'Rush + rec yards',
+                player_anytime_td: 'Anytime TD',
+            })[statKey] || statKey;
+        },
+
+        /** Anytime TD is a scoring prop, not a threshold: "Over 0.5" is
+         *  technically true and unreadable. */
+        isYesNoProp(m) {
+            return m.stat_key === 'player_anytime_td';
         },
 
         /**

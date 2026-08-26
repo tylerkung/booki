@@ -181,6 +181,8 @@ silently RELABELLED as a moneyline on shipped builds rather than ignored.
 | `player_prop` market | `MarketType.playerProp`, plus a props UI grouped by player | **unblocked**, hidden from iOS by migration 045 |
 | `SyncService` markets query has no type filter | give `MarketType` an `unknown` case and SKIP unknown types | worked around server-side; the client fix is what lets an entry be removed from `legacy_client_hidden_market_types()` |
 | Game detail view (`#/player-game/:id`) | iOS `GameDetailView` already exists; needs team totals + props sections | shipped on web |
+| Props UI grouped by player | iOS needs the same grouping; the ladder layout does not fit a prop | shipped on web |
+| `get_event_player_props()` RPC | iOS must call this RPC for props — a plain `markets` select will never return them once `MarketType` supports the type | shipped on web |
 
 **The structural fix worth doing first:** give `MarketType` an `unknown` case and
 have the sync SKIP unknown types instead of coercing them. Three separate
