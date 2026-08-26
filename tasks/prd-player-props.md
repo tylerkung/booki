@@ -114,12 +114,23 @@ than read from it.
       hunt through matching logic. The migration asserts 32 rows and unique
       names, because a short map does not fail loudly — it reads as "that game
       has no props" and could go unnoticed for a season
-- [x] `bdl_players` cache — `sync_bdl_rosters` edge function, pulled per team.
-      The unfiltered `/players` endpoint returns HISTORICAL players and was
-      still climbing past 5,000 rows when a full pull was abandoned during the
-      spike; per team is bounded and is the shape resolution needs anyway.
-      Reports a partial refresh as a failure (207), since silently succeeding
-      with 3 of 32 teams is how a cache rots unnoticed
+- [x] `bdl_players` — **on-demand, not bulk.** Filled one verified resolution at
+      a time by `_shared/bdl_resolve.ts`. The first design bulk-cached ~100
+      players per team and was replaced because it was **incomplete**:
+      balldontlie returns every player who ever played for a franchise, current
+      roster first, so a page cap truncates the tail. It missed a second
+      currently-rostered Josh Allen (C, Arizona), which meant the cache reported
+      that name as UNIQUE when it is not.
+      That is the dangerous shape — resolution trusts a single cache hit, so an
+      incomplete cache turns a genuine ambiguity into a confident wrong answer,
+      the exact failure this design exists to prevent. **An incomplete cache is
+      worse than an empty one.** Migration 041 empties it and the table's
+      meaning changes from "mirror of the league" to "resolutions we have
+      actually verified".
+      No weekly refresh is needed either: a traded player's cached team goes
+      stale, which produces a cache MISS rather than a wrong answer, and the
+      next lookup re-resolves and corrects it. It self-heals in the only
+      direction that is safe.
 - [x] Normalisation shared — `_shared/player_identity.ts`, computed once at
       write time so both sides of a comparison fold identically
 - [x] Event → balldontlie game — `_shared/bdl_games.ts`, matched on date plus
@@ -132,8 +143,22 @@ than read from it.
 - [ ] Ambiguity → market not written — the RULE is enforced by migration 039's
       CHECK constraint, but the ingest that would honour it is US-003
 
-**Still to do before this is live:** run migration 040, execute
-`sync_bdl_rosters` once to populate the cache, and schedule it weekly.
+**Verified against the live API**, including the case that motivated the
+redesign: "Josh Allen" on a Buffalo/Arizona game REFUSES with two candidates,
+and resolves to the QB only when the market supplies a position hint. Also
+verified: `Amon-Ra St. Brown`, `Ja'Marr Chase`, `A.J. Brown`, and a player who
+is simply not in the game.
+
+Two API behaviours the resolver has to work around, both found by testing:
+`search=Josh Allen` returns ZERO — search matches a single token, not a full
+name — so `first_name` + `last_name` are used instead; and those filters match
+punctuation LITERALLY, where `A.J.` finds A.J. Brown and `AJ` finds nobody, so
+spelling variants are tried rather than assumed.
+
+Suffixes are compared BOTH ways, exact first. Stripping `Jr.` is usually right
+because one feed carries it and the other does not — but it manufactures a
+collision between `Marvin Harrison` and `Marvin Harrison Jr.`, who are two real
+and distinct players.
 
 ## US-003: Ingest — prices from The Odds API
 
