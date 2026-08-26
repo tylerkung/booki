@@ -249,3 +249,48 @@ web-only additions with no `Theme.swift` counterpart, so they do not create
 drift. The five fill foregrounds encode which text colour is legible on each
 tinted badge fill; iOS builds those badges independently and would need the same
 pairing to avoid the same two failures (`final` at 2.49, `scheduled` at 3.72).
+
+
+### B7. Design-system pass — web-side changes with an iOS counterpart
+
+The August design-system work (see `tasks/prd-design-system-adoption.md`) landed
+on web only. B5 and B6 above cover the two that create token drift; these are the
+rest, none of which changes `Theme.swift` values but each of which has an iOS
+equivalent worth making.
+
+- [ ] **Semantic badge naming.** Web replaced visual badge classes with 23
+      semantic ones (`won`, `lost`, `push`, `void`, `pending`, `settled`,
+      `scheduled`, `live`, `final`, `canceled`, plus the member/balance/ledger
+      domains). The reason was not tidiness: the state-to-colour mapping lived in
+      `dashboard.js` across three functions that had drifted apart. iOS almost
+      certainly has the same shape — check where a pick's status becomes a colour
+      and whether it happens in a view or in `Theme`.
+      Adopting the model also fixed three collisions worth checking on iOS: a
+      `final` game rendered the same green as a `won` pick, `scheduled` was
+      indistinguishable from `settled`, and `void` was the same red as a loss.
+
+- [ ] **Tabular figures and monospace for data.** Web sets `tabular-nums` on
+      every numeric surface and monospace on odds and scores. On iOS this is
+      `.monospacedDigit()` on the font. Without it a balance ticking 1,180 to
+      1,220 visibly shifts, and a column of stakes never aligns.
+
+- [ ] **Tracking scale.** Web tokenised letter-spacing into seven values after
+      finding eight raw values across two unit systems. iOS uses `.tracking()`;
+      worth checking whether display type there is tightened at all.
+
+- [ ] **Motion.** Web's `--ease` was the literal keyword `ease` and referenced
+      zero times, so every transition inherited a curve that ACCELERATES before
+      settling — the opposite of the "critically damped, nothing bounces" rule in
+      the design system. Now one curve, `cubic-bezier(0.22, 1, 0.36, 1)`. iOS
+      should be audited for the same: any `.easeInOut` on an interaction is the
+      same mistake in SwiftUI form.
+
+- [ ] **Contrast.** Web now has seven `--fill-*-foreground` tokens pairing each
+      tinted badge fill with the text colour legible on it. Two of the five had
+      been failing WCAG AA (`final` at 2.49, `scheduled` at 3.72). iOS builds
+      those badges independently and will have the same two failures.
+
+Not applicable to iOS: the focus-ring work (keyboard focus is a web concern;
+iOS has VoiceOver and focus engine equivalents that are separate), the dead
+`@media (max-width: var(...))` queries, and the `.select` / `.progress` /
+`.tooltip` components, which are UIKit/SwiftUI primitives there.
