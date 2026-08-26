@@ -1329,9 +1329,16 @@ Deno.serve(async (req) => {
       const runHour = now.getUTCHours();
       const runMinute = now.getUTCMinutes();
       const isTopOfHour = runMinute < 30;
-      const includeNearTier = runHour % NEAR_TIER_EVERY_HOURS === 0 && isTopOfHour;
-      const includeMidTier = runHour % MID_TIER_EVERY_HOURS === 0 && isTopOfHour;
-      const includeFutures = runHour === FUTURES_TIER_HOUR_UTC && isTopOfHour;
+      // A forced run includes every tier. Without this the tiers are purely
+      // clock-based, so there was no way to re-price futures on demand — they
+      // could only be repaired by waiting for FUTURES_TIER_HOUR_UTC, up to 24
+      // hours away. That mattered when migration 048 landed: 123 outright
+      // selections were left unbettable by the superseded-line guard until a
+      // refresh bumped every selection's updated_at together, and nothing could
+      // make that happen. Forcing costs one Odds API credit per futures key.
+      const includeNearTier = force || (runHour % NEAR_TIER_EVERY_HOURS === 0 && isTopOfHour);
+      const includeMidTier = force || (runHour % MID_TIER_EVERY_HOURS === 0 && isTopOfHour);
+      const includeFutures = force || (runHour === FUTURES_TIER_HOUR_UTC && isTopOfHour);
       console.log(
         `Refresh tiers — near(<4h, NFL/NBA/MLB): ${includeNearTier}, mid: ${includeMidTier}, futures: ${includeFutures}`,
       );
