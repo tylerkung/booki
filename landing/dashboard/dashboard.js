@@ -3028,7 +3028,7 @@ function dashboardApp() {
                         icon: 'exclamation',
                         description: (m.display_name || m.name || 'Unknown') + ' — owes ' + this.formatCurrency(m.balance || 0),
                         badge: 'Overdue',
-                        badgeClass: 'badge-danger',
+                        badgeClass: 'badge-overdue',
                         amount: this.formatCurrency(m.balance || 0),
                         href: '#/members/' + m.id,
                     });
@@ -3047,7 +3047,7 @@ function dashboardApp() {
                         icon: 'exclamation',
                         description: (m.display_name || m.name || 'Unknown') + ' — ' + Math.round(utilization) + '% credit used',
                         badge: 'Near Limit',
-                        badgeClass: 'badge-danger',
+                        badgeClass: 'badge-near-limit',
                         amount: Math.round(utilization) + '%',
                         href: '#/members/' + m.id,
                     });
@@ -4107,11 +4107,12 @@ function dashboardApp() {
 
         activityTypeBadge(type) {
             switch (type) {
-                case 'bet_placed': return { label: 'Open', cls: 'badge-warning' };
-                case 'won': return { label: 'Won', cls: 'badge-success' };
-                case 'lost': return { label: 'Lost', cls: 'badge-danger' };
-                case 'push': return { label: 'Push', cls: 'badge-muted' };
-                case 'paymentLogged': return { label: 'Settlement', cls: 'badge-success' };
+                case 'bet_placed': return { label: 'Open', cls: 'badge-pending' };
+                case 'won': return { label: 'Won', cls: 'badge-won' };
+                case 'lost': return { label: 'Lost', cls: 'badge-lost' };
+                case 'push': return { label: 'Push', cls: 'badge-push' };
+                case 'paymentLogged': return { label: 'Settlement', cls: 'badge-paid' };
+                // Not outcomes — a ledger row type, deliberately neutral.
                 case 'adjustment': return { label: 'Adjustment', cls: 'badge-muted' };
                 default: return { label: type, cls: 'badge-muted' };
             }

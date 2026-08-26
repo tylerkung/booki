@@ -266,7 +266,7 @@
                                         <div class="t-caption" style="margin-top:var(--s-xxs);" x-text="new Date(tonightsExposure.highestRiskGame.startTime).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})"></div>
                                     </div>
                                     <div style="display:flex;align-items:center;gap:var(--s-sm);">
-                                        <span x-show="tonightsExposure.highExposure" class="badge badge-warning t-micro">High Exposure</span>
+                                        <span x-show="tonightsExposure.highExposure" class="badge badge-attention t-micro">High Exposure</span>
                                         <span style="font-size:var(--fs-lg);font-weight:var(--fw-bold);color:var(--danger);" x-text="formatCurrency(tonightsExposure.highestRiskGame.exposure)"></span>
                                     </div>
                                 </div>
@@ -280,7 +280,7 @@
                     <div class="card-header">
                         <div style="display:flex;align-items:center;gap:var(--s-sm);">
                             <span class="card-title">Attention</span>
-                            <span x-show="attentionAlertCount > 0" class="badge badge-danger" style="font-size:var(--fs-micro);" x-text="attentionAlertCount"></span>
+                            <span x-show="attentionAlertCount > 0" class="badge badge-urgent" style="font-size:var(--fs-micro);" x-text="attentionAlertCount"></span>
                         </div>
                     </div>
 
@@ -336,7 +336,7 @@
                                     </div>
                                     <div style="display:flex;flex-wrap:wrap;gap:var(--s-xs);">
                                         <template x-for="signal in member.riskSignals" :key="signal.key">
-                                            <span class="badge" :class="signal.color === 'danger' ? 'badge-danger' : 'badge-warning'" x-text="signal.label"></span>
+                                            <span class="badge" :class="signal.color === 'danger' ? 'badge-urgent' : 'badge-attention'" x-text="signal.label"></span>
                                         </template>
                                     </div>
                                 </a>
@@ -355,7 +355,7 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             <span class="card-title">Settlement</span>
                             <template x-if="snapshotOverdueCount > 0">
-                                <span class="badge badge-danger t-micro" x-text="snapshotOverdueCount + ' overdue'"></span>
+                                <span class="badge badge-overdue t-micro" x-text="snapshotOverdueCount + ' overdue'"></span>
                             </template>
                         </div>
                         <span class="t-caption" x-text="snapshotWeekRange"></span>
@@ -962,7 +962,7 @@
                                              that anyone can use and does expire. "4 invites, 0 members"
                                              means nothing until you can see which kind they were. -->
                                         <td data-label="Kind">
-                                            <span class="badge" :class="inv.email ? 'badge-accent' : 'badge-muted'"
+                                            <span class="badge" :class="inv.email ? 'badge-email' : 'badge-link'"
                                                   x-text="inv.email ? 'Email' : 'Link'"></span>
                                         </td>
                                         <td data-label="Sent to / Code">
@@ -1051,7 +1051,7 @@
                                                 :style="{ color: p.balance > 0 ? 'var(--success)' : p.balance < 0 ? 'var(--danger)' : '' }"
                                                 x-text="formatCurrency(p.balance || 0)"></td>
                                             <td data-label="Credit" x-text="formatCurrency(p.credit_limit || 0)"></td>
-                                            <td data-label="Status"><span class="badge" :class="p.auth_user_id ? 'badge-success' : 'badge-muted'" x-text="p.auth_user_id ? 'Active' : 'Pending'"></span></td>
+                                            <td data-label="Status"><span class="badge" :class="p.auth_user_id ? 'badge-active' : 'badge-invited'" x-text="p.auth_user_id ? 'Active' : 'Pending'"></span></td>
                                             <td data-label="Actions">
                                                 <button class="btn btn-ghost" title="Settle Up" @click="openSettleUp(p)">$</button>
                                                 <button class="btn btn-ghost" title="Adjust" @click="openAdjustBalance(p)">+/-</button>
@@ -1356,7 +1356,7 @@
                             </div>
                             <!-- Status + Attention Tags -->
                             <div style="display:flex;align-items:center;gap:var(--s-sm);flex-wrap:wrap;margin-bottom:var(--s-md);">
-                                <span class="badge" :class="memberDetail.auth_user_id ? 'badge-success' : 'badge-muted'" x-text="memberDetail.auth_user_id ? 'Active' : 'Pending'"
+                                <span class="badge" :class="memberDetail.auth_user_id ? 'badge-active' : 'badge-invited'" x-text="memberDetail.auth_user_id ? 'Active' : 'Pending'"
                                       style="cursor:help;"
                                       @mouseenter="showTagTooltip({ label: memberDetail.auth_user_id ? 'Active' : 'Pending', desc: memberDetail.auth_user_id ? 'Member has claimed their invite and linked their account' : 'Invite sent but not yet claimed' }, $event)"
                                       @mouseleave="hideTagTooltip()"></span>
@@ -1678,7 +1678,7 @@
                                                 <td data-label="Adjustments" x-text="formatCurrency(report.adjustments)" :style="{ color: report.adjustments !== 0 ? 'var(--text-primary)' : 'var(--text-muted)' }"></td>
                                                 <td data-label="Ending" style="font-weight:var(--fw-semibold);" :style="{ color: report.endingBalance > 0 ? 'var(--success)' : report.endingBalance < 0 ? 'var(--danger)' : 'var(--text-muted)' }" x-text="formatCurrency(report.endingBalance)"></td>
                                                 <td data-label="Status">
-                                                    <span class="badge" :class="report.endingBalance === 0 ? 'badge-success' : report.collection_status === 'overdue' ? 'badge-danger' : 'badge-warning'"
+                                                    <span class="badge" :class="report.endingBalance === 0 ? 'badge-paid' : report.collection_status === 'overdue' ? 'badge-overdue' : 'badge-unpaid'"
                                                           x-text="report.endingBalance === 0 ? 'Settled' : report.collection_status === 'overdue' ? 'Overdue' : 'Unpaid'"></span>
                                                 </td>
                                                 <td data-label="Actions">
@@ -1915,7 +1915,7 @@
                                     <h3>Booki Pro</h3>
                                     <p style="color:var(--text-muted);margin-top:var(--s-xs);">$49.99/month</p>
                                 </div>
-                                <span class="badge badge-success">Active</span>
+                                <span class="badge badge-active">Active</span>
                             </div>
                         </div>
                         <div class="card">
@@ -2687,7 +2687,7 @@
                             <div class="t-body-muted" x-text="formatEventTime(gameDetail.start_time)"></div>
                             <div class="t-body-muted" x-show="gameDetail.away_score !== null && gameDetail.home_score !== null"
                                  x-text="'Score ' + gameDetail.away_score + '-' + gameDetail.home_score"></div>
-                            <div class="badge badge-warning" style="margin-top:var(--s-md);" x-show="isEventLocked(gameDetail)">
+                            <div class="badge badge-locked" style="margin-top:var(--s-md);" x-show="isEventLocked(gameDetail)">
                                 Betting closed
                             </div>
                         </div>
@@ -3042,10 +3042,10 @@
                                             <div style="display:flex;align-items:center;gap:var(--s-md);">
                                                 <span style="font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--text-secondary);" x-text="formatOdds(leg.odds)"></span>
                                                 <span class="badge t-micro" :class="{
-                                                    'badge-success': leg.grade_result === 'win',
-                                                    'badge-danger': leg.grade_result === 'loss',
-                                                    'badge-muted': leg.grade_result === 'push' || leg.status === 'void',
-                                                    'badge-warning': !leg.grade_result && leg.status !== 'void'
+                                                    'badge-won': leg.grade_result === 'win',
+                                                    'badge-lost': leg.grade_result === 'loss',
+                                                    'badge-push': leg.grade_result === 'push' || leg.status === 'void',
+                                                    'badge-pending': !leg.grade_result && leg.status !== 'void'
                                                 }" x-text="leg.grade_result === 'win' ? 'Won' : leg.grade_result === 'loss' ? 'Lost' : leg.grade_result === 'push' ? 'Push' : leg.status === 'void' ? 'Void' : 'Pending'"></span>
                                             </div>
                                         </div>
@@ -3286,7 +3286,7 @@
                                         </div>
                                         <div class="player-activity-amount">
                                             <span class="badge"
-                                                  :class="(-entry.amount || 0) >= 0 ? 'badge-success' : 'badge-danger'"
+                                                  :class="(-entry.amount || 0) >= 0 ? 'badge-credit' : 'badge-debit'"
                                                   x-text="formatCurrency(-entry.amount || 0)"></span>
                                         </div>
                                     </div>
@@ -3424,7 +3424,7 @@
                                 </div>
                                 <div class="player-activity-amount">
                                     <span class="badge"
-                                          :class="(-entry.amount || 0) >= 0 ? 'badge-success' : 'badge-danger'"
+                                          :class="(-entry.amount || 0) >= 0 ? 'badge-credit' : 'badge-debit'"
                                           x-text="formatCurrency(-entry.amount || 0)"></span>
                                 </div>
                             </div>

@@ -3343,3 +3343,47 @@ input, button, select, textarea { font: inherit; }
 .badge-live      { background: var(--fill-accent); color: var(--fill-accent-foreground); }
 .badge-final     { background: var(--fill-final); color: var(--fill-final-foreground); }
 .badge-canceled  { background: var(--fill-danger); color: var(--fill-danger-foreground); }
+
+
+/* ── badge, semantic: the non-pick domains ──────────────────────────────────
+   The pick and game states were converted first; these are the rest. Each was
+   a visual class standing in for a state, which is the same problem one domain
+   over — `badge-success` appeared on a member who had signed up, a balance that
+   was cleared, a ledger credit and an emailed invite, four unrelated meanings
+   sharing one name because they happen to be the same green.
+
+   Appearance is unchanged from what these rendered before. Only the names are
+   new, so nothing on screen moves.
+
+   Two names were deliberately NOT reused. A member showing "Pending" is
+   `badge-invited`, not `badge-pending`, because a pending PICK is awaiting
+   grading — a different state that happens to share an English word. And a
+   cleared balance is `badge-paid`, not `badge-settled`, because a settled pick
+   is grey while a cleared balance is green; sharing the class would force one
+   of them to change. Words collide across domains more often than colours do,
+   which is the trap semantic naming has to avoid rather than create. */
+
+/* member / account */
+.badge-active  { background: var(--fill-accent); color: var(--fill-accent-foreground); }
+.badge-invited { background: var(--bg-elevated); color: var(--text-muted); }
+
+/* balance and collection */
+.badge-paid    { background: var(--fill-accent); color: var(--fill-accent-foreground); }
+.badge-unpaid  { background: var(--fill-warning); color: var(--fill-warning-foreground); }
+.badge-overdue { background: var(--fill-danger); color: var(--fill-danger-foreground); }
+
+/* ledger direction */
+.badge-credit  { background: var(--fill-accent); color: var(--fill-accent-foreground); }
+.badge-debit   { background: var(--fill-danger); color: var(--fill-danger-foreground); }
+
+/* invite delivery */
+.badge-email   { background: var(--fill-accent); color: var(--fill-accent-foreground); }
+.badge-link    { background: var(--bg-elevated); color: var(--text-muted); }
+
+/* risk severity */
+.badge-urgent     { background: var(--fill-danger); color: var(--fill-danger-foreground); }
+.badge-attention  { background: var(--fill-warning); color: var(--fill-warning-foreground); }
+.badge-near-limit { background: var(--fill-danger); color: var(--fill-danger-foreground); }
+
+/* betting closed on a game — a lock, not a warning about the member */
+.badge-locked { background: var(--fill-warning); color: var(--fill-warning-foreground); }

@@ -457,3 +457,40 @@ Badge convergence: **7 of 17 variants now agree, up from 2 of 14.**
 settlement collection status, and alert severity. Each is arguably its own
 semantic domain, but none is a pick or game state, so they were left alone rather
 than swept in.
+
+
+### The remaining domains, converted
+
+23 semantic badge classes now cover every state the product renders. The visual
+names survive only where a badge genuinely is not a state.
+
+`badge-success` had been standing in for four unrelated meanings — a member who
+had signed up, a balance that was cleared, a ledger credit, and an emailed invite
+— four things sharing one name because they happen to be the same green.
+
+Two more state mappers turned up during the pass and were converted: a ledger
+activity-type function in `dashboard.js` mapping `won`/`lost`/`push` to visual
+classes, and the parlay-leg grades inline in the markup. Both were pick outcomes
+that the first pass missed.
+
+**Two names were deliberately not reused**, and the reason generalises:
+
+- A member showing "Pending" is `badge-invited`, not `badge-pending`, because a
+  pending *pick* is awaiting grading. Different state, same English word.
+- A cleared balance is `badge-paid`, not `badge-settled`, because a settled pick
+  is grey while a cleared balance is green. Sharing the class would force one of
+  them to change appearance.
+
+Words collide across domains more often than colours do. That is the trap
+semantic naming has to avoid rather than create.
+
+**Left visual, and why:** `adjustment` and the fallback in the activity mapper
+are ledger row types rather than outcomes; the pick-count and entry-type chips
+are quantities and labels; "Current" marks the active plan row. None is a state.
+
+**One left unresolved rather than forced.** The three inline `PRO` chips use
+`badge-success`, which is wrong — a tier is not a success. But `badge-pro`
+already exists as the solid treatment on the plan card, and these are tinted, so
+the honest options were a second Pro class named for its appearance or a context
+selector restructure. Neither is clearly right, so it is recorded instead of
+guessed at.
