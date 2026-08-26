@@ -164,3 +164,27 @@ rather than shipped unverified.
 
 Also worth doing in the same pass: `GameDetailView` already renders alternate
 spread and total sections, but nothing renders team totals or odd/even.
+
+---
+
+## Running list: web changes that need an iOS counterpart
+
+Kept as web work happens rather than discovered later, because iOS fails
+QUIETLY when the web moves ahead: `SyncService` decodes market types with
+`MarketType(rawValue:) ?? .moneyline`, so any type Swift lacks a case for is
+silently RELABELLED as a moneyline on shipped builds rather than ignored.
+
+| Web change | iOS counterpart | Status on web |
+|---|---|---|
+| `alternate_spread`, `alternate_total`, `team_total` | cases already exist; `GameDetailView` renders alt lines but not team totals | **shipped** |
+| `odd_even` market | `MarketType.oddEven` + display | **held back** — removed from `DEEP_MARKETS` until iOS can render it |
+| `player_prop` market | `MarketType.playerProp`, plus a props UI grouped by player | **held back** — not written to production |
+| Prop props sync exposure | `SyncService` markets query has NO type filter, so it pulls every market type | blocking the two above |
+| Game detail view (`#/player-game/:id`) | iOS `GameDetailView` already exists; needs team totals + props sections | shipped on web |
+
+**The structural fix worth doing first:** give `MarketType` an `unknown` case and
+have the sync SKIP unknown types instead of coercing them. Three separate
+incidents in one session traced to this single behaviour. With that in place,
+the web can add market types freely and old builds ignore them rather than
+mislabelling them — which removes the dependency that is currently holding two
+finished features.

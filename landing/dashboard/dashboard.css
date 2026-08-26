@@ -2690,6 +2690,8 @@ input, button, select, textarea { font: inherit; }
        is the entire point of the matrix. */
     --gd-label-col: 160px;
     --gd-cell-min: 84px;
+    --gd-prop-cell: 96px;
+    --gd-prop-row-max: 520px;
 
     /* Owned by the component rather than set inline per instance, which is how
        the ladder rewrite lost it and left the cards touching. */
@@ -2910,4 +2912,68 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-sm);
     color: var(--text-muted);
     line-height: var(--lh-normal);
+}
+
+/* ── Player props ──────────────────────────────────────────────────────────
+   Grouped by PERSON, not by line. The ladder model above does not fit: a
+   spread's subject is the game and its columns are lines, but a prop's subject
+   is a player and its rows are different stats about him. Someone scanning a
+   prop board looks for a name first and a number second, so the name is the
+   heading and never repeats inside the group. */
+.gd-player {
+    padding: var(--s-md) 0;
+    border-top: var(--hairline) solid var(--border);
+}
+.gd-player:first-of-type { border-top: none; padding-top: 0; }
+
+.gd-player-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-sm);
+    margin-bottom: var(--s-sm);
+}
+.gd-player-name {
+    font-size: var(--fs-body);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+}
+.gd-player-meta {
+    font-size: var(--fs-micro);
+    color: var(--text-muted);
+}
+
+.gd-prop-row {
+    display: grid;
+    /* Prices stay aligned down the group so they can be compared at a glance,
+       but the row is capped: at full page width the label and its prices ended
+       up 600px apart, which is a long way to track a line with your eye for two
+       numbers. */
+    max-width: var(--gd-prop-row-max);
+    grid-template-columns: 1fr var(--gd-prop-cell) var(--gd-prop-cell);
+    align-items: center;
+    gap: var(--s-xs);
+    margin-bottom: var(--s-xs);
+}
+
+.gd-prop-stat {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-sm);
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    min-width: 0;
+}
+.gd-prop-line {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.gd-prop-cell { width: 100%; }
+
+@media (max-width: 600px) {
+    /* Label above its two prices, rather than three cramped columns. */
+    .gd-prop-row { grid-template-columns: 1fr 1fr; }
+    .gd-prop-stat { grid-column: 1 / -1; }
 }

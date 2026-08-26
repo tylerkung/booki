@@ -34,9 +34,9 @@
                 x-text="event.away + ' @ ' + event.home"></h2>
             <div class="t-body-muted" x-text="event.kickoff"></div>
             <div class="preview-counts">
-                <span x-text="markets.length + ' lines'"></span>
+                <span x-text="(markets.length + props.length) + ' lines'"></span>
                 <span>·</span>
-                <span x-text="sections.length + ' markets'"></span>
+                <span x-text="(sections.length + 1) + ' markets'"></span>
                 <span>·</span>
                 <span>today the board shows 3</span>
             </div>
@@ -123,6 +123,56 @@
             </div>
         </template>
 
+        <div class="card gd-section">
+            <div class="gd-section-head">
+                <span class="card-title">Player props</span>
+                <span class="t-body-muted" x-text="props.length + ' lines · ' + propGroups.length + ' players'"></span>
+            </div>
+
+            <!-- A prop board is scanned by name, so it needs a way to find one.
+                 The ladders above do not: they have two rows each. -->
+            <div class="filter-bar" style="margin-bottom:var(--s-md);">
+                <input class="search-input" type="search" x-model="propSearch" placeholder="Find a player">
+                <template x-for="t in propTeams" :key="t">
+                    <button class="chip" :class="{ active: propTeamFilter === t }"
+                            @click="propTeamFilter = t" x-text="t === 'all' ? 'Both teams' : t"></button>
+                </template>
+            </div>
+
+            <template x-if="!propGroups.length">
+                <p class="t-body-muted">No players match that.</p>
+            </template>
+
+            <template x-for="g in propGroups" :key="g.name">
+                <div class="gd-player">
+                    <div class="gd-player-head">
+                        <span class="gd-player-name" x-text="g.name"></span>
+                        <span class="gd-player-meta" x-text="g.position + ' · ' + g.team"></span>
+                    </div>
+                    <template x-for="m in g.markets" :key="m.id">
+                        <div class="gd-prop-row">
+                            <div class="gd-prop-stat">
+                                <span x-text="m.stat_label"></span>
+                                <span class="gd-prop-line" x-show="m.line !== null" x-text="m.line"></span>
+                            </div>
+                            <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                :class="{ 'pg-odds-active': isPicked({ marketId: m.id, indicator: 'a' }) }"
+                                @click="pick({ marketId: m.id, indicator: 'a', side: m.side_a, odds: m.odds_a })">
+                                <span class="gd-cell-line" x-text="m.line === null ? 'Yes' : 'Over'"></span>
+                                <span class="gd-cell-odds" x-text="formatOdds(m.odds_a)"></span>
+                            </button>
+                            <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                :class="{ 'pg-odds-active': isPicked({ marketId: m.id, indicator: 'b' }) }"
+                                @click="pick({ marketId: m.id, indicator: 'b', side: m.side_b, odds: m.odds_b })">
+                                <span class="gd-cell-line" x-text="m.line === null ? 'No' : 'Under'"></span>
+                                <span class="gd-cell-odds" x-text="formatOdds(m.odds_b)"></span>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+
         <div class="preview-footer">
             Every market shown settles from the final score, so all of it grades automatically.
             Quarters, halves and player props are purchasable from the same feed but cannot be
@@ -141,6 +191,8 @@
  * it links the real tokens.css and dashboard.css — so a design change lands
  * here automatically and only the behaviour can drift.
  */
+const PROPS = [{"id":"p1","type":"player_prop","stat_key":"player_pass_yds","subject_name":"Tommy DeVito","team":"NE","position":"QB","stat_label":"Passing yards","side_a":"Tommy DeVito Over 214.5","side_b":"Tommy DeVito Under 214.5","odds_a":-110,"odds_b":-110,"line":214.5},{"id":"p2","type":"player_prop","stat_key":"player_pass_tds","subject_name":"Tommy DeVito","team":"NE","position":"QB","stat_label":"Passing TDs","side_a":"Tommy DeVito Over 1.5","side_b":"Tommy DeVito Under 1.5","odds_a":-110,"odds_b":-110,"line":1.5},{"id":"p3","type":"player_prop","stat_key":"player_rush_yds","subject_name":"Rhamondre Stevenson","team":"NE","position":"RB","stat_label":"Rushing yards","side_a":"Rhamondre Stevenson Over 62.5","side_b":"Rhamondre Stevenson Under 62.5","odds_a":-110,"odds_b":-110,"line":62.5},{"id":"p4","type":"player_prop","stat_key":"player_receptions","subject_name":"Rhamondre Stevenson","team":"NE","position":"RB","stat_label":"Receptions","side_a":"Rhamondre Stevenson Over 2.5","side_b":"Rhamondre Stevenson Under 2.5","odds_a":-110,"odds_b":-110,"line":2.5},{"id":"p5","type":"player_prop","stat_key":"player_anytime_td","subject_name":"Rhamondre Stevenson","team":"NE","position":"RB","stat_label":"Anytime TD","side_a":"Rhamondre Stevenson Anytime TD Yes","side_b":"Rhamondre Stevenson Anytime TD No","odds_a":-120,"odds_b":-100,"line":null},{"id":"p6","type":"player_prop","stat_key":"player_rush_yds","subject_name":"Antonio Gibson","team":"NE","position":"RB","stat_label":"Rushing yards","side_a":"Antonio Gibson Over 31.5","side_b":"Antonio Gibson Under 31.5","odds_a":-110,"odds_b":-110,"line":31.5},{"id":"p7","type":"player_prop","stat_key":"player_anytime_td","subject_name":"Antonio Gibson","team":"NE","position":"RB","stat_label":"Anytime TD","side_a":"Antonio Gibson Anytime TD Yes","side_b":"Antonio Gibson Anytime TD No","odds_a":-120,"odds_b":-100,"line":null},{"id":"p8","type":"player_prop","stat_key":"player_reception_yds","subject_name":"A.J. Brown","team":"NE","position":"WR","stat_label":"Receiving yards","side_a":"A.J. Brown Over 74.5","side_b":"A.J. Brown Under 74.5","odds_a":-110,"odds_b":-110,"line":74.5},{"id":"p9","type":"player_prop","stat_key":"player_receptions","subject_name":"A.J. Brown","team":"NE","position":"WR","stat_label":"Receptions","side_a":"A.J. Brown Over 5.5","side_b":"A.J. Brown Under 5.5","odds_a":-110,"odds_b":-110,"line":5.5},{"id":"p10","type":"player_prop","stat_key":"player_anytime_td","subject_name":"A.J. Brown","team":"NE","position":"WR","stat_label":"Anytime TD","side_a":"A.J. Brown Anytime TD Yes","side_b":"A.J. Brown Anytime TD No","odds_a":130,"odds_b":-155,"line":null},{"id":"p11","type":"player_prop","stat_key":"player_reception_yds","subject_name":"DeMario Douglas","team":"NE","position":"WR","stat_label":"Receiving yards","side_a":"DeMario Douglas Over 41.5","side_b":"DeMario Douglas Under 41.5","odds_a":-110,"odds_b":-110,"line":41.5},{"id":"p12","type":"player_prop","stat_key":"player_receptions","subject_name":"DeMario Douglas","team":"NE","position":"WR","stat_label":"Receptions","side_a":"DeMario Douglas Over 3.5","side_b":"DeMario Douglas Under 3.5","odds_a":-110,"odds_b":-110,"line":3.5},{"id":"p13","type":"player_prop","stat_key":"player_pass_yds","subject_name":"Sam Darnold","team":"SEA","position":"QB","stat_label":"Passing yards","side_a":"Sam Darnold Over 231.5","side_b":"Sam Darnold Under 231.5","odds_a":-110,"odds_b":-110,"line":231.5},{"id":"p14","type":"player_prop","stat_key":"player_pass_tds","subject_name":"Sam Darnold","team":"SEA","position":"QB","stat_label":"Passing TDs","side_a":"Sam Darnold Over 1.5","side_b":"Sam Darnold Under 1.5","odds_a":-110,"odds_b":-110,"line":1.5},{"id":"p15","type":"player_prop","stat_key":"player_rush_yds","subject_name":"Zach Charbonnet","team":"SEA","position":"RB","stat_label":"Rushing yards","side_a":"Zach Charbonnet Over 58.5","side_b":"Zach Charbonnet Under 58.5","odds_a":-110,"odds_b":-110,"line":58.5},{"id":"p16","type":"player_prop","stat_key":"player_receptions","subject_name":"Zach Charbonnet","team":"SEA","position":"RB","stat_label":"Receptions","side_a":"Zach Charbonnet Over 2.5","side_b":"Zach Charbonnet Under 2.5","odds_a":-110,"odds_b":-110,"line":2.5},{"id":"p17","type":"player_prop","stat_key":"player_anytime_td","subject_name":"Zach Charbonnet","team":"SEA","position":"RB","stat_label":"Anytime TD","side_a":"Zach Charbonnet Anytime TD Yes","side_b":"Zach Charbonnet Anytime TD No","odds_a":-120,"odds_b":-100,"line":null},{"id":"p18","type":"player_prop","stat_key":"player_rush_yds","subject_name":"Cam Akers","team":"SEA","position":"RB","stat_label":"Rushing yards","side_a":"Cam Akers Over 27.5","side_b":"Cam Akers Under 27.5","odds_a":-110,"odds_b":-110,"line":27.5},{"id":"p19","type":"player_prop","stat_key":"player_anytime_td","subject_name":"Cam Akers","team":"SEA","position":"RB","stat_label":"Anytime TD","side_a":"Cam Akers Anytime TD Yes","side_b":"Cam Akers Anytime TD No","odds_a":-120,"odds_b":-100,"line":null},{"id":"p20","type":"player_prop","stat_key":"player_reception_yds","subject_name":"Rashid Shaheed","team":"SEA","position":"WR","stat_label":"Receiving yards","side_a":"Rashid Shaheed Over 58.5","side_b":"Rashid Shaheed Under 58.5","odds_a":-110,"odds_b":-110,"line":58.5},{"id":"p21","type":"player_prop","stat_key":"player_receptions","subject_name":"Rashid Shaheed","team":"SEA","position":"WR","stat_label":"Receptions","side_a":"Rashid Shaheed Over 4.5","side_b":"Rashid Shaheed Under 4.5","odds_a":-110,"odds_b":-110,"line":4.5},{"id":"p22","type":"player_prop","stat_key":"player_anytime_td","subject_name":"Rashid Shaheed","team":"SEA","position":"WR","stat_label":"Anytime TD","side_a":"Rashid Shaheed Anytime TD Yes","side_b":"Rashid Shaheed Anytime TD No","odds_a":130,"odds_b":-155,"line":null},{"id":"p23","type":"player_prop","stat_key":"player_reception_yds","subject_name":"Harrison Bryant","team":"SEA","position":"TE","stat_label":"Receiving yards","side_a":"Harrison Bryant Over 26.5","side_b":"Harrison Bryant Under 26.5","odds_a":-110,"odds_b":-110,"line":26.5},{"id":"p24","type":"player_prop","stat_key":"player_receptions","subject_name":"Harrison Bryant","team":"SEA","position":"TE","stat_label":"Receptions","side_a":"Harrison Bryant Over 2.5","side_b":"Harrison Bryant Under 2.5","odds_a":-110,"odds_b":-110,"line":2.5}];
+
 const MARKETS = [{"type":"moneyline","side_a":"New England Patriots","side_b":"Seattle Seahawks","odds_a":200,"odds_b":-245,"id":"m0"},{"type":"alternate_spread","side_a":"New England Patriots -7.5","side_b":"Seattle Seahawks +7.5","odds_a":1160,"odds_b":-2820,"id":"m1"},{"type":"alternate_spread","side_a":"New England Patriots -7","side_b":"Seattle Seahawks +7","odds_a":1035,"odds_b":-2225,"id":"m2"},{"type":"alternate_spread","side_a":"New England Patriots -6.5","side_b":"Seattle Seahawks +6.5","odds_a":925,"odds_b":-1800,"id":"m3"},{"type":"alternate_spread","side_a":"New England Patriots -6","side_b":"Seattle Seahawks +6","odds_a":825,"odds_b":-1485,"id":"m4"},{"type":"alternate_spread","side_a":"New England Patriots -5.5","side_b":"Seattle Seahawks +5.5","odds_a":735,"odds_b":-1240,"id":"m5"},{"type":"alternate_spread","side_a":"New England Patriots -5","side_b":"Seattle Seahawks +5","odds_a":655,"odds_b":-1045,"id":"m6"},{"type":"alternate_spread","side_a":"New England Patriots -4.5","side_b":"Seattle Seahawks +4.5","odds_a":585,"odds_b":-890,"id":"m7"},{"type":"alternate_spread","side_a":"New England Patriots -4","side_b":"Seattle Seahawks +4","odds_a":520,"odds_b":-765,"id":"m8"},{"type":"alternate_spread","side_a":"New England Patriots -3.5","side_b":"Seattle Seahawks +3.5","odds_a":465,"odds_b":-660,"id":"m9"},{"type":"alternate_spread","side_a":"New England Patriots -3","side_b":"Seattle Seahawks +3","odds_a":415,"odds_b":-570,"id":"m10"},{"type":"alternate_spread","side_a":"New England Patriots -2.5","side_b":"Seattle Seahawks +2.5","odds_a":370,"odds_b":-495,"id":"m11"},{"type":"alternate_spread","side_a":"New England Patriots -2","side_b":"Seattle Seahawks +2","odds_a":330,"odds_b":-435,"id":"m12"},{"type":"alternate_spread","side_a":"New England Patriots -1.5","side_b":"Seattle Seahawks +1.5","odds_a":295,"odds_b":-380,"id":"m13"},{"type":"alternate_spread","side_a":"New England Patriots -1","side_b":"Seattle Seahawks +1","odds_a":260,"odds_b":-330,"id":"m14"},{"type":"alternate_spread","side_a":"New England Patriots -0.5","side_b":"Seattle Seahawks +0.5","odds_a":235,"odds_b":-290,"id":"m15"},{"type":"alternate_spread","side_a":"New England Patriots 0","side_b":"Seattle Seahawks 0","odds_a":210,"odds_b":-255,"id":"m16"},{"type":"alternate_spread","side_a":"New England Patriots +0.5","side_b":"Seattle Seahawks -0.5","odds_a":185,"odds_b":-225,"id":"m17"},{"type":"alternate_spread","side_a":"New England Patriots +1","side_b":"Seattle Seahawks -1","odds_a":165,"odds_b":-200,"id":"m18"},{"type":"alternate_spread","side_a":"New England Patriots +1.5","side_b":"Seattle Seahawks -1.5","odds_a":145,"odds_b":-175,"id":"m19"},{"type":"alternate_spread","side_a":"New England Patriots +2","side_b":"Seattle Seahawks -2","odds_a":130,"odds_b":-155,"id":"m20"},{"type":"alternate_spread","side_a":"New England Patriots +2.5","side_b":"Seattle Seahawks -2.5","odds_a":115,"odds_b":-140,"id":"m21"},{"type":"alternate_spread","side_a":"New England Patriots +3","side_b":"Seattle Seahawks -3","odds_a":105,"odds_b":-125,"id":"m22"},{"type":"spread","side_a":"New England Patriots +3.5","side_b":"Seattle Seahawks -3.5","odds_a":-110,"odds_b":-110,"id":"m23"},{"type":"alternate_spread","side_a":"New England Patriots +4","side_b":"Seattle Seahawks -4","odds_a":-125,"odds_b":105,"id":"m24"},{"type":"alternate_spread","side_a":"New England Patriots +4.5","side_b":"Seattle Seahawks -4.5","odds_a":-140,"odds_b":115,"id":"m25"},{"type":"alternate_spread","side_a":"New England Patriots +5","side_b":"Seattle Seahawks -5","odds_a":-155,"odds_b":130,"id":"m26"},{"type":"alternate_spread","side_a":"New England Patriots +5.5","side_b":"Seattle Seahawks -5.5","odds_a":-175,"odds_b":145,"id":"m27"},{"type":"alternate_spread","side_a":"New England Patriots +6","side_b":"Seattle Seahawks -6","odds_a":-200,"odds_b":165,"id":"m28"},{"type":"alternate_spread","side_a":"New England Patriots +6.5","side_b":"Seattle Seahawks -6.5","odds_a":-225,"odds_b":185,"id":"m29"},{"type":"alternate_spread","side_a":"New England Patriots +7","side_b":"Seattle Seahawks -7","odds_a":-255,"odds_b":210,"id":"m30"},{"type":"alternate_spread","side_a":"New England Patriots +7.5","side_b":"Seattle Seahawks -7.5","odds_a":-290,"odds_b":235,"id":"m31"},{"type":"alternate_spread","side_a":"New England Patriots +8","side_b":"Seattle Seahawks -8","odds_a":-330,"odds_b":260,"id":"m32"},{"type":"alternate_spread","side_a":"New England Patriots +8.5","side_b":"Seattle Seahawks -8.5","odds_a":-380,"odds_b":295,"id":"m33"},{"type":"alternate_spread","side_a":"New England Patriots +9","side_b":"Seattle Seahawks -9","odds_a":-435,"odds_b":330,"id":"m34"},{"type":"alternate_spread","side_a":"New England Patriots +9.5","side_b":"Seattle Seahawks -9.5","odds_a":-495,"odds_b":370,"id":"m35"},{"type":"alternate_spread","side_a":"New England Patriots +10","side_b":"Seattle Seahawks -10","odds_a":-570,"odds_b":415,"id":"m36"},{"type":"alternate_spread","side_a":"New England Patriots +10.5","side_b":"Seattle Seahawks -10.5","odds_a":-660,"odds_b":465,"id":"m37"},{"type":"alternate_spread","side_a":"New England Patriots +11","side_b":"Seattle Seahawks -11","odds_a":-765,"odds_b":520,"id":"m38"},{"type":"alternate_spread","side_a":"New England Patriots +11.5","side_b":"Seattle Seahawks -11.5","odds_a":-890,"odds_b":585,"id":"m39"},{"type":"alternate_spread","side_a":"New England Patriots +12","side_b":"Seattle Seahawks -12","odds_a":-1045,"odds_b":655,"id":"m40"},{"type":"alternate_spread","side_a":"New England Patriots +12.5","side_b":"Seattle Seahawks -12.5","odds_a":-1240,"odds_b":735,"id":"m41"},{"type":"alternate_spread","side_a":"New England Patriots +13","side_b":"Seattle Seahawks -13","odds_a":-1485,"odds_b":825,"id":"m42"},{"type":"alternate_spread","side_a":"New England Patriots +13.5","side_b":"Seattle Seahawks -13.5","odds_a":-1800,"odds_b":925,"id":"m43"},{"type":"alternate_spread","side_a":"New England Patriots +14","side_b":"Seattle Seahawks -14","odds_a":-2225,"odds_b":1035,"id":"m44"},{"type":"alternate_spread","side_a":"New England Patriots +14.5","side_b":"Seattle Seahawks -14.5","odds_a":-2820,"odds_b":1160,"id":"m45"},{"type":"alternate_total","side_a":"Over 34.5","side_b":"Under 34.5","odds_a":-6565,"odds_b":2405,"id":"m46"},{"type":"alternate_total","side_a":"Over 35","side_b":"Under 35","odds_a":-6565,"odds_b":2045,"id":"m47"},{"type":"alternate_total","side_a":"Over 35.5","side_b":"Under 35.5","odds_a":-6565,"odds_b":1740,"id":"m48"},{"type":"alternate_total","side_a":"Over 36","side_b":"Under 36","odds_a":-5375,"odds_b":1480,"id":"m49"},{"type":"alternate_total","side_a":"Over 36.5","side_b":"Under 36.5","odds_a":-3400,"odds_b":1260,"id":"m50"},{"type":"alternate_total","side_a":"Over 37","side_b":"Under 37","odds_a":-2375,"odds_b":1070,"id":"m51"},{"type":"alternate_total","side_a":"Over 37.5","side_b":"Under 37.5","odds_a":-1755,"odds_b":910,"id":"m52"},{"type":"alternate_total","side_a":"Over 38","side_b":"Under 38","odds_a":-1340,"odds_b":775,"id":"m53"},{"type":"alternate_total","side_a":"Over 38.5","side_b":"Under 38.5","odds_a":-1050,"odds_b":660,"id":"m54"},{"type":"alternate_total","side_a":"Over 39","side_b":"Under 39","odds_a":-840,"odds_b":560,"id":"m55"},{"type":"alternate_total","side_a":"Over 39.5","side_b":"Under 39.5","odds_a":-675,"odds_b":475,"id":"m56"},{"type":"alternate_total","side_a":"Over 40","side_b":"Under 40","odds_a":-550,"odds_b":405,"id":"m57"},{"type":"alternate_total","side_a":"Over 40.5","side_b":"Under 40.5","odds_a":-455,"odds_b":345,"id":"m58"},{"type":"alternate_total","side_a":"Over 41","side_b":"Under 41","odds_a":-375,"odds_b":290,"id":"m59"},{"type":"alternate_total","side_a":"Over 41.5","side_b":"Under 41.5","odds_a":-310,"odds_b":250,"id":"m60"},{"type":"alternate_total","side_a":"Over 42","side_b":"Under 42","odds_a":-260,"odds_b":210,"id":"m61"},{"type":"alternate_total","side_a":"Over 42.5","side_b":"Under 42.5","odds_a":-220,"odds_b":180,"id":"m62"},{"type":"alternate_total","side_a":"Over 43","side_b":"Under 43","odds_a":-185,"odds_b":150,"id":"m63"},{"type":"alternate_total","side_a":"Over 43.5","side_b":"Under 43.5","odds_a":-155,"odds_b":130,"id":"m64"},{"type":"alternate_total","side_a":"Over 44","side_b":"Under 44","odds_a":-130,"odds_b":110,"id":"m65"},{"type":"total","side_a":"Over 44.5","side_b":"Under 44.5","odds_a":-110,"odds_b":-110,"id":"m66"},{"type":"alternate_total","side_a":"Over 45","side_b":"Under 45","odds_a":110,"odds_b":-130,"id":"m67"},{"type":"alternate_total","side_a":"Over 45.5","side_b":"Under 45.5","odds_a":130,"odds_b":-155,"id":"m68"},{"type":"alternate_total","side_a":"Over 46","side_b":"Under 46","odds_a":150,"odds_b":-185,"id":"m69"},{"type":"alternate_total","side_a":"Over 46.5","side_b":"Under 46.5","odds_a":180,"odds_b":-220,"id":"m70"},{"type":"alternate_total","side_a":"Over 47","side_b":"Under 47","odds_a":210,"odds_b":-260,"id":"m71"},{"type":"alternate_total","side_a":"Over 47.5","side_b":"Under 47.5","odds_a":250,"odds_b":-310,"id":"m72"},{"type":"alternate_total","side_a":"Over 48","side_b":"Under 48","odds_a":290,"odds_b":-375,"id":"m73"},{"type":"alternate_total","side_a":"Over 48.5","side_b":"Under 48.5","odds_a":345,"odds_b":-455,"id":"m74"},{"type":"alternate_total","side_a":"Over 49","side_b":"Under 49","odds_a":405,"odds_b":-550,"id":"m75"},{"type":"alternate_total","side_a":"Over 49.5","side_b":"Under 49.5","odds_a":475,"odds_b":-675,"id":"m76"},{"type":"alternate_total","side_a":"Over 50","side_b":"Under 50","odds_a":560,"odds_b":-840,"id":"m77"},{"type":"alternate_total","side_a":"Over 50.5","side_b":"Under 50.5","odds_a":660,"odds_b":-1050,"id":"m78"},{"type":"alternate_total","side_a":"Over 51","side_b":"Under 51","odds_a":775,"odds_b":-1340,"id":"m79"},{"type":"alternate_total","side_a":"Over 51.5","side_b":"Under 51.5","odds_a":910,"odds_b":-1755,"id":"m80"},{"type":"alternate_total","side_a":"Over 52","side_b":"Under 52","odds_a":1070,"odds_b":-2375,"id":"m81"},{"type":"alternate_total","side_a":"Over 52.5","side_b":"Under 52.5","odds_a":1260,"odds_b":-3400,"id":"m82"},{"type":"alternate_total","side_a":"Over 53","side_b":"Under 53","odds_a":1480,"odds_b":-5375,"id":"m83"},{"type":"alternate_total","side_a":"Over 53.5","side_b":"Under 53.5","odds_a":1740,"odds_b":-6565,"id":"m84"},{"type":"alternate_total","side_a":"Over 54","side_b":"Under 54","odds_a":2045,"odds_b":-6565,"id":"m85"},{"type":"alternate_total","side_a":"Over 54.5","side_b":"Under 54.5","odds_a":2405,"odds_b":-6565,"id":"m86"},{"type":"team_total","side_a":"New England Patriots Over 17.5","side_b":"New England Patriots Under 17.5","odds_a":-435,"odds_b":330,"id":"m87"},{"type":"team_total","side_a":"New England Patriots Over 18.5","side_b":"New England Patriots Under 18.5","odds_a":-270,"odds_b":215,"id":"m88"},{"type":"team_total","side_a":"New England Patriots Over 19.5","side_b":"New England Patriots Under 19.5","odds_a":-170,"odds_b":140,"id":"m89"},{"type":"team_total","side_a":"New England Patriots Over 20.5","side_b":"New England Patriots Under 20.5","odds_a":-110,"odds_b":-110,"id":"m90"},{"type":"team_total","side_a":"New England Patriots Over 21.5","side_b":"New England Patriots Under 21.5","odds_a":140,"odds_b":-170,"id":"m91"},{"type":"team_total","side_a":"New England Patriots Over 22.5","side_b":"New England Patriots Under 22.5","odds_a":215,"odds_b":-270,"id":"m92"},{"type":"team_total","side_a":"New England Patriots Over 23.5","side_b":"New England Patriots Under 23.5","odds_a":330,"odds_b":-435,"id":"m93"},{"type":"team_total","side_a":"Seattle Seahawks Over 21.5","side_b":"Seattle Seahawks Under 21.5","odds_a":-435,"odds_b":330,"id":"m94"},{"type":"team_total","side_a":"Seattle Seahawks Over 22.5","side_b":"Seattle Seahawks Under 22.5","odds_a":-270,"odds_b":215,"id":"m95"},{"type":"team_total","side_a":"Seattle Seahawks Over 23.5","side_b":"Seattle Seahawks Under 23.5","odds_a":-170,"odds_b":140,"id":"m96"},{"type":"team_total","side_a":"Seattle Seahawks Over 24.5","side_b":"Seattle Seahawks Under 24.5","odds_a":-110,"odds_b":-110,"id":"m97"},{"type":"team_total","side_a":"Seattle Seahawks Over 25.5","side_b":"Seattle Seahawks Under 25.5","odds_a":140,"odds_b":-170,"id":"m98"},{"type":"team_total","side_a":"Seattle Seahawks Over 26.5","side_b":"Seattle Seahawks Under 26.5","odds_a":215,"odds_b":-270,"id":"m99"},{"type":"team_total","side_a":"Seattle Seahawks Over 27.5","side_b":"Seattle Seahawks Under 27.5","odds_a":330,"odds_b":-435,"id":"m100"},{"type":"odd_even","side_a":"Odd","side_b":"Even","odds_a":-110,"odds_b":-105,"id":"m101"}];
 
 function preview() {
@@ -148,6 +200,9 @@ function preview() {
         event: { away: 'New England Patriots', home: 'Seattle Seahawks',
                  kickoff: 'Thu, Sep 10 · 8:15 PM ET' },
         markets: MARKETS,
+        props: PROPS,
+        propTeamFilter: 'all',
+        propSearch: '',
         ladderPageSize: 3,
         ladderOffsets: {},
         ladderExpanded: {},
@@ -215,8 +270,37 @@ function preview() {
             }
 
             const oe = by('odd_even');
-            if (oe.length) out.push({ key: 'odd_even', title: 'Odd / Even', kind: 'pair', markets: oe });
+            if (oe.length) out.push({ key: 'odd_even', title: 'Odd / Even — held back', kind: 'pair', markets: oe });
             return out;
+        },
+
+        /**
+         * Props group by PLAYER, then by stat.
+         *
+         * The ladder model does not fit here: a spread's subject is the game and
+         * its columns are lines, but a prop's subject is a PERSON and its rows
+         * are different stats about him. Someone scanning a prop board is
+         * looking for a name first and a number second, so the name is the
+         * heading and never repeats inside it.
+         */
+        get propGroups() {
+            const q = this.propSearch.trim().toLowerCase();
+            const byPlayer = new Map();
+            for (const m of this.props) {
+                if (this.propTeamFilter !== 'all' && m.team !== this.propTeamFilter) continue;
+                if (q && !m.subject_name.toLowerCase().includes(q)) continue;
+                if (!byPlayer.has(m.subject_name)) {
+                    byPlayer.set(m.subject_name, {
+                        name: m.subject_name, team: m.team, position: m.position, markets: [],
+                    });
+                }
+                byPlayer.get(m.subject_name).markets.push(m);
+            }
+            return [...byPlayer.values()];
+        },
+
+        get propTeams() {
+            return ['all', ...new Set(this.props.map((m) => m.team))];
         },
 
         ladderOffset(k) {
