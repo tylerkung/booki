@@ -13,7 +13,10 @@ for check in \
     scripts/check-migrations.py \
     scripts/check-rls.py \
     scripts/check-updated-at-triggers.py \
-    scripts/check-design-tokens.py
+    scripts/check-design-tokens.py \
+    scripts/check-contrast.py \
+    scripts/check-focus-states.py \
+    scripts/check-motion.py
 do
     echo "── $(basename "$check")"
     if ! python3 "$check"; then

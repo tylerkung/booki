@@ -29,7 +29,11 @@
 
   --text-primary: #F8F8F8;        /* Theme.textPrimary */
   --text-secondary: #A8A8B8;      /* Theme.textSecondary */
-  --text-muted: #6B6B7B;          /* Theme.textMuted */
+  /* LIFTED from #6B6B7B, which failed WCAG AA on every surface it can sit on
+     (3.77 / 3.49 / 3.14 against background / card / elevated) across 144 uses.
+     #858595 clears 4.5:1 on all three (5.43 / 5.03 / 4.52). This is the one
+     colour that no longer mirrors Theme.swift — see tasks/ios-pending.md B6. */
+  --text-muted: #858595;          /* Theme.textMuted, lifted for contrast */
 
   --accent: #00F5D4;              /* Theme.accent */
   --accent-deep: #00D4B8;         /* gradient end stop — NOT interchangeable */
@@ -91,6 +95,29 @@
   --fill-warning: rgba(var(--warning-rgb), var(--o-med));
   --fill-scheduled: rgba(var(--scheduled-rgb), var(--o-med));
   --fill-final: rgba(var(--final-rgb), var(--o-med));
+
+  /* ── fill foregrounds ──
+     Every tinted fill ships with the text colour that is legible ON it, so a
+     new badge cannot be built wrong. Borrowed from shadcn/ui, where a surface
+     token and its `-foreground` are always defined as a pair.
+
+     The badge pattern here is `background: var(--fill-x); color: var(--x)` —
+     text and fill are the same hue, the fill at 0.15 alpha. That is a narrow
+     margin by construction, and two of the five had fallen through it: `final`
+     scored 2.49 against its own fill and `scheduled` 3.72, both under the 4.5
+     AA floor. danger (5.35), warning (7.25) and accent (9.31) were already
+     clear and keep their existing colour — the pairing is complete rather than
+     partial, because a set with gaps invites picking by hand again.
+
+     The two lifted values preserve hue and saturation and raise lightness only,
+     so a scheduled badge is still the same purple, just legible. */
+  --fill-final-foreground: #87879B;          /* was --final #5C5C6F, 2.49 -> 4.63 */
+  --fill-scheduled-foreground: #8D7DF0;      /* was --scheduled #7B68EE, 3.72 -> 4.66 */
+  --fill-danger-foreground: var(--danger);   /* 5.35 — already clear */
+  --fill-warning-foreground: var(--warning); /* 7.25 */
+  --fill-accent-foreground: var(--accent);   /* 9.31 */
+  --fill-accent-secondary-foreground: #AE6DE3;  /* was #9D4EDD, 3.42 -> 4.57 */
+  --fill-accent-tertiary-foreground: #FF2080;   /* was #FF006E, 4.29 -> 4.52 */
   --fill-neutral: rgba(var(--neutral-rgb), var(--o-med));
   --fill-white-hairline: rgba(var(--white-rgb), var(--o-hairline));
   --fill-white-faint: rgba(var(--white-rgb), var(--o-faint));
@@ -244,7 +271,20 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 
   /* ── elevation — the accent glow, never black alone ── */
+  /* Two focus treatments, because two kinds of control need different things.
+     A button or link is opaque and sits on a surface, so a ring OUTSIDE it is
+     the clearest signal — that is --focus-ring below. A text input already has
+     a border doing the same visual job, and ringing it reads as a double
+     border; it takes the soft glow instead, which is what this token was always
+     for. It had zero uses until 2026-08-25. */
   --shadow-focus: 0 0 0 3px var(--fill-accent-soft);
+  --focus-ring: 2px solid var(--accent);
+  --focus-ring-offset: 2px;
+
+  /* The minimum a control must accept from a thumb, independent of how large it
+     looks. The design system draws this as a dashed box around a 24px control;
+     the number is the platform floor on both iOS and Android. */
+  --tap-target: 44px;
   --shadow-btn: 0 2px 8px rgba(var(--accent-rgb), var(--o-heavy)), inset 0 1px 0 var(--fill-white);
   --shadow-btn-hover: 0 4px 16px rgba(var(--accent-rgb), var(--o-glow)), inset 0 1px 0 var(--fill-white);
   --shadow-raised: 0 4px 24px rgba(var(--accent-rgb), var(--o-glow)), 0 2px 8px rgba(var(--black-rgb), var(--o-glow));
@@ -348,5 +388,39 @@
     --dur-slow: 0.01ms;
     --dur-entrance: 0.01ms;
   }
+}
+
+/* ── focus ─────────────────────────────────────────────────────────────────
+   The design system has always specified "2px accent, 2px offset, on every
+   interactive element, applied through :focus-visible". Until 2026-08-25 that
+   rule existed in exactly three places, all of them inside ds.css — the design
+   system's own documentation page. The product had sixty hover states and zero
+   focus states, and --shadow-focus was referenced nowhere at all.
+
+   It lives here rather than in each stylesheet because that is the mistake that
+   caused the gap: a rule that has to be repeated in four files gets written in
+   one. tokens.css is loaded by every surface.
+
+   :where() gives the selector ZERO specificity, so any component that needs a
+   different focus treatment overrides it by simply existing, with no !important
+   and no specificity war. The trade is that a stray `outline: none` in a
+   component also silently wins — which is what scripts/check-focus-states.py
+   exists to catch.
+
+   :focus-visible, not :focus, so a mouse click does not ring the control while
+   keyboard and other non-pointer input still does. */
+:where(a[href], button, input, select, textarea, summary,
+       [tabindex]:not([tabindex="-1"]), [role="button"], [role="link"],
+       [role="tab"], [role="switch"], [role="checkbox"], [role="menuitem"]
+):focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+}
+
+/* Inputs opt into the glow instead — see the note by --shadow-focus. */
+:where(input, textarea, select):focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: var(--shadow-focus);
 }
 

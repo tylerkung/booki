@@ -224,3 +224,28 @@ Note the web keeps **IBM Plex Mono** for odds and scores, which is unrelated to
 this decision — Inter has no official monospace sibling, and the alternative
 (the system stack) would render odds in SF Mono on macOS and Consolas on
 Windows.
+
+
+### B6. `--text-muted` lifted on web for contrast; iOS still on the old value
+
+Web changed `--text-muted` from `#6B6B7B` to `#858595` on 2026-08-25. The
+original failed WCAG AA on every surface it can sit on — 3.77 / 3.49 / 3.14
+against background / card / elevated — across 144 uses. `#858595` clears 4.5:1
+on all three (5.43 / 5.03 / 4.52).
+
+`Theme.textMuted` is unchanged, so `tokens.css` and `Theme.swift` now disagree
+on exactly one colour. `scripts/check-design-tokens.py` knows about it: the pair
+is listed in `THEME_DIVERGENCE` with the reason, so the check still runs and
+reports the divergence on every pass rather than being silenced.
+
+- [ ] Change `Theme.textMuted` to `#858595` and remove the entry from
+      `THEME_DIVERGENCE`
+- [ ] Check the same text on iOS surfaces — iOS uses the same three background
+      values, so the ratios carry over, but the app also renders muted text over
+      the wave texture, which the web contrast check does not model
+
+The other new tokens (`--fill-*-foreground`, `--focus-ring`, `--tap-target`) are
+web-only additions with no `Theme.swift` counterpart, so they do not create
+drift. The five fill foregrounds encode which text colour is legible on each
+tinted badge fill; iOS builds those badges independently and would need the same
+pairing to avoid the same two failures (`final` at 2.49, `scheduled` at 3.72).

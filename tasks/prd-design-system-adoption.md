@@ -316,3 +316,60 @@ and stopping it turns "working" into "frozen".
 **Not done.** `transition: all` appears 12 times in `dashboard.css`. It animates
 every property including layout ones, and narrowing each to explicit properties
 needs per-rule knowledge of what changes on hover — deferred rather than guessed.
+
+
+---
+
+## Implemented 2026-08-26 — contrast, focus, tap targets, enforcement
+
+Phases 1, 2 and most of 3.
+
+**The contrast count was wrong, and the checker is why.** The original audit
+reported 11 failing pairs by measuring every foreground token against every
+surface. Most were fiction: `--accent-secondary` only appears in gradients, and
+`--final` / `--scheduled` are only ever text on their own tinted fill, never on
+a raw surface. `check-contrast.py` parses actual rules instead — it pairs a
+`color:` with the `background` set in the same rule, or with the page surfaces
+when the rule sets none. That found **3 real failures**, then 3 more the manual
+audit had missed entirely (`.attention-tag-purple`, `.attention-tag-pink`,
+`.seo-pain-icon`).
+
+It also encodes WCAG 1.4.11: icons and indicators are held to 3:1, not 4.5:1.
+Holding an icon to the text threshold is not stricter, it is wrong, and it
+pressures people into changing brand colours to satisfy a rule that does not
+apply.
+
+**Fixes.** `--text-muted` lifted #6B6B7B → #858595 (144 uses, now 5.43 / 5.03 /
+4.52). Seven `--fill-*-foreground` tokens added so every tinted fill ships the
+text colour that is legible on it — the shadcn pairing convention, applied where
+the failures actually were rather than blanket across surfaces. 19 badge rules
+repointed.
+
+**Focus.** The base rule lives in `tokens.css`, which every surface loads,
+because a rule that must be repeated in four files gets written in one — that is
+precisely how the gap happened. `:where()` gives it zero specificity so any
+component overrides it without a specificity war. Buttons and links take the
+2px accent ring the DS always specified; inputs take `--shadow-focus` instead,
+which had zero uses until now, because ringing a bordered input reads as a
+double border. Verified with real Tab presses, not scripted focus — Chrome only
+sets `:focus-visible` on genuine keyboard interaction.
+
+**Tap targets.** The DS's own technique, not a blunt min-height: an invisible
+`::after` centred on the control and stretched to `--tap-target`, so visual size
+is unchanged and only the target grows. Controls take the real minimum under
+768px, where thumbs are the input.
+
+**Enforcement.** Three checks, each verified to actually fail by breaking the
+thing it guards — a check that cannot fire is the inert-RLS-policy bug again.
+All wired into `check-all.sh`, now 7 checks.
+
+`check-design-tokens.py` caught the `--text-muted` lift as Theme.swift drift
+within seconds of the change. Rather than delete the token from the map — which
+would stop checking it forever and leave no way to tell a decision from an
+omission — it gained a `THEME_DIVERGENCE` table that requires a written reason
+and still reports on every run.
+
+**Still open:** Phase 4 entirely (465 classes, no tooltip/select/progress/avatar),
+Phase 5's live-example DS site, breakpoint duplicates, and `transition: all`
+×12. Note the PRD's "tokenise breakpoints" item is not achievable as written —
+custom properties are invalid inside media query conditions without a build step.

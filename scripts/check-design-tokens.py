@@ -190,6 +190,18 @@ THEME_MAP = {
     "--scheduled": "scheduled", "--final": "finalStatus",
 }
 
+# Pairs that are KNOWINGLY different, with the reason. This exists so an
+# intentional divergence is recorded rather than silenced — removing a token
+# from THEME_MAP would stop checking it forever, and the next person would have
+# no way to tell a decision from an omission. Each entry still reports, it just
+# does not fail the build.
+THEME_DIVERGENCE = {
+    "--text-muted": "Lifted from #6B6B7B to #858595 on 2026-08-25. The original "
+                    "failed WCAG AA on every surface it can sit on (3.77 / 3.49 / "
+                    "3.14) across 144 uses. iOS keeps the darker value until the "
+                    "same fix ships there — tracked as B6 in tasks/ios-pending.md.",
+}
+
 def root_tokens(path):
     src = open(path).read()
     m = re.search(r':root\s*\{.*?\n\}', src, re.S)
@@ -223,6 +235,8 @@ def scan_radius_tokens():
                             mm.group(0).strip()[:70]))
     return out
 
+KNOWN_DIVERGENCES = []
+
 def scan_drift():
     """Theme.swift is the one consumer that cannot link tokens.css, so compare
     its palette against the canonical block instead."""
@@ -235,6 +249,10 @@ def scan_drift():
                          open(THEME).read())}
     for name, const in THEME_MAP.items():
         if name in tok and const in swift and tok[name].upper() != swift[const]:
+            if name in THEME_DIVERGENCE:
+                KNOWN_DIVERGENCES.append(
+                    f"{name}: web {tok[name]} vs Theme.{const} {swift[const]}")
+                continue
             out.append((os.path.relpath(THEME, ROOT), 0, "drift",
                         f"Theme.{const} = {swift[const]} but {name} = {tok[name]}",
                         "iOS palette disagrees with tokens.css"))
@@ -318,6 +336,8 @@ def main():
 
     if not findings:
         print("design tokens: clean — every styled value routes through a token")
+        for d in KNOWN_DIVERGENCES:
+            print(f"  known divergence — {d}")
         return 0
 
     by_cat = {}

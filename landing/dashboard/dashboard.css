@@ -605,12 +605,12 @@ input, button, select, textarea { font: inherit; }
     letter-spacing: var(--ls-caps);
 }
 
-.badge-success { background: var(--fill-accent); color: var(--accent); }
-.badge-danger { background: var(--fill-danger); color: var(--danger); }
-.badge-warning { background: var(--fill-warning); color: var(--warning); }
+.badge-success { background: var(--fill-accent); color: var(--fill-accent-foreground); }
+.badge-danger { background: var(--fill-danger); color: var(--fill-danger-foreground); }
+.badge-warning { background: var(--fill-warning); color: var(--fill-warning-foreground); }
 .badge-muted { background: var(--bg-elevated); color: var(--text-muted); }
 /* An addressed invite — bound to one verified person, no expiry for them. */
-.badge-accent { background: var(--fill-accent); color: var(--accent); }
+.badge-accent { background: var(--fill-accent); color: var(--fill-accent-foreground); }
 
 /* ── Filter Chips ── */
 .filter-bar {
@@ -669,8 +669,8 @@ input, button, select, textarea { font: inherit; }
 .btn-danger-outline:hover { background: var(--fill-danger-soft); }
 
 .btn-grade { font-family: var(--font-cta); font-size: var(--fs-cta); font-weight: var(--fw-cta); letter-spacing: var(--ls-cta); text-transform: uppercase; padding: var(--s-md) 20px; }
-.btn-grade-win { background: var(--fill-accent); color: var(--success); border: var(--hairline) solid var(--success); }
-.btn-grade-loss { background: var(--fill-danger); color: var(--danger); border: var(--hairline) solid var(--danger); }
+.btn-grade-win { background: var(--fill-accent); color: var(--fill-accent-foreground); border: var(--hairline) solid var(--success); }
+.btn-grade-loss { background: var(--fill-danger); color: var(--fill-danger-foreground); border: var(--hairline) solid var(--danger); }
 .btn-grade-push { background: var(--bg-elevated); color: var(--text-muted); border: var(--hairline) solid var(--border); }
 .btn-void { background: none; color: var(--danger); border: var(--hairline) solid var(--danger); padding: var(--s-md) 20px; font-size: var(--fs-body); font-weight: var(--fw-bold); }
 
@@ -922,7 +922,7 @@ input, button, select, textarea { font: inherit; }
 .toggle-switch {
     position: relative;
     display: inline-block;
-    width: 44px;
+    width: var(--tap-target);
     height: var(--icon-lg);
     flex-shrink: 0;
 }
@@ -1073,13 +1073,13 @@ input, button, select, textarea { font: inherit; }
 
 .attention-tag:hover { opacity: 0.8; }
 
-.attention-tag-yellow { background: var(--fill-warning); color: var(--warning); }
-.attention-tag-red { background: var(--fill-danger); color: var(--danger); }
-.attention-tag-green { background: var(--fill-accent); color: var(--success); }
-.attention-tag-blue { background: var(--fill-scheduled); color: var(--scheduled); }
-.attention-tag-purple { background: var(--fill-accent-secondary); color: var(--accent-secondary); }
-.attention-tag-orange { background: var(--fill-warning); color: var(--warning); }
-.attention-tag-pink { background: var(--fill-accent-tertiary); color: var(--accent-tertiary); }
+.attention-tag-yellow { background: var(--fill-warning); color: var(--fill-warning-foreground); }
+.attention-tag-red { background: var(--fill-danger); color: var(--fill-danger-foreground); }
+.attention-tag-green { background: var(--fill-accent); color: var(--fill-accent-foreground); }
+.attention-tag-blue { background: var(--fill-scheduled); color: var(--fill-scheduled-foreground); }
+.attention-tag-purple { background: var(--fill-accent-secondary); color: var(--fill-accent-secondary-foreground); }
+.attention-tag-orange { background: var(--fill-warning); color: var(--fill-warning-foreground); }
+.attention-tag-pink { background: var(--fill-accent-tertiary); color: var(--fill-accent-tertiary-foreground); }
 
 /* Tag Tooltip */
 .tag-tooltip {
@@ -3067,5 +3067,58 @@ input, button, select, textarea { font: inherit; }
     [class*="spin"] {
         animation-duration: 1.8s !important;
         animation-timing-function: linear !important;
+    }
+}
+
+
+/* ── touch targets ──────────────────────────────────────────────────────────
+   The design system states the rule and shows the technique: "A control may
+   look 24px but must accept a 44px touch", with the hit area drawn as a dashed
+   box larger than the control. It had one implementation in the whole codebase.
+
+   The technique matters more than the number. Growing the control itself to
+   44px would inflate the interface on desktop, where a mouse does not need it
+   — so instead an invisible ::after is centred on the control and stretched to
+   the minimum. Visual size is unchanged at every width; only the target grows.
+
+   Applied to the controls measured under 44px on a real page: league sub-links
+   (18px tall, the worst by some way) and the game-time row. Odds buttons and
+   filter chips measure 36–38px, close enough that a min-height in the mobile
+   breakpoint is the better fix — enlarging them on desktop would be visible for
+   no benefit. */
+.league-sub-link,
+.pg-game-time,
+.show-more-btn,
+.bs-remove-btn {
+    position: relative;
+}
+
+.league-sub-link::after,
+.pg-game-time::after,
+.show-more-btn::after,
+.bs-remove-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    min-width: var(--tap-target);
+    min-height: var(--tap-target);
+    transform: translate(-50%, -50%);
+    /* Pointer target only — never paints, never intercepts a scroll. */
+    pointer-events: auto;
+}
+
+/* On touch the controls themselves take the minimum, because thumbs are
+   imprecise in a way a cursor is not and an invisible target that overlaps a
+   neighbour is worse than a slightly larger button. */
+@media (max-width: 768px) {
+    .chip,
+    .pg-odds-btn,
+    .time-filter button,
+    .bs-mode-toggle button,
+    .bs-quick-stakes button {
+        min-height: var(--tap-target);
     }
 }

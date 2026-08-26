@@ -367,11 +367,11 @@ code.t {
   border-radius: var(--radius-full);
   white-space: nowrap;
 }
-.ds-badge--live, .ds-badge--won { background: var(--fill-accent); color: var(--accent); }
-.ds-badge--scheduled { background: var(--fill-scheduled); color: var(--scheduled); }
-.ds-badge--final { background: var(--fill-final); color: var(--final); }
-.ds-badge--pending { background: var(--fill-warning); color: var(--warning); }
-.ds-badge--lost { background: var(--fill-danger); color: var(--danger); }
+.ds-badge--live, .ds-badge--won { background: var(--fill-accent); color: var(--fill-accent-foreground); }
+.ds-badge--scheduled { background: var(--fill-scheduled); color: var(--fill-scheduled-foreground); }
+.ds-badge--final { background: var(--fill-final); color: var(--fill-final-foreground); }
+.ds-badge--pending { background: var(--fill-warning); color: var(--fill-warning-foreground); }
+.ds-badge--lost { background: var(--fill-danger); color: var(--fill-danger-foreground); }
 .ds-badge--push { background: var(--fill-neutral); color: var(--text-secondary); }
 .ds-badge--off { background: var(--fill-faint); color: var(--text-muted); }
 
@@ -497,9 +497,9 @@ code.t {
 .ds-toastbox__x { flex: 0 0 auto; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: var(--t-footnote); line-height: 1; padding: 0; }
 .ds-toastbox__x:hover { color: var(--text-primary); }
 
-.ds-toastbox--success .ds-toastbox__icon { background: var(--fill-accent); color: var(--accent); }
-.ds-toastbox--warn .ds-toastbox__icon { background: var(--fill-warning); color: var(--warning); }
-.ds-toastbox--error .ds-toastbox__icon { background: var(--fill-danger); color: var(--danger); }
+.ds-toastbox--success .ds-toastbox__icon { background: var(--fill-accent); color: var(--fill-accent-foreground); }
+.ds-toastbox--warn .ds-toastbox__icon { background: var(--fill-warning); color: var(--fill-warning-foreground); }
+.ds-toastbox--error .ds-toastbox__icon { background: var(--fill-danger); color: var(--fill-danger-foreground); }
 .ds-toastbox--info .ds-toastbox__icon { background: var(--fill-neutral); color: var(--text-secondary); }
 
 .ds-alert { width: 100%; }
