@@ -38,9 +38,20 @@ referenced **zero times**. Rule written, token defined, nothing consumes either.
    `dashboard.css` has no `prefers-reduced-motion` block. Docs mandate
    "critically damped; nothing in Booki bounces" but the only easing token is
    `--ease: ease`, the browser default.
-4. **Type diverges across platforms (medium).** `tokens.css` claims to mirror
-   `Theme.swift`; true for colour, not type. Web body is Inter, iOS body is IBM
-   Plex Sans. Space Grotesk is shared for display.
+4. **Type is split three ways (medium).** CORRECTED 2026-08-25 — the original
+   entry said "web is Inter, iOS is IBM Plex Sans" and recommended bringing web
+   to IBM Plex Sans. The product is already there; the real split is:
+
+   | surface | loads |
+   |---|---|
+   | dashboard + admin (the product) | IBM Plex Sans — matches iOS |
+   | marketing site | Inter |
+   | the design-system site itself | Inter |
+   | `--font-sans` token claims | Inter |
+
+   So the token is wrong for the product, `dashboard.css:40` hardcodes around it,
+   and the DS documents Booki's type in a typeface the product does not use.
+   Resolving it is a brand call, not a cleanup — left open deliberately.
 5. **464 classes, 10 named components (consolidation).** Against the 29 core
    components in designsystemchecklist.com.
 6. **Breakpoints untokenised (low).** Six raw values; 768/769 and 900/901 are
@@ -176,7 +187,7 @@ same line. Cheap scannability win for the game detail and admin tables.
 
 | | beautifului.dev | Booki |
 |---|---|---|
-| Families | Inter + JetBrains Mono | Inter + Space Grotesk (IBM Plex on iOS) |
+| Families | Inter + JetBrains Mono | IBM Plex Sans + Space Grotesk (product); Inter (marketing) |
 | Size range | 10.5–21px; UI lives in 11–14px | 11–40px, 9 steps |
 | Weights | 400/500/600/700 | 400/500/600/700/800 |
 | Tracking | negative at every size, −0.011em → −0.02em | 8 raw values, mixed px and em, 1 token |
@@ -218,3 +229,35 @@ Worth adopting on dense surfaces (admin tables, game-detail rows, member lists).
 - **Their near-monochrome palette.** Booki's teal is brand equity.
 - **Numbered section eyebrows,** except where order is real. Parlay legs are
   genuinely ordered and could carry them; generic sections shouldn't.
+
+
+---
+
+## Implemented 2026-08-25 — tracking scale + numerals
+
+**Tracking.** 51 raw `letter-spacing` declarations across five stylesheets
+collapsed to seven tokens. The defect was two unit systems for one job: px
+tracking does not scale with font-size, so the same `0.5px` meant 0.045em on an
+11px label and 0.036em on a 14px one. Each value mapped to its nearest token, so
+nothing moved by more than ~0.15px — verified in the browser (`.card-title`
+0.50px → 0.52px, sidebar balance −0.50px → −0.44px).
+
+**Numerals.** Two treatments, deliberately different:
+
+- *Tabular figures* everywhere numeric. Proportional digits are drawn at
+  different widths, so a balance ticking 1,180 → 1,220 visibly shifts and a
+  column of stakes never aligns. Costs nothing visually.
+- *Monospace* only for odds and scores — machine data read in columns. Money
+  stays in the product's typeface: a balance is the member's own figure and
+  belongs in Booki's voice.
+
+`.gd-cell-line` was tried in the mono set and pulled back out: it carries a line
+value on the board but the words "Over"/"Under" on player props, and words in a
+monospace face are the decoration the rule exists to prevent.
+
+**Bug found on the way.** `IBM Plex Mono` was named in four `dashboard.css`
+rules and loaded by nothing, so `.odds-mono` had always fallen back to whatever
+generic monospace the browser picked. It is now loaded (400/600/700 — the
+weights those rules actually declare) and routed through `--font-mono`.
+`check-design-tokens.py` did not catch the hardcoded family, which is a gap in
+the checker worth closing.

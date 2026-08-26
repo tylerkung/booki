@@ -140,7 +140,7 @@ input, button, select, textarea { font: inherit; }
     text-align: center;
     font-size: var(--fs-title1);
     margin-bottom: var(--s-sm);
-    letter-spacing: -0.02em;
+    letter-spacing: var(--ls-tighter);
 }
 
 .auth-subtitle {
@@ -314,7 +314,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-title2);
     font-weight: var(--fw-bold);
     font-family: 'Space Grotesk', sans-serif;
-    letter-spacing: -0.5px;
+    letter-spacing: var(--ls-tighter);
 }
 
 .sidebar-balance-amount.positive { color: var(--success); }
@@ -488,7 +488,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--ls-caps);
 }
 
 /* ── Stat Tiles ── */
@@ -511,7 +511,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--ls-caps);
     margin-bottom: var(--s-sm);
 }
 
@@ -540,7 +540,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--ls-caps);
     padding: var(--s-md) var(--s-lg);
     border-bottom: var(--hairline) solid var(--border);
 }
@@ -602,7 +602,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-micro);
     font-weight: var(--fw-semibold);
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: var(--ls-caps);
 }
 
 .badge-success { background: var(--fill-accent); color: var(--accent); }
@@ -1066,7 +1066,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-micro);
     font-weight: var(--fw-semibold);
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: var(--ls-caps);
     cursor: pointer;
     transition: opacity var(--dur-fast);
 }
@@ -1151,7 +1151,7 @@ input, button, select, textarea { font: inherit; }
         font-weight: var(--fw-semibold);
         color: var(--text-muted);
         text-transform: uppercase;
-        letter-spacing: 0.3px;
+        letter-spacing: var(--ls-caps);
         flex-shrink: 0;
         margin-right: var(--s-md);
     }
@@ -1245,7 +1245,7 @@ input, button, select, textarea { font: inherit; }
     min-width: 100px;
 }
 .odds-mono {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: var(--fs-body);
     font-weight: var(--fw-semibold);
     color: var(--text-primary);
@@ -1409,7 +1409,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-caption);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: var(--ls-caps-wide);
 }
 .player-record-divider {
     font-size: var(--fs-title3);
@@ -1520,7 +1520,7 @@ input, button, select, textarea { font: inherit; }
 .games-sport-card-name {
     font-size: var(--fs-sm);
     font-weight: var(--fw-bold);
-    letter-spacing: 0.3px;
+    letter-spacing: var(--ls-caps);
 }
 
 /* Search + time filters toolbar */
@@ -1563,7 +1563,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-bold);
     color: var(--text-primary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--ls-caps);
 }
 .sport-section-toggle {
     font-size: var(--fs-title3);
@@ -1597,7 +1597,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     color: var(--accent);
     text-decoration: none;
-    letter-spacing: 0.3px;
+    letter-spacing: var(--ls-caps);
 }
 .league-sub-link:hover { text-decoration: underline; }
 .league-count {
@@ -1641,7 +1641,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-micro);
     font-weight: var(--fw-bold);
     color: var(--text-muted);
-    letter-spacing: 0.5px;
+    letter-spacing: var(--ls-caps);
 }
 
 .pg-game-row {
@@ -1764,7 +1764,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--ls-caps);
 }
 
 /* Floating bet slip bar */
@@ -1925,7 +1925,7 @@ input, button, select, textarea { font: inherit; }
 }
 
 .bs-card-odds {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: var(--fs-body);
     font-weight: var(--fw-bold);
     color: var(--accent);
@@ -2040,7 +2040,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--ls-caps);
     margin-bottom: var(--s-xxs);
 }
 .bs-field-input {
@@ -2400,7 +2400,7 @@ input, button, select, textarea { font: inherit; }
 .pt-ticket-score {
     font-size: var(--fs-caption);
     color: var(--text-muted);
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
 }
 .positive { color: var(--success) !important; }
 .negative { color: var(--danger) !important; }
@@ -2429,7 +2429,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     color: var(--text-primary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--ls-caps);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2519,7 +2519,7 @@ input, button, select, textarea { font: inherit; }
     padding: var(--s-md) var(--s-lg) 0;
     font-size: var(--fs-sm);
     font-weight: var(--fw-medium);
-    letter-spacing: 0.8px;
+    letter-spacing: var(--ls-caps-wide);
     text-transform: uppercase;
     color: var(--text-muted);
     position: relative;
@@ -2608,7 +2608,7 @@ input, button, select, textarea { font: inherit; }
    these first; only add a component-scoped type class when the role genuinely
    is not here.
    ========================================================================= */
-.t-label { font-size: var(--fs-caption); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.t-label { font-size: var(--fs-caption); color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--ls-caps); }
 .t-caption { font-size: var(--fs-caption); color: var(--text-muted); }
 .t-micro { font-size: var(--fs-micro); }
 .t-micro-muted { font-size: var(--fs-micro); color: var(--text-muted); }
@@ -2667,10 +2667,10 @@ input, button, select, textarea { font: inherit; }
     flex-wrap: wrap;
 }
 .invite-code {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: var(--fs-title3);
     font-weight: var(--fw-bold);
-    letter-spacing: 0.08em;
+    letter-spacing: var(--ls-caps-wide);
     color: var(--accent);
     background: var(--bg-card);
     padding: var(--s-sm) var(--s-md);
@@ -2976,4 +2976,56 @@ input, button, select, textarea { font: inherit; }
     /* Label above its two prices, rather than three cramped columns. */
     .gd-prop-row { grid-template-columns: 1fr 1fr; }
     .gd-prop-stat { grid-column: 1 / -1; }
+}
+
+
+/* ── numerals ────────────────────────────────────────────────────────────────
+   Two separate problems, deliberately solved with two different treatments.
+
+   TABULAR FIGURES fix alignment and jitter. Proportional digits are drawn at
+   different widths — a 1 is narrower than a 0 — so a balance ticking from
+   $1,180 to $1,220 visibly shifts, and a column of stakes never lines up. Every
+   number in the product gets this. It changes nothing about how the type looks,
+   only where the digits sit.
+
+   MONOSPACE is a semantic signal, not decoration, and is applied far more
+   narrowly. Odds and scores are machine data read in columns — the token
+   comment on --ls-cta already draws this exact line, excluding odds buttons
+   from CTA treatment "because they are data (+1.5 (-167))". Money is not in
+   this group: a balance is the member's own figure and reads better in the
+   product's own voice, so it keeps IBM Plex Sans and takes tabular figures
+   alone.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Data — mono. Odds and scores only.
+   NOT .gd-cell-line: it carries a line value on the board but the words
+   "Over"/"Under" on player props, and setting words in a monospace face is the
+   decoration this block exists to avoid. Leaving it in the product's own
+   typeface also reads as deliberate hierarchy on the board — the line is the
+   pick, the price beside it is the data. */
+.odds-mono,
+.pg-odds-val,
+.pg-odds-line,
+.bs-card-odds,
+.gd-cell-odds,
+.pt-ticket-score,
+.invite-code {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Everything else numeric — the product's own typeface, figures aligned. */
+.stat-value,
+.t-title,
+.t-strong,
+.sidebar-balance-amount,
+.pt-ticket-stake,
+.pt-ticket-profit,
+.bs-summary-total,
+.bs-summary-row span,
+.player-activity-amount,
+.player-record-value,
+.data-table td,
+.admin-table td {
+    font-variant-numeric: tabular-nums;
 }

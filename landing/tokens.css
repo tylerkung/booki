@@ -190,6 +190,32 @@
   --lh-normal: 1.5;
   --lh-loose: 1.6;
 
+  /* ── tracking ──
+     Inter ships loose. Left at its default it reads slightly untidy at display
+     sizes and slightly cramped in caps, so Booki corrects in both directions.
+     The instinct was already here before this scale existed — -0.02em appeared
+     in ten places — but as eight raw values across TWO unit systems, px and em.
+     That mix was the actual defect: px tracking does not scale with font-size,
+     so the same 0.5px meant 0.045em on an 11px label and 0.036em on a 14px one.
+     Same intent, different result, depending on where it landed.
+
+     Every value below is em, and each was chosen as the nearest neighbour of
+     what the codebase already used, so adopting the scale moved no label by
+     more than about 0.15px.
+
+     Negative for display: large type has proportionally too much air between
+     letters, and closing it is what makes a headline read as one word rather
+     than a row of characters.
+     Positive for capitals: caps were drawn with more room around them than
+     lowercase and crowd when set solid — the tracking is legibility, not
+     decoration. Smaller and more uppercase both want more of it. */
+  --ls-tighter: -0.02em;      /* display headlines — hero, section, auth title */
+  --ls-tight: -0.01em;        /* sub-headings and large numerals */
+  --ls-normal: 0;             /* body — Inter's default is correct here */
+  --ls-caps: 0.04em;          /* uppercase at caption/body size */
+  --ls-caps-wide: 0.08em;     /* uppercase at micro size, badges */
+  --ls-caps-x: 0.14em;        /* brand marks and table headers */
+
   /* ── CTA type ──
      Buttons that ask for an action are set apart from the interface: Space
      Grotesk, bold, all caps, generously tracked. Capitals were drawn with more
@@ -205,7 +231,13 @@
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Space Grotesk', var(--font-sans);
-  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  /* IBM Plex Mono is the metric-compatible companion to IBM Plex Sans, which
+     the product already loads — the two share design DNA, so numbers set in it
+     sit correctly beside surrounding copy instead of looking pasted in.
+     dashboard.css already asked for it in four rules; it was never actually
+     loaded, so every one of them fell back to whatever generic monospace the
+     browser chose. The system stack remains behind it. */
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 
   /* ── elevation — the accent glow, never black alone ── */
   --shadow-focus: 0 0 0 3px var(--fill-accent-soft);

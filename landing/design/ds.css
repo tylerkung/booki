@@ -73,7 +73,7 @@ body {
 .ds-brand span {
   font-family: var(--mono);
   font-size: var(--t-micro);
-  letter-spacing: 0.14em;
+  letter-spacing: var(--ls-caps-x);
   text-transform: uppercase;
   color: var(--text-muted);
 }
@@ -109,7 +109,7 @@ body {
   font-family: var(--display);
   font-size: var(--t-display);
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--ls-tighter);
   line-height: 1.1;
   margin: 0 0 var(--s3);
   text-wrap: balance;
@@ -126,7 +126,7 @@ body {
   font-family: var(--mono);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--ls-caps-x);
   text-transform: uppercase;
   color: var(--accent);
   margin: var(--s10) 0 var(--s4);
@@ -219,7 +219,7 @@ body {
   text-align: left;
   font-family: var(--mono);
   font-size: var(--t-micro);
-  letter-spacing: 0.12em;
+  letter-spacing: var(--ls-caps-x);
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 500;
@@ -344,7 +344,7 @@ code.t {
   text-align: left;
   font-family: var(--mono);
   font-size: var(--t-micro);
-  letter-spacing: 0.14em;
+  letter-spacing: var(--ls-caps-x);
   text-transform: uppercase;
   color: var(--accent);
   font-weight: 600;
@@ -361,7 +361,7 @@ code.t {
 .ds-badge {
   font-family: var(--mono);
   font-size: var(--t-micro);
-  letter-spacing: 0.08em;
+  letter-spacing: var(--ls-caps-wide);
   text-transform: uppercase;
   padding: var(--s1) var(--s2);
   border-radius: var(--radius-full);
@@ -533,7 +533,7 @@ code.t {
 .ds-seg__item.is-active { background: var(--accent); color: var(--background); }
 
 .ds-tabbar { display: flex; background: var(--chrome); border: var(--border-w) solid var(--border); border-radius: var(--radius); overflow: hidden; }
-.ds-tabbar__item { flex: 1; text-align: center; padding: var(--s3) var(--s2); font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); position: relative; white-space: nowrap; }
+.ds-tabbar__item { flex: 1; text-align: center; padding: var(--s3) var(--s2); font-family: var(--mono); font-size: 10px; letter-spacing: var(--ls-caps-wide); text-transform: uppercase; color: var(--text-muted); position: relative; white-space: nowrap; }
 .ds-tabbar__item.is-active { color: var(--accent); }
 .ds-tabbar__badge { display: inline-block; margin-left: var(--s1); background: var(--accent); color: var(--background); border-radius: var(--radius-full); font-size: 9px; padding: 0 var(--s1); font-weight: 700; vertical-align: top; }
 
@@ -579,7 +579,7 @@ code.t {
   background-image: linear-gradient(var(--fill-faint), var(--fill-faint));
   color: var(--text-secondary);
   font-size: var(--t-footnote); font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--ls-caps);
 }
 .ds-avatar--sm { --avatar-size: var(--s6); --avatar-overlap: var(--s1); font-size: var(--t-micro); }
 .ds-avatar--lg { --avatar-size: var(--s12); --avatar-overlap: var(--s3); font-size: var(--t-callout); }
@@ -598,7 +598,7 @@ code.t {
    Figures are the product. They are monospaced, aligned, and signed — never
    coloured for emphasis, only for direction. */
 .ds-stat { display: flex; flex-direction: column; gap: var(--s1); min-width: 140px; }
-.ds-stat__label { font-family: var(--mono); font-size: var(--t-micro); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+.ds-stat__label { font-family: var(--mono); font-size: var(--t-micro); letter-spacing: var(--ls-caps-x); text-transform: uppercase; color: var(--text-muted); }
 .ds-stat__value { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: var(--t-title1); font-weight: 700; line-height: 1.1; }
 .ds-stat__sub { font-size: var(--t-caption); color: var(--text-secondary); }
 
@@ -683,6 +683,6 @@ code.t {
 .ds-w-bodymuted   { font-size: var(--w-sm); color: var(--text-muted); }
 .ds-w-caption     { font-size: var(--w-caption); color: var(--text-muted); }
 .ds-w-label       { font-size: var(--w-caption); color: var(--text-muted);
-                    text-transform: uppercase; letter-spacing: 0.5px; }
+                    text-transform: uppercase; letter-spacing: var(--ls-caps); }
 .ds-w-micro       { font-size: var(--w-micro); color: var(--text-primary); }
 .ds-w-micromuted  { font-size: var(--w-micro); color: var(--text-muted); }

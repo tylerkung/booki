@@ -329,7 +329,7 @@ main {
     font-size: 0.8rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: var(--ls-caps-x);
     color: var(--accent);
     margin-bottom: 16px;
 }
@@ -339,7 +339,7 @@ main {
     font-weight: 800;
     line-height: 1.05;
     margin-bottom: 20px;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--ls-tighter);
 }
 
 .hero h1 .gradient-text,
@@ -366,7 +366,7 @@ main {
 .microcopy {
     font-size: 0.8rem;
     color: var(--text-muted);
-    letter-spacing: 0.01em;
+    letter-spacing: var(--ls-caps);
 }
 
 /* Phone screenshots */
@@ -501,7 +501,7 @@ main {
     font-weight: 800;
     text-align: center;
     margin-bottom: 56px;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--ls-tighter);
 }
 
 /* Section dividers */
@@ -783,7 +783,7 @@ main {
     font-weight: 700;
     border-radius: 100px;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--ls-caps-wide);
     margin-bottom: 24px;
     border: 1px solid rgba(0, 245, 212, 0.2);
 }
@@ -857,7 +857,7 @@ main {
     font-weight: 600;
     font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--ls-caps-wide);
     padding: 0 0 8px;
     border-bottom: 1px solid var(--border);
 }
@@ -956,7 +956,7 @@ main {
     font-size: 3rem;
     font-weight: 800;
     margin-bottom: 16px;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--ls-tighter);
 }
 
 .final-cta-sub {
@@ -1292,7 +1292,7 @@ html, body {
     font-weight: 800;
     line-height: 1.1;
     margin-bottom: 24px;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--ls-tighter);
 }
 
 .features-hero h1 .gradient-text {
@@ -1317,7 +1317,7 @@ html, body {
     font-size: 0.85rem;
     font-weight: 700;
     color: var(--accent);
-    letter-spacing: 0.08em;
+    letter-spacing: var(--ls-caps-wide);
     margin-bottom: 16px;
 }
 
@@ -1365,7 +1365,7 @@ html, body {
 .ft-hero-feature h2 {
     font-size: 2.4rem;
     font-weight: 800;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--ls-tighter);
     margin-bottom: 16px;
     line-height: 1.2;
 }
@@ -1498,7 +1498,7 @@ html, body {
 .ft-split-text h2 {
     font-size: 2.2rem;
     font-weight: 800;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--ls-tighter);
     margin-bottom: 16px;
     line-height: 1.2;
 }
@@ -1532,7 +1532,7 @@ html, body {
     font-size: 0.75rem;
     font-weight: 600;
     font-family: 'Space Grotesk', sans-serif;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--ls-caps);
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--text-secondary);
@@ -1620,7 +1620,7 @@ html, body {
     color: var(--text-secondary);
     margin-bottom: 4px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--ls-caps-wide);
 }
 
 .ft-stat-value {
@@ -2175,7 +2175,7 @@ html, body {
     font-weight: 800;
     line-height: 1.1;
     margin-bottom: 24px;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--ls-tighter);
 }
 
 .blog-hero-sub {
@@ -2217,7 +2217,7 @@ html, body {
     font-size: 0.8rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--ls-caps-wide);
     color: var(--text-muted);
     margin-bottom: 12px;
 }
@@ -2265,7 +2265,7 @@ html, body {
     font-weight: 800;
     line-height: 1.15;
     margin-bottom: 20px;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--ls-tighter);
 }
 
 .blog-article-meta {
@@ -2294,7 +2294,7 @@ html, body {
     font-weight: 800;
     margin-top: 48px;
     margin-bottom: 16px;
-    letter-spacing: -0.01em;
+    letter-spacing: var(--ls-tight);
     color: var(--text-primary);
 }
 
