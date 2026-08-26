@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Changed — Booki Design System</title>
+<meta name="description" content="Before and after for the 2026-08 design system work.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/x-icon" href="../assets/favicon_io/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../tokens.css">
+<style>
+/* ─────────────────────────────────────────────────────────────────────────────
+   The comparison is LIVE, not screenshots. Every "before" panel simply
+   re-declares the tokens as they were, scoped to itself — which is only
+   possible because the fixes went into the token layer rather than into
+   individual rules. If a change had to be demonstrated with a picture, that
+   would be a sign it was not systemic.
+   ──────────────────────────────────────────────────────────────────────── */
+.before {
+    /* tracking: eight raw values across two unit systems */
+    --ls-tighter: 0;
+    --ls-tight: 0;
+    --ls-caps: 0.5px;
+    --ls-caps-wide: 0.5px;
+    --ls-caps-x: 0.12em;
+    /* motion: --ease was defined but referenced nowhere, so everything
+       inherited the CSS default, which accelerates before settling */
+    --ease-out: ease;
+    --dur-fast: 0.3s;
+    --dur-base: 0.3s;
+    /* contrast: the value that failed AA on all three surfaces */
+    --text-muted: #6B6B7B;
+    --fill-final-foreground: #5C5C6F;
+    --fill-scheduled-foreground: #7B68EE;
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    line-height: var(--lh-normal);
+    -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: var(--s12) var(--s5) var(--s16); }
+
+h1 {
+    font-family: var(--font-display);
+    font-size: var(--fs-display);
+    letter-spacing: var(--ls-tighter);
+    line-height: var(--lh-tight);
+    margin: 0 0 var(--s2);
+}
+.sub { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-muted); margin: 0 0 var(--s10); }
+h2 {
+    font-size: var(--fs-caption);
+    letter-spacing: var(--ls-caps-x);
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: var(--fw-bold);
+    margin: var(--s12) 0 var(--s2);
+    padding-bottom: var(--s2);
+    border-bottom: 1px solid var(--divider);
+}
+p { margin: 0 0 var(--s4); max-width: 68ch; color: var(--text-secondary); }
+strong { color: var(--text-primary); font-weight: var(--fw-semibold); }
+code {
+    font-family: var(--font-mono); font-size: var(--fs-caption);
+    color: var(--accent); background: var(--fill-accent-faint);
+    padding: 1px 5px; border-radius: var(--radius-xs);
+}
+.lede { font-size: var(--fs-lg); color: var(--text-primary); }
+
+/* the two-panel comparison */
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin: 0 0 var(--s3); }
+@media (max-width: 768px) { .cmp { grid-template-columns: 1fr; } }
+.panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.panel > h3 {
+    margin: 0;
+    padding: var(--s2) var(--s4);
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    letter-spacing: var(--ls-caps);
+    text-transform: uppercase;
+    font-weight: var(--fw-semibold);
+    color: var(--text-muted);
+    background: var(--elevated);
+    border-bottom: 1px solid var(--divider);
+}
+.panel.after > h3 { color: var(--accent); }
+.panel .body { padding: var(--s5) var(--s4); }
+.note { font-size: var(--fs-caption); color: var(--text-muted); margin: 0 0 var(--s8); }
+
+/* demo bits */
+.demo-heading { font-family: var(--font-display); font-size: var(--fs-title1); letter-spacing: var(--ls-tighter); line-height: var(--lh-tight); margin: 0 0 var(--s3); }
+.demo-label { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--ls-caps-wide); color: var(--text-secondary); font-weight: var(--fw-semibold); }
+.demo-muted { color: var(--text-muted); font-size: var(--fs-sm); }
+
+.rows { display: flex; flex-direction: column; gap: var(--s2); }
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s4); }
+.row span:first-child { color: var(--text-secondary); font-size: var(--fs-sm); }
+.num { font-weight: var(--fw-semibold); }
+.after .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.odds { display: flex; gap: var(--s2); }
+.odds b {
+    flex: 1; text-align: center; padding: var(--s2) var(--s3);
+    background: var(--elevated); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-weight: var(--fw-semibold);
+    color: var(--accent);
+}
+.after .odds b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.btn {
+    font: inherit; font-weight: var(--fw-semibold);
+    background: var(--elevated); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: var(--s2) var(--s4); cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out);
+}
+.btn:hover { background: var(--fill-accent-soft); border-color: var(--accent); transform: translateY(-2px); }
+/* The before panel deliberately gets no focus rule; the after panel inherits
+   the base rule from tokens.css. */
+.before .btn:focus-visible { outline: none; }
+
+.badges { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.badge {
+    font-size: var(--fs-micro); font-weight: var(--fw-bold);
+    text-transform: uppercase; letter-spacing: var(--ls-caps-wide);
+    padding: var(--s1) var(--s2); border-radius: var(--radius-xs);
+}
+.badge--final { background: var(--fill-final); color: var(--fill-final-foreground); }
+.badge--sched { background: var(--fill-scheduled); color: var(--fill-scheduled-foreground); }
+
+.ratio { font-family: var(--font-mono); font-size: var(--fs-micro); }
+.fail { color: var(--danger); }
+.pass { color: var(--accent); }
+
+table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); margin: 0 0 var(--s5); }
+th {
+    text-align: left; font-family: var(--font-mono); font-size: var(--fs-micro);
+    letter-spacing: var(--ls-caps); text-transform: uppercase;
+    color: var(--text-muted); font-weight: var(--fw-semibold);
+    padding: var(--s3) var(--s4); border-bottom: 1px solid var(--border);
+}
+td { padding: var(--s3) var(--s4); border-bottom: 1px solid var(--divider); color: var(--text-secondary); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td strong { color: var(--text-primary); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.callout {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 3px solid var(--warning);
+    border-radius: var(--radius); padding: var(--s4) var(--s5); margin: var(--s5) 0;
+}
+.callout p { margin: 0; font-size: var(--fs-sm); }
+.back { display: inline-block; margin-bottom: var(--s6); color: var(--text-muted); font-size: var(--fs-sm); text-decoration: none; }
+.back:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<a class="back" href="./">&larr; Design system</a>
+
+<h1>What changed</h1>
+<p class="sub">Booki design system &middot; August 2026</p>
+
+<p class="lede">Every comparison below is live. The <em>before</em> panels simply re-declare the tokens as they were — which is only possible because the fixes went into the token layer rather than into individual rules. Anything that needed a screenshot to demonstrate would not have been a systemic fix.</p>
+
+<h2>1 &middot; Tracking</h2>
+<p>Inter ships loose. Booki was already correcting for it — <code>-0.02em</code> appeared in ten places — but as <strong>eight raw values across two unit systems</strong>. That mix was the defect: <code>px</code> tracking does not scale with font size, so the same <code>0.5px</code> meant 0.045em on an 11px label and 0.036em on a 14px one. Same intent, different result depending on where it landed.</p>
+
+<div class="cmp">
+  <div class="panel"><h3>Before &middot; 8 raw values</h3><div class="body before">
+    <div class="demo-heading">Be The House.</div>
+    <div class="demo-label">Net performance</div>
+  </div></div>
+  <div class="panel after"><h3>After &middot; 7 tokens</h3><div class="body">
+    <div class="demo-heading">Be The House.</div>
+    <div class="demo-label">Net performance</div>
+  </div></div>
+</div>
+<p class="note">Display type closes up; capitals open out. Both directions, one scale, and every value chosen as the nearest neighbour of what was already there — nothing moved by more than about 0.15px.</p>
+
+<h2>2 &middot; Numerals</h2>
+<p>Two separate problems, two different treatments. <strong>Tabular figures</strong> everywhere numeric, because proportional digits are drawn at different widths — a balance ticking from 1,180 to 1,220 visibly shifts, and a column of stakes never aligns. <strong>Monospace</strong> only for odds and scores, which are machine data read in columns. Money keeps the product's own typeface: a balance is the member's own figure.</p>
+
+<div class="cmp">
+  <div class="panel"><h3>Before</h3><div class="body before">
+    <div class="rows">
+      <div class="row"><span>Total staked</span><span class="num">$962.63</span></div>
+      <div class="row"><span>Net performance</span><span class="num">-$1,293.74</span></div>
+      <div class="row"><span>Stake</span><span class="num">$15.00</span></div>
+    </div>
+    <div class="odds" style="margin-top:var(--s4)"><b>+1.5 (-207)</b><b>+100</b><b>O 8 (-101)</b></div>
+  </div></div>
+  <div class="panel after"><h3>After</h3><div class="body">
+    <div class="rows">
+      <div class="row"><span>Total staked</span><span class="num">$962.63</span></div>
+      <div class="row"><span>Net performance</span><span class="num">-$1,293.74</span></div>
+      <div class="row"><span>Stake</span><span class="num">$15.00</span></div>
+    </div>
+    <div class="odds" style="margin-top:var(--s4)"><b>+1.5 (-207)</b><b>+100</b><b>O 8 (-101)</b></div>
+  </div></div>
+</div>
+<p class="note">Watch the decimal points and the parenthesised prices line up on the right.</p>
+
+<h2>3 &middot; Motion</h2>
+<p>The defect was easing, not duration. <code>--ease</code> was defined as the literal keyword <code>ease</code> and referenced <strong>zero times</strong>, so all 66 transitions fell through to the CSS default — which is also <code>ease</code>, a curve that <em>accelerates</em> before settling. Every hover in the product started slowly, which contradicted the system's own anti-patterns page.</p>
+
+<div class="cmp">
+  <div class="panel"><h3>Before &middot; 0.3s, accelerating</h3><div class="body before">
+    <button class="btn">Hover me</button>
+  </div></div>
+  <div class="panel after"><h3>After &middot; 0.12s, damped</h3><div class="body">
+    <button class="btn">Hover me</button>
+  </div></div>
+</div>
+<p class="note">Hover both. The right one leaves immediately and settles; the left hesitates first. One curve — <code>cubic-bezier(0.22, 1, 0.36, 1)</code> — was already in the codebase on four marketing scroll reveals and had never reached the product.</p>
+
+<h2>4 &middot; Focus</h2>
+<p>The design system specified &ldquo;2px accent, 2px offset, on every interactive element&rdquo; from the day it was written. The product had <strong>60 hover states and zero focus states</strong> — all three <code>:focus-visible</code> rules that existed lived inside the design system's own documentation page, and <code>--shadow-focus</code> was referenced nowhere at all.</p>
+
+<div class="cmp">
+  <div class="panel"><h3>Before &middot; nothing</h3><div class="body before">
+    <button class="btn">Tab to me</button>
+  </div></div>
+  <div class="panel after"><h3>After &middot; base rule</h3><div class="body">
+    <button class="btn">Tab to me</button>
+  </div></div>
+</div>
+<p class="note">Press <strong>Tab</strong> to move between them. The base rule lives in <code>tokens.css</code>, which every surface loads — a rule that must be repeated in four stylesheets gets written in one, which is exactly how the gap happened.</p>
+
+<h2>5 &middot; Contrast</h2>
+<p>The first audit reported 11 failing pairs by measuring every foreground against every surface. Most were fiction — <code>--accent-secondary</code> only appears in gradients. Parsing the rules that actually render found <strong>3 real failures, plus 3 the manual pass missed</strong>.</p>
+
+<div class="cmp">
+  <div class="panel"><h3>Before</h3><div class="body before">
+    <p class="demo-muted" style="margin:0 0 var(--s3)">Muted body text at 13px, the size it is usually set at.</p>
+    <div class="badges"><span class="badge badge--final">Final</span><span class="badge badge--sched">Scheduled</span></div>
+    <p class="ratio fail" style="margin:var(--s3) 0 0">3.14 &middot; 2.49 &middot; 3.72 — all below AA</p>
+  </div></div>
+  <div class="panel after"><h3>After</h3><div class="body">
+    <p class="demo-muted" style="margin:0 0 var(--s3)">Muted body text at 13px, the size it is usually set at.</p>
+    <div class="badges"><span class="badge badge--final">Final</span><span class="badge badge--sched">Scheduled</span></div>
+    <p class="ratio pass" style="margin:var(--s3) 0 0">4.52 &middot; 4.63 &middot; 4.66 — all clear AA</p>
+  </div></div>
+</div>
+<p class="note">Seven <code>--fill-*-foreground</code> tokens now pair every tinted fill with the text colour legible on it, so a new badge cannot be built wrong. The convention is borrowed from shadcn/ui; the values are Booki's.</p>
+
+<h2>6 &middot; Twelve dead media queries</h2>
+<p>Found while consolidating components, and the largest single bug of the work.</p>
+
+<div class="callout">
+  <p><code>@media (max-width: var(--w-content))</code> is <strong>invalid CSS</strong>. It does not throw, does not warn, and renders in DevTools exactly like a working rule. It simply never matches, at any width. Custom properties are resolved per element at computed-value time; a media condition is evaluated before any element exists.</p>
+</div>
+
+<p>Twelve of these existed in <code>dashboard.css</code>, holding <strong>66 rules</strong> between them — the sidebar, the mobile header, the stats grid and the entire data-table card transform. The dashboard's mobile layout had been inert.</p>
+
+<p>The mistake is invisible precisely <em>because</em> the codebase is disciplined: every other value routes through a token, so writing <code>var()</code> in a media query is what consistency looks like. <code>check-design-tokens.py</code> even allowed raw <code>px</code> in an <code>@media</code> line for this reason — that allowance and the missing check were two halves of one rule, and only the first half existed.</p>
+
+<h2>7 &middot; Components</h2>
+<p>Phase 4 assumed 465 classes meant heavy duplication. Measuring found only <strong>10 exact duplicate rule bodies across 21 selectors</strong> — for an Alpine SPA with many views, most of those classes are genuinely distinct. So the value was in the specific cases, not a sweep.</p>
+
+<p>Four <code>&lt;select&gt;</code> elements each carried their own inline <code>style</code> attribute, all slightly different, all bypassing the stylesheet — and a native select paints its own OS dropdown arrow, which on a dark interface reads as a foreign control.</p>
+
+<div class="cmp">
+  <div class="panel"><h3>Before &middot; 4 inline styles</h3><div class="body">
+    <select style="width:100%;padding:12px 16px;background:#1E1E2D;border:1px solid #2A2A3A;border-radius:8px;color:#F8F8F8;font-size:14px;">
+      <option>All Members</option>
+    </select>
+  </div></div>
+  <div class="panel after"><h3>After &middot; .select</h3><div class="body">
+    <select class="select" style="appearance:none;-webkit-appearance:none;width:100%;padding:12px 16px;padding-right:32px;background-color:var(--elevated);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:var(--fs-body);background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23858595' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 12px center;">
+      <option>All Members</option>
+    </select>
+  </div></div>
+</div>
+<p class="note">Also promoted: <code>.progress</code>, consolidating two near-identical bespoke bars, and <code>.tooltip</code>, generalising <code>.tag-tooltip</code> — which was well built and simply named for its one use. <strong>Avatar was deliberately not built</strong>: nothing renders one, and a component with no caller is a liability that still has to be maintained.</p>
+
+<h2>What now enforces this</h2>
+<p>Every fix above was a rule someone had already written down. None of them failed for lack of documentation — they failed because nothing checked. <code>scripts/check-all.sh</code> now runs eight checks, and each new one was verified by deliberately breaking the thing it guards.</p>
+
+<div class="scroll">
+<table>
+<thead><tr><th>Check</th><th>Catches</th><th>Would have caught</th></tr></thead>
+<tbody>
+<tr><td class="mono">check-contrast</td><td>Rendered pairs below WCAG AA, icons at 3:1</td><td>All six contrast failures</td></tr>
+<tr><td class="mono">check-focus-states</td><td>Missing base rule; outline removed with no replacement</td><td>The 60-to-0 gap</td></tr>
+<tr><td class="mono">check-motion</td><td>Raw durations, &gt;300ms interactions, keyframes with no reduced-motion</td><td><code>--ease</code> never being referenced</td></tr>
+<tr><td class="mono">check-media-queries</td><td><code>var()</code> in a media condition</td><td>All 66 dead responsive rules</td></tr>
+<tr><td class="mono">check-design-tokens</td><td>Literals bypassing tokens; drift from <code>Theme.swift</code></td><td>The hardcoded typeface</td></tr>
+</tbody>
+</table>
+</div>
+
+<p class="note">Still open: the design-system site describes components rather than rendering them from the product stylesheets, so drift stays invisible; <code>transition: all</code> appears 12 times; and the 768/769 and 900/901 breakpoint pairs are still the same boundary written twice.</p>
+
+</div>
+</body>
+</html>

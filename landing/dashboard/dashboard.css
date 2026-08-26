@@ -860,7 +860,14 @@ input, button, select, textarea { font: inherit; }
 .plan-feature svg { color: var(--accent); flex-shrink: 0; }
 
 /* ── Responsive ── */
-@media (max-width: var(--w-content)) {
+/* Literal, not var(--w-content): custom properties are INVALID inside a media
+   condition. Twelve of these were written with var() and every one of them
+   silently never matched — 66 responsive rules, including the whole sidebar,
+   the mobile header and the data-table card transform, were dead at every
+   viewport width. There is no build step here to resolve them, so the number
+   is written out. scripts/check-media-queries.py now fails on var() in a
+   media condition. */
+@media (max-width: 768px) {
     .sidebar {
         transform: translateX(-100%);
     }
@@ -1108,7 +1115,7 @@ input, button, select, textarea { font: inherit; }
 }
 
 /* ── Responsive: Table-to-Card ── */
-@media (max-width: var(--w-content)) {
+@media (max-width: 768px) {
     .data-table thead {
         display: none;
     }
@@ -1187,7 +1194,7 @@ input, button, select, textarea { font: inherit; }
     .stat-value { font-size: var(--fs-title2); }
 }
 
-@media (max-width: var(--w-form)) {
+@media (max-width: 480px) {
     .stats-grid {
         grid-template-columns: 1fr;
     }
@@ -1223,7 +1230,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-primary);
 }
 
-@media (max-width: var(--w-content)) {
+@media (max-width: 768px) {
     .event-row {
         flex-wrap: wrap;
         gap: var(--s-sm);
@@ -1328,7 +1335,7 @@ input, button, select, textarea { font: inherit; }
     border-radius: var(--radius-sm);
     margin-top: var(--s-xs);
 }
-@media (max-width: var(--w-content)) {
+@media (max-width: 768px) {
     .tonight-stats { flex-direction: column; gap: var(--s-md); }
 }
 
@@ -1357,7 +1364,7 @@ input, button, select, textarea { font: inherit; }
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
-@media (max-width: var(--w-content)) {
+@media (max-width: 768px) {
     .settlement-week-label {
         font-size: var(--fs-sm);
         min-width: 200px;
@@ -1485,7 +1492,7 @@ input, button, select, textarea { font: inherit; }
     flex-shrink: 0;
 }
 
-@media (max-width: var(--w-content)) {
+@media (max-width: 768px) {
     .player-balance-amount { font-size: var(--fs-title1); }
     .player-record-num { font-size: var(--fs-title2); }
     .player-stats-row { grid-template-columns: 1fr; gap: var(--s-md); }
@@ -1533,7 +1540,7 @@ input, button, select, textarea { font: inherit; }
     flex-wrap: wrap;
 }
 
-@media (max-width: var(--w-content)) {
+@media (max-width: 768px) {
     .games-sport-nav { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: var(--s-sm); }
     .games-sport-card { padding: var(--s-md) var(--s-md); }
     .games-sport-card-name { font-size: var(--fs-caption); }
@@ -1798,7 +1805,7 @@ input, button, select, textarea { font: inherit; }
     to { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
 
-@media (max-width: var(--w-content)) {
+@media (max-width: 768px) {
     .pg-col-labels { display: none; }
     .pg-odds-cells { gap: var(--s-xs); }
     .pg-odds-btn { width: var(--avatar); padding: var(--s-sm) var(--s-xxs); font-size: var(--fs-micro); }
@@ -2241,7 +2248,7 @@ input, button, select, textarea { font: inherit; }
 }
 
 /* Mobile: hide sidebar, keep floating bar + modal */
-@media (max-width: var(--w-content)) {
+@media (max-width: 768px) {
     .betslip-sidebar { display: none !important; }
     .main-content.has-betslip { margin-right: 0; }
 }
@@ -2412,7 +2419,7 @@ input, button, select, textarea { font: inherit; }
     justify-content: space-between;
 }
 
-@media (max-width: var(--w-content)) {
+@media (max-width: 768px) {
     .member-detail-header {
         flex-direction: column;
         align-items: flex-start;
@@ -2437,7 +2444,7 @@ input, button, select, textarea { font: inherit; }
 }
 
 /* ── 480px Mobile Overrides ── */
-@media (max-width: var(--w-form)) {
+@media (max-width: 480px) {
     /* US-013: Toast overflow */
     .toast-container {
         right: 12px;
@@ -3122,3 +3129,177 @@ input, button, select, textarea { font: inherit; }
         min-height: var(--tap-target);
     }
 }
+
+
+/* ══ COMPONENTS ═════════════════════════════════════════════════════════════
+   Promoted from repetition, not invented. Each of these existed already as
+   either an inline style repeated across the markup or two near-identical
+   bespoke rules; naming them removes the copies rather than adding a layer.
+
+   Avatar was nearly skipped on the grounds that nothing in the product renders
+   one. That reasoning was wrong in an interesting way: the design system has a
+   full, argued spec for it — "initials on a tinted ground, never a photo",
+   because members are people the organizer already knows by name, so an initial
+   identifies a row without an upload flow, storage, or an empty-state problem —
+   and nine working rules in ds.css. It was specified and unbuilt, which is the
+   same shape as the focus ring, not a component without demand. Ported here
+   rather than invented.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── select ──
+   Four <select> elements each carried their own inline style attribute, all
+   slightly different in size, padding and radius, and all bypassing the
+   stylesheet entirely. A native select also paints its own dropdown arrow in
+   the OS style, which on a dark interface reads as a foreign control — hence
+   appearance:none and an inline chevron drawn in --text-muted. */
+.select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    padding: var(--s-md) var(--s-lg);
+    padding-right: var(--s-xxl);
+    background-color: var(--bg-elevated);
+    border: var(--hairline) solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--fs-body);
+    font-family: inherit;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23858595' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--s-md) center;
+    transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.select:hover { border-color: var(--text-muted); }
+
+/* An <option> is painted by the OS, not the page. Setting these is the only
+   influence a stylesheet has over the open dropdown, and without them the list
+   renders white-on-white in a dark interface on several platforms. */
+.select option {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.select--sm {
+    padding: var(--s-sm) var(--s-md);
+    padding-right: var(--s-xl);
+    font-size: var(--fs-sm);
+    width: auto;
+}
+
+.select--xs {
+    padding: var(--s-xxs) var(--s-xs);
+    padding-right: var(--s-lg);
+    font-size: var(--fs-micro);
+    border-radius: var(--radius-xs);
+    color: var(--text-secondary);
+    width: auto;
+    background-position: right var(--s-xxs) center;
+}
+
+/* ── progress ──
+   Consolidates .capacity-bar/.capacity-fill and .credit-bar-track/
+   .credit-bar-fill, which differed only in track height and whether the fill
+   colour was fixed or set from data. The old class names are kept as aliases
+   below so existing markup keeps working — renaming markup is a separate
+   change from removing a duplicate rule, and doing both at once makes a
+   regression impossible to attribute. */
+.progress {
+    width: 100%;
+    height: var(--dot);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-xs);
+    overflow: hidden;
+}
+
+.progress--lg { height: var(--dot-lg); }
+
+.progress__fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: var(--radius-xs);
+    transition: width var(--dur-slow) var(--ease-out),
+                background var(--dur-slow) var(--ease-out);
+}
+
+.capacity-bar, .credit-bar-track { /* aliases — see note above */ }
+
+/* ── tooltip ──
+   .tag-tooltip already existed and was well built; it was simply named for the
+   one place it was used. Generalised so the next tooltip does not become
+   .something-else-tooltip, with the original kept as an alias. */
+.tooltip,
+.tag-tooltip {
+    position: fixed;
+    z-index: var(--z-modal);
+    background: var(--bg-elevated);
+    border: var(--hairline) solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--s-sm) var(--s-md);
+    max-width: 240px;
+    pointer-events: none;
+    transform: translateX(-50%);
+    box-shadow: var(--shadow-raised);
+}
+
+.tooltip__title,
+.tag-tooltip-title {
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-bold);
+    color: var(--text-primary);
+    margin-bottom: var(--s-xxs);
+}
+
+.tooltip__desc,
+.tag-tooltip-desc {
+    font-size: var(--fs-micro);
+    color: var(--text-secondary);
+    line-height: var(--lh-normal);
+}
+
+
+/* ── avatar ──
+   Ported from the design system's own spec, values unchanged. The two comments
+   below are the reasoning that came with it and both encode a bug that was
+   already found and fixed once — worth carrying across rather than rediscovering.
+
+   The tint is a background-IMAGE, not a background-color, so a stack can slide
+   an opaque colour underneath. Every tint is translucent; without an opaque
+   base, a covered chip shows its initials straight through the chip covering
+   it, which is what made the stacked group unreadable.
+
+   Overlap is bounded by the width of two initials, not by the chip. These are
+   letters, not photographs: a stack may cover the empty margin around the
+   initials but not the initials themselves, or MK reads as MI. */
+.avatar {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    --avatar-size: var(--s8);
+    --avatar-overlap: var(--s1);
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+    border-radius: var(--radius-full);
+    background-color: transparent;
+    background-image: linear-gradient(var(--fill-white), var(--fill-white));
+    color: var(--text-secondary);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-caps);
+}
+
+.avatar--sm { --avatar-size: var(--s6); --avatar-overlap: var(--s1); font-size: var(--fs-micro); }
+.avatar--lg { --avatar-size: var(--s12); --avatar-overlap: var(--s3); font-size: var(--fs-lg); }
+
+.avatar--accent { background-image: linear-gradient(var(--fill-accent), var(--fill-accent)); color: var(--accent); }
+.avatar--warning { background-image: linear-gradient(var(--fill-warning), var(--fill-warning)); color: var(--warning); }
+.avatar--danger { background-image: linear-gradient(var(--fill-danger), var(--fill-danger)); color: var(--danger); }
+
+.avatar-stack { display: flex; }
+.avatar-stack .avatar {
+    margin-left: calc(var(--avatar-overlap) * -1);
+    border: var(--s05) solid var(--card);
+    background-color: var(--card);   /* opaque, so each chip occludes the one behind it */
+}
+.avatar-stack .avatar:first-child { margin-left: 0; }

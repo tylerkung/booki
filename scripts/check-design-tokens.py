@@ -134,6 +134,14 @@ def scan_dimensions():
                 chunks.append((raw[:mm.start()].count("\n") + 1, mm.group(1)))
         for base, text in chunks:
             for d in re.finditer(DIMPROP, text):
+                # A media CONDITION is not a styled dimension. It cannot take a
+                # token at all — custom properties are invalid there — so the
+                # literal is required, and ALLOW says so. scan_dimensions did
+                # not consult ALLOW, so repairing twelve dead media queries by
+                # writing the literal width immediately tripped this check.
+                line_start = text.rfind("\n", 0, d.start()) + 1
+                if "@media" in text[line_start:d.start()]:
+                    continue
                 val = re.sub(r'var\([^()]*\)', '', d.group(1))
                 ln = base + text[:d.start()].count("\n")
                 for px in re.findall(r'(\d+)px', val):

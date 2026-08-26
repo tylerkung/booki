@@ -901,7 +901,7 @@
                         <h2>Change Event Status</h2>
                         <div class="form-group" style="margin-bottom:var(--s-lg);">
                             <label>New Status</label>
-                            <select x-model="eventNewStatus" style="width: 100%;padding:var(--s-md) var(--s-lg);background:var(--bg-elevated);border:var(--hairline) solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:var(--fs-body);">
+                            <select class="select" x-model="eventNewStatus">
                                 <option value="scheduled">Scheduled</option>
                                 <option value="in_progress">Live</option>
                                 <option value="final">Final</option>
@@ -1078,7 +1078,7 @@
                 <div class="filter-bar">
                     <span class="chip" :class="{ active: pickFilter === 'open' }" @click="pickFilter = 'open'; loadPicks()">Open</span>
                     <span class="chip" :class="{ active: pickFilter === 'past' }" @click="pickFilter = 'past'; loadPicks()">Past</span>
-                    <select style="background:var(--bg-elevated);border:var(--hairline) solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);padding:var(--s-sm) var(--s-md);font-size:var(--fs-sm);outline:none;"
+                    <select class="select select--sm"
                             x-model="pickMemberFilter" @change="loadPicks()">
                         <option value="">All Members</option>
                         <template x-for="p in players" :key="p.id">
@@ -1413,7 +1413,7 @@
                                              x-text="memberDetail.win_limit != null ? formatCurrency(memberDetail.win_limit) : 'None'"></div>
                                         <template x-if="memberDetail.win_limit != null">
                                             <div style="margin-top:var(--s-xxs);">
-                                                <select style="font-size:var(--fs-micro);background:var(--bg-elevated);color:var(--text-secondary);border:var(--hairline) solid var(--border);border-radius:var(--radius-xs);padding:var(--s-xxs) var(--s-xs);"
+                                                <select class="select select--xs"
                                                         :value="memberDetail.win_limit_action || 'block'"
                                                         @change="saveMemberWinLimitAction($event.target.value)">
                                                     <option value="block">Block Picks</option>
@@ -4359,7 +4359,7 @@
             <p style="color:var(--text-secondary);margin-bottom:var(--s-lg);">Change the grade for this pick.</p>
             <div class="form-group">
                 <label>New Outcome</label>
-                <select x-model="overrideOutcome" style="width: 100%;padding:var(--s-md) var(--s-lg);background:var(--bg-elevated);border:var(--hairline) solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:var(--fs-body);outline:none;">
+                <select class="select" x-model="overrideOutcome">
                     <option value="won">Win</option>
                     <option value="lost">Loss</option>
                     <option value="push">Push</option>

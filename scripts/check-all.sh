@@ -16,7 +16,8 @@ for check in \
     scripts/check-design-tokens.py \
     scripts/check-contrast.py \
     scripts/check-focus-states.py \
-    scripts/check-motion.py
+    scripts/check-motion.py \
+    scripts/check-media-queries.py
 do
     echo "── $(basename "$check")"
     if ! python3 "$check"; then
