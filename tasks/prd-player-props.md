@@ -160,7 +160,43 @@ because one feed carries it and the other does not — but it manufactures a
 collision between `Marvin Harrison` and `Marvin Harrison Jr.`, who are two real
 and distinct players.
 
-## US-003: Ingest — prices from The Odds API
+## US-003: Ingest — prices from The Odds API — BUILT 2026-08-25
+
+`sync_player_props`, deliberately its own function rather than part of
+`sync_games`: that one already runs ~80s against a 150s ceiling and a slate's
+first ingest needs a resolution call per unseen player.
+
+**Verified against real week 1 data** (20-day preview window):
+
+| | |
+|---|---|
+| Games considered | 16 |
+| Games mapped to a balldontlie game | **16 / 16** |
+| Subjects resolved | **18 / 18, zero unresolved** |
+| Markets written | 35 |
+| Odds API cost | 26 credits for the slate |
+
+Run twice back to back: the second wrote 0 and updated 35, confirming re-runs
+do not duplicate. The first version used a plain `insert` and would have
+duplicated every prop on every run; matching happens in application code on
+`(stat_key, subject, side)` the way `sync_games` matches its markets, because
+delete-and-reinsert would churn market ids that placed bets already reference.
+
+**The rule is enforced by the database, not just by the code.** Posting a prop
+with no `subject_player_id` is rejected:
+
+    23514 — new row for relation "markets" violates check constraint
+            "markets_prop_requires_subject"
+
+**35 markets across 16 games is NOT the in-week number.** Prop coverage is thin
+16 days out; the Odds API adds markets as kickoff approaches. The ~200 rows per
+game estimate is still unmeasured and should be re-measured during game week
+before the ingest window is widened or more markets are added.
+
+The on-demand cache filled itself exactly as designed: 0 players before the run,
+18 after — only the players who actually had props.
+
+## US-003 (original)
 
 Markets to carry, all verified settleable against real statline fields:
 
