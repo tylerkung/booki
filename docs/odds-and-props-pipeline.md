@@ -1,0 +1,104 @@
+# How odds, props and games actually flow
+
+Written 2026-08-25, from the deployed functions and the migrations that
+schedule them. This is the orchestration view — what runs, how often, and why
+each boundary is where it is.
+
+## The shape in one paragraph
+
+Two external providers. **The Odds API** supplies games and prices; **balldontlie**
+supplies the box scores that settle player props. Everything else is ours:
+a set of scheduled edge functions that pull, filter, store and grade, with the
+database as the only shared state between them. No function calls another —
+they coordinate purely through rows.
+
+## The four jobs
+
+| Function | Cadence | Buys | Writes |
+|---|---|---|---|
+| `sync_games` | twice daily | games + core markets, per SPORT | `events`, `markets` |
+| `auto_refresh_games` | every 30 min | re-priced odds + final scores | `markets`, `events.status`, grades bets |
+| `refresh_live_scores` | every 5 min | scores, only when a game is ending | `events` scores/status |
+| `sync_player_props` | not yet scheduled | prop prices, per EVENT | `markets` (type `player_prop`) |
+
+### `sync_games` — the wide, cheap pass
+
+Fetches every upcoming game for each sport in one request per sport. That is the
+key economic fact of the whole pipeline: **the featured endpoint bills per
+SPORT, so 3 credits covers all 272 NFL games.** It also carries the deep-market
+bundle (alternate spreads, alternate totals, team totals, odd/even) for NFL and
+NBA games inside 3 days, which is billed per EVENT.
+
+Two filters keep it affordable and the database small:
+
+- **Odds storage window (7 days).** Games further out are stored without
+  markets. Nobody bets a line 10 days early, and storing them multiplied the
+  markets table.
+- **Prune on final.** Markets for finished non-outright games are deleted every
+  run. This is a sweep over the markets table rather than a hook on the
+  finalisation path, because three separate code paths mark a game final and
+  hooking one missed the games people actually bet on.
+
+### `auto_refresh_games` — the narrow, frequent pass
+
+Fires every 30 minutes and then decides per game whether that game is due:
+within 4h it re-prices every run for NFL/NBA/MLB and hourly for other leagues,
+4–48h every two hours, outrights once a day, beyond 48h never. **The cron fires
+at the fastest tier and the function filters down**, so changing the schedule
+silently changes the near-game cadence.
+
+It also grades and settles: when a game reaches `final`, bets on it are graded
+from the final score and ledger entries written in the same step.
+
+### `refresh_live_scores` — cheap because it usually does nothing
+
+Runs every 5 minutes but estimates each sport's game duration and only calls the
+API when a game is inside its finishing window. Most runs cost zero credits.
+
+### `sync_player_props` — the expensive, narrow one
+
+Props are billed per event and are by far the largest market type by row count,
+so this is gated hardest: NFL only, games within 2 days, and a curated six
+markets. It is also the only ingest that can REFUSE to write:
+
+> A prop we cannot grade is never offered.
+
+Before a prop market is written, the game must map to a balldontlie game and the
+subject must resolve to exactly one player on one of that game's two rosters.
+Anything ambiguous is skipped and counted. Migration 039 backs this with a CHECK
+constraint, so the rule holds even against a code path that forgets it.
+
+## Where the two providers meet
+
+The seam is deliberately small and lives in three places:
+
+- `bdl_teams` — 32 rows mapping an Odds API team name to a balldontlie team id.
+  Verified identical today; stored anyway so a rename is a one-row update.
+- `events.bdl_game_id` — resolved once per game by date plus both team ids,
+  searching a ±1 day window because kickoff crosses midnight UTC.
+- `bdl_players` — resolutions we have VERIFIED, filled one player at a time.
+  Explicitly **not** a mirror of the league: an incomplete mirror reports an
+  ambiguous name as unique, which is the one failure this design exists to
+  prevent.
+
+## Why the split between odds and props
+
+They have opposite economics and opposite failure modes.
+
+Odds are cheap per game, safe to publish early, and settle from a final score
+the same provider gives us. Props are expensive per game, only worth publishing
+near kickoff, and settle from a second provider that has no shared key with the
+first. Putting them in one function would force the cheap path to carry the
+expensive one's constraints — and `sync_games` already runs ~80s against a 150s
+ceiling, with no room to absorb a resolution call per unseen player.
+
+## Known gaps
+
+- **Not every schedule lives in the repo.** `sync_games` and
+  `refresh_live_scores` have no cron migration; per CLAUDE.md they run twice
+  daily and every 5 minutes, so they were scheduled through the dashboard. That
+  means the migrations are not a complete description of what runs, and a fresh
+  environment would not reproduce them. Worth moving into a migration.
+- `sync_player_props` is not scheduled yet — it has only been run by hand.
+- Nothing grades props yet. That is US-005, and until it exists a prop written
+  by the ingest would never settle.
