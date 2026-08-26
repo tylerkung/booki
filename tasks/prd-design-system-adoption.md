@@ -66,7 +66,7 @@ mechanism to rules that currently have nothing behind them.
 | shadcn/ui | `background` / `-foreground` token pairing | Makes contrast failures structurally impossible |
 | emilkowal.ski | Purpose / frequency / speed; <300ms; never animate keyboard-initiated actions | Turns 82 ad-hoc transitions into a policy |
 | coss.com/ui | 50+ component inventory on Base UI primitives | Reference for behaviours beyond appearance |
-| beautifului.dev | Progressive disclosure, status/confidence, traceability | Applies to pick states and the settle-up trail |
+| beautifului.dev | Motion values, mono-for-data, dashed hairlines (see appendix) | Supplies the concrete curve/duration numbers Phase 5 needs |
 
 ## Phases
 
@@ -117,7 +117,8 @@ lack of quality — nothing enforced it.*
   the dashboard is Alpine.js and the marketing site is static HTML. Take the
   conventions, not the packages.
 - **AI-interface components from beautifului.dev.** Built for agent reasoning and
-  streaming; Booki has neither.
+  streaming; Booki has neither. Its *visual and motion* layer is worth taking —
+  see the appendix.
 - **A visual redesign.** Nothing in the audit points at the aesthetic.
 - **All 232 checklist items.** Maintenance items assume a multi-team design org.
 
@@ -127,3 +128,59 @@ Every number here is static analysis of four stylesheets — grep counts, comput
 WCAG ratios, token reference counts. That establishes what is *absent*. It cannot
 confirm what is present renders correctly, so Phase 1 ends with a keyboard pass
 through the real dashboard, not a green check script.
+
+
+---
+
+## Appendix — what to take from beautifului.dev
+
+Measured from the live site via computed styles, not eyeballed.
+
+### Take
+
+**1. Motion values — you already have the curve.**
+Their entrance easing is `cubic-bezier(0.23, 1, 0.32, 1)`. Booki's `.reveal`
+uses `cubic-bezier(0.22, 1, 0.36, 1)`. Same curve (easeOutQuint), arrived at
+independently. Their motion is `ease-out` and nothing else — 1,030 declarations,
+zero bounce — which is what Booki's own anti-patterns section already mandates.
+
+The gap is propagation and speed, not character:
+
+| | beautifului.dev | Booki |
+|---|---|---|
+| Dominant interaction duration | **0.12s** (827 uses) | 0.3s (22), 0.2s (17) |
+| Entrance | fade-up 0.3–0.6s @ easeOutQuint | 0.6–0.7s @ easeOutQuint |
+| Easing token | curve set | `--ease: ease` (browser default) |
+| Uses of the good curve | throughout | 4, all in `styles.css` |
+
+Action: promote the curve into `tokens.css` as `--ease-out`, add
+`--dur-interaction: 0.12s`, and retire `--ease: ease`. Interaction transitions
+drop from 200–300ms to ~120ms. This is Emil Kowalski's speed argument with a
+reference implementation attached.
+
+**2. Monospace + tabular numerals for all data.**
+They set every numeric in mono at 10.5–12.5px, letter-spacing -0.14px. Booki has
+~50 distinct numeric-bearing classes (odds, balance, stake, profit, score,
+credit, pnl) and 6 mono/tabular rules in `dashboard.css`. Largest visual upgrade
+available for the least structural change — odds and balances are what members
+actually read.
+
+**3. Dashed hairline rules.** 1px dashed in a desaturated border colour, used to
+separate sections and frame the content column. Booki has only solid
+`--divider`. A dashed variant is a few lines and reads as considered.
+
+**4. Section header pattern.** Bold title with an inline muted description on the
+same line. Cheap scannability win for the game detail and admin tables.
+
+### Don't take
+
+- **The diagonal hatch texture.** It is
+  `repeating-linear-gradient(-45deg, transparent 0 7px, rgba(255,255,255,.055) 7px 8px)`
+  — the same idea as Booki's wave at the same opacity band (`--o-faint`, 0.05).
+  Booki already has this job filled; a second texture competes with the first.
+  If the framed-gutter effect is wanted, extend the wave rather than add a hatch.
+- **JetBrains Mono.** The existing `--font-mono` system stack is fine, and web
+  already loads two Google families. Use the stack, not a third webfont.
+- **Their near-monochrome palette.** Booki's teal is brand equity.
+- **Numbered section eyebrows,** except where order is real. Parlay legs are
+  genuinely ordered and could carry them; generic sections shouldn't.
