@@ -321,7 +321,28 @@ box score that is late, partial, or briefly wrong.
   `mergeDeepMarkets`, `marketDiscriminator`
 - `tasks/prd-market-coverage.md` — the measurements this rests on
 
-## BLOCKER — props cannot go live until the iOS sync excludes them
+## BLOCKER — RESOLVED 2026-08-26 by migration 045
+
+Solved server-side, which is the only kind of fix that reaches builds already
+installed. The read policy on `markets` now hides any type listed in
+`legacy_client_hidden_market_types()` — currently `player_prop` and `odd_even` —
+from direct client reads. The service role bypasses RLS, so ingest and grading
+are untouched, and the web opts in explicitly through
+`get_event_player_props(event_id)`.
+
+Three things fall out of it:
+
+- **iOS needs no release.** Shipped builds stop seeing these types rather than
+  mislabelling them, and pull less data rather than more.
+- **`odd_even` is back in `DEEP_MARKETS`.** It was pulled only because the sole
+  defence looked like an iOS release.
+- **Removing an entry from that list is how a future iOS version ships support**
+  for the type — one line, tracked in `tasks/ios-pending.md`.
+
+The original analysis is kept below, because the reasoning is what makes the
+fix legible.
+
+## ORIGINAL BLOCKER — props cannot go live until the iOS sync excludes them
 
 Found 2026-08-26 while checking quotas. `SyncService.swift:757` downloads
 markets with a bare `.select()` and **no type filter**, so every prop row syncs

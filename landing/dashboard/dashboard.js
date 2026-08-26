@@ -2004,7 +2004,15 @@ function dashboardApp() {
             this.gameDetail = null;
             this.gameDetailMarkets = [];
             try {
-                const [{ data: ev }, { data: mk }] = await Promise.all([
+                // Two reads, because they come through different doors.
+                //
+                // The markets table read no longer returns player props or
+                // odd/even: migration 045 hides them from direct client reads,
+                // because iOS coerces an unknown market type to .moneyline
+                // rather than skipping it, and a shipped build would render a
+                // prop as a moneyline called "Patrick Mahomes Over 245.5".
+                // The web opts in explicitly through the RPC instead.
+                const [{ data: ev }, { data: mk }, { data: hidden }] = await Promise.all([
                     this.supabase.from('events')
                         .select('id, away_team, home_team, start_time, status, league, sport, away_score, home_score')
                         .eq('id', eventId).maybeSingle(),
@@ -2012,10 +2020,11 @@ function dashboardApp() {
                         .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
                         .eq('event_id', eventId)
                         .limit(1000),
+                    this.supabase.rpc('get_event_player_props', { p_event_id: eventId }),
                 ]);
                 if (!ev) { this.toast('Game not found', 'error'); return; }
                 this.gameDetail = ev;
-                this.gameDetailMarkets = mk || [];
+                this.gameDetailMarkets = [...(mk || []), ...(hidden || [])];
             } catch (err) {
                 console.error('loadGameDetail failed:', err);
                 this.toast('Could not load this game', 'error');

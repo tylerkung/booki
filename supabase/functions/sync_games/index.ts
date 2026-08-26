@@ -184,18 +184,17 @@ const DEEP_MARKET_SPORTS = ['americanfootball_nfl', 'basketball_nba'];
  *
  * Measured cost on an NFL game: 4 credits, ~159 stored rows.
  */
-// odd_even is DELIBERATELY ABSENT until iOS ships a MarketType case for it.
+// odd_even is back, because migration 045 hides it from direct client reads.
+// It was pulled when the only defence would have been an iOS release; the
+// server-side hide protects builds already installed, which the client fix
+// never could.
 //
-// The other three map to cases that already exist in Booki/Models/Market.swift,
-// so shipped builds render them correctly. odd_even does not, and
-// SyncService's `MarketType(rawValue:) ?? .moneyline` would coerce it: members
-// on the current App Store build would see a "Moneyline" market whose two sides
-// are Odd and Even. Grading is unaffected — the server reads market.type from
-// the row — but it is visibly wrong, and it would start the moment NFL games
-// enter the 3-day window.
-//
-// Re-add it in the same change that adds the iOS case. See tasks/ios-pending.md.
-const DEEP_MARKETS = ['alternate_spreads', 'alternate_totals', 'team_totals'];
+// The other three map to MarketType cases that already exist, so shipped iOS
+// builds render them. odd_even does not, and SyncService coerces an unknown
+// type to .moneyline — so it is stored, hidden from clients by RLS, and shown
+// on web through get_event_player_props(). Remove it from
+// legacy_client_hidden_market_types() when an iOS release can render it.
+const DEEP_MARKETS = ['alternate_spreads', 'alternate_totals', 'team_totals', 'odd_even'];
 
 /**
  * How close to kickoff a game must be to earn its per-event fetch.
