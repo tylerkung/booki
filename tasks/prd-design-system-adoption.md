@@ -172,8 +172,42 @@ separate sections and frame the content column. Booki has only solid
 **4. Section header pattern.** Bold title with an inline muted description on the
 same line. Cheap scannability win for the game detail and admin tables.
 
+**5. Typography — tokenise tracking.**
+
+| | beautifului.dev | Booki |
+|---|---|---|
+| Families | Inter + JetBrains Mono | Inter + Space Grotesk (IBM Plex on iOS) |
+| Size range | 10.5–21px; UI lives in 11–14px | 11–40px, 9 steps |
+| Weights | 400/500/600/700 | 400/500/600/700/800 |
+| Tracking | negative at every size, −0.011em → −0.02em | 8 raw values, mixed px and em, 1 token |
+| Uppercase | none | 36 rules |
+| Body default | 13px w500 | 14px w400 |
+
+Their type reads tighter because they apply negative tracking universally,
+scaling with size (−0.14px at 13px, −0.42px at 21px). Booki already does this —
+`-0.02em` appears 10 times, matching their display value — but ad-hoc, across
+eight raw values in mixed units with one token. Same drift shape as the focus
+ring: right instinct, no system.
+
+Action: a tracking scale with BOTH arms, which they don't need and Booki does —
+`--ls-tight` (−0.011em, UI), `--ls-tighter` (−0.02em, display), and `--ls-caps`
+(~0.08em) to replace the ad-hoc positive values on the 36 uppercase rules.
+
+**6. Hierarchy by weight at one size.** Their section titles are 13px w600 inline
+beside a 13px w400 description — differentiated by weight and colour, not size.
+Worth adopting on dense surfaces (admin tables, game-detail rows, member lists).
+
 ### Don't take
 
+- **Their compressed scale.** Their H1 is 21px, 1.6x body. Booki's 40px display
+  exists because the product is read one-handed and quickly on a phone, where
+  balance and odds must carry at a glance — the DS says so directly. A 21px
+  ceiling suits a component gallery at desk distance, not this product.
+- **Dropping uppercase labels.** Established Booki element; their system has zero
+  caps so it offers no guidance here.
+- **w500 body — flag, don't adopt yet.** On a dark ground 400-weight Inter does
+  read thin, and this is likely part of the appeal. But it changes every screen
+  at once. Try it on one view first.
 - **The diagonal hatch texture.** It is
   `repeating-linear-gradient(-45deg, transparent 0 7px, rgba(255,255,255,.055) 7px 8px)`
   — the same idea as Booki's wave at the same opacity band (`--o-faint`, 0.05).
