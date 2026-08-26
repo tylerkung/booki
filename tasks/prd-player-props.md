@@ -320,3 +320,54 @@ box score that is late, partial, or briefly wrong.
 - `supabase/functions/sync_games/index.ts` — `fetchEventMarketsFromApi`,
   `mergeDeepMarkets`, `marketDiscriminator`
 - `tasks/prd-market-coverage.md` — the measurements this rests on
+
+## BLOCKER — props cannot go live until the iOS sync excludes them
+
+Found 2026-08-26 while checking quotas. `SyncService.swift:757` downloads
+markets with a bare `.select()` and **no type filter**, so every prop row syncs
+to every iOS client. Two consequences, and the second is worse than the cost:
+
+**Egress.** A game week at the estimated ~200 rows per game is ~3,200 prop rows
+against a markets table that currently holds ~1,450. That roughly triples the
+markets payload in every iOS sync, on an account that has already exceeded its
+egress quota once.
+
+**A visible bug.** `MarketType` has no `player_prop` case, so
+`MarketType(rawValue:) ?? .moneyline` coerces it. An existing App Store build
+would render "Patrick Mahomes Over 245.5" as a MONEYLINE market on the game
+detail screen. Members would not see it today only because the 48-hour display
+window hides week 1 — that protection disappears on 8 September.
+
+The 35 prop rows written during the US-003 verification were deleted for exactly
+this reason.
+
+**The web side is already safe:** `BOARD_MARKET_TYPES` restricts the board query
+to the three types it renders, and props load per game in the detail view.
+
+### Options, in order of preference
+
+1. **Filter the iOS sync** — one line, but it needs an App Store build, so the
+   lead time is weeks and old builds stay broken indefinitely.
+2. **Move props to their own table.** iOS never learns they exist and no build is
+   required. Costs a second table and complicates `bets.market_id`, which
+   currently references `markets(id)`.
+3. **Keep props out of production** until iOS ships the change. Cheapest, and
+   fine if the promo does not depend on them.
+
+Option 2 is the only one that works on old builds, which is the constraint that
+actually matters. Decide before scheduling `sync_player_props`.
+
+## What is and is not persisted
+
+**Stored:** prop markets (`markets`), the grade (`bets.grade_result`), the money
+(`ledger_entries`), and the box score each grade was computed from
+(`prop_grading_runs.statline_snapshot`) — roughly 40 KB per game, about 11 MB
+across a full season, which is what makes US-006 possible.
+
+**NOT stored — a gap worth closing:** every operational number is returned in
+the function response and written to the log, then lost. That includes the Odds
+API quota per run, and `subjects_unresolved`, which this PRD calls "the monitor
+for identity drift". A monitor nobody can query is not a monitor: there is no
+way to see that resolution failures went from 0 to 14 last Sunday. Persisting
+these runs into a small table is a prerequisite for trusting the ingest
+unattended.
