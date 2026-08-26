@@ -105,20 +105,35 @@ Present in the schema, zero non-null values across all 60 statlines. Kicking
 points must be derived from `field_goals_made` and `extra_points_made` rather
 than read from it.
 
-## US-002: Identity — teams, players, games## US-002: Identity — teams, players, games
+## US-002: Identity — teams, players, games## US-002: Identity — teams, players, games — BUILT 2026-08-25
 
-**Acceptance Criteria:**
-- [ ] `bdl_teams` map: Odds API team name → balldontlie team id. 32 rows, seeded
-      once, asserted complete by a migration check rather than assumed
-- [ ] `bdl_players` cache: id, first, last, `normalized_name`, team id, position.
-      Refreshed weekly — rosters churn, and a stale cache silently stops
-      resolving new signings
-- [ ] Normalisation shared by both sides: case, accents, punctuation
-      (`Ja'Marr`→`jamarr`, `D.K.`→`dk`), Jr/Sr/II/III suffixes
-- [ ] Event → balldontlie game resolved by date + both team ids, cached on the
-      event row. A game that cannot be resolved blocks prop ingest for that game
-- [ ] Resolution scoped to the two rosters of the game, never league-wide
-- [ ] Ambiguity → the market is not written, and the reason is logged
+- [x] `bdl_teams` map — migration 040. All 32 Odds API NFL team names match
+      balldontlie's `full_name` EXACTLY, so `odds_api_name` is identical today.
+      The column is stored anyway: that agreement is a fact about current data,
+      not a guarantee, and a rename should be a one-row UPDATE rather than a
+      hunt through matching logic. The migration asserts 32 rows and unique
+      names, because a short map does not fail loudly — it reads as "that game
+      has no props" and could go unnoticed for a season
+- [x] `bdl_players` cache — `sync_bdl_rosters` edge function, pulled per team.
+      The unfiltered `/players` endpoint returns HISTORICAL players and was
+      still climbing past 5,000 rows when a full pull was abandoned during the
+      spike; per team is bounded and is the shape resolution needs anyway.
+      Reports a partial refresh as a failure (207), since silently succeeding
+      with 3 of 32 teams is how a cache rots unnoticed
+- [x] Normalisation shared — `_shared/player_identity.ts`, computed once at
+      write time so both sides of a comparison fold identically
+- [x] Event → balldontlie game — `_shared/bdl_games.ts`, matched on date plus
+      BOTH team ids and cached on the event row. A ±1 day window is searched
+      because kickoff crosses midnight UTC and the providers need not agree
+      which calendar day a Sunday-night game belongs to; requiring both teams
+      is what keeps the window unambiguous. Verified against the real
+      2025-09-05 Cowboys/Eagles game, which is exactly that midnight case
+- [x] Resolution scoped to the two rosters, never league-wide
+- [ ] Ambiguity → market not written — the RULE is enforced by migration 039's
+      CHECK constraint, but the ingest that would honour it is US-003
+
+**Still to do before this is live:** run migration 040, execute
+`sync_bdl_rosters` once to populate the cache, and schedule it weekly.
 
 ## US-003: Ingest — prices from The Odds API
 
