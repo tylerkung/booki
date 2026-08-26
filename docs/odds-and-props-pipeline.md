@@ -99,6 +99,31 @@ ceiling, with no room to absorb a resolution call per unseen player.
   daily and every 5 minutes, so they were scheduled through the dashboard. That
   means the migrations are not a complete description of what runs, and a fresh
   environment would not reproduce them. Worth moving into a migration.
-- `sync_player_props` is not scheduled yet — it has only been run by hand.
-- Nothing grades props yet. That is US-005, and until it exists a prop written
-  by the ingest would never settle.
+- **BLOCKER — the superseded-line guard rejects every prop.** This one stops
+  props working at all, and it does so silently: the props ingest, render, and
+  price correctly, then refuse every bet with `line_no_longer_offered`.
+
+  All three submit endpoints call `isSupersededLine(market.updated_at,
+  event.last_odds_update)`, which exists to catch a market row that is still
+  bettable but no longer offered — a spread moving -3 → -3.5 INSERTS a new row
+  and leaves the old one behind, frozen at a stale price. Trailing the event's
+  refresh by more than 15 minutes is how such a row identifies itself.
+
+  That inference holds only while ONE job refreshes every market on an event.
+  It does not hold for props: `sync_player_props` writes prop `updated_at` but
+  never touches `events.last_odds_update`, which only `sync_games` and
+  `auto_refresh_games` write. So the moment auto-refresh re-prices the core
+  markets — every 30 minutes — every prop on that event is more than 15 minutes
+  behind and reads as superseded. The guard is not misfiring; it is being asked
+  a question about a timestamp that does not describe props.
+
+  The fix is to give props their own reference point rather than exempting them
+  (an exemption would leave stale props bettable, which is the exact hole the
+  guard was added to close). Add `events.last_props_update`, write it from
+  `sync_player_props`, and have the guard pick the reference by market type.
+  Needs a migration, so it has not been done.
+
+- `sync_player_props` is not scheduled yet — it has only been run by hand, so
+  prop prices are whatever the last manual run captured.
+- `grade_player_props` exists but is likewise unscheduled, so nothing settles a
+  prop on its own yet.
