@@ -87,7 +87,10 @@ export default async function propGrading(ctx) {
 
       const { data: bet, error: bErr } = await svc.from('bets').insert({
         bookie_id: ctx.bookieId, player_id: ctx.playerId, event_id: made.eventId,
-        market_id: mkt.id, market: statKey, side, odds: -110, stake: 10,
+        market_id: mkt.id, market: 'player_prop', side, odds: -110, stake: 10,
+        // ticket_id is NOT NULL — a single carries its own ticket, the same
+        // shape submit_bets creates.
+        ticket_id: uuid(),
         status: 'accepted', is_parlay: false, parlay_legs: 1,
       }).select('id').single();
       if (bErr) { ok(false, `bet insert: ${bErr.message}`); return; }
