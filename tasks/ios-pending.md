@@ -99,6 +99,13 @@ old line lingers as its own row).
 - [ ] Show something better than a raw error string — e.g. "That line is no
       longer offered" with the pick removed or re-pointed to the current line
 
+**Priority dropped after migration 048.** This was written while the guard was
+comparing every market against `events.last_odds_update`, which in production
+refused all 705 outright markets — so on iOS *every futures bet* failed with
+this error and the copy mattered a great deal. 048 fixed the guard itself
+(server-side, so iOS picked it up with no client change) and the rejection is
+now rare and usually correct. Still worth doing, no longer urgent.
+
 ### B4. Corner radius — iOS has diverged from web
 
 Web tightened its radius on 2026-08-19 (`d54e512`, `f3263d9`):
