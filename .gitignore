@@ -67,7 +67,10 @@ node_modules/
 .vscode
 
 # Supabase CLI local state
+# Anchored to the repo root because it contains a slash, so this alone
+# does NOT cover a nested copy such as tests/supabase/.temp/.
 supabase/.temp/
+**/supabase/.temp/
 
 # Database snapshots (large, not source)
 backups/
