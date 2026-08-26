@@ -37,7 +37,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-sans);
     background-color: var(--bg);
     color: var(--text-secondary);
     font-size: var(--fs-body);
@@ -2993,7 +2993,7 @@ input, button, select, textarea { font: inherit; }
    comment on --ls-cta already draws this exact line, excluding odds buttons
    from CTA treatment "because they are data (+1.5 (-167))". Money is not in
    this group: a balance is the member's own figure and reads better in the
-   product's own voice, so it keeps IBM Plex Sans and takes tabular figures
+   product's own voice, so it keeps the interface typeface and takes tabular figures
    alone.
    ────────────────────────────────────────────────────────────────────────── */
 

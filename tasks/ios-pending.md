@@ -197,3 +197,30 @@ incidents in one session traced to this single behaviour. With that in place,
 the web can add market types freely and old builds ignore them rather than
 mislabelling them — which removes the dependency that is currently holding two
 finished features.
+
+
+### B5. Web moved to Inter; iOS stays on IBM Plex Sans
+
+Decided 2026-08-25. The web product (dashboard, admin, login, marketing, design
+system) now uses **Inter** as its body typeface. iOS uses **IBM Plex Sans**, set
+globally via `.font(Theme.body)`.
+
+This is a deliberate divergence, not an oversight — Inter is the more neutral
+face and stays out of Space Grotesk's way, and Space Grotesk still sets display
+type and large figures on both platforms, so the two still share their most
+recognisable typographic element.
+
+- [ ] Decide whether iOS follows web to Inter, or the split stands permanently
+- [ ] If iOS follows: Inter must be bundled as an app resource (the web loads it
+      from Google Fonts, which an app cannot do), and the PostScript names must
+      be verified — the IBM Plex bundle already cost a debugging cycle over
+      exactly this (`IBMPlexSans`, not `IBMPlexSans-Regular`; `IBMPlexSans-Medm`,
+      not `-Medium`)
+- [ ] `tokens.css` no longer mirrors `Theme.swift` for type. It still does for
+      colour. Worth stating in the file so the next reader does not assume the
+      mirror is total.
+
+Note the web keeps **IBM Plex Mono** for odds and scores, which is unrelated to
+this decision — Inter has no official monospace sibling, and the alternative
+(the system stack) would render odds in SF Mono on macOS and Consolas on
+Windows.
