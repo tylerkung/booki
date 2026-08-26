@@ -325,7 +325,7 @@ td strong { color: var(--text-primary); }
 </div>
 <p class="note">16 max-widths moved to <code>.98</code>, 3 min-widths to the round boundary. <code>check-media-queries.py</code> now fails on an adjacent-integer pair as well as on <code>var()</code>.</p>
 
-<p class="note">Still open: the design-system site describes components rather than rendering them from the product stylesheets, so drift stays invisible.</p>
+<p class="note">The design-system site now loads <code>dashboard.css</code> and renders the product's real classes &mdash; see <a href="./#shipped" style="color:var(--accent)">As shipped</a>. Avatars were converted outright; buttons, badges and cards could not be, because the two systems model them on different axes, so the page shows the divergence instead. Of 20 button variants across the two, three exist on both sides.</p>
 
 </div>
 </body>

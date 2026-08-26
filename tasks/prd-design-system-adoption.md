@@ -373,3 +373,43 @@ and still reports on every run.
 Phase 5's live-example DS site, breakpoint duplicates, and `transition: all`
 ×12. Note the PRD's "tokenise breakpoints" item is not achievable as written —
 custom properties are invalid inside media query conditions without a build step.
+
+
+---
+
+## Implemented 2026-08-26 — Phase 5, the docs-to-code loop
+
+The design-system page now loads `../dashboard/dashboard.css` and renders the
+product's real classes. Loaded BEFORE `ds.css`, so the page's own layout rules
+still win — verified, no breakage.
+
+**Avatars converted outright.** The nine `.ds-avatar` rules are deleted and all
+36 references in `ds-content.js` point at the product's `.avatar`. The section
+renders from `dashboard.css` alone. This is the shape the whole page should
+eventually take.
+
+**Three components could not be renamed, and that turned out to be the finding.**
+The two systems do not model them the same way:
+
+| | design system | product |
+|---|---|---|
+| badge | `won / lost / push / live / final` — what it MEANS | `success / danger / muted / accent` — how it LOOKS |
+| btn | `--primary --secondary --ghost --lg --block` — intent | `-accent -grade-win -void -primary-full` — outcome |
+| card | `card__head / card__foot` | `card-header / card-title` |
+
+Those are different axes, not different spellings. Picking one is a design
+decision, not a refactor, so instead of faking agreement the page now shows the
+divergence: each component renders with the product's real classes beside a
+union table marking which variants exist on each side.
+
+**Of 20 button variants across the two systems, 3 exist on both.** That number
+is now printed on the page rather than buried in two stylesheets.
+
+**`check-ds-drift.py`** fails when a `.ds-*` class duplicates a product class.
+The three above are listed in `KNOWN` with reasons and still print on a clean
+run — the divergence stays visible rather than being resolved by forgetting it.
+The first version derived base names by splitting on `-` and invented three
+phantom duplicates (`.tag-tooltip` is not evidence of a `.tag`); it compares
+exact class names now.
+
+**All five PRD phases are now done.** `check-all.sh` runs nine checks.

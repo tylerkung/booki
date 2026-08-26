@@ -11,6 +11,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../tokens.css">
+<!-- The product's own stylesheet, loaded BEFORE ds.css so this page's
+     layout rules still win. Components below render from these rules,
+     not from a copy — a change to the product shows up here. -->
+<link rel="stylesheet" href="../dashboard/dashboard.css">
     <link rel="stylesheet" href="ds.css">
 </head>
 <body>

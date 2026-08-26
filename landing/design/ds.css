@@ -559,40 +559,6 @@ code.t {
 /* ── avatars ─────────────────────────────────────────────────────────────
    Initials on a tinted ground, never a photo. Members are people the organizer
    already knows, so an initial is enough to identify a row at a glance. */
-.ds-avatar {
-  display: inline-grid; place-items: center; flex: 0 0 auto;
-  /* Size and stack overlap travel together, and the overlap is bounded by the
-     width of two initials rather than by the chip. These are letters, not
-     photographs: a stack may cover the empty margin around the initials but not
-     the initials themselves, or MK reads as MI. Measured ceilings are 4.3, 6.9
-     and 12.7px for the three sizes; these sit inside them and on the grid.
-     The original flat -12px was past the ceiling for every size. */
-  --avatar-size: var(--s8);
-  --avatar-overlap: var(--s1);
-  width: var(--avatar-size); height: var(--avatar-size);
-  border-radius: var(--radius-full);
-  /* The tint is a background-IMAGE layer, not a background-color, so a stack
-     can slide an opaque colour underneath it. Every tint here is translucent —
-     without an opaque base a covered chip shows its initials straight through
-     the chip covering it, which is what made the group stack unreadable. */
-  background-color: transparent;
-  background-image: linear-gradient(var(--fill-faint), var(--fill-faint));
-  color: var(--text-secondary);
-  font-size: var(--t-footnote); font-weight: 600;
-  letter-spacing: var(--ls-caps);
-}
-.ds-avatar--sm { --avatar-size: var(--s6); --avatar-overlap: var(--s1); font-size: var(--t-micro); }
-.ds-avatar--lg { --avatar-size: var(--s12); --avatar-overlap: var(--s3); font-size: var(--t-callout); }
-.ds-avatar--accent { background-image: linear-gradient(var(--fill-accent), var(--fill-accent)); color: var(--accent); }
-.ds-avatar--warn { background-image: linear-gradient(var(--fill-warning), var(--fill-warning)); color: var(--warning); }
-.ds-avatar--danger { background-image: linear-gradient(var(--fill-danger), var(--fill-danger)); color: var(--danger); }
-.ds-avatar-stack { display: flex; }
-.ds-avatar-stack .ds-avatar {
-  margin-left: calc(var(--avatar-overlap) * -1);
-  border: var(--s05) solid var(--card);
-  background-color: var(--card);   /* opaque, so each chip occludes the one behind it */
-}
-.ds-avatar-stack .ds-avatar:first-child { margin-left: 0; }
 
 /* ── data display ────────────────────────────────────────────────────────
    Figures are the product. They are monospaced, aligned, and signed — never
@@ -686,3 +652,13 @@ code.t {
                     text-transform: uppercase; letter-spacing: var(--ls-caps); }
 .ds-w-micro       { font-size: var(--w-micro); color: var(--text-primary); }
 .ds-w-micromuted  { font-size: var(--w-micro); color: var(--text-muted); }
+
+
+/* A wrapping specimen row. .ds-row is a justified list row and pushes its
+   children apart; a variant strip needs them to sit together and wrap. */
+.ds-wrapline {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--s2); padding: var(--s4);
+}
+.ds-ok { color: var(--accent); }
+.ds-no { color: var(--text-muted); }

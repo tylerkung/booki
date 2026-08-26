@@ -826,17 +826,17 @@ const DS_SECTIONS = [
 
   <p class="ds-label">Sizes</p>
   <div class="ds-demo">
-    <div class="ds-center"><span class="ds-avatar ds-avatar--sm">AS</span><p class="ds-anno">24 &middot; dense rows</p></div>
-    <div class="ds-center"><span class="ds-avatar">AS</span><p class="ds-anno">32 &middot; default</p></div>
-    <div class="ds-center"><span class="ds-avatar ds-avatar--lg">AS</span><p class="ds-anno">48 &middot; member detail</p></div>
+    <div class="ds-center"><span class="avatar avatar--sm">AS</span><p class="ds-anno">24 &middot; dense rows</p></div>
+    <div class="ds-center"><span class="avatar">AS</span><p class="ds-anno">32 &middot; default</p></div>
+    <div class="ds-center"><span class="avatar avatar--lg">AS</span><p class="ds-anno">48 &middot; member detail</p></div>
   </div>
 
   <p class="ds-label">Tints carry state, not identity</p>
   <div class="ds-demo">
-    <span class="ds-avatar">MK</span>
-    <span class="ds-avatar ds-avatar--accent">JS</span>
-    <span class="ds-avatar ds-avatar--warn">AS</span>
-    <span class="ds-avatar ds-avatar--danger">TB</span>
+    <span class="avatar">MK</span>
+    <span class="avatar avatar--accent">JS</span>
+    <span class="avatar avatar--warning">AS</span>
+    <span class="avatar avatar--danger">TB</span>
   </div>
   <p class="ds-note">
     Neutral by default. A tint means something is true of that member right now —
@@ -849,14 +849,14 @@ const DS_SECTIONS = [
   <div class="ds-list ds-w-md">
     <div class="ds-row">
       <div class="ds-split" style="gap:var(--s3);justify-content:flex-start">
-        <span class="ds-avatar">AS</span>
+        <span class="avatar">AS</span>
         <span><span class="ds-body">Andrew Sandos</span><span class="ds-dim" style="display:block">3 open picks</span></span>
       </div>
       <span class="ds-num ds-lose">&minus;$180.00</span>
     </div>
     <div class="ds-row">
       <div class="ds-split" style="gap:var(--s3);justify-content:flex-start">
-        <span class="ds-avatar ds-avatar--accent">JM</span>
+        <span class="avatar avatar--accent">JM</span>
         <span><span class="ds-body">Joseph Molina</span><span class="ds-dim" style="display:block">On heater</span></span>
       </div>
       <span class="ds-num ds-win">+$45.00</span>
@@ -865,22 +865,22 @@ const DS_SECTIONS = [
 
   <p class="ds-label">Group</p>
   <div class="ds-demo ds-demo--roomy">
-    <div class="ds-avatar-stack">
-      <span class="ds-avatar ds-avatar--sm">AS</span>
-      <span class="ds-avatar ds-avatar--sm">JM</span>
-      <span class="ds-avatar ds-avatar--sm">MK</span>
-      <span class="ds-avatar ds-avatar--sm">+9</span>
+    <div class="avatar-stack">
+      <span class="avatar avatar--sm">AS</span>
+      <span class="avatar avatar--sm">JM</span>
+      <span class="avatar avatar--sm">MK</span>
+      <span class="avatar avatar--sm">+9</span>
     </div>
-    <div class="ds-avatar-stack">
-      <span class="ds-avatar">AS</span>
-      <span class="ds-avatar">JM</span>
-      <span class="ds-avatar">MK</span>
-      <span class="ds-avatar">+9</span>
+    <div class="avatar-stack">
+      <span class="avatar">AS</span>
+      <span class="avatar">JM</span>
+      <span class="avatar">MK</span>
+      <span class="avatar">+9</span>
     </div>
-    <div class="ds-avatar-stack">
-      <span class="ds-avatar ds-avatar--lg">AS</span>
-      <span class="ds-avatar ds-avatar--lg">JM</span>
-      <span class="ds-avatar ds-avatar--lg">+9</span>
+    <div class="avatar-stack">
+      <span class="avatar avatar--lg">AS</span>
+      <span class="avatar avatar--lg">JM</span>
+      <span class="avatar avatar--lg">+9</span>
     </div>
   </div>
   <p class="ds-note">
@@ -1287,4 +1287,55 @@ const DS_SECTIONS = [
     <li>Keep the accent rare enough that it means something</li>
   </ul>
 ` },
-];
+
+  { id: 'shipped', label: 'As Shipped', html: `
+    <h2 class="ds-h1">As shipped</h2>
+    <p class="ds-lede">Everything on this page renders from <code>tokens.css</code> and
+    <code>dashboard.css</code> &mdash; the product's own stylesheets, not a copy. Change a
+    component in the product and this page changes with it.</p>
+
+    <p>That was not true until now. The page carried its own <code>.ds-*</code>
+    implementation of every component, which is two hand-maintained copies of the
+    same thing and exactly the arrangement that lets them drift apart. Avatars have
+    been converted outright: the <code>.ds-avatar</code> rules are deleted and the
+    Avatars section above renders the product's <code>.avatar</code> class directly.</p>
+
+    <p><strong>Three components could not simply be renamed</strong>, because the two
+    systems do not model them the same way. The design system names a badge for what
+    it means &mdash; <code>won</code>, <code>lost</code>, <code>push</code> &mdash; and
+    the product names it for how it looks &mdash; <code>success</code>,
+    <code>danger</code>, <code>muted</code>. Those are different axes, not different
+    spellings, and picking one is a design decision rather than a refactor.</p>
+
+    <p>So the divergence is shown instead of hidden. Below, each component renders with
+    the product's real classes, beside a list of what this page documents. Where the
+    two columns disagree, that is the drift &mdash; visible on the page, which is the
+    point.</p>
+
+    <p class="ds-label">btn &mdash; rendered from dashboard.css</p>
+    <div class="ds-demo"><div class="ds-wrapline"><button class="btn btn-accent">accent</button><button class="btn btn-danger">danger</button><button class="btn btn-danger-outline">danger-outline</button><button class="btn btn-ghost">ghost</button><button class="btn btn-grade">grade</button><button class="btn btn-grade-loss">grade-loss</button><button class="btn btn-grade-push">grade-push</button><button class="btn btn-grade-win">grade-win</button><button class="btn btn-primary-full">primary-full</button><button class="btn btn-secondary">secondary</button><button class="btn btn-void">void</button></div></div>
+    <p class="ds-note">3 of 20 variants exist on both sides.</p>
+    <div class="ds-scroll"><table class="ds-table">
+      <thead><tr><th>variant</th><th>documented</th><th>shipped</th></tr></thead>
+      <tbody><tr><td><code>accent</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>block</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>danger</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>danger-outline</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>destructive</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>ghost</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>grade</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>grade-loss</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>grade-push</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>grade-win</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>grow</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>icon</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>lg</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>link</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>primary</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>primary-full</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>quiet</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>secondary</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>sm</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>void</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr></tbody></table></div>
+
+    <p class="ds-label">badge &mdash; rendered from dashboard.css</p>
+    <div class="ds-demo"><div class="ds-wrapline"><span class="badge badge-accent">accent</span><span class="badge badge-danger">danger</span><span class="badge badge-muted">muted</span><span class="badge badge-pro">pro</span><span class="badge badge-success">success</span><span class="badge badge-warning">warning</span></div></div>
+    <p class="ds-note">0 of 14 variants exist on both sides.</p>
+    <div class="ds-scroll"><table class="ds-table">
+      <thead><tr><th>variant</th><th>documented</th><th>shipped</th></tr></thead>
+      <tbody><tr><td><code>accent</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>danger</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>final</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>live</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>lost</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>muted</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>off</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>pending</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>pro</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>push</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>scheduled</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>success</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>warning</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>won</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr></tbody></table></div>
+
+    <p class="ds-label">card &mdash; rendered from dashboard.css</p>
+    <div class="ds-demo"><div class="ds-wrapline"><div class="card card-header">header</div><div class="card card-title">title</div></div></div>
+    <p class="ds-note">0 of 5 variants exist on both sides.</p>
+    <div class="ds-scroll"><table class="ds-table">
+      <thead><tr><th>variant</th><th>documented</th><th>shipped</th></tr></thead>
+      <tbody><tr><td><code>elev</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>foot</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>head</code></td><td><span class="ds-ok">yes</span></td><td><span class="ds-no">&mdash;</span></td></tr><tr><td><code>header</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr><tr><td><code>title</code></td><td><span class="ds-no">&mdash;</span></td><td><span class="ds-ok">yes</span></td></tr></tbody></table></div>
+
+    <p class="ds-note"><code>scripts/check-ds-drift.py</code> fails when a
+    <code>.ds-*</code> component class duplicates a base that already exists in the
+    product, so a new copy cannot be added quietly. It does not force the two naming
+    models to agree &mdash; that is a decision for whoever resolves them.</p>
+  ` },
+  ];
