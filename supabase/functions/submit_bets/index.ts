@@ -436,6 +436,7 @@ Deno.serve(async (req) => {
         event_id: normalizedEventId,
         ticket_id: ticketId,
         market: marketType,
+        market_id: market.id,
         side: resolvedSide,
         odds: priceToStore,
         stake: stakeNum,

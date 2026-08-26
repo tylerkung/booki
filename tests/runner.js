@@ -19,6 +19,7 @@ const suiteFiles = [
   '14-credit-limits.js',
   '15-win-limits.js',
   '16-invite-email-flow.js',
+  '17-prop-grading.js',
 ];
 
 // Allow running a single suite: node runner.js 05
