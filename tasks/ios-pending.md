@@ -138,12 +138,18 @@ needs an Xcode build plus a release either way.
 - `swiftc -parse <file>` is a cheap syntax check but proves very little
 - The stress suite (`tests/`) is Node and cannot run on the current machine — Node is not installed
 
-## MarketType.oddEven
+## MarketType.oddEven — NOW BLOCKING A SHIPPED FEATURE
 
 The web/backend now sync an `odd_even` market for NFL and NBA (combined final
 score odd or even). `MarketType` has no case for it, so `SyncService`'s
 `MarketType(rawValue:) ?? .moneyline` coerces it and iOS labels the market
 "Moneyline" with sides Odd / Even.
+
+**Updated 2026-08-26:** `odd_even` has been REMOVED from `sync_games`'
+`DEEP_MARKETS` because of this. Without the iOS case, members on the current
+build would have seen a "Moneyline" market with sides Odd and Even from the
+moment NFL games entered the 3-day window on 7 September. Adding the case is
+now what unblocks re-enabling that market.
 
 **This is cosmetic, not a mis-grade.** The submit functions read `market.type`
 from the database row rather than from the client, so the bet is stored as
