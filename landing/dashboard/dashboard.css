@@ -66,7 +66,7 @@ input, button, select, textarea { font: inherit; }
     cursor: pointer;
     font-size: var(--fs-body);
     color: var(--text-secondary);
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .onboarding-option:hover {
     border-color: var(--text-muted);
@@ -83,7 +83,7 @@ input, button, select, textarea { font: inherit; }
     border-radius: var(--radius-circle);
     border: 2px solid var(--border);
     flex-shrink: 0;
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .onboarding-option.selected .onboarding-option-dot {
     border-color: var(--accent);
@@ -353,7 +353,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-secondary);
     font-size: var(--fs-body);
     font-weight: var(--fw-medium);
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
 .sidebar-nav a:hover {
@@ -402,7 +402,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-muted);
     font-size: var(--fs-body);
     font-weight: var(--fw-medium);
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
 .sidebar-bottom a:hover {
@@ -630,7 +630,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-secondary);
     border: var(--hairline) solid var(--border);
     cursor: pointer;
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
 .chip:hover { border-color: var(--text-muted); }
@@ -808,7 +808,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
 .time-filter button.active {
@@ -867,7 +867,7 @@ input, button, select, textarea { font: inherit; }
    viewport width. There is no build step here to resolve them, so the number
    is written out. scripts/check-media-queries.py now fails on var() in a
    media condition. */
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .sidebar {
         transform: translateX(-100%);
     }
@@ -1115,7 +1115,7 @@ input, button, select, textarea { font: inherit; }
 }
 
 /* ── Responsive: Table-to-Card ── */
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .data-table thead {
         display: none;
     }
@@ -1230,7 +1230,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-primary);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .event-row {
         flex-wrap: wrap;
         gap: var(--s-sm);
@@ -1335,7 +1335,7 @@ input, button, select, textarea { font: inherit; }
     border-radius: var(--radius-sm);
     margin-top: var(--s-xs);
 }
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .tonight-stats { flex-direction: column; gap: var(--s-md); }
 }
 
@@ -1364,7 +1364,7 @@ input, button, select, textarea { font: inherit; }
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .settlement-week-label {
         font-size: var(--fs-sm);
         min-width: 200px;
@@ -1492,7 +1492,7 @@ input, button, select, textarea { font: inherit; }
     flex-shrink: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .player-balance-amount { font-size: var(--fs-title1); }
     .player-record-num { font-size: var(--fs-title2); }
     .player-stats-row { grid-template-columns: 1fr; gap: var(--s-md); }
@@ -1540,7 +1540,7 @@ input, button, select, textarea { font: inherit; }
     flex-wrap: wrap;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .games-sport-nav { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: var(--s-sm); }
     .games-sport-card { padding: var(--s-md) var(--s-md); }
     .games-sport-card-name { font-size: var(--fs-caption); }
@@ -1705,7 +1705,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     cursor: pointer;
     text-align: center;
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1805,7 +1805,7 @@ input, button, select, textarea { font: inherit; }
     to { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .pg-col-labels { display: none; }
     .pg-odds-cells { gap: var(--s-xs); }
     .pg-odds-btn { width: var(--avatar); padding: var(--s-sm) var(--s-xxs); font-size: var(--fs-micro); }
@@ -1871,7 +1871,7 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .bs-mode-toggle button.active {
     background: var(--bg-card);
@@ -2010,7 +2010,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-micro);
     font-weight: var(--fw-semibold);
     cursor: pointer;
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     white-space: nowrap;
 }
 .bs-quick-stakes button:hover {
@@ -2191,7 +2191,7 @@ input, button, select, textarea { font: inherit; }
     to { transform: rotate(360deg); }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 768px) {
     .bs-overlay {
         align-items: center;
     }
@@ -2242,13 +2242,13 @@ input, button, select, textarea { font: inherit; }
 }
 
 /* Desktop: hide floating bar + modal overlay, show sidebar */
-@media (min-width: 769px) {
+@media (min-width: 768px) {
     .pg-betslip-bar { display: none !important; }
     .bs-overlay { display: none !important; }
 }
 
 /* Mobile: hide sidebar, keep floating bar + modal */
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .betslip-sidebar { display: none !important; }
     .main-content.has-betslip { margin-right: 0; }
 }
@@ -2419,7 +2419,7 @@ input, button, select, textarea { font: inherit; }
     justify-content: space-between;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .member-detail-header {
         flex-direction: column;
         align-items: flex-start;
@@ -2729,7 +2729,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-body);
     line-height: var(--lh-none);
     cursor: pointer;
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .gd-page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .gd-page-btn:disabled { opacity: 0.5; cursor: default; }  /* matches .btn:disabled */
@@ -2819,7 +2819,7 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-sm);
     font-weight: var(--fw-medium);
     cursor: pointer;
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .gd-view-all:hover { border-color: var(--accent); color: var(--accent); }
 
@@ -3120,7 +3120,7 @@ input, button, select, textarea { font: inherit; }
 /* On touch the controls themselves take the minimum, because thumbs are
    imprecise in a way a cursor is not and an invisible target that overlaps a
    neighbour is worse than a slightly larger button. */
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .chip,
     .pg-odds-btn,
     .time-filter button,

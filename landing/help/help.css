@@ -157,7 +157,7 @@
 
 /* ---- mobile: rail collapses above the content ---- */
 
-@media (max-width: 900px) {
+@media (max-width: 899.98px) {
     .kb {
         grid-template-columns: 1fr;
         gap: 28px;
@@ -190,7 +190,7 @@
     .kb-group:last-child { margin-bottom: 0; }
 }
 
-@media (min-width: 901px) {
+@media (min-width: 900px) {
     .kb-rail-toggle { display: none; }
     .kb-rail[hidden] { display: block; }
 }

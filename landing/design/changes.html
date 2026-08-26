@@ -78,7 +78,7 @@ code {
 
 /* the two-panel comparison */
 .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin: 0 0 var(--s3); }
-@media (max-width: 768px) { .cmp { grid-template-columns: 1fr; } }
+@media (max-width: 767.98px) { .cmp { grid-template-columns: 1fr; } }
 .panel {
     background: var(--card);
     border: 1px solid var(--border);
@@ -307,7 +307,25 @@ td strong { color: var(--text-primary); }
 </table>
 </div>
 
-<p class="note">Still open: the design-system site describes components rather than rendering them from the product stylesheets, so drift stays invisible; <code>transition: all</code> appears 12 times; and the 768/769 and 900/901 breakpoint pairs are still the same boundary written twice.</p>
+<h2>8 &middot; Two loose ends, closed</h2>
+<p><code>transition: all</code> appeared 12 times. It animates every property including layout ones, and it hides what a rule is actually doing — <code>.toggle-btn</code> was the clearest case: its active state swaps the background to a <strong>linear-gradient</strong>, and a gradient is a background-image, which CSS cannot interpolate. It swapped instantly however long the duration said. <code>all</code> made it look animated when it never was. Each of the 12 is now the explicit list of properties its own state rules change.</p>
+
+<p>The breakpoints were subtler than they looked. <code>(max-width: 768px)</code> paired with <code>(min-width: 769px)</code> is not a duplicate — it is a deliberate non-overlapping pair, and it is what most people write. But a viewport can report a <strong>fractional</strong> CSS pixel width at some zoom levels and on devices with fractional DPR scaling, and <strong>768.5px matches neither</strong>. Both sides of the layout switch off at once.</p>
+
+<div class="scroll">
+<table>
+<thead><tr><th>Viewport</th><th>Before &middot; max 768 / min 769</th><th>After &middot; max 767.98 / min 768</th></tr></thead>
+<tbody>
+<tr><td class="mono">767.5px</td><td class="pass">mobile</td><td class="pass">mobile</td></tr>
+<tr><td class="mono">768.0px</td><td class="pass">mobile</td><td class="pass">desktop</td></tr>
+<tr><td class="mono">768.5px</td><td class="fail">neither &mdash; dead zone</td><td class="pass">desktop</td></tr>
+<tr><td class="mono">769.0px</td><td class="pass">desktop</td><td class="pass">desktop</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">16 max-widths moved to <code>.98</code>, 3 min-widths to the round boundary. <code>check-media-queries.py</code> now fails on an adjacent-integer pair as well as on <code>var()</code>.</p>
+
+<p class="note">Still open: the design-system site describes components rather than rendering them from the product stylesheets, so drift stays invisible.</p>
 
 </div>
 </body>

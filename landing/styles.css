@@ -597,7 +597,13 @@ main {
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    transition: all var(--dur-base) var(--ease-out);
+    /* colour only. .toggle-btn.active also swaps the background to a
+       linear-gradient, and a gradient is a background-IMAGE, which CSS cannot
+       interpolate — it swaps instantly however long the duration says. `all`
+       hid that: it looked like the gradient was being animated and it never
+       was. Listing the one property that can actually move keeps the rule
+       honest and stops anyone adding `background` here expecting a fade. */
+    transition: color var(--dur-base) var(--ease-out);
 }
 
 .toggle-btn.active {
@@ -1803,7 +1809,7 @@ html, body {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     /* Nav: hamburger menu */
     .nav-links,
     .nav-actions {
@@ -2131,7 +2137,7 @@ html, body {
     color: var(--accent);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .seo-section {
         padding: 60px 0;
     }
@@ -2466,7 +2472,7 @@ html, body {
 }
 
 /* Blog responsive */
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
     .blog-hero {
         padding: 120px 0 60px;
     }

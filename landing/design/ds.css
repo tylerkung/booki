@@ -657,7 +657,7 @@ code.t {
 }
 #ds-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-@media (max-width: 900px) {
+@media (max-width: 899.98px) {
   :root { --rail: 0px; }
   .ds-nav { position: static; width: auto; height: auto; border-right: none; border-bottom: var(--border-w) solid var(--border); }
   .ds-nav nav { flex-direction: row; flex-wrap: wrap; gap: var(--s1); }
