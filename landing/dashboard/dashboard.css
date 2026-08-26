@@ -219,17 +219,16 @@ input, button, select, textarea { font: inherit; }
     margin-bottom: var(--s-lg);
 }
 
-.btn-primary-full {
-    width: 100%;
-    padding: var(--s-md);
+/* The highest-emphasis action: gradient ground, CTA typography. Split out of
+   .btn-primary-full, which fused three separate ideas — this emphasis, full
+   width, and the CTA type treatment — into one name. That fusion is why the
+   design system documented a `primary` the product appeared not to have: it
+   had it, welded to a width. Composes as `.btn .btn-primary .btn-block`. */
+.btn-primary {
     background: var(--gradient-accent);
     color: var(--bg);
     border: none;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
     box-shadow: 0 2px 8px var(--fill-accent-heavy), inset 0 1px 0 var(--fill-white);
-    margin-top: var(--s-xs);
     font-family: var(--font-cta);
     font-size: var(--fs-cta);
     font-weight: var(--fw-cta);
@@ -237,9 +236,9 @@ input, button, select, textarea { font: inherit; }
     text-transform: uppercase;
 }
 
-.btn-primary-full:hover { transform: translateY(-1px); box-shadow: var(--shadow-btn-hover); }
-.btn-primary-full:active { transform: translateY(0); }
-.btn-primary-full:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-btn-hover); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .auth-links {
     text-align: center;
@@ -686,7 +685,7 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-primary);
     font-size: var(--fs-sm);
     outline: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B6B7B' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23858595' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: 12px center;
 }
@@ -3387,3 +3386,68 @@ input, button, select, textarea { font: inherit; }
 
 /* betting closed on a game — a lock, not a warning about the member */
 .badge-locked { background: var(--fill-warning); color: var(--fill-warning-foreground); }
+
+
+/* ── button size and width ──────────────────────────────────────────────────
+   Promoted from inline style, not invented. The design system documented
+   btn--sm, btn--lg and btn--block for a long time and the product never had
+   them, so 36 buttons carried an inline size override and 9 an inline
+   width:100%. The variants existed — they were just being retyped at every
+   call site instead of named once.
+
+   The values are the ones already in use, taken from the most common inline
+   pairs rather than chosen fresh: --fs-caption with tight padding for small,
+   --s-lg padding for large.
+
+   Three siblings the design system also documented are NOT here — btn--icon,
+   btn--link and btn--grow have zero call sites and no ad-hoc equivalent, so
+   they were removed from the design system instead of built. A variant with no
+   caller is documentation of something that does not exist, which is the drift
+   this whole pass has been closing. */
+.btn-sm {
+    font-size: var(--fs-caption);
+    padding: var(--s-xs) var(--s-md);
+}
+
+.btn-lg {
+    padding: var(--s-lg);
+}
+
+.btn-block {
+    width: 100%;
+}
+
+/* Icon-only. Currently written as .btn-ghost plus an inline font-size and
+   padding in three places ($ for settle up, +/- for adjust, ··· for overflow).
+   Square, because a round-trip through padding to reach a square is how those
+   three ended up with three different sizes. */
+.btn-icon {
+    width: var(--tap-target);
+    height: var(--tap-target);
+    padding: 0;
+    display: inline-grid;
+    place-items: center;
+}
+
+/* A button that reads as a link. Also written inline today — .btn-ghost with a
+   font-size and an accent colour. */
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--accent);
+    padding: 0;
+    height: auto;
+    font-size: var(--fs-caption);
+}
+.btn-link:hover { text-decoration: underline; }
+
+/* Low-emphasis destructive. Distinct from .btn-danger, which is the filled
+   commit-to-it button; this is the "remove" that sits quietly in a row until
+   hovered. Written inline in two places today. */
+.btn-quiet {
+    background: transparent;
+    color: var(--danger);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-semibold);
+}
+.btn-quiet:hover { background: var(--fill-danger); }

@@ -294,18 +294,18 @@ code.t {
 /* filled */
 .ds-btn--primary { background: linear-gradient(135deg, var(--accent), var(--accent-secondary)); color: var(--background); }
 .ds-btn--accent { background: var(--accent); color: var(--background); }
-.ds-btn--destructive { background: var(--danger); color: var(--background); }
+.ds-btn--danger { background: var(--danger); color: var(--background); }
 
 .ds-btn--primary:hover, .ds-btn--primary.is-hover,
 .ds-btn--accent:hover, .ds-btn--accent.is-hover,
-.ds-btn--destructive:hover, .ds-btn--destructive.is-hover { filter: brightness(1.12); }
+.ds-btn--danger:hover, .ds-btn--danger.is-hover { filter: brightness(1.12); }
 
 /* Pressed also displaces by 1px. Booki uses no shadows, so brightness alone is
    too subtle to read as a press — the displacement is what makes it legible,
    both in this matrix and under a real finger. */
 .ds-btn--primary:active, .ds-btn--primary.is-pressed,
 .ds-btn--accent:active, .ds-btn--accent.is-pressed,
-.ds-btn--destructive:active, .ds-btn--destructive.is-pressed { filter: brightness(0.85); transform: translateY(1px); }
+.ds-btn--danger:active, .ds-btn--danger.is-pressed { filter: brightness(0.85); transform: translateY(1px); }
 
 /* outlined — the ring is an inset shadow, not a border, so it follows the
    radius exactly and every button in the matrix stays the same size */
@@ -336,7 +336,6 @@ code.t {
 .ds-btn--icon { width: var(--btn-h); padding: 0; }
 .ds-btn--icon.ds-btn--sm { width: var(--s8); }
 .ds-btn--block { width: 100%; }
-.ds-btn--grow { flex: 1; }
 
 /* ── the matrix ── */
 .ds-matrix { width: 100%; border-collapse: collapse; }
@@ -373,7 +372,6 @@ code.t {
 .ds-badge--pending { background: var(--fill-warning); color: var(--fill-warning-foreground); }
 .ds-badge--lost { background: var(--fill-danger); color: var(--fill-danger-foreground); }
 .ds-badge--push { background: var(--fill-neutral); color: var(--text-secondary); }
-.ds-badge--off { background: var(--fill-faint); color: var(--text-muted); }
 
 .ds-tag {
   font-size: var(--t-micro);
@@ -422,9 +420,7 @@ code.t {
   padding: var(--s4);
   min-width: 250px;
 }
-.ds-card--elev { box-shadow: 0 0 var(--s3) var(--fill-accent); }
-.ds-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s2); }
-.ds-card__foot { display: flex; justify-content: space-between; margin-top: var(--s3); font-size: var(--t-footnote); }
+.ds-card__header { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s2); }
 
 .ds-list { background: var(--card); border: var(--border-w) solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .ds-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s3) var(--s4); border-bottom: var(--border-w) solid var(--divider); }

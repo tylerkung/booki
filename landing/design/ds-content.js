@@ -317,7 +317,7 @@ const DS_SECTIONS = [
   <p class="ds-label">Shadow</p>
   <div class="ds-demo">
     <div class="ds-card"><span class="ds-strong">Standard card</span><p class="ds-anno">no shadow — the default</p></div>
-    <div class="ds-card ds-card--elev"><span class="ds-strong">Featured card</span><p class="ds-anno">accent glow at 15%</p></div>
+    <div class="ds-card"><span class="ds-strong">Featured card</span><p class="ds-anno">accent glow at 15%</p></div>
   </div>
 ` },
 
@@ -385,8 +385,8 @@ const DS_SECTIONS = [
   <div class="ds-demo ds-demo--col ds-w-sm">
     <button class="ds-btn ds-btn--primary ds-btn--block">Place 3 Picks &middot; $75.00</button>
     <div class="ds-dialog__actions">
-      <button class="ds-btn ds-btn--secondary ds-btn--grow">Cancel</button>
-      <button class="ds-btn ds-btn--accent ds-btn--grow">Settle up</button>
+      <button class="ds-btn ds-btn--secondary">Cancel</button>
+      <button class="ds-btn ds-btn--accent">Settle up</button>
     </div>
   </div>
   <p class="ds-note">
@@ -428,7 +428,7 @@ const DS_SECTIONS = [
   <p class="ds-label">Form rows</p>
   <div class="ds-list ds-w-md">
     <div class="ds-row"><span class="ds-body">Manual pick acceptance</span><span class="ds-badge ds-badge--live">On</span></div>
-    <div class="ds-row"><span class="ds-body">Allow futures in Multi-Picks</span><span class="ds-badge ds-badge--off">Off</span></div>
+    <div class="ds-row"><span class="ds-body">Allow futures in Multi-Picks</span><span class="ds-badge">Off</span></div>
     <div class="ds-row"><span class="ds-body ds-lose">Log Out</span></div>
   </div>
   <p class="ds-note">
@@ -461,7 +461,7 @@ const DS_SECTIONS = [
     <span class="ds-badge ds-badge--lost">Lost</span>
     <span class="ds-badge ds-badge--push">Push</span>
     <span class="ds-badge ds-badge--pending">Pending</span>
-    <span class="ds-badge ds-badge--off">Void</span>
+    <span class="ds-badge">Void</span>
   </div>
 
   <p class="ds-label">Attention tags</p>
@@ -525,15 +525,11 @@ const DS_SECTIONS = [
   <p class="ds-label">Pick card anatomy</p>
   <div class="ds-demo ds-demo--top">
     <div class="ds-card">
-      <div class="ds-card__head">
+      <div class="ds-card__header">
         <span class="ds-strong">Orlando Magic +7</span>
         <span class="ds-badge ds-badge--won">Won</span>
       </div>
       <div class="ds-sub">Magic @ Timberwolves &middot; Final 119&ndash;92</div>
-      <div class="ds-card__foot ds-num">
-        <span class="ds-sub">$25.00 @ &minus;110</span>
-        <span class="ds-win">+$22.73</span>
-      </div>
     </div>
     <div class="ds-stack ds-w-sm">
       <p class="ds-anno">Title and status share one line, status right-aligned, so a column of cards scans vertically.</p>
@@ -576,8 +572,8 @@ const DS_SECTIONS = [
         It does not move any money.
       </div>
       <div class="ds-dialog__actions">
-        <button class="ds-btn ds-btn--secondary ds-btn--grow">Cancel</button>
-        <button class="ds-btn ds-btn--accent ds-btn--grow">Settle up</button>
+        <button class="ds-btn ds-btn--secondary">Cancel</button>
+        <button class="ds-btn ds-btn--accent">Settle up</button>
       </div>
     </div>
   </div>

@@ -494,3 +494,58 @@ already exists as the solid treatment on the plan card, and these are tinted, so
 the honest options were a second Pro class named for its appearance or a context
 selector restructure. Neither is clearly right, so it is recorded instead of
 guessed at.
+
+
+---
+
+## 2026-08-26 — the unshipped variants, resolved
+
+13 variants were documented on the design-system page and absent from the
+product. Each was resolved one of three ways: built, renamed, or deleted.
+Documenting a component that does not exist is the drift, so leaving any of them
+described-but-missing was not an option.
+
+**Built (6)** — each had demonstrated ad-hoc demand, not a guess:
+
+| variant | evidence |
+|---|---|
+| `btn-block` | 9 buttons carried an inline `width: 100%` |
+| `btn-sm` / `btn-lg` | 36 buttons carried inline size overrides |
+| `btn-icon` | `$`, `+/-`, `···` written as `btn-ghost` plus inline size |
+| `btn-link` | `btn-ghost` plus an inline accent colour and font-size |
+| `btn-quiet` | `btn-ghost` plus an inline danger colour, twice |
+
+**Renamed (2)** — the same thing under another name: `btn--destructive` →
+`btn--danger`, `card__head` → `card__header`.
+
+**Deleted (4)** — no product use and no ad-hoc equivalent: `btn--grow`,
+`card__foot`, `card--elev`, and `badge--off`, which referenced `--fill-faint`,
+a token that does not exist, so it had been rendering transparent.
+
+**`btn--primary` was the interesting one.** The page documented a gradient
+primary the product appeared not to have. It had it — welded into
+`.btn-primary-full`, which fused three separate ideas: the gradient emphasis,
+full width, and CTA typography. That fusion is exactly why the variant looked
+missing. Now that `btn-block` exists it decomposes: `.btn .btn-primary
+.btn-block`, verified in the browser to reproduce the old rendering exactly.
+
+**Two near-misses worth recording**, both caught by checking rather than
+reasoning:
+
+- The first pass deleted `btn--icon`, `btn--link` and `btn--quiet` as unused. All
+  three were in use, written inline. The icon check had looked for `<svg` and the
+  product uses text glyphs. Restored and built.
+- `.btn-primary-full` looked dead — zero uses in `index.html`. It is used three
+  times in `login.html`, which the first grep did not cover.
+
+**Also fixed:** the search-input icon still painted its stroke in `#6B6B7B`, the
+pre-lift `--text-muted`. An inline SVG data URI cannot read a token, so it did
+not move with the palette and nothing flagged it. Same for `invite.html`'s local
+copy and the README palette table. The email templates keep the old value
+deliberately — an email client cannot use custom properties.
+
+**Result: 0 documented-but-not-shipped.** btn convergence 3 of 20 → 11 of 17.
+
+The remaining gap runs the other way: 29 variants ship without being documented,
+almost all of them the semantic badges added this week. That is a writing task,
+not a drift.

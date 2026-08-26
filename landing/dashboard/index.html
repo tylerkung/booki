@@ -308,7 +308,7 @@
 
                         <!-- View All toggle -->
                         <div x-show="attentionAlertCount > 5" style="padding-top:var(--s-md);text-align:center;">
-                            <button class="btn btn-ghost" style="font-size:var(--fs-caption);color:var(--accent);" @click="attentionExpanded = !attentionExpanded" x-text="attentionExpanded ? 'Show Less' : 'View All (' + attentionAlertCount + ')'"></button>
+                            <button class="btn btn-link" @click="attentionExpanded = !attentionExpanded" x-text="attentionExpanded ? 'Show Less' : 'View All (' + attentionAlertCount + ')'"></button>
                         </div>
                     </div>
                 </div>
@@ -1851,7 +1851,7 @@
                     </div>
 
                     <!-- CTA -->
-                    <button class="btn btn-accent" style="display:flex;align-items:center;justify-content:center;gap:var(--s-sm);max-width: var(--w-panel-lg);width: 100%;margin:0 auto;padding:var(--s-lg);font-size:var(--fs-body);" @click="startCheckout()" :disabled="isCheckingOut">
+                    <button class="btn btn-accent btn-block" style="display:flex;align-items:center;justify-content:center;gap:var(--s-sm);max-width: var(--w-panel-lg);margin:0 auto;padding:var(--s-lg);font-size:var(--fs-body);" @click="startCheckout()" :disabled="isCheckingOut">
                         <span x-text="isCheckingOut ? 'Loading...' : 'Upgrade — $49.99/mo'"></span>
                         <svg x-show="!isCheckingOut" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     </button>
@@ -3371,7 +3371,7 @@
 
                         <!-- Log Out -->
                         <div class="card" style="margin-bottom:var(--s-xl);">
-                            <button class="btn btn-ghost" style="width: 100%;justify-content:center;color:var(--text-secondary);" @click="logout()">
+                            <button class="btn btn-ghost btn-block" style="justify-content:center;color:var(--text-secondary);" @click="logout()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:var(--s-sm);"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                                 Log Out
                             </button>
@@ -3560,7 +3560,7 @@
                 </div>
 
                 <!-- Confirm CTA -->
-                <button class="btn btn-accent" style="display:block;max-width: var(--w-panel-lg);width: 100%;margin:0 auto;padding:var(--s-lg);font-size:var(--fs-body);" @click="becomeOrganizer()" :disabled="isBecomingOrganizer">
+                <button class="btn btn-accent btn-block" style="display:block;max-width: var(--w-panel-lg);margin:0 auto;padding:var(--s-lg);font-size:var(--fs-body);" @click="becomeOrganizer()" :disabled="isBecomingOrganizer">
                     <span x-text="isBecomingOrganizer ? 'Setting up your group...' : 'Get Started — It\'s Free'"></span>
                 </button>
                 <p class="t-caption" style="text-align:center;margin-top:var(--s-md);margin-bottom:var(--s-xxxl);">No credit card required. You can step down anytime.</p>
@@ -3694,7 +3694,7 @@
                     </div>
 
                     <!-- Actions -->
-                    <button class="btn btn-accent" style="width: 100%;padding:var(--s-lg);font-size:var(--fs-body);" @click="submitOnboarding()" :disabled="isSubmittingOnboarding">
+                    <button class="btn btn-accent btn-block" style="padding:var(--s-lg);font-size:var(--fs-body);" @click="submitOnboarding()" :disabled="isSubmittingOnboarding">
                         <span x-text="isSubmittingOnboarding ? 'Setting up...' : 'Continue'"></span>
                     </button>
                     <button class="t-body-muted" style="display:block;margin:var(--s-md) auto 0;background:none;border:none;cursor:pointer;" @click="skipOnboarding()">Skip for now</button>
@@ -3741,7 +3741,7 @@
                     </div>
 
                     <!-- CTA -->
-                    <a href="#/dashboard" class="btn btn-accent" style="display:flex;justify-content:center;max-width: var(--w-panel-lg);width: 100%;margin:0 auto;padding:var(--s-lg);font-size:var(--fs-body);text-decoration:none;" @click="loadBookie(); loadPlayers(); loadDashboard();">
+                    <a href="#/dashboard" class="btn btn-accent btn-block" style="display:flex;justify-content:center;max-width: var(--w-panel-lg);margin:0 auto;padding:var(--s-lg);font-size:var(--fs-body);text-decoration:none;" @click="loadBookie(); loadPlayers(); loadDashboard();">
                         Go to Dashboard
                     </a>
                 </div>
@@ -3769,8 +3769,8 @@
                         </div>
                         <h2 x-text="betSlipSuccessMessage" style="font-size:var(--fs-title2);margin:var(--s-lg) 0 var(--s-sm);"></h2>
                         <p style="color:var(--text-secondary);font-size:var(--fs-body);margin-bottom:var(--s-xl);">Your pick has been placed successfully.</p>
-                        <button class="btn btn-accent" style="width: 100%;max-width: var(--w-panel);padding:var(--s-lg);text-align:center;margin:0 auto;display:block;" @click="closeBetSlipSuccess()">Done</button>
-                        <button class="btn t-body" style="width: 100%;max-width: var(--w-panel);padding:var(--s-md);text-align:center;margin:var(--s-sm) auto 0;display:block;background:transparent;border:var(--hairline) solid var(--border);" @click="reuseSelections()">Re-use Selections</button>
+                        <button class="btn btn-accent btn-block" style="max-width: var(--w-panel);padding:var(--s-lg);text-align:center;margin:0 auto;display:block;" @click="closeBetSlipSuccess()">Done</button>
+                        <button class="btn t-body btn-block" style="max-width: var(--w-panel);padding:var(--s-md);text-align:center;margin:var(--s-sm) auto 0;display:block;background:transparent;border:var(--hairline) solid var(--border);" @click="reuseSelections()">Re-use Selections</button>
                     </div>
                 </div>
             </template>
@@ -3785,7 +3785,7 @@
                                 <h2 style="font-size:var(--fs-title3);">Pick Slip</h2>
                                 <span style="background:var(--bg-elevated);color:var(--accent);font-size:var(--fs-micro);font-weight:var(--fw-bold);padding:var(--s-xxs) var(--s-sm);border-radius:var(--radius-full);" x-text="betSlipSelections.length"></span>
                             </div>
-                            <button class="btn-ghost" style="color:var(--danger);font-size:var(--fs-caption);font-weight:var(--fw-semibold);padding:var(--s-xs) var(--s-sm);background:none;border:none;cursor:pointer;" @click="clearBetSlip()">Clear All</button>
+                            <button class="btn btn-quiet" @click="clearBetSlip()">Clear All</button>
                         </div>
                         <!-- Mode Toggle -->
                         <div class="bs-mode-toggle" style="margin-bottom:0;">
@@ -3986,8 +3986,8 @@
                         </div>
                         <h2 x-text="betSlipSuccessMessage" style="font-size:var(--fs-title2);margin:var(--s-lg) 0 var(--s-sm);"></h2>
                         <p style="color:var(--text-secondary);font-size:var(--fs-body);margin-bottom:var(--s-xl);">Your pick has been placed successfully.</p>
-                        <button class="btn btn-accent" style="width: 100%;max-width: var(--w-panel);padding:var(--s-lg);text-align:center;margin:0 auto;display:block;" @click="closeBetSlipSuccess()">Done</button>
-                        <button class="btn t-body" style="width: 100%;max-width: var(--w-panel);padding:var(--s-md);text-align:center;margin:var(--s-sm) auto 0;display:block;background:transparent;border:var(--hairline) solid var(--border);" @click="reuseSelections()">Re-use Selections</button>
+                        <button class="btn btn-accent btn-block" style="max-width: var(--w-panel);padding:var(--s-lg);text-align:center;margin:0 auto;display:block;" @click="closeBetSlipSuccess()">Done</button>
+                        <button class="btn t-body btn-block" style="max-width: var(--w-panel);padding:var(--s-md);text-align:center;margin:var(--s-sm) auto 0;display:block;background:transparent;border:var(--hairline) solid var(--border);" @click="reuseSelections()">Re-use Selections</button>
                     </div>
                 </template>
 
@@ -3998,7 +3998,7 @@
                         <div class="bs-header">
                             <h2 style="font-size:var(--fs-title3);">Pick Entry</h2>
                             <div style="display:flex;gap:var(--s-sm);align-items:center;">
-                                <button class="btn-ghost" style="color:var(--danger);font-size:var(--fs-caption);font-weight:var(--fw-semibold);padding:var(--s-xs) var(--s-sm);background:none;border:none;cursor:pointer;" @click="clearBetSlip()">Clear All</button>
+                                <button class="btn btn-quiet" @click="clearBetSlip()">Clear All</button>
                                 <button class="btn-ghost" style="padding:var(--s-xs);background:none;border:none;cursor:pointer;color:var(--text-muted);" @click="showBetSlip = false">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                 </button>
