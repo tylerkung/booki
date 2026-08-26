@@ -92,6 +92,41 @@ first. Putting them in one function would force the cheap path to carry the
 expensive one's constraints — and `sync_games` already runs ~80s against a 150s
 ceiling, with no room to absorb a resolution call per unseen player.
 
+## Measured cost of the props pipeline
+
+Taken 2026-08-25 against NFL week 1, sixteen days out, via
+`sync_player_props` with `{"dry_run": true, "window_days": 20}`. A dry run
+still calls the Odds API — it skips only the database write — so the credit
+figures are real.
+
+| | |
+|---|---|
+| Games considered | 16 |
+| Games mapped to balldontlie | 16 (0 skipped) |
+| Markets that would be written | 35 |
+| Subjects resolved | 18, **0 unresolved** |
+| Odds API cost | **26 credits over 16 calls** |
+
+Two things to take from this, and one not to.
+
+**The 26 is a floor.** Books had barely posted prop menus that far out — 35
+markets across 16 games is about two per game, against an expected couple of
+hundred per game once a slate is live. The credit figure will rise with it.
+
+**The ceiling is what makes the pipeline schedulable.** The Odds API charges
+markets × regions per call, so six prop markets over one region caps a single
+call at 6 credits regardless of how many props come back. A full 16-game slate
+therefore cannot exceed 96 credits, however busy the board gets. Migration 049
+sets the cadence off that bound rather than off the 26.
+
+**Do not read 0 unresolved as a solved identity problem.** Eighteen subjects is
+a small sample drawn from the handful of star players who get props posted two
+weeks out — exactly the names most likely to match cleanly. The interesting
+cases are the ones that appear on game day: rookies, practice-squad call-ups,
+suffixes and hyphenates. `subjects_unresolved` is still only a log line, so
+right now a drift in name matching would show up as props quietly missing
+rather than as an alert.
+
 ## Known gaps
 
 - **Not every schedule lives in the repo.** `sync_games` and
@@ -99,7 +134,12 @@ ceiling, with no room to absorb a resolution call per unseen player.
   daily and every 5 minutes, so they were scheduled through the dashboard. That
   means the migrations are not a complete description of what runs, and a fresh
   environment would not reproduce them. Worth moving into a migration.
-- **BLOCKER — the superseded-line guard rejects every prop.** This one stops
+- ~~**BLOCKER — the superseded-line guard rejects every prop.**~~ Fixed by
+  migration 048; the original writeup is kept below because the root cause was
+  broader than props and worth remembering. In production it was also refusing
+  all 705 outright markets — every futures bet — which nobody had noticed.
+
+  ORIGINAL: **the superseded-line guard rejects every prop.** This one stops
   props working at all, and it does so silently: the props ingest, render, and
   price correctly, then refuse every bet with `line_no_longer_offered`.
 
@@ -123,7 +163,14 @@ ceiling, with no room to absorb a resolution call per unseen player.
   `sync_player_props`, and have the guard pick the reference by market type.
   Needs a migration, so it has not been done.
 
-- `sync_player_props` is not scheduled yet — it has only been run by hand, so
-  prop prices are whatever the last manual run captured.
-- `grade_player_props` exists but is likewise unscheduled, so nothing settles a
-  prop on its own yet.
+- ~~`sync_player_props` / `grade_player_props` are unscheduled.~~ Scheduled by
+  migration 049: sync every 6 hours at :15, grading every 30 minutes at :05/:35,
+  both offset from the :00/:30 odds refresh.
+- **`subjects_unresolved` is not persisted.** The count and ten examples go to
+  the run log and nowhere else, so there is no way to notice name matching
+  degrading over a season except by reading logs. This is the monitoring the
+  fail-open design in 048 assumes exists.
+- **The game-week measurement is still outstanding.** Everything above was
+  measured sixteen days before kickoff. Re-run the dry run during a live slate
+  and compare against the 96-credit ceiling before trusting the 23% projection
+  in migration 049.
