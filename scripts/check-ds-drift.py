@@ -27,9 +27,11 @@ KNOWN = {
     'btn':   'the two systems model buttons on different axes — the page names '
              'intent (primary/secondary/ghost), the product names outcome '
              '(grade-win/void). Reconciling them is a design decision.',
-    'badge': 'the page names a badge for what it MEANS (won/lost/push), the '
-             'product for how it LOOKS (success/danger/muted). Different axes, '
-             'not different spellings.',
+    'badge': 'PARTLY RESOLVED 2026-08-26 — the product adopted the semantic '
+             'names (won/lost/push/pending/scheduled/live/final), so 7 of 17 '
+             'variants now agree, up from 2 of 14. The visual names remain for '
+             'non-status badges (a member being active is not a pick outcome), '
+             'and .ds-badge--off has no product analogue.',
     'card':  'the page uses BEM parts (card__head/__foot), the product uses '
              'card-header/card-title. A rename, but one that touches markup '
              'across the dashboard.',

@@ -3303,3 +3303,43 @@ input, button, select, textarea { font: inherit; }
     background-color: var(--card);   /* opaque, so each chip occludes the one behind it */
 }
 .avatar-stack .avatar:first-child { margin-left: 0; }
+
+
+/* ── badge, semantic ────────────────────────────────────────────────────────
+   Named for what the badge MEANS, not what colour it is. The visual variants
+   below (.badge-success, .badge-danger, .badge-muted) stay for the cases that
+   are genuinely about appearance; anything describing the state of a pick or a
+   game uses one of these.
+
+   The reason is not tidiness. Until now the mapping from state to colour lived
+   in JavaScript, in three separate functions that had drifted apart — so "what
+   colour is a won pick" was application logic, and changing it meant editing
+   dashboard.js. Here, the domain word is the class and the stylesheet decides
+   how it looks, which is the only arrangement where a designer can restyle a
+   state without touching behaviour.
+
+   Adopting the design system's model also resolved three collisions the visual
+   naming had hidden:
+
+     final     was badge-success — a completed game rendered GREEN, the same
+               colour a won pick uses. Now neutral: finishing is not winning.
+     scheduled was badge-muted — grey, indistinguishable from settled. Now uses
+               --scheduled, a token that existed for this and had zero uses.
+     void      was badge-danger — red, identical to a loss. A void pick is not
+               a loss; the stake comes back. Now faint. */
+
+/* outcome */
+.badge-won    { background: var(--fill-accent); color: var(--fill-accent-foreground); }
+.badge-lost   { background: var(--fill-danger); color: var(--fill-danger-foreground); }
+.badge-push   { background: var(--fill-neutral); color: var(--text-secondary); }
+.badge-void   { background: var(--bg-elevated); color: var(--text-muted); }
+
+/* pick lifecycle */
+.badge-pending { background: var(--fill-warning); color: var(--fill-warning-foreground); }
+.badge-settled { background: var(--bg-elevated); color: var(--text-muted); }
+
+/* game lifecycle */
+.badge-scheduled { background: var(--fill-scheduled); color: var(--fill-scheduled-foreground); }
+.badge-live      { background: var(--fill-accent); color: var(--fill-accent-foreground); }
+.badge-final     { background: var(--fill-final); color: var(--fill-final-foreground); }
+.badge-canceled  { background: var(--fill-danger); color: var(--fill-danger-foreground); }

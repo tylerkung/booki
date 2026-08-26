@@ -1178,7 +1178,7 @@
                         <!-- Hero Card -->
                         <div class="card" style="margin-bottom:var(--s-lg);">
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s-lg);">
-                                <span class="badge" :class="(pickDetail.is_parlay && pickDetailLegs.some(l => l.grade_result === 'loss')) ? 'badge-danger' : statusBadgeClass(pickDetail)" style="font-size:var(--fs-sm);padding:var(--s-sm) var(--s-lg);" x-text="(pickDetail.is_parlay && pickDetailLegs.some(l => l.grade_result === 'loss')) ? 'Lost' : statusDisplayText(pickDetail)"></span>
+                                <span class="badge" :class="(pickDetail.is_parlay && pickDetailLegs.some(l => l.grade_result === 'loss')) ? 'badge-lost' : statusBadgeClass(pickDetail)" style="font-size:var(--fs-sm);padding:var(--s-sm) var(--s-lg);" x-text="(pickDetail.is_parlay && pickDetailLegs.some(l => l.grade_result === 'loss')) ? 'Lost' : statusDisplayText(pickDetail)"></span>
                                 <span class="t-caption" x-text="formatDate(pickDetail.created_at)"></span>
                             </div>
                             <h2 style="font-size:var(--fs-title3);margin-bottom:var(--s-xs);" x-text="pickDetail.side || '—'"></h2>

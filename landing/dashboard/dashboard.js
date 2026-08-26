@@ -1273,11 +1273,12 @@ function dashboardApp() {
         },
 
         playerTicketStatusBadgeClass(ticket) {
-            if (ticket.gradeResult === 'win') return 'badge-success';
-            if (ticket.gradeResult === 'loss') return 'badge-danger';
-            if (ticket.gradeResult === 'push') return 'badge-muted';
-            if (ticket.status === 'void') return 'badge-danger';
-            return 'badge-warning';
+            // Semantic classes — the stylesheet decides how each state looks.
+            if (ticket.gradeResult === 'win') return 'badge-won';
+            if (ticket.gradeResult === 'loss') return 'badge-lost';
+            if (ticket.gradeResult === 'push') return 'badge-push';
+            if (ticket.status === 'void') return 'badge-void';
+            return 'badge-pending';
         },
 
         playerTicketStatusText(ticket) {
@@ -3236,11 +3237,11 @@ function dashboardApp() {
 
         eventStatusBadgeClass(status) {
             switch (status) {
-                case 'scheduled': return 'badge-muted';
-                case 'in_progress': return 'badge-warning';
-                case 'final': return 'badge-success';
-                case 'canceled': return 'badge-danger';
-                default: return 'badge-muted';
+                case 'scheduled': return 'badge-scheduled';
+                case 'in_progress': return 'badge-live';
+                case 'final': return 'badge-final';
+                case 'canceled': return 'badge-canceled';
+                default: return 'badge-settled';
             }
         },
 
@@ -5230,14 +5231,14 @@ function dashboardApp() {
 
         statusBadgeClass(bet) {
             if (typeof bet === 'string') bet = { status: bet };
-            if (bet.grade_result === 'win') return 'badge-success';
-            if (bet.grade_result === 'loss') return 'badge-danger';
-            if (bet.grade_result === 'push') return 'badge-muted';
+            if (bet.grade_result === 'win') return 'badge-won';
+            if (bet.grade_result === 'loss') return 'badge-lost';
+            if (bet.grade_result === 'push') return 'badge-push';
             switch (bet.status) {
-                case 'settled': case 'graded': return 'badge-muted';
-                case 'pending': case 'accepted': case 'readyToGrade': return 'badge-warning';
-                case 'void': case 'declined': return 'badge-danger';
-                default: return 'badge-muted';
+                case 'settled': case 'graded': return 'badge-settled';
+                case 'pending': case 'accepted': case 'readyToGrade': return 'badge-pending';
+                case 'void': case 'declined': return 'badge-void';
+                default: return 'badge-settled';
             }
         },
 

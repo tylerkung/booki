@@ -413,3 +413,47 @@ phantom duplicates (`.tag-tooltip` is not evidence of a `.tag`); it compares
 exact class names now.
 
 **All five PRD phases are now done.** `check-all.sh` runs nine checks.
+
+
+---
+
+## 2026-08-26 — semantic badge naming adopted
+
+The badge question raised in the previous entry was decided in favour of the
+design system's model: a badge is named for what it MEANS, not what colour it is.
+
+The reason this mattered more than tidiness: the state-to-colour mapping lived in
+`dashboard.js`, in **three separate functions that had drifted apart**. "What
+colour is a won pick" was application logic, and restyling a state meant editing
+behaviour. Now the domain word is the class and the stylesheet decides the look.
+
+Ten semantic classes added — `won`, `lost`, `push`, `void`, `pending`,
+`settled`, `scheduled`, `live`, `final`, `canceled` — and all three mappers
+converted. The visual names stay for badges that genuinely are about appearance;
+a member being active is not a pick outcome.
+
+**Adopting the model resolved three collisions the visual naming had hidden:**
+
+| state | was | now | why |
+|---|---|---|---|
+| `final` | `badge-success` — green | neutral | a completed game rendered the same green as a won pick. Finishing is not winning. |
+| `scheduled` | `badge-muted` — grey | `--scheduled` purple | indistinguishable from settled. Uses a token that existed for this and had **zero uses**. |
+| `void` | `badge-danger` — red | faint | identical to a loss. A void pick is not a loss; the stake comes back. |
+
+`--scheduled` (0 uses) and `--final` (1 use) were effectively dead tokens that
+existed for precisely this purpose.
+
+**The drift table is now computed at runtime.** Generating it statically was
+repeating the original mistake — a hand-written inventory of another file's
+contents goes stale the moment that file changes, which is the drift the section
+exists to expose. `renderDrift()` in `ds.js` reads the loaded stylesheets and
+derives the comparison, the same way the colour swatches already read their hex
+from the resolved token. Adding a variant to `dashboard.css` changes the table on
+the next reload, with nothing to update by hand.
+
+Badge convergence: **7 of 17 variants now agree, up from 2 of 14.**
+
+**Still visual, deliberately:** member active/pending, invite has-email,
+settlement collection status, and alert severity. Each is arguably its own
+semantic domain, but none is a pick or game state, so they were left alone rather
+than swept in.
