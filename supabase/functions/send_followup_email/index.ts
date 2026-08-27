@@ -8,10 +8,24 @@ const EMAIL_TYPE = 'invite_followup';
 // no lifecycle_emails rows are written, so nobody is burned while sends are
 // paused. A manual call with {"force": true} still sends, for testing.
 //
-// PAUSED until the invite flow is verified end to end. There is no point
-// telling 12 dormant organizers to go create an invite if invites are broken.
-// To resume: flip to false and redeploy.
-const PAUSED = true;
+// UNPAUSED 2026-08-26. The invite flow was verified end to end, and the two
+// display bugs that made it look broken are fixed: create_invite returns
+// invite_code while dashboard.js read response.code (so the success block never
+// rendered), and the Pending Invites table read inv.code from a select that
+// returns invite_code (so the column was blank and both copy buttons produced
+// "undefined"). Invites were always being created correctly; only the web
+// display was wrong.
+//
+// Checked before unpausing: 15 candidates, every one a real address — no
+// test_stress or example.com accounts reached the list, so the 13 suppression
+// rows are holding. The count moved from the 12 recorded in CLAUDE.md because
+// three more organizers crossed the 10-day dormancy threshold, which is the
+// intended behaviour rather than drift. Every link in the email body returns
+// 200.
+//
+// To pause again: flip to true and redeploy. While true the daily run is a
+// no-op and no lifecycle_emails rows are written, so nobody is burned.
+const PAUSED = false;
 
 interface DormantOrganizer {
   bookie_id: string;
