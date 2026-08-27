@@ -180,6 +180,23 @@ function dashboardApp() {
             try { localStorage.removeItem(this.INVITE_KEY); } catch (e) {}
         },
 
+        async recordReferral() {
+            if (!this.session || !this.session.user) return;
+            const meta = this.session.user.user_metadata || {};
+            const source = meta.referral_source;
+            if (!source) return;
+
+            // ignoreDuplicates: this must never overwrite a questionnaire answer
+            // that already landed. First write wins, which is the same rule
+            // first-touch attribution follows.
+            await this.supabase.from('onboarding_responses').upsert({
+                auth_user_id: this.session.user.id,
+                referral_source: source,
+                referral_detail: meta.referral_detail || null,
+                completed: false,
+            }, { onConflict: 'auth_user_id', ignoreDuplicates: true });
+        },
+
         async recordAttribution() {
             if (!this.session || !this.session.user) return;
             let record;
@@ -219,15 +236,19 @@ function dashboardApp() {
             // a never-asked were the same absence — and since only organizers
             // were ever asked, a missing row meant three different things.
             try {
-                await this.supabase.from('onboarding_responses').insert({
+                // Upsert, not insert: the signup form may already have written
+                // this user's row with their referral answer. A second row would
+                // silently double them in attribution_overview, which LEFT JOINs
+                // this table without aggregating. referral_source is deliberately
+                // absent from the payload -- PostgREST only SETs the columns it
+                // is given, so the signup answer survives.
+                await this.supabase.from('onboarding_responses').upsert({
                     auth_user_id: this.session.user.id,
                     role_intent: this.onboardingRole || null,
                     use_case: this.onboardingUseCase || null,
                     group_size: this.onboardingGroupSize || null,
-                    referral_source: this.onboardingReferral || null,
-                    referral_detail: this.onboardingReferralDetail || null,
                     completed: completed,
-                });
+                }, { onConflict: 'auth_user_id' });
             } catch (e) {
                 console.error('Failed to save onboarding response:', e);
             }
@@ -659,6 +680,13 @@ function dashboardApp() {
             // users would otherwise have no source at all — which is most of the
             // user base. Fire-and-forget; the insert is a no-op after the first.
             this.recordAttribution().catch(() => {});
+
+            // The referral answer is given on the signup form, before a session
+            // exists, so it rides along as user_metadata and is persisted here.
+            // This is what closes the gap that made members invisible: the
+            // questionnaire is only ever reached from the organizer-creation
+            // branch, so anyone joining by invite was never asked at all.
+            this.recordReferral().catch(() => {});
 
             // Listen for auth changes
             this.supabase.auth.onAuthStateChange((event, session) => {

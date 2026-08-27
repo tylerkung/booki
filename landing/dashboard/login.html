@@ -69,6 +69,26 @@
                     <label for="signup-password-confirm">Confirm Password</label>
                     <input type="password" id="signup-password-confirm" placeholder="Re-enter password" autocomplete="new-password">
                 </div>
+                <div class="form-group">
+                    <label for="signup-referral">How did you hear about Booki? <span style="color:var(--text-muted);font-weight:var(--fw-regular);">(optional)</span></label>
+                    <select id="signup-referral" class="select" onchange="toggleReferralDetail()">
+                        <option value="">Select one</option>
+                        <option value="google">Google or another search engine</option>
+                        <option value="friend">Someone told me about it</option>
+                        <option value="twitter">X / Twitter</option>
+                        <option value="social">Other social media</option>
+                        <option value="reddit">Reddit or a forum</option>
+                        <option value="ad">An ad</option>
+                        <option value="blog">A blog or article</option>
+                        <option value="ai">ChatGPT or another AI assistant</option>
+                        <option value="other">Somewhere else</option>
+                    </select>
+                    <!-- A dropdown cannot enumerate word of mouth, and word of
+                         mouth is where the useful answers come from. -->
+                    <input type="text" id="signup-referral-detail" class="select"
+                           placeholder="Where did you hear about us?" maxlength="120"
+                           style="display:none;margin-top:var(--s-sm);">
+                </div>
                 <label class="checkbox-label">
                     <input type="checkbox" id="signup-age">
                     <span>I confirm I am 18 years or older</span>
@@ -287,6 +307,14 @@
             window.location.href = './';
         }
 
+        function toggleReferralDetail() {
+            const sel = document.getElementById('signup-referral');
+            const detail = document.getElementById('signup-referral-detail');
+            if (!sel || !detail) return;
+            detail.style.display = sel.value === 'other' ? 'block' : 'none';
+            if (sel.value !== 'other') detail.value = '';
+        }
+
         // ── Sign Up ──
         async function handleSignUp() {
             const name = document.getElementById('signup-name').value.trim();
@@ -328,10 +356,21 @@
             btn.disabled = true;
             btn.textContent = 'Creating account...';
 
+            // Carried as user_metadata rather than written directly: there is
+            // no session yet, and onboarding_responses requires auth.uid() to
+            // match the row. dashboard.js reads it on first authenticated load.
+            // Metadata travels with the ACCOUNT, so it survives the user
+            // verifying their email in a different browser -- which localStorage
+            // would not.
+            const referralSource = document.getElementById('signup-referral').value || null;
+            const referralDetail = referralSource === 'other'
+                ? (document.getElementById('signup-referral-detail').value.trim() || null)
+                : null;
+
             const { data, error } = await sbClient.auth.signUp({
                 email,
                 password,
-                options: { data: { name } }
+                options: { data: { name, referral_source: referralSource, referral_detail: referralDetail } }
             });
 
             if (error) {

@@ -3650,58 +3650,6 @@
                         </div>
                     </div>
 
-                    <!-- Question 4: Referral Source -->
-                    <div class="card" style="margin-bottom:var(--s-xl);">
-                        <label class="t-strong" style="display:block;margin-bottom:var(--s-md);">How did you hear about Booki?</label>
-                        <div style="display:flex;flex-direction:column;gap:var(--s-sm);">
-                            <label class="onboarding-option" :class="{ 'selected': onboardingReferral === 'google' }">
-                                <input type="radio" name="ob-ref" value="google" x-model="onboardingReferral" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Google search</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingReferral === 'twitter' }">
-                                <input type="radio" name="ob-ref" value="twitter" x-model="onboardingReferral" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Twitter / X</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingReferral === 'reddit' }">
-                                <input type="radio" name="ob-ref" value="reddit" x-model="onboardingReferral" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Reddit</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingReferral === 'friend' }">
-                                <input type="radio" name="ob-ref" value="friend" x-model="onboardingReferral" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Friend or word of mouth</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingReferral === 'blog' }">
-                                <input type="radio" name="ob-ref" value="blog" x-model="onboardingReferral" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Blog or article</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingReferral === 'ai' }">
-                                <input type="radio" name="ob-ref" value="ai" x-model="onboardingReferral" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>AI search (ChatGPT, Perplexity, etc.)</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingReferral === 'other' }">
-                                <input type="radio" name="ob-ref" value="other" x-model="onboardingReferral" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Other</span>
-                            </label>
-                            <!-- A dropdown cannot enumerate word of mouth. This is
-                                 where the useful answers actually come from. It was
-                                 stranded inside the Use Case card, so choosing
-                                 "Other" here revealed a free-text box two questions
-                                 further up the page. -->
-                            <input type="text" x-show="onboardingReferral === 'other'" x-cloak
-                                   x-model="onboardingReferralDetail"
-                                   class="select" placeholder="Where did you hear about Booki?"
-                                   maxlength="120"
-                                   style="margin-top:var(--s-sm);">
-                        </div>
-                    </div>
-
                     <!-- Actions -->
                     <button class="btn btn-accent btn-block" style="padding:var(--s-lg);font-size:var(--fs-body);" @click="submitOnboarding()" :disabled="isSubmittingOnboarding">
                         <span x-text="isSubmittingOnboarding ? 'Setting up...' : 'Continue'"></span>
