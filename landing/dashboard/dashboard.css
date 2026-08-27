@@ -2403,6 +2403,20 @@ input, button, select, textarea { font: inherit; }
 .pt-ticket-profit {
     text-align: right;
 }
+
+/* The label and figure stack, matching Stake.
+   Stake's two spans are direct children of a flex column so they stack for
+   free. Profit's are not: Alpine's <template x-if> needs a single root, so a
+   plain <div> sits between them and the column — which laid the column out on
+   that one div and left the spans inline inside it. Give the wrapper the same
+   treatment rather than restructuring the markup around a framework
+   constraint. */
+.pt-ticket-profit > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-xxs);
+    align-items: flex-end;
+}
 .positive { color: var(--success) !important; }
 .negative { color: var(--danger) !important; }
 
