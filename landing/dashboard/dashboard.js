@@ -109,7 +109,7 @@ function dashboardApp() {
         // ── Loading States ──
         isLoadingDashboard: true,
         isLoadingPlayers: true,
-        isLoadingPicks: false,
+        isLoadingPicks: true,
 
         // ── Pick Detail ──
         pickDetail: null,
@@ -436,7 +436,7 @@ function dashboardApp() {
 
         // ── Events ──
         events: [],
-        isLoadingEvents: false,
+        isLoadingEvents: true,
         eventSearch: '',
         eventSportFilter: '',
 
@@ -445,7 +445,7 @@ function dashboardApp() {
         eventDetail: null,
         eventDetailBets: [],
         eventDetailMarkets: [],
-        isLoadingEventDetail: false,
+        isLoadingEventDetail: true,
 
         // ── Event Actions (Batch Grading) ──
         showBatchGradeModal: false,
@@ -557,7 +557,7 @@ function dashboardApp() {
         propSearch: '',
         propTeamFilter: 'all',
         ladderExpanded: {},
-        isLoadingGameDetail: false,
+        isLoadingGameDetail: true,
         betSlipSelections: [],
         isLoadingPlayerEvents: true,
         playerEventSearch: '',
@@ -572,7 +572,7 @@ function dashboardApp() {
         // ── Player Sport Page ──
         selectedSportPage: '',
         selectedLeagueTab: '',
-        isLoadingSportPage: false,
+        isLoadingSportPage: true,
         sportPageOutrightMarkets: [],
         sportCategories: {
             basketball: { displayName: 'Basketball', leagues: [{id:'nba',displayName:'NBA'},{id:'ncaab',displayName:'NCAAB'},{id:'wnba',displayName:'WNBA'}] },

@@ -48,7 +48,7 @@ else, three genuine states, and GET STARTED carrying the code into signup so
 it actually redeems. Rate-limited, so the page can't be used to enumerate
 valid codes.
 
-## Not a bug — working as designed
+## Not a bug — no change being made
 
 **Dashboard activity signs (P0-5).** You're right that the two surfaces differ,
 and right about which line does it: the organizer dashboard renders
@@ -58,17 +58,14 @@ documented. Our balance convention is: internally, positive means the member
 owes the organizer; member-facing views negate it; **organizer-facing views use
 the internal convention directly**.
 
-So from the organizer's ledger, a member winning genuinely *is* money leaving.
-`-$9.52` against a won pick is arithmetically correct for the organizer, and
-negating it would put the activity feed in disagreement with the organizer's
-own balance and P&L on the same screen.
+From the organizer's ledger, a member winning genuinely *is* money leaving, so
+`-$9.52` against a won pick is arithmetically correct for the organizer. And
+the amount is not free to flip: the P&L figure on that same screen is computed
+as a raw sum of those same ledger amounts, so negating the activity column
+would put two numbers from one ledger in direct contradiction.
 
-What *is* wrong is the label, not the sign. "Bet won −$9.52" reads as a
-contradiction because the label describes the member's outcome while the amount
-describes the organizer's ledger — two subjects in one row. The fix is to make
-the row say whose outcome it is ("Member won — you paid $9.52"), not to flip
-the number. That's a copy change and a product call, so it's queued rather than
-silently done one way or the other.
+We considered rewording the row to name whose outcome it is, and decided
+against it. Closing this one as-is — no change.
 
 ## Did not reproduce
 
@@ -97,13 +94,28 @@ sitting in a list next to three phantom 404s. Everything else in the brief was
 accurate and specific enough to fix directly, which is why three of them were
 one-line changes.
 
+## Also fixed — and it was worse than you reported
+
+**Events flashes "0 events" (P3-7).** Reproduced and fixed. Two independent
+causes, and my first pass at this misread it: I checked the *member* games view,
+which does have a loading guard, and wrote the item off as hard to reproduce.
+You were on the organizer Events tab, which had none.
+
+1. `index.html:590` rendered `filteredEvents.length + ' events'` with no guard.
+2. More importantly, `isLoadingEvents` **defaulted to false**. A false default
+   means "finished loading", so the list template below the header
+   (`x-if="!isLoadingEvents"`) was also satisfied at first paint — which means
+   the full **"no events" empty state** rendered too, not just a wrong count.
+   You only mentioned the number; the empty state was there as well.
+
+Both fixed. The same defect existed on Picks, Members, event detail, game detail
+and the sport pages — every flag whose view could paint before its query ran.
+There's now a check in the build that fails on either half of it, so it can't
+come back quietly.
+
 ## Still open, need your help
 
-- **Events flashes "0 events" (P3-7).** Plausible and I want it, but I can't
-  reproduce it yet. There *is* a loading guard, so if it flashes, the flag is
-  clearing before the data lands — same shape as a race I fixed elsewhere on
-  27 Aug. Can you get me the network conditions (throttled? cold load? which
-  sport tab?) and roughly how long the 0 is visible?
+- **Signup error UX (P2-1, P2-2, P2-5)** — see below. Still the one open item.
 - **Signup error UX (P2-1, P2-2, P2-5).** All three are believable and worth
   fixing regardless, but they need a real inbox to walk properly. Treating the
   exact wording as unconfirmed until then.

@@ -115,7 +115,7 @@ the likely origin.
 
 ## Needs a decision before it is scheduled
 
-### 4. Dashboard activity signs (QA P0-5)
+### 4. Dashboard activity signs (QA P0-5) — CLOSED, no change
 
 The two surfaces genuinely differ:
 
@@ -141,9 +141,11 @@ Two fixes, and this is a product call:
 - **B — keep the sign, fix the label.** "Member won — you paid $9.52". Ledger
   stays coherent; the row stops contradicting itself.
 
-**Recommendation: B.** A makes two numbers on the same screen mean opposite
-things. But it is more copy work, and QA explicitly asked for A, so the call
-should be made deliberately rather than by whoever picks up the ticket.
+**Decided 2026-08-27: neither. No change.** A was rejected because `this.pnl`
+(dashboard.js:2941) sums the same ledger amounts raw, so negating the activity
+column contradicts the P&L above it. B was reviewed and the wording rejected.
+The convention stands as documented; treat this as a misunderstanding of the
+organizer-side sign rather than a defect.
 
 ---
 
@@ -156,14 +158,27 @@ start placing picks." — shown on the **Open** filter while six graded picks
 exist. Should read "No open picks". The current copy tells an organizer with a
 full history that they have nothing.
 
-### 7. Events flashes "0 events" (QA P3-7)
+### 7. Events flashes "0 events" (QA P3-7) — FIXED 2026-08-27
 
-Plausible, not yet reproduced. There **is** a guard —
-`isLoadingPlayerEvents ? 'Loading games…' : filteredPlayerEvents.length + …` —
-so the flash means the flag clears before the list populates. Same shape as the
-`loadPlayerTrack` race fixed on 2026-08-27: a loader that reports "done" while
-its data is still arriving. Reproduce first, then gate the count on the data
-rather than the flag.
+**My first read of this was wrong.** I checked `isLoadingPlayerEvents` (the
+member games view), found a guard, and called it hard to reproduce. QA was on
+the **organizer** Events tab, which is a different view with a different flag.
+
+Two causes:
+
+1. `index.html:590` — `filteredEvents.length + ' events'`, no guard.
+2. `isLoadingEvents` **defaulted to `false`**. That is the real one: a false
+   default means "loaded", so `x-if="!isLoadingEvents"` was satisfied at first
+   paint and the **empty state rendered too**. Reproduced live: header
+   `0 events` with the empty state visible, then `97 events`.
+
+Every flag whose header was already correct (`isLoadingPlayers`,
+`isLoadingPlayerEvents`, `isLoadingPlayerTrack`, `isLoadingDashboard`,
+`isLoadingPlayerHome`) defaults to `true`. The false ones were the bug.
+
+Fixed: 5 flags defaulted true, 4 count headers guarded, and
+`scripts/check-loading-guards.py` added to the suite — verified to fire on each
+half independently.
 
 ### 8. Signup error UX (QA P2-1, P2-2, P2-5)
 

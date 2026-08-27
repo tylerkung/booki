@@ -587,7 +587,7 @@
             <div x-show="route === 'events'" x-cloak>
                 <div class="page-header">
                     <h1>Events</h1>
-                    <p x-text="filteredEvents.length + ' events'"></p>
+                    <p x-text="isLoadingEvents ? 'Loading events...' : filteredEvents.length + ' events'"></p>
                 </div>
 
                 <div class="filter-bar">
@@ -774,7 +774,7 @@
                         <div class="card" style="margin-bottom:var(--s-lg);">
                             <div class="card-header">
                                 <span class="card-title">Picks</span>
-                                <span class="t-caption" x-text="eventDetailBets.length + ' total'"></span>
+                                <span class="t-caption" x-text="isLoadingEventDetail ? '' : eventDetailBets.length + ' total'"></span>
                             </div>
                             <template x-if="eventDetailBets.length === 0">
                                 <div class="empty-state" style="padding:var(--s-xl);">
@@ -809,7 +809,7 @@
                         <div class="card" style="margin-bottom:var(--s-lg);" x-show="eventGradableBets.length > 0 || eventVoidableBets.length > 0">
                             <div class="card-header">
                                 <span class="card-title">Actions</span>
-                                <span class="t-caption" x-text="eventGradableBets.length + ' gradable'"></span>
+                                <span class="t-caption" x-text="isLoadingEventDetail ? '' : eventGradableBets.length + ' gradable'"></span>
                             </div>
 
                             <!-- Grade All Picks -->
@@ -925,7 +925,7 @@
                 <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
                     <div>
                         <h1>Members</h1>
-                        <p x-text="players.length + ' total members'"></p>
+                        <p x-text="isLoadingPlayers ? 'Loading members...' : players.length + ' total members'"></p>
                     </div>
                     <button class="btn btn-accent" @click="showInviteModal = true"
                             :disabled="isAtMemberCapacity"
