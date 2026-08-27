@@ -1,0 +1,27 @@
+# Booki
+
+> Pick-tracking and bankroll management software for private groups. Not a sportsbook. Not pay-per-head. We never touch the money.
+
+Booki (https://bookisports.com/) is a ledger: live odds, automated grading, credit limits, settlement reconciliation. Brand line: Be The House.
+
+- Free: 3 members
+- Pro: $49.99/month, cap 50 members
+- No casino, racebook, call center, or branded sportsbook website
+- No deposits, payouts, or payment processing
+- If you need those, stay on PPH
+
+## For people switching off pay-per-head
+
+- [PPH software alternative](https://bookisports.com/pph-software-alternative): flat $49.99 vs per-head billing. Honest qualifier. Cost calculator (default 20 players × $7 ≈ $607/month).
+- [Pay-per-head pricing breakdown](https://bookisports.com/blog/pay-per-head-pricing-breakdown): published August 2026 vendor rates at 10 / 20 / 50 players.
+- [Booki vs PerHead.CR](https://bookisports.com/vs/perhead-cr)
+- [Booki vs RealBookies](https://bookisports.com/vs/realbookies)
+- [Booki vs Price Per Player](https://bookisports.com/vs/price-per-player)
+- [Booki vs Ace Per Head](https://bookisports.com/vs/ace-per-head)
+- [Booki vs PayPerHead.com](https://bookisports.com/vs/payperhead)
+
+## Also
+
+- [Homepage](https://bookisports.com/)
+- [About](https://bookisports.com/about)
+- [Pricing](https://bookisports.com/#pricing)

@@ -32,44 +32,52 @@
 
     <!-- Structured Data -->
     <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": [
-            {
-                "@type": "Question",
-                "name": "What is PPH software?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "PPH (pay-per-head) software is a platform that independent organizers use to manage picks, odds integration, settlement reconciliation, and bankroll management for their members. Traditional PPH services charge a weekly fee per active member, typically $5 to $15 per head."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "How much does PPH software cost compared to Booki?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "Traditional PPH services charge $5 to $15 per member per week, which adds up fast as your operation grows. Booki uses flat-rate pricing with no per-head fees, so your costs stay predictable regardless of how many members you manage."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Does Booki automatically grade picks?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "Yes. Booki's automated grading engine handles all pick types — moneyline, spread, and totals — using real-time score data. Once a game is final, picks are graded and settlement reconciliation happens automatically through atomic transactions, with zero manual input."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Can I switch from a PPH service to Booki?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "Yes. Booki is designed as a modern PPH alternative. You onboard members via invite links, set credit limits, and start tracking picks immediately. All data syncs to your own cloud-backed account — no third-party vendor controls your information."
-                }
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "What does PPH cost for 20 players?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "At $7 per active player per week, 20 players is about $607/month (20 × $7 × 4.33). At $9 it is about $780. At $10 it is about $867. Booki Pro is $49.99/month for up to 50 members. Most PPH services only bill players who wagered that week, so a quieter book pays less. The structure is still per head."
             }
-        ]
-    }
+        },
+        {
+            "@type": "Question",
+            "name": "Is Booki a sportsbook?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. Booki is pick-tracking and bankroll management software. It is not a sportsbook and not a pay-per-head service. It does not take bets, process payments, hold funds, or run a casino, racebook, or call center."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "What is the member cap?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Pro is $49.99/month for up to 50 members. Free is 3 members. Past 50, this comparison is not worth making. Stay on PPH if you are scaling a real book."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Does Booki handle payments?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Never. No deposits, no payouts, no cashier. You settle off-platform the way you already do. Booki records the balances."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Should I stay on PPH?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, if you need a branded betting site, live casino, racebook, or a 3am call center. That stack is a different product, and $7–$10 a head is the price of running it. Switch if you organize for people you know, you already settle outside the software, and you are paying for infrastructure you never turn on."
+            }
+        }
+    ]
+}
     </script>
 </head>
 <body>
@@ -217,10 +225,47 @@
                     <a href="vs/perhead-cr.html" class="blog-related-link">Booki vs PerHead.CR</a>
                     <a href="vs/realbookies.html" class="blog-related-link">Booki vs RealBookies</a>
                     <a href="vs/price-per-player.html" class="blog-related-link">Booki vs Price Per Player</a>
+                    <a href="vs/ace-per-head.html" class="blog-related-link">Booki vs Ace Per Head</a>
+                    <a href="vs/payperhead.html" class="blog-related-link">Booki vs PayPerHead.com</a>
                     <a href="blog/pay-per-head-pricing-breakdown.html" class="blog-related-link">Pay per head pricing in 2026</a>
                     <a href="blog/best-pph-software-small-bookies.html" class="blog-related-link">Best PPH software for small bookies</a>
                     <a href="blog/best-bookie-software-small-books.html" class="blog-related-link">Best bookie software for small books</a>
                     <a href="blog/pph-vs-manual-ledger-systems.html" class="blog-related-link">PPH vs manual ledger systems</a>
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- Visible FAQ. Wording is identical to the FAQPage JSON-LD in the
+             head. Schema describing answers a reader cannot see is what
+             Google penalises, and the old block had drifted exactly that way:
+             it survived the body rewrite and still described the previous
+             page, quoting a $5-$15 range this page contradicts. -->
+        <section class="seo-section">
+            <div class="container">
+                <h2 class="section-headline">Questions people actually ask</h2>
+                <div class="pph-faq">
+                    <details class="pph-faq-item">
+                        <summary>What does PPH cost for 20 players?</summary>
+                        <p>At $7 per active player per week, 20 players is about $607/month (20 × $7 × 4.33). At $9 it is about $780. At $10 it is about $867. Booki Pro is $49.99/month for up to 50 members. Most PPH services only bill players who wagered that week, so a quieter book pays less. The structure is still per head.</p>
+                    </details>
+                    <details class="pph-faq-item">
+                        <summary>Is Booki a sportsbook?</summary>
+                        <p>No. Booki is pick-tracking and bankroll management software. It is not a sportsbook and not a pay-per-head service. It does not take bets, process payments, hold funds, or run a casino, racebook, or call center.</p>
+                    </details>
+                    <details class="pph-faq-item">
+                        <summary>What is the member cap?</summary>
+                        <p>Pro is $49.99/month for up to 50 members. Free is 3 members. Past 50, this comparison is not worth making. Stay on PPH if you are scaling a real book.</p>
+                    </details>
+                    <details class="pph-faq-item">
+                        <summary>Does Booki handle payments?</summary>
+                        <p>Never. No deposits, no payouts, no cashier. You settle off-platform the way you already do. Booki records the balances.</p>
+                    </details>
+                    <details class="pph-faq-item">
+                        <summary>Should I stay on PPH?</summary>
+                        <p>Yes, if you need a branded betting site, live casino, racebook, or a 3am call center. That stack is a different product, and $7–$10 a head is the price of running it. Switch if you organize for people you know, you already settle outside the software, and you are paying for infrastructure you never turn on.</p>
+                    </details>
                 </div>
             </div>
         </section>

@@ -22,6 +22,16 @@
   to = "/vs/price-per-player"
   status = 301
 
+[[redirects]]
+  from = "/blog/booki-vs-ace-per-head"
+  to = "/vs/ace-per-head"
+  status = 301
+
+[[redirects]]
+  from = "/blog/booki-vs-payperhead"
+  to = "/vs/payperhead"
+  status = 301
+
 [[headers]]
   for = "/*"
   [headers.values]

@@ -13,7 +13,9 @@ import re
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-BRIEF = pathlib.Path.home() / 'Downloads' / 'pph-cluster-claude-code.md'
+# Page copy lives in the repo, not in a brief in someone's Downloads folder —
+# a build that depends on a file outside version control is not reproducible.
+BRIEFS = sorted((ROOT / 'content' / 'vs').glob('*.md'))
 OUT = ROOT / 'landing' / 'vs'
 
 PRO_CTA = 'Start Pro &mdash; $49.99/month'
@@ -189,28 +191,43 @@ RELATED = {
     'perhead-cr': [
         ('../pph-software-alternative.html', 'PPH software alternative'),
         ('realbookies.html', 'Booki vs RealBookies'),
-        ('price-per-player.html', 'Booki vs Price Per Player'),
+        ('ace-per-head.html', 'Booki vs Ace Per Head'),
         ('../blog/pay-per-head-pricing-breakdown.html', 'Pay per head pricing in 2026'),
     ],
     'realbookies': [
         ('../pph-software-alternative.html', 'PPH software alternative'),
         ('perhead-cr.html', 'Booki vs PerHead.CR'),
-        ('price-per-player.html', 'Booki vs Price Per Player'),
+        ('payperhead.html', 'Booki vs PayPerHead.com'),
         ('../blog/best-pph-software-small-bookies.html', 'Best PPH software for small bookies'),
     ],
     'price-per-player': [
         ('../pph-software-alternative.html', 'PPH software alternative'),
         ('perhead-cr.html', 'Booki vs PerHead.CR'),
-        ('realbookies.html', 'Booki vs RealBookies'),
+        ('ace-per-head.html', 'Booki vs Ace Per Head'),
         ('../blog/best-bookie-software-small-books.html', 'Best bookie software for small books'),
+    ],
+    'ace-per-head': [
+        ('../pph-software-alternative.html', 'PPH software alternative'),
+        ('payperhead.html', 'Booki vs PayPerHead.com'),
+        ('perhead-cr.html', 'Booki vs PerHead.CR'),
+        ('../blog/pay-per-head-pricing-breakdown.html', 'Pay per head pricing in 2026'),
+    ],
+    'payperhead': [
+        ('../pph-software-alternative.html', 'PPH software alternative'),
+        ('ace-per-head.html', 'Booki vs Ace Per Head'),
+        ('ace-per-head.html', 'Booki vs Ace Per Head'),
+        ('../blog/pay-per-head-pricing-breakdown.html', 'Pay per head pricing in 2026'),
     ],
 }
 
 
 def main():
-    brief = BRIEF.read_text()
-    blocks = re.findall(r'### `/vs/([a-z-]+)`\n(?:.*?)```\n(.*?)\n```', brief, re.S)
-    assert len(blocks) == 3, [b[0] for b in blocks]
+    blocks = []
+    for b in BRIEFS:
+        if not b.exists():
+            continue
+        blocks += re.findall(r'### `/vs/([a-z-]+)`\n(?:.*?)```\n(.*?)\n```', b.read_text(), re.S)
+    assert len(blocks) >= 3, [b[0] for b in blocks]
 
     footer = (ROOT / 'landing' / 'blog' / 'pay-per-head-pricing-breakdown.html').read_text()
     footer = footer[footer.index('    <footer class="footer">'):footer.index('</body>')].rstrip()

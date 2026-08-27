@@ -2657,3 +2657,48 @@ html, body {
 }
 
 .pph-switch-line a:hover { border-bottom-color: var(--accent); }
+
+.pph-faq {
+    max-width: 760px;
+    margin: 0 auto;
+    display: grid;
+    gap: var(--s3);
+}
+
+.pph-faq-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s4) var(--s5);
+}
+
+.pph-faq-item summary {
+    cursor: pointer;
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s4);
+}
+
+.pph-faq-item summary::-webkit-details-marker { display: none; }
+
+/* The marker is drawn rather than inherited so it can rotate on open. */
+.pph-faq-item summary::after {
+    content: '+';
+    color: var(--accent);
+    font-size: var(--fs-title3);
+    line-height: 1;
+    transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.pph-faq-item[open] summary::after { transform: rotate(45deg); }
+
+.pph-faq-item p {
+    margin: var(--s3) 0 0;
+    color: var(--text-secondary);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-loose);
+}
