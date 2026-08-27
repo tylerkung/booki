@@ -198,6 +198,16 @@ caught all three before they were filed.
 
 ## Shipped 2026-08-27
 
+- **Item 1 (invite lookup)** — migration 052 `get_invite(p_code)` plus a rewritten
+  `landing/invite.html` and the signup handoff. Verified on production:
+  `/invite/9QB68F7N` shows "Organizer invited you", a $1,000 credit limit and the
+  real 3 September expiry; `/invite/NOTACODE` shows the error state; `/invite`
+  shows the incomplete state and renders no code. The CTA carries the code to
+  `login.html`, which stores it and strips it from the URL. Throttle confirmed
+  live: the 21st lookup in a minute returns `rate_limited`, and the window clears.
+  **The migration 010 `USING (true)` policy is still in place** — see B9 in
+  `tasks/ios-pending.md`. Dropping it is the remaining half of this fix.
+
 - **Item 3 (win rate)** — `sp.losses` → `sp.wins`. Verified the other two
   readouts (`playerWinRate`, `memberWinRate`) already compute `wins / total`, so
   the inversion was isolated rather than a copy-paste family.
@@ -210,8 +220,8 @@ caught all three before they were filed.
 ## Suggested order
 
 1. ~~Item 3, 2, 6~~ — shipped, see above.
-2. **Item 1** (invite lookup) — the only real build here. Needs an edge function
-   or view, signup wiring, and rate limiting. **In progress.**
+2. ~~Item 1~~ — shipped. Follow-up: drop the 010 policy once iOS moves to
+   `get_invite` (B9).
 3. **Item 4** — get the product decision, then implement.
 4. **Items 7, 8** — reproduce first, then fix.
 
