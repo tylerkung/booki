@@ -2922,7 +2922,8 @@
 
                     <!-- Ticket Cards -->
                     <template x-for="ticket in filteredPlayerTickets" :key="ticket.ticketId">
-                        <a :href="'#/player-ticket/' + ticket.ticketId" class="pt-ticket-card card wave-card">
+                        <a :href="'#/player-ticket/' + ticket.ticketId" class="pt-ticket-card card wave-card"
+                           :class="{ 'pt-ticket-won': ticket.gradeResult === 'win' }">
                             <div class="pt-ticket-top">
                                 <div class="pt-ticket-info">
                                     <div class="pt-ticket-title" x-text="ticket.title"></div>
@@ -2950,10 +2951,6 @@
                                     <span class="t-caption">Stake</span>
                                     <span x-text="formatCurrency(ticket.stake)"></span>
                                 </div>
-                                <!-- Final score for settled singles -->
-                                <template x-if="ticket.finalScore && !ticket.isParlay">
-                                    <div class="pt-ticket-score" x-text="ticket.finalScore.replace('-', ' - ')"></div>
-                                </template>
                                 <div class="pt-ticket-profit">
                                     <template x-if="ticket.gradeResult">
                                         <div>

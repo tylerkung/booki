@@ -1161,12 +1161,34 @@ function dashboardApp() {
         },
 
         // ── Player Track ──
-        async loadPlayerTrack() {
-            if (!this.playerId) return;
+        async loadPlayerTrack(attempt = 0) {
+            // Route dispatch can beat role detection, and this used to `return`
+            // and never retry — leaving the page permanently half-loaded: bets
+            // arrive by another path while playerTrackEvents stays empty, so
+            // every single pick silently loses its matchup subtitle. Retry
+            // briefly instead of giving up.
+            if (!this.playerId) {
+                if (attempt < 20) setTimeout(() => this.loadPlayerTrack(attempt + 1), 150);
+                return;
+            }
             this.isLoadingPlayerTrack = true;
 
-            // Ensure player bets are loaded (reuse loadPlayerHome data)
-            if (this.playerBets.length === 0 && !this.isLoadingPlayerHome) {
+            // Ensure player bets are loaded (reuse loadPlayerHome data).
+            //
+            // The `&& !this.isLoadingPlayerHome` used to mean "someone else is
+            // already loading, so skip" — but skipping the await did not skip
+            // the rest of the function. It fell through to the events fetch
+            // below with playerBets still empty, so eventIds was [], the
+            // `eventIds.length > 0` guard skipped the query, and
+            // playerTrackEvents stayed empty forever. Bets then arrived from the
+            // in-flight call and the page looked loaded, minus every matchup
+            // subtitle. Wait for the in-flight load instead of racing past it.
+            if (this.playerBets.length === 0) {
+                if (this.isLoadingPlayerHome) {
+                    if (attempt < 20) setTimeout(() => this.loadPlayerTrack(attempt + 1), 150);
+                    this.isLoadingPlayerTrack = false;
+                    return;
+                }
                 await this.loadPlayerHome();
             }
 
@@ -1268,10 +1290,24 @@ function dashboardApp() {
                     event,
                     created_at: first.created_at,
                     title: isParlay ? (legs.length + '-leg Multi-Pick') : (first.side || 'Pick'),
-                    subtitle: isParlay ? '' : (event ? (event.away_team + ' @ ' + event.home_team) : ''),
+                    subtitle: isParlay ? '' : this.matchupLine(event),
                     finalScore: (!isParlay && event && event.final_score) ? event.final_score : null,
                 };
             }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        },
+
+        // "MIA Marlins 1 vs PHI Phillies 4" once a game is final, "MIA Marlins @
+        // PHI Phillies" before then. The score used to render as a bare "1 - 4"
+        // in its own element between stake and profit, which tells you the
+        // numbers but not who put them up.
+        matchupLine(event) {
+            if (!event) return '';
+            const away = event.away_team || '';
+            const home = event.home_team || '';
+            if (!event.final_score) return away + ' @ ' + home;
+            const parts = String(event.final_score).split('-');
+            if (parts.length !== 2) return away + ' @ ' + home;
+            return away + ' ' + parts[0].trim() + ' vs ' + home + ' ' + parts[1].trim();
         },
 
         get playerTrackStats() {

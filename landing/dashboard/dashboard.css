@@ -2403,11 +2403,6 @@ input, button, select, textarea { font: inherit; }
 .pt-ticket-profit {
     text-align: right;
 }
-.pt-ticket-score {
-    font-size: var(--fs-caption);
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-}
 .positive { color: var(--success) !important; }
 .negative { color: var(--danger) !important; }
 
@@ -3014,7 +3009,6 @@ input, button, select, textarea { font: inherit; }
 .pg-odds-line,
 .bs-card-odds,
 .gd-cell-odds,
-.pt-ticket-score,
 .invite-code {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
@@ -3451,3 +3445,12 @@ input, button, select, textarea { font: inherit; }
     font-weight: var(--fw-semibold);
 }
 .btn-quiet:hover { background: var(--fill-danger); }
+
+
+/* A won ticket is outlined in the accent. The badge already names the state;
+   the border is what makes a win findable when scanning a long list, which is
+   what the Track page mostly is. Only wins get this — outlining losses too
+   would make the list louder without making anything easier to find. */
+.pt-ticket-won {
+    border-color: var(--accent);
+}
