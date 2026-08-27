@@ -3621,6 +3621,13 @@
                                 <span class="onboarding-option-dot"></span>
                                 <span>Something else</span>
                             </label>
+                            <!-- A dropdown cannot enumerate word of mouth. This is
+                                 where the useful answers actually come from. -->
+                            <input type="text" x-show="onboardingReferral === 'other'" x-cloak
+                                   x-model="onboardingReferralDetail"
+                                   class="select" placeholder="Where did you hear about Booki?"
+                                   maxlength="120"
+                                   style="margin-top:var(--s-sm);">
                         </div>
                     </div>
 
@@ -4468,5 +4475,6 @@
     </div>
 
     <script src="dashboard.js"></script>
+    <script src="../attribution.js"></script>
 </body>
 </html>

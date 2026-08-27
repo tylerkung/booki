@@ -390,6 +390,54 @@ Deno.serve(async (req) => {
       }
 
       // ── Organizers and the size of their world ───────────────────────────
+      // Attribution. Deliberately shows the measured source and the self-reported
+      // one side by side rather than reconciling them: they disagree constantly
+      // and both are true. Someone hears about Booki from a friend, googles it,
+      // and lands on an ad — UTM says google/cpc, the survey says friend, and the
+      // friend is what actually caused it. Reconciling would pick a winner and
+      // hide the interesting part.
+      case 'attribution': {
+        const rows = await selectAll(client, 'attribution_overview',
+          'auth_user_id, email, signed_up_at, first_seen_at, utm_source, utm_medium, ' +
+          'utm_campaign, referrer_host, landing_path, paid_click, referral_source, ' +
+          'referral_detail, survey_completed, became_organizer, tier');
+
+        const live = (rows as any[]).filter((r) => !hideTest(r.email, null));
+
+        const tally = (key: string) => {
+          const m = new Map<string, number>();
+          for (const r of live) {
+            const v = r[key] ?? '(none)';
+            m.set(String(v), (m.get(String(v)) ?? 0) + 1);
+          }
+          return [...m.entries()].sort((a, b) => b[1] - a[1]);
+        };
+
+        // Coverage is the first thing to read. A channel breakdown computed over
+        // 4% of signups is not a channel breakdown.
+        const withAttribution = live.filter((r) => r.utm_source).length;
+        const withSurvey = live.filter((r) => r.referral_source).length;
+
+        return json({
+          view: 'attribution',
+          coverage: {
+            signups: live.length,
+            with_measured_source: withAttribution,
+            with_survey_answer: withSurvey,
+            note: withAttribution < live.length
+              ? 'Users who signed up before attribution.js shipped have no measured source and never will. Read percentages against with_measured_source, not signups.'
+              : 'All signups have a measured source.',
+          },
+          by_measured_source: tally('utm_source'),
+          by_self_reported: tally('referral_source'),
+          by_landing_page: tally('landing_path'),
+          by_referrer_host: tally('referrer_host'),
+          rows: live
+            .sort((a, b) => String(b.signed_up_at).localeCompare(String(a.signed_up_at)))
+            .slice(0, 200),
+        });
+      }
+
       case 'organizers': {
         const betRows = await selectAll(client, 'bets', 'bookie_id, status, stake, ticket_id');
         const picksByOrg = new Map<string, number>();

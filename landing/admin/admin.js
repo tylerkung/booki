@@ -63,6 +63,25 @@ const VIEWS = [
         id: 'overview', label: 'Overview', columns: [],
     },
     {
+        id: 'attribution', label: 'Attribution',
+        columns: [
+            { key: 'email', label: 'Email' },
+            // Measured and self-reported sit next to each other on purpose. Where
+            // they disagree is the useful column, not an error to reconcile.
+            { key: 'utm_source', label: 'Measured', render: (r) => r.utm_source
+                ? badge(r.utm_source, r.paid_click ? 'warning' : 'accent') : '—' },
+            { key: 'referral_source', label: 'They said', render: (r) => r.referral_source
+                ? badge(r.referral_source, 'success')
+                : (r.survey_completed === false ? badge('skipped', 'muted') : '—') },
+            { key: 'referral_detail', label: 'Detail', render: (r) => r.referral_detail || '—' },
+            { key: 'landing_path', label: 'Landed on', render: (r) => r.landing_path || '—' },
+            { key: 'referrer_host', label: 'Referrer', render: (r) => r.referrer_host || '—' },
+            { key: 'became_organizer', label: 'Organizer', render: (r) =>
+                r.became_organizer ? badge(r.tier || 'free', r.tier === 'pro' ? 'accent' : 'muted') : '—' },
+            { key: 'signed_up_at', label: 'Joined', render: (r) => date(r.signed_up_at) },
+        ],
+    },
+    {
         id: 'users', label: 'Users',
         columns: [
             { key: 'email', label: 'Email' },

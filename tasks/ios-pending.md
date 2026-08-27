@@ -294,3 +294,27 @@ Not applicable to iOS: the focus-ring work (keyboard focus is a web concern;
 iOS has VoiceOver and focus engine equivalents that are separate), the dead
 `@media (max-width: var(...))` queries, and the `.select` / `.progress` /
 `.tooltip` components, which are UIKit/SwiftUI primitives there.
+
+
+### B8. Attribution capture is web-only
+
+Added 2026-08-26. The web now records first-touch attribution (`attribution.js`
+→ `user_attribution`) and writes an `onboarding_responses` row even when the
+questionnaire is skipped. iOS does neither.
+
+This matters more than most web/iOS gaps because attribution cannot be
+backfilled — a user who signs up on iOS today has no source, permanently, and no
+later change recovers it.
+
+- [ ] Capture install/first-open attribution on iOS. Note this is NOT the same
+      mechanism: there are no UTM parameters on an App Store install. The
+      equivalents are Apple Search Ads attribution, a deep link carrying the
+      campaign, or asking in-app. Do not try to port `attribution.js`.
+- [ ] Show the onboarding questionnaire on iOS at all. There is currently no
+      onboarding flow in the Swift target, so iOS signups produce neither a
+      measured source nor a self-reported one.
+- [ ] Write an `onboarding_responses` row on skip as well as submit, matching
+      web, so a skip is distinguishable from never being asked.
+
+Until then, read the admin Attribution view knowing the denominator is
+web signups only.

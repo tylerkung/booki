@@ -142,50 +142,79 @@ function dashboardApp() {
         onboardingUseCase: '',
         onboardingGroupSize: '',
         onboardingReferral: '',
+        onboardingReferralDetail: '',
         isSubmittingOnboarding: false,
 
-        async submitOnboarding() {
-            this.isSubmittingOnboarding = true;
+        // Writes the first-touch record captured by attribution.js. Called once
+        // per user at signup. Fire-and-forget on purpose: attribution is
+        // reporting, and a failure here must never block someone getting into
+        // the product.
+        async recordAttribution() {
+            if (!this.session || !this.session.user) return;
+            let record;
+            try {
+                const raw = localStorage.getItem('booki_attribution_v1');
+                if (!raw) return;
+                record = JSON.parse(raw);
+            } catch (e) { return; }
+            try {
+                // No upsert: first touch wins, and a second signup from the same
+                // browser must not overwrite the first user's row.
+                await this.supabase.from('user_attribution').insert({
+                    auth_user_id: this.session.user.id,
+                    ...record,
+                });
+            } catch (e) { /* already recorded, or table missing — not worth surfacing */ }
+        },
+
+        async saveOnboarding(completed) {
             const responses = {
                 role_intent: this.onboardingRole,
                 use_case: this.onboardingUseCase,
                 group_size: this.onboardingGroupSize,
                 referral_source: this.onboardingReferral,
+                referral_detail: this.onboardingReferralDetail,
+                completed: completed,
                 onboarded_at: new Date().toISOString(),
             };
 
-            // Save to user_metadata (always works, no migration needed)
             try {
-                await this.supabase.auth.updateUser({
-                    data: { onboarding: responses }
-                });
+                await this.supabase.auth.updateUser({ data: { onboarding: responses } });
             } catch (e) {
                 console.error('Failed to save onboarding to user_metadata:', e);
             }
 
-            // Also try to save to onboarding_responses table (may not exist yet)
+            // A skip writes a row too. Previously it wrote nothing, so a skip and
+            // a never-asked were the same absence — and since only organizers
+            // were ever asked, a missing row meant three different things.
             try {
                 await this.supabase.from('onboarding_responses').insert({
                     auth_user_id: this.session.user.id,
-                    role_intent: this.onboardingRole || 'skipped',
-                    use_case: this.onboardingUseCase || 'skipped',
-                    group_size: this.onboardingGroupSize || 'skipped',
-                    referral_source: this.onboardingReferral || 'skipped',
+                    role_intent: this.onboardingRole || null,
+                    use_case: this.onboardingUseCase || null,
+                    group_size: this.onboardingGroupSize || null,
+                    referral_source: this.onboardingReferral || null,
+                    referral_detail: this.onboardingReferralDetail || null,
+                    completed: completed,
                 });
             } catch (e) {
-                // Table may not exist yet — that's fine
+                console.error('Failed to save onboarding response:', e);
             }
 
-            // Send welcome email (non-blocking)
-            this.callEdgeFunction('send_welcome_email', {}).catch(() => {});
+            await this.recordAttribution();
+        },
 
+        async submitOnboarding() {
+            this.isSubmittingOnboarding = true;
+            await this.saveOnboarding(true);
+            this.callEdgeFunction('send_welcome_email', {}).catch(() => {});
             this.isSubmittingOnboarding = false;
             this.route = 'organizer-welcome';
             window.location.hash = '#/organizer-welcome';
         },
 
-        skipOnboarding() {
-            // Send welcome email even if they skip (non-blocking)
+        async skipOnboarding() {
+            await this.saveOnboarding(false);
             this.callEdgeFunction('send_welcome_email', {}).catch(() => {});
             this.route = 'organizer-welcome';
             window.location.hash = '#/organizer-welcome';
@@ -586,6 +615,13 @@ function dashboardApp() {
             }
             this.session = session;
             document.body.style.visibility = 'visible';
+
+            // Record first-touch attribution for EVERY signup, not only those who
+            // reach the questionnaire. Onboarding fires solely when someone
+            // becomes an organizer, so members joining by invite and standalone
+            // users would otherwise have no source at all — which is most of the
+            // user base. Fire-and-forget; the insert is a no-op after the first.
+            this.recordAttribution().catch(() => {});
 
             // Listen for auth changes
             this.supabase.auth.onAuthStateChange((event, session) => {
