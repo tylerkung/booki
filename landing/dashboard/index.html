@@ -3620,13 +3620,6 @@
                                 <span class="onboarding-option-dot"></span>
                                 <span>Something else</span>
                             </label>
-                            <!-- A dropdown cannot enumerate word of mouth. This is
-                                 where the useful answers actually come from. -->
-                            <input type="text" x-show="onboardingReferral === 'other'" x-cloak
-                                   x-model="onboardingReferralDetail"
-                                   class="select" placeholder="Where did you hear about Booki?"
-                                   maxlength="120"
-                                   style="margin-top:var(--s-sm);">
                         </div>
                     </div>
 
@@ -3696,6 +3689,16 @@
                                 <span class="onboarding-option-dot"></span>
                                 <span>Other</span>
                             </label>
+                            <!-- A dropdown cannot enumerate word of mouth. This is
+                                 where the useful answers actually come from. It was
+                                 stranded inside the Use Case card, so choosing
+                                 "Other" here revealed a free-text box two questions
+                                 further up the page. -->
+                            <input type="text" x-show="onboardingReferral === 'other'" x-cloak
+                                   x-model="onboardingReferralDetail"
+                                   class="select" placeholder="Where did you hear about Booki?"
+                                   maxlength="120"
+                                   style="margin-top:var(--s-sm);">
                         </div>
                     </div>
 
