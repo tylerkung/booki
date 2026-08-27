@@ -2,7 +2,7 @@
 
 **Source:** QA pass by Quincy, 2026-08-27, against production.
 **Status:** proposed. Every claim below was re-verified against the code or the
-live site before being accepted; four did not reproduce and are not scheduled.
+live site before being accepted; five did not reproduce and are not scheduled.
 
 ## Summary
 
@@ -10,9 +10,9 @@ live site before being accepted; four did not reproduce and are not scheduled.
 
 | | count | |
 |---|---|---|
-| Confirmed, scheduled | 7 | root cause identified for all but one |
+| Confirmed, scheduled | 6 | root cause identified for all but two |
 | Needs a product decision first | 1 | the reported "bug" is the documented convention |
-| Did not reproduce | 4 | do not spend time on these without new evidence |
+| Did not reproduce | 5 | do not spend time on these without new evidence |
 
 Two of the confirmed bugs are one-line fixes with exact line numbers. One is a
 genuine feature build disguised as a bug.
@@ -149,13 +149,6 @@ should be made deliberately rather than by whoever picks up the ticket.
 
 ## P2 / P3 — Confirmed, low risk
 
-### 5. `/help/where-the-odds-come-from` 404 (QA P1-4)
-
-Confirmed: both `/help/where-the-odds-come-from` and `/help/odds` return 404,
-linked from `/help/how-to-run-your-group`. Either write the article or retarget
-the link to the existing odds explanation. Retargeting is cheaper and honest;
-writing it is better for the help centre.
-
 ### 6. Picks empty state lies (QA P3-6)
 
 Confirmed, `index.html:1142`: "No picks yet. Members will appear here once they
@@ -193,23 +186,36 @@ before it is worth anyone's time.
 | P1-5 | Blog card 404 | The card's actual href is `how-to-be-a-bookie-for-friends.html`, the file exists, and both `/blog/how-to-be-a-bookie-for-friends` and the `.html` form return **200**. The brief says the tester *guessed* slugs — the guess 404'd, the real link does not. |
 | P3-2 | Marketing nav breaks from `/features` | `/features` returns 200 with **no** redirect to `/features/`, so relative `help/` resolves against `/` and gives `/help/`. `/features/` itself 301s. The described `/features/help/` is not reachable. *Making the hrefs root-relative is still cheap hygiene, but it is not fixing a live break.* |
 | P3-4 | `support@bookisports.com— the gaps` missing a space | Source and live both render `support@bookisports.com</a> —` **with** a space. |
+| P1-4 | `/help/where-the-odds-come-from` and `/help/odds` 404 | Both do 404, but neither is linked from anywhere. The real link is `<a href='/help/how-odds-work'>More on where the odds come from</a>`, and `/help/how-odds-work` returns **200**. The guessed slugs came from the link TEXT. |
+
+**A pattern worth feeding back.** Three of the five non-reproducing items (P1-4,
+P1-5, and P3-2 in effect) come from constructing a URL rather than following the
+link — guessing a slug from the anchor text, or assuming a trailing slash. Two
+of the three "404s" are pages that work. Following the actual `href` would have
+caught all three before they were filed.
 
 ---
 
+## Shipped 2026-08-27
+
+- **Item 3 (win rate)** — `sp.losses` → `sp.wins`. Verified the other two
+  readouts (`playerWinRate`, `memberWinRate`) already compute `wins / total`, so
+  the inversion was isolated rather than a copy-paste family.
+- **Item 2 (TTL copy)** — both "expires in 24 hours" strings → "7 days",
+  matching `INVITE_EXPIRY_HOURS`.
+- **Item 6 (empty state)** — now names the active filter: "No open picks…" vs
+  "No settled picks yet…". Expression verified to evaluate correctly for both
+  filter values.
+
 ## Suggested order
 
-1. **Item 3** (win rate) — one line, wrong number on a dashboard people read.
-2. **Item 2** (TTL strings) — two strings, removes a visible contradiction.
-3. **Item 6** (empty state) — one string.
-4. **Item 4** — get the product decision, then implement.
-5. **Item 1** (invite lookup) — the only real build here. Needs an edge function
-   or view, signup wiring, and rate limiting.
-6. **Items 5, 7, 8** — reproduce first, then fix.
-
-Items 1–3 and 6 are a single short session. Item 1 is its own piece of work and
-should not be bundled with them.
+1. ~~Item 3, 2, 6~~ — shipped, see above.
+2. **Item 1** (invite lookup) — the only real build here. Needs an edge function
+   or view, signup wiring, and rate limiting. **In progress.**
+3. **Item 4** — get the product decision, then implement.
+4. **Items 7, 8** — reproduce first, then fix.
 
 ## Out of scope
 
-Everything in the brief's own out-of-scope table stands, plus the four
+Everything in the brief's own out-of-scope table stands, plus the five
 non-reproducing items above.

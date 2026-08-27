@@ -484,7 +484,7 @@
                                             <td data-label="Picks" x-text="sp.picks"></td>
                                             <td data-label="Staked" x-text="formatCurrency(sp.staked)"></td>
                                             <td data-label="Net PnL" :style="{ color: sp.pnl >= 0 ? 'var(--success)' : 'var(--danger)' }" x-text="formatCurrency(sp.pnl)"></td>
-                                            <td data-label="Win Rate" x-text="(sp.wins + sp.losses) > 0 ? Math.round(sp.losses / (sp.wins + sp.losses) * 100) + '%' : '—'"></td>
+                                            <td data-label="Win Rate" x-text="(sp.wins + sp.losses) > 0 ? Math.round(sp.wins / (sp.wins + sp.losses) * 100) + '%' : '—'"></td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -1139,7 +1139,9 @@
                             <template x-if="bets.length === 0">
                                 <div class="empty-state">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                                    <p>No picks yet. Members will appear here once they start placing picks.</p>
+                                    <p x-text="pickFilter === 'open'
+                                           ? 'No open picks. Anything your members place will show up here.'
+                                           : 'No settled picks yet. Graded and voided picks will appear here.'"></p>
                                 </div>
                             </template>
                             <template x-if="hasMorePicks && bets.length > 0">
@@ -4208,7 +4210,7 @@
                         <span class="invite-option__title">Create a link</span>
                         <span class="invite-option__desc">
                             You share the code or link yourself — a group chat, a text.
-                            Anyone who has it can join, so it expires in 24 hours.
+                            Anyone who has it can join, so it expires in 7 days.
                         </span>
                     </button>
                 </div>
@@ -4247,7 +4249,7 @@
                 <div>
                     <p class="t-body" style="color:var(--text-secondary);line-height:var(--lh-normal);">
                         We'll generate a code and a link you can paste anywhere. Anyone who
-                        has it can join your group, so it expires in 24 hours.
+                        has it can join your group, so it expires in 7 days.
                     </p>
                     <p class="t-caption" style="margin-top:var(--s-md);color:var(--text-muted);line-height:var(--lh-normal);">
                         Joins with your default credit limit
