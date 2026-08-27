@@ -1,3 +1,14 @@
+# ⚠️  THIS FILE IS NOT THE ACTIVE NETLIFY CONFIG.
+#
+# The site's base directory is landing/, so Netlify reads landing/netlify.toml
+# and never sees this file. Proof: the /invite/* rewrite exists only in the
+# landing/ copy and is live in production, while three redirects added here on
+# 2026-08-26 had no effect at all until they were moved.
+#
+# Redirects, rewrites and headers belong in landing/netlify.toml. This file is
+# kept only so the publish path is discoverable from the repo root; do not add
+# rules here expecting them to apply.
+
 [build]
   publish = "landing/"
 
@@ -8,12 +19,6 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
-# The brief asked for a _redirects file; this project configures Netlify from
-# netlify.toml instead, so the redirect goes here. Same effect, one config file.
-[[redirects]]
-  from = "/blog/booki-vs-perhead-cr"
-  to = "/vs/perhead-cr"
-  status = 301
 
 [[redirects]]
   from = "/blog/booki-vs-realbookies"

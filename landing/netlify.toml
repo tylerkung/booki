@@ -6,6 +6,22 @@
   to = "/invite.html"
   status = 200
 
+# Old blog URLs for the comparison pages. The canonical pages live under /vs/.
+[[redirects]]
+  from = "/blog/booki-vs-perhead-cr"
+  to = "/vs/perhead-cr"
+  status = 301
+
+[[redirects]]
+  from = "/blog/booki-vs-realbookies"
+  to = "/vs/realbookies"
+  status = 301
+
+[[redirects]]
+  from = "/blog/booki-vs-price-per-player"
+  to = "/vs/price-per-player"
+  status = 301
+
 [[headers]]
   for = "/*"
   [headers.values]
