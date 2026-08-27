@@ -198,8 +198,8 @@
 
             <!-- Valid invite -->
             <div id="inviteValid" hidden>
-                <h1 class="invite-title">You've been invited</h1>
-                <p class="invite-sub">Someone wants you in their group on Booki. Create your account with the code below to join.</p>
+                <h1 class="invite-title" id="validTitle">You&rsquo;ve been invited</h1>
+                <p class="invite-sub" id="validSub"></p>
                 <p class="invite-code-label">Your invite code</p>
                 <div class="invite-code">
                     <span id="inviteCode"></span>
@@ -208,7 +208,20 @@
                     </button>
                 </div>
                 <a href="/dashboard/" id="openAppBtn" class="invite-btn">Get Started</a>
-                <p class="invite-fallback">Sign up, then enter this code when prompted. It expires in 7 days.</p>
+                <p class="invite-fallback" id="inviteFallback"></p>
+            </div>
+
+            <!-- Still checking the code with the server -->
+            <div id="inviteLoading">
+                <h1 class="invite-title">Checking your invite</h1>
+                <p class="invite-sub">One moment.</p>
+            </div>
+
+            <!-- Code is unknown, expired, or already used -->
+            <div id="inviteInvalid" hidden>
+                <h1 class="invite-title" id="invalidTitle">This invite isn&rsquo;t valid</h1>
+                <p class="invite-sub" id="invalidSub"></p>
+                <a href="/dashboard/" class="invite-btn">Go to Booki</a>
             </div>
 
             <!-- No code in the URL -->
@@ -232,34 +245,144 @@
 
     <script>
         (function () {
-            // Code comes from the path (/invite/ABC12345). Guard against the
-            // bare /invite.html case, which would otherwise render the filename
-            // as if it were the code.
+            var SUPABASE_URL = 'https://vstfauqufwpdytmvjyfz.supabase.co';
+            var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdGZhdXF1ZndwZHl0bXZqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMjcwNjcsImV4cCI6MjA4NDgwMzA2N30.uwimFkR3pN8BODjjM5KnusptdZz_vcrxKnK_2LKfZHI';
+
+            var el = function (id) { return document.getElementById(id); };
+            var show = function (id) {
+                ['inviteLoading', 'inviteValid', 'inviteInvalid', 'inviteMissing']
+                    .forEach(function (s) { el(s).hidden = (s !== id); });
+            };
+
+            // The code is a path segment (/invite/ABC12345) or a ?code= param.
+            //
+            // This used to be a shape test -- /^[A-Z0-9]{6,12}$/ against the last
+            // path segment -- which is why /invite rendered the literal word
+            // INVITE as a copyable code: "invite" is six alphanumeric characters
+            // and passed. Shape can never tell a code from a word. Only the
+            // server can, so the only job here is to decide whether there is a
+            // candidate at all; get_invite decides whether it is real.
             var last = window.location.pathname.split('/').filter(Boolean).pop() || '';
+            if (/\./.test(last) || last.toLowerCase() === 'invite') last = '';
             var fromQuery = new URLSearchParams(window.location.search).get('code') || '';
-            var candidate = (fromQuery || last).toUpperCase();
-            var code = /^[A-Z0-9]{6,12}$/.test(candidate) ? candidate : '';
+            var code = (fromQuery || last).toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-            if (!code) {
-                document.getElementById('inviteMissing').hidden = false;
-                return;
-            }
+            if (!code) { show('inviteMissing'); return; }
 
-            document.getElementById('inviteValid').hidden = false;
-            document.getElementById('inviteCode').textContent = code;
+            var invalid = function (title, sub) {
+                el('invalidTitle').innerHTML = title;
+                el('invalidSub').textContent = sub;
+                show('inviteInvalid');
+            };
 
-            var toast = document.getElementById('toast');
-            document.getElementById('copyBtn').addEventListener('click', function () {
+            var money = function (n) {
+                return '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+            };
+            var expiryPhrase = function (iso) {
+                var d = new Date(iso);
+                if (isNaN(d)) return '';
+                var days = Math.ceil((d - new Date()) / 86400000);
+                var on = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+                if (days <= 0) return '';
+                if (days === 1) return ' It expires tomorrow (' + on + ').';
+                return ' It expires in ' + days + ' days (' + on + ').';
+            };
+
+            fetch(SUPABASE_URL + '/rest/v1/rpc/get_invite', {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ p_code: code })
+            })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (rows) {
+                var inv = Array.isArray(rows) ? rows[0] : rows;
+                if (!inv) return Promise.reject('empty');
+
+                if (inv.status === 'claimed') {
+                    return invalid('This invite has already been used',
+                        'Each invite works once. Ask your organizer to send you a new one.');
+                }
+                if (inv.status === 'expired') {
+                    return invalid('This invite has expired',
+                        'Ask your organizer to send a fresh link — new ones last seven days.');
+                }
+                if (inv.status === 'rate_limited') {
+                    return invalid('Too many attempts',
+                        'Wait a minute and reload the page.');
+                }
+                if (inv.status !== 'valid') {
+                    return invalid('This invite isn&rsquo;t valid',
+                        'We couldn\u2019t find that code. Check the link, or ask your organizer to resend it.');
+                }
+
+                // Built as nodes, not innerHTML — the organizer name is
+                // user-supplied text and has no business being parsed as markup.
+                var title = el('validTitle');
+                title.textContent = '';
+                if (inv.organizer_name) {
+                    var strong = document.createElement('strong');
+                    strong.textContent = inv.organizer_name;
+                    title.appendChild(strong);
+                    title.appendChild(document.createTextNode(' invited you'));
+                } else {
+                    title.textContent = 'You\u2019ve been invited';
+                }
+                el('validSub').textContent = inv.credit_limit
+                    ? 'Join their group on Booki with a ' + money(inv.credit_limit) +
+                      ' credit limit. Create your account with the code below.'
+                    : 'Join their group on Booki. Create your account with the code below.';
+
+                // Real expiry, not a hardcoded phrase. An addressed invite has no
+                // expiry for its addressee (see claim_invite), so get_invite
+                // returns NULL there and we say nothing rather than inventing a
+                // deadline for an invite that does not have one.
+                el('inviteFallback').textContent =
+                    'Sign up and this code is applied for you.' +
+                    (inv.expires_at ? expiryPhrase(inv.expires_at) : '') +
+                    (inv.is_addressed
+                        ? ' This invite is reserved for the address it was sent to.'
+                        : '');
+
+                // Carry the code into signup. Previously this was a bare
+                // /dashboard/ link, so nothing ever redeemed the invite.
+                el('openAppBtn').href = '/dashboard/login.html?invite=' + encodeURIComponent(code);
+
+                el('inviteCode').textContent = code;
+                show('inviteValid');
+
+                // Only deep-link once we know the code is real -- this used to
+                // fire on page load for anything shaped like a code.
+                if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+                    window.location.href = 'booki://invite/' + code;
+                }
+            })
+            .catch(function () {
+                // A network failure is not the same as a bad code, so a real
+                // invitee is not turned away. But it is not a confirmation
+                // either: claiming "you've been invited" here would re-create
+                // the exact bug this page is being fixed for — garbage looking
+                // valid — every time the backend hiccups. Say what we know.
+                el('validTitle').textContent = 'We couldn\u2019t check this invite';
+                el('validSub').textContent =
+                    'Booki didn\u2019t respond, so we can\u2019t confirm this code is valid. ' +
+                    'You can still try it — sign up and it will be checked then.';
+                el('inviteFallback').textContent = 'Sign up, then enter this code when prompted.';
+                el('openAppBtn').href = '/dashboard/login.html?invite=' + encodeURIComponent(code);
+                el('inviteCode').textContent = code;
+                show('inviteValid');
+            });
+
+            var toast = el('toast');
+            el('copyBtn').addEventListener('click', function () {
                 navigator.clipboard.writeText(code).then(function () {
                     toast.classList.add('show');
                     setTimeout(function () { toast.classList.remove('show'); }, 1600);
                 });
             });
-
-            // On iOS, try the app first — falls through to this page if not installed.
-            if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-                window.location.href = 'booki://invite/' + code;
-            }
         })();
     </script>
 </body>

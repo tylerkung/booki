@@ -149,6 +149,37 @@ function dashboardApp() {
         // per user at signup. Fire-and-forget on purpose: attribution is
         // reporting, and a failure here must never block someone getting into
         // the product.
+        // --- Invite code handoff from /invite/CODE ---------------------------
+        //
+        // The public invite page sends people to /dashboard/login.html?invite=CODE.
+        // Verification bounces them away and back, so the code is persisted and
+        // only cleared once claim_invite has actually accepted it.
+
+        INVITE_KEY: 'booki_pending_invite',
+
+        captureInviteCode() {
+            try {
+                const code = (new URLSearchParams(window.location.search).get('invite') || '')
+                    .toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (!code) return;
+                localStorage.setItem(this.INVITE_KEY, code);
+                // Drop it from the address bar so a shared or bookmarked URL
+                // does not carry someone else's single-use invite.
+                const url = new URL(window.location.href);
+                url.searchParams.delete('invite');
+                window.history.replaceState({}, '', url.toString());
+            } catch (e) { /* storage blocked — the email fallback still applies */ }
+        },
+
+        pendingInviteCode() {
+            try { return localStorage.getItem(this.INVITE_KEY) || null; }
+            catch (e) { return null; }
+        },
+
+        clearPendingInviteCode() {
+            try { localStorage.removeItem(this.INVITE_KEY); } catch (e) {}
+        },
+
         async recordAttribution() {
             if (!this.session || !this.session.user) return;
             let record;
@@ -607,6 +638,12 @@ function dashboardApp() {
 
             this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+            // Stash an invite code from /invite/CODE before anything redirects.
+            // It cannot stay in the URL: signup requires email verification, so
+            // the invitee leaves the tab and returns through a verification
+            // link that carries none of the original query string.
+            this.captureInviteCode();
+
             // Check session
             const { data: { session } } = await this.supabase.auth.getSession();
             if (!session) {
@@ -917,9 +954,17 @@ function dashboardApp() {
                 // made each of them their own organizer instead of a member of
                 // the book that invited them. Three groups became six empty ones.
                 try {
+                    // A bearer invite (email IS NULL) can only be matched by its
+                    // code — the email fallback below it finds addressed invites
+                    // only. Without the code, everyone who joined via a pasted
+                    // group-chat link fell through and became their own organizer.
+                    const pendingCode = this.pendingInviteCode();
                     const { data: claimed } = await this.supabase.functions.invoke('claim_invite', {
-                        body: { auth_user_id: userId },
+                        body: pendingCode
+                            ? { auth_user_id: userId, invite_code: pendingCode }
+                            : { auth_user_id: userId },
                     });
+                    if (claimed && claimed.success) this.clearPendingInviteCode();
                     if (claimed && claimed.success && !this._reresolvingRole) {
                         // The player row now exists, so re-run detection rather
                         // than duplicating the routing branch. It cannot recurse

@@ -318,3 +318,44 @@ later change recovers it.
 
 Until then, read the admin Attribution view knowing the denominator is
 web signups only.
+
+## B9 — Move invite validation onto `get_invite()`, then drop the `USING (true)` policy
+
+**Blocking a security fix.** Migration 010 created:
+
+```sql
+CREATE POLICY invites_select_by_code ON invites FOR SELECT USING (true);
+```
+
+commented "safe because invite codes are randomly generated 8-char strings".
+That reasoning does not hold. RLS is row-level and cannot inspect the WHERE
+clause, so the policy never requires the caller to supply a code — anyone with
+the anon key who omits the `invite_code` filter reads the whole table: every
+open code, every `bookie_id`, every invitee email address. Knowing a code was
+assumed, never enforced.
+
+Migration 052 adds `get_invite(p_code)` — SECURITY DEFINER, throttled, takes the
+code as an *argument* (which is enforceable), returns one row of display fields
+and never `bookie_id` or the invitee email. The web invite page now uses it, and
+web no longer needs any anon SELECT on `invites`.
+
+**The policy could not be dropped in 052.** `Booki/Views/InviteClaimView.swift:951`
+still queries the table directly with the anon key before login:
+
+```swift
+.from("invites")
+.select("id, invite_code, expires_at, claimed_at, bookie_id, bookies(name)")
+.eq("invite_code", value: normalized)
+```
+
+Dropping the policy today breaks invite claiming for every shipped build.
+
+**Work**
+1. Replace that query with an RPC call to `get_invite`, mapping `status` to the
+   existing error states — note `expired` must not be reported for an addressed
+   invite, which is why the function already returns NULL expiry for those.
+2. Ship the build.
+3. Then, and only then, `DROP POLICY invites_select_by_code ON invites;` and
+   confirm anon reads of `invites` fail.
+
+Step 3 is the actual fix. Steps 1–2 exist to make it safe to take.

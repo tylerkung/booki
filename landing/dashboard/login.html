@@ -119,6 +119,27 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdGZhdXF1ZndwZHl0bXZqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMjcwNjcsImV4cCI6MjA4NDgwMzA2N30.uwimFkR3pN8BODjjM5KnusptdZz_vcrxKnK_2LKfZHI';
         let sbClient;
 
+        // An invite link lands here as ?invite=CODE. Persist it immediately:
+        // signup requires email verification, so this tab is left and returned
+        // to through a link that carries none of the original query string.
+        // dashboard.js reads the same key and hands it to claim_invite.
+        (function captureInviteCode() {
+            try {
+                const code = (new URLSearchParams(window.location.search).get('invite') || '')
+                    .toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (!code) return;
+                localStorage.setItem('booki_pending_invite', code);
+                const url = new URL(window.location.href);
+                url.searchParams.delete('invite');
+                window.history.replaceState({}, '', url.toString());
+                // Someone arriving from an invite wants to create an account,
+                // not sign in to one they do not have.
+                document.addEventListener('DOMContentLoaded', function () {
+                    if (typeof showSignUp === 'function') showSignUp();
+                });
+            } catch (e) { /* storage blocked — the email fallback still applies */ }
+        })();
+
         // Initialize — key must be set in localStorage or env
         function initSupabase() {
             if (!SUPABASE_ANON_KEY) {
