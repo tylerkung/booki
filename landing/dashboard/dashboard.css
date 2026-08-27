@@ -643,6 +643,14 @@ input, button, select, textarea { font: inherit; }
 .btn {
     display: inline-flex;
     align-items: center;
+    /* inline-flex makes the UA's text-align:center inert -- the label becomes an
+       anonymous flex item and packs to flex-start. Invisible while a button is
+       content-sized, but any full-width .btn (btn-block, flex:1 in a row, the
+       100% widths in the member-detail media query) rendered its label hard
+       left. Measured 89-131px off centre on the login and signup CTAs.
+       .show-more-btn (display:block) and .bs-submit-btn (button UA default)
+       centre correctly and are untouched. */
+    justify-content: center;
     gap: var(--s-sm);
     padding: var(--s-sm) var(--s-lg);
     border-radius: var(--radius-sm);
@@ -2611,7 +2619,7 @@ input, button, select, textarea { font: inherit; }
     gap: var(--s-sm);
     margin-top: var(--s-md);
 }
-.bs-line-change-actions .btn { flex: 1; justify-content: center; }
+.bs-line-change-actions .btn { flex: 1; }
 
 /* ============================================================================
    Typography
