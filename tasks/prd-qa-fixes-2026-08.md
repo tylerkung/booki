@@ -180,13 +180,25 @@ Fixed: 5 flags defaulted true, 4 count headers guarded, and
 `scripts/check-loading-guards.py` added to the suite — verified to fire on each
 half independently.
 
-### 8. Signup error UX (QA P2-1, P2-2, P2-5)
+### 8. Signup error UX (QA P2-1, P2-2, P2-5) — FIXED 2026-08-27
 
-Not verified — needs a manual walkthrough with a real inbox. Reported: raw
-"Error sending confirmation email" with no recovery, no client-side email format
-validation, and a verification screen with no resend or change-email. All three
-are plausible and worth fixing regardless; treat the specific wording as
-unconfirmed until walked.
+All three confirmed from the page itself; no inbox needed.
+
+- **P2-2**: the page has **no `<form>` element**, so `type="email"` never runs
+  HTML5 validation (which only fires on form submit) and the buttons are plain
+  `onclick` handlers. Added `isValidEmail()` ahead of all three round trips.
+  Verified: an invalid address now sends **zero** auth requests.
+- **P2-1**: `errorEl.textContent = error.message` at three sites. Added
+  `authErrorMessage()` mapping six known cases, falling through to the raw
+  message so unknown errors are never swallowed.
+- **P2-5**: verification screen had only "Back to Log In", which is a dead end —
+  retrying signup hits "already registered". Added Resend (60s cooldown, matching
+  Supabase's send rate limit) and Use a different email, which prefills the
+  address for correction.
+
+Verified without creating any auth user: a real signup would produce a test
+account that the dormant-organizer cron does **not** suppress, so it would be
+emailed after 10 days.
 
 ---
 

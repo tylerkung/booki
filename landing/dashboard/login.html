@@ -90,7 +90,12 @@
                     <p id="verification-email" style="font-size:var(--fs-body);font-weight:var(--fw-semibold);color:var(--text-primary);margin:0 0 var(--s-lg);"></p>
                     <p id="verification-status" style="font-size:var(--fs-sm);color:var(--text-secondary);margin:0;">Waiting for verification<span id="verification-dots">...</span></p>
                 </div>
+                <div id="verification-feedback" class="form-error" style="display:none;"></div>
+                <button id="resend-btn" class="btn btn-secondary btn-block" style="margin-top:var(--s-md);" onclick="resendVerification()">Resend email</button>
                 <div class="auth-links" style="margin-top:var(--s-lg);">
+                    <a href="#" onclick="changeVerificationEmail(); return false;">Use a different email</a>
+                </div>
+                <div class="auth-links" style="margin-top:var(--s-xs);">
                     <a href="#" onclick="showLogin(); stopVerificationPolling(); return false;">Back to Log In</a>
                 </div>
             </div>
@@ -139,6 +144,58 @@
                 });
             } catch (e) { /* storage blocked — the email fallback still applies */ }
         })();
+
+        // ── Email format + error copy ────────────────────────────────────────
+        //
+        // There is no <form> on this page -- the buttons are plain onclick
+        // handlers -- so the inputs' type="email" never triggers HTML5
+        // constraint validation, which only runs on form submission. Without
+        // this check, "notanemail" was sent to the server and came back as a
+        // Supabase error AFTER the "Creating account..." round trip.
+        //
+        // Deliberately permissive. The only thing worth catching here is a
+        // clear typo; anything stricter starts rejecting valid addresses, and
+        // the server remains the real authority either way.
+        function isValidEmail(value) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
+        }
+
+        // Supabase's raw messages were shown verbatim, so someone whose
+        // address bounced got "Error sending confirmation email" with nothing
+        // to do about it. Map the ones we know; fall through to the original
+        // text so a message we have not seen is never swallowed.
+        function authErrorMessage(error) {
+            const raw = (error && error.message) || 'Something went wrong.';
+            const m = raw.toLowerCase();
+
+            if (m.includes('error sending') || m.includes('confirmation email')) {
+                return 'We could not send a verification email to that address. ' +
+                       'Check it for typos, or try a different address.';
+            }
+            if (m.includes('already registered') || m.includes('already exists') ||
+                m.includes('user already')) {
+                return 'An account already uses that email. Log in instead, or ' +
+                       'reset your password if you have forgotten it.';
+            }
+            if (m.includes('invalid login credentials')) {
+                return 'That email and password do not match an account.';
+            }
+            if (m.includes('email not confirmed')) {
+                return 'This account still needs verifying. Check your inbox for ' +
+                       'the link we sent.';
+            }
+            if (m.includes('unable to validate email') || m.includes('invalid format')) {
+                return 'That does not look like a valid email address.';
+            }
+            if (m.includes('rate limit') || m.includes('too many') ||
+                m.includes('for security purposes')) {
+                return 'Too many attempts. Wait a minute and try again.';
+            }
+            if (m.includes('weak password') || m.includes('at least 6')) {
+                return 'Pick a longer password -- at least 6 characters.';
+            }
+            return raw;
+        }
 
         // Initialize — key must be set in localStorage or env
         function initSupabase() {
@@ -207,6 +264,11 @@
                 errorEl.style.display = 'block';
                 return;
             }
+            if (!isValidEmail(email)) {
+                errorEl.textContent = 'That does not look like a valid email address.';
+                errorEl.style.display = 'block';
+                return;
+            }
 
             btn.disabled = true;
             btn.textContent = 'Logging in...';
@@ -214,7 +276,7 @@
             const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
 
             if (error) {
-                errorEl.textContent = error.message;
+                errorEl.textContent = authErrorMessage(error);
                 errorEl.style.display = 'block';
                 btn.disabled = false;
                 btn.textContent = 'Log In';
@@ -238,6 +300,11 @@
 
             if (!name || !email || !password) {
                 errorEl.textContent = 'All fields are required';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (!isValidEmail(email)) {
+                errorEl.textContent = 'That does not look like a valid email address.';
                 errorEl.style.display = 'block';
                 return;
             }
@@ -268,7 +335,7 @@
             });
 
             if (error) {
-                errorEl.textContent = error.message;
+                errorEl.textContent = authErrorMessage(error);
                 errorEl.style.display = 'block';
                 btn.disabled = false;
                 btn.textContent = 'Create Account';
@@ -282,6 +349,8 @@
                 document.querySelector('.auth-title').textContent = 'Check your email';
                 document.querySelector('.auth-subtitle').textContent = '';
                 document.getElementById('verification-email').textContent = email;
+                pendingVerificationEmail = email;
+                setVerificationFeedback('', false);
 
                 // Poll for verification — auto-redirect once confirmed
                 startVerificationPolling();
@@ -309,6 +378,11 @@
                 errorEl.style.display = 'block';
                 return;
             }
+            if (!isValidEmail(email)) {
+                errorEl.textContent = 'That does not look like a valid email address.';
+                errorEl.style.display = 'block';
+                return;
+            }
 
             btn.disabled = true;
             btn.textContent = 'Sending...';
@@ -321,12 +395,84 @@
             btn.textContent = 'Send Reset Link';
 
             if (error) {
-                errorEl.textContent = error.message;
+                errorEl.textContent = authErrorMessage(error);
                 errorEl.style.display = 'block';
             } else {
                 successEl.textContent = 'Reset link sent! Check your email.';
                 successEl.style.display = 'block';
             }
+        }
+
+        // ── Resend / change address ──────────────────────────────────────────
+        //
+        // The verification screen used to offer only "Back to Log In". If the
+        // email never arrived -- wrong address, spam folder, a send that failed
+        // -- there was nothing to do but start over, and starting over hits
+        // "already registered" because the account exists.
+
+        let pendingVerificationEmail = '';
+        let resendCooldown = 0;
+        let resendTimer = null;
+
+        function setVerificationFeedback(text, ok) {
+            const el = document.getElementById('verification-feedback');
+            if (!el) return;
+            el.textContent = text;
+            el.style.display = text ? 'block' : 'none';
+            el.style.color = ok ? 'var(--accent, #00F5D4)' : '';
+        }
+
+        // Supabase rate-limits verification sends, so an un-cooled button would
+        // mostly produce "for security purposes" errors and look broken. The
+        // countdown says why the button is unavailable instead.
+        function startResendCooldown(seconds) {
+            resendCooldown = seconds;
+            const btn = document.getElementById('resend-btn');
+            clearInterval(resendTimer);
+            resendTimer = setInterval(() => {
+                resendCooldown -= 1;
+                if (resendCooldown <= 0) {
+                    clearInterval(resendTimer);
+                    if (btn) { btn.disabled = false; btn.textContent = 'Resend email'; }
+                    return;
+                }
+                if (btn) btn.textContent = 'Resend in ' + resendCooldown + 's';
+            }, 1000);
+            if (btn) { btn.disabled = true; btn.textContent = 'Resend in ' + seconds + 's'; }
+        }
+
+        async function resendVerification() {
+            if (!pendingVerificationEmail || resendCooldown > 0) return;
+            const btn = document.getElementById('resend-btn');
+            setVerificationFeedback('', false);
+            if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+
+            const { error } = await sbClient.auth.resend({
+                type: 'signup',
+                email: pendingVerificationEmail
+            });
+
+            if (error) {
+                setVerificationFeedback(authErrorMessage(error), false);
+                if (btn) { btn.disabled = false; btn.textContent = 'Resend email'; }
+                return;
+            }
+            setVerificationFeedback('Sent. Check your inbox, and your spam folder.', true);
+            startResendCooldown(60);
+        }
+
+        function changeVerificationEmail() {
+            stopVerificationPolling();
+            clearInterval(resendTimer);
+            resendCooldown = 0;
+            setVerificationFeedback('', false);
+            const btn = document.getElementById('resend-btn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Resend email'; }
+            showSignUp();
+            // Carry the address back so it can be corrected rather than retyped;
+            // a typo is the most likely reason someone is on this path.
+            const field = document.getElementById('signup-email');
+            if (field) { field.value = pendingVerificationEmail; field.focus(); }
         }
 
         // ── Verification Polling ──

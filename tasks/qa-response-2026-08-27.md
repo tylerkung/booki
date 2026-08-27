@@ -113,9 +113,36 @@ and the sport pages — every flag whose view could paint before its query ran.
 There's now a check in the build that fails on either half of it, so it can't
 come back quietly.
 
-## Still open, need your help
+## Also fixed — signup error UX (P2-1, P2-2, P2-5)
 
-- **Signup error UX (P2-1, P2-2, P2-5)** — see below. Still the one open item.
-- **Signup error UX (P2-1, P2-2, P2-5).** All three are believable and worth
-  fixing regardless, but they need a real inbox to walk properly. Treating the
-  exact wording as unconfirmed until then.
+All three confirmed, and I was able to drop the "needs an inbox" caveat — the
+causes are all in the page.
+
+**No client-side email validation (P2-2).** There are **zero `<form>` elements**
+on that page. The inputs are `type="email"`, but HTML5 constraint validation
+only runs on form submission and the buttons are plain `onclick` handlers, so
+the type attribute was doing nothing. `notanemail` now fails instantly with no
+network call at all — verified by counting outbound auth requests: zero.
+
+**Raw error text (P2-1).** `errorEl.textContent = error.message` at three sites,
+passing Supabase's wording straight through. Now mapped for the cases worth
+naming — undeliverable address, already registered, wrong credentials,
+unverified account, rate limited, weak password — with the original message kept
+as the fallback so nothing we haven't seen gets swallowed.
+
+**Verification dead end (P2-5).** The screen had exactly one link, "Back to Log
+In" — and starting over doesn't work, because the account already exists and you
+get "already registered". It now has **Resend email** (60s cooldown, since
+Supabase rate-limits sends and an un-cooled button would just look broken) and
+**Use a different email**, which returns to signup with the address prefilled so
+a typo can be corrected rather than retyped.
+
+## Still open
+
+Nothing. Every item in the brief is now either shipped, closed as no change, or
+recorded as non-reproducing.
+
+One unrelated thing I noticed and did **not** touch: every full-width button on
+the login page renders its label left-aligned, because `.btn` is `inline-flex`
+with no `justify-content: center` and it only shows when `btn-block` stretches
+it. Pre-existing, cosmetic, outside this pass.
