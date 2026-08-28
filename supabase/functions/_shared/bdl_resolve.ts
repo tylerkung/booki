@@ -23,6 +23,8 @@ import { normalizeName, type BdlPlayer } from './player_identity.ts';
  * mirror of the league.
  */
 
+import { bdlFetch } from './bdl_fetch.ts';
+
 const BDL_BASE = 'https://api.balldontlie.io/nfl/v1';
 
 export type SubjectResolution =
@@ -86,6 +88,45 @@ function matchesIgnoringSuffix(target: string, p: ApiPlayer): boolean {
   return drop(`${p.first_name} ${p.last_name}`) === drop(target);
 }
 
+/**
+ * Both rosters for a game, fetched once and reused for every subject in it.
+ *
+ * The original path asked balldontlie for one specific name per prop subject.
+ * A single MLB game carries about twenty, and the rate limit answered 429 to
+ * half of them — which surfaced as `balldontlie has no player named "Nico
+ * Hoerner"` for a player the API returns instantly when asked on its own. One
+ * roster call per game replaces twenty name lookups and removes the pressure
+ * that caused it.
+ */
+const rosterCache = new Map<string, ApiPlayer[]>();
+
+async function rostersFor(
+  bdlBase: string,
+  apiKey: string,
+  teamIds: number[],
+): Promise<ApiPlayer[]> {
+  const key = `${bdlBase}|${[...teamIds].sort().join(',')}`;
+  const hit = rosterCache.get(key);
+  if (hit) return hit;
+
+  const out: ApiPlayer[] = [];
+  let cursor: number | string | null = null;
+  // Bounded: two rosters are a few hundred players at most, and an unbounded
+  // cursor loop against a rate-limited API is how a run hits the worker ceiling.
+  for (let page = 0; page < 6; page++) {
+    const qs = teamIds.map((id) => `team_ids[]=${id}`).join('&') +
+      `&per_page=100${cursor ? `&cursor=${cursor}` : ''}`;
+    const res = await bdlFetch(`${bdlBase}/players?${qs}`, apiKey);
+    if (!res.ok) throw new Error(res.status === 429 ? 'balldontlie rate limited' : `balldontlie players ${res.status}`);
+    const body = await res.json();
+    out.push(...((body.data ?? []) as ApiPlayer[]));
+    cursor = body.meta?.next_cursor ?? null;
+    if (!cursor) break;
+  }
+  rosterCache.set(key, out);
+  return out;
+}
+
 export async function resolveSubject(
   client: SupabaseClient,
   apiKey: string,
@@ -119,18 +160,17 @@ export async function resolveSubject(
     return { ok: false, reason: `"${rawName}" is ambiguous among cached players for this game` };
   }
 
-  // Miss: ask the API for this specific name.
+  // Miss: match against the two rosters, fetched once for the whole game.
   let hits: ApiPlayer[] = [];
-  for (const variant of queryVariants(rawName)) {
-    const url = `${bdlBase}/players?first_name=${encodeURIComponent(variant.first)}` +
-      `&last_name=${encodeURIComponent(variant.last)}&per_page=100`;
-    const res = await fetch(url, { headers: { Authorization: apiKey } });
-    if (!res.ok) continue;
-    const body = await res.json();
-    hits = (body.data ?? []) as ApiPlayer[];
-    if (hits.length) break;
+  try {
+    hits = await rostersFor(bdlBase, apiKey, teamIds);
+  } catch (e) {
+    // A failed request is not a missing player. Reporting "no player named X"
+    // for a rate limit sends the reader hunting a name-matching bug that is not
+    // there — exactly what it did on the first MLB run.
+    return { ok: false, reason: String((e as Error).message) };
   }
-  if (!hits.length) return { ok: false, reason: `balldontlie has no player named "${rawName}"` };
+  if (!hits.length) return { ok: false, reason: 'no roster returned for either team' };
 
   // Scope to the two rosters. This is the safety property: the league has more
   // than one Josh Allen, a single game does not.
@@ -173,7 +213,9 @@ export async function resolveSubject(
   // and corrects it.
   await client.from('bdl_players').upsert(
     { ...row, sport, last_synced_at: new Date().toISOString() },
-    { onConflict: 'bdl_player_id' },
+    // Composite since migration 056: bdl_player_id alone is not unique across
+    // sports, so naming only that column fails with no matching constraint.
+    { onConflict: 'sport,bdl_player_id' },
   );
 
   return { ok: true, player: row, fromCache: false };

@@ -53,6 +53,19 @@ Deno.serve(async (req) => {
     // Sport is a request parameter defaulting to NFL, so the existing cron and
     // every prior invocation behave exactly as before.
     const cfg = sportConfig(body.sport);
+    // Bounded, resumable runs. The first pass over a slate resolves one player
+    // per unseen name, and with rate-limit backoff that is minutes of sequential
+    // requests — nine MLB games exceeded the 150s worker ceiling outright. Each
+    // invocation now takes a slice and the next continues, which works because
+    // every resolution is cached in bdl_players: later runs are mostly cache
+    // hits and get through far more games.
+    const maxGames = typeof body.max_games === 'number'
+      ? Math.min(Math.max(body.max_games, 1), 25)
+      : 3;
+    // A wall-clock guard as well as a count, since a game with many unseen
+    // players costs far more than one with few.
+    const startedAt = Date.now();
+    const DEADLINE_MS = 100_000;
 
     const client = createServiceClient();
 
@@ -76,8 +89,24 @@ Deno.serve(async (req) => {
 
     if (eventsError) return json({ error: `events: ${eventsError.message}` }, 500);
 
+    // Games with no props yet go first, so repeated runs walk the slate rather
+    // than re-doing the front of it.
+    const eventIds = (events ?? []).map((e) => e.id);
+    const { data: alreadyHave } = eventIds.length
+      ? await client.from('markets').select('event_id').eq('type', 'player_prop').in('event_id', eventIds)
+      : { data: [] as { event_id: string }[] };
+    const haveProps = new Set((alreadyHave ?? []).map((m) => m.event_id));
+    const slate = [...(events ?? [])].sort((a, b) => {
+      const ap = haveProps.has(a.id) ? 1 : 0;
+      const bp = haveProps.has(b.id) ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return String(a.start_time).localeCompare(String(b.start_time));
+    }).slice(0, maxGames);
+
     const stats = {
-      games_considered: events?.length ?? 0,
+      games_considered: slate.length,
+      games_available: events?.length ?? 0,
+      games_deferred: Math.max(0, (events?.length ?? 0) - slate.length),
       games_ingested: 0,
       games_skipped_no_bdl_game: 0,
       markets_written: 0,
@@ -86,16 +115,28 @@ Deno.serve(async (req) => {
       // The monitor. A rising skip count is how identity drift announces itself.
       subjects_unresolved: 0,
       unresolved_examples: [] as string[],
+      // Why games were skipped, not just how many. A rate limit and an unmapped
+      // team produce the same count and want opposite fixes.
+      skip_examples: [] as string[],
+      stopped_on_time_budget: false,
       dry_run: dryRun,
       window_days: Math.round(windowMs / 86400000),
+      max_games: maxGames,
     };
 
-    for (const event of events ?? []) {
+    for (const event of slate) {
+      if (Date.now() - startedAt > DEADLINE_MS) {
+        stats.stopped_on_time_budget = true;
+        break;
+      }
       // No balldontlie game means no box score, which means nothing here could
       // ever be settled. Skip before spending an Odds API credit on it.
       const game = await resolveBdlGame(client, bdlKey, event, cfg.sport, cfg.bdlBase);
       if (!game.ok) {
         stats.games_skipped_no_bdl_game++;
+        if (stats.skip_examples.length < 10) {
+          stats.skip_examples.push(`${event.away_team} @ ${event.home_team}: ${game.reason}`);
+        }
         console.log(`skip ${event.away_team} @ ${event.home_team}: ${game.reason}`);
         continue;
       }
