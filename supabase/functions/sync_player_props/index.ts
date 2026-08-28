@@ -4,6 +4,7 @@ import { resolveBdlGame } from '../_shared/bdl_games.ts';
 import { resolveSubject } from '../_shared/bdl_resolve.ts';
 import { PROP_STATS } from '../_shared/prop_stats.ts';
 import { POSITION_HINTS } from '../_shared/player_identity.ts';
+import { sportConfig } from '../_shared/sport_config.ts';
 import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
 
 /**
@@ -22,32 +23,6 @@ import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota
  */
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports';
-const SPORT_KEY = 'americanfootball_nfl';
-
-/**
- * Start narrow. Every market here maps to exactly one statline field with no
- * interpretation, and each costs 1 credit per game. The wider set verified in
- * US-001 can follow once the real row volume is measured — the estimate was
- * ~200 rows a game and this project has already exceeded its egress budget once.
- */
-const PROP_MARKETS = [
-  'player_pass_yds',
-  'player_pass_tds',
-  'player_rush_yds',
-  'player_reception_yds',
-  'player_receptions',
-  'player_anytime_td',
-] as const;
-
-/** Odds API market key -> the stat_key stored on the market row. */
-const MARKET_TO_STAT: Record<string, string> = {
-  player_pass_yds: 'player_pass_yds',
-  player_pass_tds: 'player_pass_tds',
-  player_rush_yds: 'player_rush_yds',
-  player_reception_yds: 'player_reception_yds',
-  player_receptions: 'player_receptions',
-  player_anytime_td: 'player_anytime_td',
-};
 
 /** How close to kickoff a game earns prop ingest. Tighter than the odds
  *  window: props are the largest market type by row count and the least
@@ -75,6 +50,9 @@ Deno.serve(async (req) => {
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const dryRun = body.dry_run === true;
+    // Sport is a request parameter defaulting to NFL, so the existing cron and
+    // every prior invocation behave exactly as before.
+    const cfg = sportConfig(body.sport);
 
     const client = createServiceClient();
 
@@ -89,7 +67,7 @@ Deno.serve(async (req) => {
     const { data: events, error: eventsError } = await client
       .from('events')
       .select('id, external_id, home_team, away_team, start_time, status, bdl_game_id')
-      .eq('league', 'NFL')
+      .eq('league', cfg.sport)
       .neq('away_team', 'Outright')
       .eq('status', 'scheduled')
       .gt('start_time', new Date().toISOString())
@@ -115,7 +93,7 @@ Deno.serve(async (req) => {
     for (const event of events ?? []) {
       // No balldontlie game means no box score, which means nothing here could
       // ever be settled. Skip before spending an Odds API credit on it.
-      const game = await resolveBdlGame(client, bdlKey, event);
+      const game = await resolveBdlGame(client, bdlKey, event, cfg.sport, cfg.bdlBase);
       if (!game.ok) {
         stats.games_skipped_no_bdl_game++;
         console.log(`skip ${event.away_team} @ ${event.home_team}: ${game.reason}`);
@@ -125,6 +103,8 @@ Deno.serve(async (req) => {
       const { data: teamRows } = await client
         .from('bdl_teams')
         .select('bdl_team_id')
+        // Scoped by sport: bdl_team_id is unique only within a sport.
+        .eq('sport', cfg.sport)
         .in('odds_api_name', [event.home_team, event.away_team]);
       const teamIds = (teamRows ?? []).map((t) => t.bdl_team_id);
       if (teamIds.length !== 2) {
@@ -132,8 +112,8 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const url = `${ODDS_BASE}/${SPORT_KEY}/events/${event.external_id}/odds/` +
-        `?apiKey=${oddsKey}&regions=us&oddsFormat=american&markets=${PROP_MARKETS.join(',')}`;
+      const url = `${ODDS_BASE}/${cfg.oddsKey}/events/${event.external_id}/odds/` +
+        `?apiKey=${oddsKey}&regions=us&oddsFormat=american&markets=${cfg.propMarkets.join(',')}`;
       const res = await fetch(url);
       const text = await res.text();
       recordQuota(res, `props:${event.external_id}`, text.length);
@@ -153,8 +133,14 @@ Deno.serve(async (req) => {
       const resolved = new Map<string, number | null>();
 
       for (const market of book.markets ?? []) {
-        const statKey = MARKET_TO_STAT[market.key];
-        if (!statKey || !PROP_STATS[statKey]) continue;
+        const statKey = cfg.marketToStat[market.key];
+        if (!statKey) continue;
+        // A settleable sport must map to a grading function, or the market is
+        // ungradeable and has no business being written. An unsettleable sport
+        // has no such functions by definition — those markets are written with
+        // bettable = false rather than withheld, so the board can show them
+        // while nobody can wager into something we cannot grade.
+        if (cfg.settleable && !PROP_STATS[statKey]) continue;
 
         // Group Over/Under by (player, line): that pair is one two-sided row,
         // exactly how team totals are stored.
@@ -177,6 +163,7 @@ Deno.serve(async (req) => {
           if (!resolved.has(entry.subject)) {
             const r = await resolveSubject(
               client, bdlKey, entry.subject, teamIds, POSITION_HINTS[statKey],
+              cfg.sport, cfg.bdlBase,
             );
             resolved.set(entry.subject, r.ok ? r.player.bdl_player_id : null);
             if (r.ok) stats.subjects_resolved++;
@@ -208,7 +195,9 @@ Deno.serve(async (req) => {
             odds_b: entry.under.price,
             subject_player_id: playerId,
             subject_name: entry.subject,
+            subject_sport: cfg.sport,
             stat_key: statKey,
+            bettable: cfg.settleable,
           });
         }
       }

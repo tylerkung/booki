@@ -3064,6 +3064,21 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-muted);
 }
 
+.gd-props-notice {
+    display: flex;
+    align-items: center;
+    gap: var(--s-sm);
+    padding: var(--s-sm) var(--s-md);
+    margin-bottom: var(--s-md);
+    border: var(--hairline) solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-size: var(--fs-sm);
+}
+
+.gd-props-notice svg { flex-shrink: 0; color: var(--text-muted); }
+
 .gd-prop-row {
     display: grid;
     /* Prices stay aligned down the group so they can be compared at a glance,

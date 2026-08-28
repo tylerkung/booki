@@ -92,6 +92,8 @@ export async function resolveSubject(
   rawName: string,
   teamIds: number[],
   positionHint?: string[],
+  sport = 'NFL',
+  bdlBase = BDL_BASE,
 ): Promise<SubjectResolution> {
   const normalized = normalizeName(rawName);
 
@@ -100,6 +102,10 @@ export async function resolveSubject(
     .from('bdl_players')
     .select('bdl_player_id, first_name, last_name, normalized_name, position, bdl_team_id')
     .eq('normalized_name', normalized)
+    // Without the sport filter this cache read can match a player from another
+    // league: bdl_player_id and bdl_team_id are both per-sport sequences, so the
+    // same numbers exist in each.
+    .eq('sport', sport)
     .in('bdl_team_id', teamIds);
 
   if (cached && cached.length === 1) {
@@ -116,7 +122,7 @@ export async function resolveSubject(
   // Miss: ask the API for this specific name.
   let hits: ApiPlayer[] = [];
   for (const variant of queryVariants(rawName)) {
-    const url = `${BDL_BASE}/players?first_name=${encodeURIComponent(variant.first)}` +
+    const url = `${bdlBase}/players?first_name=${encodeURIComponent(variant.first)}` +
       `&last_name=${encodeURIComponent(variant.last)}&per_page=100`;
     const res = await fetch(url, { headers: { Authorization: apiKey } });
     if (!res.ok) continue;
@@ -166,7 +172,7 @@ export async function resolveSubject(
   // produces a miss rather than a wrong answer, and the next lookup re-resolves
   // and corrects it.
   await client.from('bdl_players').upsert(
-    { ...row, sport: 'NFL', last_synced_at: new Date().toISOString() },
+    { ...row, sport, last_synced_at: new Date().toISOString() },
     { onConflict: 'bdl_player_id' },
   );
 

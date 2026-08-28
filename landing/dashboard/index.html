@@ -2610,6 +2610,17 @@
                                       x-text="gameDetailPropGroups.reduce((n,g)=>n+g.markets.length,0) + ' lines · ' + gameDetailPropGroups.length + ' players'"></span>
                             </div>
 
+                            <!-- Priced and shown, but not wagerable. See migration 057:
+                                 the Odds API quotes MLB props, balldontlie has no MLB
+                                 statlines on this plan, and a bet nobody can grade is
+                                 worse than a market nobody can see. -->
+                            <template x-if="propsViewOnly">
+                                <div class="gd-props-notice">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                    <span>Odds shown for reference. These props can&rsquo;t be added to a slip yet.</span>
+                                </div>
+                            </template>
+
                             <div class="filter-bar" style="margin-bottom:var(--s-md);">
                                 <input class="search-input" type="search" x-model="propSearch" placeholder="Find a player">
                             </div>
@@ -2627,16 +2638,16 @@
                                                       x-text="extractLine(m.side_a)"></span>
                                             </div>
                                             <button class="pg-odds-btn gd-cell gd-prop-cell"
-                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) }"
-                                                :disabled="isEventLocked(gameDetail) || m.odds_a === null"
-                                                @click="toggleSelection(gameDetail, m, 'a', m.side_a, m.odds_a)">
+                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
+                                                :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_a === null"
+                                                @click="m.bettable === false || toggleSelection(gameDetail, m, 'a', m.side_a, m.odds_a)">
                                                 <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'Yes' : 'Over'"></span>
                                                 <span class="gd-cell-odds" x-text="m.odds_a === null ? '—' : formatOdds(m.odds_a)"></span>
                                             </button>
                                             <button class="pg-odds-btn gd-cell gd-prop-cell"
-                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) }"
-                                                :disabled="isEventLocked(gameDetail) || m.odds_b === null"
-                                                @click="toggleSelection(gameDetail, m, 'b', m.side_b, m.odds_b)">
+                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
+                                                :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_b === null"
+                                                @click="m.bettable === false || toggleSelection(gameDetail, m, 'b', m.side_b, m.odds_b)">
                                                 <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'No' : 'Under'"></span>
                                                 <span class="gd-cell-odds" x-text="m.odds_b === null ? '—' : formatOdds(m.odds_b)"></span>
                                             </button>

@@ -19,6 +19,7 @@ import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
  * teams play each other at most once in any three-day span.
  */
 
+/** Default kept so NFL callers are unchanged; MLB passes its own. */
 const BDL_BASE = 'https://api.balldontlie.io/nfl/v1';
 
 export interface BdlGame {
@@ -51,6 +52,8 @@ export async function resolveBdlGame(
     away_team: string;
     bdl_game_id?: number | null;
   },
+  sport = 'NFL',
+  bdlBase = BDL_BASE,
 ): Promise<GameResolution> {
   if (event.bdl_game_id) {
     return { ok: true, bdlGameId: event.bdl_game_id, cached: true };
@@ -59,6 +62,10 @@ export async function resolveBdlGame(
   const { data: teams, error: teamsError } = await client
     .from('bdl_teams')
     .select('bdl_team_id, odds_api_name')
+    // Scoped by sport: bdl_team_id is only unique WITHIN a sport — 29 of the 30
+    // MLB ids are also NFL ids — so an unscoped read can hand back a team from
+    // the wrong league.
+    .eq('sport', sport)
     .in('odds_api_name', [event.home_team, event.away_team]);
 
   if (teamsError) return { ok: false, reason: `bdl_teams lookup failed: ${teamsError.message}` };
@@ -73,7 +80,7 @@ export async function resolveBdlGame(
   const wanted = new Set(teams.map((t) => t.bdl_team_id));
 
   const dates = dayStrings(event.start_time).map((d) => `dates[]=${d}`).join('&');
-  const res = await fetch(`${BDL_BASE}/games?${dates}&per_page=100`, {
+  const res = await fetch(`${bdlBase}/games?${dates}&per_page=100`, {
     headers: { Authorization: apiKey },
   });
   if (!res.ok) {

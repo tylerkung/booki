@@ -342,7 +342,7 @@ Deno.serve(async (req) => {
     const marketIds = body.legs.map(leg => leg.market_id.toLowerCase());
     const { data: markets, error: marketsError } = await client
       .from('markets')
-      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at')
+      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable')
       .in('id', marketIds);
 
     if (marketsError) {
@@ -371,6 +371,18 @@ Deno.serve(async (req) => {
 
       const legEvent = eventById.get(String(leg.event_id ?? '').toLowerCase()) as
         { last_odds_update?: string | null } | undefined;
+
+      // A market can be priced and shown without being gradeable — MLB player
+      // props are the first case, since balldontlie has no MLB statlines on
+      // this plan. The client disables those controls, but the client is not
+      // the authority: an ungradeable bet has no correct outcome, so it is
+      // refused here too.
+      if (market.bettable === false) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'market_not_bettable', market_id: leg.market_id }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       if (superseded.has(String(market.id).toLowerCase())) {
         console.warn(`Parlay leg on a superseded line: ${leg.market_id}`);

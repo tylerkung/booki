@@ -184,6 +184,10 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 
 - **`--odds-height: 40px` standardises every bet CTA**: applied as `min-height` on `.pg-odds-btn`, which `.gd-cell` and `.gd-side` also carry, so board columns, futures outcomes and the game-detail ladder are all one height. `min-height` rather than `height` so a stacked spread can still grow. Before this a one-line moneyline and a two-line spread were different heights wherever they were not in the same flex row.
 
+- **MLB props: priced and shown, never bettable (yet)**: The Odds API quotes 39 MLB markets (measured 2026-08-28, Reds @ Cubs — 21 of them player props, `batter_total_bases` and `pitcher_strikeouts` at 6 books each), but **balldontlie's `/mlb/v1/stats` returns 401 on the current plan** while `/nfl/v1/stats` and `/nba/v1/stats` return 200. No statline means nothing to settle against, so MLB props are written with `markets.bettable = false` (migration 057): displayed for reference, refused by `submit_bet`, `submit_bets` and `submit_parlay`, and disabled in the UI. Flip `settleable` in `_shared/sport_config.ts` when the plan covers MLB and the next ingest makes them bettable.
+- **balldontlie ids are per-sport and they collide**: NFL uses team ids 1..33, MLB 1..30, and **29 of the 30 MLB ids are already an NFL team** — id 1 is New England for NFL and Arizona for MLB. `bdl_teams.bdl_team_id` and `bdl_players.bdl_player_id` were single-column primary keys, so seeding MLB would have quietly rewritten NFL rows and broken the identity resolution that currently works. Migration 056 makes both keys `(sport, id)` and adds `markets.subject_sport` so the FK stays a real constraint. **Every read of these tables must filter by sport** — `resolveSubject` and `resolveBdlGame` now take one.
+- **The Odds API calls them "Athletics", balldontlie says "Oakland Athletics"** — 29 of 30 MLB names match exactly and that is the one exception, which is precisely what `bdl_teams.odds_api_name` exists for.
+
 ## Current State (March 4, 2026)
 
 - **Branch**: `ralph/web-dashboard-hardening`

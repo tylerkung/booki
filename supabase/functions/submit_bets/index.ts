@@ -268,7 +268,7 @@ Deno.serve(async (req) => {
 
     const { data: markets, error: marketsError } = await client
       .from('markets')
-      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at')
+      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable')
       .in('id', uniqueMarketIds);
 
     if (marketsError) {
@@ -323,6 +323,16 @@ Deno.serve(async (req) => {
       const market = marketMap.get(normalizedMarketId);
       if (!market) {
         failed.push({ index: i, event_id: bet.event_id, error: 'Market not found' });
+        continue;
+      }
+
+      // A market can be priced and shown without being gradeable — MLB player
+      // props are the first case, since balldontlie has no MLB statlines on
+      // this plan. The client disables those controls, but the client is not
+      // the authority: an ungradeable bet has no correct outcome, so it is
+      // refused here too.
+      if (market.bettable === false) {
+        failed.push({ index: i, event_id: bet.event_id, error: 'This market is not available to bet' });
         continue;
       }
 

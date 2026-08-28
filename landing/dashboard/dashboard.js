@@ -2451,6 +2451,14 @@ function dashboardApp() {
          * name first and a number second, so the name is the heading and never
          * repeats inside its group.
          */
+        /** True when this game's props are priced for display but cannot be bet.
+         *  Derived from the rows themselves rather than from a sport list held
+         *  in the client, so the server stays the single source of truth. */
+        get propsViewOnly() {
+            const props = this.gameDetailMarkets.filter(m => m.type === 'player_prop');
+            return props.length > 0 && props.every(m => m.bettable === false);
+        },
+
         get gameDetailPropGroups() {
             const q = this.propSearch.trim().toLowerCase();
             const byPlayer = new Map();
@@ -2480,6 +2488,16 @@ function dashboardApp() {
                 player_receptions: 'Receptions',
                 player_rush_reception_yds: 'Rush + rec yards',
                 player_anytime_td: 'Anytime TD',
+                // MLB
+                batter_total_bases: 'Total bases',
+                batter_hits: 'Hits',
+                batter_home_runs: 'Home runs',
+                batter_rbis: 'RBIs',
+                batter_runs_scored: 'Runs scored',
+                pitcher_strikeouts: 'Strikeouts',
+                pitcher_outs: 'Outs recorded',
+                pitcher_hits_allowed: 'Hits allowed',
+                pitcher_earned_runs: 'Earned runs',
             })[statKey] || statKey;
         },
 
