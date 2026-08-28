@@ -1666,10 +1666,17 @@ input, button, select, textarea { font: inherit; }
 .pg-game-row:last-child { border-bottom: none; }
 .pg-game-row.pg-locked { opacity: 0.5; }
 
+.pg-game-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-sm);
+    margin-bottom: var(--s-sm);
+}
+
 .pg-game-time {
     font-size: var(--fs-micro);
     color: var(--text-muted);
-    margin-bottom: var(--s-sm);
 }
 
 .pg-game-grid {
@@ -1703,7 +1710,7 @@ input, button, select, textarea { font: inherit; }
 
 .pg-odds-btn {
     width: var(--odds-col);
-    padding: var(--s-sm) var(--s-xs);
+    padding: var(--s-xs) var(--s-xs);
     background: var(--bg-elevated);
     border: var(--hairline) solid var(--border);
     border-radius: var(--radius-sm);
@@ -1714,10 +1721,21 @@ input, button, select, textarea { font: inherit; }
     text-align: center;
     transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
     display: flex;
+    /* Column, so a spread or total reads as its line stacked over its price.
+       A moneyline has only the price and centres on its own. */
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--s-sm);
+    gap: 0;
     white-space: nowrap;
+}
+
+.pg-odds-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-xxs);
+    line-height: var(--lh-tight);
 }
 .pg-odds-btn:hover:not(:disabled) {
     border-color: var(--accent);
@@ -1752,7 +1770,7 @@ input, button, select, textarea { font: inherit; }
 }
 
 .pg-odds-line {
-    font-size: var(--fs-caption);
+    font-size: var(--fs-micro);
     color: var(--text-secondary);
 }
 .pg-odds-line::after {
@@ -1761,6 +1779,14 @@ input, button, select, textarea { font: inherit; }
 .pg-odds-val {
     font-size: var(--fs-caption);
     color: var(--text-primary);
+}
+
+/* The price is the thing being chosen, so it carries the accent. Scoped to the
+   button: .pg-odds-val also appears in the game-detail board, which is the same
+   control and should read the same. The selected state below still wins, since
+   .pg-odds-btn.pg-odds-active .pg-odds-val is more specific. */
+.pg-odds-btn .pg-odds-val {
+    color: var(--accent);
 }
 .pg-odds-na {
     color: var(--text-muted);
@@ -2891,6 +2917,13 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-micro);
     color: var(--text-muted);
     white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: var(--ls-caps);
+    text-decoration: none;
+}
+
+.pg-more-lines:hover {
+    color: var(--accent);
 }
 .pg-game-more:hover .pg-more-lines { color: var(--accent); }
 
