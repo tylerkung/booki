@@ -96,7 +96,14 @@ Deno.serve(async (req) => {
       ? await client.from('markets').select('event_id').eq('type', 'player_prop').in('event_id', eventIds)
       : { data: [] as { event_id: string }[] };
     const haveProps = new Set((alreadyHave ?? []).map((m) => m.event_id));
-    const slate = [...(events ?? [])].sort((a, b) => {
+    // For a sport whose markets cannot be bet, a game is ingested ONCE. Prices
+    // move constantly, but re-fetching them costs Odds API credits to refresh a
+    // number nobody can act on. A settleable sport still re-prices every run.
+    const candidates = cfg.settleable
+      ? (events ?? [])
+      : (events ?? []).filter((e) => !haveProps.has(e.id));
+
+    const slate = [...candidates].sort((a, b) => {
       const ap = haveProps.has(a.id) ? 1 : 0;
       const bp = haveProps.has(b.id) ? 1 : 0;
       if (ap !== bp) return ap - bp;
@@ -106,7 +113,8 @@ Deno.serve(async (req) => {
     const stats = {
       games_considered: slate.length,
       games_available: events?.length ?? 0,
-      games_deferred: Math.max(0, (events?.length ?? 0) - slate.length),
+      games_already_ingested: (events ?? []).length - candidates.length,
+      games_deferred: Math.max(0, candidates.length - slate.length),
       games_ingested: 0,
       games_skipped_no_bdl_game: 0,
       markets_written: 0,
