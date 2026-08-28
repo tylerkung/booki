@@ -35,6 +35,49 @@ CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 
 ## Completed Migrations
 
+> **Note:** this file records migrations narratively and stopped being updated
+> around 030. The repo's `supabase/migrations/` directory is the authoritative
+> list — it runs to 058 — and `scripts/check-migrations.py` verifies numbering.
+> The entries below cover the most recent work; older gaps are not backfilled.
+
+### 2026-08-28: MLB Player Props (056–058)
+
+**056 — multi-sport identity.** `bdl_teams` and `bdl_players` primary keys become
+`(sport, id)`. balldontlie numbers teams from 1 within each sport, and 29 of the
+30 MLB team ids are already an NFL team — seeding MLB against a single-column key
+would have rewritten NFL rows rather than failing. Adds `markets.subject_sport`
+so the subject FK stays a real constraint, and seeds the 30 MLB teams (the
+Athletics are the one name the two sources disagree on).
+
+**057 — `markets.bettable`.** FALSE when a market can be priced and shown but not
+graded. MLB props are the first case: the Odds API quotes them, balldontlie has
+no MLB statlines on this plan. Also widens `get_event_player_props` to return
+`subject_sport` and `bettable` — note the RPC needs `DROP FUNCTION` first, since
+`CREATE OR REPLACE` cannot change a return type (`42P13`).
+
+**058 — MLB props cron.** `call_sync_player_props_mlb()` posting `sport=MLB`,
+scheduled every 3h at `:25`. URL written out in full, never from
+`current_setting()`.
+
+### 2026-08-27: Invite Lookup, Attribution & Onboarding (051–055)
+
+**051 — attribution.** `user_attribution` (first-touch UTM/referrer/click ids)
+and a formalised `onboarding_responses`, plus the `attribution_overview` view.
+
+**052 — `get_invite(p_code)`.** Public, throttled, single-code invite lookup so
+the invite page stops validating codes by shape. Returns a display projection
+only — never `bookie_id` or the invitee email. **Migration 010's
+`invites_select_by_code ... USING (true)` is deliberately NOT dropped**: iOS still
+reads the table directly pre-login, so dropping it breaks shipped builds. Tracked
+as B9 in `tasks/ios-pending.md`.
+
+**053–055 — onboarding storage.** `UNIQUE(auth_user_id)` on
+`onboarding_responses` (the view LEFT JOINs it without aggregating, so a
+duplicate row silently doubles that user), `completed` defaulting FALSE, and the
+four answer columns made nullable to match what migration 051 always claimed —
+they had been NOT NULL on the live table, which silently broke every skip.
+
+
 ### 2026-02-23: Invites Table
 
 **Required for:** Member Invite Redesign (invite lifecycle tracking)

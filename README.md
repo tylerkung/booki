@@ -380,6 +380,33 @@ The app is **local-first** with cloud sync:
 - **Wave texture**: iOS `WaveBackground` ported to web pick cards and pick detail pages via `--wave-texture` / `--wave-opacity` tokens
 - **Bet slip fixes**: toasts were never visible (`toast.visible` was never set), parlays were rejected for every organizer because `bookies.manual_bet_acceptance` did not exist (migration 037)
 
+### Phase 21: QA Fixes, Attribution & Player Props
+
+**QA pass (August 2026)** — 12 items reported, 7 fixed, 1 closed as working-as-designed, 5 did not reproduce
+- **Invite landing page rebuilt**: `/invite/{code}` had *no server lookup* — it validated only the SHAPE of the last path segment, so `/invite` rendered the literal word **INVITE** as a copyable code. Migration 052 adds `get_invite(p_code)`: SECURITY DEFINER, throttled per forwarded IP, returning a display projection that never includes `bookie_id` or the invitee email
+- **Invite codes now reach signup**: GET STARTED was a bare `/dashboard/` link, so bearer invites were never redeemable. The code is carried to `login.html` and persisted in `localStorage`, because email verification loses the query string
+- **Events tab**: rendered the "no events" empty state before querying, because `isLoadingEvents` defaulted to `false`. Five flags corrected; `scripts/check-loading-guards.py` added to the suite
+- **Signup UX**: client-side email validation (the page has no `<form>`, so `type="email"` never validated), human error copy mapped from Supabase's, and Resend / Use-a-different-email on the verification screen
+- **Win rate** divided losses by the total; **invite TTL copy** said 24 hours against a 7-day server value
+
+**Attribution & onboarding**
+- **First-touch attribution** (`landing/attribution.js`, migration 051) — UTM, referrer, gclid/fbclid captured on first visit, written once at signup
+- **Referral question moved to the signup form**, so every signup is asked. The post-signup questionnaire is removed: it only ever rendered on the organizer auto-create branch, and from 3 Mar to 25 Aug an Alpine double-init race usually routed that user to standalone instead — 16 organizers produced 2 answers
+- **`send_welcome_email` now fires on organizer creation** rather than from the questionnaire's submit/skip handlers, which most organizers never reached
+
+**Member experience**
+- **First-run welcome modal** for newly joined members — who they joined, that money never moves through Booki, their real credit and win limits, how picks grade. Dismissal persists in `user_metadata`, not localStorage
+- **Board fixes**: markets now load for *every* rendered row (previously only the first two sports, leaving the rest showing `—`), and futures render as their own block — 8 shortest prices with "View all N" — instead of a game row of em-dashes
+- **Game row is one definition** expanded into both the Games page and the sport page, which had drifted: the sport page was missing "More lines" and the lock overlay entirely
+- **Odds buttons** stack line over price, price in the accent, no parentheses; all bet CTAs standardised at `--odds-height: 40px`
+
+**Player props — MLB (migrations 056–058)**
+- **MLB props are priced and displayed but NOT bettable.** The Odds API quotes 39 MLB markets; balldontlie's `/mlb/v1/stats` returns 401 on the current plan, so nothing can be settled. `markets.bettable` is enforced at ingest, in all three submit endpoints, and in the UI
+- **Multi-sport identity**: balldontlie numbers teams from 1 per sport and **29 of 30 MLB team ids collide with NFL ones**, so `bdl_teams`/`bdl_players` keys are now `(sport, id)` and `markets.subject_sport` keeps the FK a real constraint
+- **Resolution from rosters, not names**: one `team_ids[]` call per game replaced ~20 per-player lookups that the rate limiter was refusing — resolution went from 10/20 to 20/20
+- **Bounded, resumable runs**: `max_games` plus a wall-clock guard, after nine games in one pass exceeded the 150s worker ceiling
+- Scheduled every 3h at `:25`; an unsettleable sport ingests each game once, so spend tracks new games rather than run frequency
+
 ### Branding & Design System
 - **App Icon**: Custom Booki wordmark on electric cyan background (1024x1024)
 - **Launch Screen**: Electric cyan background → SwiftUI loading view with logo and spinner
@@ -482,4 +509,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: August 25, 2026 - Platform admin dashboard complete (landing/admin/, admin_query, migrations 037-038), parlay fix, wave texture on web pick cards, Alpine double-init fix*
+*Last updated: August 28, 2026 - QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*

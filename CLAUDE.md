@@ -194,13 +194,13 @@ All user-facing strings use App Store compliant vocabulary. Internal Swift types
 - **Props runs are bounded and resumable**: a first pass over nine MLB games exceeded the 150s worker ceiling (`WORKER_RESOURCE_LIMIT`). `sync_player_props` takes `max_games` (default 3) plus a 100s wall-clock guard, and orders games with no props first so successive runs walk the slate. Safe because resolutions are cached in `bdl_players` — later runs are mostly cache hits.
 - **`upsert` onConflict must name the whole composite key**: `bdl_players` upserts used `onConflict: 'bdl_player_id'`, which after migration 056 matches no unique constraint and fails every cache write. It is `'sport,bdl_player_id'`.
 
-## Current State (March 4, 2026)
+## Current State (August 28, 2026)
 
-- **Branch**: `ralph/web-dashboard-hardening`
+- **Branch**: `main`
 - **Swift version**: 6.0 with `SWIFT_STRICT_CONCURRENCY = complete`
 - **Deployment target**: iOS 18.0
 - **Phases complete**: 1-20 (Core, Player Experience, Auth, Sync, Invites, Odds API, Server Authority, Auto-Pilot, Games Filtering, Acceptance Policy, Grading Improvements, Betting Experience Overhaul, Bookie Analytics v2, Compliance Language Overhaul, Pick Instance Refactor, Alternate Lines, iOS 26 SDK Migration, Default UX & Organizer Upsell, API Optimization & Live Scores, Apple IAP & Web Dashboard, Push Notifications)
-- **Supabase migrations**: All applied through 029 (see SUPABASE_MIGRATIONS.md)
+- **Supabase migrations**: All applied through 058 (see SUPABASE_MIGRATIONS.md)
 - **Edge Functions**: 15+ functions for server-authoritative operations (including `submit_bets`, `submit_parlay`, `sync_games`, `claim_player`, `create_invite`, `claim_invite`, `refresh_live_scores`, `delete_account`, `apple_iap_webhook`)
 - **Bookie Events tab**: Player-style compact card layout with sport tabs, search, sticky headers, muted odds buttons (`isViewOnly` mode)
 - **Settings**: Streamlined — removed Odds API config, sample data, and sync button
