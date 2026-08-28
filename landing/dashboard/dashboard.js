@@ -256,6 +256,17 @@ function dashboardApp() {
                 if (!raw) return;
                 record = JSON.parse(raw);
             } catch (e) { return; }
+            // A first touch has to precede the account. recordAttribution runs on
+            // every authenticated load, so without this an EXISTING user who
+            // simply opens Booki gets a row stamped with today's visit and
+            // labelled as their origin. That is not a weaker signal, it is a
+            // false one: all three rows this produced before the guard existed
+            // belonged to people who had signed up months earlier, and every one
+            // of them read "direct".
+            const signedUpAt = Date.parse(this.session.user.created_at || '');
+            const firstSeenAt = Date.parse(record.first_seen_at || '');
+            if (signedUpAt && firstSeenAt && firstSeenAt > signedUpAt + 120000) return;
+
             try {
                 // No upsert: first touch wins, and a second signup from the same
                 // browser must not overwrite the first user's row.
