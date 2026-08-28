@@ -70,9 +70,12 @@ const VIEWS = [
             // they disagree is the useful column, not an error to reconcile.
             { key: 'utm_source', label: 'Measured', render: (r) => r.utm_source
                 ? badge(r.utm_source, r.paid_click ? 'warning' : 'accent') : '—' },
+            // No 'skipped' state any more: the post-signup questionnaire is gone
+            // and the referral question lives on the signup form, where it is
+            // optional. Absent simply means they did not pick one.
             { key: 'referral_source', label: 'They said', render: (r) => r.referral_source
                 ? badge(r.referral_source, 'success')
-                : (r.survey_completed === false ? badge('skipped', 'muted') : '—') },
+                : '—' },
             { key: 'referral_detail', label: 'Detail', render: (r) => r.referral_detail || '—' },
             { key: 'landing_path', label: 'Landed on', render: (r) => r.landing_path || '—' },
             { key: 'referrer_host', label: 'Referrer', render: (r) => r.referrer_host || '—' },

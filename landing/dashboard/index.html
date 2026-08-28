@@ -56,7 +56,6 @@
             route === 'become-organizer' ? 'Become an Organizer' :
             route === 'player-activity' ? 'Activity' :
             route === 'player-change-password' ? 'Change Password' :
-            route === 'onboarding' ? 'Welcome' :
             route === 'organizer-welcome' ? 'Welcome' :
             route === 'player-sport' ? (sportCategories[selectedSportPage]?.displayName || 'Sport') :
             route === 'member-detail' ? (memberDetail?.display_name || memberDetail?.name || 'Member') :
@@ -3611,99 +3610,6 @@
             </div>
 
             <!-- ── Onboarding Questionnaire ── -->
-            <div x-show="route === 'onboarding'" x-cloak>
-                <div style="max-width: var(--w-form);margin:0 auto;padding:var(--s-xxxl) 0;">
-
-                    <div style="text-align:center;margin-bottom:var(--s-xxl);">
-                        <h1 style="margin:0 0 var(--s-sm);font-size:var(--fs-title2);font-weight:var(--fw-bold);color:var(--text-primary);">Welcome to Booki</h1>
-                        <p style="margin:0;font-size:var(--fs-body);color:var(--text-secondary);line-height:var(--lh-loose);">A few quick questions to set up your experience.</p>
-                    </div>
-
-                    <!-- Question 1: Role -->
-                    <div class="card" style="margin-bottom:var(--s-lg);">
-                        <label class="t-strong" style="display:block;margin-bottom:var(--s-md);">What brings you to Booki?</label>
-                        <div style="display:flex;flex-direction:column;gap:var(--s-sm);">
-                            <label class="onboarding-option" :class="{ 'selected': onboardingRole === 'organizer' }">
-                                <input type="radio" name="ob-role" value="organizer" x-model="onboardingRole" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>I want to run a book for my group</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingRole === 'player' }">
-                                <input type="radio" name="ob-role" value="player" x-model="onboardingRole" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>I was invited to join someone's group</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingRole === 'exploring' }">
-                                <input type="radio" name="ob-role" value="exploring" x-model="onboardingRole" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Just exploring</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Question 2: Use Case -->
-                    <div class="card" style="margin-bottom:var(--s-lg);">
-                        <label class="t-strong" style="display:block;margin-bottom:var(--s-md);">What will you use Booki for?</label>
-                        <div style="display:flex;flex-direction:column;gap:var(--s-sm);">
-                            <label class="onboarding-option" :class="{ 'selected': onboardingUseCase === 'friends' }">
-                                <input type="radio" name="ob-use" value="friends" x-model="onboardingUseCase" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Tracking picks with friends</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingUseCase === 'league' }">
-                                <input type="radio" name="ob-use" value="league" x-model="onboardingUseCase" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Running a league or pool</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingUseCase === 'personal' }">
-                                <input type="radio" name="ob-use" value="personal" x-model="onboardingUseCase" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Personal pick tracking</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingUseCase === 'other' }">
-                                <input type="radio" name="ob-use" value="other" x-model="onboardingUseCase" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Something else</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Question 3: Group Size -->
-                    <div class="card" style="margin-bottom:var(--s-lg);">
-                        <label class="t-strong" style="display:block;margin-bottom:var(--s-md);">How big is your group?</label>
-                        <div style="display:flex;flex-direction:column;gap:var(--s-sm);">
-                            <label class="onboarding-option" :class="{ 'selected': onboardingGroupSize === '1' }">
-                                <input type="radio" name="ob-size" value="1" x-model="onboardingGroupSize" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>Just me</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingGroupSize === '2-5' }">
-                                <input type="radio" name="ob-size" value="2-5" x-model="onboardingGroupSize" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>2–5 people</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingGroupSize === '6-15' }">
-                                <input type="radio" name="ob-size" value="6-15" x-model="onboardingGroupSize" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>6–15 people</span>
-                            </label>
-                            <label class="onboarding-option" :class="{ 'selected': onboardingGroupSize === '16+' }">
-                                <input type="radio" name="ob-size" value="16+" x-model="onboardingGroupSize" style="display:none;">
-                                <span class="onboarding-option-dot"></span>
-                                <span>16+ people</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Actions -->
-                    <button class="btn btn-accent btn-block" style="padding:var(--s-lg);font-size:var(--fs-body);" @click="submitOnboarding()" :disabled="isSubmittingOnboarding">
-                        <span x-text="isSubmittingOnboarding ? 'Setting up...' : 'Continue'"></span>
-                    </button>
-                    <button class="t-body-muted" style="display:block;margin:var(--s-md) auto 0;background:none;border:none;cursor:pointer;" @click="skipOnboarding()">Skip for now</button>
-                </div>
-            </div>
-
-            <!-- ── Organizer Welcome / Success Page ── -->
             <div x-show="route === 'organizer-welcome'" x-cloak>
                 <div style="max-width: var(--w-form);margin:0 auto;text-align:center;padding:var(--s-xxxl) 0;">
 

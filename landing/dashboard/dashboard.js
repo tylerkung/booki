@@ -139,13 +139,6 @@ function dashboardApp() {
         memberPickFilter: 'open',
         memberActivityExpanded: false,
 
-        // ── Onboarding ──
-        onboardingRole: '',
-        onboardingUseCase: '',
-        onboardingGroupSize: '',
-        onboardingReferral: '',
-        onboardingReferralDetail: '',
-        isSubmittingOnboarding: false,
 
         // Writes the first-touch record captured by attribution.js. Called once
         // per user at signup. Fire-and-forget on purpose: attribution is
@@ -277,58 +270,20 @@ function dashboardApp() {
             } catch (e) { /* already recorded, or table missing — not worth surfacing */ }
         },
 
-        async saveOnboarding(completed) {
-            const responses = {
-                role_intent: this.onboardingRole,
-                use_case: this.onboardingUseCase,
-                group_size: this.onboardingGroupSize,
-                referral_source: this.onboardingReferral,
-                referral_detail: this.onboardingReferralDetail,
-                completed: completed,
-                onboarded_at: new Date().toISOString(),
-            };
-
-            try {
-                await this.supabase.auth.updateUser({ data: { onboarding: responses } });
-            } catch (e) {
-                console.error('Failed to save onboarding to user_metadata:', e);
-            }
-
-            // A skip writes a row too. Previously it wrote nothing, so a skip and
-            // a never-asked were the same absence — and since only organizers
-            // were ever asked, a missing row meant three different things.
-            try {
-                // Upsert, not insert: the signup form may already have written
-                // this user's row with their referral answer. A second row would
-                // silently double them in attribution_overview, which LEFT JOINs
-                // this table without aggregating. referral_source is deliberately
-                // absent from the payload -- PostgREST only SETs the columns it
-                // is given, so the signup answer survives.
-                await this.supabase.from('onboarding_responses').upsert({
-                    auth_user_id: this.session.user.id,
-                    role_intent: this.onboardingRole || null,
-                    use_case: this.onboardingUseCase || null,
-                    group_size: this.onboardingGroupSize || null,
-                    completed: completed,
-                }, { onConflict: 'auth_user_id' });
-            } catch (e) {
-                console.error('Failed to save onboarding response:', e);
-            }
-
-            await this.recordAttribution();
-        },
-
-        async submitOnboarding() {
-            this.isSubmittingOnboarding = true;
-            await this.saveOnboarding(true);
-            this.callEdgeFunction('send_welcome_email', {}).catch(() => {});
-            this.isSubmittingOnboarding = false;
-            this.route = 'organizer-welcome';
-            window.location.hash = '#/organizer-welcome';
-        },
-
-        async skipOnboarding() {
-            await this.saveOnboarding(false);
+        // A new organizer used to land on a questionnaire here. It asked what
+        // brings you to Booki, what you will use it for, and how big your group
+        // is — none of which was reachable often enough to be worth keeping: it
+        // rendered only on the bookie auto-create branch, and from March to
+        // August the Alpine double-init race usually sent that user to
+        // standalone instead. Sixteen organizers produced two answers.
+        //
+        // "How did you hear about Booki?" now lives on the signup form, where
+        // every signup answers it, so nothing of value is lost here.
+        //
+        // The welcome email fired from the questionnaire's submit and skip
+        // handlers, which means organizers who never saw it never got one
+        // either. It now fires when the organizer account is actually created.
+        async finishOrganizerSetup() {
             this.callEdgeFunction('send_welcome_email', {}).catch(() => {});
             this.route = 'organizer-welcome';
             window.location.hash = '#/organizer-welcome';
@@ -737,10 +692,7 @@ function dashboardApp() {
             document.body.style.visibility = 'visible';
 
             // Record first-touch attribution for EVERY signup, not only those who
-            // reach the questionnaire. Onboarding fires solely when someone
-            // becomes an organizer, so members joining by invite and standalone
-            // users would otherwise have no source at all — which is most of the
-            // user base. Fire-and-forget; the insert is a no-op after the first.
+            // Fire-and-forget; the insert is a no-op after the first.
             this.recordAttribution().catch(() => {});
 
             // The referral answer is given on the signup form, before a session
@@ -801,7 +753,7 @@ function dashboardApp() {
             const playerGameMatch = path.match(/^player-game\/(.+)$/);
 
             // Organizer routes
-            const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings', 'onboarding', 'organizer-welcome', 'pro'];
+            const organizerRoutes = ['dashboard', 'members', 'picks', 'events', 'settlement', 'subscription', 'settings', 'organizer-welcome', 'pro'];
             // Player routes
             const playerRoutes = ['player-games', 'player-track', 'player-account', 'player-sport', 'player-game', 'become-organizer', 'player-activity', 'player-change-password'];
 
@@ -1099,9 +1051,7 @@ function dashboardApp() {
                     this.userRole = 'organizer';
                     this.isPro = false;
 
-                    // Route to onboarding questionnaire for first-time organizers
-                    this.route = 'onboarding';
-                    window.location.hash = '#/onboarding';
+                    await this.finishOrganizerSetup();
                     return;
                 } catch (err) {
                     console.error('Auto-create organizer failed:', err);
@@ -1815,9 +1765,7 @@ function dashboardApp() {
                 this.userRole = 'organizer';
                 this.isPro = false;
 
-                // Navigate to onboarding questionnaire
-                this.route = 'onboarding';
-                window.location.hash = '#/onboarding';
+                await this.finishOrganizerSetup();
             } catch (err) {
                 console.error('Become organizer error');
                 this.toast('Failed to create organizer account. Please try again.', 'error');
