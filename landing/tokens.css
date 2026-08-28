@@ -356,6 +356,10 @@
   --avatar-lg: 80px;
   --odds-col: 90px;              /* odds button AND its column label — shared
                                     so they cannot drift out of alignment */
+  --odds-height: 40px;           /* every bet CTA — board columns, futures
+                                    outcomes, game-detail ladder. One height so
+                                    a one-line moneyline and a stacked spread
+                                    share a baseline grid */
   --w-panel: 280px;
   --w-panel-lg: 320px;
   --w-form: 480px;

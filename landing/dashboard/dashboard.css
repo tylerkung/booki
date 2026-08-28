@@ -1691,6 +1691,12 @@ input, button, select, textarea { font: inherit; }
     flex-shrink: 0;
 }
 
+/* The outcome grid ended flush against the "View all" divider, so the fourth
+   row read as though it were touching it. */
+.pg-futures .show-more-btn {
+    margin-top: var(--s-md);
+}
+
 .pg-futures-empty {
     font-size: var(--fs-sm);
     color: var(--text-muted);
@@ -1766,6 +1772,10 @@ input, button, select, textarea { font: inherit; }
 
 .pg-odds-btn {
     width: var(--odds-col);
+    /* min-height, not height: a stacked spread must still be free to grow.
+       .gd-cell and .gd-side carry this class too, so the game-detail ladder
+       picks up the same standard. */
+    min-height: var(--odds-height);
     padding: var(--s-xs) var(--s-xs);
     background: var(--bg-elevated);
     border: var(--hairline) solid var(--border);
