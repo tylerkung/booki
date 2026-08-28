@@ -23,6 +23,10 @@
 -- Flip to true when the settlement path exists. Nothing else has to change.
 -- ============================================================================
 
+-- Every statement here is idempotent. The SQL editor does not wrap a script in
+-- a transaction, so the first attempt at this migration committed the column,
+-- the comment and the index before failing on the function — re-running must be
+-- harmless.
 ALTER TABLE markets
     ADD COLUMN IF NOT EXISTS bettable BOOLEAN NOT NULL DEFAULT TRUE;
 
@@ -44,7 +48,13 @@ CREATE INDEX IF NOT EXISTS idx_markets_not_bettable
 -- column list, so the flag is invisible to the client until it is added here.
 -- subject_sport comes along for the same reason: the UI needs to say WHY a
 -- market cannot be bet, and "MLB" is the reason.
-CREATE OR REPLACE FUNCTION get_event_player_props(p_event_id UUID)
+-- DROP first: CREATE OR REPLACE cannot change a function's return type, and
+-- this one gains two OUT columns. Postgres rejects it with 42P13 rather than
+-- replacing. Nothing in the database depends on this function — it is called
+-- over PostgREST by the web client only — so dropping it is safe.
+DROP FUNCTION IF EXISTS get_event_player_props(UUID);
+
+CREATE FUNCTION get_event_player_props(p_event_id UUID)
 RETURNS TABLE (
     id UUID, event_id UUID, type TEXT, side_a TEXT, side_b TEXT,
     odds_a NUMERIC, odds_b NUMERIC,
