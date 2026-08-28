@@ -571,6 +571,51 @@
                 </div>
             </div>
 
+            <!-- First-run welcome for a newly joined member.
+                 Organizers get a whole #/organizer-welcome route after signup;
+                 members got nothing at all, so nothing even confirmed the invite
+                 had worked. -->
+            <div class="modal-overlay" x-show="showMemberWelcome" x-cloak style="z-index:var(--z-modal, 1200);">
+                <div class="modal">
+                    <div style="width:var(--avatar-sm);height:var(--avatar-sm);border-radius:var(--radius-circle);background:var(--fill-accent-soft);display:flex;align-items:center;justify-content:center;margin-bottom:var(--s-lg);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+
+                    <h2 style="margin-bottom:var(--s-xs);" x-text="playerBookie && playerBookie.name ? 'You\u2019ve joined ' + playerBookie.name + '\u2019s group' : 'You\u2019re in'"></h2>
+                    <p class="t-body" style="margin:0 0 var(--s-xl);line-height:var(--lh-loose);">Here’s how Booki works before you place your first pick.</p>
+
+                    <div style="display:flex;flex-direction:column;gap:var(--s-lg);">
+                        <div>
+                            <div class="t-body-strong" style="margin-bottom:var(--s-xxs);">Money never moves through Booki</div>
+                            <div class="t-body" style="line-height:var(--lh-normal);"
+                                 x-text="'Booki records what is owed. You settle up with ' + ((playerBookie && playerBookie.name) || 'your organizer') + ' directly, the same way you do now \u2014 there are no deposits, payouts or balances held here.'"></div>
+                        </div>
+
+                        <div>
+                            <div class="t-body-strong" style="margin-bottom:var(--s-xxs);">Your limits</div>
+                            <div class="t-body" style="line-height:var(--lh-normal);">
+                                <span x-text="'You can have up to ' + formatCurrency(playerCreditLimit) + ' of credit in play at once.'"></span>
+                                <span x-show="playerWinLimit" x-text="' Winnings are capped at ' + formatCurrency(playerWinLimit) + '.'"></span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="t-body-strong" style="margin-bottom:var(--s-xxs);">Picks grade themselves</div>
+                            <div class="t-body" style="line-height:var(--lh-normal);">Browse games, place picks against live odds, and when a game finishes it is graded automatically. Your balance updates the moment it settles.</div>
+                        </div>
+
+                        <div>
+                            <div class="t-body-strong" style="margin-bottom:var(--s-xxs);">Everything is written down</div>
+                            <div class="t-body" style="line-height:var(--lh-normal);">Every pick, grade and settle-up is recorded in a ledger you can both see. Check Activity on your account any time.</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="btn btn-accent btn-block" @click="dismissMemberWelcome()">Got it</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Decline Pick Modal -->
             <div class="modal-overlay" x-show="showDeclineModal" x-cloak @click.self="showDeclineModal = false; declineBetId = null">
                 <div class="modal">

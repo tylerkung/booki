@@ -52,6 +52,8 @@ function dashboardApp() {
         playerBookieId: null,
         playerRecord: null,
         playerBookie: null,
+        showMemberWelcome: false,
+        memberWelcomeDismissed: false,
 
         // ── Route ──
         route: '',
@@ -178,6 +180,55 @@ function dashboardApp() {
 
         clearPendingInviteCode() {
             try { localStorage.removeItem(this.INVITE_KEY); } catch (e) {}
+        },
+
+        // ── First-run welcome for members ────────────────────────────────────
+        //
+        // Organizers get the whole #/organizer-welcome route after signup.
+        // Members got nothing — no confirmation the invite worked, no
+        // explanation of what the balance means, and no statement that Booki
+        // never touches money. QA flagged the absence; this fills it.
+
+        maybeShowMemberWelcome() {
+            if (this.userRole !== 'player') return;
+            if (this.memberWelcomeDismissed || this.showMemberWelcome) return;
+
+            // Persisted on the ACCOUNT rather than in localStorage: a member who
+            // opens Booki on their phone should not be welcomed a second time,
+            // and clearing storage should not resurrect it.
+            // No session means we cannot know whether they have been welcomed.
+            // Falling back to {} would read "unknown" as "not welcomed" and show
+            // the modal again to someone who already dismissed it.
+            if (!this.session || !this.session.user) return;
+            if (this.session.user.user_metadata &&
+                this.session.user.user_metadata.member_welcomed) return;
+
+            // Only genuinely new members. Gating on "has no picks yet" avoids
+            // showing a welcome to every existing member on their next login,
+            // and needs no cutoff date or backfill.
+            if (this.playerBets.length > 0) return;
+
+            this.showMemberWelcome = true;
+        },
+
+        async dismissMemberWelcome() {
+            this.showMemberWelcome = false;
+            this.memberWelcomeDismissed = true;
+            try {
+                await this.supabase.auth.updateUser({ data: { member_welcomed: true } });
+                // Keep the in-memory copy in step so a later route change does
+                // not re-open it before the session refreshes.
+                if (this.session && this.session.user) {
+                    this.session.user.user_metadata = {
+                        ...(this.session.user.user_metadata || {}),
+                        member_welcomed: true,
+                    };
+                }
+            } catch (e) {
+                // Dismissed either way — failing to persist must not trap the
+                // member behind a modal they already closed.
+                console.error('Failed to persist member welcome flag:', e);
+            }
         },
 
         async recordReferral() {
@@ -1091,6 +1142,13 @@ function dashboardApp() {
                 .reduce((sum, b) => sum + (Number(b.stake) || 0), 0);
 
             this.isLoadingPlayerHome = false;
+
+            // Evaluated HERE, not on role detection, because the rule depends on
+            // playerBets and this is the first point it is guaranteed populated.
+            // Checking earlier would repeat the loadPlayerTrack race: a member
+            // with picks would briefly look like a member with none, and get a
+            // welcome modal over their own history.
+            this.maybeShowMemberWelcome();
         },
 
         get playerBalance() {
