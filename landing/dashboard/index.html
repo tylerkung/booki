@@ -2347,13 +2347,47 @@
 
                                             <!-- Game rows (collapsible, truncated to 3) -->
                                             <div x-show="!collapsedLeagues[sportGroup.sport + '|' + leagueGroup.league]" x-transition.opacity>
-                                            <template x-for="ev in leagueGroup.events.slice(0, 3)" :key="ev.id">
+                                            <template x-for="ev in leagueGroup.games.slice(0, 3)" :key="ev.id">
                                                 <div data-game-row></div>
                                             </template>
 
+                                            <!-- Futures. A game row cannot represent these: an outright
+                                                 has no away team and no spread or total, so it rendered
+                                                 as "Outright" against "NFL Super Bowl Winner" with six
+                                                 em-dashes. The board shows the shortest prices and sends
+                                                 the rest to the sport page, because the full market is
+                                                 every team in the league. -->
+                                            <template x-for="fev in leagueGroup.outrights" :key="fev.id">
+                                                <div class="pg-futures">
+                                                    <div class="pg-game-head">
+                                                        <span class="pg-futures-title" x-text="fev.home_team"></span>
+                                                        <a class="pg-more-lines" :href="'#/player-sport/' + (sportGroup.sportKey || sportGroup.sport.toLowerCase())">All futures &rsaquo;</a>
+                                                    </div>
+                                                    <template x-if="boardOutrightPreview(fev.id).total === 0">
+                                                        <div class="pg-futures-empty">Odds not posted yet.</div>
+                                                    </template>
+                                                    <div class="pg-futures-grid">
+                                                        <template x-for="m in boardOutrightPreview(fev.id).shown" :key="m.id">
+                                                            <div class="pg-futures-cell">
+                                                                <span class="pg-futures-name" x-text="m.side_a"></span>
+                                                                <button class="pg-odds-btn pg-futures-odds"
+                                                                    :class="{ 'pg-odds-active': isSelectionActive(fev.id, m.id, 'a') }"
+                                                                    @click="toggleSelection(fev, m, 'a', m.side_a, m.odds_a)">
+                                                                    <span class="pg-odds-val" x-text="formatOdds(m.odds_a)"></span>
+                                                                </button>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                    <template x-if="boardOutrightPreview(fev.id).remaining > 0">
+                                                        <button class="show-more-btn" @click.stop="window.location.hash = '#/player-sport/' + (sportGroup.sportKey || sportGroup.sport.toLowerCase())"
+                                                                x-text="'View all ' + boardOutrightPreview(fev.id).total + ' \u203A'"></button>
+                                                    </template>
+                                                </div>
+                                            </template>
+
                                             <!-- Show More → navigate to sport page with league selected -->
-                                            <template x-if="leagueGroup.events.length > 3">
-                                                <button class="show-more-btn" @click.stop="navigateToSportLeague(sportGroup.sportKey || sportGroup.sport.toLowerCase(), leagueGroup.league)" x-text="'Show More (' + (leagueGroup.events.length - 3) + ')'"></button>
+                                            <template x-if="leagueGroup.games.length > 3">
+                                                <button class="show-more-btn" @click.stop="navigateToSportLeague(sportGroup.sportKey || sportGroup.sport.toLowerCase(), leagueGroup.league)" x-text="'Show More (' + (leagueGroup.games.length - 3) + ')'"></button>
                                             </template>
                                             </div><!-- /collapsible league body -->
                                         </div>

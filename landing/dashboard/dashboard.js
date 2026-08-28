@@ -12,6 +12,12 @@ const SUPABASE_URL = 'https://vstfauqufwpdytmvjyfz.supabase.co';
  * bloat every member's payload for lines the board cannot display anyway.
  */
 const BOARD_MARKET_TYPES = ['moneyline', 'spread', 'total'];
+/** Games shown per league on the board before "Show More". */
+const BOARD_ROWS_PER_LEAGUE = 3;
+/** Outright outcomes previewed on the board. A futures market is every team in
+ *  the league — 32 for the Super Bowl — which is a sport-page view, not a board
+ *  one. The board shows the shortest prices and links out for the rest. */
+const BOARD_OUTRIGHT_PREVIEW = 8;
 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdGZhdXF1ZndwZHl0bXZqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMjcwNjcsImV4cCI6MjA4NDgwMzA2N30.uwimFkR3pN8BODjjM5KnusptdZz_vcrxKnK_2LKfZHI';
 
@@ -52,6 +58,7 @@ function dashboardApp() {
         playerBookieId: null,
         playerRecord: null,
         playerBookie: null,
+        boardOutrightMarkets: [],
         showMemberWelcome: false,
         memberWelcomeDismissed: false,
 
@@ -1868,12 +1875,66 @@ function dashboardApp() {
             this._loadedMarketSports = {};
             this._loadingMarketSports = {};
 
-            // Auto-load markets for the first 2 visible sports
-            const sportGroups = this.groupedPlayerEvents;
-            const autoLoadSports = sportGroups.slice(0, 2).map(g => g.sport);
-            await Promise.all(autoLoadSports.map(s => this.ensureMarketsForSport(s)));
+            // Markets for every row the board actually draws, not just the
+            // first two sports. Each league renders at most BOARD_ROWS_PER_LEAGUE
+            // games, so this is bounded — while the old rule left every sport
+            // below the second showing "—" in all three columns, even though
+            // that sport's own page loaded its lines perfectly.
+            await this.ensureMarketsForVisibleEvents();
 
             this.isLoadingPlayerEvents = false;
+        },
+
+        async ensureMarketsForVisibleEvents() {
+            const gameIds = [];
+            const outrightIds = [];
+            for (const sportGroup of this.groupedPlayerEvents) {
+                for (const lg of sportGroup.leagues) {
+                    for (const ev of lg.games.slice(0, BOARD_ROWS_PER_LEAGUE)) gameIds.push(ev.id);
+                    for (const ev of lg.outrights) outrightIds.push(ev.id);
+                }
+            }
+            const have = new Set(this.playerMarkets.map(m => m.event_id));
+            const haveOut = new Set(this.boardOutrightMarkets.map(m => m.event_id));
+            const needGames = gameIds.filter(id => !have.has(id));
+            const needOutrights = outrightIds.filter(id => !haveOut.has(id));
+
+            const fetchIn = async (ids, types, limit) => {
+                if (!ids.length) return [];
+                const BATCH = 50;
+                const batches = [];
+                for (let i = 0; i < ids.length; i += BATCH) {
+                    batches.push(this.supabase
+                        .from('markets')
+                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                        .in('event_id', ids.slice(i, i + BATCH))
+                        .in('type', types)
+                        .limit(limit));
+                }
+                const res = await Promise.all(batches);
+                return res.flatMap(r => r.data || []);
+            };
+
+            const [games, outrights] = await Promise.all([
+                fetchIn(needGames, BOARD_MARKET_TYPES, 500),
+                // A futures market is one row per team, so its cap is sized per
+                // event rather than by the 500 a board batch needs.
+                fetchIn(needOutrights, ['outright'], 1000),
+            ]);
+            if (games.length) this.playerMarkets = [...this.playerMarkets, ...games];
+            if (outrights.length) this.boardOutrightMarkets = [...this.boardOutrightMarkets, ...outrights];
+        },
+
+        /** Shortest-priced outcomes for a futures event, plus how many remain. */
+        boardOutrightPreview(eventId) {
+            const all = this.boardOutrightMarkets
+                .filter(m => m.event_id === eventId)
+                .sort((a, b) => (a.odds_a ?? 0) - (b.odds_a ?? 0));
+            return {
+                shown: all.slice(0, BOARD_OUTRIGHT_PREVIEW),
+                total: all.length,
+                remaining: Math.max(0, all.length - BOARD_OUTRIGHT_PREVIEW),
+            };
         },
 
         async ensureMarketsForSport(sportName) {
@@ -2123,7 +2184,16 @@ function dashboardApp() {
             }
             return Object.values(sportMap).map(s => {
                 const cat = s.sportKey ? this.sportCategories[s.sportKey] : null;
-                const leagueEntries = Object.entries(s.leagues).map(([league, events]) => ({ league, events }));
+                // Outrights are separated here rather than in the markup: a
+                // futures event has no away team and no spread or total, so it
+                // rendered as a game row of em-dashes ("Outright" against "NFL
+                // Super Bowl Winner"). It needs its own presentation.
+                const leagueEntries = Object.entries(s.leagues).map(([league, events]) => ({
+                    league,
+                    events,
+                    games: events.filter(e => e.away_team !== 'Outright'),
+                    outrights: events.filter(e => e.away_team === 'Outright'),
+                }));
                 if (cat) {
                     // Sort leagues to match sportCategories tab order
                     const tabOrder = cat.leagues.map(l => l.displayName.toUpperCase());

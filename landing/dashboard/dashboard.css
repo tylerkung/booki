@@ -1645,6 +1645,62 @@ input, button, select, textarea { font: inherit; }
     color: var(--accent);
 }
 
+/* ── Futures preview on the board ──────────────────────────────────────── */
+.pg-futures {
+    padding: var(--s-md) var(--s-lg);
+    border-bottom: var(--hairline) solid var(--divider);
+}
+
+.pg-futures-title {
+    font-size: var(--fs-micro);
+    font-weight: var(--fw-semibold);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: var(--ls-caps);
+}
+
+.pg-futures-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-xs) var(--s-md);
+}
+
+.pg-futures-cell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-sm);
+    min-width: 0;
+}
+
+.pg-futures-name {
+    font-size: var(--fs-sm);
+    color: var(--text-primary);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A futures price is a single number, so the button hugs it rather than
+   reserving the three-column width the spread/money/total grid needs. */
+.pg-futures-odds {
+    width: auto;
+    min-width: 64px;
+    flex-shrink: 0;
+}
+
+.pg-futures-empty {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    padding: var(--s-sm) 0;
+}
+
+@media (max-width: 720px) {
+    .pg-futures-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 .pg-col-labels {
     display: flex;
     gap: var(--s-xs);
