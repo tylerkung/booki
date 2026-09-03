@@ -1,5 +1,19 @@
 [build]
   publish = "."
+  # Skip the build when the push changed nothing this site serves.
+  #
+  # Auto-deploy fires on every push to main, and a large share of this repo's
+  # commits are migrations, edge functions, PRDs and CLAUDE.md — none of which
+  # Netlify publishes. Those still ran a full build and republished a
+  # byte-identical site. One measured example: a837acc changed only CLAUDE.md
+  # and supabase/migrations/055, and produced a production deploy.
+  #
+  # Netlify runs this from the base directory, which is landing/, so `-- .`
+  # scopes the diff to exactly what gets published. Exit 0 cancels the build;
+  # non-zero proceeds. On the first run after this lands CACHED_COMMIT_REF may
+  # be unset, which makes git error, which is non-zero — so the failure mode is
+  # "build anyway", not "silently skip".
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ."
 
 [[redirects]]
   from = "/invite/*"
