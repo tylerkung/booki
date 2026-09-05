@@ -19,6 +19,16 @@ const BOARD_ROWS_PER_LEAGUE = 3;
  *  one. The board shows the shortest prices and links out for the rest. */
 const BOARD_OUTRIGHT_PREVIEW = 8;
 
+/**
+ * Board order, most likely to be picked first.
+ *
+ * Sports used to order by whichever had the earliest kickoff, so a Tuesday of
+ * college football or a tennis draw pushed the NFL below the fold. This is a
+ * deliberate ranking instead: the leagues people actually open the app for lead.
+ * Anything unlisted sorts after, alphabetically, rather than being hidden.
+ */
+const SPORT_PRIORITY = ['football', 'basketball', 'baseball', 'hockey', 'soccer', 'mma', 'golf', 'tennis'];
+
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdGZhdXF1ZndwZHl0bXZqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMjcwNjcsImV4cCI6MjA4NDgwMzA2N30.uwimFkR3pN8BODjjM5KnusptdZz_vcrxKnK_2LKfZHI';
 
 /**
@@ -2182,6 +2192,13 @@ function dashboardApp() {
                 if (!sportMap[sport].leagues[league]) sportMap[sport].leagues[league] = [];
                 sportMap[sport].leagues[league].push(ev);
             }
+            // Markets arrive after the events do. Demoting a game for having no
+            // lines while they are still loading would reorder the board under
+            // the reader, so the rule only applies once loading has finished.
+            const linesKnown = !this.isLoadingPlayerEvents;
+            const hasLines = (ev) => !linesKnown || ['spreads', 'h2h', 'totals']
+                .some(t => this.getMarketForEvent(ev.id, t));
+
             return Object.values(sportMap).map(s => {
                 const cat = s.sportKey ? this.sportCategories[s.sportKey] : null;
                 // Outrights are separated here rather than in the markup: a
@@ -2191,34 +2208,61 @@ function dashboardApp() {
                 const leagueEntries = Object.entries(s.leagues).map(([league, events]) => ({
                     league,
                     events,
-                    games: events.filter(e => e.away_team !== 'Outright'),
+                    // Priced games first, then unpriced. A row of em-dashes is
+                    // the least useful thing on the board, so it sinks below
+                    // everything anyone can actually bet.
+                    games: events.filter(e => e.away_team !== 'Outright').sort((a, b) => {
+                        const al = hasLines(a) ? 0 : 1, bl = hasLines(b) ? 0 : 1;
+                        if (al !== bl) return al - bl;
+                        return String(a.start_time).localeCompare(String(b.start_time));
+                    }),
                     outrights: events.filter(e => e.away_team === 'Outright'),
                 }));
-                if (cat) {
-                    // Sort leagues to match sportCategories tab order
-                    const tabOrder = cat.leagues.map(l => l.displayName.toUpperCase());
-                    leagueEntries.sort((a, b) => {
-                        const ai = tabOrder.indexOf(a.league.toUpperCase());
-                        const bi = tabOrder.indexOf(b.league.toUpperCase());
-                        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-                    });
-                }
-                return { ...s, leagues: leagueEntries };
+                const tabOrder = cat ? cat.leagues.map(l => l.displayName.toUpperCase()) : [];
+                leagueEntries.sort((a, b) => {
+                    // A league with nothing but futures drops beneath one with
+                    // real games, whatever the tab order says.
+                    const ag = a.games.length ? 0 : 1, bg = b.games.length ? 0 : 1;
+                    if (ag !== bg) return ag - bg;
+                    const ai = tabOrder.indexOf(a.league.toUpperCase());
+                    const bi = tabOrder.indexOf(b.league.toUpperCase());
+                    if (ai !== bi) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+                    return a.league.localeCompare(b.league);
+                });
+                return { ...s, leagues: leagueEntries, hasGames: leagueEntries.some(l => l.games.length > 0) };
+            }).sort((a, b) => {
+                // Sports carrying games outrank sports that are futures only,
+                // then the explicit priority, then alphabetical for anything
+                // unlisted so the order is at least stable.
+                const ag = a.hasGames ? 0 : 1, bg = b.hasGames ? 0 : 1;
+                if (ag !== bg) return ag - bg;
+                const ai = SPORT_PRIORITY.indexOf(a.sportKey);
+                const bi = SPORT_PRIORITY.indexOf(b.sportKey);
+                if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                return a.sport.localeCompare(b.sport);
             });
         },
 
         get playerSportOptions() {
-            // Preserve order sports appear in the event list (by earliest start_time)
+            // Same ranking as the board below it. These used to order by earliest
+            // start_time, which meant the nav could lead with Tennis while the
+            // list beneath led with Football — two answers to "what matters
+            // most" on one screen.
             const seen = new Set();
             const ordered = [];
             for (const ev of this.playerEvents) {
                 const sport = this.formatSportName(ev.sport);
-                if (!seen.has(sport)) {
+                if (sport && !seen.has(sport)) {
                     seen.add(sport);
                     ordered.push(sport);
                 }
             }
-            return ordered;
+            return ordered.sort((a, b) => {
+                const ai = SPORT_PRIORITY.indexOf(this.sportToKey(a));
+                const bi = SPORT_PRIORITY.indexOf(this.sportToKey(b));
+                if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                return a.localeCompare(b);
+            });
         },
 
         isEventLocked(ev) {
