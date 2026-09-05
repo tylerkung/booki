@@ -69,6 +69,7 @@ function dashboardApp() {
         playerRecord: null,
         playerBookie: null,
         boardOutrightMarkets: [],
+        expandedFutures: {},
         showMemberWelcome: false,
         memberWelcomeDismissed: false,
 
@@ -2132,10 +2133,37 @@ function dashboardApp() {
                     .filter(m => m.event_id === ev.id)
                     .sort((a, b) => a.odds_a - b.odds_a);
                 if (markets.length > 0) {
-                    result.push({ eventName: ev.home_team, event: ev, markets });
+                    result.push({ eventName: ev.home_team, event: ev, markets, league: ev.league });
                 }
             }
-            return result;
+            // Order by the sport's own league order, so football leads with the
+            // Super Bowl rather than whichever outright event happens to carry
+            // the earlier start_time — which put 130-odd NCAAF teams above it.
+            const tabOrder = cat.leagues.map(l => l.displayName.toUpperCase());
+            return result.sort((a, b) => {
+                const ai = tabOrder.indexOf(String(a.league || '').toUpperCase());
+                const bi = tabOrder.indexOf(String(b.league || '').toUpperCase());
+                if (ai !== bi) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+                return String(a.eventName).localeCompare(String(b.eventName));
+            });
+        },
+
+        /** Outcomes to render for a futures group: the shortest prices until the
+         *  reader asks for the rest. A championship market is every team in the
+         *  league — 130-plus for NCAAF — and nobody scrolls that to find a
+         *  favourite. */
+        futuresVisible(group) {
+            return this.expandedFutures[group.event.id]
+                ? group.markets
+                : group.markets.slice(0, BOARD_OUTRIGHT_PREVIEW);
+        },
+
+        /** Exposed so the markup's truncation test cannot drift from the slice
+         *  that actually happens in futuresVisible(). */
+        get futuresPreviewCount() { return BOARD_OUTRIGHT_PREVIEW; },
+
+        toggleFuturesGroup(eventId) {
+            this.expandedFutures[eventId] = !this.expandedFutures[eventId];
         },
 
         get sportPageLeagueOutrights() {

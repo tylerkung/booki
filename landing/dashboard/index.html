@@ -2461,7 +2461,7 @@
                                                     <span style="font-size:var(--fs-micro);font-weight:var(--fw-semibold);color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;" x-text="group.eventName"></span>
                                                 </div>
                                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s-xxs);background:var(--divider);">
-                                                    <template x-for="(market, idx) in group.markets" :key="market.id">
+                                                    <template x-for="(market, idx) in futuresVisible(group)" :key="market.id">
                                                         <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--s-sm);padding:var(--s-md) var(--s-md);background:var(--bg-card);">
                                                             <span style="font-size:var(--fs-sm);color:var(--text-primary);flex:1;min-width: 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="market.side_a"></span>
                                                             <button class="pg-odds-btn"
@@ -2473,6 +2473,15 @@
                                                         </div>
                                                     </template>
                                                 </div>
+                                                <!-- A championship market is every team in the league: 32 for the
+                                                     Super Bowl, 130-plus for the NCAAF title. Show the shortest
+                                                     prices and let the reader ask for the rest. -->
+                                                <template x-if="group.markets.length > futuresPreviewCount">
+                                                    <button class="show-more-btn" @click="toggleFuturesGroup(group.event.id)"
+                                                            x-text="expandedFutures[group.event.id]
+                                                                ? 'Show less'
+                                                                : 'Show all ' + group.markets.length + ' \u203A'"></button>
+                                                </template>
                                             </div>
                                         </template>
                                     </div>
