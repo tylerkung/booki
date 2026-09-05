@@ -2361,7 +2361,7 @@
                                                 <div class="pg-futures">
                                                     <div class="pg-game-head">
                                                         <span class="pg-futures-title" x-text="fev.home_team"></span>
-                                                        <a class="pg-more-lines" :href="'#/player-sport/' + (sportGroup.sportKey || sportGroup.sport.toLowerCase())">All futures &rsaquo;</a>
+                                                        <a class="pg-more-lines" href="#" @click.prevent="navigateToSportFutures(sportGroup.sportKey || sportGroup.sport.toLowerCase())">All futures &rsaquo;</a>
                                                     </div>
                                                     <template x-if="boardOutrightPreview(fev.id).total === 0">
                                                         <div class="pg-futures-empty">Odds not posted yet.</div>
@@ -2379,7 +2379,7 @@
                                                         </template>
                                                     </div>
                                                     <template x-if="boardOutrightPreview(fev.id).remaining > 0">
-                                                        <button class="show-more-btn" @click.stop="window.location.hash = '#/player-sport/' + (sportGroup.sportKey || sportGroup.sport.toLowerCase())"
+                                                        <button class="show-more-btn" @click.stop="navigateToSportFutures(sportGroup.sportKey || sportGroup.sport.toLowerCase())"
                                                                 x-text="'View all ' + boardOutrightPreview(fev.id).total + ' \u203A'"></button>
                                                     </template>
                                                 </div>

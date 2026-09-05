@@ -827,7 +827,15 @@ function dashboardApp() {
                 this.route = 'player-sport';
                 this.selectedSportPage = sport;
                 const sportLeagues = this.sportCategories[sport].leagues;
-                if (!this.selectedLeagueTab || !sportLeagues.find(l => l.id === this.selectedLeagueTab)) {
+                // 'futures' is a real tab on every non-golf sport page, but it
+                // is not in sportCategories[].leagues — so a plain membership
+                // check treated it as invalid and reset the selection to the
+                // first league. That is why "View all futures" landed on the
+                // games tab.
+                const validTab = this.selectedLeagueTab === 'futures'
+                    ? sport !== 'golf'
+                    : !!sportLeagues.find(l => l.id === this.selectedLeagueTab);
+                if (!this.selectedLeagueTab || !validTab) {
                     this.selectedLeagueTab = sportLeagues[0]?.id || 'futures';
                 }
             } else {
@@ -2007,6 +2015,17 @@ function dashboardApp() {
                 );
                 if (match) this.selectedLeagueTab = match.id;
             }
+            window.location.hash = '#/player-sport/' + sportKey;
+        },
+
+        /** Open a sport page on its Futures tab. Golf has no separate futures
+         *  tab — its league tabs render outrights directly — so it falls back
+         *  to the first league, which is where its futures already live. */
+        navigateToSportFutures(sportKey) {
+            const cat = this.sportCategories[sportKey];
+            this.selectedLeagueTab = (sportKey === 'golf' && cat)
+                ? (cat.leagues[0]?.id || 'futures')
+                : 'futures';
             window.location.hash = '#/player-sport/' + sportKey;
         },
 
