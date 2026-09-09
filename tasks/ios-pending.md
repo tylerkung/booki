@@ -359,3 +359,23 @@ Dropping the policy today breaks invite claiming for every shipped build.
    confirm anon reads of `invites` fail.
 
 Step 3 is the actual fix. Steps 1–2 exist to make it safe to take.
+
+## B10 — Per-league display window (NFL shows the week, not 48 hours)
+
+Web now shows NFL games seven days out while every other league stays at 48
+hours. iOS still applies a single 48-hour rule to everything, so an iOS member
+sees an empty board Monday through Wednesday during the NFL season — the exact
+failure this fixed on web.
+
+The web version is `WEEKLY_DISPLAY_WINDOW_MS` + `WEEKLY_LEAGUES` in
+`landing/dashboard/dashboard.js`, applied through `oddsDisplayFilter()`.
+
+iOS equivalent lives in `Event.displayWindow` / `Event.isWithinDisplayWindow(now:)`,
+used by `GamesView`, `SearchView` and `SportPageView`'s player branch. It needs
+the same per-league split rather than one constant.
+
+Safe because `sync_games` stores odds for seven days, so nothing this reveals is
+priceless. Do not widen past seven without moving `ODDS_STORAGE_WINDOW_MS` too.
+
+NCAAF is deliberately excluded on web — a Saturday card is 60-plus games against
+the NFL's 16, and that is a payload decision to take on its own.

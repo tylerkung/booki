@@ -46,13 +46,39 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
  */
 const ODDS_DISPLAY_WINDOW_MS = 48 * 60 * 60 * 1000;
 
-function oddsDisplayCutoff() {
-    return new Date(Date.now() + ODDS_DISPLAY_WINDOW_MS).toISOString();
+/**
+ * Leagues that run on a weekly rhythm rather than a daily one.
+ *
+ * Two days is right for baseball, basketball and hockey, where there is a slate
+ * every night and a line three days out is speculative. It is wrong for the NFL,
+ * where the whole week's card is posted at once and people decide across it.
+ * Under the 48-hour rule a member who joined on a Monday saw an empty board
+ * until Thursday — which is exactly what an invited group looks like when it
+ * signs up and then never places a pick.
+ *
+ * Seven days is safe because sync_games already stores odds for seven
+ * (ODDS_STORAGE_WINDOW_MS), so every game this reveals already has a price.
+ * Widening beyond that would surface games with no lines.
+ *
+ * NCAAF is weekly too and is deliberately NOT here: a Saturday card is 60-plus
+ * games against the NFL's 16, and that is a payload decision worth taking on
+ * its own rather than smuggling in with this one.
+ */
+const WEEKLY_DISPLAY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const WEEKLY_LEAGUES = ['NFL'];
+
+function oddsDisplayCutoff(ms = ODDS_DISPLAY_WINDOW_MS) {
+    return new Date(Date.now() + ms).toISOString();
 }
 
-/** PostgREST filter: inside the display window, OR an outright. */
+/** PostgREST filter: inside this league's display window, OR an outright. */
 function oddsDisplayFilter() {
-    return `start_time.lte.${oddsDisplayCutoff()},away_team.eq.Outright`;
+    const wide = oddsDisplayCutoff(WEEKLY_DISPLAY_WINDOW_MS);
+    return [
+        ...WEEKLY_LEAGUES.map((l) => `and(league.eq.${l},start_time.lte.${wide})`),
+        `start_time.lte.${oddsDisplayCutoff()}`,
+        'away_team.eq.Outright',
+    ].join(',');
 }
 
 function dashboardApp() {
