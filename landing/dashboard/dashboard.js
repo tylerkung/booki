@@ -67,7 +67,7 @@ const ODDS_DISPLAY_WINDOW_MS = 48 * 60 * 60 * 1000;
  * wall of markup.
  */
 const WEEKLY_DISPLAY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-const WEEKLY_LEAGUES = ['NFL'];
+const WEEKLY_LEAGUES = ['NFL', 'NCAAF'];
 
 function oddsDisplayCutoff(ms = ODDS_DISPLAY_WINDOW_MS) {
     return new Date(Date.now() + ms).toISOString();
