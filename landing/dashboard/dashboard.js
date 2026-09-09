@@ -60,9 +60,11 @@ const ODDS_DISPLAY_WINDOW_MS = 48 * 60 * 60 * 1000;
  * (ODDS_STORAGE_WINDOW_MS), so every game this reveals already has a price.
  * Widening beyond that would surface games with no lines.
  *
- * NCAAF is weekly too and is deliberately NOT here: a Saturday card is 60-plus
- * games against the NFL's 16, and that is a payload decision worth taking on
- * its own rather than smuggling in with this one.
+ * NCAAF is here for the same reason and at a much larger scale: a Saturday card
+ * is 60-plus games against the NFL's 16. That cost was measured before adding it
+ * rather than assumed — see the commit — and the board only renders three games
+ * per league behind "Show More", so the extra rows are a payload cost, not a
+ * wall of markup.
  */
 const WEEKLY_DISPLAY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const WEEKLY_LEAGUES = ['NFL'];
@@ -2583,7 +2585,7 @@ function dashboardApp() {
                 if (m.type !== 'player_prop' || !m.subject_name) continue;
                 if (q && !m.subject_name.toLowerCase().includes(q)) continue;
                 if (!byPlayer.has(m.subject_name)) {
-                    byPlayer.set(m.subject_name, { name: m.subject_name, markets: [] });
+                    byPlayer.set(m.subject_name, { name: m.subject_name, team: m.subject_team || null, markets: [] });
                 }
                 byPlayer.get(m.subject_name).markets.push(m);
             }
@@ -2591,6 +2593,33 @@ function dashboardApp() {
                 g.markets.sort((a, b) => String(a.stat_key).localeCompare(String(b.stat_key)));
             }
             return [...byPlayer.values()].sort((a, b) => a.name.localeCompare(b.name));
+        },
+
+        /** Props split by side: away on the left, home on the right.
+         *
+         *  A subject whose team does not resolve to either side goes to
+         *  `other` rather than being forced into a column. Putting a player
+         *  under the wrong team is worse than putting them in an unlabelled
+         *  group, and silently dropping them would be worse still — those are
+         *  priced markets somebody could bet. Currently empty for every stored
+         *  prop, and the bucket exists so that stays visible if it changes.
+         */
+        get gameDetailPropColumns() {
+            const away = [], home = [], other = [];
+            const a = this.gameDetail && this.gameDetail.away_team;
+            const h = this.gameDetail && this.gameDetail.home_team;
+            for (const g of this.gameDetailPropGroups) {
+                if (g.team && g.team === a) away.push(g);
+                else if (g.team && g.team === h) home.push(g);
+                else other.push(g);
+            }
+            // If nothing resolved to either side, the RPC has not been widened
+            // yet (migration 060) and every group would pile into "Other" under
+            // a meaningless heading. Fall back to the single list instead, so
+            // shipping the markup before the migration degrades to the old
+            // layout rather than to a wrong one.
+            const split = away.length > 0 || home.length > 0;
+            return { away, home, other: split ? other : [], ungrouped: split ? [] : other, split };
         },
 
         /** Human label for a stat_key. Falls back to the raw key rather than

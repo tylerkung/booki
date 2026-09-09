@@ -3064,6 +3064,41 @@ input, button, select, textarea { font: inherit; }
     color: var(--text-muted);
 }
 
+/* Props by side: away left, home right. Two columns because a prop is a
+   question about one team's player, and one alphabetical list makes the reader
+   sort thirty names by memory to find the side they care about. */
+.gd-prop-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-lg);
+    align-items: start;
+}
+
+.gd-prop-column { min-width: 0; }
+
+.gd-prop-column-head {
+    font-size: var(--fs-micro);
+    font-weight: var(--fw-semibold);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: var(--ls-caps);
+    padding-bottom: var(--s-sm);
+    margin-bottom: var(--s-sm);
+    border-bottom: var(--hairline) solid var(--divider);
+}
+
+.gd-prop-empty {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    padding: var(--s-sm) 0;
+}
+
+/* One column on narrow screens: side-by-side prop rows would wrap their odds
+   under the stat label and stop scanning as a pair. */
+@media (max-width: 720px) {
+    .gd-prop-columns { grid-template-columns: minmax(0, 1fr); }
+}
+
 .gd-props-notice {
     display: flex;
     align-items: center;

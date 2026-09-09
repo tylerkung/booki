@@ -2734,32 +2734,148 @@
                                 <input class="search-input" type="search" x-model="propSearch" placeholder="Find a player">
                             </div>
 
-                            <template x-for="g in gameDetailPropGroups" :key="g.name">
-                                <div class="gd-player">
-                                    <div class="gd-player-head">
-                                        <span class="gd-player-name" x-text="g.name"></span>
-                                    </div>
-                                    <template x-for="m in g.markets" :key="m.id">
-                                        <div class="gd-prop-row">
-                                            <div class="gd-prop-stat">
-                                                <span x-text="propStatLabel(m.stat_key)"></span>
-                                                <span class="gd-prop-line" x-show="!isYesNoProp(m)"
-                                                      x-text="extractLine(m.side_a)"></span>
+                            <div class="gd-prop-columns" x-show="gameDetailPropColumns.split">
+                            <div class="gd-prop-column">
+                                <div class="gd-prop-column-head" x-text="gameDetail && gameDetail.away_team"></div>
+                                <template x-for="g in gameDetailPropColumns.away" :key="g.name">
+                                    <div class="gd-player">
+                                        <div class="gd-player-head">
+                                            <span class="gd-player-name" x-text="g.name"></span>
+                                        </div>
+                                        <template x-for="m in g.markets" :key="m.id">
+                                            <div class="gd-prop-row">
+                                                <div class="gd-prop-stat">
+                                                    <span x-text="propStatLabel(m.stat_key)"></span>
+                                                    <span class="gd-prop-line" x-show="!isYesNoProp(m)"
+                                                          x-text="extractLine(m.side_a)"></span>
+                                                </div>
+                                                <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                                    :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
+                                                    :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_a === null"
+                                                    @click="m.bettable === false || toggleSelection(gameDetail, m, 'a', m.side_a, m.odds_a)">
+                                                    <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'Yes' : 'Over'"></span>
+                                                    <span class="gd-cell-odds" x-text="m.odds_a === null ? '—' : formatOdds(m.odds_a)"></span>
+                                                </button>
+                                                <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                                    :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
+                                                    :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_b === null"
+                                                    @click="m.bettable === false || toggleSelection(gameDetail, m, 'b', m.side_b, m.odds_b)">
+                                                    <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'No' : 'Under'"></span>
+                                                    <span class="gd-cell-odds" x-text="m.odds_b === null ? '—' : formatOdds(m.odds_b)"></span>
+                                                </button>
                                             </div>
-                                            <button class="pg-odds-btn gd-cell gd-prop-cell"
-                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
-                                                :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_a === null"
-                                                @click="m.bettable === false || toggleSelection(gameDetail, m, 'a', m.side_a, m.odds_a)">
-                                                <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'Yes' : 'Over'"></span>
-                                                <span class="gd-cell-odds" x-text="m.odds_a === null ? '—' : formatOdds(m.odds_a)"></span>
-                                            </button>
-                                            <button class="pg-odds-btn gd-cell gd-prop-cell"
-                                                :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
-                                                :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_b === null"
-                                                @click="m.bettable === false || toggleSelection(gameDetail, m, 'b', m.side_b, m.odds_b)">
-                                                <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'No' : 'Under'"></span>
-                                                <span class="gd-cell-odds" x-text="m.odds_b === null ? '—' : formatOdds(m.odds_b)"></span>
-                                            </button>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="!gameDetailPropColumns.away.length">
+                                    <div class="gd-prop-empty">No props posted</div>
+                                </template>
+                            </div>
+                            <div class="gd-prop-column">
+                                <div class="gd-prop-column-head" x-text="gameDetail && gameDetail.home_team"></div>
+                                <template x-for="g in gameDetailPropColumns.home" :key="g.name">
+                                    <div class="gd-player">
+                                        <div class="gd-player-head">
+                                            <span class="gd-player-name" x-text="g.name"></span>
+                                        </div>
+                                        <template x-for="m in g.markets" :key="m.id">
+                                            <div class="gd-prop-row">
+                                                <div class="gd-prop-stat">
+                                                    <span x-text="propStatLabel(m.stat_key)"></span>
+                                                    <span class="gd-prop-line" x-show="!isYesNoProp(m)"
+                                                          x-text="extractLine(m.side_a)"></span>
+                                                </div>
+                                                <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                                    :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
+                                                    :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_a === null"
+                                                    @click="m.bettable === false || toggleSelection(gameDetail, m, 'a', m.side_a, m.odds_a)">
+                                                    <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'Yes' : 'Over'"></span>
+                                                    <span class="gd-cell-odds" x-text="m.odds_a === null ? '—' : formatOdds(m.odds_a)"></span>
+                                                </button>
+                                                <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                                    :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
+                                                    :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_b === null"
+                                                    @click="m.bettable === false || toggleSelection(gameDetail, m, 'b', m.side_b, m.odds_b)">
+                                                    <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'No' : 'Under'"></span>
+                                                    <span class="gd-cell-odds" x-text="m.odds_b === null ? '—' : formatOdds(m.odds_b)"></span>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="!gameDetailPropColumns.home.length">
+                                    <div class="gd-prop-empty">No props posted</div>
+                                </template>
+                            </div>
+                            </div>
+                            <!-- Before migration 060 the RPC does not return subject_team, so no
+                                 group resolves to a side. Render the old flat list rather than
+                                 filing every player under a meaningless "Other" heading. -->
+                            <template x-if="gameDetailPropColumns.ungrouped.length">
+                                <div>
+                                    <template x-for="g in gameDetailPropColumns.ungrouped" :key="g.name">
+                                            <div class="gd-player">
+                                                <div class="gd-player-head">
+                                                    <span class="gd-player-name" x-text="g.name"></span>
+                                                </div>
+                                                <template x-for="m in g.markets" :key="m.id">
+                                                    <div class="gd-prop-row">
+                                                        <div class="gd-prop-stat">
+                                                            <span x-text="propStatLabel(m.stat_key)"></span>
+                                                            <span class="gd-prop-line" x-show="!isYesNoProp(m)"
+                                                                  x-text="extractLine(m.side_a)"></span>
+                                                        </div>
+                                                        <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                                            :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
+                                                            :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_a === null"
+                                                            @click="m.bettable === false || toggleSelection(gameDetail, m, 'a', m.side_a, m.odds_a)">
+                                                            <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'Yes' : 'Over'"></span>
+                                                            <span class="gd-cell-odds" x-text="m.odds_a === null ? '—' : formatOdds(m.odds_a)"></span>
+                                                        </button>
+                                                        <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                                            :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
+                                                            :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_b === null"
+                                                            @click="m.bettable === false || toggleSelection(gameDetail, m, 'b', m.side_b, m.odds_b)">
+                                                            <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'No' : 'Under'"></span>
+                                                            <span class="gd-cell-odds" x-text="m.odds_b === null ? '—' : formatOdds(m.odds_b)"></span>
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="gameDetailPropColumns.other.length">
+                                <div>
+                                    <div class="gd-prop-column-head">Other</div>
+                                    <template x-for="g in gameDetailPropColumns.other" :key="g.name">
+                                        <div class="gd-player">
+                                            <div class="gd-player-head">
+                                                <span class="gd-player-name" x-text="g.name"></span>
+                                            </div>
+                                            <template x-for="m in g.markets" :key="m.id">
+                                                <div class="gd-prop-row">
+                                                    <div class="gd-prop-stat">
+                                                        <span x-text="propStatLabel(m.stat_key)"></span>
+                                                        <span class="gd-prop-line" x-show="!isYesNoProp(m)"
+                                                              x-text="extractLine(m.side_a)"></span>
+                                                    </div>
+                                                    <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                                        :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'a'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
+                                                        :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_a === null"
+                                                        @click="m.bettable === false || toggleSelection(gameDetail, m, 'a', m.side_a, m.odds_a)">
+                                                        <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'Yes' : 'Over'"></span>
+                                                        <span class="gd-cell-odds" x-text="m.odds_a === null ? '—' : formatOdds(m.odds_a)"></span>
+                                                    </button>
+                                                    <button class="pg-odds-btn gd-cell gd-prop-cell"
+                                                        :class="{ 'pg-odds-active': isSelectionActive(gameDetail.id, m.id, 'b'), 'pg-odds-locked': isEventLocked(gameDetail) || m.bettable === false }"
+                                                        :disabled="isEventLocked(gameDetail) || m.bettable === false || m.odds_b === null"
+                                                        @click="m.bettable === false || toggleSelection(gameDetail, m, 'b', m.side_b, m.odds_b)">
+                                                        <span class="gd-cell-line" x-text="isYesNoProp(m) ? 'No' : 'Under'"></span>
+                                                        <span class="gd-cell-odds" x-text="m.odds_b === null ? '—' : formatOdds(m.odds_b)"></span>
+                                                    </button>
+                                                </div>
+                                            </template>
                                         </div>
                                     </template>
                                 </div>
