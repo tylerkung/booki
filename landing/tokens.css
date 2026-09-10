@@ -3,8 +3,8 @@
 
    Source: design-system/core.css (structural) + design-system/brand-booki.css
    (colour) + design-system/core.rules.css (the reduced-motion and focus rules).
-   Regenerate with scripts/build-tokens.py; check-all.sh fails if this file is
-   stale.
+   Regenerate with design-system/build-tokens.py; check-all.sh fails if this
+   file is stale.
 
    Edit the source files, not this one. An edit here is overwritten by the next
    build and, worse, silently diverges the two products that share core.css.
@@ -248,6 +248,15 @@
   --fw-cta: var(--fw-bold);
   --ls-cta: 0.1em;
 
+  /* ── families ──
+     The three faces. Brand, not structure: another product supplies its own and
+     keeps every scale in core.css unchanged. --font-cta stays in core, because
+     "the CTA is set in the display face" is a structural decision; WHICH display
+     face is this file's business.
+
+     Do not label this section anything starting with "type" — build-tokens
+     slugs those to the type scales, so a collision here would silently replace
+     core's entire web type scale with three font families. */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Space Grotesk', var(--font-sans);
   /* Kept when the interface moved to Inter, which has no official monospace

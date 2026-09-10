@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 failed=()
 for check in \
     scripts/check-migrations.py \
-    scripts/build-tokens.py \
+    design-system/build-tokens.py \
     scripts/check-rls.py \
     scripts/check-updated-at-triggers.py \
     scripts/check-design-tokens.py \
@@ -26,7 +26,7 @@ do
     echo "── $(basename "$check")"
     # build-tokens doubles as a generator; in the suite it only verifies.
     args=""
-    [ "$check" = "scripts/build-tokens.py" ] && args="--check"
+    [ "$check" = "design-system/build-tokens.py" ] && args="--check"
     if ! python3 "$check" $args; then
         failed+=("$(basename "$check")")
     fi

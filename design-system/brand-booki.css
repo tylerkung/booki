@@ -142,6 +142,29 @@
   --wave-opacity: var(--o-faint);
   --wave-page-scale: 1.25;       /* iOS: geo.size.width * 1.25 on detail screens */
 
+  /* ── families ──
+     The three faces. Brand, not structure: another product supplies its own and
+     keeps every scale in core.css unchanged. --font-cta stays in core, because
+     "the CTA is set in the display face" is a structural decision; WHICH display
+     face is this file's business.
+
+     Do not label this section anything starting with "type" — build-tokens
+     slugs those to the type scales, so a collision here would silently replace
+     core's entire web type scale with three font families. */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', var(--font-sans);
+  /* Kept when the interface moved to Inter, which has no official monospace
+     sibling. Plex Mono is a neutral grotesque of the same era and sits quietly
+     beside Inter; the alternative — falling back to the system stack — would
+     render odds in SF Mono on a Mac and Consolas on Windows, and a column of
+     prices that changes shape per platform is worse than one that is merely
+     not a matched sibling.
+
+     dashboard.css asked for this face in four rules long before it was ever
+     loaded, so all four silently fell back to whatever generic monospace the
+     browser picked. The system stack remains behind it. */
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
   /* ── elevation — the accent glow, never black alone ── */
   /* Two focus treatments, because two kinds of control need different things.
      A button or link is opaque and sits on a surface, so a ring OUTSIDE it is
