@@ -1,0 +1,165 @@
+/* ============================================================================
+   Brand — Booki
+   ----------------------------------------------------------------------------
+   Every colour-bearing token: the palette, channel triplets, tinted fills and
+   their foregrounds, the wave texture and the elevation shadows.
+
+   This is the file a second product replaces. Keep the NAMES and change the
+   VALUES — the component layer refers to these by name and nothing else, which
+   is why dashboard.css contains 1,478 var() uses and zero raw hex.
+
+   Load AFTER core.css.
+
+   --wave-texture points at an absolute /assets/wave.png. It is absolute on
+   purpose (a relative url() inside a custom property resolves against the
+   stylesheet that USES it, not the one that declares it), so a project either
+   serves that path or drops the token.
+   ============================================================================ */
+
+:root {
+  /* ── colour — mirrors Booki/Theme.swift, enforced ───────────────────── */
+  --background: #0A0A12;          /* Theme.background */
+  --card: #14141F;                /* Theme.cardBackground */
+  --card-deep: #0E0E18;           /* cardGradient end stop */
+  --elevated: #1E1E2D;            /* Theme.elevatedBackground */
+  --border: #2A2A3A;              /* Theme.border */
+  --divider: #22222E;             /* Theme.divider */
+
+  --text-primary: #F8F8F8;        /* Theme.textPrimary */
+  --text-secondary: #A8A8B8;      /* Theme.textSecondary */
+  /* LIFTED from #6B6B7B, which failed WCAG AA on every surface it can sit on
+     (3.77 / 3.49 / 3.14 against background / card / elevated) across 144 uses.
+     #858595 clears 4.5:1 on all three (5.43 / 5.03 / 4.52). This is the one
+     colour that no longer mirrors Theme.swift — see tasks/ios-pending.md B6. */
+  --text-muted: #858595;          /* Theme.textMuted, lifted for contrast */
+
+  --accent: #00F5D4;              /* Theme.accent */
+  --accent-deep: #00D4B8;         /* gradient end stop — NOT interchangeable */
+  --accent-secondary: #9D4EDD;    /* Theme.accentSecondary */
+  --accent-tertiary: #FF006E;     /* Theme.accentTertiary */
+  --gold: #FFE66D;                /* Theme.gold */
+  --gold-deep: #FFAA00;           /* goldGradient end stop — a bare literal in Theme.swift */
+  --danger: #FF6B6B;              /* Theme.danger */
+  --warning: #FFA94D;             /* Theme.warning */
+  --scheduled: #7B68EE;           /* Theme.scheduled */
+  --final: #5C5C6F;               /* Theme.finalStatus */
+  --success: var(--accent);       /* Theme.win */
+
+  /* Gradients. --gradient-accent is what the web dashboard actually paints on
+     its primary CTA; --gradient-button is Theme.buttonGradient. They are NOT
+     the same — see the note in the design system's Gradients block. */
+  --gradient-accent: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+  --gradient-button: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  --gradient-rainbow: linear-gradient(135deg, var(--accent), var(--accent-secondary), var(--accent-tertiary));
+  --gradient-gold: linear-gradient(135deg, var(--gold), var(--gold-deep));
+  --gradient-card: linear-gradient(180deg, var(--card), var(--card-deep));
+
+  /* ── channel triplets ──
+     Every translucent fill derives from these, so a palette change reaches the
+     tints too. Tints used to be frozen literals and went stale silently. */
+  --accent-rgb: 0, 245, 212;
+  --accent-secondary-rgb: 157, 78, 221;
+  --accent-tertiary-rgb: 255, 0, 110;
+  --danger-rgb: 255, 107, 107;
+  --warning-rgb: 255, 169, 77;
+  --scheduled-rgb: 123, 104, 238;
+  --final-rgb: 92, 92, 111;
+  --neutral-rgb: 168, 168, 184;
+  --white-rgb: 255, 255, 255;
+  --black-rgb: 0, 0, 0;
+
+  /* ── tinted fills ── */
+  --fill-accent-faint: rgba(var(--accent-rgb), var(--o-faint));
+  --fill-accent-soft: rgba(var(--accent-rgb), var(--o-soft));
+  --fill-accent: rgba(var(--accent-rgb), var(--o-med));
+  --fill-accent-strong: rgba(var(--accent-rgb), var(--o-strong));
+  --fill-accent-heavy: rgba(var(--accent-rgb), var(--o-heavy));
+  --fill-accent-secondary: rgba(var(--accent-secondary-rgb), var(--o-med));
+  --fill-accent-tertiary: rgba(var(--accent-tertiary-rgb), var(--o-med));
+  --fill-danger-soft: rgba(var(--danger-rgb), var(--o-soft));
+  --fill-danger: rgba(var(--danger-rgb), var(--o-med));
+  --fill-warning-soft: rgba(var(--warning-rgb), var(--o-soft));
+  --fill-warning: rgba(var(--warning-rgb), var(--o-med));
+  --fill-scheduled: rgba(var(--scheduled-rgb), var(--o-med));
+  --fill-final: rgba(var(--final-rgb), var(--o-med));
+
+  /* ── fill foregrounds ──
+     Every tinted fill ships with the text colour that is legible ON it, so a
+     new badge cannot be built wrong. Borrowed from shadcn/ui, where a surface
+     token and its `-foreground` are always defined as a pair.
+
+     The badge pattern here is `background: var(--fill-x); color: var(--x)` —
+     text and fill are the same hue, the fill at 0.15 alpha. That is a narrow
+     margin by construction, and two of the five had fallen through it: `final`
+     scored 2.49 against its own fill and `scheduled` 3.72, both under the 4.5
+     AA floor. danger (5.35), warning (7.25) and accent (9.31) were already
+     clear and keep their existing colour — the pairing is complete rather than
+     partial, because a set with gaps invites picking by hand again.
+
+     The two lifted values preserve hue and saturation and raise lightness only,
+     so a scheduled badge is still the same purple, just legible. */
+  --fill-final-foreground: #87879B;          /* was --final #5C5C6F, 2.49 -> 4.63 */
+  --fill-scheduled-foreground: #8D7DF0;      /* was --scheduled #7B68EE, 3.72 -> 4.66 */
+  --fill-danger-foreground: var(--danger);   /* 5.35 — already clear */
+  --fill-warning-foreground: var(--warning); /* 7.25 */
+  --fill-accent-foreground: var(--accent);   /* 9.31 */
+  --fill-accent-secondary-foreground: #AE6DE3;  /* was #9D4EDD, 3.42 -> 4.57 */
+  --fill-accent-tertiary-foreground: #FF2080;   /* was #FF006E, 4.29 -> 4.52 */
+  --fill-neutral: rgba(var(--neutral-rgb), var(--o-med));
+  --fill-white-hairline: rgba(var(--white-rgb), var(--o-hairline));
+  --fill-white-faint: rgba(var(--white-rgb), var(--o-faint));
+  --fill-white-soft: rgba(var(--white-rgb), var(--o-soft));
+  --fill-white: rgba(var(--white-rgb), var(--o-med));
+  --fill-card-opaque: rgba(20, 20, 31, var(--o-opaque));
+  --scrim: rgba(var(--black-rgb), 0.6);
+  --scrim-light: rgba(var(--black-rgb), 0.5);
+  --text-on-accent: var(--background);
+
+  /* ── wave texture ──
+     The iOS bet-slip treatment: Assets.xcassets/WaveBackground overlaid at 10%
+     opacity on pick cards (PickCardCompact, TicketCardView) and as a page-level
+     wash on detail screens (TicketDetailView, BetDetailView).
+
+     The web copy is the same white-on-transparent art, resized and stored as
+     grayscale+alpha rather than RGBA — the art is pure white, so the two extra
+     colour channels carry no information. It is an ordinary PNG background
+     image; nothing about the consuming CSS depends on that encoding.
+
+     The path is absolute deliberately. A relative url() inside a custom
+     property is not resolved against the stylesheet that DECLARES it — Chrome
+     resolves it against the stylesheet that USES it, so 'assets/wave.png'
+     became /dashboard/assets/wave.png and silently 404'd. landing/ is the site
+     root both locally and in production, so /assets/ is stable for every
+     consumer regardless of how deep it sits.
+
+     --wave-opacity is --o-faint (0.05), half the 0.1 iOS uses. Web pick cards
+     are far larger than their iOS counterparts, so the same opacity reads as
+     considerably heavier here; the wash is dialled back deliberately rather
+     than by oversight. Keeping it as a named token pointing at a rung of the
+     shared opacity ladder means it can be retuned in one place and cannot
+     drift into an untracked literal. */
+  --wave-texture: url('/assets/wave.png');
+  --wave-opacity: var(--o-faint);
+  --wave-page-scale: 1.25;       /* iOS: geo.size.width * 1.25 on detail screens */
+
+  /* ── elevation — the accent glow, never black alone ── */
+  /* Two focus treatments, because two kinds of control need different things.
+     A button or link is opaque and sits on a surface, so a ring OUTSIDE it is
+     the clearest signal — that is --focus-ring below. A text input already has
+     a border doing the same visual job, and ringing it reads as a double
+     border; it takes the soft glow instead, which is what this token was always
+     for. It had zero uses until 2026-08-25. */
+  --shadow-focus: 0 0 0 3px var(--fill-accent-soft);
+  --focus-ring: 2px solid var(--accent);
+  --focus-ring-offset: 2px;
+
+  /* The minimum a control must accept from a thumb, independent of how large it
+     looks. The design system draws this as a dashed box around a 24px control;
+     the number is the platform floor on both iOS and Android. */
+  --tap-target: 44px;
+  --shadow-btn: 0 2px 8px rgba(var(--accent-rgb), var(--o-heavy)), inset 0 1px 0 var(--fill-white);
+  --shadow-btn-hover: 0 4px 16px rgba(var(--accent-rgb), var(--o-glow)), inset 0 1px 0 var(--fill-white);
+  --shadow-raised: 0 4px 24px rgba(var(--accent-rgb), var(--o-glow)), 0 2px 8px rgba(var(--black-rgb), var(--o-glow));
+  --shadow-float: 0 6px 32px rgba(var(--accent-rgb), var(--o-intense)), 0 4px 12px rgba(var(--black-rgb), var(--o-glow));
+  --shadow-modal: 0 0 80px rgba(var(--accent-rgb), var(--o-faint)), 0 24px 48px rgba(var(--black-rgb), var(--o-intense));
+}

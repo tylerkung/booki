@@ -1,22 +1,14 @@
 /* ============================================================================
-   Booki design tokens — single source of truth.
+   Booki design tokens — GENERATED, do not edit by hand.
 
-   Every styled surface on the web reads from this file: the dashboard app
-   (landing/dashboard/dashboard.css) and the design system reference
-   (landing/design/ds.css) both link it and define only aliases on top.
+   Source: design-system/core.css (structural) + design-system/brand-booki.css
+   (colour) + design-system/core.rules.css (the reduced-motion and focus rules).
+   Regenerate with scripts/build-tokens.py; check-all.sh fails if this file is
+   stale.
 
-   Before this existed the two files each carried their own copy of the palette.
-   They happened to agree, but by care rather than by construction — which is
-   exactly how the stale colour literals inside the dashboard happened one level
-   down: rgba(255,77,106) matched --danger when it was written, and nothing
-   noticed when --danger moved.
-
-   The iOS app is the third consumer and cannot link CSS. Booki/Theme.swift is
-   therefore checked against the colour block below by
-   scripts/check-design-tokens.py, which fails when they disagree.
-
-   Adding a token: put it here, not in a consumer. A consumer may only alias.
-   ========================================================================= */
+   Edit the source files, not this one. An edit here is overwritten by the next
+   build and, worse, silently diverges the two products that share core.css.
+   ============================================================================ */
 
 :root {
   /* ── colour — mirrors Booki/Theme.swift, enforced ───────────────────── */

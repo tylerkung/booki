@@ -1,0 +1,66 @@
+/* ============================================================================
+   Design system — rules that depend on the tokens
+   ----------------------------------------------------------------------------
+   Not custom properties: real rules. The reduced-motion override and the
+   focus-visible defaults belong with core.css and are kept in their own file so
+   the token assembler never has to parse braces — an earlier version tried, and
+   silently swallowed the closing braces of the @media block and the entire
+   input focus rule.
+
+   Emitted verbatim after the :root block.
+   ============================================================================ */
+
+/* ── reduced motion ──
+   Every transition in the product now takes its duration from one of the four
+   tokens above, so re-pointing them here disables transition motion across the
+   dashboard, admin, marketing and design-system surfaces in one place, rather
+   than needing a matching @media block in each stylesheet — which is how three
+   of the four came to have none at all.
+
+   0.01ms rather than `none`. A zero-length transition still fires transitionend,
+   so any JavaScript waiting on that event keeps working; `transition: none`
+   silently never fires it and hangs the handler.
+
+   Keyframe animations do not read these tokens and are handled per-file. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0.01ms;
+    --dur-base: 0.01ms;
+    --dur-slow: 0.01ms;
+    --dur-entrance: 0.01ms;
+  }
+}
+
+/* ── focus ─────────────────────────────────────────────────────────────────
+   The design system has always specified "2px accent, 2px offset, on every
+   interactive element, applied through :focus-visible". Until 2026-08-25 that
+   rule existed in exactly three places, all of them inside ds.css — the design
+   system's own documentation page. The product had sixty hover states and zero
+   focus states, and --shadow-focus was referenced nowhere at all.
+
+   It lives here rather than in each stylesheet because that is the mistake that
+   caused the gap: a rule that has to be repeated in four files gets written in
+   one. tokens.css is loaded by every surface.
+
+   :where() gives the selector ZERO specificity, so any component that needs a
+   different focus treatment overrides it by simply existing, with no !important
+   and no specificity war. The trade is that a stray `outline: none` in a
+   component also silently wins — which is what scripts/check-focus-states.py
+   exists to catch.
+
+   :focus-visible, not :focus, so a mouse click does not ring the control while
+   keyboard and other non-pointer input still does. */
+:where(a[href], button, input, select, textarea, summary,
+       [tabindex]:not([tabindex="-1"]), [role="button"], [role="link"],
+       [role="tab"], [role="switch"], [role="checkbox"], [role="menuitem"]
+):focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+}
+
+/* Inputs opt into the glow instead — see the note by --shadow-focus. */
+:where(input, textarea, select):focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: var(--shadow-focus);
+}

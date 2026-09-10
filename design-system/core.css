@@ -1,0 +1,232 @@
+/* ============================================================================
+   Design system — structural tokens
+   ----------------------------------------------------------------------------
+   Spacing, radii, the type scale, tracking, motion, layers, dimensions, plus
+   the reduced-motion and focus rules that depend on them. Nothing here carries
+   a brand: no colour, no gradient, no shadow, no texture.
+
+   Pair it with a brand file that defines the contract below. Load core FIRST —
+   later declarations win in the cascade, so the brand file is what a project
+   overrides with.
+
+   THE CONTRACT. This file references tokens it does not define, and a project
+   that omits any of them gets a silently unstyled control rather than an error:
+
+       --accent            focus ring, and the accent-tinted motion affordances
+       --bg                the page ground the focus ring is drawn against
+
+   Everything else here is self-contained.
+
+   Fonts are NOT loaded here. --font-sans / --font-display / --font-mono name
+   families the page must request itself; a missing @font-face falls back
+   silently, which is why check-font-loading.py exists.
+   ============================================================================ */
+
+:root {
+  /* ── opacity ladder ── */
+  --o-hairline: 0.03;
+  --o-faint: 0.05;
+  --o-soft: 0.10;
+  --o-med: 0.15;
+  --o-strong: 0.20;
+  --o-heavy: 0.25;
+  --o-glow: 0.30;
+  --o-intense: 0.40;
+  --o-opaque: 0.80;
+
+  /* ── spacing — 4pt grid ──
+     Numbered by grid unit: --s4 is four units, 16px. The 2px step is the one
+     exception, kept because the iOS spec defines it and it is in use. */
+  --s05: 2px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+  --s14: 56px;
+  --s16: 64px;
+
+  /* ── radius ──
+     full and circle are NOT interchangeable: on a non-square element 50%
+     yields an ellipse and 999px a stadium. Pick by intent. */
+  --radius-xs: 4px;
+  --radius-sm: 8px;              /* anything rounded INSIDE a rounded container */
+  --radius: 12px;                /* the container itself — cards, panels, sheets */
+  --radius-full: 999px;
+  --radius-circle: 50%;
+
+  /* ── type — iOS scale (Apple text styles, 17px body) ── */
+  --t-display: 34px;
+  --t-title1: 28px;
+  --t-title2: 22px;
+  --t-headline: 17px;
+  --t-body: 17px;
+  --t-callout: 16px;
+  --t-subhead: 15px;
+  --t-footnote: 13px;
+  --t-caption: 12px;
+  --t-micro: 11px;
+
+  /* ── type — web scale (dense desktop UI, 13px body) ──
+     Deliberately not the iOS scale. Colour, spacing and radius are genuinely
+     shared with iOS; type sizes are not, and treating them as shared is what
+     let 18 ad-hoc sizes accumulate in the dashboard. */
+  --fs-micro: 11px;
+  --fs-caption: 12px;
+  --fs-sm: 13px;
+  --fs-body: 14px;
+  --fs-lg: 16px;
+  --fs-title3: 18px;
+  --fs-title2: 22px;
+  --fs-title1: 28px;
+  --fs-display: 40px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-heavy: 800;
+
+  --lh-none: 1;
+  --lh-tight: 1.2;
+  --lh-normal: 1.5;
+  --lh-loose: 1.6;
+
+  /* ── tracking ──
+     Inter ships loose. Left at its default it reads slightly untidy at display
+     sizes and slightly cramped in caps, so Booki corrects in both directions.
+     The instinct was already here before this scale existed — -0.02em appeared
+     in ten places — but as eight raw values across TWO unit systems, px and em.
+     That mix was the actual defect: px tracking does not scale with font-size,
+     so the same 0.5px meant 0.045em on an 11px label and 0.036em on a 14px one.
+     Same intent, different result, depending on where it landed.
+
+     Every value below is em, and each was chosen as the nearest neighbour of
+     what the codebase already used, so adopting the scale moved no label by
+     more than about 0.15px.
+
+     Negative for display: large type has proportionally too much air between
+     letters, and closing it is what makes a headline read as one word rather
+     than a row of characters.
+     Positive for capitals: caps were drawn with more room around them than
+     lowercase and crowd when set solid — the tracking is legibility, not
+     decoration. Smaller and more uppercase both want more of it. */
+  --ls-tighter: -0.02em;      /* display headlines — hero, section, auth title */
+  --ls-tight: -0.01em;        /* sub-headings and large numerals */
+  --ls-normal: 0;             /* body — Inter's default is correct here */
+  --ls-caps: 0.04em;          /* uppercase at caption/body size */
+  --ls-caps-wide: 0.08em;     /* uppercase at micro size, badges */
+  --ls-caps-x: 0.14em;        /* brand marks and table headers */
+
+  /* ── CTA type ──
+     Buttons that ask for an action are set apart from the interface: Space
+     Grotesk, bold, all caps, generously tracked. Capitals were drawn with more
+     room around them than lowercase and crowd when set solid, so at this weight
+     the tracking is what keeps them legible rather than decorative.
+
+     Applies to action buttons only. NOT to odds buttons, which are data
+     (+1.5 (-167)), and not to filter or toggle chips. */
+  --font-cta: var(--font-display);
+  --fs-cta: var(--fs-body);
+  --fw-cta: var(--fw-bold);
+  --ls-cta: 0.1em;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', var(--font-sans);
+  /* Kept when the interface moved to Inter, which has no official monospace
+     sibling. Plex Mono is a neutral grotesque of the same era and sits quietly
+     beside Inter; the alternative — falling back to the system stack — would
+     render odds in SF Mono on a Mac and Consolas on Windows, and a column of
+     prices that changes shape per platform is worse than one that is merely
+     not a matched sibling.
+
+     dashboard.css asked for this face in four rules long before it was ever
+     loaded, so all four silently fell back to whatever generic monospace the
+     browser picked. The system stack remains behind it. */
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ── motion ──
+     Web durations. iOS runs slower (0.1 / 0.2 / 0.3 / 0.5) because touch
+     tolerates more latency than a pointer does.
+
+     Durations are graded by what is moving, not by taste. Feedback — a colour,
+     a border, a hover — has no distance to travel and should read as instant;
+     anything slower than about 0.12s stops feeling like a response and starts
+     feeling like a delay. Layout moves further and needs the extra time to stay
+     legible. An entrance is the only case where a viewer is genuinely watching
+     the motion rather than the result.
+
+     --ease is gone. It was defined as the literal keyword `ease` and referenced
+     ZERO times, so every transition in the product silently fell back to the
+     CSS default — which is also `ease`, a curve that ACCELERATES out of the
+     gate before settling. That is precisely backwards for an interface: a
+     control should leave immediately on being touched and decelerate into
+     place. It also contradicted the system's own anti-patterns page, which
+     already required critically damped motion and said nothing in Booki
+     bounces.
+
+     One curve for everything. cubic-bezier(0.22, 1, 0.36, 1) is easeOutQuint —
+     it leaves instantly and settles without overshoot, which is what "critically
+     damped" means in a CSS timing function. It was already in the codebase, used
+     four times on the marketing page's scroll reveals, and never reached the
+     product. A single curve is also a system decision: with one, nobody has to
+     choose, and motion cannot drift apart the way the tracking values did. */
+  --dur-fast: 0.12s;      /* feedback — colour, border, hover, focus */
+  --dur-base: 0.18s;      /* state — toggles, form focus, small transforms */
+  --dur-slow: 0.3s;       /* layout — sidebar, width fills, accordions */
+  --dur-entrance: 0.6s;   /* an element arriving, watched rather than felt */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── layers ──
+     Never write a raw z-index. If nothing here fits, the layer is missing. */
+  --z-base: 1;
+  --z-dropdown: 50;
+  --z-sticky: 100;
+  --z-betslip: 150;
+  --z-overlay: 200;
+  --z-modal: 250;
+  --z-toast: 300;
+
+  /* ── dimensions ──
+     Sizes, not spacing, so deliberately not on the 4pt grid: an 18px icon
+     rendered at 16 is a worse icon. A size used three or more times gets a
+     name; a one-off container width stays a literal. */
+  --hairline: 1px;
+  --bar-thin: 3px;
+  --dot-sm: 4px;
+  --dot: 6px;
+  --dot-lg: 8px;
+  --icon-xs: 16px;
+  --icon-sm: 18px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
+  --hamburger-w: 22px;
+  --badge: 28px;
+  --avatar-xs: 32px;
+  --tile: 36px;
+  --control: 48px;
+  --avatar-sm: 56px;
+  --avatar: 64px;
+  --avatar-lg: 80px;
+  --odds-col: 90px;              /* odds button AND its column label — shared
+                                    so they cannot drift out of alignment */
+  --odds-height: 40px;           /* every bet CTA — board columns, futures
+                                    outcomes, game-detail ladder. One height so
+                                    a one-line moneyline and a stacked spread
+                                    share a baseline grid */
+  --w-panel: 280px;
+  --w-panel-lg: 320px;
+  --w-form: 480px;
+  --w-content: 768px;
+  --sidebar-width: 240px;
+  --betslip-width: 340px;
+  --toast-w: 360px;
+
+  /* Breakpoint kept here as documentation only — custom properties are not
+     valid inside a media query condition, so it cannot be referenced. */
+  --bp-md: 768px;
+}
