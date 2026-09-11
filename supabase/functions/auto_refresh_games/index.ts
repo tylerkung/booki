@@ -1457,7 +1457,6 @@ Deno.serve(async (req) => {
                 continue;
               }
 
-              // Build new market rows before deleting old ones
               const marketsToInsert = newMarkets.map((m) => ({
                 bookie_id: null,
                 event_id: game.id,
@@ -1468,31 +1467,122 @@ Deno.serve(async (req) => {
                 odds_b: m.odds_b,
               }));
 
-              // Delete existing markets, then insert new ones
-              // Only delete if we have replacement data (guarded by newMarkets.length > 0 above)
-              const { error: deleteError } = await client
-                .from('markets')
-                .delete()
-                .eq('event_id', game.id);
+              // This used to be `delete().eq('event_id', game.id)` followed by a
+              // fresh insert, which was wrong twice over.
+              //
+              // It deleted EVERY market on the event, not just the ones this
+              // refresh replaces. Player props are markets on the same event
+              // written by sync_player_props, so each refresh destroyed them —
+              // every 30 minutes, which is why the props table was reliably
+              // empty and why nothing downstream of it could ever be verified.
+              //
+              // And re-inserting minted new ids for lines that had not changed.
+              // bets.market_id is `REFERENCES markets(id) ON DELETE SET NULL`
+              // (migration 042), so every bet on the event silently lost its
+              // market reference on the next refresh. All 201 bets in the
+              // database had a NULL market_id; submit_bets writes it correctly
+              // and this erased it minutes later.
+              //
+              // So: only touch the types this refresh is authoritative for,
+              // update unchanged lines in place to keep their ids, and delete a
+              // withdrawn line only when nobody holds a pick on it — the same
+              // care the outrights path below already took.
+              const refreshedTypes = Array.from(new Set(marketsToInsert.map((m) => m.type)));
 
-              if (deleteError) {
-                console.error(`Error deleting markets for ${game.id}:`, deleteError);
-                oddsErrors.push({ eventId: game.id, error: 'Failed to delete existing markets' });
+              type ExistingMarket = { id: string; type: string; side_a: string; side_b: string };
+              const { data: existingRows, error: existingError } = await client
+                .from('markets')
+                .select('id, type, side_a, side_b')
+                .eq('event_id', game.id)
+                .in('type', refreshedTypes)
+                .returns<ExistingMarket[]>();
+
+              if (existingError) {
+                console.error(`Error loading markets for ${game.id}:`, existingError);
+                oddsErrors.push({ eventId: game.id, error: 'Failed to load existing markets' });
                 continue;
               }
 
-              const { error: insertError } = await client
-                .from('markets')
-                .insert(marketsToInsert);
+              // The line value lives inside side_a/side_b ("Utah Utes -12.5"),
+              // so this key IS the line identity: a spread that moves produces a
+              // different key and is correctly treated as a new market rather
+              // than an update of the old one.
+              const marketKey = (m: { type: string; side_a: string; side_b: string }) =>
+                `${m.type}|${m.side_a}|${m.side_b}`;
+              const existingByKey = new Map<string, ExistingMarket>(
+                (existingRows ?? []).map((r: ExistingMarket) => [marketKey(r), r] as const),
+              );
 
-              if (insertError) {
-                console.error(`Error inserting markets for ${game.id}:`, insertError);
-                oddsErrors.push({ eventId: game.id, error: 'Failed to insert new markets' });
-                // Re-insert attempt: try individual markets to salvage what we can
-                for (const market of marketsToInsert) {
-                  await client.from('markets').insert(market);
+              const toUpdate: Record<string, unknown>[] = [];
+              const toInsert: Record<string, unknown>[] = [];
+              for (const m of marketsToInsert) {
+                const hit = existingByKey.get(marketKey(m));
+                if (hit) toUpdate.push({ ...m, id: hit.id });
+                else toInsert.push(m);
+              }
+
+              // Batched, not per row: ~1,450 single-row UPDATEs per run is what
+              // pushed sync_games past the 150s worker ceiling.
+              let writeFailed = false;
+              for (let i = 0; i < toUpdate.length; i += 200) {
+                const { error } = await client
+                  .from('markets')
+                  .upsert(toUpdate.slice(i, i + 200), { onConflict: 'id' });
+                if (error) {
+                  console.error(`Error updating markets for ${game.id}:`, error);
+                  oddsErrors.push({ eventId: game.id, error: 'Failed to update existing markets' });
+                  writeFailed = true;
+                  break;
                 }
-                continue;
+              }
+              if (writeFailed) continue;
+
+              if (toInsert.length > 0) {
+                const { error: insertError } = await client
+                  .from('markets')
+                  .insert(toInsert);
+
+                if (insertError) {
+                  console.error(`Error inserting markets for ${game.id}:`, insertError);
+                  oddsErrors.push({ eventId: game.id, error: 'Failed to insert new markets' });
+                  // Salvage what we can, one row at a time.
+                  for (const market of toInsert) {
+                    await client.from('markets').insert(market);
+                  }
+                  continue;
+                }
+              }
+
+              // Lines no longer offered. Scoped to refreshedTypes by the query
+              // above, so props and outrights are never candidates here.
+              const freshKeys = new Set(marketsToInsert.map(marketKey));
+              const withdrawnIds = (existingRows ?? [])
+                .filter((r: ExistingMarket) => !freshKeys.has(marketKey(r)))
+                .map((r: ExistingMarket) => r.id);
+
+              if (withdrawnIds.length > 0) {
+                const { data: heldBets } = await client
+                  .from('bets')
+                  .select('market_id')
+                  .in('market_id', withdrawnIds)
+                  .in('status', ['pending', 'accepted']);
+
+                const held = new Set(
+                  (heldBets ?? []).map((b: { market_id: string }) => b.market_id),
+                );
+                const safeToDelete = withdrawnIds.filter((id: string) => !held.has(id));
+
+                for (let i = 0; i < safeToDelete.length; i += 200) {
+                  const { error: deleteError } = await client
+                    .from('markets')
+                    .delete()
+                    .in('id', safeToDelete.slice(i, i + 200));
+                  if (deleteError) {
+                    console.error(`Error removing withdrawn markets for ${game.id}:`, deleteError);
+                    oddsErrors.push({ eventId: game.id, error: 'Failed to remove withdrawn markets' });
+                    break;
+                  }
+                }
               }
 
               // Update event's last_auto_odds_refresh timestamp
