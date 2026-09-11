@@ -379,3 +379,11 @@ priceless. Do not widen past seven without moving `ODDS_STORAGE_WINDOW_MS` too.
 
 NCAAF is deliberately excluded on web — a Saturday card is 60-plus games against
 the NFL's 16, and that is a payload decision to take on its own.
+
+## B11 — prop subject team (web shipped, iOS not)
+
+`get_event_player_props` gains a `subject_team` column (migration 060) so the
+game detail page can split prop subjects into away and home columns. iOS reads
+the same RPC and ignores the new column, which is harmless — it renders the
+single alphabetical list it always did. No shipped build mis-renders anything,
+so this is a genuine "later", not a silent-corruption case.
