@@ -2277,6 +2277,11 @@
                     <p x-text="isLoadingPlayerEvents ? 'Loading games...' : filteredPlayerEvents.length + ' upcoming games'"></p>
                 </div>
 
+                <div class="card already-in-notice" x-show="alreadyInGroupNotice" x-cloak>
+                    <span class="t-body" x-text="alreadyInGroupNotice"></span>
+                    <button type="button" class="btn btn-ghost" @click="alreadyInGroupNotice = ''">Dismiss</button>
+                </div>
+
                 <!-- Sport navigation cards -->
                 <div class="games-sport-nav">
                     <template x-for="sport in playerSportOptions" :key="sport">

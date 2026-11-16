@@ -133,7 +133,7 @@
                     <a href="#" onclick="changeVerificationEmail(); return false;">Use a different email</a>
                 </div>
                 <div class="auth-links" style="margin-top:var(--s-xs);">
-                    <a href="#" onclick="showLogin(); stopVerificationPolling(); return false;">Back to Log In</a>
+                    <a href="#" onclick="showLogin(); stopVerificationWatch(); return false;">Back to Log In</a>
                 </div>
             </div>
 
@@ -169,6 +169,7 @@
         // True while a refused invite is still remembered and the login form is
         // showing. Create Account must not quietly start an organizer signup.
         let holdingInviteBlock = false;
+        let pendingVerificationEmail = '';
         const preferLogin = new URLSearchParams(window.location.search).get('mode') === 'login';
 
         function currentInviteCode() {
@@ -213,6 +214,7 @@
             if (window.BookiInvite) {
                 window.BookiInvite.clearCode();
                 window.BookiInvite.clearBlocked();
+                window.BookiInvite.clearAwaiting();
                 window.BookiInvite.stripFromUrl();
             }
             holdingInviteBlock = false;
@@ -389,21 +391,77 @@
             return true;
         }
 
-        // Check if already logged in — redirect to app for confirmed users
-        async function checkSession() {
+        function userIsConfirmed(user) {
+            return !!(user && (user.confirmed_at || user.email_confirmed_at));
+        }
+
+        function emailRedirectOrigin() {
+            if (window.BookiInvite && window.BookiInvite.emailConfirmOrigin) {
+                return window.BookiInvite.emailConfirmOrigin(window.location.origin);
+            }
+            return String(window.location.origin || '').replace(/\/+$/, '');
+        }
+
+        // GoTrue rejects signUp when emailRedirectTo is not on the allow list.
+        // Retrying without it keeps the account creation working; the message
+        // then uses the Site URL until the list is updated.
+        function redirectWasRejected(error) {
+            const m = ((error && error.message) || '').toLowerCase();
+            return m.includes('redirect') && (m.includes('not allowed') || m.includes('invalid') || m.includes('url'));
+        }
+
+        // Check if already logged in — redirect to app for confirmed users.
+        // An unverified signup that reloads must stay on "check your email",
+        // not fall back to the join form (the account already exists).
+        async function checkSession(bootMode) {
             if (!initSupabase()) return;
             const { data: { session } } = await sbClient.auth.getSession();
             if (session) {
-                // Only redirect if email is confirmed
                 const { data: { user } } = await sbClient.auth.getUser();
-                if (user?.confirmed_at || user?.email_confirmed_at) {
+                if (userIsConfirmed(user)) {
+                    if (window.BookiInvite) window.BookiInvite.clearAwaiting();
                     window.location.href = dashboardUrl();
+                    return;
                 }
+            }
+            if (bootMode === 'awaiting' || pendingVerificationEmail) {
+                startVerificationWatch();
             }
         }
 
-        startInviteFlow();
-        checkSession();
+        function showVerificationPending(email) {
+            hideAuthPanels();
+            document.getElementById('verification-pending').style.display = 'block';
+            setEscapeVisible(false);
+            document.querySelector('.auth-title').textContent = 'Check your email';
+            document.querySelector('.auth-subtitle').textContent = '';
+            document.getElementById('verification-email').textContent = email;
+            pendingVerificationEmail = email;
+            const statusEl = document.getElementById('verification-status');
+            if (statusEl) {
+                statusEl.style.color = '';
+                statusEl.innerHTML = 'Waiting for verification<span id="verification-dots">...</span>';
+            }
+        }
+
+        function bootAuthScreen() {
+            const awaiting = window.BookiInvite && window.BookiInvite.readAwaiting && window.BookiInvite.readAwaiting();
+            const code = currentInviteCode();
+            if (awaiting && awaiting.email) {
+                if (code) {
+                    inviteMode = 'player';
+                    inviteOrganizerName = window.BookiInvite.readName() || '';
+                    window.BookiInvite.ensureInUrl(code);
+                }
+                showVerificationPending(awaiting.email);
+                return 'awaiting';
+            }
+            startInviteFlow();
+            return 'form';
+        }
+
+        const bootMode = bootAuthScreen();
+        checkSession(bootMode);
 
         // ── Form Toggles ──
         function showLogin() {
@@ -487,6 +545,7 @@
             }
 
             // Role detection and claim_invite run in the dashboard.
+            if (window.BookiInvite) window.BookiInvite.clearAwaiting();
             window.location.href = dashboardUrl();
         }
 
@@ -557,11 +616,19 @@
             const pendingCode = inviteMode === 'player' ? currentInviteCode() : '';
             if (pendingCode) metadata.pending_invite = pendingCode;
 
-            const { data, error } = await sbClient.auth.signUp({
+            const redirectTo = emailRedirectOrigin();
+            let { data, error } = await sbClient.auth.signUp({
                 email,
                 password,
-                options: { data: metadata }
+                options: { data: metadata, emailRedirectTo: redirectTo }
             });
+            if (error && redirectWasRejected(error)) {
+                ({ data, error } = await sbClient.auth.signUp({
+                    email,
+                    password,
+                    options: { data: metadata }
+                }));
+            }
 
             if (error) {
                 errorEl.textContent = authErrorMessage(error);
@@ -571,18 +638,17 @@
                 return;
             }
 
-            if (data.user && !data.user.confirmed_at) {
-                // Show verification pending UI
-                document.getElementById('signup-form').style.display = 'none';
-                document.getElementById('verification-pending').style.display = 'block';
-                document.querySelector('.auth-title').textContent = 'Check your email';
-                document.querySelector('.auth-subtitle').textContent = '';
-                document.getElementById('verification-email').textContent = email;
-                pendingVerificationEmail = email;
+            if (data.user && !data.user.confirmed_at && !data.user.email_confirmed_at) {
+                // Remember the wait across a reload, and keep the password in
+                // this tab only so we can sign in once the link is clicked
+                // (signup itself returns no session while email confirm is on).
+                if (window.BookiInvite) {
+                    window.BookiInvite.writeAwaiting(email);
+                    window.BookiInvite.writeVerifySecret(password);
+                }
+                showVerificationPending(email);
                 setVerificationFeedback('', false);
-
-                // Poll for verification — auto-redirect once confirmed
-                startVerificationPolling();
+                startVerificationWatch();
                 return;
             }
 
@@ -639,7 +705,6 @@
         // -- there was nothing to do but start over, and starting over hits
         // "already registered" because the account exists.
 
-        let pendingVerificationEmail = '';
         let resendCooldown = 0;
         let resendTimer = null;
 
@@ -676,10 +741,18 @@
             setVerificationFeedback('', false);
             if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
 
-            const { error } = await sbClient.auth.resend({
+            const redirectTo = emailRedirectOrigin();
+            let { error } = await sbClient.auth.resend({
                 type: 'signup',
-                email: pendingVerificationEmail
+                email: pendingVerificationEmail,
+                options: { emailRedirectTo: redirectTo }
             });
+            if (error && redirectWasRejected(error)) {
+                ({ error } = await sbClient.auth.resend({
+                    type: 'signup',
+                    email: pendingVerificationEmail
+                }));
+            }
 
             if (error) {
                 setVerificationFeedback(authErrorMessage(error), false);
@@ -691,7 +764,8 @@
         }
 
         function changeVerificationEmail() {
-            stopVerificationPolling();
+            stopVerificationWatch();
+            if (window.BookiInvite) window.BookiInvite.clearAwaiting();
             clearInterval(resendTimer);
             resendCooldown = 0;
             setVerificationFeedback('', false);
@@ -704,51 +778,136 @@
             if (field) { field.value = pendingVerificationEmail; field.focus(); }
         }
 
-        // ── Verification Polling ──
-        let verificationInterval = null;
+        // ── Verification watch ──
+        //
+        // Confirming the email happens in another tab (often another device).
+        // Signup returns no session while confirmations are required, so
+        // getUser() on this page used to stay empty forever. Three signals:
+        //   1. onAuthStateChange / storage — the verify tab wrote a session
+        //      into the same browser
+        //   2. getSession, and getUser when a session exists but is stale
+        //   3. signInWithPassword with the password kept in this tab, for the
+        //      case where the link was opened somewhere else
+        let verificationTimer = null;
+        let verificationAuthSub = null;
+        let verificationContinued = false;
         const VERIFICATION_POLL_MS = 3000;
-        const VERIFICATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+        const VERIFICATION_TIMEOUT_MS = 10 * 60 * 1000;
 
-        function startVerificationPolling() {
-            stopVerificationPolling();
+        function onVerifyStorage(event) {
+            if (!event.key || event.key.indexOf('auth-token') === -1) return;
+            setTimeout(function () { refreshVerificationSession(); }, 50);
+        }
+
+        async function refreshVerificationSession() {
+            if (verificationContinued || !sbClient) return false;
+            const { data: { session } } = await sbClient.auth.getSession();
+            if (userIsConfirmed(session && session.user)) {
+                continueAfterVerification();
+                return true;
+            }
+            if (!session) return false;
+            const { data: { user } } = await sbClient.auth.getUser();
+            if (userIsConfirmed(user)) {
+                continueAfterVerification();
+                return true;
+            }
+            return false;
+        }
+
+        async function trySignInForVerification() {
+            if (verificationContinued || !sbClient || !pendingVerificationEmail) return false;
+            if (!window.BookiInvite || !window.BookiInvite.readVerifySecret) return false;
+            const secret = window.BookiInvite.readVerifySecret();
+            if (!secret) return false;
+            const { data, error } = await sbClient.auth.signInWithPassword({
+                email: pendingVerificationEmail,
+                password: secret,
+            });
+            if (userIsConfirmed((data && data.user) || (data && data.session && data.session.user))) {
+                window.BookiInvite.clearVerifySecret();
+                continueAfterVerification();
+                return false;
+            }
+            const message = ((error && error.message) || '').toLowerCase();
+            return message.includes('rate limit') || message.includes('too many') || message.includes('security purposes');
+        }
+
+        function continueAfterVerification() {
+            if (verificationContinued) return;
+            verificationContinued = true;
+            stopVerificationWatch();
+            if (window.BookiInvite) window.BookiInvite.clearVerifySecret();
+            if (window.BookiInvite) window.BookiInvite.clearAwaiting();
+            const statusEl = document.getElementById('verification-status');
+            if (statusEl) {
+                statusEl.textContent = 'Verified! Setting up your account...';
+                statusEl.style.color = 'var(--accent, #00F5D4)';
+            }
+            setTimeout(function () { window.location.href = dashboardUrl(); }, 600);
+        }
+
+        function startVerificationWatch() {
+            stopVerificationWatch();
+            verificationContinued = false;
             let dotCount = 0;
+            let signInDelay = 15000;
+            let nextSignIn = Date.now() + 4000;
+            let nextUserRefresh = 0;
             const startTime = Date.now();
 
-            verificationInterval = setInterval(async () => {
-                // Stop after 10 minutes
-                if (Date.now() - startTime > VERIFICATION_TIMEOUT_MS) {
-                    stopVerificationPolling();
-                    const statusEl = document.getElementById('verification-status');
-                    if (statusEl) {
-                        statusEl.innerHTML = 'Verification timed out. <a href="#" onclick="showLogin(); stopVerificationPolling(); return false;" style="color:var(--accent);">Log in</a> if you already verified.';
-                    }
-                    return;
-                }
+            const { data: authListener } = sbClient.auth.onAuthStateChange(function (_event, session) {
+                if (userIsConfirmed(session && session.user)) continueAfterVerification();
+            });
+            verificationAuthSub = authListener && authListener.subscription;
+            if (verificationContinued) {
+                stopVerificationWatch();
+                return;
+            }
+            window.addEventListener('storage', onVerifyStorage);
 
-                // Animate dots
+            verificationTimer = setInterval(async function () {
+                if (verificationContinued) return;
                 dotCount = (dotCount + 1) % 4;
                 const dotsEl = document.getElementById('verification-dots');
                 if (dotsEl) dotsEl.textContent = '.'.repeat(dotCount || 1);
 
-                // Check if user is now confirmed via existing session
-                const { data: { user } } = await sbClient.auth.getUser();
-                if (user?.confirmed_at || user?.email_confirmed_at) {
-                    stopVerificationPolling();
+                const pastTimeout = Date.now() - startTime > VERIFICATION_TIMEOUT_MS;
+                if (pastTimeout) {
                     const statusEl = document.getElementById('verification-status');
-                    if (statusEl) {
-                        statusEl.textContent = 'Verified! Setting up your account...';
-                        statusEl.style.color = 'var(--accent, #00F5D4)';
+                    if (statusEl && !statusEl.dataset.patient) {
+                        statusEl.dataset.patient = '1';
+                        statusEl.textContent = 'Still waiting. Open the link in your email, or resend it.';
                     }
-                    setTimeout(() => { window.location.href = dashboardUrl(); }, 600);
+                }
+
+                if (Date.now() >= nextUserRefresh) {
+                    nextUserRefresh = Date.now() + 6000;
+                    const done = await refreshVerificationSession();
+                    if (done) return;
+                }
+
+                if (!pastTimeout && Date.now() >= nextSignIn) {
+                    nextSignIn = Date.now() + signInDelay;
+                    const limited = await trySignInForVerification();
+                    if (limited) {
+                        signInDelay = Math.min(signInDelay * 2, 60000);
+                        nextSignIn = Date.now() + signInDelay;
+                    }
                 }
             }, VERIFICATION_POLL_MS);
         }
 
-        function stopVerificationPolling() {
-            if (verificationInterval) {
-                clearInterval(verificationInterval);
-                verificationInterval = null;
+        function stopVerificationWatch() {
+            if (verificationTimer) {
+                clearInterval(verificationTimer);
+                verificationTimer = null;
             }
+            if (verificationAuthSub && verificationAuthSub.unsubscribe) {
+                verificationAuthSub.unsubscribe();
+                verificationAuthSub = null;
+            }
+            window.removeEventListener('storage', onVerifyStorage);
         }
 
         // Enter on password field submits

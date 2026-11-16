@@ -103,6 +103,9 @@ function dashboardApp() {
         expandedFutures: {},
         showMemberWelcome: false,
         memberWelcomeDismissed: false,
+        alreadyInGroupNotice: '',
+        pendingAlreadyInGroup: false,
+        skipMemberWelcome: false,
 
         // ── Route ──
         route: '',
@@ -350,6 +353,16 @@ function dashboardApp() {
             this.stripInviteParam();
         },
 
+        noteAlreadyInGroup(name) {
+            const who = (name || '').trim();
+            this.pendingAlreadyInGroup = false;
+            this.skipMemberWelcome = true;
+            const copy = window.BookiInvite && window.BookiInvite.alreadyInGroupCopy;
+            this.alreadyInGroupNotice = copy
+                ? copy(who)
+                : (who ? ('You\u2019re already in ' + who + '\u2019s group') : 'You\u2019re already in this group');
+        },
+
         // Re-read role after claim_invite. Returns true only when the account
         // is now a player, which is the signal that the code can be dropped.
         async reresolveAfterClaim() {
@@ -423,6 +436,7 @@ function dashboardApp() {
 
         maybeShowMemberWelcome() {
             if (this.userRole !== 'player') return;
+            if (this.skipMemberWelcome || this.alreadyInGroupNotice) return;
             if (this.memberWelcomeDismissed || this.showMemberWelcome) return;
 
             // Persisted on the ACCOUNT rather than in localStorage: a member who
@@ -1229,9 +1243,15 @@ function dashboardApp() {
             // the old path treated a failed claim (functions.invoke drops the
             // 4xx body) as "nobody invited them" and created a bookies row.
             if (pendingCode && alreadyMember) {
+                // Already in a group. Do not call claim_invite — that would
+                // 409 and, on a bearer code, must leave the invite unclaimed
+                // for someone else. The notice is the only new behavior.
+                this.pendingAlreadyInGroup = true;
+                this._alreadyInGroupName = (window.BookiInvite && window.BookiInvite.readName()) || '';
                 await this.finishClaimedInvite();
             } else if (pendingCode) {
                 const result = await this.claimPendingInvite(pendingCode);
+                if (result.outcome === 'already_member') this.pendingAlreadyInGroup = true;
                 if (result.outcome === 'claimed' || result.outcome === 'already_member') {
                     const joined = await this.reresolveAfterClaim();
                     if (joined) await this.finishClaimedInvite();
@@ -1269,6 +1289,7 @@ function dashboardApp() {
             }
 
             if (isRealOrganizer) {
+                this.pendingAlreadyInGroup = false;
                 this.clearInviteBlocked();
                 // Route as organizer
                 this.userRole = 'organizer';
@@ -1291,6 +1312,11 @@ function dashboardApp() {
 
                 if (bookieSettings && bookieSettings.length > 0) {
                     this.playerBookie = bookieSettings[0];
+                }
+                if (this.pendingAlreadyInGroup) {
+                    this.noteAlreadyInGroup(
+                        (this.playerBookie && this.playerBookie.name) || this._alreadyInGroupName
+                    );
                 }
             } else if (!this._reresolvingRole) {
                 // No code in hand. An invite addressed to this verified email

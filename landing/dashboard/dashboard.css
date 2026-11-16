@@ -283,6 +283,15 @@ input, button, select, textarea { font: inherit; }
 .invite-blocked .auth-title { margin-bottom: var(--s-sm); }
 .invite-blocked .auth-subtitle { margin-bottom: var(--s-lg); }
 
+.already-in-notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-md);
+    margin-bottom: var(--s-lg);
+    padding: var(--s-md) var(--s-lg);
+}
+
 .auth-disclaimer {
     text-align: center;
     font-size: var(--fs-micro);
