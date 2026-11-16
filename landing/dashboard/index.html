@@ -1018,10 +1018,9 @@
                                         <td data-label="Credit Limit" x-text="formatCurrency(bookie?.default_credit_limit || 1000)"></td>
                                         <td data-label="Created" x-text="formatDate(inv.created_at)"></td>
                                         <td data-label="Expires">
-                                            <span x-show="inv.email" class="t-caption" style="color:var(--text-muted);">Doesn't expire</span>
-                                            <span x-show="!inv.email" class="t-caption"
-                                                  :style="{ color: new Date(inv.expires_at) < new Date() ? 'var(--danger)' : 'var(--text-muted)' }"
-                                                  x-text="new Date(inv.expires_at) < new Date() ? 'Expired' : formatDate(inv.expires_at)"></span>
+                                            <span class="t-caption"
+                                                  :style="{ color: !inv.email && new Date(inv.expires_at) < new Date() ? 'var(--danger)' : 'var(--text-muted)' }"
+                                                  x-text="inviteRowExpiry(inv)"></span>
                                         </td>
                                         <td data-label="Actions" style="display:flex;gap:var(--s-xs);">
                                             <button class="btn btn-ghost" title="Copy Code" x-show="!inv.email" @click="copyInviteCodeValue(inv.invite_code)">
@@ -4133,8 +4132,9 @@
                 <div class="form-success">
                     <strong>Invite sent to <span x-text="inviteSentTo"></span></strong>
                     <p class="t-caption" style="margin-top:var(--s-xs);color:var(--text-secondary);">
-                        They'll get a link that only works for this address. If they sign up
-                        with it before opening the link, we'll put them in your group anyway.
+                        They'll get a link that only works for this address, and it doesn't
+                        expire. If they sign up with it before opening the link, we'll put
+                        them in your group anyway.
                     </p>
                 </div>
             </template>
@@ -4162,7 +4162,7 @@
                         <button class="btn btn-ghost" @click="copyInviteLink(inviteCode)">Copy link</button>
                     </div>
                     <p class="t-caption" style="margin-top:var(--s-sm);color:var(--text-muted);">
-                        Expires <span x-text="inviteExpiryLabel()"></span>.
+                        <span x-text="inviteExpiryLabel()"></span>.
                         Anyone with this code can join, so only share it with your group.
                     </p>
                 </div>

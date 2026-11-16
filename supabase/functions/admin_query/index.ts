@@ -525,7 +525,10 @@ Deno.serve(async (req) => {
               kind: i.email ? 'email' : 'code',
               created_at: i.created_at,
               expires_at: i.expires_at,
-              expired: expires !== null && expires < now,
+              // Bearer codes expire. An addressed invite does not, for the
+              // addressee — claim_invite ignores expires_at when email is set.
+              // The column is still populated (7 days out) for every row.
+              expired: !i.email && expires !== null && expires < now,
               age_days: i.created_at
                 ? Math.floor((now - new Date(i.created_at).getTime()) / 86400000)
                 : null,
@@ -678,8 +681,11 @@ Deno.serve(async (req) => {
             members: realPlayers.filter((p) => p.status !== 'archived').length,
             members_unlinked: realPlayers.filter((p) => !p.auth_user_id).length,
             pending_invites: realInvites.length,
+            // Same rule as the invites view: only a bearer code (no email)
+            // can be expired. Counting addressed rows here made the overview
+            // say a live invite had lapsed.
             expired_invites: realInvites.filter(
-              (i) => i.expires_at && new Date(i.expires_at).getTime() < Date.now(),
+              (i) => !i.email && i.expires_at && new Date(i.expires_at).getTime() < Date.now(),
             ).length,
             open_picks: open.length,
             open_exposure: Math.round(open.reduce((s, b) => s + (Number(b.stake) || 0), 0) * 100) / 100,

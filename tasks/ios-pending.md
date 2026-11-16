@@ -5,7 +5,7 @@ This project cannot be built from the CLI (`CLAUDE.md`: "Xcode command line
 tools don't support full builds — use Xcode IDE"), so everything here needs a
 real build and a run in the simulator.
 
-Last updated: 2026-08-19
+Last updated: 2026-11-16
 
 ---
 
@@ -387,3 +387,36 @@ game detail page can split prop subjects into away and home columns. iOS reads
 the same RPC and ignores the new column, which is harmless — it renders the
 single alphabetical list it always did. No shipped build mis-renders anything,
 so this is a genuine "later", not a silent-corruption case.
+
+## B12 — `cleanUpExpiredInvites()` deletes email-addressed invites the server still honors
+
+Not built. iOS only. Do not treat this as done because the web copy changed.
+
+`PlayersListView.cleanUpExpiredInvites()` (`Booki/Views/PlayersListView.swift`)
+deletes every invite that `Invite.isExpired` (`Booki/Models/Invite.swift`) says
+is past `expiresAt`. `isExpired` is only `expiresAt < Date()`.
+
+The server does not work that way. `create_invite` writes `expires_at` seven
+days out for every row (`INVITE_EXPIRY_HOURS = 24 * 7`), but `claim_invite` and
+`get_invite` apply that deadline only when `invites.email IS NULL`. An
+email-addressed invite does not expire for the verified addressee. After seven
+days the iOS cleanup deletes the row on the server, so the addressee can no
+longer claim an invite the server would still accept.
+
+- [ ] `isExpired` (and the cleanup that trusts it) must ignore addressed invites, matching `claim_invite`: expiry applies only when `email == nil`
+- [ ] Do not delete an addressed invite from Supabase just because `expires_at` has passed
+- [ ] The pending list should show an addressed invite as not expiring, the way the web Members table does
+
+## B13 — iOS invite mail body and "Expires in 24 hours" label
+
+Not built. iOS only. Web and `create_invite` were corrected in the invite-expiry
+copy change; these two strings were left in the app on purpose.
+
+`Booki/Views/PlayersListView.swift`:
+
+- The generated-invite label is the literal "Expires in 24 hours". Link invites last 7 days. Addressed invites do not expire for the addressee.
+- `mailBody(code:)` says "Open this link to get started: booki://invite/{code}" and "This invite expires in 24 hours." Booki is web-only for now. The link should be `https://bookisports.com/invite/{code}`, and the expiry sentence has to follow the same split.
+
+- [ ] Link-invite confirmation: "Expires in 7 days" (or a date), not "Expires in 24 hours"
+- [ ] Addressed-invite confirmation: do not claim an expiry
+- [ ] Mail body: the web invite URL, and expiry copy that matches the invite kind

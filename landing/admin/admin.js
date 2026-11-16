@@ -137,8 +137,11 @@ const VIEWS = [
             { key: 'email', label: 'Sent to', render: (r) => r.email ? esc(r.email) : '<span class="admin-sub">shared code</span>' },
             { key: 'organizer', label: 'Organizer', render: (r) => entity(r.organizer, '—', 'organizer') },
             { key: 'age_days', label: 'Age', render: (r) => r.age_days == null ? '—' : `${r.age_days}d`, numeric: true },
-            { key: 'expired', label: 'State', render: (r) => r.expired ? badge('expired', 'danger') : badge('pending', 'warning') },
-            { key: 'expires_at', label: 'Expires', render: (r) => date(r.expires_at) },
+            // email set → addressed, no expiry for the addressee. A past
+            // expires_at on that row is not an expiry. Bearer codes (no email)
+            // do expire; `expired` is only true for those.
+            { key: 'expired', label: 'State', render: (r) => r.email ? badge("doesn't expire", 'muted') : (r.expired ? badge('expired', 'danger') : badge('pending', 'warning')) },
+            { key: 'expires_at', label: 'Expires', render: (r) => r.email ? "Doesn't expire" : (r.expired ? 'Expired' : date(r.expires_at)) },
         ],
     },
     {
