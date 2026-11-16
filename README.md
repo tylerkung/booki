@@ -388,6 +388,7 @@ The app is **local-first** with cloud sync:
 - **Events tab**: rendered the "no events" empty state before querying, because `isLoadingEvents` defaulted to `false`. Five flags corrected; `scripts/check-loading-guards.py` added to the suite
 - **Signup UX**: client-side email validation (the page has no `<form>`, so `type="email"` never validated), human error copy mapped from Supabase's, and Resend / Use-a-different-email on the verification screen
 - **Win rate** divided losses by the total; **invite TTL copy** said 24 hours against a 7-day server value
+- **Invite expiry copy, again (November 2026)**: the email `create_invite` sends and the dashboard's link confirmation had kept the old wording (email: "expires in 24 hours" and "open the app"; confirmation: a raw hour count such as "167 hours"). Addressed invites now say they don't expire; link invites say 7 days, with days and hours plus a date when the window isn't a whole number of days. The CTA is the web invite URL. Migration 009's column comment still says 24 hours and was left as history — the migration is already applied, and no new migration was added. `create_invite` and `admin_query` deploy with the Supabase CLI; merging does not deploy them.
 
 **Attribution & onboarding**
 - **First-touch attribution** (`landing/attribution.js`, migration 051) — UTM, referrer, gclid/fbclid captured on first visit, written once at signup
@@ -509,4 +510,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: August 28, 2026 - QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*
+*Last updated: November 16, 2026 - Invite expiry copy matches the server: addressed invites don't expire, link invites last 7 days, the invite email links to bookisports.com. QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*

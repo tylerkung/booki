@@ -132,7 +132,10 @@
                             <tbody><template x-for="i in detail.invites" :key="i.id"><tr>
                                 <td data-label="Code"><code class="admin-uuid" :data-copy="i.invite_code" x-text="i.invite_code"></code></td>
                                 <td data-label="Sent to" x-text="i.email || 'shared code'"></td>
-                                <td data-label="Expires" x-text="fmt.date(i.expires_at)"></td>
+                                <td data-label="Expires">
+                                    <template x-if="i.email"><span>Doesn't expire</span></template>
+                                    <template x-if="!i.email"><span x-text="new Date(i.expires_at) < new Date() ? 'Expired' : fmt.date(i.expires_at)"></span></template>
+                                </td>
                             </tr></template></tbody>
                         </table></div>
                     </div>

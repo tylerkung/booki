@@ -83,6 +83,50 @@ function oddsDisplayFilter() {
     ].join(',');
 }
 
+/**
+ * Human expiry for a bearer (link) invite.
+ *
+ * A just-created link is 7 days minus the time the request took, which
+ * flooring the remaining hours reported as a raw hour count. Round to the nearest
+ * hour once the remainder is at least half an hour, then split into days.
+ * A partial day says days and hours. The calendar date is always included.
+ * Under an hour, say minutes — rounding those up to an hour is a lie.
+ *
+ * Addressed invites do not use this. They do not expire for the addressee.
+ *
+ * @param {string} expiresAt ISO timestamp from create_invite
+ * @param {number} [now] epoch ms, injectable for tests
+ * @returns {string} "" when the timestamp is missing or unparseable
+ */
+function formatBearerInviteExpiry(expiresAt, now = Date.now()) {
+    const end = new Date(expiresAt);
+    const endMs = end.getTime();
+    if (Number.isNaN(endMs)) return '';
+    const ms = endMs - now;
+    if (ms <= 0) return 'Expired';
+
+    const dateLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const withDate = (phrase) => `Expires ${phrase} (${dateLabel})`;
+
+    if (ms < 60 * 60 * 1000) {
+        const mins = Math.max(1, Math.round(ms / 60000));
+        if (mins >= 60) return withDate('in 1 hour');
+        return withDate(mins === 1 ? 'in 1 minute' : `in ${mins} minutes`);
+    }
+
+    const totalHours = Math.round(ms / 3600000);
+    if (totalHours >= 24) {
+        const days = Math.floor(totalHours / 24);
+        const hours = totalHours % 24;
+        const dayPart = days === 1 ? '1 day' : `${days} days`;
+        if (hours === 0) return withDate(`in ${dayPart}`);
+        const hourPart = hours === 1 ? '1 hour' : `${hours} hours`;
+        return withDate(`in ${dayPart}, ${hourPart}`);
+    }
+    if (totalHours <= 1) return withDate('in 1 hour');
+    return withDate(`in ${totalHours} hours`);
+}
+
 function dashboardApp() {
     return {
         // ── Auth ──
@@ -5008,15 +5052,21 @@ function dashboardApp() {
             this.isCreatingInvite = false;
         },
 
-        /** "in 23 hours" / "in 45 minutes" — a bearer code is short-lived. */
+        /**
+         * Link-invite confirmation. Falls back to the rule (7 days) when the
+         * server omits expires_at — a link invite is always that window.
+         */
         inviteExpiryLabel() {
-            if (!this.inviteExpiresAt) return '';
-            const ms = new Date(this.inviteExpiresAt).getTime() - Date.now();
-            if (ms <= 0) return 'expired';
-            const hours = Math.floor(ms / 3600000);
-            if (hours >= 1) return `in ${hours} hour${hours === 1 ? '' : 's'}`;
-            const mins = Math.max(1, Math.round(ms / 60000));
-            return `in ${mins} minute${mins === 1 ? '' : 's'}`;
+            return formatBearerInviteExpiry(this.inviteExpiresAt) || 'Expires in 7 days';
+        },
+
+        /**
+         * Pending-invites cell. Addressed invites do not expire for the
+         * addressee; link invites use the same phrase as the confirmation.
+         */
+        inviteRowExpiry(inv) {
+            if (inv && inv.email) return "Doesn't expire";
+            return formatBearerInviteExpiry(inv && inv.expires_at) || 'Expires in 7 days';
         },
 
 

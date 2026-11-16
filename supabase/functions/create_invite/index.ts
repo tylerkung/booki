@@ -11,7 +11,7 @@ interface CreateInviteRequest {
 // Charset: A-Z (excluding O, I, L) + 2-9 (excluding 0, 1)
 const INVITE_CODE_CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const INVITE_CODE_LENGTH = 8;
-// One week. 24 hours meant a link pasted into a group chat on Saturday was dead
+// One week. A one-day window meant a link pasted into a group chat on Saturday was dead
 // by Sunday, and every one of the nine invites created through the web flow
 // before 17 Aug 2026 expired unclaimed. The window is not what makes a link
 // safe — the code is single-use and can only be claimed once — so a short
@@ -217,6 +217,11 @@ Deno.serve(async (req) => {
         const bookieName = bookieRecord?.name || 'Your organizer';
 
         try {
+          // This branch only runs for an addressed invite (body.email is set).
+          // Link invites have no recipient, so they are not emailed. The
+          // template still has a link-invite branch — see buildInviteEmail —
+          // so a future send cannot reuse the addressed sentence.
+          const message = buildInviteEmail(bookieName, inviteCode, true);
           await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
@@ -227,7 +232,8 @@ Deno.serve(async (req) => {
               from: 'Booki <noreply@bookisports.com>',
               to: [body.email],
               subject: `${bookieName} invited you to join Booki`,
-              html: getInviteEmailHtml(bookieName, inviteCode),
+              html: message.html,
+              text: message.text,
             }),
           });
         } catch (emailError) {
@@ -262,8 +268,67 @@ Deno.serve(async (req) => {
   }
 });
 
-function getInviteEmailHtml(bookieName: string, inviteCode: string): string {
-  return `<!DOCTYPE html>
+/** Web invite page. Booki is web-only; this is the link in the email CTA. */
+function invitePageUrl(inviteCode: string): string {
+  return `https://bookisports.com/invite/${inviteCode}`;
+}
+
+/**
+ * Same line under the code in both email kinds. The old line said "open the
+ * app"; there is no app to open.
+ */
+function inviteAccountLine(): string {
+  return 'Already have a Booki account? Log in at bookisports.com and enter the code above.';
+}
+
+/**
+ * Expiry sentence.
+ *
+ * Addressed (`email IS NOT NULL`): claim_invite does not apply expires_at to
+ * the verified addressee, so the email must not invent a deadline.
+ * Link (`email IS NULL`): the row expires INVITE_EXPIRY_HOURS (7 days) after
+ * creation, and anyone holding the code can claim it.
+ */
+function inviteExpiryLine(addressed: boolean): string {
+  if (addressed) {
+    return "This invite doesn't expire. Only this email address can use it.";
+  }
+  return 'This invite expires in 7 days. Anyone with this link can join.';
+}
+
+/**
+ * HTML and plain-text bodies for the invite email.
+ *
+ * `addressed` is true for the email create_invite actually sends. Pass false
+ * to render the link-invite wording (not sent today — a link invite has no
+ * recipient — but kept here so the two sentences cannot drift).
+ */
+function buildInviteEmail(bookieName: string, inviteCode: string, addressed: boolean) {
+  const url = invitePageUrl(inviteCode);
+  const expiryLine = inviteExpiryLine(addressed);
+  const accountLine = inviteAccountLine();
+  const safeName = escapeHtml(bookieName);
+  const safeCode = escapeHtml(inviteCode);
+  const safeUrl = escapeHtml(url);
+
+  const text = [
+    "You're invited",
+    '',
+    `${bookieName} invited you to join their group on Booki.`,
+    '',
+    `Your invite code: ${inviteCode}`,
+    '',
+    `Join: ${url}`,
+    '',
+    accountLine,
+    '',
+    expiryLine,
+    '',
+    "If you weren't expecting this invite, you can safely ignore this email.",
+    'https://bookisports.com',
+  ].join('\n');
+
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#0A0A12;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -280,26 +345,26 @@ function getInviteEmailHtml(bookieName: string, inviteCode: string): string {
 </td></tr>
 <tr><td align="center" style="padding-bottom:28px;">
   <p style="margin:0;font-size:15px;line-height:1.6;color:#A8A8B8;">
-    <strong style="color:#F8F8F8;">${escapeHtml(bookieName)}</strong> invited you to join their group on Booki.
+    <strong style="color:#F8F8F8;">${safeName}</strong> invited you to join their group on Booki.
   </p>
 </td></tr>
 <tr><td align="center" style="padding-bottom:28px;">
   <table role="presentation" cellpadding="0" cellspacing="0"><tr>
     <td style="background-color:#0A0A12;border:1px solid #2A2A3A;border-radius:10px;padding:16px 32px;text-align:center;">
       <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#6B6B7B;font-weight:600;">Your Invite Code</p>
-      <p style="margin:0;font-size:28px;font-weight:700;color:#00F5D4;letter-spacing:4px;font-family:'SF Mono','Menlo','Courier New',monospace;">${inviteCode}</p>
+      <p style="margin:0;font-size:28px;font-weight:700;color:#00F5D4;letter-spacing:4px;font-family:'SF Mono','Menlo','Courier New',monospace;">${safeCode}</p>
     </td>
   </tr></table>
 </td></tr>
 <tr><td align="center" style="padding-bottom:24px;">
-  <a href="https://bookisports.com/invite/${inviteCode}" style="display:inline-block;background-color:#00F5D4;color:#0A0A12;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:10px;letter-spacing:0.5px;text-transform:uppercase;">Join Now</a>
+  <a href="${safeUrl}" style="display:inline-block;background-color:#00F5D4;color:#0A0A12;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:10px;letter-spacing:0.5px;text-transform:uppercase;">Join Now</a>
 </td></tr>
 <tr><td align="center" style="padding-bottom:8px;">
-  <p style="margin:0;font-size:13px;line-height:1.6;color:#6B6B7B;">Already have Booki? Open the app and enter the code above.</p>
+  <p style="margin:0;font-size:13px;line-height:1.6;color:#6B6B7B;">${accountLine}</p>
 </td></tr>
 <tr><td style="padding:20px 0;"><div style="height:1px;background-color:#2A2A3A;"></div></td></tr>
 <tr><td align="center">
-  <p style="margin:0;font-size:12px;color:#6B6B7B;">This invite expires in 24 hours.</p>
+  <p style="margin:0;font-size:12px;color:#6B6B7B;">${expiryLine}</p>
 </td></tr>
 </table>
 </td></tr>
@@ -317,6 +382,8 @@ function getInviteEmailHtml(bookieName: string, inviteCode: string): string {
 </td></tr>
 </table>
 </body></html>`;
+
+  return { html, text };
 }
 
 function escapeHtml(str: string): string {
