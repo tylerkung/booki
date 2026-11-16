@@ -39,7 +39,7 @@
     </div>
 
     <!-- Mobile Header -->
-    <div class="mobile-header">
+    <div class="mobile-header" x-show="userRole !== 'invite_blocked'">
         <a href="../index.html"><img src="../assets/logo-booki-blk.svg" alt="Booki"></a>
         <span class="mobile-page-title" x-show="userRole" x-cloak x-text="
             route === 'dashboard' ? 'Dashboard' :
@@ -74,7 +74,7 @@
 
     <div class="app-layout">
         <!-- Sidebar -->
-        <aside class="sidebar" :class="{ open: sidebarOpen }">
+        <aside class="sidebar" :class="{ open: sidebarOpen }" x-show="userRole !== 'invite_blocked'">
             <a href="../index.html" class="sidebar-logo">
                 <img src="../assets/logo-booki-blk.svg" alt="Booki">
             </a>
@@ -88,7 +88,7 @@
                 <li><a><div class="shimmer" style="width: 80px; height: 14px; border-radius: var(--radius-xs);"></div></a></li>
                 <li><a><div class="shimmer" style="width: 90px; height: 14px; border-radius: var(--radius-xs);"></div></a></li>
             </ul>
-            <ul class="sidebar-nav" x-show="userRole" x-cloak>
+            <ul class="sidebar-nav" x-show="userRole && userRole !== 'invite_blocked'" x-cloak>
                 <!-- Organizer Navigation -->
                 <li x-show="userRole === 'organizer'"><a href="#/dashboard" :class="{ active: route === 'dashboard' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -154,7 +154,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content" :class="{ 'has-betslip': hasBetSlip }">
+        <main class="main-content" :class="{ 'has-betslip': hasBetSlip, 'no-sidebar': userRole === 'invite_blocked' }">
 
             <!-- Loading State (before role detection) -->
             <div x-show="!userRole" class="loading-skeleton-page">
@@ -169,6 +169,21 @@
                 </div>
                 <div class="card" style="padding: var(--s-xl); margin-bottom: var(--s-lg);"><div class="shimmer" style="width: 100%; height: 60px; border-radius: var(--radius-sm);"></div></div>
                 <div class="card" style="padding: var(--s-xl);"><div class="shimmer" style="width: 100%; height: 100px; border-radius: var(--radius-sm);"></div></div>
+            </div>
+
+            <!-- Invite was refused. Organizer setup is a separate, explicit action. -->
+            <div x-show="userRole === 'invite_blocked'" x-cloak class="invite-blocked">
+                <div class="auth-card">
+                    <h1 class="auth-title" x-text="inviteJoinTitle"></h1>
+                    <p class="auth-subtitle" x-text="inviteJoinError"></p>
+                    <button type="button" class="btn btn-primary btn-block" x-show="inviteJoinRetry" @click="window.location.reload()">Try again</button>
+                    <p class="auth-escape">
+                        <a href="#" @click.prevent="acceptOrganizerInstead()">Want to run your own group instead? Create an organizer account</a>
+                    </p>
+                    <div class="auth-links">
+                        <a href="#" @click.prevent="logout()">Log out</a>
+                    </div>
+                </div>
             </div>
 
             <!-- ── Dashboard View ── -->
@@ -4514,6 +4529,7 @@
         })();
     </script>
 
+    <script src="/invite-handoff.js"></script>
     <script src="dashboard.js"></script>
     <script src="../attribution.js"></script>
 </body>

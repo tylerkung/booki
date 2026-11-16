@@ -155,6 +155,15 @@
             transition: transform 0.15s ease;
         }
         .invite-btn:hover { transform: translateY(-1px); }
+        .invite-login {
+            display: block;
+            margin-top: 16px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+        .invite-login:hover { color: var(--accent); }
         .invite-fallback {
             font-size: 0.82rem;
             color: var(--text-muted);
@@ -207,7 +216,8 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                     </button>
                 </div>
-                <a href="/dashboard/" id="openAppBtn" class="invite-btn">Get Started</a>
+                <a href="/dashboard/login.html" id="openAppBtn" class="invite-btn">Get Started</a>
+                <a href="/dashboard/login.html" id="inviteLoginLink" class="invite-login">Already have an account? Log in</a>
                 <p class="invite-fallback" id="inviteFallback"></p>
             </div>
 
@@ -221,7 +231,6 @@
             <div id="inviteInvalid" hidden>
                 <h1 class="invite-title" id="invalidTitle">This invite isn&rsquo;t valid</h1>
                 <p class="invite-sub" id="invalidSub"></p>
-                <a href="/dashboard/" class="invite-btn">Go to Booki</a>
             </div>
 
             <!-- No code in the URL -->
@@ -243,6 +252,7 @@
 
     <div class="toast" id="toast">Code copied</div>
 
+    <script src="/invite-handoff.js"></script>
     <script>
         (function () {
             var SUPABASE_URL = 'https://vstfauqufwpdytmvjyfz.supabase.co';
@@ -269,7 +279,23 @@
 
             if (!code) { show('inviteMissing'); return; }
 
+            var signupHref = '/dashboard/login.html?invite=' + encodeURIComponent(code);
+            var loginHref = signupHref + '&mode=login';
+
+            // A dead code must not stay in storage, or the next visit to login
+            // would still try to join with it. Only this code is removed.
+            function forgetInvite() {
+                if (window.BookiInvite) window.BookiInvite.clearCodeIf(code);
+            }
+
+            function rememberInvite(inviteCode, organizerName) {
+                el('openAppBtn').href = signupHref;
+                el('inviteLoginLink').href = loginHref;
+                if (window.BookiInvite) window.BookiInvite.writeCode(inviteCode, organizerName || '');
+            }
+
             var invalid = function (title, sub) {
+                forgetInvite();
                 el('invalidTitle').innerHTML = title;
                 el('invalidSub').textContent = sub;
                 show('inviteInvalid');
@@ -304,19 +330,19 @@
 
                 if (inv.status === 'claimed') {
                     return invalid('This invite has already been used',
-                        'Each invite works once. Ask your organizer to send you a new one.');
+                        'Each invite works once. Ask your organizer for a new link.');
                 }
                 if (inv.status === 'expired') {
                     return invalid('This invite has expired',
-                        'Ask your organizer to send a fresh link — new ones last seven days.');
+                        'Ask your organizer for a new link. New ones last seven days.');
                 }
                 if (inv.status === 'rate_limited') {
                     return invalid('Too many attempts',
                         'Wait a minute and reload the page.');
                 }
                 if (inv.status !== 'valid') {
-                    return invalid('This invite isn&rsquo;t valid',
-                        'We couldn\u2019t find that code. Check the link, or ask your organizer to resend it.');
+                    return invalid('This invite isn\u2019t valid',
+                        'We couldn\u2019t find that code. Ask your organizer for a new link.');
                 }
 
                 // Built as nodes, not innerHTML — the organizer name is
@@ -349,7 +375,9 @@
 
                 // Carry the code into signup. Previously this was a bare
                 // /dashboard/ link, so nothing ever redeemed the invite.
-                el('openAppBtn').href = '/dashboard/login.html?invite=' + encodeURIComponent(code);
+                // Persist too: the login page used to delete ?invite= on
+                // arrival, and a confirmation email opens with no query string.
+                rememberInvite(code, inv.organizer_name || '');
 
                 el('inviteCode').textContent = code;
                 show('inviteValid');
@@ -371,7 +399,7 @@
                     'Booki didn\u2019t respond, so we can\u2019t confirm this code is valid. ' +
                     'You can still try it — sign up and it will be checked then.';
                 el('inviteFallback').textContent = 'Sign up, then enter this code when prompted.';
-                el('openAppBtn').href = '/dashboard/login.html?invite=' + encodeURIComponent(code);
+                rememberInvite(code, '');
                 el('inviteCode').textContent = code;
                 show('inviteValid');
             });

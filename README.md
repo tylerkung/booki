@@ -384,7 +384,8 @@ The app is **local-first** with cloud sync:
 
 **QA pass (August 2026)** — 12 items reported, 7 fixed, 1 closed as working-as-designed, 5 did not reproduce
 - **Invite landing page rebuilt**: `/invite/{code}` had *no server lookup* — it validated only the SHAPE of the last path segment, so `/invite` rendered the literal word **INVITE** as a copyable code. Migration 052 adds `get_invite(p_code)`: SECURITY DEFINER, throttled per forwarded IP, returning a display projection that never includes `bookie_id` or the invitee email
-- **Invite codes now reach signup**: GET STARTED was a bare `/dashboard/` link, so bearer invites were never redeemable. The code is carried to `login.html` and persisted in `localStorage`, because email verification loses the query string
+- **Invite codes now reach signup**: GET STARTED was a bare `/dashboard/` link, so bearer invites were never redeemable. The code is carried to `login.html?invite=CODE` and persisted (`localStorage`, `sessionStorage`, and `user_metadata.pending_invite`) because email verification loses the query string
+- **Invite join is a player, not an organizer** (Nov 16, 2026): a valid code opens "Join {organizer}'s group", `claim_invite` runs after login or sign-up, and the member lands on Games. Invalid, expired, and already-used codes ask for a new link and do not create a `bookies` row. "Want to run your own group instead?" is the only path from that screen to organizer sign-up. Organizer sign-up with no invite is unchanged
 - **Events tab**: rendered the "no events" empty state before querying, because `isLoadingEvents` defaulted to `false`. Five flags corrected; `scripts/check-loading-guards.py` added to the suite
 - **Signup UX**: client-side email validation (the page has no `<form>`, so `type="email"` never validated), human error copy mapped from Supabase's, and Resend / Use-a-different-email on the verification screen
 - **Win rate** divided losses by the total; **invite TTL copy** said 24 hours against a 7-day server value
@@ -509,4 +510,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: August 28, 2026 - QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*
+*Last updated: November 16, 2026 - Invite links join as a player (code kept through sign-up, claim after auth, no organizer row). Prior: August 28, 2026 QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*

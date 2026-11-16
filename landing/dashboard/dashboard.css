@@ -258,6 +258,31 @@ input, button, select, textarea { font: inherit; }
     margin: 0 var(--s-sm);
 }
 
+/* Secondary exit from an invite. Joining the group stays the primary action. */
+.auth-escape {
+    text-align: center;
+    margin-top: var(--s-lg);
+    font-size: var(--fs-micro);
+    line-height: var(--lh-loose);
+    color: var(--text-muted);
+}
+
+.auth-escape a {
+    color: var(--text-muted);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.auth-escape a:hover { color: var(--text-secondary); }
+
+.invite-blocked {
+    max-width: 420px;
+    margin: var(--s-xxxl) auto;
+}
+
+.invite-blocked .auth-title { margin-bottom: var(--s-sm); }
+.invite-blocked .auth-subtitle { margin-bottom: var(--s-lg); }
+
 .auth-disclaimer {
     text-align: center;
     font-size: var(--fs-micro);
@@ -407,6 +432,12 @@ input, button, select, textarea { font: inherit; }
 .sidebar-bottom a:hover {
     background: var(--bg-elevated);
     color: var(--danger);
+}
+
+.main-content.no-sidebar {
+    margin-left: 0;
+    max-width: none;
+    --main-pad-top: var(--s-xxl);
 }
 
 .main-content {

@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="dashboard.css">
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="/invite-handoff.js"></script>
 </head>
 <body>
     <div class="auth-container">
@@ -47,8 +48,11 @@
                 <div class="auth-links">
                     <a href="#" onclick="showForgotPassword(); return false;">Forgot Password?</a>
                     <span class="auth-divider">|</span>
-                    <a href="#" onclick="showSignUp(); return false;">Create Account</a>
+                    <a href="#" id="login-switch" onclick="showSignUp(); return false;">Create Account</a>
                 </div>
+                <p id="login-escape" class="auth-escape" style="display:none;">
+                    <a href="#" onclick="becomeOrganizerInstead(); return false;">Want to run your own group instead? Create an organizer account</a>
+                </p>
             </div>
 
             <!-- Sign Up Form -->
@@ -96,8 +100,21 @@
                 <div id="signup-error" class="form-error" style="display:none;"></div>
                 <button id="signup-btn" class="btn btn-primary btn-block" onclick="handleSignUp()">Create Account</button>
                 <div class="auth-links">
-                    <a href="#" onclick="showLogin(); return false;">Back to Log In</a>
+                    <a href="#" id="signup-switch" onclick="showLogin(); return false;">Back to Log In</a>
                 </div>
+                <p id="signup-escape" class="auth-escape" style="display:none;">
+                    <a href="#" onclick="becomeOrganizerInstead(); return false;">Want to run your own group instead? Create an organizer account</a>
+                </p>
+            </div>
+
+            <!-- Invite could not be used. Organizer sign-up is not the fallback. -->
+            <div id="invite-rejected" style="display:none;">
+                <div class="auth-links">
+                    <a href="#" onclick="showLoginKeepingBlock(); return false;">Already have an account? Log in</a>
+                </div>
+                <p class="auth-escape">
+                    <a href="#" onclick="becomeOrganizerInstead(); return false;">Want to run your own group instead? Create an organizer account</a>
+                </p>
             </div>
 
             <!-- Verification Pending -->
@@ -144,26 +161,170 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdGZhdXF1ZndwZHl0bXZqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMjcwNjcsImV4cCI6MjA4NDgwMzA2N30.uwimFkR3pN8BODjjM5KnusptdZz_vcrxKnK_2LKfZHI';
         let sbClient;
 
-        // An invite link lands here as ?invite=CODE. Persist it immediately:
-        // signup requires email verification, so this tab is left and returned
-        // to through a link that carries none of the original query string.
-        // dashboard.js reads the same key and hands it to claim_invite.
-        (function captureInviteCode() {
-            try {
-                const code = (new URLSearchParams(window.location.search).get('invite') || '')
-                    .toUpperCase().replace(/[^A-Z0-9]/g, '');
-                if (!code) return;
-                localStorage.setItem('booki_pending_invite', code);
-                const url = new URL(window.location.href);
-                url.searchParams.delete('invite');
-                window.history.replaceState({}, '', url.toString());
-                // Someone arriving from an invite wants to create an account,
-                // not sign in to one they do not have.
-                document.addEventListener('DOMContentLoaded', function () {
-                    if (typeof showSignUp === 'function') showSignUp();
+        // 'organizer' is the no-invite signup. 'player' is an invite join.
+        // 'rejected' is a code get_invite or claim already refused — that screen
+        // must not offer the organizer form as the next click.
+        let inviteMode = 'organizer';
+        let inviteOrganizerName = '';
+        // True while a refused invite is still remembered and the login form is
+        // showing. Create Account must not quietly start an organizer signup.
+        let holdingInviteBlock = false;
+        const preferLogin = new URLSearchParams(window.location.search).get('mode') === 'login';
+
+        function currentInviteCode() {
+            return window.BookiInvite ? window.BookiInvite.readCode() : '';
+        }
+
+        function joinTitle() {
+            return inviteOrganizerName
+                ? ('Join ' + inviteOrganizerName + "'s group")
+                : 'Join this group';
+        }
+
+        function setEscapeVisible(on) {
+            ['login-escape', 'signup-escape'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.style.display = on ? 'block' : 'none';
+            });
+        }
+
+        function signupButtonLabel() {
+            return inviteMode === 'player' ? 'Join Group' : 'Create Account';
+        }
+
+        // Where to send someone who just authenticated. The query param is
+        // repeated so a dashboard that never sees storage still has the code.
+        function dashboardUrl() {
+            const code = inviteMode === 'player' ? currentInviteCode() : '';
+            return code ? ('./?invite=' + encodeURIComponent(code)) : './';
+        }
+
+        function hideAuthPanels() {
+            ['login-form', 'signup-form', 'forgot-form', 'verification-pending', 'invite-rejected']
+                .forEach(function (id) {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
                 });
-            } catch (e) { /* storage blocked — the email fallback still applies */ }
-        })();
+        }
+
+        // Drop the invite and open the ordinary organizer sign-up. This is the
+        // only path from an invite to an organizer account.
+        function becomeOrganizerInstead() {
+            if (window.BookiInvite) {
+                window.BookiInvite.clearCode();
+                window.BookiInvite.clearBlocked();
+                window.BookiInvite.stripFromUrl();
+            }
+            holdingInviteBlock = false;
+            inviteMode = 'organizer';
+            inviteOrganizerName = '';
+            showSignUp();
+        }
+
+        // From the rejected screen, log in to an account that already exists.
+        // The rejection stays stored so a brand-new account is not silently
+        // turned into an organizer on the next page.
+        function showLoginKeepingBlock() {
+            holdingInviteBlock = true;
+            inviteMode = 'organizer';
+            showLogin();
+        }
+
+        function showRejected(title, detail) {
+            inviteMode = 'rejected';
+            hideAuthPanels();
+            document.getElementById('invite-rejected').style.display = 'block';
+            setEscapeVisible(false);
+            document.querySelector('.auth-title').textContent = title;
+            document.querySelector('.auth-subtitle').textContent = detail;
+        }
+
+        function rejectInvite(title, detail, code) {
+            if (window.BookiInvite) {
+                if (code) window.BookiInvite.clearCodeIf(code);
+                else window.BookiInvite.clearCode();
+                window.BookiInvite.writeBlocked(title, detail);
+                window.BookiInvite.stripFromUrl();
+            }
+            inviteOrganizerName = '';
+            showRejected(title, detail);
+        }
+
+        function inviteProblem(status) {
+            if (status === 'claimed') {
+                return {
+                    title: 'This invite has already been used',
+                    detail: 'Each invite works once. Ask your organizer for a new link.',
+                    clear: true,
+                };
+            }
+            if (status === 'expired') {
+                return {
+                    title: 'This invite has expired',
+                    detail: 'Ask your organizer for a new link. New ones last seven days.',
+                    clear: true,
+                };
+            }
+            if (status === 'rate_limited') {
+                return {
+                    title: 'Too many attempts',
+                    detail: 'Wait a minute and reload the page.',
+                    clear: false,
+                };
+            }
+            return {
+                title: "This invite isn't valid",
+                detail: "We couldn't find that code. Ask your organizer for a new link.",
+                clear: true,
+            };
+        }
+
+        async function resolveInvite(code) {
+            try {
+                const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_invite', {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ p_code: code }),
+                });
+                if (!res.ok) return; // network/server — claim_invite decides later
+                const rows = await res.json();
+                const inv = Array.isArray(rows) ? rows[0] : rows;
+                if (!inv || inv.status !== 'valid') {
+                    const problem = inviteProblem(inv && inv.status);
+                    if (problem.clear) rejectInvite(problem.title, problem.detail, code);
+                    else showRejected(problem.title, problem.detail);
+                    return;
+                }
+                inviteOrganizerName = inv.organizer_name || '';
+                if (window.BookiInvite) window.BookiInvite.writeCode(code, inviteOrganizerName);
+                if (window.BookiInvite) window.BookiInvite.clearBlocked();
+                if (inviteMode === 'player') {
+                    if (document.getElementById('login-form').style.display !== 'none') showLogin();
+                    else showSignUp();
+                }
+            } catch (e) { /* claim_invite is the authority if the lookup failed */ }
+        }
+
+        function startInviteFlow() {
+            if (!window.BookiInvite) return;
+            const blocked = window.BookiInvite.readBlocked();
+            const code = window.BookiInvite.readCode();
+            if (code) {
+                inviteMode = 'player';
+                inviteOrganizerName = window.BookiInvite.readName() || '';
+                window.BookiInvite.writeCode(code, inviteOrganizerName);
+                window.BookiInvite.ensureInUrl(code);
+                if (preferLogin) showLogin();
+                else showSignUp();
+                resolveInvite(code);
+                return;
+            }
+            if (blocked) showRejected(blocked.title, blocked.detail);
+        }
 
         // ── Email format + error copy ────────────────────────────────────────
         //
@@ -236,37 +397,59 @@
                 // Only redirect if email is confirmed
                 const { data: { user } } = await sbClient.auth.getUser();
                 if (user?.confirmed_at || user?.email_confirmed_at) {
-                    window.location.href = './';
+                    window.location.href = dashboardUrl();
                 }
             }
         }
 
+        startInviteFlow();
         checkSession();
 
         // ── Form Toggles ──
         function showLogin() {
+            hideAuthPanels();
             document.getElementById('login-form').style.display = 'block';
-            document.getElementById('signup-form').style.display = 'none';
-            document.getElementById('forgot-form').style.display = 'none';
-            document.getElementById('verification-pending').style.display = 'none';
-            document.querySelector('.auth-title').textContent = 'Welcome back';
-            document.querySelector('.auth-subtitle').textContent = 'Log in to your dashboard';
+            const player = inviteMode === 'player';
+            document.querySelector('.auth-title').textContent = player ? 'Log in' : 'Welcome back';
+            document.querySelector('.auth-subtitle').textContent = player
+                ? (inviteOrganizerName
+                    ? ('Log in to join ' + inviteOrganizerName + "'s group")
+                    : 'Log in to join this group')
+                : 'Log in to your dashboard';
+            const loginSwitch = document.getElementById('login-switch');
+            if (loginSwitch) {
+                loginSwitch.textContent = player
+                    ? 'Need an account? Sign up'
+                    : (holdingInviteBlock ? 'Create an organizer account' : 'Create Account');
+            }
+            setEscapeVisible(player || holdingInviteBlock);
         }
 
         function showSignUp() {
-            document.getElementById('login-form').style.display = 'none';
+            if (holdingInviteBlock && inviteMode !== 'player') {
+                becomeOrganizerInstead();
+                return;
+            }
+            hideAuthPanels();
             document.getElementById('signup-form').style.display = 'block';
-            document.getElementById('forgot-form').style.display = 'none';
-            document.getElementById('verification-pending').style.display = 'none';
-            document.querySelector('.auth-title').textContent = 'Create account';
-            document.querySelector('.auth-subtitle').textContent = 'Start managing your group';
+            const player = inviteMode === 'player';
+            document.querySelector('.auth-title').textContent = player ? joinTitle() : 'Create account';
+            document.querySelector('.auth-subtitle').textContent = player
+                ? 'Create your account to join.'
+                : 'Start managing your group';
+            const btn = document.getElementById('signup-btn');
+            if (btn && !btn.disabled) btn.textContent = signupButtonLabel();
+            const signupSwitch = document.getElementById('signup-switch');
+            if (signupSwitch) {
+                signupSwitch.textContent = player ? 'Already have an account? Log in' : 'Back to Log In';
+            }
+            setEscapeVisible(player);
         }
 
         function showForgotPassword() {
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('signup-form').style.display = 'none';
+            hideAuthPanels();
             document.getElementById('forgot-form').style.display = 'block';
-            document.getElementById('verification-pending').style.display = 'none';
+            setEscapeVisible(false);
             document.querySelector('.auth-title').textContent = 'Reset password';
             document.querySelector('.auth-subtitle').textContent = 'Enter your email to receive a reset link';
         }
@@ -303,8 +486,8 @@
                 return;
             }
 
-            // Redirect to app — role detection happens in app.html
-            window.location.href = './';
+            // Role detection and claim_invite run in the dashboard.
+            window.location.href = dashboardUrl();
         }
 
         function toggleReferralDetail() {
@@ -367,17 +550,24 @@
                 ? (document.getElementById('signup-referral-detail').value.trim() || null)
                 : null;
 
+            // The code rides on the account as well as in storage. Confirmation
+            // can finish in another browser, which never saw localStorage, and
+            // claim_invite still checks the code server-side.
+            const metadata = { name, referral_source: referralSource, referral_detail: referralDetail };
+            const pendingCode = inviteMode === 'player' ? currentInviteCode() : '';
+            if (pendingCode) metadata.pending_invite = pendingCode;
+
             const { data, error } = await sbClient.auth.signUp({
                 email,
                 password,
-                options: { data: { name, referral_source: referralSource, referral_detail: referralDetail } }
+                options: { data: metadata }
             });
 
             if (error) {
                 errorEl.textContent = authErrorMessage(error);
                 errorEl.style.display = 'block';
                 btn.disabled = false;
-                btn.textContent = 'Create Account';
+                btn.textContent = signupButtonLabel();
                 return;
             }
 
@@ -396,9 +586,9 @@
                 return;
             }
 
-            // Auto-confirmed — redirect straight to dashboard
+            // Auto-confirmed — claim (if any) happens on the dashboard.
             if (data.user) {
-                window.location.href = './';
+                window.location.href = dashboardUrl();
             }
         }
 
@@ -549,7 +739,7 @@
                         statusEl.textContent = 'Verified! Setting up your account...';
                         statusEl.style.color = 'var(--accent, #00F5D4)';
                     }
-                    setTimeout(() => { window.location.href = './'; }, 600);
+                    setTimeout(() => { window.location.href = dashboardUrl(); }, 600);
                 }
             }, VERIFICATION_POLL_MS);
         }
