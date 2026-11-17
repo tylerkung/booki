@@ -14,18 +14,31 @@ Track all SQL changes needed in Supabase when updating the app.
 
 ## Pending Migrations
 
+### Release order for 062 and 063 (neither applied)
+
+Neither file updates or deletes existing rows. Apply them by hand, then
+deploy, then merge. Do not ship any of the nine functions before 062: every
+pick submit inserts `stat_key`, `subject_player_id`, and `prop_line`, and
+those columns do not exist until 062, so a submit fails. 063 is safe while
+the old functions are still live. It only adds the settlement guard.
+
+1. Apply `supabase/migrations/062_bet_prop_snapshot.sql`.
+2. Apply `supabase/migrations/063_one_active_settlement.sql`.
+3. Deploy these nine together, `--no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`: `grade_player_props`, `grade_dry_run`, `refresh_live_scores`, `auto_refresh_games`, `sync_games`, `submit_parlay`, `submit_bets`, `submit_bet`, `settle_parlay`.
+4. Merge.
+
+`grade_player_props` is in that list. It grades from the new snapshot columns and settles parlays through `settle_parlay_tx`. Leaving the old build up skips both.
+
 ### 063 — one active settlement (NOT applied)
 
-Does not update or delete ledger rows. A BEFORE INSERT trigger rejects a second active settlement for a bet and for a parlay ticket (active = settlement minus reversal). `settlement_events.idempotency_key` gains a unique index where the key is not null. `settle_bet_tx` is idempotent and uses settlement_version max+1. Apply by hand, then deploy `refresh_live_scores`, `auto_refresh_games`, and `settle_parlay`. `grade_player_props` already calls `settle_bet_tx` and does not need a new deploy for the guard. Do not deploy before the migration: `settle_parlay` calls `settle_parlay_tx`.
+Does not update or delete ledger rows. A BEFORE INSERT trigger rejects a second active settlement for a bet and for a parlay ticket (active = settlement minus reversal). `settlement_events.idempotency_key` gains a unique index where the key is not null. `settle_bet_tx` is idempotent and uses settlement_version max+1. See the release order above.
 
 ### 062 — bet prop snapshot (NOT applied)
 
 Additive only. Adds nullable `bets.stat_key`, `bets.subject_player_id`, and
-`bets.prop_line`. No backfill, no update of existing rows. Apply by hand
-before deploying `submit_bet`, `submit_bets`, and `submit_parlay`, or those
-inserts will fail on the unknown columns. Grading falls back to the market
-row when the snapshot is null, so applying the migration without the new
-functions is safe.
+`bets.prop_line`. No backfill, no update of existing rows. Grading falls back
+to the market row when the snapshot is null, so applying 062 without the new
+functions is safe. See the release order above.
 
 ### The Odds API Integration
 
