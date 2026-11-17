@@ -39,7 +39,7 @@
     </div>
 
     <!-- Mobile Header -->
-    <div class="mobile-header">
+    <div class="mobile-header" x-show="userRole !== 'invite_blocked'">
         <a href="../index.html"><img src="../assets/logo-booki-blk.svg" alt="Booki"></a>
         <span class="mobile-page-title" x-show="userRole" x-cloak x-text="
             route === 'dashboard' ? 'Dashboard' :
@@ -74,7 +74,7 @@
 
     <div class="app-layout">
         <!-- Sidebar -->
-        <aside class="sidebar" :class="{ open: sidebarOpen }">
+        <aside class="sidebar" :class="{ open: sidebarOpen }" x-show="userRole !== 'invite_blocked'">
             <a href="../index.html" class="sidebar-logo">
                 <img src="../assets/logo-booki-blk.svg" alt="Booki">
             </a>
@@ -88,7 +88,7 @@
                 <li><a><div class="shimmer" style="width: 80px; height: 14px; border-radius: var(--radius-xs);"></div></a></li>
                 <li><a><div class="shimmer" style="width: 90px; height: 14px; border-radius: var(--radius-xs);"></div></a></li>
             </ul>
-            <ul class="sidebar-nav" x-show="userRole" x-cloak>
+            <ul class="sidebar-nav" x-show="userRole && userRole !== 'invite_blocked'" x-cloak>
                 <!-- Organizer Navigation -->
                 <li x-show="userRole === 'organizer'"><a href="#/dashboard" :class="{ active: route === 'dashboard' }" @click="sidebarOpen = false">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -154,7 +154,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content" :class="{ 'has-betslip': hasBetSlip }">
+        <main class="main-content" :class="{ 'has-betslip': hasBetSlip, 'no-sidebar': userRole === 'invite_blocked' }">
 
             <!-- Loading State (before role detection) -->
             <div x-show="!userRole" class="loading-skeleton-page">
@@ -169,6 +169,21 @@
                 </div>
                 <div class="card" style="padding: var(--s-xl); margin-bottom: var(--s-lg);"><div class="shimmer" style="width: 100%; height: 60px; border-radius: var(--radius-sm);"></div></div>
                 <div class="card" style="padding: var(--s-xl);"><div class="shimmer" style="width: 100%; height: 100px; border-radius: var(--radius-sm);"></div></div>
+            </div>
+
+            <!-- Invite was refused. Organizer setup is a separate, explicit action. -->
+            <div x-show="userRole === 'invite_blocked'" x-cloak class="invite-blocked">
+                <div class="auth-card">
+                    <h1 class="auth-title" x-text="inviteJoinTitle"></h1>
+                    <p class="auth-subtitle" x-text="inviteJoinError"></p>
+                    <button type="button" class="btn btn-primary btn-block" x-show="inviteJoinRetry" @click="window.location.reload()">Try again</button>
+                    <p class="auth-escape">
+                        <a href="#" @click.prevent="acceptOrganizerInstead()">Want to run your own group instead? Create an organizer account</a>
+                    </p>
+                    <div class="auth-links">
+                        <a href="#" @click.prevent="logout()">Log out</a>
+                    </div>
+                </div>
             </div>
 
             <!-- ── Dashboard View ── -->
@@ -1018,10 +1033,9 @@
                                         <td data-label="Credit Limit" x-text="formatCurrency(bookie?.default_credit_limit || 1000)"></td>
                                         <td data-label="Created" x-text="formatDate(inv.created_at)"></td>
                                         <td data-label="Expires">
-                                            <span x-show="inv.email" class="t-caption" style="color:var(--text-muted);">Doesn't expire</span>
-                                            <span x-show="!inv.email" class="t-caption"
-                                                  :style="{ color: new Date(inv.expires_at) < new Date() ? 'var(--danger)' : 'var(--text-muted)' }"
-                                                  x-text="new Date(inv.expires_at) < new Date() ? 'Expired' : formatDate(inv.expires_at)"></span>
+                                            <span class="t-caption"
+                                                  :style="{ color: !inv.email && new Date(inv.expires_at) < new Date() ? 'var(--danger)' : 'var(--text-muted)' }"
+                                                  x-text="inviteRowExpiry(inv)"></span>
                                         </td>
                                         <td data-label="Actions" style="display:flex;gap:var(--s-xs);">
                                             <button class="btn btn-ghost" title="Copy Code" x-show="!inv.email" @click="copyInviteCodeValue(inv.invite_code)">
@@ -2262,6 +2276,11 @@
                     <p x-text="isLoadingPlayerEvents ? 'Loading games...' : filteredPlayerEvents.length + ' upcoming games'"></p>
                 </div>
 
+                <div class="card already-in-notice" x-show="alreadyInGroupNotice" x-cloak>
+                    <span class="t-body" x-text="alreadyInGroupNotice"></span>
+                    <button type="button" class="btn btn-ghost" @click="alreadyInGroupNotice = ''">Dismiss</button>
+                </div>
+
                 <!-- Sport navigation cards -->
                 <div class="games-sport-nav">
                     <template x-for="sport in playerSportOptions" :key="sport">
@@ -2276,10 +2295,10 @@
                 <div class="games-toolbar">
                     <input type="text" class="search-input" placeholder="Search by team name..." x-model="playerEventSearch" style="flex:1;max-width: 400px;">
                     <div class="filter-bar" style="margin:0;">
-                        <button class="chip" :class="{ active: playerTimeFilter === 'all' }" @click="playerTimeFilter = 'all'">All</button>
-                        <button class="chip" :class="{ active: playerTimeFilter === 'today' }" @click="playerTimeFilter = 'today'">Today</button>
-                        <button class="chip" :class="{ active: playerTimeFilter === 'tomorrow' }" @click="playerTimeFilter = 'tomorrow'">Tomorrow</button>
-                        <button class="chip" :class="{ active: playerTimeFilter === 'thisWeek' }" @click="playerTimeFilter = 'thisWeek'">This Week</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'all' }" @click="setPlayerTimeFilter('all')">All</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'today' }" @click="setPlayerTimeFilter('today')">Today</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'tomorrow' }" @click="setPlayerTimeFilter('tomorrow')">Tomorrow</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'thisWeek' }" @click="setPlayerTimeFilter('thisWeek')">This Week</button>
                     </div>
                 </div>
 
@@ -2627,7 +2646,7 @@
                                                 aria-label="More lines">›</button>
                                     </div>
                                     <span class="t-body-muted" x-show="section.kind !== 'ladder'"
-                                          x-text="section.markets.length + (section.markets.length === 1 ? ' line' : ' lines')"></span>
+                                          x-text="((section.markets || []).length) + ((section.markets || []).length === 1 ? ' line' : ' lines')"></span>
                                 </div>
 
                                 <!-- Ladder: one row per side, one column per line -->
@@ -4133,8 +4152,9 @@
                 <div class="form-success">
                     <strong>Invite sent to <span x-text="inviteSentTo"></span></strong>
                     <p class="t-caption" style="margin-top:var(--s-xs);color:var(--text-secondary);">
-                        They'll get a link that only works for this address. If they sign up
-                        with it before opening the link, we'll put them in your group anyway.
+                        They'll get a link that only works for this address, and it doesn't
+                        expire. If they sign up with it before opening the link, we'll put
+                        them in your group anyway.
                     </p>
                 </div>
             </template>
@@ -4162,7 +4182,7 @@
                         <button class="btn btn-ghost" @click="copyInviteLink(inviteCode)">Copy link</button>
                     </div>
                     <p class="t-caption" style="margin-top:var(--s-sm);color:var(--text-muted);">
-                        Expires <span x-text="inviteExpiryLabel()"></span>.
+                        <span x-text="inviteExpiryLabel()"></span>.
                         Anyone with this code can join, so only share it with your group.
                     </p>
                 </div>
@@ -4514,6 +4534,7 @@
         })();
     </script>
 
+    <script src="/invite-handoff.js"></script>
     <script src="dashboard.js"></script>
     <script src="../attribution.js"></script>
 </body>

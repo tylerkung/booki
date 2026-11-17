@@ -5,7 +5,7 @@ This project cannot be built from the CLI (`CLAUDE.md`: "Xcode command line
 tools don't support full builds — use Xcode IDE"), so everything here needs a
 real build and a run in the simulator.
 
-Last updated: 2026-08-19
+Last updated: 2026-11-16
 
 ---
 
@@ -190,6 +190,7 @@ silently RELABELLED as a moneyline on shipped builds rather than ignored.
 | Game detail view (`#/player-game/:id`) | iOS `GameDetailView` already exists; needs team totals + props sections | shipped on web |
 | Props UI grouped by player | iOS needs the same grouping; the ladder layout does not fit a prop | shipped on web |
 | `get_event_player_props()` RPC | iOS must call this RPC for props — a plain `markets` select will never return them once `MarketType` supports the type | shipped on web |
+| Invite signup name | `InviteClaimView` signup has no name field and does not set `user_metadata.name`, so `claim_invite` still falls back to the email prefix | web stores the typed name as `user_metadata.name` |
 
 **The structural fix worth doing first:** give `MarketType` an `unknown` case and
 have the sync SKIP unknown types instead of coercing them. Three separate
@@ -319,6 +320,26 @@ later change recovers it.
 Until then, read the admin Attribution view knowing the denominator is
 web signups only.
 
+## B14 — Send the user JWT to `claim_invite` and `claim_player`
+
+Not built. iOS only. The web dashboard already sends the session access token
+on `claim_invite` (`callEdgeFunction`). It does not call `claim_player`.
+
+`InviteClaimView.createAccount` posts to `claim_invite` with
+`Authorization: Bearer <anon key>` and `body.auth_user_id` of the new user.
+A signed-in login on that screen already sends the session access token.
+`claim_invite` and `claim_player` now take the caller from the user JWT.
+
+Interim, so the shipped signup build can still join: a request with no user
+JWT may pass `body.auth_user_id` only when that account is not email-confirmed
+and does not organize a group. That path does **not** auto-confirm the email.
+After this ships, iOS signup still creates the member, but the address stays
+unconfirmed until the confirmation link — `completePlayerClaimFlow` used to
+rely on the old auto-confirm.
+
+- [ ] Send the signed-in user's access token, not the anon key, on `claim_invite` and `claim_player`
+- [ ] Once every shipped iOS build does that, remove the interim unauthenticated path in `authorizeClaimRequest`
+
 ## B9 — Move invite validation onto `get_invite()`, then drop the `USING (true)` policy
 
 **Blocking a security fix.** Migration 010 created:
@@ -387,3 +408,36 @@ game detail page can split prop subjects into away and home columns. iOS reads
 the same RPC and ignores the new column, which is harmless — it renders the
 single alphabetical list it always did. No shipped build mis-renders anything,
 so this is a genuine "later", not a silent-corruption case.
+
+## B12 — `cleanUpExpiredInvites()` deletes email-addressed invites the server still honors
+
+Not built. iOS only. Do not treat this as done because the web copy changed.
+
+`PlayersListView.cleanUpExpiredInvites()` (`Booki/Views/PlayersListView.swift`)
+deletes every invite that `Invite.isExpired` (`Booki/Models/Invite.swift`) says
+is past `expiresAt`. `isExpired` is only `expiresAt < Date()`.
+
+The server does not work that way. `create_invite` writes `expires_at` seven
+days out for every row (`INVITE_EXPIRY_HOURS = 24 * 7`), but `claim_invite` and
+`get_invite` apply that deadline only when `invites.email IS NULL`. An
+email-addressed invite does not expire for the verified addressee. After seven
+days the iOS cleanup deletes the row on the server, so the addressee can no
+longer claim an invite the server would still accept.
+
+- [ ] `isExpired` (and the cleanup that trusts it) must ignore addressed invites, matching `claim_invite`: expiry applies only when `email == nil`
+- [ ] Do not delete an addressed invite from Supabase just because `expires_at` has passed
+- [ ] The pending list should show an addressed invite as not expiring, the way the web Members table does
+
+## B13 — iOS invite mail body and "Expires in 24 hours" label
+
+Not built. iOS only. Web and `create_invite` were corrected in the invite-expiry
+copy change; these two strings were left in the app on purpose.
+
+`Booki/Views/PlayersListView.swift`:
+
+- The generated-invite label is the literal "Expires in 24 hours". Link invites last 7 days. Addressed invites do not expire for the addressee.
+- `mailBody(code:)` says "Open this link to get started: booki://invite/{code}" and "This invite expires in 24 hours." Booki is web-only for now. The link should be `https://bookisports.com/invite/{code}`, and the expiry sentence has to follow the same split.
+
+- [ ] Link-invite confirmation: "Expires in 7 days" (or a date), not "Expires in 24 hours"
+- [ ] Addressed-invite confirmation: do not claim an expiry
+- [ ] Mail body: the web invite URL, and expiry copy that matches the invite kind

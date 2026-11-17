@@ -47,12 +47,15 @@ export default async function inviteFlow(ctx) {
   // Also clean up any bookie record for this user (would also block claiming)
   try { await svc.from('bookies').delete().eq('auth_user_id', claimerUserId); } catch (e) {}
 
+  // Confirmed accounts must present their own user JWT. The anon key is not one.
+  const claimerToken = await signInFresh(claimEmail, 'TestPass123!');
+
   // Claim invite
   const { status: claimStatus, data: claimData } = await callEdge('claim_invite', {
     invite_code: inviteCode,
     auth_user_id: claimerUserId,
     idempotency_key: uuid(),
-  });
+  }, claimerToken);
 
   if (claimStatus !== 200) console.log(`    debug claim: ${JSON.stringify(claimData)}`);
   eq(claimStatus, 200, 'claim_invite → 200');
@@ -95,11 +98,25 @@ export default async function inviteFlow(ctx) {
       }
       try { await svc.from('bookies').delete().eq('auth_user_id', claimer2Id); } catch (e) {}
 
+      const claimer2Token = await signInFresh(claimEmail2, 'TestPass123!');
+      const { status: forged } = await callEdge('claim_invite', {
+        invite_code: inviteCode,
+        auth_user_id: claimerUserId,
+        idempotency_key: uuid(),
+      }, claimer2Token);
+      eq(forged, 403, 'claim_invite JWT differing from auth_user_id → 403');
+
+      const { status: forgedPlayer } = await callEdge('claim_player', {
+        invite_code: 'ZZZZZZZZ',
+        auth_user_id: claimerUserId,
+      }, claimer2Token);
+      eq(forgedPlayer, 403, 'claim_player JWT differing from auth_user_id → 403');
+
       const { status: reClaimStatus } = await callEdge('claim_invite', {
         invite_code: inviteCode,
         auth_user_id: claimer2Id,
         idempotency_key: uuid(),
-      });
+      }, claimer2Token);
       eq(reClaimStatus, 409, 're-claim same invite → 409');
     }
   }
@@ -109,8 +126,73 @@ export default async function inviteFlow(ctx) {
     const { status } = await callEdge('claim_invite', {
       invite_code: 'ZZZZZZZZ',
       auth_user_id: claimerUserId,
-    });
+    }, claimerToken);
     eq(status, 404, 'invalid invite code → 404');
+  }
+
+  // A confirmed account with no user JWT is not the iOS interim path.
+  {
+    const { status } = await callEdge('claim_invite', {
+      invite_code: 'ZZZZZZZZ',
+      auth_user_id: claimerUserId,
+    });
+    eq(status, 401, 'claim_invite confirmed account, no user JWT → 401');
+
+    const { status: playerStatus } = await callEdge('claim_player', {
+      invite_code: 'ZZZZZZZZ',
+      auth_user_id: claimerUserId,
+    });
+    eq(playerStatus, 401, 'claim_player confirmed account, no user JWT → 401');
+  }
+
+  // Interim: unconfirmed, not an organizer, no user JWT. The lookup runs and
+  // the email stays unconfirmed. An organizer is refused even if unconfirmed.
+  {
+    const freshEmail = `test_stress_claimauth_${Date.now()}@test.local`;
+    const { data: fresh, error: freshErr } = await svc.auth.admin.createUser({
+      email: freshEmail, password: 'TestPass123!', email_confirm: false,
+    });
+    if (freshErr || !fresh?.user?.id) {
+      ok(false, `unconfirmed user: ${freshErr?.message || 'no id'}`);
+    } else {
+      const freshId = fresh.user.id;
+      try {
+        const { status, data } = await callEdge('claim_player', {
+          invite_code: 'ZZZZZZZZ',
+          auth_user_id: freshId,
+        });
+        eq(status, 404, 'interim claim_player with a bad code reaches the lookup');
+        eq(data?.error, 'Invalid invite code', 'bad code is not an auth failure');
+        const { data: still } = await svc.auth.admin.getUserById(freshId);
+        ok(!still?.user?.email_confirmed_at, 'interim path does not confirm email');
+
+        const { error: bookErr } = await svc.from('bookies').insert({
+          id: uuid(), auth_user_id: freshId, name: 'test_stress_claimauth_org', tier: 'free',
+        });
+        if (bookErr) {
+          ok(false, `organizer row: ${bookErr.message}`);
+        } else {
+          const { data: orgInvite } = await callEdge('create_invite', {
+            idempotency_key: uuid(),
+          }, ctx.bookieToken);
+          const { status: orgStatus } = await callEdge('claim_invite', {
+            invite_code: orgInvite?.invite_code,
+            auth_user_id: freshId,
+            idempotency_key: uuid(),
+          });
+          eq(orgStatus, 401, 'unconfirmed organizer, no user JWT → 401');
+          if (orgInvite?.invite_id) {
+            const { data: inv } = await svc.from('invites')
+              .select('claimed_at').eq('id', orgInvite.invite_id).maybeSingle();
+            ok(!inv?.claimed_at, 'rejected organizer claim did not consume the invite');
+            try { await svc.from('invites').delete().eq('id', orgInvite.invite_id); } catch (e) {}
+          }
+        }
+      } finally {
+        try { await svc.from('bookies').delete().eq('auth_user_id', freshId); } catch (e) {}
+        try { await svc.auth.admin.deleteUser(freshId); } catch (e) {}
+      }
+    }
   }
 
   // Create invite with no auth → 401

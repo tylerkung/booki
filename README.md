@@ -384,10 +384,13 @@ The app is **local-first** with cloud sync:
 
 **QA pass (August 2026)** — 12 items reported, 7 fixed, 1 closed as working-as-designed, 5 did not reproduce
 - **Invite landing page rebuilt**: `/invite/{code}` had *no server lookup* — it validated only the SHAPE of the last path segment, so `/invite` rendered the literal word **INVITE** as a copyable code. Migration 052 adds `get_invite(p_code)`: SECURITY DEFINER, throttled per forwarded IP, returning a display projection that never includes `bookie_id` or the invitee email
-- **Invite codes now reach signup**: GET STARTED was a bare `/dashboard/` link, so bearer invites were never redeemable. The code is carried to `login.html` and persisted in `localStorage`, because email verification loses the query string
+- **Invite codes now reach signup**: GET STARTED was a bare `/dashboard/` link, so bearer invites were never redeemable. The code is carried to `login.html?invite=CODE` and persisted (`localStorage`, `sessionStorage`, and `user_metadata.pending_invite`) because email verification loses the query string
+- **Invite join is a player, not an organizer** (Nov 16, 2026): a valid code opens "Join {organizer}'s group", `claim_invite` runs after login or sign-up, and the member lands on Games. Invalid, expired, and already-used codes ask for a new link and do not create a `bookies` row. "Want to run your own group instead?" is the only path from that screen to organizer sign-up. Organizer sign-up with no invite is unchanged
+- **Invite name and email confirm** (Nov 16, 2026): the name typed on Join Group is saved on the new member. The check-your-email screen survives a reload and continues into Games once the link is confirmed, including from `/verify` when a pending invite is on the account. An existing member who opens another invite is told they're already in the group; that invite is left unused
 - **Events tab**: rendered the "no events" empty state before querying, because `isLoadingEvents` defaulted to `false`. Five flags corrected; `scripts/check-loading-guards.py` added to the suite
 - **Signup UX**: client-side email validation (the page has no `<form>`, so `type="email"` never validated), human error copy mapped from Supabase's, and Resend / Use-a-different-email on the verification screen
 - **Win rate** divided losses by the total; **invite TTL copy** said 24 hours against a 7-day server value
+- **Invite expiry copy, again (November 2026)**: the email `create_invite` sends and the dashboard's link confirmation had kept the old wording (email: "expires in 24 hours" and "open the app"; confirmation: a raw hour count such as "167 hours"). Addressed invites now say they don't expire; link invites say 7 days, with days and hours plus a date when the window isn't a whole number of days. The CTA is the web invite URL. Migration 009's column comment still says 24 hours and was left as history — the migration is already applied, and no new migration was added. `create_invite` and `admin_query` deploy with the Supabase CLI; merging does not deploy them.
 
 **Attribution & onboarding**
 - **First-touch attribution** (`landing/attribution.js`, migration 051) — UTM, referrer, gclid/fbclid captured on first visit, written once at signup
@@ -397,6 +400,7 @@ The app is **local-first** with cloud sync:
 **Member experience**
 - **First-run welcome modal** for newly joined members — who they joined, that money never moves through Booki, their real credit and win limits, how picks grade. Dismissal persists in `user_metadata`, not localStorage
 - **Board fixes**: markets now load for *every* rendered row (previously only the first two sports, leaving the rest showing `—`), and futures render as their own block — 8 shortest prices with "View all N" — instead of a game row of em-dashes
+- **Games board time chips**: Today / Tomorrow / All / This Week re-fetch lines for the games that chip shows. A league with 3+ games today used to leave tomorrow's rows as dashes. Opening a sport page no longer replaces the board's other markets.
 - **Game row is one definition** expanded into both the Games page and the sport page, which had drifted: the sport page was missing "More lines" and the lock overlay entirely
 - **Odds buttons** stack line over price, price in the accent, no parentheses; all bet CTAs standardised at `--odds-height: 40px`
 
@@ -483,6 +487,8 @@ Server-authoritative functions running on Supabase (Deno/TypeScript):
 
 All functions validate JWT auth, check idempotency, and emit audit events.
 
+`claim_invite` and `claim_player` take the caller from the user JWT. A body `auth_user_id` that names someone else is rejected. With no user JWT, the body id is accepted only for an account that has not confirmed its email and is not an organizer, and that request does not confirm the email. The web dashboard sends the session access token on `claim_invite`. iOS signup still sends the anon key (`tasks/ios-pending.md`, B14).
+
 ---
 
 ## Saved for Future
@@ -509,4 +515,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: August 28, 2026 - QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*
+*Last updated: November 16, 2026 - Invite expiry copy matches the server: addressed invites don't expire, link invites last 7 days, the invite email links to bookisports.com. QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*

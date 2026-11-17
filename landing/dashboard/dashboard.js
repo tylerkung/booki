@@ -83,6 +83,50 @@ function oddsDisplayFilter() {
     ].join(',');
 }
 
+/**
+ * Human expiry for a bearer (link) invite.
+ *
+ * A just-created link is 7 days minus the time the request took, which
+ * flooring the remaining hours reported as a raw hour count. Round to the nearest
+ * hour once the remainder is at least half an hour, then split into days.
+ * A partial day says days and hours. The calendar date is always included.
+ * Under an hour, say minutes — rounding those up to an hour is a lie.
+ *
+ * Addressed invites do not use this. They do not expire for the addressee.
+ *
+ * @param {string} expiresAt ISO timestamp from create_invite
+ * @param {number} [now] epoch ms, injectable for tests
+ * @returns {string} "" when the timestamp is missing or unparseable
+ */
+function formatBearerInviteExpiry(expiresAt, now = Date.now()) {
+    const end = new Date(expiresAt);
+    const endMs = end.getTime();
+    if (Number.isNaN(endMs)) return '';
+    const ms = endMs - now;
+    if (ms <= 0) return 'Expired';
+
+    const dateLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const withDate = (phrase) => `Expires ${phrase} (${dateLabel})`;
+
+    if (ms < 60 * 60 * 1000) {
+        const mins = Math.max(1, Math.round(ms / 60000));
+        if (mins >= 60) return withDate('in 1 hour');
+        return withDate(mins === 1 ? 'in 1 minute' : `in ${mins} minutes`);
+    }
+
+    const totalHours = Math.round(ms / 3600000);
+    if (totalHours >= 24) {
+        const days = Math.floor(totalHours / 24);
+        const hours = totalHours % 24;
+        const dayPart = days === 1 ? '1 day' : `${days} days`;
+        if (hours === 0) return withDate(`in ${dayPart}`);
+        const hourPart = hours === 1 ? '1 hour' : `${hours} hours`;
+        return withDate(`in ${dayPart}, ${hourPart}`);
+    }
+    if (totalHours <= 1) return withDate('in 1 hour');
+    return withDate(`in ${totalHours} hours`);
+}
+
 function dashboardApp() {
     return {
         // ── Auth ──
@@ -91,7 +135,10 @@ function dashboardApp() {
         bookie: null,
 
         // ── Dual-Role ──
-        userRole: '', // '' (loading) | 'organizer' | 'player' | 'standalone'
+        userRole: '', // '' (loading) | 'organizer' | 'player' | 'standalone' | 'invite_blocked'
+        inviteJoinTitle: '',
+        inviteJoinError: '',
+        inviteJoinRetry: false,
         playerId: null,
         playerBookieId: null,
         playerRecord: null,
@@ -100,6 +147,9 @@ function dashboardApp() {
         expandedFutures: {},
         showMemberWelcome: false,
         memberWelcomeDismissed: false,
+        alreadyInGroupNotice: '',
+        pendingAlreadyInGroup: false,
+        skipMemberWelcome: false,
 
         // ── Route ──
         route: '',
@@ -192,33 +242,233 @@ function dashboardApp() {
         // the product.
         // --- Invite code handoff from /invite/CODE ---------------------------
         //
-        // The public invite page sends people to /dashboard/login.html?invite=CODE.
-        // Verification bounces them away and back, so the code is persisted and
-        // only cleared once claim_invite has actually accepted it.
-
-        INVITE_KEY: 'booki_pending_invite',
+        // The public invite page sends people to /dashboard/login.html?invite=CODE
+        // and writes the same code through invite-handoff.js. It stays in the
+        // URL on the login page. Here it is read, and removed only once
+        // claim_invite has accepted it or the code has been refused. Stripping
+        // it on arrival was why invited people landed on the organizer form
+        // with nothing to claim.
 
         captureInviteCode() {
-            try {
-                const code = (new URLSearchParams(window.location.search).get('invite') || '')
-                    .toUpperCase().replace(/[^A-Z0-9]/g, '');
-                if (!code) return;
-                localStorage.setItem(this.INVITE_KEY, code);
-                // Drop it from the address bar so a shared or bookmarked URL
-                // does not carry someone else's single-use invite.
-                const url = new URL(window.location.href);
-                url.searchParams.delete('invite');
-                window.history.replaceState({}, '', url.toString());
-            } catch (e) { /* storage blocked — the email fallback still applies */ }
+            if (!window.BookiInvite) return;
+            const code = window.BookiInvite.normalize(
+                new URLSearchParams(window.location.search).get('invite')
+            );
+            if (!code) return;
+            const name = window.BookiInvite.readName();
+            window.BookiInvite.writeCode(code, name);
         },
 
         pendingInviteCode() {
-            try { return localStorage.getItem(this.INVITE_KEY) || null; }
-            catch (e) { return null; }
+            let code = '';
+            if (window.BookiInvite) code = window.BookiInvite.readCode();
+            if (code) return code;
+            const meta = this.session?.user?.user_metadata?.pending_invite;
+            if (!meta || !window.BookiInvite) return null;
+            return window.BookiInvite.normalize(meta) || null;
         },
 
         clearPendingInviteCode() {
-            try { localStorage.removeItem(this.INVITE_KEY); } catch (e) {}
+            if (window.BookiInvite) window.BookiInvite.clearCode();
+        },
+
+        async clearPendingInviteMetadata() {
+            const meta = this.session?.user?.user_metadata;
+            if (!meta || !meta.pending_invite) return;
+            try {
+                await this.supabase.auth.updateUser({ data: { pending_invite: null } });
+                this.session.user.user_metadata = { ...meta, pending_invite: null };
+            } catch (e) { /* storage clear still stands; a reload can retry */ }
+        },
+
+        stripInviteParam() {
+            if (window.BookiInvite) window.BookiInvite.stripFromUrl();
+        },
+
+        readInviteBlocked() {
+            const local = window.BookiInvite ? window.BookiInvite.readBlocked() : null;
+            if (local) return local;
+            // localStorage does not follow the account to another browser. The
+            // refusal has to live on the user, or the next login looks like a
+            // normal signup and inserts a bookies row.
+            const meta = this.session?.user?.user_metadata?.invite_blocked;
+            if (meta && meta.detail) return meta;
+            return null;
+        },
+
+        async clearInviteBlocked() {
+            if (window.BookiInvite) window.BookiInvite.clearBlocked();
+            const meta = this.session?.user?.user_metadata;
+            if (!meta || !meta.invite_blocked) return;
+            try {
+                await this.supabase.auth.updateUser({ data: { invite_blocked: null } });
+                this.session.user.user_metadata = { ...meta, invite_blocked: null };
+            } catch (e) {}
+        },
+
+        async rememberInviteBlocked(title, detail) {
+            if (window.BookiInvite) window.BookiInvite.writeBlocked(title, detail);
+            this.inviteJoinTitle = title;
+            this.inviteJoinError = detail;
+            try {
+                await this.supabase.auth.updateUser({
+                    data: { invite_blocked: { title, detail } },
+                });
+                if (this.session && this.session.user) {
+                    this.session.user.user_metadata = {
+                        ...(this.session.user.user_metadata || {}),
+                        invite_blocked: { title, detail },
+                    };
+                }
+            } catch (e) {}
+        },
+
+        showInviteBlocked(title, detail, retry) {
+            this.userRole = 'invite_blocked';
+            this.inviteJoinTitle = title;
+            this.inviteJoinError = detail;
+            this.inviteJoinRetry = !!retry;
+            this.route = 'invite-blocked';
+        },
+
+        // Maps a claim_invite error into copy. null means "try again" — the
+        // code stays put and no organizer row is created.
+        inviteClaimCopy(error) {
+            const m = (error || '').toLowerCase();
+            if (m.includes('expired')) {
+                return {
+                    title: 'This invite has expired',
+                    detail: 'Ask your organizer for a new link. New ones last seven days.',
+                };
+            }
+            if (m.includes('already been claimed') || m.includes('already been used')) {
+                return {
+                    title: 'This invite has already been used',
+                    detail: 'Each invite works once. Ask your organizer for a new link.',
+                };
+            }
+            if (m.includes('different email')) {
+                return {
+                    title: 'This invite is for a different email',
+                    detail: 'Use the address the invite was sent to, or ask your organizer for a new link.',
+                };
+            }
+            if (m.includes('invalid invite') || m.includes('no pending invite')) {
+                return {
+                    title: "This invite isn't valid",
+                    detail: "We couldn't find that code. Ask your organizer for a new link.",
+                };
+            }
+            return null;
+        },
+
+        async claimPendingInvite(code) {
+            const userId = this.session.user.id;
+            let data;
+            try {
+                data = await this.callEdgeFunction('claim_invite', {
+                    auth_user_id: userId,
+                    invite_code: code,
+                    // Stable key so a second tab, or a reload after a success
+                    // the client missed, replays the join instead of 409ing.
+                    idempotency_key: `claim:${userId}:${code}`,
+                });
+            } catch (err) {
+                return {
+                    outcome: 'transient',
+                    message: (err && err.message) || "We couldn't join the group. Reload the page to try again.",
+                };
+            }
+            if (data && data.success) return { outcome: 'claimed' };
+            const error = (data && data.error) || '';
+            if (error === 'already_in_group') return { outcome: 'already_member' };
+            const copy = this.inviteClaimCopy(error);
+            if (copy) return { outcome: 'rejected', error, ...copy };
+            return {
+                outcome: 'transient',
+                message: "We couldn't join the group. Reload the page to try again.",
+            };
+        },
+
+        async finishClaimedInvite() {
+            this.clearPendingInviteCode();
+            await this.clearPendingInviteMetadata();
+            this.clearInviteBlocked();
+            this.stripInviteParam();
+        },
+
+        noteAlreadyInGroup(name) {
+            const who = (name || '').trim();
+            this.pendingAlreadyInGroup = false;
+            this.skipMemberWelcome = true;
+            const copy = window.BookiInvite && window.BookiInvite.alreadyInGroupCopy;
+            this.alreadyInGroupNotice = copy
+                ? copy(who)
+                : (who ? ('You\u2019re already in ' + who + '\u2019s group') : 'You\u2019re already in this group');
+        },
+
+        // Re-read role after claim_invite. Returns true only when the account
+        // is now a player, which is the signal that the code can be dropped.
+        async reresolveAfterClaim() {
+            this._reresolvingRole = true;
+            this._claimedInvite = true;
+            try {
+                await this.detectUserRole();
+            } finally {
+                this._reresolvingRole = false;
+            }
+            const joined = this.userRole === 'player';
+            this._claimedInvite = false;
+            return joined;
+        },
+
+        async createOrganizerAccount() {
+            try {
+                const userName = this.session.user.user_metadata?.name
+                    || this.session.user.email?.split('@')[0]
+                    || 'My Book';
+                const { data: newBookie, error: createError } = await this.supabase
+                    .from('bookies')
+                    .insert({
+                        auth_user_id: this.session.user.id,
+                        name: userName,
+                        email: this.session.user.email,
+                        tier: 'free',
+                        default_credit_limit: 1000,
+                        allow_futures_parlays: false,
+                    })
+                    .select()
+                    .single();
+
+                if (createError) throw createError;
+
+                this.clearInviteBlocked();
+                this.bookie = newBookie;
+                this.userRole = 'organizer';
+                this.isPro = false;
+                await this.finishOrganizerSetup();
+            } catch (err) {
+                console.error('Auto-create organizer failed:', err);
+                this.userRole = 'standalone';
+            }
+        },
+
+        // Explicit escape from a refused invite. The only way that screen
+        // creates an organizer.
+        async acceptOrganizerInstead() {
+            if (this.isBecomingOrganizer) return;
+            this.isBecomingOrganizer = true;
+            this.clearPendingInviteCode();
+            await this.clearPendingInviteMetadata();
+            await this.clearInviteBlocked();
+            this.stripInviteParam();
+            await this.createOrganizerAccount();
+            this.isBecomingOrganizer = false;
+            if (this.userRole === 'organizer') {
+                this.parseRoute();
+                await this.loadPlayers();
+                await this.loadDashboard();
+            }
         },
 
         // ── First-run welcome for members ────────────────────────────────────
@@ -230,6 +480,7 @@ function dashboardApp() {
 
         maybeShowMemberWelcome() {
             if (this.userRole !== 'player') return;
+            if (this.skipMemberWelcome || this.alreadyInGroupNotice) return;
             if (this.memberWelcomeDismissed || this.showMemberWelcome) return;
 
             // Persisted on the ACCOUNT rather than in localStorage: a member who
@@ -728,10 +979,14 @@ function dashboardApp() {
             // link that carries none of the original query string.
             this.captureInviteCode();
 
-            // Check session
+            // Check session. Keep a pending invite on the login URL — dropping
+            // the query here is what sent invited people to organizer sign-up.
             const { data: { session } } = await this.supabase.auth.getSession();
             if (!session) {
-                window.location.href = 'login.html';
+                const code = this.pendingInviteCode();
+                window.location.href = code
+                    ? ('login.html?invite=' + encodeURIComponent(code))
+                    : 'login.html';
                 return;
             }
             this.session = session;
@@ -784,6 +1039,10 @@ function dashboardApp() {
         },
 
         parseRoute() {
+            if (this.userRole === 'invite_blocked') {
+                this.route = 'invite-blocked';
+                return;
+            }
             const prevRoute = this.route;
             const hash = window.location.hash.replace(/\?.*$/, '');
             const path = hash.replace('#/', '') || (this.userRole === 'organizer' ? 'dashboard' : 'player-games');
@@ -1020,12 +1279,68 @@ function dashboardApp() {
                 }
             }
 
+            const alreadyMember = hasPlayer && !!playerData[0].bookie_id;
+            const pendingCode = this._reresolvingRole ? null : this.pendingInviteCode();
+
+            // A code in hand is a join, including for an existing account that
+            // is not already in a group. Claim before any organizer insert —
+            // the old path treated a failed claim (functions.invoke drops the
+            // 4xx body) as "nobody invited them" and created a bookies row.
+            if (pendingCode && alreadyMember) {
+                // Already in a group. Do not call claim_invite — that would
+                // 409 and, on a bearer code, must leave the invite unclaimed
+                // for someone else. The notice is the only new behavior.
+                this.pendingAlreadyInGroup = true;
+                this._alreadyInGroupName = (window.BookiInvite && window.BookiInvite.readName()) || '';
+                await this.finishClaimedInvite();
+            } else if (pendingCode) {
+                const result = await this.claimPendingInvite(pendingCode);
+                if (result.outcome === 'already_member') this.pendingAlreadyInGroup = true;
+                if (result.outcome === 'claimed' || result.outcome === 'already_member') {
+                    const joined = await this.reresolveAfterClaim();
+                    if (joined) await this.finishClaimedInvite();
+                    return;
+                }
+                if (result.outcome === 'rejected' && /already been claimed/i.test(result.error || '')) {
+                    const { data: again } = await this.supabase
+                        .from('players').select('id, bookie_id')
+                        .eq('auth_user_id', userId).limit(1);
+                    if (again && again[0] && again[0].bookie_id) {
+                        const joined = await this.reresolveAfterClaim();
+                        if (joined) await this.finishClaimedInvite();
+                        return;
+                    }
+                }
+                if (result.outcome === 'rejected') {
+                    this.clearPendingInviteCode();
+                    await this.clearPendingInviteMetadata();
+                    this.stripInviteParam();
+                    await this.rememberInviteBlocked(result.title, result.detail);
+                    this.showInviteBlocked(result.title, result.detail, false);
+                    return;
+                }
+                this.showInviteBlocked("Couldn't join the group", result.message, true);
+                return;
+            } else if (this._claimedInvite && !alreadyMember && !isRealOrganizer) {
+                // claim_invite succeeded but the player row is not visible yet.
+                // Creating a bookie here is the bug.
+                this.showInviteBlocked(
+                    'Joining your group',
+                    'Your account is joined, but the group is still syncing. Reload to finish.',
+                    true
+                );
+                return;
+            }
+
             if (isRealOrganizer) {
+                this.pendingAlreadyInGroup = false;
+                this.clearInviteBlocked();
                 // Route as organizer
                 this.userRole = 'organizer';
                 this.bookie = bookieData[0];
                 this.isPro = this.bookie.tier === 'pro';
-            } else if (hasPlayer && playerData[0].bookie_id) {
+            } else if (alreadyMember) {
+                this.clearInviteBlocked();
                 // Route as player
                 this.userRole = 'player';
                 this.playerRecord = playerData[0];
@@ -1042,76 +1357,41 @@ function dashboardApp() {
                 if (bookieSettings && bookieSettings.length > 0) {
                     this.playerBookie = bookieSettings[0];
                 }
-            } else {
-                // Before assuming this is a new organizer, check whether someone
-                // already invited this address. Three people were invited, could
-                // not claim the link because the invite page was broken, and
-                // signed up directly the same day — at which point this branch
-                // made each of them their own organizer instead of a member of
-                // the book that invited them. Three groups became six empty ones.
+                if (this.pendingAlreadyInGroup) {
+                    this.noteAlreadyInGroup(
+                        (this.playerBookie && this.playerBookie.name) || this._alreadyInGroupName
+                    );
+                }
+            } else if (!this._reresolvingRole) {
+                // No code in hand. An invite addressed to this verified email
+                // can still be claimed; a 404 here is a normal new organizer.
+                let claimedByEmail = false;
                 try {
-                    // A bearer invite (email IS NULL) can only be matched by its
-                    // code — the email fallback below it finds addressed invites
-                    // only. Without the code, everyone who joined via a pasted
-                    // group-chat link fell through and became their own organizer.
-                    const pendingCode = this.pendingInviteCode();
-                    const { data: claimed } = await this.supabase.functions.invoke('claim_invite', {
-                        body: pendingCode
-                            ? { auth_user_id: userId, invite_code: pendingCode }
-                            : { auth_user_id: userId },
+                    const data = await this.callEdgeFunction('claim_invite', {
+                        auth_user_id: userId,
                     });
-                    if (claimed && claimed.success) this.clearPendingInviteCode();
-                    if (claimed && claimed.success && !this._reresolvingRole) {
-                        // The player row now exists, so re-run detection rather
-                        // than duplicating the routing branch. It cannot recurse
-                        // past this point: the second pass takes the player
-                        // branch above and never reaches here.
-                        this._reresolvingRole = true;
-                        try {
-                            await this.detectUserRole();
-                        } finally {
-                            this._reresolvingRole = false;
-                        }
-                        return;
-                    }
+                    // already_in_group means a player row exists even if the
+                    // select above missed it. Re-read; do not insert a bookie.
+                    claimedByEmail = !!(data && (data.success || data.error === 'already_in_group'));
                 } catch (err) {
-                    // No pending invite is the normal case — fall through to
-                    // creating an organizer account.
-                    console.debug('No pending invite for this address');
+                    claimedByEmail = false;
                 }
-
-                // No bookie, no player, and nobody invited them — a genuine new
-                // organizer signing up from the landing page.
-                try {
-                    const userName = this.session.user.user_metadata?.name
-                        || this.session.user.email?.split('@')[0]
-                        || 'My Book';
-                    const { data: newBookie, error: createError } = await this.supabase
-                        .from('bookies')
-                        .insert({
-                            auth_user_id: userId,
-                            name: userName,
-                            email: this.session.user.email,
-                            tier: 'free',
-                            default_credit_limit: 1000,
-                            allow_futures_parlays: false,
-                        })
-                        .select()
-                        .single();
-
-                    if (createError) throw createError;
-
-                    this.bookie = newBookie;
-                    this.userRole = 'organizer';
-                    this.isPro = false;
-
-                    await this.finishOrganizerSetup();
+                if (claimedByEmail) {
+                    const joined = await this.reresolveAfterClaim();
+                    if (joined) await this.finishClaimedInvite();
                     return;
-                } catch (err) {
-                    console.error('Auto-create organizer failed:', err);
-                    // Fallback to standalone if creation fails
-                    this.userRole = 'standalone';
                 }
+
+                const blocked = this.readInviteBlocked();
+                if (blocked) {
+                    this.showInviteBlocked(blocked.title, blocked.detail, false);
+                    return;
+                }
+
+                await this.createOrganizerAccount();
+                return;
+            } else {
+                return;
             }
 
             // Default route based on role
@@ -1932,6 +2212,18 @@ function dashboardApp() {
             this.isLoadingPlayerEvents = false;
         },
 
+        /**
+         * Today / Tomorrow / All only change which rows groupedPlayerEvents
+         * yields. The prefetch has to run again, or a league with 3+ games
+         * today keeps tomorrow's first rows on "—" — those ids were never in
+         * the initial 'all' slice.
+         */
+        setPlayerTimeFilter(filter) {
+            if (this.playerTimeFilter === filter) return;
+            this.playerTimeFilter = filter;
+            this.ensureMarketsForVisibleEvents();
+        },
+
         async ensureMarketsForVisibleEvents() {
             const gameIds = [];
             const outrightIds = [];
@@ -2116,7 +2408,15 @@ function dashboardApp() {
             }
 
             const [marketsRes, outrightsRes] = await Promise.all(fetches);
-            this.playerMarkets = marketsRes.data || [];
+            // Keep every other sport's lines. Replacing playerMarkets here
+            // wiped the games board, so a return trip showed dashes for
+            // leagues this page never loaded.
+            const incoming = marketsRes.data || [];
+            const refreshed = new Set(sportEventIds);
+            this.playerMarkets = [
+                ...this.playerMarkets.filter((m) => !refreshed.has(m.event_id)),
+                ...incoming,
+            ];
             this.sportPageOutrightMarkets = outrightsRes.data || [];
 
             this.isLoadingSportPage = false;
@@ -2464,6 +2764,9 @@ function dashboardApp() {
             return {
                 key,
                 title,
+                // Pair sections carry markets. Ladder sections do not, and the
+                // detail header still reads section.markets.length behind x-show.
+                markets: [],
                 rows: [
                     { label: this.sideLabel(sorted[0].side_a), cells: sorted.map((m) => cell(m, 'a')) },
                     { label: this.sideLabel(sorted[0].side_b), cells: sorted.map((m) => cell(m, 'b')) },
@@ -5008,15 +5311,21 @@ function dashboardApp() {
             this.isCreatingInvite = false;
         },
 
-        /** "in 23 hours" / "in 45 minutes" — a bearer code is short-lived. */
+        /**
+         * Link-invite confirmation. Falls back to the rule (7 days) when the
+         * server omits expires_at — a link invite is always that window.
+         */
         inviteExpiryLabel() {
-            if (!this.inviteExpiresAt) return '';
-            const ms = new Date(this.inviteExpiresAt).getTime() - Date.now();
-            if (ms <= 0) return 'expired';
-            const hours = Math.floor(ms / 3600000);
-            if (hours >= 1) return `in ${hours} hour${hours === 1 ? '' : 's'}`;
-            const mins = Math.max(1, Math.round(ms / 60000));
-            return `in ${mins} minute${mins === 1 ? '' : 's'}`;
+            return formatBearerInviteExpiry(this.inviteExpiresAt) || 'Expires in 7 days';
+        },
+
+        /**
+         * Pending-invites cell. Addressed invites do not expire for the
+         * addressee; link invites use the same phrase as the confirmation.
+         */
+        inviteRowExpiry(inv) {
+            if (inv && inv.email) return "Doesn't expire";
+            return formatBearerInviteExpiry(inv && inv.expires_at) || 'Expires in 7 days';
         },
 
 
