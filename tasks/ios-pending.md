@@ -461,7 +461,7 @@ Match the web modal (`DELETE_ACCOUNT_COPY` in `landing/dashboard/dashboard.js`).
   - Paid only: "Just want to stop paying? Cancel Pro and keep your group" → the existing billing path. Web uses `create_customer_portal` (`openPortal()`). iOS has no Stripe-portal call in the app today; if there is still no working cancel-plan path, drop this line.
 - [ ] Confirm field label "Type DELETE to confirm". Match is case-insensitive and trimmed. Primary stays disabled until it matches.
 - [ ] Primary: "Delete account and group" for organizers, "Delete account" for members. Secondary: "Keep my account", and it takes default focus. Both at least 44pt.
-- [ ] Members: keep the existing copy ("This will permanently delete your account and all your data. This action cannot be undone."). Same single screen. Do not mention a plan or a group. Button label "Delete account".
+- [ ] Members: "This permanently deletes your account and all your data. This can't be undone." Same single screen. Do not mention a plan or a group. Button label "Delete account".
 - [ ] Move Delete Account out from under Step Down into its own Danger zone at the bottom of organizer Settings.
 
 The no-refund sentence matches the server. `supabase/functions/delete_account/index.ts` cancels with `DELETE https://api.stripe.com/v1/subscriptions/{stripe_subscription_id}` and no body. That is an immediate cancel (`cancel_at_period_end` is not set; that would be a POST). `prorate` and `invoice_now` are omitted. Stripe's cancel endpoint documents both defaults as `false`, so this does not create a proration credit and does not refund the current period. Do not soften or strengthen that sentence unless the function starts sending those parameters.

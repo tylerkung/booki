@@ -142,7 +142,7 @@ function formatBearerInviteExpiry(expiresAt, now = Date.now()) {
 const DELETE_ACCOUNT_COPY = {
     title: 'Delete your account?',
     organizerLead: 'This permanently deletes your account and the group you run.',
-    playerLead: 'Are you sure you want to delete your account? This will permanently remove your account and all associated data.',
+    playerLead: "This permanently deletes your account and all your data. This can't be undone.",
     paidPlan: "Your Pro plan is canceled immediately. You won't get a refund for the rest of this billing period.",
     undone: "This can't be undone.",
     groupWithMembers: '{group} and everything in it is deleted: {members}, their picks, balances and history. Members lose access right away.',
