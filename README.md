@@ -411,6 +411,11 @@ The app is **local-first** with cloud sync:
 - **Bounded, resumable runs**: `max_games` plus a wall-clock guard, after nine games in one pass exceeded the 150s worker ceiling
 - Scheduled every 3h at `:25`; an unsettleable sport ingests each game once, so spend tracks new games rather than run frequency
 
+### Phase 22: RLS on agreements and idempotency keys
+
+- **Migration 061, not applied yet.** `user_agreements` and `idempotency_keys` had RLS off and full grants to `anon` and `authenticated`, so the public anon key could read, write, and truncate both. 061 turns RLS on, keeps own-row select/insert on agreements, and leaves idempotency keys to `service_role` only
+- **No app changes.** Edge functions already use the service-role client in `_shared/idempotency.ts`. The iOS agreement write uses the signed-in user JWT, which the insert policy allows
+
 ### Branding & Design System
 - **App Icon**: Custom Booki wordmark on electric cyan background (1024x1024)
 - **Launch Screen**: Electric cyan background → SwiftUI loading view with logo and spinner
@@ -460,8 +465,8 @@ The Supabase database has these tables:
 - `bets` - All bets placed, includes `policy_violation_reason` for review queue
 - `ledger_entries` - Financial transactions
 - `acceptance_policies` - Bet acceptance rules (stake limits, parlay rules, new player thresholds)
-- `user_agreements` - Terms of Service acceptances (immutable)
-- `idempotency_keys` - Deduplication for Edge Functions
+- `user_agreements` - Terms of Service acceptances (immutable). Migration 061 enables RLS: an authenticated user can select and insert only their own row. No update or delete
+- `idempotency_keys` - Deduplication for Edge Functions. Migration 061 enables RLS with no policies and revokes anon/authenticated grants, so only `service_role` can use the table
 - `audit_events` - Audit trail for all bet actions
 
 Most tables have `bookie_id` for multi-tenant isolation. Exception: `events` table has nullable `bookie_id` - shared events (NULL) are visible to all bookies.
@@ -515,4 +520,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: November 16, 2026 - Invite expiry copy matches the server: addressed invites don't expire, link invites last 7 days, the invite email links to bookisports.com. QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*
+*Last updated: November 17, 2026 - Migration 061 (not applied yet) enables RLS on user_agreements and idempotency_keys and revokes anon/authenticated grants. Invite expiry copy matches the server: addressed invites don't expire, link invites last 7 days, the invite email links to bookisports.com. QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*

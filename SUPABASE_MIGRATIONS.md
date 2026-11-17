@@ -14,6 +14,13 @@ Track all SQL changes needed in Supabase when updating the app.
 
 ## Pending Migrations
 
+### 061 — RLS on user_agreements and idempotency_keys
+
+**Not applied.** `supabase/migrations/061_enable_rls_agreements_and_idempotency.sql`
+turns RLS on for both tables and revokes anon/authenticated grants. Apply it in
+the SQL editor after review. Do not deploy anything with it. Rollback and the
+post-apply checks are in the pull request.
+
 ### The Odds API Integration
 
 **Required for:** PRD - Odds API Integration (when implemented)
@@ -37,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 
 > **Note:** this file records migrations narratively and stopped being updated
 > around 030. The repo's `supabase/migrations/` directory is the authoritative
-> list — it runs to 058 — and `scripts/check-migrations.py` verifies numbering.
+> list — it runs to 061, and 061 is not applied yet — and `scripts/check-migrations.py` verifies numbering.
 > The entries below cover the most recent work; older gaps are not backfilled.
 
 ### 2026-08-28: MLB Player Props (056–058)
