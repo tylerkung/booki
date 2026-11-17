@@ -4,6 +4,7 @@ import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { sendNotification } from '../_shared/notifications.ts';
 import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
+import { resolveStoredLeg } from '../_shared/market_validation.ts';
 
 interface SubmitBetRequest {
   event_id: string;
@@ -248,7 +249,7 @@ Deno.serve(async (req) => {
     const normalizedMarketId = body.market_id?.toLowerCase();
     const { data: market, error: marketError } = await client
       .from('markets')
-      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable')
+      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable, stat_key, subject_player_id')
       .eq('id', normalizedMarketId)
       .single();
 
@@ -271,8 +272,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Resolve the full side label from the market
-    const resolvedSide = body.side === 'a' ? market.side_a : market.side_b;
+    // Store the market type and the side label. body.side is the 'a'/'b' indicator.
+    const stored = resolveStoredLeg(market, body.side);
+    if (!stored.ok) {
+      return new Response(
+        JSON.stringify({ success: false, error: stored.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const resolvedSide = stored.side;
 
     const superseded = await supersededMarketIds(client, [market.id]);
     if (superseded.has(String(market.id).toLowerCase())) {
@@ -308,7 +316,7 @@ Deno.serve(async (req) => {
 
     // Line moved in the member's favour — give them the better price.
     const priceToStore = isBetterForMember(currentOdds, body.odds) ? currentOdds : body.odds;
-    const marketType = market.type; // 'moneyline', 'spread', 'total'
+    const marketType = stored.market;
 
     // Generate ticket_id for this bet submission
     const ticketId = crypto.randomUUID();
@@ -325,6 +333,9 @@ Deno.serve(async (req) => {
         market: marketType,
         market_id: market.id,
         side: resolvedSide,
+        stat_key: stored.snapshot.stat_key,
+        subject_player_id: stored.snapshot.subject_player_id,
+        prop_line: stored.snapshot.prop_line,
         odds: priceToStore,
         stake: stakeNum,
         status: betStatus,

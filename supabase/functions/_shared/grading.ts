@@ -8,7 +8,21 @@
  */
 
 // GradeResult matches Swift GradeResult enum: win, loss, push
-export type GradeResult = 'win' | 'loss' | 'push';
+export type GradeResult = 'win' | 'loss' | 'push' | 'deferred';
+
+/**
+ * Player props and futures are not gradeable from a final score.
+ *
+ * refresh_live_scores and the catch-up job used to call gradeBet on every
+ * accepted bet. Props fell through to the default branch, came back as a
+ * push, and were settled — about five minutes after the game went final,
+ * before grade_player_props (which only looks at still-open bets) could run.
+ * Callers must leave a deferred market untouched.
+ */
+export function isDeferredMarket(market: string | null | undefined): boolean {
+  const name = (market ?? '').toLowerCase();
+  return name === 'player_prop' || name === 'outright' || name === 'futures';
+}
 
 export interface BetInfo {
   id: string;
@@ -370,10 +384,17 @@ export function gradeBet(bet: BetInfo, scores: EventScores): GradeOutcome {
     case 'odd_even':
       return gradeOddEvenBet(bet, scores);
 
-    case 'outright':
+    case 'player_prop':
       return {
-        result: 'push',
-        gradeDetails: 'Outright/futures market: manual grading required.',
+        result: 'deferred',
+        gradeDetails: 'Player prop: left open for grade_player_props. Not graded from the final score.',
+      };
+
+    case 'outright':
+    case 'futures':
+      return {
+        result: 'deferred',
+        gradeDetails: 'Outright/futures market: left open for manual grading. Not settled as a push.',
       };
 
     default:

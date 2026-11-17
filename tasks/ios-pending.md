@@ -506,3 +506,27 @@ Match the web modal (`DELETE_ACCOUNT_COPY` in `landing/dashboard/dashboard.js`).
 - [ ] Move Delete Account out from under Step Down into its own Danger zone at the bottom of organizer Settings.
 
 The no-refund sentence matches the server. `supabase/functions/delete_account/index.ts` cancels with `DELETE https://api.stripe.com/v1/subscriptions/{stripe_subscription_id}` and no body. That is an immediate cancel (`cancel_at_period_end` is not set; that would be a POST). `prorate` and `invoice_now` are omitted. Stripe's cancel endpoint documents both defaults as `false`, so this does not create a proration credit and does not refund the current period. Do not soften or strengthen that sentence unless the function starts sending those parameters.
+
+## B17 — Prop voids and repriced multi-picks display wrong
+
+Not built. iOS only. The server now grades props and reprices a multi-pick
+after a void or push leg. Shipped builds will show that wrong.
+
+`GradeResult` (`Booki/Models/Bet.swift`) is `win | loss | push`. A voided prop
+is stored as `grade_result = 'void'`. `GradeResult(rawValue:)` fails, so the
+leg syncs with a nil result and looks ungraded even after `settle_bet_tx`
+marks it settled.
+
+`TrackView.combinedStatus` returns `.void` when **any** leg has `status == .void`.
+A 4-leg multi-pick with two voided legs and two wins is a win at the repriced
+2-leg price on the server, and the whole ticket on iOS. `TicketDetailView`
+already drops void and push legs when it recomputes the odds, but it never
+gets there once `combinedStatus` is `.void`.
+
+The web dashboard was updated with the same rules. iOS was not, because this
+session cannot compile it.
+
+- [ ] Add `void` to `GradeResult` and decode it
+- [ ] `combinedStatus` must not treat one voided leg as a voided ticket. A ticket is void only when every leg is void or push
+- [ ] A loss on any leg is a loss even if another leg is still open
+- [ ] The displayed payout has to use the legs that were not voided or pushed, matching `decideParlay` in `supabase/functions/_shared/parlay_settle.ts`
