@@ -1,5 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
+import { authorizeClaimRequest } from '../_shared/claim_auth.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { sendNotification } from '../_shared/notifications.ts';
@@ -12,8 +13,21 @@ interface ClaimInviteRequest {
    * to type — they only have the address the invite was sent to.
    */
   invite_code?: string;
-  auth_user_id: string;
+  /**
+   * Optional when the Authorization header is a user JWT: the caller is that
+   * user. If present, it must match the JWT. With no user JWT (the shipped iOS
+   * signup sends the anon key), the body id is accepted only for an
+   * unconfirmed account that is not an organizer. See authorizeClaimRequest.
+   */
+  auth_user_id?: string;
   idempotency_key?: string;
+}
+
+function claimError(status: number, error: string): Response {
+  return new Response(
+    JSON.stringify({ success: false, error }),
+    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 }
 
 Deno.serve(async (req) => {
@@ -33,18 +47,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!body.auth_user_id || typeof body.auth_user_id !== 'string') {
-      return new Response(
-        JSON.stringify({ success: false, error: 'auth_user_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const normalizedCode = body.invite_code?.trim().toUpperCase() ?? null;
-    const authUserId = body.auth_user_id.toLowerCase();
 
-    // Use service role to bypass RLS
+    // Use service role to bypass RLS. The caller is still taken from the JWT,
+    // not from this client: authorizeClaimRequest rejects a body id that is
+    // not the signed-in user, and it runs before the idempotency cache so a
+    // forged retry cannot replay someone else's success.
     const client = createServiceClient();
+    const caller = await authorizeClaimRequest(
+      client,
+      req.headers.get('Authorization'),
+      body.auth_user_id,
+    );
+    if (!caller.ok) return claimError(caller.status, caller.error);
+
+    const authUserId = caller.userId;
+    const authUser = { user: caller.user };
 
     // Check idempotency if key provided
     if (body.idempotency_key) {
@@ -55,15 +73,6 @@ Deno.serve(async (req) => {
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-    }
-
-    // Verify the auth user actually exists
-    const { data: authUser, error: authError } = await client.auth.admin.getUserById(authUserId);
-    if (authError || !authUser?.user) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid auth_user_id' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
 
     // Resolve the invite either by code, or — when no code was supplied — by the
@@ -252,8 +261,9 @@ Deno.serve(async (req) => {
       // Non-fatal — player was already created, continue
     }
 
-    // Auto-confirm email on auth user (invite code serves as verification)
-    if (!authUser.user.email_confirmed_at) {
+    // Confirm only for a request whose user JWT matches this account.
+    // The interim anon-key path (shipped iOS signup) must not confirm email.
+    if (caller.confirmEmail && !authUser.user.email_confirmed_at) {
       const { error: confirmError } = await client.auth.admin.updateUserById(authUserId, {
         email_confirm: true,
       });

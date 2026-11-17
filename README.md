@@ -486,6 +486,8 @@ Server-authoritative functions running on Supabase (Deno/TypeScript):
 
 All functions validate JWT auth, check idempotency, and emit audit events.
 
+`claim_invite` and `claim_player` take the caller from the user JWT. A body `auth_user_id` that names someone else is rejected. With no user JWT, the body id is accepted only for an account that has not confirmed its email and is not an organizer, and that request does not confirm the email. The web dashboard sends the session access token on `claim_invite`. iOS signup still sends the anon key (`tasks/ios-pending.md`, B14).
+
 ---
 
 ## Saved for Future

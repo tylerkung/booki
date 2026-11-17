@@ -1,5 +1,19 @@
-import { callEdge, uuid, getServiceClient } from '../lib/client.js';
+import { callEdge as sendEdge, uuid, getServiceClient, signInFresh } from '../lib/client.js';
 import { eq, ok, neq } from '../lib/assert.js';
+
+// Confirmed accounts must present their own user JWT. These calls were written
+// against the old body-id contract; signing the named user in here keeps the
+// assertions below intact. An unconfirmed account is left without a token so
+// the interim path can still be exercised.
+async function callEdge(fn, body, token = null) {
+  if ((fn === 'claim_invite' || fn === 'claim_player') && !token && body && typeof body.auth_user_id === 'string') {
+    const { data } = await getServiceClient().auth.admin.getUserById(body.auth_user_id);
+    if (data?.user?.email && data.user.email_confirmed_at) {
+      token = await signInFresh(data.user.email, 'TestPass123!');
+    }
+  }
+  return sendEdge(fn, body, token);
+}
 
 /**
  * Addressed (email) invites, and the signup path that claims them.

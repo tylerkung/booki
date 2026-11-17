@@ -320,6 +320,26 @@ later change recovers it.
 Until then, read the admin Attribution view knowing the denominator is
 web signups only.
 
+## B14 — Send the user JWT to `claim_invite` and `claim_player`
+
+Not built. iOS only. The web dashboard already sends the session access token
+on `claim_invite` (`callEdgeFunction`). It does not call `claim_player`.
+
+`InviteClaimView.createAccount` posts to `claim_invite` with
+`Authorization: Bearer <anon key>` and `body.auth_user_id` of the new user.
+A signed-in login on that screen already sends the session access token.
+`claim_invite` and `claim_player` now take the caller from the user JWT.
+
+Interim, so the shipped signup build can still join: a request with no user
+JWT may pass `body.auth_user_id` only when that account is not email-confirmed
+and does not organize a group. That path does **not** auto-confirm the email.
+After this ships, iOS signup still creates the member, but the address stays
+unconfirmed until the confirmation link — `completePlayerClaimFlow` used to
+rely on the old auto-confirm.
+
+- [ ] Send the signed-in user's access token, not the anon key, on `claim_invite` and `claim_player`
+- [ ] Once every shipped iOS build does that, remove the interim unauthenticated path in `authorizeClaimRequest`
+
 ## B9 — Move invite validation onto `get_invite()`, then drop the `USING (true)` policy
 
 **Blocking a security fix.** Migration 010 created:

@@ -1,24 +1,22 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
+import { authorizeClaimRequest } from '../_shared/claim_auth.ts';
 
 /**
  * claim_player Edge Function
  *
- * Called by a player after signUp to link their auth account to their player record.
- * Uses service role to bypass RLS (players can't update their own record via RLS).
+ * Links an auth account to an existing unclaimed player row. Uses the service
+ * role to bypass RLS (players can't update their own record via RLS).
  *
  * Request body:
- *   - invite_code: string (the invite code used during signup)
- *   - auth_user_id: string (the newly created auth user's UUID)
+ *   - invite_code: string (the invite code on the player row)
+ *   - auth_user_id: optional when the Authorization header is a user JWT
  *
- * Security:
- *   - The invite code itself is the authentication factor (shared secret between bookie and player)
- *   - Only updates a player record that has NO auth_user_id yet (unclaimed)
- *   - Only updates the record matching the invite_code
- *   - auth_user_id is verified to exist in auth.users via service role
- *
- * Note: JWT auth is not used because signUp with email confirmation enabled
- * does not produce a valid session token. The invite code serves as auth.
+ * The caller comes from the user JWT. A body id that names someone else is
+ * 403. With no user JWT, the body id is accepted only for an unconfirmed
+ * account that is not an organizer, and that path does not confirm email.
+ * The web dashboard does not call this function; claim_invite is the join
+ * path. Shipped iOS signup calls claim_invite with the anon key.
  */
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -35,40 +33,24 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    if (!auth_user_id || typeof auth_user_id !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'auth_user_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const normalizedCode = invite_code.trim().toUpperCase();
-    const userId = auth_user_id.toLowerCase();
 
-    // Use service role to bypass RLS
+    // Service role bypasses RLS. The caller is still the JWT user.
     const serviceClient = createServiceClient();
-
-    // Verify the auth user actually exists
-    const { data: authUser, error: authError } = await serviceClient.auth.admin.getUserById(userId);
-    if (authError || !authUser?.user) {
+    const caller = await authorizeClaimRequest(
+      serviceClient,
+      req.headers.get('Authorization'),
+      auth_user_id,
+    );
+    if (!caller.ok) {
       return new Response(
-        JSON.stringify({ error: 'Invalid auth_user_id' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: caller.error }),
+        { status: caller.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Auto-confirm the email — the invite code serves as verification,
-    // so email confirmation is redundant. Without this, the session JWT
-    // from signUp is invalid and the player can't call edge functions.
-    if (!authUser.user.email_confirmed_at) {
-      const { error: confirmError } = await serviceClient.auth.admin.updateUserById(userId, {
-        email_confirm: true,
-      });
-      if (confirmError) {
-        console.error('Failed to confirm email:', confirmError);
-        // Non-fatal — continue with claim
-      }
-    }
+    const userId = caller.userId;
+    const authUser = { user: caller.user };
 
     // First verify the player record exists, is unclaimed, and matches the invite code
     const { data: player, error: fetchError } = await serviceClient
@@ -109,6 +91,17 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Failed to claim account' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // A matching user JWT may confirm the email. The interim path (no user
+    // JWT) must not — caller.confirmEmail is false there.
+    if (caller.confirmEmail && !authUser.user.email_confirmed_at) {
+      const { error: confirmError } = await serviceClient.auth.admin.updateUserById(userId, {
+        email_confirm: true,
+      });
+      if (confirmError) {
+        console.error('Failed to confirm email:', confirmError);
+      }
     }
 
     return new Response(
