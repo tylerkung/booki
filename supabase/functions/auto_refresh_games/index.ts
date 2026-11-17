@@ -4,6 +4,7 @@ import { emitAuditEvent } from '../_shared/audit.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { gradeBet, isDeferredMarket, leaveOpen, type BetInfo, type EventScores } from '../_shared/grading.ts';
 import { settleReadyParlays } from '../_shared/parlay_apply.ts';
+import { settleBetTx } from '../_shared/settle_tx.ts';
 import { sendNotification } from '../_shared/notifications.ts';
 import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
 import {
@@ -615,7 +616,6 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
               const { error: updateError } = await client
                 .from('bets')
                 .update({
-                  status: 'settled',
                   grade_result: gradeOutcome.result,
                   updated_at: new Date().toISOString(),
                 })
@@ -623,67 +623,26 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
                 .eq('status', 'accepted');
 
               if (updateError) {
-                console.error(`Catch-up: error settling bet ${bet.id}:`, updateError);
+                console.error(`Catch-up: error grading bet ${bet.id}:`, updateError);
                 continue;
               }
 
-              // Check for existing ledger entry to prevent duplicates
-              const { data: existingCatchupEntry } = await client
-                .from('ledger_entries')
-                .select('id')
-                .eq('bet_id', bet.id)
-                .eq('type', 'settlement')
-                .limit(1);
+              const posted = await settleBetTx(client, {
+                betId: bet.id,
+                actorUserId: bookie?.auth_user_id ?? null,
+                idempotencyKey: `auto_settle_catchup_${bet.id}`,
+                mode: 'auto',
+              });
+              if (posted.error || !posted.result) {
+                console.error(`Catch-up: error settling bet ${bet.id}:`, posted.error);
+                continue;
+              }
 
-              if (existingCatchupEntry && existingCatchupEntry.length > 0) {
-                console.log(`Catch-up: skipping ledger entry for bet ${bet.id} — already exists`);
+              const payoutAmount = Number(posted.result.ledger_entry?.amount ?? 0);
+              if (posted.result.idempotent) {
+                console.log(`Catch-up: bet ${bet.id} already settled`);
                 catchupBetsSettled++;
                 continue;
-              }
-
-              const stake = Number(bet.stake);
-              const odds = Number(bet.odds);
-              let payoutAmount = 0;
-              if (gradeOutcome.result === 'win') {
-                const profit = odds > 0
-                  ? stake * (odds / 100)
-                  : stake * (100 / Math.abs(odds));
-                payoutAmount = -profit;
-              } else if (gradeOutcome.result === 'loss') {
-                payoutAmount = stake;
-              }
-
-              const descriptionMap: Record<string, string> = { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed', void: 'Bet voided' };
-              const description = descriptionMap[gradeOutcome.result] || 'Bet settled';
-              const { data: ledgerEntry, error: ledgerError } = await client
-                .from('ledger_entries')
-                .insert({
-                  bookie_id: bet.bookie_id,
-                  player_id: bet.player_id,
-                  bet_id: bet.id,
-                  amount: payoutAmount,
-                  type: 'settlement',
-                  description: description,
-                })
-                .select()
-                .single();
-
-              // Write settlement_events row for audit trail
-              if (ledgerEntry && !ledgerError) {
-                try {
-                  await client
-                    .from('settlement_events')
-                    .insert({
-                      bookie_id: bet.bookie_id,
-                      bet_id: bet.id,
-                      mode: 'auto',
-                      actor_user_id: bookie?.auth_user_id ?? null,
-                      idempotency_key: `auto_settle_catchup_${bet.id}_${Date.now()}`,
-                      ledger_entry_ids: [ledgerEntry.id],
-                    });
-                } catch (seError) {
-                  console.error(`Catch-up: error writing settlement_event for bet ${bet.id}:`, seError);
-                }
               }
 
               if (bookie?.auth_user_id) {
@@ -1965,11 +1924,12 @@ Deno.serve(async (req) => {
                           continue;
                         }
 
-                        // Update bet with grade result — go straight to 'settled' (only if still accepted)
+                        // Grade first. settle_bet_tx sets status and posts the
+                        // ledger together, and returns the existing row if the
+                        // live settler already paid this bet.
                         const { error: updateError } = await client
                           .from('bets')
                           .update({
-                            status: 'settled',
                             grade_result: gradeOutcome.result,
                             updated_at: new Date().toISOString(),
                           })
@@ -1977,76 +1937,28 @@ Deno.serve(async (req) => {
                           .eq('status', 'accepted');
 
                         if (updateError) {
-                          console.error(`Error settling bet ${bet.id}:`, updateError);
+                          console.error(`Error grading bet ${bet.id}:`, updateError);
                           gradingErrors.push(`Bet ${bet.id}: ${updateError.message}`);
                           continue;
                         }
 
-                        // Check for existing ledger entry to prevent duplicates
-                        const { data: existingEntry } = await client
-                          .from('ledger_entries')
-                          .select('id')
-                          .eq('bet_id', bet.id)
-                          .eq('type', 'settlement')
-                          .limit(1);
-
-                        if (existingEntry && existingEntry.length > 0) {
-                          console.log(`Skipping ledger entry for bet ${bet.id} — already exists`);
-                          gradedCount++;
+                        const posted = await settleBetTx(client, {
+                          betId: bet.id,
+                          actorUserId: game.bookie_auth_user_id ?? null,
+                          idempotencyKey: `auto_settle_${bet.id}`,
+                          mode: 'auto',
+                        });
+                        if (posted.error || !posted.result) {
+                          console.error(`Error settling bet ${bet.id}:`, posted.error);
+                          gradingErrors.push(`Bet ${bet.id}: ${posted.error}`);
                           continue;
                         }
 
-                        // Create ledger entry for the settlement
-                        const stake = Number(bet.stake);
-                        const odds = Number(bet.odds);
-                        let payoutAmount = 0;
-                        if (gradeOutcome.result === 'win') {
-                          // Player wins: profit is negative (bookie owes player)
-                          const profit = odds > 0
-                            ? stake * (odds / 100)
-                            : stake * (100 / Math.abs(odds));
-                          payoutAmount = -profit;
-                        } else if (gradeOutcome.result === 'loss') {
-                          // Player loses: stake is positive (player owes bookie)
-                          payoutAmount = stake;
-                        }
-                        // Always create ledger entry — including $0 for push/void
-                        const descriptionMap: Record<string, string> = { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed', void: 'Bet voided' };
-                        const description = descriptionMap[gradeOutcome.result] || 'Bet settled';
-                        const { data: ledgerEntry, error: ledgerError } = await client
-                          .from('ledger_entries')
-                          .insert({
-                            bookie_id: bet.bookie_id,
-                            player_id: bet.player_id,
-                            bet_id: bet.id,
-                            amount: payoutAmount,
-                            type: 'settlement',
-                            description: description,
-                          })
-                          .select()
-                          .single();
-
-                        if (ledgerError) {
-                          console.error(`Error creating ledger entry for bet ${bet.id}:`, ledgerError);
-                          gradingErrors.push(`Bet ${bet.id}: ledger entry failed - ${ledgerError.message}`);
-                        }
-
-                        // Write settlement_events row for audit trail
-                        if (ledgerEntry && !ledgerError) {
-                          try {
-                            await client
-                              .from('settlement_events')
-                              .insert({
-                                bookie_id: bet.bookie_id,
-                                bet_id: bet.id,
-                                mode: 'auto',
-                                actor_user_id: game.bookie_auth_user_id ?? null,
-                                idempotency_key: `auto_settle_${bet.id}_${Date.now()}`,
-                                ledger_entry_ids: [ledgerEntry.id],
-                              });
-                          } catch (seError) {
-                            console.error(`Error writing settlement_event for bet ${bet.id}:`, seError);
-                          }
+                        const payoutAmount = Number(posted.result.ledger_entry?.amount ?? 0);
+                        if (posted.result.idempotent) {
+                          console.log(`Skipping duplicate settlement for bet ${bet.id}`);
+                          gradedCount++;
+                          continue;
                         }
 
                         // Emit audit event for auto-graded and settled bet

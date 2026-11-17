@@ -14,6 +14,10 @@ Track all SQL changes needed in Supabase when updating the app.
 
 ## Pending Migrations
 
+### 063 — one active settlement (NOT applied)
+
+Does not update or delete ledger rows. A BEFORE INSERT trigger rejects a second active settlement for a bet and for a parlay ticket (active = settlement minus reversal). `settlement_events.idempotency_key` gains a unique index where the key is not null. `settle_bet_tx` is idempotent and uses settlement_version max+1. Apply by hand, then deploy `refresh_live_scores`, `auto_refresh_games`, and `settle_parlay`. `grade_player_props` already calls `settle_bet_tx` and does not need a new deploy for the guard. Do not deploy before the migration: `settle_parlay` calls `settle_parlay_tx`.
+
 ### 062 — bet prop snapshot (NOT applied)
 
 Additive only. Adds nullable `bets.stat_key`, `bets.subject_player_id`, and

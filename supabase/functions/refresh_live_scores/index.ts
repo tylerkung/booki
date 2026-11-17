@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
 import { gradeBet, isDeferredMarket, leaveOpen, type BetInfo, type EventScores } from '../_shared/grading.ts';
 import { settleReadyParlays } from '../_shared/parlay_apply.ts';
+import { settleBetTx } from '../_shared/settle_tx.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
 
@@ -303,73 +304,30 @@ Deno.serve(async (req) => {
                       continue;
                     }
 
-                    // Singles: grade + settle + ledger entry
-                    // Convention: positive = player owes bookie, negative = bookie owes player
-                    let payoutAmount = 0;
-                    if (gradeOutcome.result === 'win') {
-                      const stake = typeof bet.stake === 'number' ? bet.stake : parseFloat(String(bet.stake));
-                      const odds = typeof bet.odds === 'number' ? bet.odds : parseFloat(String(bet.odds));
-                      const profit = odds > 0
-                        ? stake * (odds / 100)
-                        : stake * (100 / Math.abs(odds));
-                      payoutAmount = -profit; // Bookie owes player
-                    } else if (gradeOutcome.result === 'loss') {
-                      const stake = typeof bet.stake === 'number' ? bet.stake : parseFloat(String(bet.stake));
-                      payoutAmount = stake; // Player owes bookie
-                    }
-
-                    const { error: settleUpdateError } = await client.from('bets').update({
-                      status: 'settled',
+                    // Record the grade, then let settle_bet_tx flip status and
+                    // post the ledger in one transaction. grade_details and
+                    // settled_amount are not columns; sending them made this
+                    // update 400 and the old code wrote the ledger anyway.
+                    const { error: gradeError } = await client.from('bets').update({
                       grade_result: gradeOutcome.result,
+                      updated_at: new Date().toISOString(),
                     }).eq('id', bet.id).eq('status', 'accepted');
-                    if (settleUpdateError) {
-                      console.error(`Live scores: bet ${bet.id} was not updated, ledger not written:`, settleUpdateError);
-                      errors.push(`Bet ${bet.id}: ${settleUpdateError.message}`);
+                    if (gradeError) {
+                      console.error(`Live scores: bet ${bet.id} was not graded, ledger not written:`, gradeError);
+                      errors.push(`Bet ${bet.id}: ${gradeError.message}`);
                       continue;
                     }
 
-                    // Check for existing ledger entry to prevent duplicates
-                    const { data: existingLedger } = await client
-                      .from('ledger_entries')
-                      .select('id')
-                      .eq('bet_id', bet.id)
-                      .eq('type', 'settlement')
-                      .limit(1);
-
-                    if (existingLedger && existingLedger.length > 0) {
-                      console.log(`Live scores: skipping ledger entry for bet ${bet.id} — already exists`);
-                      betsGraded++;
+                    const posted = await settleBetTx(client, {
+                      betId: bet.id,
+                      actorUserId: null,
+                      idempotencyKey: `live_settle_${bet.id}`,
+                      mode: 'auto',
+                    });
+                    if (posted.error) {
+                      console.error(`Live scores: bet ${bet.id} was not settled:`, posted.error);
+                      errors.push(`Bet ${bet.id}: ${posted.error}`);
                       continue;
-                    }
-
-                    const descriptionMap: Record<string, string> = { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed', void: 'Bet voided' };
-                    const description = descriptionMap[gradeOutcome.result] || 'Bet settled';
-
-                    const { data: ledgerEntry } = await client
-                      .from('ledger_entries')
-                      .insert({
-                        bookie_id: bet.bookie_id,
-                        player_id: bet.player_id,
-                        bet_id: bet.id,
-                        amount: payoutAmount,
-                        type: 'settlement',
-                        description: description,
-                      })
-                      .select()
-                      .single();
-
-                    if (ledgerEntry) {
-                      try {
-                        await client.from('settlement_events').insert({
-                          bookie_id: bet.bookie_id,
-                          bet_id: bet.id,
-                          mode: 'auto',
-                          idempotency_key: `live_settle_${bet.id}_${Date.now()}`,
-                          ledger_entry_ids: [ledgerEntry.id],
-                        });
-                      } catch (seError) {
-                        console.error(`Error writing settlement_event for bet ${bet.id}:`, seError);
-                      }
                     }
 
                     betsGraded++;
