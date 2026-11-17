@@ -5,7 +5,6 @@ import vm from 'node:vm';
 
 import { gradeBet, isDeferredMarket } from './grading.ts';
 import { deployedSingleSideAccepted, legStorageError, resolveStoredLeg, singleBetIndicator } from './market_validation.ts';
-import { settleTicketOnce } from './parlay_claim.ts';
 import { decideParlay, parlaySettlementKey, parlayTooManyLegs, placeParlayIfAllowed, roundCents } from './parlay_settle.ts';
 import { gradeProp, parsePropSide, resolvePropTarget } from './prop_stats.ts';
 import { settlementAmount } from './settlement_math.ts';
@@ -273,10 +272,14 @@ const scoringZeros = {
 };
 
 test('an unknown stat key stays pending and is not refunded', () => {
-  const out = gradeProp('player_made_up', 'Mark Andrews Over 2.5', receptions(8), { statsFinal: true });
-  assert.equal(out.result, 'pending');
-  assert.match(out.detail, /manual review/);
-  assert.notEqual(out.result, 'void');
+  const played = gradeProp('player_made_up', 'Mark Andrews Over 2.5', receptions(8), { statsFinal: true });
+  const absent = gradeProp('player_made_up', 'Mark Andrews Over 2.5', null, { statsFinal: true });
+  assert.equal(played.result, 'pending');
+  assert.equal(absent.result, 'pending');
+  assert.match(played.detail, /manual review/);
+  assert.match(absent.detail, /manual review/);
+  assert.notEqual(played.result, 'void');
+  assert.notEqual(absent.result, 'void');
 });
 
 test('an unknown market type is manual review, not a push', () => {
@@ -305,10 +308,10 @@ test('a missing stat field stays pending and a real zero is a zero', () => {
 
 test('d84e919e loss, win, void, void is a loss of the $100 stake', () => {
   const decision = decideParlay(100, [
-    leg('loss', -110),
-    leg('win', -151),
-    leg('void', -110),
-    leg('void', 120),
+    leg('loss', -360),
+    leg('win', -344),
+    leg('void', -217),
+    leg('void', -408),
   ]);
   assert.equal(decision.action, 'settle');
   assert.equal(decision.outcome, 'loss');
@@ -327,7 +330,12 @@ test('Andrews O2.5 $50 at -151 with 8 receptions wins $33.11', () => {
 test('Henry O81.5 with 10 rush yards loses, Flowers O70.5 with 74 wins, Henry U1.5 loses', () => {
   const henryOver = gradeProp('player_rush_yds', 'Derrick Henry Over 81.5', rush(10), { statsFinal: true });
   const flowers = gradeProp('player_reception_yds', 'Zay Flowers Over 70.5', { receiving_yards: 74 }, { statsFinal: true });
-  const henryUnder = gradeProp('player_rush_yds', 'Derrick Henry Under 1.5', rush(10), { statsFinal: true });
+  const henryUnder = gradeProp(
+    'player_rush_tds',
+    'Derrick Henry Under 1.5',
+    { rushing_yards: 10, rushing_touchdowns: 2 },
+    { statsFinal: true },
+  );
   assert.equal(henryOver.result, 'loss');
   assert.equal(flowers.result, 'win');
   assert.equal(henryUnder.result, 'loss');
@@ -368,6 +376,25 @@ test('half-cent rounding', () => {
   assert.equal(roundCents(-1.225), -1.23);
   const decision = decideParlay(1.225, [leg('win', 100)]);
   assert.equal(decision.profit, 1.23);
+});
+
+test('anytime and over touchdowns treat absent scoring fields as zero', () => {
+  // A skill player who only rushed. Return and fumble touchdowns are absent
+  // on a real NFL statline; they are 0, not a reason to leave the prop pending.
+  const partial = { rushing_yards: 48, rushing_touchdowns: 1, receptions: 0 };
+  const anytime = gradeProp('player_anytime_td', 'Derrick Henry Anytime TD Yes', partial, { statsFinal: true });
+  const over = gradeProp('player_tds_over', 'Derrick Henry Over 0.5', partial, { statsFinal: true });
+  assert.equal(anytime.result, 'win');
+  assert.equal(anytime.actual, 1);
+  assert.equal(over.result, 'win');
+  assert.equal(over.actual, 1);
+
+  const none = gradeProp('player_anytime_td', 'Derrick Henry Anytime TD Yes', { rushing_yards: 10 }, { statsFinal: true });
+  assert.equal(none.result, 'loss');
+  assert.equal(none.actual, 0);
+
+  const dnp = gradeProp('player_anytime_td', 'Derrick Henry Anytime TD Yes', null, { statsFinal: true });
+  assert.equal(dnp.result, 'void');
 });
 
 test('passing touchdowns do not count as an anytime touchdown', () => {
@@ -411,65 +438,35 @@ test('parsePropSide accepts a trailing space and rejects odd input', () => {
   }
 });
 
-function memoryStore(initial) {
-  const legs = initial.map((leg) => ({ ...leg }));
-  const ledgers = [];
-  return {
-    legs,
-    ledgers,
-    failLedger: false,
-    claim(ids, fromStatuses) {
-      const hit = [];
-      for (const leg of legs) {
-        if (ids.includes(leg.id) && fromStatuses.includes(leg.status)) {
-          leg.status = 'settling';
-          hit.push(leg.id);
-        }
-      }
-      return Promise.resolve(hit);
-    },
-    revert(id, toStatus) {
-      const leg = legs.find((row) => row.id === id);
-      if (leg && leg.status === 'settling') leg.status = toStatus;
-      return Promise.resolve();
-    },
-    writeLedger(entry) {
-      if (this.failLedger) return Promise.resolve(null);
-      const row = { id: `led-${ledgers.length}`, ...entry };
-      ledgers.push(row);
-      return Promise.resolve({ id: row.id });
-    },
-    close(ids) {
-      for (const leg of legs) {
-        if (ids.includes(leg.id)) leg.status = 'settled';
-      }
-      return Promise.resolve(true);
-    },
-  };
-}
+test('refresh_live_scores settles singles and does not send dead columns', () => {
+  const source = readFileSync(new URL('../refresh_live_scores/index.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /grade_details\s*:/);
+  assert.doesNotMatch(source, /settled_amount\s*:/);
+  assert.match(source, /settleBetTx\s*\(/);
+  assert.doesNotMatch(source, /from\('ledger_entries'\)\s*\.insert/);
+});
 
-function ticketLegs() {
-  return [
-    { id: 'a', status: 'graded', grade_result: 'loss', odds: -110, stake: 100, bookie_id: 'b', player_id: 'p' },
-    { id: 'c', status: 'graded', grade_result: 'win', odds: -151, stake: 100, bookie_id: 'b', player_id: 'p' },
-    { id: 'd', status: 'void', grade_result: 'void', odds: -110, stake: 100, bookie_id: 'b', player_id: 'p' },
-    { id: 'e', status: 'void', grade_result: 'void', odds: 120, stake: 100, bookie_id: 'b', player_id: 'p' },
-  ];
-}
+test('manual settle_parlay uses the shared RPC and reprices voids', () => {
+  const source = readFileSync(new URL('../settle_parlay/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /settleParlayTx\s*\(/);
+  assert.doesNotMatch(source, /determineParlayOutcome/);
+  assert.doesNotMatch(source, /['"]settling['"]/);
+  const decision = decideParlay(100, [
+    leg('loss', -360),
+    leg('win', -344),
+    leg('void', -217),
+    leg('void', -408),
+  ]);
+  assert.equal(decision.outcome, 'loss');
+  assert.equal(decision.amount, 100);
+  assert.equal(-decision.amount, -100);
+});
 
-test('a second parlay settle is a no-op, and a failed ledger reverts the claim', async () => {
-  const store = memoryStore(ticketLegs());
-  assert.equal(await settleTicketOnce('d84e919e', store.legs, store), 'settled');
-  assert.equal(store.ledgers.length, 1);
-  assert.equal(store.ledgers[0].amount, 100);
-  assert.equal(await settleTicketOnce('d84e919e', store.legs, store), 'noop');
-  assert.equal(store.ledgers.length, 1);
-
-  const failing = memoryStore(ticketLegs());
-  failing.failLedger = true;
-  assert.equal(await settleTicketOnce('d84e919e', failing.legs, failing), 'reverted');
-  assert.deepEqual(failing.ledgers, []);
-  assert.deepEqual(failing.legs.map((leg) => leg.status), ['graded', 'graded', 'void', 'void']);
+test('parlay settlement has no settling status', () => {
+  const apply = readFileSync(new URL('./parlay_apply.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(apply, /['"]settling['"]/);
+  assert.match(apply, /settleParlayTx\s*\(/);
+  assert.throws(() => readFileSync(new URL('./parlay_claim.ts', import.meta.url), 'utf8'));
 });
 
 test('the singles payload still satisfies the deployed submit_bets contract', () => {

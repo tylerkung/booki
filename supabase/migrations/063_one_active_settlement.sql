@@ -124,14 +124,11 @@ AS $$
       AND le.type IN ('settlement', 'reversal');
 $$;
 
--- p_close_open is for a single, whose only row is still 'accepted' when the
--- ledger is written. A parlay passes false: legs that are still accepted or
--- pending stay open (a loss settles the ticket before every leg is graded).
--- Closing those would grade them by accident.
+-- Closes every leg on the ticket except a void. An early loss closes the
+-- legs that have not been played. A void leg keeps status 'void'.
 CREATE OR REPLACE FUNCTION mark_ticket_settled(
     p_ticket_id UUID,
-    p_now TIMESTAMPTZ,
-    p_close_open BOOLEAN
+    p_now TIMESTAMPTZ
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -144,7 +141,7 @@ BEGIN
            updated_at = p_now
      WHERE ticket_id = p_ticket_id
        AND status IS DISTINCT FROM 'settled'
-       AND (p_close_open OR status NOT IN ('accepted', 'pending'));
+       AND status IS DISTINCT FROM 'void';
 END;
 $$;
 
@@ -152,7 +149,7 @@ $$;
 -- run as the migration owner. They are not part of the HTTP API.
 REVOKE ALL ON FUNCTION settlement_ticket_lock(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION active_settlement_count(uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION mark_ticket_settled(uuid, timestamptz, boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION mark_ticket_settled(uuid, timestamptz) FROM PUBLIC;
 DO $$
 BEGIN
     EXECUTE format(
@@ -164,7 +161,7 @@ BEGIN
         current_user
     );
     EXECUTE format(
-        'GRANT EXECUTE ON FUNCTION mark_ticket_settled(uuid, timestamptz, boolean) TO %I',
+        'GRANT EXECUTE ON FUNCTION mark_ticket_settled(uuid, timestamptz) TO %I',
         current_user
     );
 END;
@@ -370,7 +367,7 @@ BEGIN
         -- Close the live-score window for a single: the ledger exists and the
         -- status update was the call that failed. A parlay does not close
         -- legs that are still accepted. This writes bets, not the ledger.
-        PERFORM mark_ticket_settled(v_ticket_id, v_now, NOT v_bet.is_parlay);
+        PERFORM mark_ticket_settled(v_ticket_id, v_now);
 
         v_ledger_json := jsonb_build_object(
             'id', v_existing.id,
@@ -465,7 +462,7 @@ BEGIN
     VALUES (v_bet.bookie_id, v_bet.player_id, p_bet_id, v_payout, 'settlement', v_description, v_now)
     RETURNING id INTO v_ledger_entry_id;
 
-    PERFORM mark_ticket_settled(v_ticket_id, v_now, true);
+    PERFORM mark_ticket_settled(v_ticket_id, v_now);
 
     INSERT INTO settlement_events (
         bookie_id, bet_id, settlement_version, mode, actor_user_id,
@@ -558,10 +555,12 @@ COMMENT ON FUNCTION settle_bet_tx(uuid, uuid, text, text) IS
     'Atomic settlement of one single. Returns the existing active ledger entry and posts nothing when the ticket already has one. Refuses a parlay leg. settlement_version is max+1. v063.';
 
 -- ---------------------------------------------------------------------------
--- settle_parlay_tx. One ledger row for the ticket, on the lowest leg id,
--- and every leg's status, in the same transaction. The caller computes the
--- payout (voided-leg rules live in the edge functions). A second call returns
--- the row already posted and does not apply a new amount.
+-- settle_parlay_tx. One transaction for the ticket. Locks every leg, and if
+-- an active settlement already exists returns it and writes nothing.
+-- Otherwise it decides from the locked legs (a loss settles immediately,
+-- void and push legs are dropped and the rest repriced), writes one ledger
+-- row and one settlement_events row, and closes every leg except voids.
+-- p_amount and p_description are ignored: the locked legs are the decision.
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION settle_parlay_tx(
@@ -585,14 +584,20 @@ DECLARE
     v_active integer;
     v_existing RECORD;
     v_amount DECIMAL(15, 2);
+    v_stake DECIMAL(15, 2);
+    v_decimal NUMERIC;
+    v_profit DECIMAL(15, 2);
     v_description TEXT;
+    v_outcome TEXT;
+    v_loss integer;
+    v_open integer;
+    v_wins integer;
     v_now TIMESTAMPTZ := NOW();
     v_ledger_entry_id UUID;
     v_settlement_event_id UUID;
     v_version integer;
     v_leg_count integer;
     v_ledger_json JSONB;
-    v_ready integer;
     v_key TEXT;
 BEGIN
     IF p_ticket_id IS NULL THEN
@@ -601,10 +606,6 @@ BEGIN
 
     IF p_mode IS NULL OR p_mode NOT IN ('manual', 'auto') THEN
         RETURN jsonb_build_object('success', false, 'error', 'Invalid settlement mode');
-    END IF;
-
-    IF p_amount IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Missing settlement amount');
     END IF;
 
     PERFORM settlement_ticket_lock(p_ticket_id);
@@ -620,8 +621,8 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'No bets found for ticket_id');
     END IF;
 
-    SELECT id, bookie_id, player_id
-      INTO v_anchor, v_bookie_id, v_player_id
+    SELECT id, bookie_id, player_id, stake
+      INTO v_anchor, v_bookie_id, v_player_id, v_stake
       FROM bets
      WHERE ticket_id = p_ticket_id
      ORDER BY id
@@ -666,8 +667,9 @@ BEGIN
          ORDER BY settlement_version ASC
          LIMIT 1;
 
-        -- Do not close legs that are still accepted or pending.
-        PERFORM mark_ticket_settled(p_ticket_id, v_now, false);
+        -- Finish any leg that was still open. Do not turn a void into settled,
+        -- and do not write another ledger row.
+        PERFORM mark_ticket_settled(p_ticket_id, v_now);
 
         v_ledger_json := jsonb_build_object(
             'id', v_existing.id,
@@ -683,31 +685,81 @@ BEGIN
         RETURN jsonb_build_object(
             'success', true,
             'idempotent', true,
+            'already_settled', true,
+            'action', 'settled',
             'ledger_entry', v_ledger_json,
             'settlement_event_id', v_settlement_event_id,
             'legs_settled', v_leg_count
         );
     END IF;
 
-    -- A loss is allowed to settle while other legs are still accepted.
-    -- Those legs stay open. A ticket with nothing graded yet is refused.
-    SELECT count(*)
-      INTO v_ready
-      FROM bets
-     WHERE ticket_id = p_ticket_id
-       AND (grade_result IS NOT NULL OR status IN ('graded', 'void', 'settled'));
+    -- Same rules as decideParlay, applied to the rows just locked.
+    SELECT
+        count(*) FILTER (WHERE standing = 'loss'),
+        count(*) FILTER (WHERE standing = 'open'),
+        count(*) FILTER (WHERE standing = 'win')
+      INTO v_loss, v_open, v_wins
+      FROM (
+        SELECT CASE
+                 WHEN status = 'void' OR grade_result = 'void' THEN 'void'
+                 WHEN grade_result = 'push' OR status = 'push' THEN 'push'
+                 WHEN grade_result = 'loss' THEN 'loss'
+                 WHEN grade_result = 'win' THEN 'win'
+                 ELSE 'open'
+               END AS standing
+          FROM bets
+         WHERE ticket_id = p_ticket_id
+      ) s;
 
-    IF v_ready = 0 THEN
+    IF v_loss = 0 AND v_open > 0 THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'action', 'wait',
+            'idempotent', false,
+            'already_settled', false,
+            'detail', 'legs still open and none have lost'
+        );
+    END IF;
+
+    IF v_loss = 0 AND v_wins = 0 AND v_open = 0 AND v_leg_count > 0
+       AND NOT EXISTS (
+           SELECT 1 FROM bets
+            WHERE ticket_id = p_ticket_id
+              AND (grade_result IS NOT NULL OR status IN ('void', 'graded', 'settled'))
+       ) THEN
         RETURN jsonb_build_object(
             'success', false,
             'error', 'Parlay has no graded legs'
         );
     END IF;
 
-    v_amount := ROUND(p_amount, 2);
-    v_description := NULLIF(btrim(COALESCE(p_description, '')), '');
-    IF v_description IS NULL THEN
-        v_description := format('Multi-Pick (%s legs) settled', v_leg_count);
+    IF v_loss > 0 THEN
+        v_outcome := 'loss';
+        v_amount := ROUND(v_stake, 2);
+        v_description := format('Multi-Pick lost (%s legs)', v_leg_count);
+    ELSIF v_wins = 0 THEN
+        v_outcome := 'void';
+        v_amount := 0;
+        v_description := format('Multi-Pick voided (%s legs, stake refunded)', v_leg_count);
+    ELSE
+        SELECT COALESCE(exp(sum(ln(factor))), 1)
+          INTO v_decimal
+          FROM (
+            SELECT CASE
+                     WHEN odds > 0 THEN 1 + odds / 100.0
+                     WHEN odds < 0 THEN 1 + 100.0 / abs(odds)
+                     ELSE 1
+                   END AS factor
+              FROM bets
+             WHERE ticket_id = p_ticket_id
+               AND grade_result = 'win'
+               AND status IS DISTINCT FROM 'void'
+               AND grade_result IS DISTINCT FROM 'void'
+          ) priced;
+        v_profit := ROUND(v_stake * v_decimal - v_stake, 2);
+        v_amount := ROUND(-v_profit, 2);
+        v_outcome := 'win';
+        v_description := format('Multi-Pick won (%s of %s legs)', v_wins, v_leg_count);
     END IF;
 
     SELECT COALESCE(MAX(settlement_version), 0) + 1
@@ -718,16 +770,22 @@ BEGIN
     -- First auto settlement keeps auto_settle_parlay_<ticket>_v1, which is
     -- the key settleReadyParlays already uses. A re-settle after a reversal
     -- stores the next version instead of writing a second v1 row.
-    v_key := p_idempotency_key;
-    IF v_version > 1 AND v_key = format('auto_settle_parlay_%s_v1', p_ticket_id) THEN
+    v_key := NULLIF(btrim(COALESCE(p_idempotency_key, '')), '');
+    IF v_key IS NULL THEN
         v_key := format('auto_settle_parlay_%s_v%s', p_ticket_id, v_version);
+    ELSIF v_version > 1 AND v_key = format('auto_settle_parlay_%s_v1', p_ticket_id) THEN
+        v_key := format('auto_settle_parlay_%s_v%s', p_ticket_id, v_version);
+    ELSIF v_version > 1 AND EXISTS (
+        SELECT 1 FROM settlement_events WHERE idempotency_key = v_key
+    ) THEN
+        v_key := v_key || '_v' || v_version::text;
     END IF;
 
     INSERT INTO ledger_entries (bookie_id, player_id, bet_id, amount, type, description, created_at)
     VALUES (v_bookie_id, v_player_id, v_anchor, v_amount, 'settlement', v_description, v_now)
     RETURNING id INTO v_ledger_entry_id;
 
-    PERFORM mark_ticket_settled(p_ticket_id, v_now, false);
+    PERFORM mark_ticket_settled(p_ticket_id, v_now);
 
     INSERT INTO settlement_events (
         bookie_id, bet_id, settlement_version, mode, actor_user_id,
@@ -765,6 +823,9 @@ BEGIN
     RETURN jsonb_build_object(
         'success', true,
         'idempotent', false,
+        'already_settled', false,
+        'action', 'settled',
+        'outcome', v_outcome,
         'settlement_version', v_version,
         'legs_settled', v_leg_count,
         'ledger_entry', jsonb_build_object(
@@ -783,7 +844,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION settle_parlay_tx(uuid, uuid, text, text, numeric, text, jsonb) IS
-    'One ledger entry for a parlay ticket. Legs that are still accepted stay open. A second call returns the active entry and posts nothing. v063.';
+    'One transaction per parlay ticket. Decides from the locked legs, posts one ledger row, and closes every leg except voids. A second call returns the active settlement. v063.';
 
 -- Not granted to anon/authenticated. The edge functions call it as service_role.
 -- The migration owner (postgres, in the SQL editor) keeps EXECUTE so the

@@ -9,6 +9,6 @@ DROP TRIGGER IF EXISTS reject_duplicate_active_settlement ON ledger_entries;
 DROP FUNCTION IF EXISTS reject_duplicate_active_settlement();
 DROP INDEX IF EXISTS uq_settlement_events_idempotency_key;
 DROP FUNCTION IF EXISTS settle_parlay_tx(uuid, uuid, text, text, numeric, text, jsonb);
-DROP FUNCTION IF EXISTS mark_ticket_settled(uuid, timestamptz, boolean);
+DROP FUNCTION IF EXISTS mark_ticket_settled(uuid, timestamptz);
 DROP FUNCTION IF EXISTS settlement_ticket_lock(uuid);
 DROP FUNCTION IF EXISTS active_settlement_count(uuid);

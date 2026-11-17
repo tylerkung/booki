@@ -322,8 +322,11 @@ BEGIN
     IF (v_first->>'settlement_version')::integer <> 1 THEN
         RAISE EXCEPTION 'parlay version should be 1: %', v_first;
     END IF;
-    IF (v_first->'ledger_entry'->>'amount')::numeric <> -12.34 THEN
-        RAISE EXCEPTION 'parlay amount not stored: %', v_first;
+    IF (v_first->>'outcome') IS DISTINCT FROM 'win' THEN
+        RAISE EXCEPTION 'two winning legs should win: %', v_first;
+    END IF;
+    IF (v_first->'ledger_entry'->>'amount')::numeric >= 0 THEN
+        RAISE EXCEPTION 'a winning parlay should credit the member: %', v_first;
     END IF;
     IF v_first->'ledger_entry'->>'bet_id' IS DISTINCT FROM v_anchor::text THEN
         RAISE EXCEPTION 'parlay ledger should hang off the lowest leg id, got %', v_first->'ledger_entry'->>'bet_id';
@@ -331,7 +334,8 @@ BEGIN
     IF (v_second->>'idempotent')::boolean IS NOT TRUE THEN
         RAISE EXCEPTION 'second parlay settle should be idempotent: %', v_second;
     END IF;
-    IF (v_second->'ledger_entry'->>'amount')::numeric <> -12.34 THEN
+    IF (v_second->'ledger_entry'->>'amount')::numeric
+       IS DISTINCT FROM (v_first->'ledger_entry'->>'amount')::numeric THEN
         RAISE EXCEPTION 'idempotent parlay returned a new amount: %', v_second;
     END IF;
 
@@ -392,58 +396,125 @@ BEGIN
     RAISE NOTICE 'PASS parlay ticket has one settlement; a per-leg insert is rejected';
 END $$;
 
--- A loss can settle while another leg is still accepted. That leg stays open.
--- The guard is the ticket, so settle_bet_tx on the open leg does not pay it.
+-- S1: a loss settles the ticket, including the unplayed leg. Grading that
+-- leg later must not post a second row. The void leg stays void.
 DO $$
 DECLARE
-    v_result jsonb;
+    v_first jsonb;
+    v_second jsonb;
     v_rows integer;
-    v_open text;
+    v_amount numeric;
+    v_void text;
 BEGIN
-    v_result := settle_parlay_tx(
+    v_first := settle_parlay_tx(
         'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
         NULL,
         'auto_settle_parlay_eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee_v1',
         'auto',
-        20,
-        'Multi-Pick lost (2 legs)',
+        NULL,
+        NULL,
         NULL
     );
-    IF (v_result->>'success')::boolean IS NOT TRUE THEN
-        RAISE EXCEPTION 'early-loss parlay should settle: %', v_result;
+    IF (v_first->>'success')::boolean IS NOT TRUE OR (v_first->>'outcome') IS DISTINCT FROM 'loss' THEN
+        RAISE EXCEPTION 'early-loss parlay should settle as a loss: %', v_first;
+    END IF;
+    IF (v_first->'ledger_entry'->>'amount')::numeric <> 100 THEN
+        RAISE EXCEPTION 'early loss should post the $100 stake, got %', v_first;
     END IF;
 
-    SELECT status INTO v_open
-      FROM bets
+    IF (SELECT status FROM bets WHERE id = 'dddddddd-dddd-4ddd-8ddd-ddddddddddd2') IS DISTINCT FROM 'settled' THEN
+        RAISE EXCEPTION 'unplayed leg should be closed with the ticket';
+    END IF;
+    SELECT status INTO v_void FROM bets WHERE id = 'dddddddd-dddd-4ddd-8ddd-ddddddddddd3';
+    IF v_void IS DISTINCT FROM 'void' THEN
+        RAISE EXCEPTION 'void leg was overwritten (status %)', v_void;
+    END IF;
+
+    UPDATE bets
+       SET grade_result = 'win', status = 'graded'
      WHERE id = 'dddddddd-dddd-4ddd-8ddd-ddddddddddd2';
-    IF v_open IS DISTINCT FROM 'accepted' THEN
-        RAISE EXCEPTION 'open parlay leg was closed (status %)', v_open;
-    END IF;
 
-    IF (SELECT status FROM bets WHERE id = 'dddddddd-dddd-4ddd-8ddd-ddddddddddd1') IS DISTINCT FROM 'settled' THEN
-        RAISE EXCEPTION 'graded losing leg should be settled';
-    END IF;
-
-    v_result := settle_bet_tx(
-        'dddddddd-dddd-4ddd-8ddd-ddddddddddd2',
+    v_second := settle_parlay_tx(
+        'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
         NULL,
-        'open-leg',
-        'auto'
+        'auto_settle_parlay_eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee_v1',
+        'auto',
+        NULL,
+        NULL,
+        NULL
     );
-    IF (v_result->>'idempotent')::boolean IS NOT TRUE THEN
-        RAISE EXCEPTION 'open parlay leg must not be settled as a single: %', v_result;
+    IF (v_second->>'idempotent')::boolean IS NOT TRUE OR (v_second->>'already_settled')::boolean IS NOT TRUE THEN
+        RAISE EXCEPTION 'grading the remaining leg must not settle again: %', v_second;
     END IF;
 
-    SELECT count(*) INTO v_rows
+    SELECT count(*), max(amount) INTO v_rows, v_amount
       FROM ledger_entries le
       JOIN bets b ON b.id = le.bet_id
      WHERE b.ticket_id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
        AND le.type = 'settlement';
-    IF v_rows <> 1 THEN
-        RAISE EXCEPTION 'early-loss ticket has % settlements', v_rows;
+    IF v_rows <> 1 OR v_amount <> 100 THEN
+        RAISE EXCEPTION 'early-loss ticket should still be one row of 100, got % rows of %', v_rows, v_amount;
     END IF;
 
-    RAISE NOTICE 'PASS early-loss parlay pays the ticket once and leaves the open leg open';
+    RAISE NOTICE 'PASS early loss posts 100 once, closes the open leg, and keeps the void';
+END $$;
+
+-- Andrews O2.5 $50 at -151 wins $33.11. Ledger sign is negative.
+DO $$
+DECLARE
+    v_result jsonb;
+BEGIN
+    v_result := settle_bet_tx(
+        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4',
+        NULL,
+        'andrews-receptions',
+        'auto'
+    );
+    IF (v_result->>'success')::boolean IS NOT TRUE THEN
+        RAISE EXCEPTION 'Andrews settle failed: %', v_result;
+    END IF;
+    IF (v_result->'ledger_entry'->>'amount')::numeric <> -33.11 THEN
+        RAISE EXCEPTION 'Andrews payout should be -33.11, got %', v_result->'ledger_entry'->>'amount';
+    END IF;
+    RAISE NOTICE 'PASS Andrews $50 at -151 settles at -33.11';
+END $$;
+
+-- S2: a close that fails rolls the ledger back with it.
+DO $$
+DECLARE
+    v_rows integer;
+BEGIN
+    ALTER TABLE bets ADD CONSTRAINT bets_block_race_leg
+        CHECK (id <> 'ffffffff-ffff-4fff-8fff-ffffffffff02' OR status <> 'settled');
+
+    BEGIN
+        PERFORM settle_parlay_tx(
+            'ffffffff-ffff-4fff-8fff-ffffffffffff',
+            NULL,
+            'auto_settle_parlay_ffffffff-ffff-4fff-8fff-ffffffffffff_v1',
+            'auto',
+            NULL, NULL, NULL
+        );
+        RAISE EXCEPTION 'close was expected to fail';
+    EXCEPTION
+        WHEN check_violation THEN
+            NULL;
+    END;
+
+    ALTER TABLE bets DROP CONSTRAINT bets_block_race_leg;
+
+    SELECT count(*) INTO v_rows
+      FROM ledger_entries le
+      JOIN bets b ON b.id = le.bet_id
+     WHERE b.ticket_id = 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+       AND le.type = 'settlement';
+    IF v_rows <> 0 THEN
+        RAISE EXCEPTION 'a failed close left % ledger rows', v_rows;
+    END IF;
+    IF (SELECT status FROM bets WHERE id = 'ffffffff-ffff-4fff-8fff-ffffffffff01') IS DISTINCT FROM 'graded' THEN
+        RAISE EXCEPTION 'a failed close changed a leg status';
+    END IF;
+    RAISE NOTICE 'PASS a failed leg close rolls back the ledger';
 END $$;
 
 -- The deterministic parlay key can be stored once. A second settlement_events

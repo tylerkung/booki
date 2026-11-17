@@ -127,6 +127,24 @@ echo "PASS concurrent settle_bet_tx posts one ledger entry"
 echo "session B: $(cat /tmp/063-concurrent-b.out)"
 
 echo
+echo "===== concurrent settle_parlay_tx ====="
+run_psql -d "$DB" -c "BEGIN; SELECT settle_parlay_tx('ffffffff-ffff-4fff-8fff-ffffffffffff'::uuid, NULL, 'auto_settle_parlay_ffffffff-ffff-4fff-8fff-ffffffffffff_v1', 'auto', NULL, NULL, NULL); SELECT pg_sleep(2); COMMIT;" >/tmp/063-parlay-a.out &
+sleep 0.4
+run_psql -d "$DB" -Atc "SELECT settle_parlay_tx('ffffffff-ffff-4fff-8fff-ffffffffffff'::uuid, NULL, 'auto_settle_parlay_ffffffff-ffff-4fff-8fff-ffffffffffff_v1', 'auto', NULL, NULL, NULL);" >/tmp/063-parlay-b.out
+wait
+parlay_rows="$(run_psql -d "$DB" -Atc "SELECT count(*) FROM ledger_entries le JOIN bets b ON b.id = le.bet_id WHERE b.ticket_id = 'ffffffff-ffff-4fff-8fff-ffffffffffff' AND le.type = 'settlement';")"
+if [[ "$parlay_rows" != "1" ]]; then
+    echo "concurrent parlay settle posted ${parlay_rows} ledger rows" >&2
+    echo "----- session A -----" >&2
+    cat /tmp/063-parlay-a.out >&2
+    echo "----- session B -----" >&2
+    cat /tmp/063-parlay-b.out >&2
+    exit 1
+fi
+echo "PASS concurrent settle_parlay_tx posts one ledger entry"
+echo "session B: $(cat /tmp/063-parlay-b.out)"
+
+echo
 echo "===== rollback, then a second insert is possible again ====="
 run_psql -d "$DB" -f "$SQL_DIR/063_rollback.sql"
 run_psql -d "$DB" -f "$ROOT/supabase/migrations/034_fix_settle_bet_tx_audit_arity.sql"

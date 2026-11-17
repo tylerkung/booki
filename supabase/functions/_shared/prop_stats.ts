@@ -46,6 +46,23 @@ function add(s: Statline, keys: readonly string[]): number | null {
 }
 
 /**
+ * Touchdown props. A real NFL statline omits return and fumble scores for a
+ * player who only rushed. Those absent fields are 0 once the player has a
+ * row. A missing statline is handled before this runs and stays a void, and
+ * a missing primary stat (yards, receptions) still uses `add` and stays pending.
+ */
+function addAbsentAsZero(s: Statline, keys: readonly string[]): number | null {
+  let total = 0;
+  for (const key of keys) {
+    const value = readStat(s, key);
+    if (value === null) continue;
+    if (!Number.isFinite(value)) return value;
+    total += value;
+  }
+  return total;
+}
+
+/**
  * Every way a player can put six points on the board himself.
  *
  * `passing_touchdowns` is deliberately absent — see trap 2 above.
@@ -68,6 +85,7 @@ export const PROP_STATS: Record<string, (s: Statline) => number | null> = {
 
   player_rush_yds:            (s) => readStat(s, 'rushing_yards'),
   player_rush_attempts:       (s) => readStat(s, 'rushing_attempts'),
+  player_rush_tds:            (s) => readStat(s, 'rushing_touchdowns'),
   player_rush_longest:        (s) => readStat(s, 'long_rushing'),
 
   player_receptions:          (s) => readStat(s, 'receptions'),
@@ -78,8 +96,8 @@ export const PROP_STATS: Record<string, (s: Statline) => number | null> = {
   player_pass_rush_yds:       (s) => add(s, ['passing_yards', 'rushing_yards']),
 
   // Scoring touchdowns only. passing_touchdowns is a different market.
-  player_anytime_td:          (s) => add(s, SCORING_TD_FIELDS),
-  player_tds_over:            (s) => add(s, SCORING_TD_FIELDS),
+  player_anytime_td:          (s) => addAbsentAsZero(s, SCORING_TD_FIELDS),
+  player_tds_over:            (s) => addAbsentAsZero(s, SCORING_TD_FIELDS),
 
   player_field_goals:         (s) => readStat(s, 'field_goals_made'),
   player_pats:                (s) => readStat(s, 'extra_points_made'),
@@ -211,6 +229,15 @@ export function gradeProp(
   }
   const { subject, direction, line } = parsed;
 
+  // An unknown market is manual review even when the player has no row.
+  // Checking this after the void would refund a bet we cannot grade.
+  const getter = PROP_STATS[marketKey];
+  if (!getter) {
+    const detail = `unknown stat ${marketKey}; left pending for manual review`;
+    console.log(detail);
+    return { result: 'pending', detail, line, stat_key: marketKey };
+  }
+
   if (statline === null) {
     return {
       result: 'void',
@@ -218,13 +245,6 @@ export function gradeProp(
       line,
       stat_key: marketKey,
     };
-  }
-
-  const getter = PROP_STATS[marketKey];
-  if (!getter) {
-    const detail = `unknown stat ${marketKey}; left pending for manual review`;
-    console.log(detail);
-    return { result: 'pending', detail, line, stat_key: marketKey };
   }
 
   const actual = getter(statline);
