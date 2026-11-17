@@ -5,7 +5,7 @@ This project cannot be built from the CLI (`CLAUDE.md`: "Xcode command line
 tools don't support full builds — use Xcode IDE"), so everything here needs a
 real build and a run in the simulator.
 
-Last updated: 2026-11-16
+Last updated: 2026-11-17
 
 ---
 
@@ -441,3 +441,27 @@ copy change; these two strings were left in the app on purpose.
 - [ ] Link-invite confirmation: "Expires in 7 days" (or a date), not "Expires in 24 hours"
 - [ ] Addressed-invite confirmation: do not claim an expiry
 - [ ] Mail body: the web invite URL, and expiry copy that matches the invite kind
+
+## B15 — Delete-account confirmation should state the consequences on one screen
+
+Not built. iOS only. Web shipped the layout and copy below; do not change `delete_account`.
+
+Today the organizer path is two alerts in `Booki/Views/SettingsView.swift` ("Delete Account" then "Are You Sure?" / "Delete Everything") and the member path is two alerts in `Booki/Views/AccountView.swift` ("Delete Account" then "Are you sure?" / "Delete My Account"). Neither names the Stripe cancel, the group, or the member count, and the type-DELETE step is separate from the warning.
+
+Match the web modal (`DELETE_ACCOUNT_COPY` in `landing/dashboard/dashboard.js`). One screen, so the consequences stay visible while they type. Order: title, lead, consequence list, alternatives, confirm field, buttons. Red only on the warning icon and the primary button.
+
+- [ ] Title: "Delete your account?"
+- [ ] Organizer lead: "This permanently deletes your account and the group you run."
+- [ ] Consequence list, icon bullets, in order:
+  - Paid only: "Your Pro plan is canceled immediately. You won't get a refund for the rest of this billing period." Paid means `bookies.stripe_subscription_id` is set, not `tier` or `subscription_status` (Apple IAP can set those without a Stripe subscription, and `delete_account` does not cancel those). iOS does not currently sync `stripe_subscription_id` — load it with the bookie, and if it is not on the client, omit this line rather than guessing from tier.
+  - "{Group name} and everything in it is deleted: {N} members, their picks, balances and history. Members lose access right away." Use "1 member" for one. When N is 0, drop the count: "{Group name} and everything in it is deleted." N is the member count already loaded for the members list. If that count is not on the client, omit the number rather than querying. If the group name is not loaded, use "Your group".
+  - Bold: "This can't be undone."
+- [ ] Alternatives, neutral, above the confirm field. Only include a line whose flow exists:
+  - "Want the group to keep going? Step down as organizer instead" → the existing step-down confirmation.
+  - Paid only: "Just want to stop paying? Cancel Pro and keep your group" → the existing billing path. Web uses `create_customer_portal` (`openPortal()`). iOS has no Stripe-portal call in the app today; if there is still no working cancel-plan path, drop this line.
+- [ ] Confirm field label "Type DELETE to confirm". Match is case-insensitive and trimmed. Primary stays disabled until it matches.
+- [ ] Primary: "Delete account and group" for organizers, "Delete account" for members. Secondary: "Keep my account", and it takes default focus. Both at least 44pt.
+- [ ] Members: keep the existing copy ("This will permanently delete your account and all your data. This action cannot be undone."). Same single screen. Do not mention a plan or a group. Button label "Delete account".
+- [ ] Move Delete Account out from under Step Down into its own Danger zone at the bottom of organizer Settings.
+
+The no-refund sentence matches the server. `supabase/functions/delete_account/index.ts` cancels with `DELETE https://api.stripe.com/v1/subscriptions/{stripe_subscription_id}` and no body. That is an immediate cancel (`cancel_at_period_end` is not set; that would be a POST). `prorate` and `invoice_now` are omitted. Stripe's cancel endpoint documents both defaults as `false`, so this does not create a proration credit and does not refund the current period. Do not soften or strengthen that sentence unless the function starts sending those parameters.
