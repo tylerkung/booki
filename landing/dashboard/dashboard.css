@@ -1029,6 +1029,79 @@ input, button, select, textarea { font: inherit; }
     border-color: rgba(var(--danger-rgb), var(--o-glow));
 }
 
+/* Delete-account confirmation. One screen: the consequences stay visible
+   while DELETE is typed. Red is only the warning icon and the primary button. */
+.delete-account-modal {
+    max-height: calc(100vh - var(--s-xl) - var(--s-xl));
+    overflow-y: auto;
+}
+.delete-account-lead {
+    margin: 0 0 var(--s-lg);
+    color: var(--text-primary);
+    font-size: var(--fs-body);
+    line-height: var(--lh-normal);
+}
+.delete-account-consequences {
+    list-style: none;
+    margin: 0 0 var(--s-lg);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-md);
+}
+.delete-account-consequences li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s-sm);
+    color: var(--text-primary);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-normal);
+}
+.delete-account-consequences strong {
+    font-weight: var(--fw-bold);
+    color: var(--text-primary);
+}
+.delete-account-warn {
+    flex-shrink: 0;
+    margin-top: var(--s-xxs);
+}
+.delete-account-alt {
+    background: var(--bg-elevated);
+    border: var(--hairline) solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--s-md) var(--s-lg);
+    margin-bottom: var(--s-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-sm);
+}
+.delete-account-alt p {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-normal);
+}
+.delete-account-alt-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.delete-account-alt-link:hover { color: var(--accent); }
+.delete-account-alt-link:disabled { opacity: 0.5; cursor: not-allowed; }
+.delete-account-actions {
+    flex-direction: column;
+    align-items: stretch;
+}
+.delete-account-actions .btn {
+    min-height: var(--tap-target);
+    width: 100%;
+    white-space: normal;
+}
+
 /* ── Capacity Banner ── */
 .capacity-banner {
     background: var(--bg-card);

@@ -127,6 +127,57 @@ function formatBearerInviteExpiry(expiresAt, now = Date.now()) {
     return withDate(`in ${totalHours} hours`);
 }
 
+/**
+ * Delete-account confirmation. Every user-facing string for that modal lives
+ * here so wording can be edited in one place.
+ *
+ * The paid-plan line is only shown when bookies.stripe_subscription_id is set.
+ * delete_account cancels that subscription with DELETE /v1/subscriptions/:id
+ * and sends no body: Stripe cancels immediately (not at period end), and the
+ * documented defaults are prorate=false and invoice_now=false, so no proration
+ * credit and no refund is issued. tier and subscription_status are not a
+ * paying signal — an Apple subscription can set those without a Stripe id,
+ * and this function does not cancel those.
+ */
+const DELETE_ACCOUNT_COPY = {
+    title: 'Delete your account?',
+    organizerLead: 'This permanently deletes your account and the group you run.',
+    playerLead: "This permanently deletes your account and all your data. This can't be undone.",
+    paidPlan: "Your Pro plan is canceled immediately. You won't get a refund for the rest of this billing period.",
+    undone: "This can't be undone.",
+    groupWithMembers: '{group} and everything in it is deleted: {members}, their picks, balances and history. Members lose access right away.',
+    groupEmpty: '{group} and everything in it is deleted.',
+    oneMember: '1 member',
+    manyMembers: '{n} members',
+    fallbackGroup: 'Your group',
+    stepDownLead: 'Want the group to keep going?',
+    stepDownLink: 'Step down as organizer instead',
+    cancelLead: 'Just want to stop paying?',
+    cancelLink: 'Cancel Pro and keep your group',
+    confirmLabel: 'Type DELETE to confirm',
+    organizerButton: 'Delete account and group',
+    playerButton: 'Delete account',
+    keepButton: 'Keep my account',
+    deleting: 'Deleting...',
+};
+
+function deleteAccountGroupLine(groupName, memberCount) {
+    const group = (groupName && String(groupName).trim()) || DELETE_ACCOUNT_COPY.fallbackGroup;
+    if (memberCount === null || memberCount === undefined || memberCount === 0) {
+        return DELETE_ACCOUNT_COPY.groupEmpty.replaceAll('{group}', group);
+    }
+    const members = memberCount === 1
+        ? DELETE_ACCOUNT_COPY.oneMember
+        : DELETE_ACCOUNT_COPY.manyMembers.replaceAll('{n}', String(memberCount));
+    return DELETE_ACCOUNT_COPY.groupWithMembers
+        .replaceAll('{group}', group)
+        .replaceAll('{members}', members);
+}
+
+function deleteConfirmMatches(text) {
+    return String(text || '').trim().toUpperCase() === 'DELETE';
+}
+
 function dashboardApp() {
     return {
         // ── Auth ──
@@ -805,10 +856,10 @@ function dashboardApp() {
         // ── Danger Zone ──
         showStepDownModal: false,
         isSteppingDown: false,
-        showDeleteStep1: false,
-        showDeleteStep2: false,
+        showDeleteAccountModal: false,
         deleteConfirmText: '',
         isDeleting: false,
+        deleteAccountCopy: DELETE_ACCOUNT_COPY,
 
         // ── Override / Reverse ──
         showOverrideModal: false,
@@ -944,9 +995,6 @@ function dashboardApp() {
         playerConfirmPassword: '',
         isChangingPlayerPassword: false,
         playerPasswordError: '',
-        showPlayerDeleteStep1: false,
-        showPlayerDeleteStep2: false,
-        playerDeleteConfirmText: '',
         isDeletingPlayerAccount: false,
 
         // ── Bet Slip ──
@@ -2154,7 +2202,7 @@ function dashboardApp() {
         },
 
         async deletePlayerAccount() {
-            if (this.playerDeleteConfirmText !== 'DELETE') return;
+            if (!deleteConfirmMatches(this.deleteConfirmText)) return;
             this.isDeletingPlayerAccount = true;
 
             try {
@@ -2166,7 +2214,7 @@ function dashboardApp() {
                     this.toast(response.error, 'error');
                 } else {
                     this.toast('Account deleted', 'success');
-                    this.showPlayerDeleteStep2 = false;
+                    this.showDeleteAccountModal = false;
                     await this.supabase.auth.signOut();
                     window.location.href = 'login.html';
                 }
@@ -5797,8 +5845,72 @@ function dashboardApp() {
             this.isSteppingDown = false;
         },
 
+        // Paying status is the Stripe subscription delete_account actually
+        // cancels. tier / subscription_status can be Pro from Apple IAP with
+        // no Stripe subscription, and those are not canceled here.
+        organizerHasStripePlan() {
+            return !!(this.bookie && this.bookie.stripe_subscription_id);
+        },
+
+        // Members-list count (this.players), already loaded with the dashboard.
+        // While that load is still in flight the count is unknown: omit it
+        // rather than showing 0. A loaded empty list also omits the count.
+        deleteAccountGroupSentence() {
+            const count = this.isLoadingPlayers ? null : this.players.length;
+            const name = this.bookie ? this.bookie.name : '';
+            return deleteAccountGroupLine(name, count);
+        },
+
+        deleteAccountBusy() {
+            return this.userRole === 'organizer' ? this.isDeleting : this.isDeletingPlayerAccount;
+        },
+
+        deleteAccountButtonLabel() {
+            if (this.deleteAccountBusy()) return this.deleteAccountCopy.deleting;
+            return this.userRole === 'organizer'
+                ? this.deleteAccountCopy.organizerButton
+                : this.deleteAccountCopy.playerButton;
+        },
+
+        openDeleteAccountModal() {
+            this.deleteConfirmText = '';
+            this.showDeleteAccountModal = true;
+            // The overlay is still display:none on the tick that opens it, and
+            // the enter transition starts at opacity 0. Focusing then is a
+            // no-op, so retry until the button is actually on screen. Stop
+            // once focus has landed so typing in the confirm field is left alone.
+            const attempt = (left) => {
+                const btn = this.$refs.keepAccountBtn;
+                const overlay = btn && btn.closest('.modal-overlay');
+                if (!this.showDeleteAccountModal || !btn || !overlay) return;
+                if (document.activeElement && document.activeElement.id === 'delete-account-confirm') return;
+                if (getComputedStyle(overlay).display !== 'none') {
+                    btn.focus();
+                    if (document.activeElement === btn) return;
+                }
+                if (left > 0) setTimeout(() => attempt(left - 1), 16);
+            };
+            this.$nextTick(() => attempt(20));
+        },
+
+        closeDeleteAccountModal() {
+            this.showDeleteAccountModal = false;
+            this.deleteConfirmText = '';
+        },
+
+        chooseStepDownInstead() {
+            this.closeDeleteAccountModal();
+            this.showStepDownModal = true;
+        },
+
+        confirmDeleteAccount() {
+            if (!deleteConfirmMatches(this.deleteConfirmText) || this.deleteAccountBusy()) return;
+            if (this.userRole === 'organizer') this.deleteAccount();
+            else this.deletePlayerAccount();
+        },
+
         async deleteAccount() {
-            if (this.deleteConfirmText !== 'DELETE') return;
+            if (!deleteConfirmMatches(this.deleteConfirmText)) return;
             this.isDeleting = true;
 
             try {
@@ -5810,7 +5922,7 @@ function dashboardApp() {
                     this.toast(response.error, 'error');
                 } else {
                     this.toast('Account deleted', 'success');
-                    this.showDeleteStep2 = false;
+                    this.showDeleteAccountModal = false;
                     await this.supabase.auth.signOut();
                     window.location.href = 'login.html';
                 }
