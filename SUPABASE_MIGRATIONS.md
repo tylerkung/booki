@@ -14,7 +14,7 @@ Track all SQL changes needed in Supabase when updating the app.
 
 ## Pending Migrations
 
-### 061 — bet prop snapshot (NOT applied)
+### 062 — bet prop snapshot (NOT applied)
 
 Additive only. Adds nullable `bets.stat_key`, `bets.subject_player_id`, and
 `bets.prop_line`. No backfill, no update of existing rows. Apply by hand
