@@ -11,6 +11,10 @@ export interface SettleTxResult {
   success: boolean;
   error?: string;
   idempotent?: boolean;
+  already_settled?: boolean;
+  action?: 'settled' | 'wait';
+  outcome?: string;
+  detail?: string;
   settlement_version?: number;
   legs_settled?: number;
   ledger_entry?: {
@@ -49,8 +53,6 @@ export async function settleParlayTx(
     actorUserId: string | null;
     idempotencyKey: string;
     mode: 'auto' | 'manual';
-    amount: number;
-    description: string;
     auditDetails?: Record<string, unknown>;
   },
 ): Promise<{ error: string | null; result: SettleTxResult | null }> {
@@ -59,8 +61,8 @@ export async function settleParlayTx(
     p_actor_user_id: args.actorUserId,
     p_idempotency_key: args.idempotencyKey,
     p_mode: args.mode,
-    p_amount: args.amount,
-    p_description: args.description,
+    p_amount: null,
+    p_description: null,
     p_audit_details: args.auditDetails ?? null,
   });
   if (error) return { error: error.message, result: null };
