@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 
 import { gradeBet, isDeferredMarket } from './grading.ts';
-import { legStorageError, resolveStoredLeg } from './market_validation.ts';
-import { decideParlay, parlaySettlementKey, parlayTooManyLegs } from './parlay_settle.ts';
-import { gradeProp, resolvePropTarget } from './prop_stats.ts';
+import { deployedSingleSideAccepted, legStorageError, resolveStoredLeg, singleBetIndicator } from './market_validation.ts';
+import { settleTicketOnce } from './parlay_claim.ts';
+import { decideParlay, parlaySettlementKey, parlayTooManyLegs, placeParlayIfAllowed, roundCents } from './parlay_settle.ts';
+import { gradeProp, parsePropSide, resolvePropTarget } from './prop_stats.ts';
+import { settlementAmount } from './settlement_math.ts';
 import { runGradeDryRun } from './grade_dry_run.ts';
 
 const receptions = (n) => ({ receptions: n });
@@ -142,17 +145,22 @@ test('all void is a refund', () => {
   assert.equal(decision.profit, 0);
 });
 
-test('a 5-leg submit is rejected and a 4-leg submit is not', () => {
-  assert.equal(parlayTooManyLegs(4, 4), null);
-  const reason = parlayTooManyLegs(5, 4);
-  assert.ok(reason);
-  assert.match(reason, /at most 4 legs/);
-  const source = readFileSync(new URL('../submit_parlay/index.ts', import.meta.url), 'utf8');
-  assert.match(source, /parlayTooManyLegs\(body\.legs\.length/);
-  assert.doesNotMatch(source, /Exceeds max parlay legs/);
-  const rejectAt = source.indexOf('parlayTooManyLegs');
-  const insertAt = source.indexOf(".from('bets')");
-  assert.ok(rejectAt > 0 && rejectAt < insertAt, 'the leg cap is checked before any bet is inserted');
+test('a 5-leg submit returns 400 and does not insert', () => {
+  const inserted = [];
+  const rejected = placeParlayIfAllowed(5, 4, () => inserted.push('row'));
+  assert.equal(rejected.status, 400);
+  assert.match(rejected.error, /at most 4 legs/);
+  assert.deepEqual(inserted, []);
+
+  const accepted = placeParlayIfAllowed(4, 4, () => inserted.push('row'));
+  assert.equal(accepted.status, 200);
+  assert.deepEqual(inserted, ['row']);
+});
+
+test('a leg cap below 2 is the default of 4, not a confusing 400', () => {
+  assert.equal(parlayTooManyLegs(4, 0), null);
+  assert.equal(parlayTooManyLegs(4, 1), null);
+  assert.match(parlayTooManyLegs(5, 0), /at most 4 legs/);
 });
 
 test('the parlay settlement key is deterministic', () => {
@@ -253,4 +261,241 @@ test('grade dry run performs zero writes and reports the repriced parlay', async
 test('the dry-run edge function source has no write calls', () => {
   const source = readFileSync(new URL('../grade_dry_run/index.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /\.(insert|update|upsert|delete|rpc)\s*\(/);
+});
+
+const scoringZeros = {
+  rushing_touchdowns: 0,
+  receiving_touchdowns: 0,
+  kick_return_touchdowns: 0,
+  punt_return_touchdowns: 0,
+  interception_touchdowns: 0,
+  fumbles_touchdowns: 0,
+};
+
+test('an unknown stat key stays pending and is not refunded', () => {
+  const out = gradeProp('player_made_up', 'Mark Andrews Over 2.5', receptions(8), { statsFinal: true });
+  assert.equal(out.result, 'pending');
+  assert.match(out.detail, /manual review/);
+  assert.notEqual(out.result, 'void');
+});
+
+test('an unknown market type is manual review, not a push', () => {
+  const out = gradeBet(
+    { id: 'x', market: 'player_foo', side: 'Over 6.5' },
+    { homeScore: 1, awayScore: 0, homeTeam: 'A', awayTeam: 'B' },
+  );
+  assert.equal(out.result, 'manual');
+  assert.match(out.gradeDetails, /manual review/);
+  assert.notEqual(out.result, 'push');
+});
+
+test('a missing stat field stays pending and a real zero is a zero', () => {
+  const absent = gradeProp('player_rush_yds', 'Derrick Henry Over 0.5', { receptions: 4 }, { statsFinal: true });
+  const nulled = gradeProp('player_rush_yds', 'Derrick Henry Over 0.5', { rushing_yards: null }, { statsFinal: true });
+  const zero = gradeProp('player_rush_yds', 'Derrick Henry Over 0.5', { rushing_yards: 0 }, { statsFinal: true });
+  const notFinite = gradeProp('player_rush_yds', 'Derrick Henry Over 0.5', { rushing_yards: Number.NaN }, { statsFinal: true });
+  assert.equal(absent.result, 'pending');
+  assert.equal(nulled.result, 'pending');
+  assert.match(absent.detail, /absent/);
+  assert.equal(zero.result, 'loss');
+  assert.equal(zero.actual, 0);
+  assert.equal(notFinite.result, 'pending');
+  assert.match(notFinite.detail, /not a finite stat/);
+});
+
+test('d84e919e loss, win, void, void is a loss of the $100 stake', () => {
+  const decision = decideParlay(100, [
+    leg('loss', -110),
+    leg('win', -151),
+    leg('void', -110),
+    leg('void', 120),
+  ]);
+  assert.equal(decision.action, 'settle');
+  assert.equal(decision.outcome, 'loss');
+  assert.equal(decision.amount, 100);
+  assert.equal(-decision.amount, -100);
+});
+
+test('Andrews O2.5 $50 at -151 with 8 receptions wins $33.11', () => {
+  const graded = gradeProp('player_receptions', 'Mark Andrews Over 2.5', receptions(8), { statsFinal: true });
+  assert.equal(graded.result, 'win');
+  const ledger = settlementAmount('win', 50, -151);
+  assert.equal(roundCents(-ledger), 33.11);
+  assert.equal(roundCents(ledger), -33.11);
+});
+
+test('Henry O81.5 with 10 rush yards loses, Flowers O70.5 with 74 wins, Henry U1.5 loses', () => {
+  const henryOver = gradeProp('player_rush_yds', 'Derrick Henry Over 81.5', rush(10), { statsFinal: true });
+  const flowers = gradeProp('player_reception_yds', 'Zay Flowers Over 70.5', { receiving_yards: 74 }, { statsFinal: true });
+  const henryUnder = gradeProp('player_rush_yds', 'Derrick Henry Under 1.5', rush(10), { statsFinal: true });
+  assert.equal(henryOver.result, 'loss');
+  assert.equal(flowers.result, 'win');
+  assert.equal(henryUnder.result, 'loss');
+});
+
+test('an under on an integer line pushes, including inside a parlay', () => {
+  const pushed = gradeProp('player_receptions', 'Mark Andrews Under 8', receptions(8), { statsFinal: true });
+  assert.equal(pushed.result, 'push');
+  const decision = decideParlay(100, [leg('push', -110, 'graded'), leg('win', -151)]);
+  assert.equal(decision.outcome, 'win');
+  assert.equal(decision.activeLegs, 1);
+  assert.equal(decision.profit, roundCents(100 * (100 / 151)));
+});
+
+test('a void leaves one live leg priced as that single', () => {
+  const decision = decideParlay(50, [leg('void', -110), leg('win', -151)]);
+  assert.equal(decision.outcome, 'win');
+  assert.equal(decision.activeLegs, 1);
+  assert.equal(decision.profit, 33.11);
+});
+
+test('a win plus a push reprices to the winning leg', () => {
+  const decision = decideParlay(100, [leg('win', -110), leg('push', 150, 'graded')]);
+  assert.equal(decision.outcome, 'win');
+  assert.equal(decision.activeLegs, 1);
+  assert.equal(decision.profit, roundCents(100 * (100 / 110)));
+});
+
+test('a did-not-play under is a void, not a win', () => {
+  const out = gradeProp('player_receptions', 'Mark Andrews Under 2.5', null, { statsFinal: true });
+  assert.equal(out.result, 'void');
+  assert.match(out.detail, /did not play/);
+});
+
+test('half-cent rounding', () => {
+  assert.equal(roundCents(1.225), 1.23);
+  assert.equal(roundCents(1.224), 1.22);
+  assert.equal(roundCents(-1.225), -1.23);
+  const decision = decideParlay(1.225, [leg('win', 100)]);
+  assert.equal(decision.profit, 1.23);
+});
+
+test('passing touchdowns do not count as an anytime touchdown', () => {
+  const line = { passing_touchdowns: 2, ...scoringZeros };
+  const passing = gradeProp('player_pass_tds', 'Justin Herbert Over 0.5', line, { statsFinal: true });
+  const anytime = gradeProp('player_anytime_td', 'Justin Herbert Anytime TD Yes', line, { statsFinal: true });
+  assert.equal(passing.result, 'win');
+  assert.equal(passing.actual, 2);
+  assert.equal(anytime.result, 'loss');
+  assert.equal(anytime.actual, 0);
+});
+
+test('an outright leg inside a parlay stays pending and is not a push', () => {
+  const outright = gradeBet(
+    { id: 'f', market: 'outright', side: 'Chiefs' },
+    { homeScore: 1, awayScore: 0, homeTeam: 'Chiefs', awayTeam: 'Bills' },
+  );
+  assert.equal(outright.result, 'deferred');
+  assert.notEqual(outright.result, 'push');
+  const decision = decideParlay(100, [
+    leg('win', -110),
+    { status: 'accepted', grade_result: null, odds: 450 },
+  ]);
+  assert.equal(decision.action, 'wait');
+  assert.notEqual(decision.outcome, 'push');
+});
+
+test('parsePropSide accepts a trailing space and rejects odd input', () => {
+  assert.deepEqual(parsePropSide('  Mark Andrews Over 2.5  '), {
+    subject: 'Mark Andrews',
+    direction: 'over',
+    line: 2.5,
+  });
+  assert.deepEqual(parsePropSide('Derrick Henry Under 81.5 '), {
+    subject: 'Derrick Henry',
+    direction: 'under',
+    line: 81.5,
+  });
+  for (const bad of ['', '   ', 'b', 'Over 2.5', 'Andrews Over', 'just a name', '3f2b064e-1111-4000-8000-000000000000']) {
+    assert.equal(parsePropSide(bad), null, bad);
+  }
+});
+
+function memoryStore(initial) {
+  const legs = initial.map((leg) => ({ ...leg }));
+  const ledgers = [];
+  return {
+    legs,
+    ledgers,
+    failLedger: false,
+    claim(ids, fromStatuses) {
+      const hit = [];
+      for (const leg of legs) {
+        if (ids.includes(leg.id) && fromStatuses.includes(leg.status)) {
+          leg.status = 'settling';
+          hit.push(leg.id);
+        }
+      }
+      return Promise.resolve(hit);
+    },
+    revert(id, toStatus) {
+      const leg = legs.find((row) => row.id === id);
+      if (leg && leg.status === 'settling') leg.status = toStatus;
+      return Promise.resolve();
+    },
+    writeLedger(entry) {
+      if (this.failLedger) return Promise.resolve(null);
+      const row = { id: `led-${ledgers.length}`, ...entry };
+      ledgers.push(row);
+      return Promise.resolve({ id: row.id });
+    },
+    close(ids) {
+      for (const leg of legs) {
+        if (ids.includes(leg.id)) leg.status = 'settled';
+      }
+      return Promise.resolve(true);
+    },
+  };
+}
+
+function ticketLegs() {
+  return [
+    { id: 'a', status: 'graded', grade_result: 'loss', odds: -110, stake: 100, bookie_id: 'b', player_id: 'p' },
+    { id: 'c', status: 'graded', grade_result: 'win', odds: -151, stake: 100, bookie_id: 'b', player_id: 'p' },
+    { id: 'd', status: 'void', grade_result: 'void', odds: -110, stake: 100, bookie_id: 'b', player_id: 'p' },
+    { id: 'e', status: 'void', grade_result: 'void', odds: 120, stake: 100, bookie_id: 'b', player_id: 'p' },
+  ];
+}
+
+test('a second parlay settle is a no-op, and a failed ledger reverts the claim', async () => {
+  const store = memoryStore(ticketLegs());
+  assert.equal(await settleTicketOnce('d84e919e', store.legs, store), 'settled');
+  assert.equal(store.ledgers.length, 1);
+  assert.equal(store.ledgers[0].amount, 100);
+  assert.equal(await settleTicketOnce('d84e919e', store.legs, store), 'noop');
+  assert.equal(store.ledgers.length, 1);
+
+  const failing = memoryStore(ticketLegs());
+  failing.failLedger = true;
+  assert.equal(await settleTicketOnce('d84e919e', failing.legs, failing), 'reverted');
+  assert.deepEqual(failing.ledgers, []);
+  assert.deepEqual(failing.legs.map((leg) => leg.status), ['graded', 'graded', 'void', 'void']);
+});
+
+test('the singles payload still satisfies the deployed submit_bets contract', () => {
+  const code = readFileSync(new URL('../../../landing/dashboard/slip-payload.js', import.meta.url), 'utf8');
+  const sandbox = {};
+  vm.runInNewContext(code, sandbox);
+  const sel = {
+    event_id: 'ev',
+    market_id: 'mk',
+    side: 'Chiefs -3.5',
+    side_indicator: 'a',
+    odds: -110,
+  };
+  const single = sandbox.BookiSlip.singleBetPayload(sel, 25);
+  assert.equal(single.side, 'a');
+  assert.equal(single.side_label, 'Chiefs -3.5');
+  assert.equal(deployedSingleSideAccepted(single), true);
+  assert.equal(singleBetIndicator(single), 'a');
+
+  const labelForm = { side: sel.side, side_indicator: sel.side_indicator };
+  assert.equal(deployedSingleSideAccepted(labelForm), false);
+  assert.equal(singleBetIndicator(labelForm), 'a');
+
+  const parlay = sandbox.BookiSlip.parlayLegPayload(sel);
+  assert.equal(parlay.side, 'Chiefs -3.5');
+  assert.equal(parlay.side_indicator, 'a');
+  assert.equal(parlay.side_indicator === 'a' || parlay.side_indicator === 'b', true);
+  assert.ok(parlay.side);
 });

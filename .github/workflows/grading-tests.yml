@@ -15,3 +15,10 @@ jobs:
           node-version: '22'
       - name: Prop and parlay grading
         run: node --experimental-strip-types --test supabase/functions/_shared/grading_rules.test.mts
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check edge functions
+        env:
+          DENO_NO_PACKAGE_JSON: '1'
+        run: deno check supabase/functions/*/index.ts

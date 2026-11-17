@@ -3260,17 +3260,7 @@ function dashboardApp() {
                         const stake = Number(this.betSlipStakes[i]) || 0;
                         if (stake <= 0) continue;
                         const sel = this.betSlipSelections[i];
-                        bets.push({
-                            event_id: sel.event_id,
-                            market_id: sel.market_id,
-                            // The label, not the letter. The server still keys
-                            // off side_indicator; sending the letter as `side`
-                            // is how a missed market lookup stored side='b'.
-                            side: sel.side,
-                            side_indicator: sel.side_indicator,
-                            odds: sel.odds,
-                            stake,
-                        });
+                        bets.push(BookiSlip.singleBetPayload(sel, stake));
                     }
 
                     const response = await this.callEdgeFunction('submit_bets', {
@@ -3313,13 +3303,7 @@ function dashboardApp() {
                     }
                 } else {
                     // Multi-pick / parlay
-                    const legs = this.betSlipSelections.map(sel => ({
-                        event_id: sel.event_id,
-                        market_id: sel.market_id,
-                        side: sel.side,
-                        side_indicator: sel.side_indicator,
-                        odds: sel.odds,
-                    }));
+                    const legs = this.betSlipSelections.map(sel => BookiSlip.parlayLegPayload(sel));
 
                     const response = await this.callEdgeFunction('submit_parlay', {
                         player_id: this.playerId,

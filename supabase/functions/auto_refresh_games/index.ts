@@ -2,7 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
-import { gradeBet, isDeferredMarket, type BetInfo, type EventScores } from '../_shared/grading.ts';
+import { gradeBet, isDeferredMarket, leaveOpen, type BetInfo, type EventScores } from '../_shared/grading.ts';
 import { settleReadyParlays } from '../_shared/parlay_apply.ts';
 import { sendNotification } from '../_shared/notifications.ts';
 import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
@@ -456,8 +456,8 @@ function extractMarketsFromOddsEvent(
         if (homeOutcome && awayOutcome) {
           markets.push({
             type: 'moneyline',
-            side_a: oddsEvent.away_team,
-            side_b: oddsEvent.home_team,
+            side_a: oddsEvent.away_team ?? '',
+            side_b: oddsEvent.home_team ?? '',
             odds_a: awayOutcome.price,
             odds_b: homeOutcome.price,
           });
@@ -576,7 +576,7 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
 
               const betInfo: BetInfo = { id: bet.id, market: bet.market, side: bet.side };
               const gradeOutcome = gradeBet(betInfo, eventScores);
-              if (gradeOutcome.result === 'deferred') {
+              if (leaveOpen(gradeOutcome.result)) {
                 console.log(`Catch-up: leaving ${bet.market} bet ${bet.id} open`);
                 continue;
               }
@@ -1829,7 +1829,7 @@ Deno.serve(async (req) => {
 
                         // Get grade result from grading logic
                         const gradeOutcome = gradeBet(betInfo, eventScores);
-                        if (gradeOutcome.result === 'deferred') {
+                        if (leaveOpen(gradeOutcome.result)) {
                           console.log(`Leaving ${bet.market} bet ${bet.id} open`);
                           continue;
                         }

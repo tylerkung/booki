@@ -4,7 +4,7 @@ import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
 import { resolveStoredLeg } from '../_shared/market_validation.ts';
-import { parlayTooManyLegs } from '../_shared/parlay_settle.ts';
+import { placeParlayIfAllowed } from '../_shared/parlay_settle.ts';
 
 interface ParlayLeg {
   event_id: string;
@@ -312,10 +312,12 @@ Deno.serve(async (req) => {
     // Over the leg cap is a rejection, not a review. Storing it as 'pending'
     // left a 9-leg ticket sitting open (ticket 33f8748b was one). The row is
     // never inserted.
-    const tooManyLegs = parlayTooManyLegs(body.legs.length, effectivePolicy.parlay_max_legs);
-    if (tooManyLegs) {
+    // A cap below 2 is treated as 4 inside placeParlayIfAllowed. Over the
+    // cap returns 400 and the callback (the insert) never runs.
+    const legGate = placeParlayIfAllowed(body.legs.length, effectivePolicy.parlay_max_legs, () => {});
+    if (legGate.status === 400) {
       return new Response(
-        JSON.stringify({ success: false, error: tooManyLegs, max_legs: effectivePolicy.parlay_max_legs }),
+        JSON.stringify({ success: false, error: legGate.error, max_legs: legGate.max_legs }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

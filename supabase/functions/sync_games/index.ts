@@ -517,8 +517,8 @@ export function extractMarketsFromOddsEvent(
         if (homeOutcome && awayOutcome) {
           markets.push({
             type: 'moneyline',
-            side_a: oddsEvent.away_team,
-            side_b: oddsEvent.home_team,
+            side_a: oddsEvent.away_team ?? '',
+            side_b: oddsEvent.home_team ?? '',
             odds_a: awayOutcome.price,
             odds_b: homeOutcome.price,
           });

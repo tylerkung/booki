@@ -22,7 +22,28 @@
 
 export type Statline = Record<string, number | null>;
 
-const num = (s: Statline, k: string): number => Number(s[k] ?? 0);
+/**
+ * A present 0 is a real zero. A missing key or a null is not — callers must
+ * not grade that as "played and did nothing". A non-finite value is returned
+ * as-is so the grader can refuse it instead of treating NaN as 0.
+ */
+export function readStat(s: Statline, key: string): number | null {
+  if (!Object.prototype.hasOwnProperty.call(s, key)) return null;
+  const value = s[key];
+  if (value === null || value === undefined) return null;
+  return Number(value);
+}
+
+function add(s: Statline, keys: readonly string[]): number | null {
+  let total = 0;
+  for (const key of keys) {
+    const value = readStat(s, key);
+    if (value === null) return null;
+    if (!Number.isFinite(value)) return value;
+    total += value;
+  }
+  return total;
+}
 
 /**
  * Every way a player can put six points on the board himself.
@@ -38,49 +59,56 @@ const SCORING_TD_FIELDS = [
   'fumbles_touchdowns',
 ] as const;
 
-export const PROP_STATS: Record<string, (s: Statline) => number> = {
-  player_pass_yds:            (s) => num(s, 'passing_yards'),
-  player_pass_tds:            (s) => num(s, 'passing_touchdowns'),
-  player_pass_completions:    (s) => num(s, 'passing_completions'),
-  player_pass_attempts:       (s) => num(s, 'passing_attempts'),
-  player_pass_interceptions:  (s) => num(s, 'passing_interceptions'),
+export const PROP_STATS: Record<string, (s: Statline) => number | null> = {
+  player_pass_yds:            (s) => readStat(s, 'passing_yards'),
+  player_pass_tds:            (s) => readStat(s, 'passing_touchdowns'),
+  player_pass_completions:    (s) => readStat(s, 'passing_completions'),
+  player_pass_attempts:       (s) => readStat(s, 'passing_attempts'),
+  player_pass_interceptions:  (s) => readStat(s, 'passing_interceptions'),
 
-  player_rush_yds:            (s) => num(s, 'rushing_yards'),
-  player_rush_attempts:       (s) => num(s, 'rushing_attempts'),
-  player_rush_longest:        (s) => num(s, 'long_rushing'),
+  player_rush_yds:            (s) => readStat(s, 'rushing_yards'),
+  player_rush_attempts:       (s) => readStat(s, 'rushing_attempts'),
+  player_rush_longest:        (s) => readStat(s, 'long_rushing'),
 
-  player_receptions:          (s) => num(s, 'receptions'),
-  player_reception_yds:       (s) => num(s, 'receiving_yards'),
-  player_reception_longest:   (s) => num(s, 'long_reception'),
+  player_receptions:          (s) => readStat(s, 'receptions'),
+  player_reception_yds:       (s) => readStat(s, 'receiving_yards'),
+  player_reception_longest:   (s) => readStat(s, 'long_reception'),
 
-  player_rush_reception_yds:  (s) => num(s, 'rushing_yards') + num(s, 'receiving_yards'),
-  player_pass_rush_yds:       (s) => num(s, 'passing_yards') + num(s, 'rushing_yards'),
+  player_rush_reception_yds:  (s) => add(s, ['rushing_yards', 'receiving_yards']),
+  player_pass_rush_yds:       (s) => add(s, ['passing_yards', 'rushing_yards']),
 
-  player_anytime_td:          (s) => SCORING_TD_FIELDS.reduce((t, f) => t + num(s, f), 0),
-  player_tds_over:            (s) => SCORING_TD_FIELDS.reduce((t, f) => t + num(s, f), 0),
+  // Scoring touchdowns only. passing_touchdowns is a different market.
+  player_anytime_td:          (s) => add(s, SCORING_TD_FIELDS),
+  player_tds_over:            (s) => add(s, SCORING_TD_FIELDS),
 
-  player_field_goals:         (s) => num(s, 'field_goals_made'),
-  player_pats:                (s) => num(s, 'extra_points_made'),
+  player_field_goals:         (s) => readStat(s, 'field_goals_made'),
+  player_pats:                (s) => readStat(s, 'extra_points_made'),
   // total_points exists in the schema but is not populated — zero non-null
   // values across every statline in the verification game — so kicking points
   // are derived rather than read.
-  player_kicking_points:      (s) => num(s, 'field_goals_made') * 3 + num(s, 'extra_points_made'),
+  player_kicking_points:      (s) => {
+    const made = readStat(s, 'field_goals_made');
+    const extra = readStat(s, 'extra_points_made');
+    if (made === null || extra === null) return null;
+    if (!Number.isFinite(made) || !Number.isFinite(extra)) return Number.NaN;
+    return made * 3 + extra;
+  },
 
-  player_sacks:                   (s) => num(s, 'defensive_sacks'),
-  player_solo_tackles:            (s) => num(s, 'solo_tackles'),
-  player_tackles_assists:         (s) => num(s, 'total_tackles'),
-  player_defensive_interceptions: (s) => num(s, 'defensive_interceptions'),
+  player_sacks:                   (s) => readStat(s, 'defensive_sacks'),
+  player_solo_tackles:            (s) => readStat(s, 'solo_tackles'),
+  player_tackles_assists:         (s) => readStat(s, 'total_tackles'),
+  player_defensive_interceptions: (s) => readStat(s, 'defensive_interceptions'),
 
   // NBA box-score fields, verified against a real balldontlie game in
   // docs/spikes/prop-grading-spike.ts. grade_player_props does not fetch NBA
   // yet — the ingest and the completeness gate are NFL-only — but a snapshot
   // that already names one of these keys can be graded by the pure function.
-  player_points:                  (s) => num(s, 'pts'),
-  player_rebounds:                (s) => num(s, 'reb'),
-  player_assists:                 (s) => num(s, 'ast'),
-  player_threes:                  (s) => num(s, 'fg3m'),
-  player_blocks:                  (s) => num(s, 'blk'),
-  player_steals:                  (s) => num(s, 'stl'),
+  player_points:                  (s) => readStat(s, 'pts'),
+  player_rebounds:                (s) => readStat(s, 'reb'),
+  player_assists:                 (s) => readStat(s, 'ast'),
+  player_threes:                  (s) => readStat(s, 'fg3m'),
+  player_blocks:                  (s) => readStat(s, 'blk'),
+  player_steals:                  (s) => readStat(s, 'stl'),
 };
 
 /** Markets needing play-by-play, which ALL-STAR does not include. */
@@ -110,7 +138,9 @@ export interface ParsedPropSide {
  * Yes is over 0.5, No is under 0.5 — that is how sync_player_props stores it.
  */
 export function parsePropSide(side: string): ParsedPropSide | null {
-  const ou = side.match(/^(.*)\s+(Over|Under)\s+([0-9]+(?:\.[0-9]+)?)\s*$/i);
+  const trimmed = side.trim().replace(/\s+/g, ' ');
+  if (!trimmed) return null;
+  const ou = trimmed.match(/^(.*)\s+(Over|Under)\s+([0-9]+(?:\.[0-9]+)?)$/i);
   if (ou) {
     return {
       subject: ou[1],
@@ -118,7 +148,7 @@ export function parsePropSide(side: string): ParsedPropSide | null {
       line: Number(ou[3]),
     };
   }
-  const yn = side.match(/^(.*)\s+(Yes|No)\s*$/i);
+  const yn = trimmed.match(/^(.*)\s+(Yes|No)$/i);
   if (yn) {
     return {
       subject: yn[1],
@@ -150,9 +180,10 @@ export interface GradePropOptions {
  * — whenever it exists.
  *
  * Push only when the stat equals an integer line. A half-point line cannot
- * tie an integer stat, and a missing stat after the box score is final is a
- * void, not a push. If the box score is not final yet the result is pending
- * and the caller must retry.
+ * tie an integer stat. The only void is a player with no statline at all
+ * after the box score is final and complete. An unknown stat, or a stat
+ * field that is missing or not a number, stays pending for manual review.
+ * Nothing in those cases is settled.
  */
 export function gradeProp(
   marketKey: string,
@@ -191,22 +222,21 @@ export function gradeProp(
 
   const getter = PROP_STATS[marketKey];
   if (!getter) {
-    return {
-      result: 'void',
-      detail: `VOID no stat mapping for ${marketKey} after the game was final; stake returned`,
-      line,
-      stat_key: marketKey,
-    };
+    const detail = `unknown stat ${marketKey}; left pending for manual review`;
+    console.log(detail);
+    return { result: 'pending', detail, line, stat_key: marketKey };
   }
 
   const actual = getter(statline);
+  if (actual === null) {
+    const detail = `${subject} ${marketKey} is absent on the statline; left pending for manual review`;
+    console.log(detail);
+    return { result: 'pending', detail, line, stat_key: marketKey };
+  }
   if (!Number.isFinite(actual)) {
-    return {
-      result: 'void',
-      detail: `VOID ${subject} ${marketKey} was not on the final statline; stake returned`,
-      line,
-      stat_key: marketKey,
-    };
+    const detail = `${subject} ${marketKey} is not a finite stat; left pending for manual review`;
+    console.log(detail);
+    return { result: 'pending', detail, line, stat_key: marketKey };
   }
 
   if (actual === line && isIntegerLine(line)) {

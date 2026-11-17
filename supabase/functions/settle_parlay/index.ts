@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
+import { decideParlay } from '../_shared/parlay_settle.ts';
 
 interface SettleParlayRequest {
   ticket_id: string;
@@ -35,61 +36,6 @@ interface LedgerEntry {
   type: string;
   description: string;
   created_at: string;
-}
-
-/**
- * Convert American odds to decimal odds.
- * Positive odds: 1 + odds/100 (e.g., +150 → 2.5)
- * Negative odds: 1 + 100/abs(odds) (e.g., -200 → 1.5)
- */
-function americanToDecimal(odds: number): number {
-  if (odds > 0) {
-    return 1 + odds / 100;
-  } else {
-    return 1 + 100 / Math.abs(odds);
-  }
-}
-
-/**
- * Determine the parlay outcome based on individual leg results and push/void policy.
- * Returns: { outcome: 'win' | 'loss' | 'push', activeLegs: BetRecord[] }
- */
-function determineParlayOutcome(
-  legs: BetRecord[],
-  policy: 'treatAsPush' | 'reduceLegReprice'
-): { outcome: 'win' | 'loss' | 'push'; activeLegs: BetRecord[] } {
-  // Any leg lost → entire parlay LOSS
-  const hasLoss = legs.some((leg) => leg.grade_result === 'loss');
-  if (hasLoss) {
-    return { outcome: 'loss', activeLegs: legs };
-  }
-
-  // Separate active legs (won) from push/void legs
-  const activeLegsList = legs.filter(
-    (leg) => leg.grade_result === 'win'
-  );
-  const pushVoidLegs = legs.filter(
-    (leg) => leg.grade_result === 'push' || leg.grade_result === 'void'
-  );
-
-  // All legs won — WIN
-  if (pushVoidLegs.length === 0) {
-    return { outcome: 'win', activeLegs: activeLegsList };
-  }
-
-  // Mixed results — apply policy
-  if (policy === 'treatAsPush') {
-    // Any push/void leg → entire parlay PUSH
-    return { outcome: 'push', activeLegs: activeLegsList };
-  }
-
-  // reduceLegReprice: exclude push/void legs, recalculate with remaining winners
-  if (activeLegsList.length === 0) {
-    // All legs were push/void — treat as push
-    return { outcome: 'push', activeLegs: [] };
-  }
-
-  return { outcome: 'win', activeLegs: activeLegsList };
 }
 
 Deno.serve(async (req) => {
@@ -192,44 +138,40 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate all legs are graded (not already settled, not pending/accepted)
-    const allGraded = legs.every((leg: BetRecord) => leg.status === 'graded' && leg.grade_result !== null);
-    if (!allGraded) {
+    if (legs.some((leg: BetRecord) => leg.status === 'settled' || leg.status === 'settling')) {
       return new Response(
-        JSON.stringify({ success: false, error: 'All parlay legs must be graded before settlement' }),
+        JSON.stringify({ success: false, error: 'This multi-pick is already settled' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Determine parlay outcome
+    // Same rules as the auto settler: void and push legs are removed and the
+    // ticket is repriced. A void leg is not a push of the whole ticket, and
+    // the legs do not all have to be status 'graded'.
     const stake = legs[0].stake;
     const bookieId = legs[0].bookie_id;
-    const { outcome, activeLegs } = determineParlayOutcome(legs as BetRecord[], body.parlay_policy);
-
-    // Calculate payout
-    let payoutAmount: number;
-    let combinedDecimalOdds: number | null = null;
-
-    if (outcome === 'win') {
-      // Combined odds: multiply decimal odds of all active legs
-      combinedDecimalOdds = activeLegs.reduce(
-        (acc, leg) => acc * americanToDecimal(leg.odds),
-        1
+    const decision = decideParlay(
+      stake,
+      (legs as BetRecord[]).map((leg) => ({
+        status: leg.status,
+        grade_result: leg.grade_result,
+        odds: leg.odds,
+      })),
+    );
+    if (decision.action !== 'settle' || decision.outcome == null || decision.amount == null) {
+      return new Response(
+        JSON.stringify({ success: false, error: decision.detail }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-      const profit = stake * combinedDecimalOdds - stake;
-      // Bookie owes player (negative in internal convention)
-      payoutAmount = -profit;
-    } else if (outcome === 'loss') {
-      // Player owes bookie (positive in internal convention)
-      payoutAmount = stake;
-    } else {
-      // Push: no money changes hands
-      payoutAmount = 0;
     }
+
+    const outcome = decision.outcome;
+    const payoutAmount = decision.amount;
+    const combinedDecimalOdds = decision.decimalOdds ?? null;
 
     const now = new Date().toISOString();
     const legCount = legs.length;
-    const outcomeLabel = outcome === 'win' ? 'won' : outcome === 'loss' ? 'lost' : 'pushed';
+    const outcomeLabel = outcome === 'win' ? 'won' : outcome === 'loss' ? 'lost' : 'voided';
     const description = `Multi-Pick (${legCount} legs) ${outcomeLabel}`;
 
     // Create exactly ONE ledger entry for the whole parlay
