@@ -530,3 +530,4 @@ session cannot compile it.
 - [ ] `combinedStatus` must not treat one voided leg as a voided ticket. A ticket is void only when every leg is void or push
 - [ ] A loss on any leg is a loss even if another leg is still open
 - [ ] The displayed payout has to use the legs that were not voided or pushed, matching `decideParlay` in `supabase/functions/_shared/parlay_settle.ts`
+- [ ] The iOS "treat void leg as push" setting is ignored: iOS previews a refund, but the server reprices void legs out of the parlay. Product decision, pending. Do not build while iOS is on hold.
