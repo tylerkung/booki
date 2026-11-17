@@ -415,6 +415,7 @@ The app is **local-first** with cloud sync:
 
 - **Migration 061, not applied yet.** `user_agreements` and `idempotency_keys` had RLS off and full grants to `anon` and `authenticated`, so the public anon key could read, write, and truncate both. 061 turns RLS on, keeps own-row select/insert on agreements, and leaves idempotency keys to `service_role` only
 - **No app changes.** Edge functions already use the service-role client in `_shared/idempotency.ts`. The iOS agreement write uses the signed-in user JWT, which the insert policy allows
+- **Local proof:** `scripts/test-061-rls.sh` runs 061 twice on a throwaway Postgres 17, including the rollback. It does not connect to the hosted project
 
 ### Branding & Design System
 - **App Icon**: Custom Booki wordmark on electric cyan background (1024x1024)

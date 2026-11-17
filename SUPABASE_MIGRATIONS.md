@@ -16,10 +16,11 @@ Track all SQL changes needed in Supabase when updating the app.
 
 ### 061 — RLS on user_agreements and idempotency_keys
 
-**Not applied.** `supabase/migrations/061_enable_rls_agreements_and_idempotency.sql`
+**Not applied to any hosted database.** `supabase/migrations/061_enable_rls_agreements_and_idempotency.sql`
 turns RLS on for both tables and revokes anon/authenticated grants. Apply it in
 the SQL editor after review. Do not deploy anything with it. Rollback and the
-post-apply checks are in the pull request.
+post-apply checks are in the pull request. `scripts/test-061-rls.sh` repeats
+them on a throwaway local Postgres 17 database.
 
 ### The Odds API Integration
 
