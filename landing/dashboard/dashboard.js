@@ -2212,6 +2212,18 @@ function dashboardApp() {
             this.isLoadingPlayerEvents = false;
         },
 
+        /**
+         * Today / Tomorrow / All only change which rows groupedPlayerEvents
+         * yields. The prefetch has to run again, or a league with 3+ games
+         * today keeps tomorrow's first rows on "—" — those ids were never in
+         * the initial 'all' slice.
+         */
+        setPlayerTimeFilter(filter) {
+            if (this.playerTimeFilter === filter) return;
+            this.playerTimeFilter = filter;
+            this.ensureMarketsForVisibleEvents();
+        },
+
         async ensureMarketsForVisibleEvents() {
             const gameIds = [];
             const outrightIds = [];
@@ -2396,7 +2408,15 @@ function dashboardApp() {
             }
 
             const [marketsRes, outrightsRes] = await Promise.all(fetches);
-            this.playerMarkets = marketsRes.data || [];
+            // Keep every other sport's lines. Replacing playerMarkets here
+            // wiped the games board, so a return trip showed dashes for
+            // leagues this page never loaded.
+            const incoming = marketsRes.data || [];
+            const refreshed = new Set(sportEventIds);
+            this.playerMarkets = [
+                ...this.playerMarkets.filter((m) => !refreshed.has(m.event_id)),
+                ...incoming,
+            ];
             this.sportPageOutrightMarkets = outrightsRes.data || [];
 
             this.isLoadingSportPage = false;
@@ -2744,6 +2764,9 @@ function dashboardApp() {
             return {
                 key,
                 title,
+                // Pair sections carry markets. Ladder sections do not, and the
+                // detail header still reads section.markets.length behind x-show.
+                markets: [],
                 rows: [
                     { label: this.sideLabel(sorted[0].side_a), cells: sorted.map((m) => cell(m, 'a')) },
                     { label: this.sideLabel(sorted[0].side_b), cells: sorted.map((m) => cell(m, 'b')) },

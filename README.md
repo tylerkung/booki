@@ -400,6 +400,7 @@ The app is **local-first** with cloud sync:
 **Member experience**
 - **First-run welcome modal** for newly joined members — who they joined, that money never moves through Booki, their real credit and win limits, how picks grade. Dismissal persists in `user_metadata`, not localStorage
 - **Board fixes**: markets now load for *every* rendered row (previously only the first two sports, leaving the rest showing `—`), and futures render as their own block — 8 shortest prices with "View all N" — instead of a game row of em-dashes
+- **Games board time chips**: Today / Tomorrow / All / This Week re-fetch lines for the games that chip shows. A league with 3+ games today used to leave tomorrow's rows as dashes. Opening a sport page no longer replaces the board's other markets.
 - **Game row is one definition** expanded into both the Games page and the sport page, which had drifted: the sport page was missing "More lines" and the lock overlay entirely
 - **Odds buttons** stack line over price, price in the accent, no parentheses; all bet CTAs standardised at `--odds-height: 40px`
 

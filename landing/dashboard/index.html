@@ -2295,10 +2295,10 @@
                 <div class="games-toolbar">
                     <input type="text" class="search-input" placeholder="Search by team name..." x-model="playerEventSearch" style="flex:1;max-width: 400px;">
                     <div class="filter-bar" style="margin:0;">
-                        <button class="chip" :class="{ active: playerTimeFilter === 'all' }" @click="playerTimeFilter = 'all'">All</button>
-                        <button class="chip" :class="{ active: playerTimeFilter === 'today' }" @click="playerTimeFilter = 'today'">Today</button>
-                        <button class="chip" :class="{ active: playerTimeFilter === 'tomorrow' }" @click="playerTimeFilter = 'tomorrow'">Tomorrow</button>
-                        <button class="chip" :class="{ active: playerTimeFilter === 'thisWeek' }" @click="playerTimeFilter = 'thisWeek'">This Week</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'all' }" @click="setPlayerTimeFilter('all')">All</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'today' }" @click="setPlayerTimeFilter('today')">Today</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'tomorrow' }" @click="setPlayerTimeFilter('tomorrow')">Tomorrow</button>
+                        <button class="chip" :class="{ active: playerTimeFilter === 'thisWeek' }" @click="setPlayerTimeFilter('thisWeek')">This Week</button>
                     </div>
                 </div>
 
@@ -2646,7 +2646,7 @@
                                                 aria-label="More lines">›</button>
                                     </div>
                                     <span class="t-body-muted" x-show="section.kind !== 'ladder'"
-                                          x-text="section.markets.length + (section.markets.length === 1 ? ' line' : ' lines')"></span>
+                                          x-text="((section.markets || []).length) + ((section.markets || []).length === 1 ? ' line' : ' lines')"></span>
                                 </div>
 
                                 <!-- Ladder: one row per side, one column per line -->
