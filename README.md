@@ -517,4 +517,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: November 17, 2026 - Player props grade from the player's stat instead of settling as a push, and a multi-pick with a voided leg is repriced over the legs that remain. Migration 062 (prop snapshot columns) is in the repo and is not applied. Past bets are not rewritten.*
+*Last updated: November 17, 2026 - A bet or parlay ticket can have one active settlement. Migration 063 is in the repo and is not applied; it does not rewrite past ledger rows. Migration 062 (prop snapshot columns) is also unapplied.*

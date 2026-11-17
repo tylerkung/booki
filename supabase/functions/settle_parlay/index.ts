@@ -1,8 +1,8 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
-import { emitAuditEvent } from '../_shared/audit.ts';
 import { decideParlay } from '../_shared/parlay_settle.ts';
+import { settleParlayTx } from '../_shared/settle_tx.ts';
 
 interface SettleParlayRequest {
   ticket_id: string;
@@ -27,16 +27,6 @@ interface BetRecord {
   updated_at: string;
 }
 
-interface LedgerEntry {
-  id: string;
-  bookie_id: string;
-  player_id: string;
-  bet_id: string | null;
-  amount: number;
-  type: string;
-  description: string;
-  created_at: string;
-}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -149,7 +139,6 @@ Deno.serve(async (req) => {
     // ticket is repriced. A void leg is not a push of the whole ticket, and
     // the legs do not all have to be status 'graded'.
     const stake = legs[0].stake;
-    const bookieId = legs[0].bookie_id;
     const decision = decideParlay(
       stake,
       (legs as BetRecord[]).map((leg) => ({
@@ -169,94 +158,40 @@ Deno.serve(async (req) => {
     const payoutAmount = decision.amount;
     const combinedDecimalOdds = decision.decimalOdds ?? null;
 
-    const now = new Date().toISOString();
     const legCount = legs.length;
     const outcomeLabel = outcome === 'win' ? 'won' : outcome === 'loss' ? 'lost' : 'voided';
     const description = `Multi-Pick (${legCount} legs) ${outcomeLabel}`;
 
-    // Create exactly ONE ledger entry for the whole parlay
-    const { data: ledgerEntry, error: ledgerError } = await client
-      .from('ledger_entries')
-      .insert({
-        bookie_id: bookieId,
-        player_id: playerId,
-        bet_id: legs[0].id, // Reference first leg for traceability
-        amount: payoutAmount,
-        type: 'settlement',
-        description: description,
-        created_at: now,
-      })
-      .select()
-      .single();
-
-    if (ledgerError || !ledgerEntry) {
-      console.error('Error creating ledger entry:', ledgerError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to create ledger entry' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Update ALL legs to status='settled' in a single batch update
-    const legIds = legs.map((leg: BetRecord) => leg.id);
-    const { error: updateError } = await client
-      .from('bets')
-      .update({ status: 'settled', updated_at: now })
-      .in('id', legIds);
-
-    if (updateError) {
-      console.error('Error updating bet statuses:', updateError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to update bet statuses' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Write settlement_events row
-    try {
-      await client
-        .from('settlement_events')
-        .insert({
-          bookie_id: bookieId,
-          bet_id: legs[0].id, // Reference first leg
-          mode: 'manual',
-          actor_user_id: userId,
-          idempotency_key: body.idempotency_key,
-          ledger_entry_ids: [ledgerEntry.id],
-        });
-    } catch (err) {
-      console.error('Error creating settlement_event (non-blocking):', err);
-    }
-
-    // Emit audit event for parlay settlement
-    await emitAuditEvent(client, {
-      bookieId: bookieId,
+    // One ledger row for the ticket, and every graded leg's status, together.
+    // A second call returns the row already posted.
+    const posted = await settleParlayTx(client, {
+      ticketId: body.ticket_id,
       actorUserId: userId,
-      entityType: 'bet',
-      entityId: legs[0].id,
-      actionType: 'settle',
-      previousState: {
-        ticket_id: body.ticket_id,
-        leg_count: legCount,
-        leg_ids: legIds,
-      },
-      newState: {
-        ticket_id: body.ticket_id,
-        outcome: outcome,
+      idempotencyKey: body.idempotency_key,
+      mode: 'manual',
+      amount: payoutAmount,
+      description,
+      auditDetails: {
+        outcome,
         parlay_policy: body.parlay_policy,
         combined_decimal_odds: combinedDecimalOdds,
-        payout: payoutAmount,
         legs_settled: legCount,
-        ledger_entry_id: ledgerEntry.id,
       },
     });
 
-    // Prepare success response
+    if (posted.error || !posted.result?.ledger_entry) {
+      console.error('Error settling parlay:', posted.error);
+      return new Response(
+        JSON.stringify({ success: false, error: posted.error || 'Failed to settle parlay' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const response = JSON.stringify({
       success: true,
       outcome: outcome,
-      payout: payoutAmount,
-      ledger_entry: ledgerEntry,
+      payout: Number(posted.result.ledger_entry.amount),
+      ledger_entry: posted.result.ledger_entry,
       legs_settled: legCount,
     });
 
