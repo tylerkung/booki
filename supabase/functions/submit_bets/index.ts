@@ -4,12 +4,14 @@ import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { sendNotification } from '../_shared/notifications.ts';
 import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
-import { resolveStoredLeg } from '../_shared/market_validation.ts';
+import { resolveStoredLeg, singleBetIndicator } from '../_shared/market_validation.ts';
 
 interface BatchBetInput {
   event_id: string;
   market_id: string;
   side: string;
+  /** Readable label. Optional. Production ignores it; the new function stores the market's label either way. */
+  side_label?: string;
   side_indicator?: 'a' | 'b';
   odds: number;
   stake: string;
@@ -83,7 +85,10 @@ Deno.serve(async (req) => {
           );
         }
       }
-      if (bet.side !== 'a' && bet.side !== 'b') {
+      // 'a'/'b' in side is the deployed contract. A label in side is accepted
+      // only when side_indicator carries the letter, so an old client and a
+      // new client both pass, in either deploy order.
+      if (!singleBetIndicator(bet)) {
         return new Response(
           JSON.stringify({ success: false, error: `Side must be 'a' or 'b' in bet ${i}` }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -338,12 +343,9 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // iOS sends the 'a'/'b' indicator in `side` and no side_indicator.
-      // The web sends the label in `side` and the indicator in side_indicator.
-      // side_indicator wins when both are set.
-      // The row stores the market type and the label, never the indicator
-      // and never the market id.
-      const indicator = bet.side_indicator ?? bet.side;
+      // Letter in `side` wins, so the payload production already accepts
+      // resolves the same way. side_indicator covers a label sent in `side`.
+      const indicator = singleBetIndicator(bet);
       const stored = resolveStoredLeg(market, indicator);
       if (!stored.ok) {
         failed.push({ index: i, event_id: bet.event_id, error: stored.error });

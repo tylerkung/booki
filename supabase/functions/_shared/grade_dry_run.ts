@@ -1,4 +1,4 @@
-import { gradeBet, isDeferredMarket, type EventScores } from './grading.ts';
+import { gradeBet, isDeferredMarket, leaveOpen, type EventScores } from './grading.ts';
 import { decideParlay } from './parlay_settle.ts';
 import { gradeProp, resolvePropTarget, type Statline } from './prop_stats.ts';
 import { settlementAmount, type GradeResult } from './settlement_math.ts';
@@ -174,7 +174,7 @@ async function gradeOneLeg(
       awayTeam: String(event.away_team ?? ''),
     };
     const graded = gradeBet({ id: betId, market: marketName, side: String(bet.side ?? '') }, scores);
-    if (graded.result === 'deferred') {
+    if (leaveOpen(graded.result)) {
       return { bet_id: betId, market: marketName, result: 'pending', detail: graded.gradeDetails };
     }
     return {

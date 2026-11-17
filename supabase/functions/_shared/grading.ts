@@ -8,7 +8,12 @@
  */
 
 // GradeResult matches Swift GradeResult enum: win, loss, push
-export type GradeResult = 'win' | 'loss' | 'push' | 'deferred';
+export type GradeResult = 'win' | 'loss' | 'push' | 'deferred' | 'manual';
+
+/** These results must not be written onto a bet and must not settle. */
+export function leaveOpen(result: GradeResult): boolean {
+  return result === 'deferred' || result === 'manual';
+}
 
 /**
  * Player props and futures are not gradeable from a final score.
@@ -398,10 +403,9 @@ export function gradeBet(bet: BetInfo, scores: EventScores): GradeOutcome {
       };
 
     default:
-      // Unknown market type - cannot grade automatically
       return {
-        result: 'push',
-        gradeDetails: `Unknown market type "${bet.market}". Manual grading required.`,
+        result: 'manual',
+        gradeDetails: `Unknown market type "${bet.market}". Left for manual review; not settled.`,
       };
   }
 }

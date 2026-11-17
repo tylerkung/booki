@@ -27,6 +27,28 @@ export const KNOWN_MARKET_TYPES = [
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Which side a single is on.
+ *
+ * The deployed submit_bets only accepts `side` of 'a' or 'b'. The new client
+ * keeps sending that, and may also send the readable label in `side_label`.
+ * A payload that puts the label in `side` and the letter in `side_indicator`
+ * is the other accepted form. Either way the stored row uses the market's label.
+ */
+export function singleBetIndicator(bet: {
+  side?: string | null;
+  side_indicator?: string | null;
+}): 'a' | 'b' | null {
+  if (bet.side === 'a' || bet.side === 'b') return bet.side;
+  if (bet.side_indicator === 'a' || bet.side_indicator === 'b') return bet.side_indicator;
+  return null;
+}
+
+/** What production submit_bets enforces before this PR is deployed. */
+export function deployedSingleSideAccepted(bet: { side?: string | null }): boolean {
+  return bet.side === 'a' || bet.side === 'b';
+}
+
 export function isKnownMarketType(market: string | null | undefined): boolean {
   if (!market) return false;
   return (KNOWN_MARKET_TYPES as readonly string[]).includes(market.toLowerCase());

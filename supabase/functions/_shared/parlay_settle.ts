@@ -12,14 +12,36 @@
 
 export const DEFAULT_MAX_PARLAY_LEGS = 4;
 
-export function parlayTooManyLegs(legCount: number, maxLegs: number = DEFAULT_MAX_PARLAY_LEGS): string | null {
-  if (!Number.isFinite(maxLegs) || maxLegs < 2) {
-    return 'Multi-pick leg limit is not configured';
+/** A cap below 2 is not a real limit. Use the default of 4 rather than 400. */
+export function effectiveParlayMaxLegs(maxLegs: number | null | undefined): number {
+  if (typeof maxLegs !== 'number' || !Number.isFinite(maxLegs) || maxLegs < 2) {
+    return DEFAULT_MAX_PARLAY_LEGS;
   }
-  if (legCount > maxLegs) {
-    return `A multi-pick can have at most ${maxLegs} legs`;
+  return maxLegs;
+}
+
+export function parlayTooManyLegs(legCount: number, maxLegs: number | null | undefined = DEFAULT_MAX_PARLAY_LEGS): string | null {
+  const cap = effectiveParlayMaxLegs(maxLegs);
+  if (legCount > cap) {
+    return `A multi-pick can have at most ${cap} legs`;
   }
   return null;
+}
+
+/**
+ * The submit gate. Over the cap returns 400 and does not call insert.
+ * A cap below 2 is treated as 4, so a bad setting is not a confusing 400.
+ */
+export function placeParlayIfAllowed(
+  legCount: number,
+  maxLegs: number | null | undefined,
+  insert: () => void,
+): { status: number; error?: string; max_legs: number } {
+  const cap = effectiveParlayMaxLegs(maxLegs);
+  const reason = parlayTooManyLegs(legCount, cap);
+  if (reason) return { status: 400, error: reason, max_legs: cap };
+  insert();
+  return { status: 200, max_legs: cap };
 }
 
 /**
@@ -67,7 +89,7 @@ function americanToDecimal(odds: number): number {
   return 1;
 }
 
-function roundCents(amount: number): number {
+export function roundCents(amount: number): number {
   return Math.round(amount * 100) / 100;
 }
 

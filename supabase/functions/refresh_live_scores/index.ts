@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
-import { gradeBet, isDeferredMarket, type BetInfo, type EventScores } from '../_shared/grading.ts';
+import { gradeBet, isDeferredMarket, leaveOpen, type BetInfo, type EventScores } from '../_shared/grading.ts';
 import { settleReadyParlays } from '../_shared/parlay_apply.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
 
                     const betInfo: BetInfo = { id: bet.id, market: bet.market, side: bet.side };
                     const gradeOutcome = gradeBet(betInfo, eventScores);
-                    if (gradeOutcome.result === 'deferred') {
+                    if (leaveOpen(gradeOutcome.result)) {
                       console.log(`Live scores: leaving ${bet.market} bet ${bet.id} open`);
                       continue;
                     }
@@ -292,7 +292,6 @@ Deno.serve(async (req) => {
                       const { error: parlayUpdateError } = await client.from('bets').update({
                         status: 'graded',
                         grade_result: gradeOutcome.result,
-                        grade_details: gradeOutcome.gradeDetails,
                       }).eq('id', bet.id);
                       if (parlayUpdateError) {
                         console.error(`Live scores: parlay leg ${bet.id} was not graded:`, parlayUpdateError);
@@ -322,14 +321,8 @@ Deno.serve(async (req) => {
                     const { error: settleUpdateError } = await client.from('bets').update({
                       status: 'settled',
                       grade_result: gradeOutcome.result,
-                      grade_details: gradeOutcome.gradeDetails,
-                      settled_amount: payoutAmount,
                     }).eq('id', bet.id).eq('status', 'accepted');
                     if (settleUpdateError) {
-                      // grade_details and settled_amount are not columns. The
-                      // update 400s, and writing a ledger anyway leaves a
-                      // settlement on a bet that is still accepted. Surface
-                      // the error and do not post the ledger.
                       console.error(`Live scores: bet ${bet.id} was not updated, ledger not written:`, settleUpdateError);
                       errors.push(`Bet ${bet.id}: ${settleUpdateError.message}`);
                       continue;
