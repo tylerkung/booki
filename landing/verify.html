@@ -90,8 +90,8 @@
     <div id="success" class="success">
       <div class="checkmark">&#10003;</div>
       <h1>Email Verified</h1>
-      <p>Your account is confirmed. Redirecting you now...</p>
-      <a href="/dashboard/" class="btn">Go to Dashboard</a>
+      <p id="success-copy">Your account is confirmed. Redirecting you now...</p>
+      <a id="continue-link" href="/dashboard/" class="btn">Continue</a>
     </div>
 
     <!-- Error state -->
@@ -101,58 +101,103 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/invite-handoff.js"></script>
   <script>
-    // Supabase sends: /verify#access_token=...&type=signup
-    // Or with PKCE: /verify?token=...&type=signup
-    (async function() {
-      const params = new URLSearchParams(window.location.search);
-      const hash = new URLSearchParams(window.location.hash.substring(1));
+    // The confirm email links here with ?token={{ .TokenHash }}&type=signup
+    // (see landing/email-confirm.html). Implicit grants arrive as a hash.
+    // Either way the session has to be stored before we leave, or the
+    // dashboard treats the person as logged out and they have to sign in
+    // by hand — which is what used to drop invitees back on the join form.
+    var SUPABASE_URL = 'https://vstfauqufwpdytmvjyfz.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdGZhdXF1ZndwZHl0bXZqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMjcwNjcsImV4cCI6MjA4NDgwMzA2N30.uwimFkR3pN8BODjjM5KnusptdZz_vcrxKnK_2LKfZHI';
 
-      const token = params.get('token');
-      const type = params.get('type') || hash.get('type');
-      const accessToken = hash.get('access_token');
+    var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { detectSessionInUrl: false, persistSession: true }
+    });
 
-      // If we have hash-based tokens (implicit flow), verification is already done
-      if (accessToken && type === 'signup') {
-        showSuccess();
-        return;
+    function pendingCode(session) {
+      var code = window.BookiInvite ? window.BookiInvite.readCode() : '';
+      var meta = session && session.user && session.user.user_metadata
+        ? session.user.user_metadata.pending_invite
+        : '';
+      if (!code && meta && window.BookiInvite) code = window.BookiInvite.normalize(meta);
+      if (code && window.BookiInvite) window.BookiInvite.writeCode(code, window.BookiInvite.readName());
+      return code;
+    }
+
+    function destination(session) {
+      var code = pendingCode(session);
+      if (window.BookiInvite && window.BookiInvite.dashboardTarget) {
+        return window.BookiInvite.dashboardTarget(code);
       }
+      return code ? ('/dashboard/?invite=' + encodeURIComponent(code)) : '/dashboard/';
+    }
 
-      // If we have a PKCE token, verify it via Supabase
-      if (token && type === 'signup') {
-        try {
-          const res = await fetch(
-            'https://vstfauqufwpdytmvjyfz.supabase.co/auth/v1/verify?' +
-            new URLSearchParams({ token, type, redirect_to: window.location.origin + '/verify' }),
-            { method: 'GET', redirect: 'manual' }
-          );
-          // Supabase returns a redirect on success
-          if (res.status === 0 || res.status === 303 || res.status === 302 || res.ok) {
-            showSuccess();
-          } else {
+    (async function () {
+      var params = new URLSearchParams(window.location.search);
+      var hash = new URLSearchParams(window.location.hash.substring(1));
+      var token = params.get('token') || params.get('token_hash');
+      var type = params.get('type') || hash.get('type') || '';
+      var accessToken = hash.get('access_token');
+      var refreshToken = hash.get('refresh_token');
+      var pkceCode = params.get('code');
+
+      try {
+        if (token && (type === 'signup' || type === 'email' || type === '')) {
+          var verified = await sb.auth.verifyOtp({
+            token_hash: token,
+            type: type === 'email' ? 'email' : 'signup'
+          });
+          if (verified.error || !verified.data || !verified.data.session) {
             showError();
+            return;
           }
-        } catch (e) {
-          // CORS redirect from Supabase = opaque response = TypeError
-          // This is expected behavior for successful verification
-          if (e instanceof TypeError) {
-            showSuccess();
-          } else {
-            showError();
-          }
+          showSuccess(verified.data.session);
+          return;
         }
+
+        if (accessToken && refreshToken && type !== 'recovery') {
+          var restored = await sb.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          if (restored.error || !restored.data || !restored.data.session) {
+            showError();
+            return;
+          }
+          showSuccess(restored.data.session);
+          return;
+        }
+
+        if (pkceCode) {
+          var exchanged = await sb.auth.exchangeCodeForSession(pkceCode);
+          if (exchanged.error || !exchanged.data || !exchanged.data.session) {
+            showError();
+            return;
+          }
+          showSuccess(exchanged.data.session);
+          return;
+        }
+      } catch (e) {
+        showError();
         return;
       }
 
-      // No token found
       showError();
     })();
 
-    function showSuccess() {
+    function showSuccess(session) {
+      var next = destination(session);
+      if (window.BookiInvite) window.BookiInvite.clearAwaiting();
+      var copy = document.getElementById('success-copy');
+      var link = document.getElementById('continue-link');
+      var code = pendingCode(session);
+      if (code && copy) copy.textContent = 'Your account is confirmed. Taking you into the group...';
+      if (link) link.href = next;
       document.getElementById('loading').style.display = 'none';
       document.getElementById('success').style.display = 'block';
-      // Auto-redirect after short delay (user already has session from signup)
-      setTimeout(() => { window.location.href = '/dashboard/'; }, 1500);
+      setTimeout(function () { window.location.href = next; }, 800);
     }
 
     function showError() {

@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="dashboard.css">
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="/invite-handoff.js"></script>
 </head>
 <body>
     <div class="auth-container">
@@ -47,8 +48,11 @@
                 <div class="auth-links">
                     <a href="#" onclick="showForgotPassword(); return false;">Forgot Password?</a>
                     <span class="auth-divider">|</span>
-                    <a href="#" onclick="showSignUp(); return false;">Create Account</a>
+                    <a href="#" id="login-switch" onclick="showSignUp(); return false;">Create Account</a>
                 </div>
+                <p id="login-escape" class="auth-escape" style="display:none;">
+                    <a href="#" onclick="becomeOrganizerInstead(); return false;">Want to run your own group instead? Create an organizer account</a>
+                </p>
             </div>
 
             <!-- Sign Up Form -->
@@ -96,8 +100,21 @@
                 <div id="signup-error" class="form-error" style="display:none;"></div>
                 <button id="signup-btn" class="btn btn-primary btn-block" onclick="handleSignUp()">Create Account</button>
                 <div class="auth-links">
-                    <a href="#" onclick="showLogin(); return false;">Back to Log In</a>
+                    <a href="#" id="signup-switch" onclick="showLogin(); return false;">Back to Log In</a>
                 </div>
+                <p id="signup-escape" class="auth-escape" style="display:none;">
+                    <a href="#" onclick="becomeOrganizerInstead(); return false;">Want to run your own group instead? Create an organizer account</a>
+                </p>
+            </div>
+
+            <!-- Invite could not be used. Organizer sign-up is not the fallback. -->
+            <div id="invite-rejected" style="display:none;">
+                <div class="auth-links">
+                    <a href="#" onclick="showLoginKeepingBlock(); return false;">Already have an account? Log in</a>
+                </div>
+                <p class="auth-escape">
+                    <a href="#" onclick="becomeOrganizerInstead(); return false;">Want to run your own group instead? Create an organizer account</a>
+                </p>
             </div>
 
             <!-- Verification Pending -->
@@ -116,7 +133,7 @@
                     <a href="#" onclick="changeVerificationEmail(); return false;">Use a different email</a>
                 </div>
                 <div class="auth-links" style="margin-top:var(--s-xs);">
-                    <a href="#" onclick="showLogin(); stopVerificationPolling(); return false;">Back to Log In</a>
+                    <a href="#" onclick="showLogin(); stopVerificationWatch(); return false;">Back to Log In</a>
                 </div>
             </div>
 
@@ -144,26 +161,172 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzdGZhdXF1ZndwZHl0bXZqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMjcwNjcsImV4cCI6MjA4NDgwMzA2N30.uwimFkR3pN8BODjjM5KnusptdZz_vcrxKnK_2LKfZHI';
         let sbClient;
 
-        // An invite link lands here as ?invite=CODE. Persist it immediately:
-        // signup requires email verification, so this tab is left and returned
-        // to through a link that carries none of the original query string.
-        // dashboard.js reads the same key and hands it to claim_invite.
-        (function captureInviteCode() {
-            try {
-                const code = (new URLSearchParams(window.location.search).get('invite') || '')
-                    .toUpperCase().replace(/[^A-Z0-9]/g, '');
-                if (!code) return;
-                localStorage.setItem('booki_pending_invite', code);
-                const url = new URL(window.location.href);
-                url.searchParams.delete('invite');
-                window.history.replaceState({}, '', url.toString());
-                // Someone arriving from an invite wants to create an account,
-                // not sign in to one they do not have.
-                document.addEventListener('DOMContentLoaded', function () {
-                    if (typeof showSignUp === 'function') showSignUp();
+        // 'organizer' is the no-invite signup. 'player' is an invite join.
+        // 'rejected' is a code get_invite or claim already refused — that screen
+        // must not offer the organizer form as the next click.
+        let inviteMode = 'organizer';
+        let inviteOrganizerName = '';
+        // True while a refused invite is still remembered and the login form is
+        // showing. Create Account must not quietly start an organizer signup.
+        let holdingInviteBlock = false;
+        let pendingVerificationEmail = '';
+        const preferLogin = new URLSearchParams(window.location.search).get('mode') === 'login';
+
+        function currentInviteCode() {
+            return window.BookiInvite ? window.BookiInvite.readCode() : '';
+        }
+
+        function joinTitle() {
+            return inviteOrganizerName
+                ? ('Join ' + inviteOrganizerName + "'s group")
+                : 'Join this group';
+        }
+
+        function setEscapeVisible(on) {
+            ['login-escape', 'signup-escape'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.style.display = on ? 'block' : 'none';
+            });
+        }
+
+        function signupButtonLabel() {
+            return inviteMode === 'player' ? 'Join Group' : 'Create Account';
+        }
+
+        // Where to send someone who just authenticated. The query param is
+        // repeated so a dashboard that never sees storage still has the code.
+        function dashboardUrl() {
+            const code = inviteMode === 'player' ? currentInviteCode() : '';
+            return code ? ('./?invite=' + encodeURIComponent(code)) : './';
+        }
+
+        function hideAuthPanels() {
+            ['login-form', 'signup-form', 'forgot-form', 'verification-pending', 'invite-rejected']
+                .forEach(function (id) {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
                 });
-            } catch (e) { /* storage blocked — the email fallback still applies */ }
-        })();
+        }
+
+        // Drop the invite and open the ordinary organizer sign-up. This is the
+        // only path from an invite to an organizer account.
+        function becomeOrganizerInstead() {
+            if (window.BookiInvite) {
+                window.BookiInvite.clearCode();
+                window.BookiInvite.clearBlocked();
+                window.BookiInvite.clearAwaiting();
+                window.BookiInvite.stripFromUrl();
+            }
+            holdingInviteBlock = false;
+            inviteMode = 'organizer';
+            inviteOrganizerName = '';
+            showSignUp();
+        }
+
+        // From the rejected screen, log in to an account that already exists.
+        // The rejection stays stored so a brand-new account is not silently
+        // turned into an organizer on the next page.
+        function showLoginKeepingBlock() {
+            holdingInviteBlock = true;
+            inviteMode = 'organizer';
+            showLogin();
+        }
+
+        function showRejected(title, detail) {
+            inviteMode = 'rejected';
+            hideAuthPanels();
+            document.getElementById('invite-rejected').style.display = 'block';
+            setEscapeVisible(false);
+            document.querySelector('.auth-title').textContent = title;
+            document.querySelector('.auth-subtitle').textContent = detail;
+        }
+
+        function rejectInvite(title, detail, code) {
+            if (window.BookiInvite) {
+                if (code) window.BookiInvite.clearCodeIf(code);
+                else window.BookiInvite.clearCode();
+                window.BookiInvite.writeBlocked(title, detail);
+                window.BookiInvite.stripFromUrl();
+            }
+            inviteOrganizerName = '';
+            showRejected(title, detail);
+        }
+
+        function inviteProblem(status) {
+            if (status === 'claimed') {
+                return {
+                    title: 'This invite has already been used',
+                    detail: 'Each invite works once. Ask your organizer for a new link.',
+                    clear: true,
+                };
+            }
+            if (status === 'expired') {
+                return {
+                    title: 'This invite has expired',
+                    detail: 'Ask your organizer for a new link. New ones last seven days.',
+                    clear: true,
+                };
+            }
+            if (status === 'rate_limited') {
+                return {
+                    title: 'Too many attempts',
+                    detail: 'Wait a minute and reload the page.',
+                    clear: false,
+                };
+            }
+            return {
+                title: "This invite isn't valid",
+                detail: "We couldn't find that code. Ask your organizer for a new link.",
+                clear: true,
+            };
+        }
+
+        async function resolveInvite(code) {
+            try {
+                const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_invite', {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ p_code: code }),
+                });
+                if (!res.ok) return; // network/server — claim_invite decides later
+                const rows = await res.json();
+                const inv = Array.isArray(rows) ? rows[0] : rows;
+                if (!inv || inv.status !== 'valid') {
+                    const problem = inviteProblem(inv && inv.status);
+                    if (problem.clear) rejectInvite(problem.title, problem.detail, code);
+                    else showRejected(problem.title, problem.detail);
+                    return;
+                }
+                inviteOrganizerName = inv.organizer_name || '';
+                if (window.BookiInvite) window.BookiInvite.writeCode(code, inviteOrganizerName);
+                if (window.BookiInvite) window.BookiInvite.clearBlocked();
+                if (inviteMode === 'player') {
+                    if (document.getElementById('login-form').style.display !== 'none') showLogin();
+                    else showSignUp();
+                }
+            } catch (e) { /* claim_invite is the authority if the lookup failed */ }
+        }
+
+        function startInviteFlow() {
+            if (!window.BookiInvite) return;
+            const blocked = window.BookiInvite.readBlocked();
+            const code = window.BookiInvite.readCode();
+            if (code) {
+                inviteMode = 'player';
+                inviteOrganizerName = window.BookiInvite.readName() || '';
+                window.BookiInvite.writeCode(code, inviteOrganizerName);
+                window.BookiInvite.ensureInUrl(code);
+                if (preferLogin) showLogin();
+                else showSignUp();
+                resolveInvite(code);
+                return;
+            }
+            if (blocked) showRejected(blocked.title, blocked.detail);
+        }
 
         // ── Email format + error copy ────────────────────────────────────────
         //
@@ -228,45 +391,123 @@
             return true;
         }
 
-        // Check if already logged in — redirect to app for confirmed users
-        async function checkSession() {
+        function userIsConfirmed(user) {
+            return !!(user && (user.confirmed_at || user.email_confirmed_at));
+        }
+
+        function emailRedirectOrigin() {
+            if (window.BookiInvite && window.BookiInvite.emailConfirmOrigin) {
+                return window.BookiInvite.emailConfirmOrigin(window.location.origin);
+            }
+            return String(window.location.origin || '').replace(/\/+$/, '');
+        }
+
+        // GoTrue rejects signUp when emailRedirectTo is not on the allow list.
+        // Retrying without it keeps the account creation working; the message
+        // then uses the Site URL until the list is updated.
+        function redirectWasRejected(error) {
+            const m = ((error && error.message) || '').toLowerCase();
+            return m.includes('redirect') && (m.includes('not allowed') || m.includes('invalid') || m.includes('url'));
+        }
+
+        // Check if already logged in — redirect to app for confirmed users.
+        // An unverified signup that reloads must stay on "check your email",
+        // not fall back to the join form (the account already exists).
+        async function checkSession(bootMode) {
             if (!initSupabase()) return;
             const { data: { session } } = await sbClient.auth.getSession();
             if (session) {
-                // Only redirect if email is confirmed
                 const { data: { user } } = await sbClient.auth.getUser();
-                if (user?.confirmed_at || user?.email_confirmed_at) {
-                    window.location.href = './';
+                if (userIsConfirmed(user)) {
+                    if (window.BookiInvite) window.BookiInvite.clearAwaiting();
+                    window.location.href = dashboardUrl();
+                    return;
                 }
+            }
+            if (bootMode === 'awaiting' || pendingVerificationEmail) {
+                startVerificationWatch();
             }
         }
 
-        checkSession();
+        function showVerificationPending(email) {
+            hideAuthPanels();
+            document.getElementById('verification-pending').style.display = 'block';
+            setEscapeVisible(false);
+            document.querySelector('.auth-title').textContent = 'Check your email';
+            document.querySelector('.auth-subtitle').textContent = '';
+            document.getElementById('verification-email').textContent = email;
+            pendingVerificationEmail = email;
+            const statusEl = document.getElementById('verification-status');
+            if (statusEl) {
+                statusEl.style.color = '';
+                statusEl.innerHTML = 'Waiting for verification<span id="verification-dots">...</span>';
+            }
+        }
+
+        function bootAuthScreen() {
+            const awaiting = window.BookiInvite && window.BookiInvite.readAwaiting && window.BookiInvite.readAwaiting();
+            const code = currentInviteCode();
+            if (awaiting && awaiting.email) {
+                if (code) {
+                    inviteMode = 'player';
+                    inviteOrganizerName = window.BookiInvite.readName() || '';
+                    window.BookiInvite.ensureInUrl(code);
+                }
+                showVerificationPending(awaiting.email);
+                return 'awaiting';
+            }
+            startInviteFlow();
+            return 'form';
+        }
+
+        const bootMode = bootAuthScreen();
+        checkSession(bootMode);
 
         // ── Form Toggles ──
         function showLogin() {
+            hideAuthPanels();
             document.getElementById('login-form').style.display = 'block';
-            document.getElementById('signup-form').style.display = 'none';
-            document.getElementById('forgot-form').style.display = 'none';
-            document.getElementById('verification-pending').style.display = 'none';
-            document.querySelector('.auth-title').textContent = 'Welcome back';
-            document.querySelector('.auth-subtitle').textContent = 'Log in to your dashboard';
+            const player = inviteMode === 'player';
+            document.querySelector('.auth-title').textContent = player ? 'Log in' : 'Welcome back';
+            document.querySelector('.auth-subtitle').textContent = player
+                ? (inviteOrganizerName
+                    ? ('Log in to join ' + inviteOrganizerName + "'s group")
+                    : 'Log in to join this group')
+                : 'Log in to your dashboard';
+            const loginSwitch = document.getElementById('login-switch');
+            if (loginSwitch) {
+                loginSwitch.textContent = player
+                    ? 'Need an account? Sign up'
+                    : (holdingInviteBlock ? 'Create an organizer account' : 'Create Account');
+            }
+            setEscapeVisible(player || holdingInviteBlock);
         }
 
         function showSignUp() {
-            document.getElementById('login-form').style.display = 'none';
+            if (holdingInviteBlock && inviteMode !== 'player') {
+                becomeOrganizerInstead();
+                return;
+            }
+            hideAuthPanels();
             document.getElementById('signup-form').style.display = 'block';
-            document.getElementById('forgot-form').style.display = 'none';
-            document.getElementById('verification-pending').style.display = 'none';
-            document.querySelector('.auth-title').textContent = 'Create account';
-            document.querySelector('.auth-subtitle').textContent = 'Start managing your group';
+            const player = inviteMode === 'player';
+            document.querySelector('.auth-title').textContent = player ? joinTitle() : 'Create account';
+            document.querySelector('.auth-subtitle').textContent = player
+                ? 'Create your account to join.'
+                : 'Start managing your group';
+            const btn = document.getElementById('signup-btn');
+            if (btn && !btn.disabled) btn.textContent = signupButtonLabel();
+            const signupSwitch = document.getElementById('signup-switch');
+            if (signupSwitch) {
+                signupSwitch.textContent = player ? 'Already have an account? Log in' : 'Back to Log In';
+            }
+            setEscapeVisible(player);
         }
 
         function showForgotPassword() {
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('signup-form').style.display = 'none';
+            hideAuthPanels();
             document.getElementById('forgot-form').style.display = 'block';
-            document.getElementById('verification-pending').style.display = 'none';
+            setEscapeVisible(false);
             document.querySelector('.auth-title').textContent = 'Reset password';
             document.querySelector('.auth-subtitle').textContent = 'Enter your email to receive a reset link';
         }
@@ -303,8 +544,9 @@
                 return;
             }
 
-            // Redirect to app — role detection happens in app.html
-            window.location.href = './';
+            // Role detection and claim_invite run in the dashboard.
+            if (window.BookiInvite) window.BookiInvite.clearAwaiting();
+            window.location.href = dashboardUrl();
         }
 
         function toggleReferralDetail() {
@@ -367,38 +609,52 @@
                 ? (document.getElementById('signup-referral-detail').value.trim() || null)
                 : null;
 
-            const { data, error } = await sbClient.auth.signUp({
+            // The code rides on the account as well as in storage. Confirmation
+            // can finish in another browser, which never saw localStorage, and
+            // claim_invite still checks the code server-side.
+            const metadata = { name, referral_source: referralSource, referral_detail: referralDetail };
+            const pendingCode = inviteMode === 'player' ? currentInviteCode() : '';
+            if (pendingCode) metadata.pending_invite = pendingCode;
+
+            const redirectTo = emailRedirectOrigin();
+            let { data, error } = await sbClient.auth.signUp({
                 email,
                 password,
-                options: { data: { name, referral_source: referralSource, referral_detail: referralDetail } }
+                options: { data: metadata, emailRedirectTo: redirectTo }
             });
+            if (error && redirectWasRejected(error)) {
+                ({ data, error } = await sbClient.auth.signUp({
+                    email,
+                    password,
+                    options: { data: metadata }
+                }));
+            }
 
             if (error) {
                 errorEl.textContent = authErrorMessage(error);
                 errorEl.style.display = 'block';
                 btn.disabled = false;
-                btn.textContent = 'Create Account';
+                btn.textContent = signupButtonLabel();
                 return;
             }
 
-            if (data.user && !data.user.confirmed_at) {
-                // Show verification pending UI
-                document.getElementById('signup-form').style.display = 'none';
-                document.getElementById('verification-pending').style.display = 'block';
-                document.querySelector('.auth-title').textContent = 'Check your email';
-                document.querySelector('.auth-subtitle').textContent = '';
-                document.getElementById('verification-email').textContent = email;
-                pendingVerificationEmail = email;
+            if (data.user && !data.user.confirmed_at && !data.user.email_confirmed_at) {
+                // Remember the wait across a reload, and keep the password in
+                // this tab only so we can sign in once the link is clicked
+                // (signup itself returns no session while email confirm is on).
+                if (window.BookiInvite) {
+                    window.BookiInvite.writeAwaiting(email);
+                    window.BookiInvite.writeVerifySecret(password);
+                }
+                showVerificationPending(email);
                 setVerificationFeedback('', false);
-
-                // Poll for verification — auto-redirect once confirmed
-                startVerificationPolling();
+                startVerificationWatch();
                 return;
             }
 
-            // Auto-confirmed — redirect straight to dashboard
+            // Auto-confirmed — claim (if any) happens on the dashboard.
             if (data.user) {
-                window.location.href = './';
+                window.location.href = dashboardUrl();
             }
         }
 
@@ -449,7 +705,6 @@
         // -- there was nothing to do but start over, and starting over hits
         // "already registered" because the account exists.
 
-        let pendingVerificationEmail = '';
         let resendCooldown = 0;
         let resendTimer = null;
 
@@ -486,10 +741,18 @@
             setVerificationFeedback('', false);
             if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
 
-            const { error } = await sbClient.auth.resend({
+            const redirectTo = emailRedirectOrigin();
+            let { error } = await sbClient.auth.resend({
                 type: 'signup',
-                email: pendingVerificationEmail
+                email: pendingVerificationEmail,
+                options: { emailRedirectTo: redirectTo }
             });
+            if (error && redirectWasRejected(error)) {
+                ({ error } = await sbClient.auth.resend({
+                    type: 'signup',
+                    email: pendingVerificationEmail
+                }));
+            }
 
             if (error) {
                 setVerificationFeedback(authErrorMessage(error), false);
@@ -501,7 +764,8 @@
         }
 
         function changeVerificationEmail() {
-            stopVerificationPolling();
+            stopVerificationWatch();
+            if (window.BookiInvite) window.BookiInvite.clearAwaiting();
             clearInterval(resendTimer);
             resendCooldown = 0;
             setVerificationFeedback('', false);
@@ -514,51 +778,136 @@
             if (field) { field.value = pendingVerificationEmail; field.focus(); }
         }
 
-        // ── Verification Polling ──
-        let verificationInterval = null;
+        // ── Verification watch ──
+        //
+        // Confirming the email happens in another tab (often another device).
+        // Signup returns no session while confirmations are required, so
+        // getUser() on this page used to stay empty forever. Three signals:
+        //   1. onAuthStateChange / storage — the verify tab wrote a session
+        //      into the same browser
+        //   2. getSession, and getUser when a session exists but is stale
+        //   3. signInWithPassword with the password kept in this tab, for the
+        //      case where the link was opened somewhere else
+        let verificationTimer = null;
+        let verificationAuthSub = null;
+        let verificationContinued = false;
         const VERIFICATION_POLL_MS = 3000;
-        const VERIFICATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+        const VERIFICATION_TIMEOUT_MS = 10 * 60 * 1000;
 
-        function startVerificationPolling() {
-            stopVerificationPolling();
+        function onVerifyStorage(event) {
+            if (!event.key || event.key.indexOf('auth-token') === -1) return;
+            setTimeout(function () { refreshVerificationSession(); }, 50);
+        }
+
+        async function refreshVerificationSession() {
+            if (verificationContinued || !sbClient) return false;
+            const { data: { session } } = await sbClient.auth.getSession();
+            if (userIsConfirmed(session && session.user)) {
+                continueAfterVerification();
+                return true;
+            }
+            if (!session) return false;
+            const { data: { user } } = await sbClient.auth.getUser();
+            if (userIsConfirmed(user)) {
+                continueAfterVerification();
+                return true;
+            }
+            return false;
+        }
+
+        async function trySignInForVerification() {
+            if (verificationContinued || !sbClient || !pendingVerificationEmail) return false;
+            if (!window.BookiInvite || !window.BookiInvite.readVerifySecret) return false;
+            const secret = window.BookiInvite.readVerifySecret();
+            if (!secret) return false;
+            const { data, error } = await sbClient.auth.signInWithPassword({
+                email: pendingVerificationEmail,
+                password: secret,
+            });
+            if (userIsConfirmed((data && data.user) || (data && data.session && data.session.user))) {
+                window.BookiInvite.clearVerifySecret();
+                continueAfterVerification();
+                return false;
+            }
+            const message = ((error && error.message) || '').toLowerCase();
+            return message.includes('rate limit') || message.includes('too many') || message.includes('security purposes');
+        }
+
+        function continueAfterVerification() {
+            if (verificationContinued) return;
+            verificationContinued = true;
+            stopVerificationWatch();
+            if (window.BookiInvite) window.BookiInvite.clearVerifySecret();
+            if (window.BookiInvite) window.BookiInvite.clearAwaiting();
+            const statusEl = document.getElementById('verification-status');
+            if (statusEl) {
+                statusEl.textContent = 'Verified! Setting up your account...';
+                statusEl.style.color = 'var(--accent, #00F5D4)';
+            }
+            setTimeout(function () { window.location.href = dashboardUrl(); }, 600);
+        }
+
+        function startVerificationWatch() {
+            stopVerificationWatch();
+            verificationContinued = false;
             let dotCount = 0;
+            let signInDelay = 15000;
+            let nextSignIn = Date.now() + 4000;
+            let nextUserRefresh = 0;
             const startTime = Date.now();
 
-            verificationInterval = setInterval(async () => {
-                // Stop after 10 minutes
-                if (Date.now() - startTime > VERIFICATION_TIMEOUT_MS) {
-                    stopVerificationPolling();
-                    const statusEl = document.getElementById('verification-status');
-                    if (statusEl) {
-                        statusEl.innerHTML = 'Verification timed out. <a href="#" onclick="showLogin(); stopVerificationPolling(); return false;" style="color:var(--accent);">Log in</a> if you already verified.';
-                    }
-                    return;
-                }
+            const { data: authListener } = sbClient.auth.onAuthStateChange(function (_event, session) {
+                if (userIsConfirmed(session && session.user)) continueAfterVerification();
+            });
+            verificationAuthSub = authListener && authListener.subscription;
+            if (verificationContinued) {
+                stopVerificationWatch();
+                return;
+            }
+            window.addEventListener('storage', onVerifyStorage);
 
-                // Animate dots
+            verificationTimer = setInterval(async function () {
+                if (verificationContinued) return;
                 dotCount = (dotCount + 1) % 4;
                 const dotsEl = document.getElementById('verification-dots');
                 if (dotsEl) dotsEl.textContent = '.'.repeat(dotCount || 1);
 
-                // Check if user is now confirmed via existing session
-                const { data: { user } } = await sbClient.auth.getUser();
-                if (user?.confirmed_at || user?.email_confirmed_at) {
-                    stopVerificationPolling();
+                const pastTimeout = Date.now() - startTime > VERIFICATION_TIMEOUT_MS;
+                if (pastTimeout) {
                     const statusEl = document.getElementById('verification-status');
-                    if (statusEl) {
-                        statusEl.textContent = 'Verified! Setting up your account...';
-                        statusEl.style.color = 'var(--accent, #00F5D4)';
+                    if (statusEl && !statusEl.dataset.patient) {
+                        statusEl.dataset.patient = '1';
+                        statusEl.textContent = 'Still waiting. Open the link in your email, or resend it.';
                     }
-                    setTimeout(() => { window.location.href = './'; }, 600);
+                }
+
+                if (Date.now() >= nextUserRefresh) {
+                    nextUserRefresh = Date.now() + 6000;
+                    const done = await refreshVerificationSession();
+                    if (done) return;
+                }
+
+                if (!pastTimeout && Date.now() >= nextSignIn) {
+                    nextSignIn = Date.now() + signInDelay;
+                    const limited = await trySignInForVerification();
+                    if (limited) {
+                        signInDelay = Math.min(signInDelay * 2, 60000);
+                        nextSignIn = Date.now() + signInDelay;
+                    }
                 }
             }, VERIFICATION_POLL_MS);
         }
 
-        function stopVerificationPolling() {
-            if (verificationInterval) {
-                clearInterval(verificationInterval);
-                verificationInterval = null;
+        function stopVerificationWatch() {
+            if (verificationTimer) {
+                clearInterval(verificationTimer);
+                verificationTimer = null;
             }
+            if (verificationAuthSub && verificationAuthSub.unsubscribe) {
+                verificationAuthSub.unsubscribe();
+                verificationAuthSub = null;
+            }
+            window.removeEventListener('storage', onVerifyStorage);
         }
 
         // Enter on password field submits

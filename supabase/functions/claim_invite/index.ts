@@ -3,6 +3,7 @@ import { createServiceClient } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { sendNotification } from '../_shared/notifications.ts';
+import { memberNameFromAuthUser } from '../_shared/member_name.ts';
 
 interface ClaimInviteRequest {
   /**
@@ -181,9 +182,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Derive player name from email (prefix before @)
+    // Typed on the join form and stored at signUp. Email prefix only when that
+    // is blank. This runs on INSERT only — a member who already has a row is
+    // rejected above and their name is left alone.
     const authEmail = authUser.user.email ?? '';
-    const playerName = authEmail.includes('@') ? authEmail.split('@')[0] : authEmail || 'Member';
+    const playerName = memberNameFromAuthUser(authUser.user);
 
     // Fetch bookie's default settings
     let creditLimit = 1000; // fallback default

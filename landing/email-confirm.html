@@ -1,5 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+<!--
+  Preview copy of the Supabase "Confirm signup" template. Supabase does not
+  read this file at send time — the dashboard template has to match.
+  {{ .RedirectTo }} is the emailRedirectTo origin (no trailing slash), or the
+  Site URL when the client did not pass one. The client sends
+  window.location.origin so a deploy preview verifies against itself once that
+  origin is on the Auth redirect allow list.
+-->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -57,7 +65,7 @@
                 <!-- CTA Button -->
                 <tr>
                   <td align="center" style="padding-bottom: 32px;">
-                    <a href="https://bookisports.com/verify?token={{ .TokenHash }}&type=signup"
+                    <a href="{{ .RedirectTo }}/verify?token={{ .TokenHash }}&type=signup"
                        style="display: inline-block; background-color: #00F5D4; color: #0A0A12; font-size: 16px; font-weight: 700; text-decoration: none; padding: 16px 40px; border-radius: 10px; letter-spacing: 0.5px; text-transform: uppercase;">
                       Verify Email
                     </a>
@@ -82,7 +90,7 @@
                 <tr>
                   <td align="center">
                     <p style="margin: 0; font-size: 13px; line-height: 1.5; word-break: break-all;">
-                      <a href="https://bookisports.com/verify?token={{ .TokenHash }}&type=signup" style="color: #00F5D4; text-decoration: underline;">https://bookisports.com/verify?token={{ .TokenHash }}&type=signup</a>
+                      <a href="{{ .RedirectTo }}/verify?token={{ .TokenHash }}&type=signup" style="color: #00F5D4; text-decoration: underline;">{{ .RedirectTo }}/verify?token={{ .TokenHash }}&type=signup</a>
                     </p>
                   </td>
                 </tr>

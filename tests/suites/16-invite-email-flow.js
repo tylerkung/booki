@@ -87,6 +87,7 @@ export default async function inviteEmailFlow(ctx) {
         eq(p?.bookie_id, ctx.bookieId, 'player row points at the organizer');
         eq(p?.auth_user_id, inviteeId, 'player row is linked to the account');
         ok(p?.claimed_at, 'player row is marked claimed');
+        eq(data?.player_name, inviteeEmail.split('@')[0], 'blank name falls back to the email prefix');
       }
 
       // The whole point: they are a MEMBER, not an accidental organizer.
@@ -100,6 +101,62 @@ export default async function inviteEmailFlow(ctx) {
         .eq('invite_code', cData.invite_code).single();
       ok(after?.claimed_at, 'invite marked claimed');
       eq(after?.claimed_by_player_id, data?.player_id, 'invite records who claimed it');
+    }
+
+    // ── the name typed at signup is the player name ─────────────────────
+    // Web signup stores it as user_metadata.name. claim_invite used to ignore
+    // that and keep the mailbox prefix. A blank name still falls back (the
+    // assertion above). An existing row is not renamed: a second claim 409s
+    // and the name stays.
+    {
+      const namedEmail = `test_stress_named_${stamp}@test.local`;
+      const { data: namedInvite } = await callEdge('create_invite', {
+        idempotency_key: uuid(),
+      }, ctx.bookieToken);
+      if (namedInvite?.invite_id) created.invites.push(namedInvite.invite_id);
+      const { data: namedUser, error: namedErr } = await svc.auth.admin.createUser({
+        email: namedEmail,
+        password: 'TestPass123!',
+        email_confirm: true,
+        user_metadata: { name: 'QA Test One' },
+      });
+      if (namedErr) {
+        ok(false, `named user: ${namedErr.message}`);
+      } else if (namedUser?.user?.id && namedInvite?.invite_code) {
+        created.users.push(namedUser.user.id);
+        const { status, data } = await callEdge('claim_invite', {
+          invite_code: namedInvite.invite_code,
+          auth_user_id: namedUser.user.id,
+          idempotency_key: uuid(),
+        });
+        eq(status, 200, 'claim with user_metadata.name → 200');
+        eq(data?.player_name, 'QA Test One', 'response uses the typed name, not the email prefix');
+        if (data?.player_id) {
+          created.players.push(data.player_id);
+          const { data: namedRow } = await svc.from('players').select('name').eq('id', data.player_id).single();
+          eq(namedRow?.name, 'QA Test One', 'players.name is the typed name');
+
+          // A second invite must stay unclaimed, and the name must stay.
+          const { data: secondInvite } = await callEdge('create_invite', {
+            idempotency_key: uuid(),
+          }, ctx.bookieToken);
+          if (secondInvite?.invite_id) created.invites.push(secondInvite.invite_id);
+          if (secondInvite?.invite_code) {
+            const { status: again, data: againData } = await callEdge('claim_invite', {
+              invite_code: secondInvite.invite_code,
+              auth_user_id: namedUser.user.id,
+              idempotency_key: uuid(),
+            });
+            eq(again, 409, 'already a member → 409');
+            eq(againData?.error, 'already_in_group', 'already a member is not a new join');
+            const { data: secondRow } = await svc.from('invites')
+              .select('claimed_at').eq('id', secondInvite.invite_id).single();
+            eq(secondRow?.claimed_at, null, 'the new invite is left unclaimed');
+            const { data: still } = await svc.from('players').select('name').eq('id', data.player_id).single();
+            eq(still?.name, 'QA Test One', 'existing player name is unchanged');
+          }
+        }
+      }
     }
 
     // ── expiry: a bearer code expires, an addressee does not ─────────────

@@ -190,6 +190,7 @@ silently RELABELLED as a moneyline on shipped builds rather than ignored.
 | Game detail view (`#/player-game/:id`) | iOS `GameDetailView` already exists; needs team totals + props sections | shipped on web |
 | Props UI grouped by player | iOS needs the same grouping; the ladder layout does not fit a prop | shipped on web |
 | `get_event_player_props()` RPC | iOS must call this RPC for props — a plain `markets` select will never return them once `MarketType` supports the type | shipped on web |
+| Invite signup name | `InviteClaimView` signup has no name field and does not set `user_metadata.name`, so `claim_invite` still falls back to the email prefix | web stores the typed name as `user_metadata.name` |
 
 **The structural fix worth doing first:** give `MarketType` an `unknown` case and
 have the sync SKIP unknown types instead of coercing them. Three separate
