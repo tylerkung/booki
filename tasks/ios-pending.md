@@ -340,6 +340,47 @@ rely on the old auto-confirm.
 - [ ] Send the signed-in user's access token, not the anon key, on `claim_invite` and `claim_player`
 - [ ] Once every shipped iOS build does that, remove the interim unauthenticated path in `authorizeClaimRequest`
 
+## B16 — Stale main line on the games board
+
+Not built. iOS only. The web board and the odds ingest are fixed on
+`cursor/fix-stale-board-spread-18ee` (migration 064). Shipped iOS still has
+the display half of the same bug.
+
+`sync_games` / `auto_refresh_games` used to insert a new `spread` (and `total`)
+row every time the number moved and leave the old one bettable. Colts @ Texans
+on 19 Nov 2026 (event `672953b5`) had +10, +10.5, +11.5 and +12.5 all live.
+`submit_bets` refuses any row that trails a newer bettable sibling
+(`line_no_longer_offered`). The web board was showing +11.5 from 08:00Z while
+the 20:00Z feed was +12.5, and the pick failed.
+
+After 064 is applied and `sync_games` / `auto_refresh_games` are deployed, the
+next ingest keeps one shared main line and marks the others not bettable. Until
+that runs, and on any build that synced the duplicates into SwiftData, iOS
+still picks the wrong row:
+
+- `Booki/Views/CompactGameRow.swift` — `spreadMarket`, `moneylineMarket` and
+  `totalMarket` use `event.markets?.first { $0.type == … }`. That is whichever
+  row SwiftData returns first, not the newest `updatedAt`.
+- `Booki/Views/SubmitBetView.swift` — `marketTypeSection` lists every row of
+  the type, so a member can tap +11.5 and get the same 400. Show one row.
+- `Booki/Models/Market.swift` has `updatedAt` and does not have `bettable`.
+  The web skips `bettable === false`. iOS cannot, until that column is
+  decoded. Newest `updatedAt` is the signal that works without it: the ingest
+  writes the live row after it retires the others, so the live row is the
+  newest. A later touch of a retired row would invert that, which is why the
+  web also checks `bettable`.
+- The slip does not keep the pick or explain `line_no_longer_offered` (see B3).
+  Web now keeps the slip and toasts "That line is no longer offered…".
+
+`SyncGamesView.updateEventOdds` already overwrites the first local row of that
+type in place. The bug is which row the board and the market picker read, not
+a second local writer.
+
+- [ ] CompactGameRow: one moneyline, one spread, one total — newest `updatedAt`
+- [ ] SubmitBetView: that same single row, not a section of every stored number
+- [ ] Decode `markets.bettable` and skip `false`, matching the web
+- [ ] Confirm a pick on that row is the one `submit_bets` will accept (it is not trailing a newer sibling)
+
 ## B9 — Move invite validation onto `get_invite()`, then drop the `USING (true)` policy
 
 **Blocking a security fix.** Migration 010 created:
