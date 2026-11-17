@@ -1,5 +1,5 @@
 -- ============================================================================
--- 061 — Snapshot the prop identity onto the bet at submit
+-- 062 — Snapshot the prop identity onto the bet at submit
 --
 -- sync_games deletes every non-outright market on a finished event, and
 -- bets.market_id is ON DELETE SET NULL. Once that happens the stat_key and
@@ -22,6 +22,6 @@ ALTER TABLE bets ADD COLUMN IF NOT EXISTS stat_key TEXT;
 ALTER TABLE bets ADD COLUMN IF NOT EXISTS subject_player_id INTEGER;
 ALTER TABLE bets ADD COLUMN IF NOT EXISTS prop_line NUMERIC;
 
-COMMENT ON COLUMN bets.stat_key IS 'Prop stat key copied from the market at submit. Null for non-props and for bets placed before migration 061.';
-COMMENT ON COLUMN bets.subject_player_id IS 'balldontlie player id copied from the market at submit. Null for non-props and for bets placed before migration 061.';
-COMMENT ON COLUMN bets.prop_line IS 'Numeric prop line copied at submit (2.5, 79.5, 0.5). Null for non-props and for bets placed before migration 061.';
+COMMENT ON COLUMN bets.stat_key IS 'Prop stat key copied from the market at submit. Null for non-props and for bets placed before migration 062.';
+COMMENT ON COLUMN bets.subject_player_id IS 'balldontlie player id copied from the market at submit. Null for non-props and for bets placed before migration 062.';
+COMMENT ON COLUMN bets.prop_line IS 'Numeric prop line copied at submit (2.5, 79.5, 0.5). Null for non-props and for bets placed before migration 062.';

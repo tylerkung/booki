@@ -1481,7 +1481,7 @@ Deno.serve(async (req) => {
       // A finished game's odds can go. A market that still has an open pick
       // cannot: bets.market_id is ON DELETE SET NULL, and that is how a prop
       // loses the stat it has to be graded against. Bets placed after
-      // migration 061 also carry their own snapshot, but anything still open
+      // migration 062 also carry their own snapshot, but anything still open
       // from before that keeps its market row until it settles.
       const heldByOpenBet = new Set<string>();
       let pruneHeldFailed = false;

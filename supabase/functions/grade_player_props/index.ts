@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
         .eq('event_id', event.id)
         .in('status', ['accepted', 'pending', 'graded']);
       if (betsError) {
-        const note = `event ${event.id}: could not read bets (${betsError.message}). Left pending. Migration 061 must be applied before this function can read prop snapshots.`;
+        const note = `event ${event.id}: could not read bets (${betsError.message}). Left pending. Migration 062 must be applied before this function can read prop snapshots.`;
         stats.notes.push(note);
         console.error(note);
         continue;
