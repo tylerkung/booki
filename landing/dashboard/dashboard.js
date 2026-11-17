@@ -12,6 +12,10 @@ const SUPABASE_URL = 'https://vstfauqufwpdytmvjyfz.supabase.co';
  * bloat every member's payload for lines the board cannot display anyway.
  */
 const BOARD_MARKET_TYPES = ['moneyline', 'spread', 'total'];
+/** updated_at and bettable are how the board picks one line when older
+ *  numbers are still stored. Without them every duplicate looks current and
+ *  the last row in an unordered response wins. */
+const BOARD_MARKET_COLUMNS = 'id, event_id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable';
 /** Games shown per league on the board before "Show More". */
 const BOARD_ROWS_PER_LEAGUE = 3;
 /** Outright outcomes previewed on the board. A futures market is every team in
@@ -2238,27 +2242,32 @@ function dashboardApp() {
             const needGames = gameIds.filter(id => !have.has(id));
             const needOutrights = outrightIds.filter(id => !haveOut.has(id));
 
-            const fetchIn = async (ids, types, limit) => {
+            const fetchIn = async (ids, types, limit, onlyBettable) => {
                 if (!ids.length) return [];
                 const BATCH = 50;
                 const batches = [];
                 for (let i = 0; i < ids.length; i += BATCH) {
-                    batches.push(this.supabase
+                    let q = this.supabase
                         .from('markets')
-                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                        .select(BOARD_MARKET_COLUMNS)
                         .in('event_id', ids.slice(i, i + BATCH))
-                        .in('type', types)
-                        .limit(limit));
+                        .in('type', types);
+                    // Retired main lines stay in the table (a pick may point at
+                    // them) but they are not a price. The picker still has to
+                    // choose among the ones that remain, because a moved line
+                    // used to leave several bettable rows behind.
+                    if (onlyBettable) q = q.eq('bettable', true);
+                    batches.push(q.limit(limit));
                 }
                 const res = await Promise.all(batches);
                 return res.flatMap(r => r.data || []);
             };
 
             const [games, outrights] = await Promise.all([
-                fetchIn(needGames, BOARD_MARKET_TYPES, 500),
+                fetchIn(needGames, BOARD_MARKET_TYPES, 500, true),
                 // A futures market is one row per team, so its cap is sized per
                 // event rather than by the 500 a board batch needs.
-                fetchIn(needOutrights, ['outright'], 1000),
+                fetchIn(needOutrights, ['outright'], 1000, false),
             ]);
             if (games.length) this.playerMarkets = [...this.playerMarkets, ...games];
             if (outrights.length) this.boardOutrightMarkets = [...this.boardOutrightMarkets, ...outrights];
@@ -2298,9 +2307,10 @@ function dashboardApp() {
                             // game by the game detail view instead, which also
                             // keeps them out of every member's sync payload.
                             .from('markets')
-                            .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                            .select(BOARD_MARKET_COLUMNS)
                             .in('event_id', eventIds.slice(i, i + BATCH))
                             .in('type', BOARD_MARKET_TYPES)
+                            .eq('bettable', true)
                             .limit(500)
                     );
                 }
@@ -2386,9 +2396,10 @@ function dashboardApp() {
                 fetches.push(
                     this.supabase
                         .from('markets')
-                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                        .select(BOARD_MARKET_COLUMNS)
                         .in('event_id', sportEventIds)
                         .in('type', BOARD_MARKET_TYPES)
+                        .eq('bettable', true)
                         .limit(500)
                 );
             } else {
@@ -2522,8 +2533,14 @@ function dashboardApp() {
             const map = {};
             for (const m of this.playerMarkets) {
                 if (!map[m.event_id]) map[m.event_id] = {};
-                map[m.event_id][m.type] = m;
-                if (aliasMap[m.type]) map[m.event_id][aliasMap[m.type]] = m;
+                const slot = map[m.event_id];
+                // Last-write-wins was wrong: the query is unordered, so the
+                // row that arrived last was often an older number. Keep the
+                // newest bettable row. Moneyline, spread and total all share
+                // this rule; a retired row must not cover the live one.
+                const chosen = preferBoardMarket(slot[m.type], m);
+                if (chosen) slot[m.type] = chosen;
+                if (aliasMap[m.type] && slot[m.type]) slot[aliasMap[m.type]] = slot[m.type];
             }
             return map;
         },
@@ -2671,7 +2688,7 @@ function dashboardApp() {
                         .select('id, away_team, home_team, start_time, status, league, sport, away_score, home_score')
                         .eq('id', eventId).maybeSingle(),
                     this.supabase.from('markets')
-                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable')
                         .eq('event_id', eventId)
                         .limit(1000),
                     this.supabase.rpc('get_event_player_props', { p_event_id: eventId }),
@@ -2793,17 +2810,20 @@ function dashboardApp() {
             const pair = (key, title, markets) =>
                 markets.length ? { key, title, kind: 'pair', markets } : null;
 
-            // Moneyline first: it is what most people came for.
-            push(pair('moneyline', 'Winner', byType('moneyline')));
+            // Moneyline first: it is what most people came for. One row —
+            // the newest bettable one. Older duplicates are not extra buttons.
+            push(pair('moneyline', 'Winner', featuredMainList(all, 'moneyline')));
 
             // Spread and its alternates are one ladder, with the main line
             // included — splitting them would put the headline number in a
-            // different card from the ladder it belongs to.
-            const spreads = [...byType('spread'), ...byType('alternate_spread')];
+            // different card from the ladder it belongs to. The featured
+            // spread is a single row; the duplicates left behind by a moved
+            // number are not extra columns.
+            const spreads = [...featuredMainList(all, 'spread'), ...byType('alternate_spread')];
             const spreadLadder = this.buildLadder('spread', 'Spread', spreads, true);
             if (spreadLadder) push({ ...spreadLadder, kind: 'ladder' });
 
-            const totals = [...byType('total'), ...byType('alternate_total')];
+            const totals = [...featuredMainList(all, 'total'), ...byType('alternate_total')];
             const totalLadder = this.buildLadder('total', 'Total', totals);
             if (totalLadder) push({ ...totalLadder, kind: 'ladder' });
 
@@ -3354,20 +3374,22 @@ function dashboardApp() {
                 // away — a 404 looked identical to a network drop.
                 console.error('Submit bet slip error:', err);
                 const raw = err && err.message;
-                this.toast(this.humanizeBetError(raw), 'error');
+                const message = this.humanizeBetError(raw);
+                // Always. An empty message used to fall through to a clear
+                // with nothing on screen.
+                this.toast(message || 'Failed to place pick', 'error');
 
-                // A missing event or market means this page is holding a stale
-                // copy of the board: sync_games rewrites events twice daily, and
-                // a slip built before a rewrite points at ids that no longer
-                // exist. Singles absorb this as a partial failure; a parlay is
-                // all-or-nothing and 404s outright. Drop the dead selections and
-                // reload rather than leaving unbettable odds on screen.
-                if (this.isStaleBoardError(raw)) {
-                    this.betSlipSelections = [];
-                    this.betSlipStakes = {};
-                    this.betSlipMultiStake = '';
-                    this.showBetSlip = false;
+                // Keep the slip. line_no_longer_offered used to empty it and
+                // hide the panel in the same turn the toast was created, so
+                // the first failure looked silent: the pick was gone and no
+                // message stayed up. The member still has the pick and can
+                // swap it for the line the refresh is about to show.
+                const disposition = submitFailureDisposition(raw);
+                if (disposition.refreshBoard) {
                     this.loadPlayerGames();
+                    if (this.route === 'player-game' && this.selectedGameId) {
+                        this.loadGameDetail(this.selectedGameId);
+                    }
                 }
             }
 
@@ -3378,11 +3400,7 @@ function dashboardApp() {
          * Does this error mean the board on screen no longer matches the server?
          */
         isStaleBoardError(raw) {
-            const msg = String(raw || '');
-            return /^Events? not found/.test(msg) ||
-                /^Market not found/.test(msg) ||
-                msg === 'line_no_longer_offered' ||
-                msg === 'Market has no price';
+            return isStaleBoardErrorMessage(raw);
         },
 
         /**
@@ -3394,7 +3412,7 @@ function dashboardApp() {
         humanizeBetError(raw) {
             const msg = String(raw || '');
             if (this.isStaleBoardError(msg)) {
-                return 'One of these games is no longer available. Refreshing the board — please rebuild your pick.';
+                return 'That line is no longer offered. Your pick is still here — remove it and add the current line.';
             }
             if (/^Events locked/.test(msg) || msg === 'Event is locked for betting') {
                 return 'Betting has closed on one of these games.';
