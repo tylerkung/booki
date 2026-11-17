@@ -483,6 +483,8 @@ Server-authoritative functions running on Supabase (Deno/TypeScript):
 | `auto_refresh_games` | Cron job: fetches scores and auto-grades bets when games finalize (hourly) |
 | `refresh_live_scores` | Smart scores-only refresh every 5 min with sport duration estimation |
 | `sync_games` | Fetches odds/events from The Odds API, updates markets |
+| `grade_player_props` | Grades NFL player props from a balldontlie box score. Singles settle through `settle_bet_tx` |
+| `grade_dry_run` | Admin-only read. Reports what grading would do and writes nothing |
 | `delete_account` | Cancels Stripe subscription, deletes bookie data atomically, removes auth user |
 
 All functions validate JWT auth, check idempotency, and emit audit events.
@@ -515,4 +517,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: November 16, 2026 - Invite expiry copy matches the server: addressed invites don't expire, link invites last 7 days, the invite email links to bookisports.com. QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*
+*Last updated: November 17, 2026 - Player props grade from the player's stat instead of settling as a push, and a multi-pick with a voided leg is repriced over the legs that remain. Migration 061 (prop snapshot columns) is in the repo and is not applied. Past bets are not rewritten.*

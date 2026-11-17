@@ -441,3 +441,27 @@ copy change; these two strings were left in the app on purpose.
 - [ ] Link-invite confirmation: "Expires in 7 days" (or a date), not "Expires in 24 hours"
 - [ ] Addressed-invite confirmation: do not claim an expiry
 - [ ] Mail body: the web invite URL, and expiry copy that matches the invite kind
+
+## B15 — Prop voids and repriced multi-picks display wrong
+
+Not built. iOS only. The server now grades props and reprices a multi-pick
+after a void or push leg. Shipped builds will show that wrong.
+
+`GradeResult` (`Booki/Models/Bet.swift`) is `win | loss | push`. A voided prop
+is stored as `grade_result = 'void'`. `GradeResult(rawValue:)` fails, so the
+leg syncs with a nil result and looks ungraded even after `settle_bet_tx`
+marks it settled.
+
+`TrackView.combinedStatus` returns `.void` when **any** leg has `status == .void`.
+A 4-leg multi-pick with two voided legs and two wins is a win at the repriced
+2-leg price on the server, and the whole ticket on iOS. `TicketDetailView`
+already drops void and push legs when it recomputes the odds, but it never
+gets there once `combinedStatus` is `.void`.
+
+The web dashboard was updated with the same rules. iOS was not, because this
+session cannot compile it.
+
+- [ ] Add `void` to `GradeResult` and decode it
+- [ ] `combinedStatus` must not treat one voided leg as a voided ticket. A ticket is void only when every leg is void or push
+- [ ] A loss on any leg is a loss even if another leg is still open
+- [ ] The displayed payout has to use the legs that were not voided or pushed, matching `decideParlay` in `supabase/functions/_shared/parlay_settle.ts`

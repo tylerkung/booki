@@ -1,26 +1,34 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
-import { gradeProp, type Statline } from '../_shared/prop_stats.ts';
-import { settlementAmount, SETTLEMENT_DESCRIPTION, type GradeResult } from '../_shared/settlement_math.ts';
+import {
+  gradeProp,
+  NFL_BOX_SCORE_MIN_ROWS,
+  resolvePropTarget,
+  type Statline,
+} from '../_shared/prop_stats.ts';
+import { settleReadyParlays } from '../_shared/parlay_apply.ts';
 
 /**
  * Settle player props from a balldontlie box score.
  *
- * Three rules shape this, and each exists because the obvious alternative
- * settles bets wrongly:
+ * This is the only prop grader. refresh_live_scores and the catch-up job
+ * must not grade props: they run first, and a push settlement takes the bet
+ * out of the open set this function reads.
  *
- *   1. WAIT before grading. A statline is not final when the whistle blows;
- *      grading immediately settles against a box score still being written.
+ * The stat source is the box score fetched here. The database does not store
+ * player stats. The bet's own stat_key / subject_player_id / side snapshot
+ * is what we grade from, so a pruned market row does not matter. Bets placed
+ * before that snapshot existed fall back to the market row, and if that row
+ * is already gone they are left pending — this function does not guess, and
+ * it does not rewrite bets that are already settled.
  *
- *   2. ALL OR NOTHING per game. A partial box score produces confident wrong
- *      answers rather than obviously broken ones — an Over on a receiver whose
- *      line has not landed yet reads exactly like a loss.
+ * Singles go through settle_bet_tx (migration 015), which is the one ledger
+ * write. Parlay legs are graded onto the leg and paid once by
+ * settleReadyParlays, not per leg.
  *
- *   3. AN ABSENT STATLINE IS A VOID, A ZERO ROW IS NOT. balldontlie emits a row
- *      only for players with recorded involvement, so absence means the player
- *      did not play. A row of zeroes means he played and did nothing, and an
- *      Over on him LOSES. Collapsing the two would refund stakes on bets the
- *      book won.
+ * NFL only. Any other sport is logged and left pending. NBA's field map
+ * exists on the pure grader (the spike verified it) but this job does not
+ * fetch NBA. MLB's stat endpoint returns 401 on the current plan.
  */
 
 const BDL_BASE = 'https://api.balldontlie.io/nfl/v1';
@@ -31,13 +39,27 @@ const SETTLING_DELAY_MS = 30 * 60 * 1000;
 /** After this long, stop retrying and hand the game to a human. */
 const GIVE_UP_AFTER_MS = 24 * 60 * 60 * 1000;
 
-/** A box score with fewer statlines than this is treated as still arriving. */
-const MIN_STATLINES = 20;
-
 interface BdlStatRow {
   player: { id: number };
   team?: { id: number };
   [k: string]: unknown;
+}
+
+interface OpenBet {
+  id: string;
+  player_id: string;
+  bookie_id: string;
+  market: string | null;
+  side: string | null;
+  odds: number | string;
+  stake: number | string;
+  status: string;
+  grade_result: string | null;
+  market_id: string | null;
+  is_parlay: boolean | null;
+  ticket_id: string | null;
+  stat_key: string | null;
+  subject_player_id: number | null;
 }
 
 Deno.serve(async (req) => {
@@ -51,34 +73,62 @@ Deno.serve(async (req) => {
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const dryRun = body.dry_run === true;
-    // Bypasses the settling delay only. Never bypasses completeness.
+    // Bypasses the settling delay only. Never bypasses completeness, and
+    // never writes when dry_run is set. The admin report is grade_dry_run;
+    // this flag is the existing operator switch and it must not settle.
     const force = body.force === true;
 
     const client = createServiceClient();
     const now = Date.now();
 
-    // Games finished recently enough to still be worth grading.
-    const { data: events, error: eventsError } = await client
-      .from('events')
-      .select('id, home_team, away_team, start_time, status, bdl_game_id, updated_at')
-      .eq('league', 'NFL')
-      .eq('status', 'final')
-      .not('bdl_game_id', 'is', null)
-      .gt('updated_at', new Date(now - GIVE_UP_AFTER_MS).toISOString());
-
-    if (eventsError) return json({ error: `events: ${eventsError.message}` }, 500);
-
     const stats = {
-      games_considered: events?.length ?? 0,
+      games_considered: 0,
       games_waiting_settle: 0,
       games_incomplete: 0,
       games_graded: 0,
       games_gave_up: 0,
       bets_settled: 0,
       bets_void: 0,
+      bets_left_pending: 0,
+      parlays_settled: 0,
       dry_run: dryRun,
       notes: [] as string[],
     };
+
+    // Sports this job cannot grade. Leave the bets open and say so. The
+    // score graders used to push these; they no longer do.
+    const { data: openProps } = await client
+      .from('bets')
+      .select('id, event_id')
+      .eq('market', 'player_prop')
+      .in('status', ['accepted', 'pending'])
+      .limit(500);
+    const openEventIds = [...new Set((openProps ?? []).map((bet) => bet.event_id).filter(Boolean))];
+    if (openEventIds.length > 0) {
+      const { data: openEvents } = await client
+        .from('events')
+        .select('id, league, status')
+        .in('id', openEventIds.slice(0, 200));
+      const skipped = new Set<string>();
+      for (const event of openEvents ?? []) {
+        if (event.status !== 'final' || event.league === 'NFL' || skipped.has(event.id)) continue;
+        skipped.add(event.id);
+        const note = `${event.league} event ${event.id}: no stat feed, props left pending`;
+        stats.notes.push(note);
+        console.log(note);
+      }
+    }
+
+    const { data: events, error: eventsError } = await client
+      .from('events')
+      .select('id, home_team, away_team, start_time, status, bdl_game_id, updated_at, league')
+      .eq('league', 'NFL')
+      .eq('status', 'final')
+      .not('bdl_game_id', 'is', null)
+      .gt('updated_at', new Date(now - GIVE_UP_AFTER_MS).toISOString());
+
+    if (eventsError) return json({ error: `events: ${eventsError.message}` }, 500);
+    stats.games_considered = events?.length ?? 0;
 
     for (const event of events ?? []) {
       const { data: runRow } = await client
@@ -89,15 +139,18 @@ Deno.serve(async (req) => {
 
       if (runRow?.status === 'graded') continue;
 
-      // Only bets on THIS event's prop markets, still open.
-      const { data: bets } = await client
+      const { data: bets, error: betsError } = await client
         .from('bets')
-        .select('id, player_id, bookie_id, market, side, odds, stake, status, market_id')
+        .select('id, player_id, bookie_id, market, side, odds, stake, status, grade_result, market_id, is_parlay, ticket_id, stat_key, subject_player_id')
         .eq('event_id', event.id)
-        .in('status', ['accepted', 'pending']);
+        .in('status', ['accepted', 'pending', 'graded']);
+      if (betsError) {
+        const note = `event ${event.id}: could not read bets (${betsError.message}). Left pending. Migration 061 must be applied before this function can read prop snapshots.`;
+        stats.notes.push(note);
+        console.error(note);
+        continue;
+      }
 
-      // One read for the event's prop markets, then join in memory. A query
-      // per bet would be N round trips on a game that could carry hundreds.
       const { data: propMarkets } = await client
         .from('markets')
         .select('id, stat_key, subject_player_id')
@@ -105,19 +158,23 @@ Deno.serve(async (req) => {
         .eq('type', 'player_prop');
       const marketById = new Map((propMarkets ?? []).map((m) => [m.id, m]));
 
-      const propBets = [];
-      for (const b of bets ?? []) {
-        // A bet placed before migration 042 has no market_id. It cannot be
-        // traced to a stat, so it is left for manual grading rather than
-        // guessed at from its side label — "Jalen Hurts Over 1.5" is a valid
-        // label for two different stats.
-        if (!b.market_id) continue;
-        const mkt = marketById.get(b.market_id);
-        if (mkt?.stat_key && mkt.subject_player_id) {
-          propBets.push({ ...b, stat_key: mkt.stat_key, subject_player_id: mkt.subject_player_id });
-        }
+      const propBets: OpenBet[] = [];
+      for (const bet of (bets ?? []) as OpenBet[]) {
+        const isProp = bet.market === 'player_prop' || !!bet.stat_key;
+        if (!isProp) continue;
+        // Already graded parlay legs belong to the parlay settler.
+        if (bet.is_parlay && bet.status === 'graded') continue;
+        propBets.push(bet);
       }
       if (propBets.length === 0) continue;
+
+      const bookieIds = [...new Set(propBets.map((bet) => bet.bookie_id))];
+      const { data: bookies } = await client
+        .from('bookies')
+        .select('id, manual_bet_grading, auth_user_id')
+        .in('id', bookieIds);
+      const manual = new Set((bookies ?? []).filter((b) => b.manual_bet_grading).map((b) => b.id));
+      const actorByBookie = new Map((bookies ?? []).map((b) => [b.id, b.auth_user_id as string | null]));
 
       const finalAt = new Date(event.updated_at).getTime();
       if (!force && now - finalAt < SETTLING_DELAY_MS) {
@@ -125,27 +182,23 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Fetch the box score.
       const res = await fetch(
         `${BDL_BASE}/stats?game_ids[]=${event.bdl_game_id}&per_page=100`,
         { headers: { Authorization: bdlKey } },
       );
       const rows: BdlStatRow[] = res.ok ? ((await res.json()).data ?? []) : [];
-
-      // Completeness gate. Both teams must be represented and the row count has
-      // to look like a real NFL box score; a half-written one grades nothing.
       const teamsSeen = new Set(rows.map((r) => r.team?.id).filter(Boolean));
-      const complete = res.ok && rows.length >= MIN_STATLINES && teamsSeen.size >= 2;
+      const complete = res.ok && rows.length >= NFL_BOX_SCORE_MIN_ROWS && teamsSeen.size >= 2;
 
       if (!complete) {
         const attempts = (runRow?.attempts ?? 0) + 1;
         const firstAttempt = runRow?.first_attempt_at ?? new Date(now).toISOString();
         const gaveUp = now - new Date(firstAttempt).getTime() > GIVE_UP_AFTER_MS;
         if (gaveUp) stats.games_gave_up++; else stats.games_incomplete++;
-        stats.notes.push(
-          `${event.away_team} @ ${event.home_team}: ${rows.length} statlines, ${teamsSeen.size} teams` +
-          (gaveUp ? ' — GIVING UP, needs manual grading' : ' — will retry'),
-        );
+        const note = `${event.away_team} @ ${event.home_team}: ${rows.length} statlines, ${teamsSeen.size} teams` +
+          (gaveUp ? ' — GIVING UP, needs manual grading; bets left pending' : ' — stats not final, will retry');
+        stats.notes.push(note);
+        console.log(note);
         if (!dryRun) {
           await client.from('prop_grading_runs').upsert({
             event_id: event.id,
@@ -166,51 +219,101 @@ Deno.serve(async (req) => {
 
       let settled = 0;
       let voided = 0;
-      for (const bet of propBets) {
-        // null here means NO ROW, which is the only signal of a DNP. A zero row
-        // is passed through and grades normally.
-        const statline = byPlayer.get(bet.subject_player_id) ?? null;
-        const outcome = gradeProp(bet.stat_key, bet.side, statline);
+      let blocked = false;
 
-        if (outcome.result === 'pending') {
-          stats.notes.push(`bet ${bet.id}: ${outcome.detail}`);
+      for (const bet of propBets) {
+        if (manual.has(bet.bookie_id)) {
+          const note = `bet ${bet.id}: organizer grades manually; left pending`;
+          stats.notes.push(note);
+          console.log(note);
+          blocked = true;
+          stats.bets_left_pending++;
           continue;
         }
+
+        // A previous attempt graded the single and the settlement RPC failed.
+        // Do not grade it again; just finish the settlement.
+        if (!bet.is_parlay && bet.status === 'graded' && bet.grade_result) {
+          if (dryRun) { settled++; continue; }
+          const posted = await settleSingle(client, bet, actorByBookie.get(bet.bookie_id) ?? null, stats.notes);
+          if (posted) settled++;
+          continue;
+        }
+
+        const market = bet.market_id ? marketById.get(bet.market_id) ?? null : null;
+        const target = resolvePropTarget(bet, market);
+        if ('error' in target) {
+          const note = `bet ${bet.id}: ${target.error}`;
+          stats.notes.push(note);
+          console.log(note);
+          blocked = true;
+          stats.bets_left_pending++;
+          continue;
+        }
+
+        const statline = byPlayer.get(target.subjectPlayerId) ?? null;
+        const outcome = gradeProp(target.statKey, target.side, statline, { statsFinal: true });
+
+        if (outcome.result === 'pending') {
+          const note = `bet ${bet.id}: ${outcome.detail}`;
+          stats.notes.push(note);
+          console.log(note);
+          blocked = true;
+          stats.bets_left_pending++;
+          continue;
+        }
+
+        if (outcome.result === 'void') {
+          console.log(`VOID prop bet ${bet.id}: ${outcome.detail}`);
+          stats.notes.push(`VOID bet ${bet.id}: ${outcome.detail}`);
+        }
+
         if (dryRun) {
           settled++;
           if (outcome.result === 'void') voided++;
           continue;
         }
 
-        const amount = settlementAmount(outcome.result as GradeResult, Number(bet.stake), Number(bet.odds));
+        if (bet.is_parlay) {
+          const status = outcome.result === 'void' ? 'void' : 'graded';
+          const { error: gradeError } = await client
+            .from('bets')
+            .update({
+              status,
+              grade_result: outcome.result,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', bet.id)
+            .in('status', ['accepted', 'pending']);
+          if (gradeError) {
+            stats.notes.push(`bet ${bet.id}: ${gradeError.message}`);
+            blocked = true;
+            continue;
+          }
+          settled++;
+          if (outcome.result === 'void') voided++;
+          continue;
+        }
 
-        const { error: betError } = await client
+        const { error: gradeError } = await client
           .from('bets')
           .update({
-            status: 'settled',
+            status: 'graded',
             grade_result: outcome.result,
             updated_at: new Date().toISOString(),
           })
           .eq('id', bet.id)
           .in('status', ['accepted', 'pending']);
-        if (betError) { stats.notes.push(`bet ${bet.id}: ${betError.message}`); continue; }
+        if (gradeError) {
+          stats.notes.push(`bet ${bet.id}: ${gradeError.message}`);
+          blocked = true;
+          continue;
+        }
 
-        // Guard against a double ledger entry if a run is retried after a
-        // partial failure — the same guard auto_refresh_games uses.
-        const { data: existing } = await client
-          .from('ledger_entries')
-          .select('id').eq('bet_id', bet.id).eq('type', 'settlement').limit(1);
-
-        if (!existing?.length) {
-          const { error: ledgerError } = await client.from('ledger_entries').insert({
-            bookie_id: bet.bookie_id,
-            player_id: bet.player_id,
-            bet_id: bet.id,
-            amount,
-            type: 'settlement',
-            description: `${SETTLEMENT_DESCRIPTION[outcome.result as GradeResult]} — ${outcome.detail}`,
-          });
-          if (ledgerError) { stats.notes.push(`ledger ${bet.id}: ${ledgerError.message}`); continue; }
+        const posted = await settleSingle(client, bet, actorByBookie.get(bet.bookie_id) ?? null, stats.notes);
+        if (!posted) {
+          blocked = true;
+          continue;
         }
         settled++;
         if (outcome.result === 'void') voided++;
@@ -218,8 +321,23 @@ Deno.serve(async (req) => {
 
       stats.bets_settled += settled;
       stats.bets_void += voided;
-      stats.games_graded++;
 
+      if (blocked) {
+        if (!dryRun) {
+          await client.from('prop_grading_runs').upsert({
+            event_id: event.id,
+            bdl_game_id: event.bdl_game_id,
+            status: 'partial',
+            attempts: (runRow?.attempts ?? 0) + 1,
+            first_attempt_at: runRow?.first_attempt_at ?? new Date(now).toISOString(),
+            last_error: 'one or more props still pending',
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'event_id' });
+        }
+        continue;
+      }
+
+      stats.games_graded++;
       if (!dryRun) {
         await client.from('prop_grading_runs').upsert({
           event_id: event.id,
@@ -227,13 +345,15 @@ Deno.serve(async (req) => {
           status: 'graded',
           attempts: (runRow?.attempts ?? 0) + 1,
           first_attempt_at: runRow?.first_attempt_at ?? new Date(now).toISOString(),
-          // Snapshot what we graded against, so a later stat correction is
-          // DETECTABLE by comparison rather than silent. US-006 reads this.
           statline_snapshot: rows,
           graded_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }, { onConflict: 'event_id' });
       }
+    }
+
+    if (!dryRun) {
+      stats.parlays_settled = await settleReadyParlays(client);
     }
 
     return json({ success: true, ...stats });
@@ -242,3 +362,29 @@ Deno.serve(async (req) => {
     return json({ error: error instanceof Error ? error.message : 'Internal error' }, 500);
   }
 });
+
+async function settleSingle(
+  client: ReturnType<typeof createServiceClient>,
+  bet: OpenBet,
+  actorUserId: string | null,
+  notes: string[],
+): Promise<boolean> {
+  const { data: rpcResult, error: rpcError } = await client.rpc('settle_bet_tx', {
+    p_bet_id: bet.id,
+    p_actor_user_id: actorUserId,
+    p_idempotency_key: `settle_prop_${bet.id}_v1`,
+    p_mode: 'auto',
+  });
+  if (rpcError) {
+    notes.push(`bet ${bet.id}: settle_bet_tx ${rpcError.message}`);
+    console.error(`settle_bet_tx failed for ${bet.id}:`, rpcError);
+    return false;
+  }
+  if (rpcResult && rpcResult.success === false) {
+    if (rpcResult.error === 'Bet has already been settled') return true;
+    notes.push(`bet ${bet.id}: settle_bet_tx ${rpcResult.error}`);
+    console.error(`settle_bet_tx refused ${bet.id}:`, rpcResult.error);
+    return false;
+  }
+  return true;
+}

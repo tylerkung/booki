@@ -14,6 +14,15 @@ Track all SQL changes needed in Supabase when updating the app.
 
 ## Pending Migrations
 
+### 061 — bet prop snapshot (NOT applied)
+
+Additive only. Adds nullable `bets.stat_key`, `bets.subject_player_id`, and
+`bets.prop_line`. No backfill, no update of existing rows. Apply by hand
+before deploying `submit_bet`, `submit_bets`, and `submit_parlay`, or those
+inserts will fail on the unknown columns. Grading falls back to the market
+row when the snapshot is null, so applying the migration without the new
+functions is safe.
+
 ### The Odds API Integration
 
 **Required for:** PRD - Odds API Integration (when implemented)
