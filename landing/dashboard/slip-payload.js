@@ -1,3 +1,4 @@
+// Builds the single and multi-pick request bodies the dashboard bet slip posts.
 // Bet-slip payloads.
 //
 // Singles keep `side` as 'a' or 'b'. That is what the deployed submit_bets
