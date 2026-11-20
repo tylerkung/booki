@@ -10,6 +10,22 @@ export function isOutrightEvent(awayTeam: string | null | undefined): boolean {
   return awayTeam === 'Outright';
 }
 
+/**
+ * sync_games marks a scheduled game final 3 hours after start. A future
+ * stays scheduled (and closed for betting, which submit already enforces)
+ * until settle_outright records a result and sets status final itself.
+ */
+export function shouldClockFinalize(
+  event: { status?: string | null; away_team?: string | null; start_time?: string | null },
+  cutoff: Date,
+): boolean {
+  if (event.status !== 'scheduled') return false;
+  if (isOutrightEvent(event.away_team)) return false;
+  if (!event.start_time) return false;
+  const start = new Date(event.start_time).getTime();
+  return Number.isFinite(start) && start < cutoff.getTime();
+}
+
 export function isOutrightMarket(market: string | null | undefined): boolean {
   const name = (market ?? '').toLowerCase();
   return name === 'outright' || name === 'futures';

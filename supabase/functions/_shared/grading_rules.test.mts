@@ -11,6 +11,7 @@ import {
   outrightGrade,
   outrightSelectionMatches,
   outrightSettlementKey,
+  shouldClockFinalize,
 } from './outright.ts';
 import { deployedSingleSideAccepted, legStorageError, resolveStoredLeg, singleBetIndicator } from './market_validation.ts';
 import { decideParlay, parlaySettlementKey, parlayTooManyLegs, placeParlayIfAllowed, roundCents } from './parlay_settle.ts';
@@ -162,6 +163,37 @@ test('futures awaiting a result are the open picks with no recorded winner', () 
   assert.match(source, /settle_outright_tx/);
   assert.match(source, /, 404\)/);
   assert.doesNotMatch(source, /\.from\('ledger_entries'\)/);
+});
+
+test('the clock does not finalize a future, and the score jobs leave it to settle_outright', () => {
+  const cutoff = new Date('2026-06-11T20:00:00Z');
+  const future = {
+    status: 'scheduled',
+    away_team: 'Outright',
+    start_time: '2026-06-01T00:00:00Z',
+  };
+  const game = {
+    status: 'scheduled',
+    away_team: 'Celtics',
+    start_time: '2026-06-11T16:00:00Z',
+  };
+  assert.equal(shouldClockFinalize(future, cutoff), false);
+  assert.equal(shouldClockFinalize(game, cutoff), true);
+  assert.equal(shouldClockFinalize({ ...game, start_time: '2026-06-11T21:00:00Z' }, cutoff), false);
+  assert.equal(shouldClockFinalize({ ...game, status: 'final' }, cutoff), false);
+
+  const sync = readFileSync(new URL('../sync_games/index.ts', import.meta.url), 'utf8');
+  assert.match(sync, /\.neq\('away_team', 'Outright'\)/);
+  const scores = readFileSync(new URL('../refresh_live_scores/index.ts', import.meta.url), 'utf8');
+  const refresh = readFileSync(new URL('../auto_refresh_games/index.ts', import.meta.url), 'utf8');
+  assert.match(scores, /settle_outright/);
+  assert.match(refresh, /settle_outright/);
+  const outright = gradeBet(
+    { id: '2', market: 'outright', side: 'Warriors' },
+    { homeScore: 0, awayScore: 0, homeTeam: 'NBA Championship', awayTeam: 'Outright' },
+  );
+  assert.equal(outright.result, 'deferred');
+  assert.match(outright.gradeDetails, /settle_outright/);
 });
 
 test('a prop grades from the bet snapshot when the market row is gone', () => {
