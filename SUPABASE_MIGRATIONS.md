@@ -14,20 +14,28 @@ Track all SQL changes needed in Supabase when updating the app.
 
 ## Pending Migrations
 
-### Release order for 062 and 063 (neither applied)
+### Release order for 064, 062, and 063 (none applied)
 
-Neither file updates or deletes existing rows. Apply them by hand, then
-deploy, then merge. Do not ship any of the nine functions before 062: every
-pick submit inserts `stat_key`, `subject_player_id`, and `prop_line`, and
-those columns do not exist until 062, so a submit fails. 063 is safe while
-the old functions are still live. It only adds the settlement guard.
+064 is the main-line migration from PR #13. Apply it before 062 and 063.
+It does not update or delete rows. `sync_games` and `auto_refresh_games`
+write `main_line`, so deploying those functions before 064 makes every
+market write fail. 062 and 063 do not update or delete existing rows either.
+Do not ship any of the nine functions before 062: every pick submit inserts
+`stat_key`, `subject_player_id`, and `prop_line`, and those columns do not
+exist until 062, so a submit fails. 063 is safe while the old functions are
+still live. It only adds the settlement guard.
 
-1. Apply `supabase/migrations/062_bet_prop_snapshot.sql`.
-2. Apply `supabase/migrations/063_one_active_settlement.sql`.
-3. Deploy these nine together, `--no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`: `grade_player_props`, `grade_dry_run`, `refresh_live_scores`, `auto_refresh_games`, `sync_games`, `submit_parlay`, `submit_bets`, `submit_bet`, `settle_parlay`.
-4. Merge.
+1. Apply `supabase/migrations/064_main_line_identity.sql`.
+2. Apply `supabase/migrations/062_bet_prop_snapshot.sql`.
+3. Apply `supabase/migrations/063_one_active_settlement.sql`.
+4. Deploy these nine together, `--no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`: `grade_player_props`, `grade_dry_run`, `refresh_live_scores`, `auto_refresh_games`, `sync_games`, `submit_parlay`, `submit_bets`, `submit_bet`, `settle_parlay`.
+5. Merge.
 
 `grade_player_props` is in that list. It grades from the new snapshot columns and settles parlays through `settle_parlay_tx`. Leaving the old build up skips both.
+
+### 064 — one shared main line (NOT applied)
+
+From PR #13. Adds nullable `markets.main_line` and a partial unique index, and makes `superseded_market_ids` ignore `bettable = false`. Does not update, delete, or backfill market rows. Apply before 062 and 063, and before deploying `sync_games` or `auto_refresh_games`.
 
 ### 063 — one active settlement (NOT applied)
 

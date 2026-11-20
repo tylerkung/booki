@@ -406,7 +406,7 @@ The app is **local-first** with cloud sync:
 
 **One spread on the board (November 2026, migration 064 — not applied)**
 - A moved spread was stored as a new row, so a game could show an old number (+11.5) while the latest feed was +12.5. Placing that pick returned 400 and the slip sometimes cleared with no message
-- The board now shows the newest bettable moneyline, spread and total. The ingest overwrites that one row and marks the previous numbers not bettable, without deleting them. Apply migration 064 before deploying `sync_games` and `auto_refresh_games`
+- The board now shows the newest bettable moneyline, spread and total. The ingest overwrites that one row and marks the previous numbers not bettable, without deleting them. Apply migration 064 before 062 and 063, and before deploying `sync_games` and `auto_refresh_games`
 - *Last updated: November 17, 2026 - Games board shows one current spread/total/moneyline. A moved line updates that row instead of leaving the old number bettable (migration 064, not applied). A failed pick stays in the slip and shows an error. Invite expiry copy matches the server. QA pass fixes, attribution, member welcome, board loading, MLB props (migrations 052-058).*
 
 **Player props — MLB (migrations 056–058)**
