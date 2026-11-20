@@ -3987,13 +3987,16 @@ function dashboardApp() {
             // disappear under a plain upper bound.
             const organizerHorizon = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString();
 
-            const { data, error } = await this.supabase
+            // PostgREST stops at 1000 rows and does not say so. Ordering by
+            // start_time ascending kept the oldest rows and cut off the 2027
+            // futures. Page until a short page comes back.
+            const { data, error } = await BookiPaging.fetchAllRows(() => this.supabase
                 .from('events')
                 .select('*')
                 .is('bookie_id', null)
                 .gte('start_time', fourteenDaysAgo)
                 .or(`start_time.lte.${organizerHorizon},away_team.eq.Outright`)
-                .order('start_time', { ascending: true });
+                .order('start_time', { ascending: true }));
 
             if (error) {
                 console.error('Failed to load events');

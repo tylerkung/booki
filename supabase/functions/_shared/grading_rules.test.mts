@@ -576,6 +576,41 @@ test('parlay settlement has no settling status', () => {
   assert.throws(() => readFileSync(new URL('./parlay_claim.ts', import.meta.url), 'utf8'));
 });
 
+test('organizer events page past the 1000-row cap, including a later future', async () => {
+  const code = readFileSync(new URL('../../../landing/dashboard/paging.js', import.meta.url), 'utf8');
+  const sandbox = {};
+  sandbox.globalThis = sandbox;
+  vm.runInNewContext(code, sandbox);
+  const pages = [
+    Array.from({ length: 1000 }, (_, i) => ({ id: String(i) })),
+    Array.from({ length: 239 }, (_, i) => ({ id: String(1000 + i), away_team: 'Outright' })),
+  ];
+  let calls = 0;
+  const result = await sandbox.globalThis.BookiPaging.fetchAllRows(() => ({
+    range(from, to) {
+      calls += 1;
+      assert.equal(to - from, 999);
+      assert.equal(from, (calls - 1) * 1000);
+      return Promise.resolve({ data: pages[calls - 1] || [], error: null });
+    },
+  }));
+  assert.equal(calls, 2);
+  assert.equal(result.data.length, 1239);
+  assert.equal(result.data[1238].away_team, 'Outright');
+  assert.equal(result.error, null);
+
+  const stopped = await sandbox.globalThis.BookiPaging.fetchAllRows(() => ({
+    range() {
+      return Promise.resolve({ data: null, error: { message: 'down' } });
+    },
+  }));
+  assert.equal(stopped.data.length, 0);
+  assert.equal(stopped.error.message, 'down');
+
+  const dash = readFileSync(new URL('../../../landing/dashboard/dashboard.js', import.meta.url), 'utf8');
+  assert.match(dash, /BookiPaging\.fetchAllRows\(\(\) => this\.supabase/);
+});
+
 test('the singles payload still satisfies the deployed submit_bets contract', () => {
   const code = readFileSync(new URL('../../../landing/dashboard/slip-payload.js', import.meta.url), 'utf8');
   const sandbox = {};

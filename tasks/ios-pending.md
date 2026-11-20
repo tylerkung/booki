@@ -5,7 +5,7 @@ This project cannot be built from the CLI (`CLAUDE.md`: "Xcode command line
 tools don't support full builds — use Xcode IDE"), so everything here needs a
 real build and a run in the simulator.
 
-Last updated: 2026-11-17
+Last updated: 2026-11-20
 
 ---
 
@@ -531,3 +531,18 @@ session cannot compile it.
 - [ ] A loss on any leg is a loss even if another leg is still open
 - [ ] The displayed payout has to use the legs that were not voided or pushed, matching `decideParlay` in `supabase/functions/_shared/parlay_settle.ts`
 - [ ] The iOS "treat void leg as push" setting is ignored: iOS previews a refund, but the server reprices void legs out of the parlay. Product decision, pending. Do not build while iOS is on hold.
+
+### B18. Futures settlement — web only
+
+Not built. iOS only. The server records one futures winner for every book
+(`settle_outright`, migration 067) and a manual grade of a single now pays
+through `settle_bet_tx`. Shipped iOS builds still show Grade All on a final
+outright and have no member notice.
+
+- [ ] `EventDetailView` shows Grade All whenever the event is final and has gradable picks. Hide it when `awayTeam == "Outright"`. Home/Away would stamp one result on every selection
+- [ ] `GradingView` Grade All Win / Loss / Push has the same problem on a future. Hide those actions
+- [ ] Do not add an organizer control that records a futures winner. `grade_bet` rejects an outright. The copy on web is "Futures are settled by Booki when the result is recorded."
+- [ ] Member Track: the same notice the web shows when a futures pick is settled or voided. Dismissal is `user_metadata.futures_notices_seen` (the welcome-flag pattern), not `UserDefaults`
+- [ ] Confirm the organizer events query is not cut off at 1000 rows. Web `loadEvents` now pages; iOS `EventsListView` should be checked the same way
+- [ ] A voided single comes back `status = settled` with `grade_result = void`. `GradeResult` still has no `void` — that is B17
+- [ ] Do not settle the existing Warriors pick (`c2aa18ec`) from the app. The owner records the winner at `/admin/` after migration 067 is applied
