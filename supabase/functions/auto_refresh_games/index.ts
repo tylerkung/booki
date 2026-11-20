@@ -5,6 +5,11 @@ import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { gradeBet, type BetInfo, type EventScores } from '../_shared/grading.ts';
 import { sendNotification } from '../_shared/notifications.ts';
 import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
+import {
+  isMainLine,
+  planSharedMainLine,
+  isSharedMainLineConflict,
+} from '../_shared/main_line.ts';
 
 /**
  * Generates an idempotency key for auto-refresh operations.
@@ -1457,42 +1462,40 @@ Deno.serve(async (req) => {
                 continue;
               }
 
-              const marketsToInsert = newMarkets.map((m) => ({
-                bookie_id: null,
-                event_id: game.id,
-                type: m.type,
-                side_a: m.side_a,
-                side_b: m.side_b,
-                odds_a: m.odds_a,
-                odds_b: m.odds_b,
-              }));
+              // Moneyline, spread and total are ONE row per event. The number
+              // moving overwrites that row. Keying on the line ("Utah Utes -12.5")
+              // inserted a new spread on every move and left the old one
+              // bettable — four of them on Colts @ Texans. Anything else this
+              // refresh extracted keeps the line in its key, because those
+              // really are different markets.
+              //
+              // Previous main lines are marked not bettable. They are not
+              // deleted. bets.market_id is ON DELETE SET NULL (migration 042),
+              // and a pick still needs the row it was placed against. The
+              // finished-game prune is the other delete in this codebase; PR #9
+              // makes that one skip markets with an open or graded pick. This
+              // path does not delete at all, so the two stay compatible.
+              //
+              // Props are a different type, written by sync_player_props. This
+              // query is limited to the types just fetched, so a refresh cannot
+              // see them, retire them, or delete them.
+              const mainIncoming = newMarkets.filter((m) => isMainLine(m.type));
+              const otherIncoming = newMarkets.filter((m) => !isMainLine(m.type));
+              const refreshedTypes = Array.from(new Set(newMarkets.map((m) => m.type)));
 
-              // This used to be `delete().eq('event_id', game.id)` followed by a
-              // fresh insert, which was wrong twice over.
-              //
-              // It deleted EVERY market on the event, not just the ones this
-              // refresh replaces. Player props are markets on the same event
-              // written by sync_player_props, so each refresh destroyed them —
-              // every 30 minutes, which is why the props table was reliably
-              // empty and why nothing downstream of it could ever be verified.
-              //
-              // And re-inserting minted new ids for lines that had not changed.
-              // bets.market_id is `REFERENCES markets(id) ON DELETE SET NULL`
-              // (migration 042), so every bet on the event silently lost its
-              // market reference on the next refresh. All 201 bets in the
-              // database had a NULL market_id; submit_bets writes it correctly
-              // and this erased it minutes later.
-              //
-              // So: only touch the types this refresh is authoritative for,
-              // update unchanged lines in place to keep their ids, and delete a
-              // withdrawn line only when nobody holds a pick on it — the same
-              // care the outrights path below already took.
-              const refreshedTypes = Array.from(new Set(marketsToInsert.map((m) => m.type)));
-
-              type ExistingMarket = { id: string; type: string; side_a: string; side_b: string };
+              type ExistingMarket = {
+                id: string;
+                type: string;
+                side_a: string;
+                side_b: string;
+                bookie_id: string | null;
+                updated_at: string | null;
+                bettable: boolean | null;
+                main_line: boolean | null;
+              };
               const { data: existingRows, error: existingError } = await client
                 .from('markets')
-                .select('id, type, side_a, side_b')
+                .select('id, type, side_a, side_b, bookie_id, updated_at, bettable, main_line')
                 .eq('event_id', game.id)
                 .in('type', refreshedTypes)
                 .returns<ExistingMarket[]>();
@@ -1503,60 +1506,161 @@ Deno.serve(async (req) => {
                 continue;
               }
 
-              // The line value lives inside side_a/side_b ("Utah Utes -12.5"),
-              // so this key IS the line identity: a spread that moves produces a
-              // different key and is correctly treated as a new market rather
-              // than an update of the old one.
-              const marketKey = (m: { type: string; side_a: string; side_b: string }) =>
-                `${m.type}|${m.side_a}|${m.side_b}`;
-              const existingByKey = new Map<string, ExistingMarket>(
-                (existingRows ?? []).map((r: ExistingMarket) => [marketKey(r), r] as const),
-              );
-
               const toUpdate: Record<string, unknown>[] = [];
               const toInsert: Record<string, unknown>[] = [];
-              for (const m of marketsToInsert) {
-                const hit = existingByKey.get(marketKey(m));
-                if (hit) toUpdate.push({ ...m, id: hit.id });
-                else toInsert.push(m);
+              const retireIds: string[] = [];
+              const seenMain = new Set<string>();
+              for (const m of mainIncoming) {
+                if (seenMain.has(m.type)) continue;
+                seenMain.add(m.type);
+                const group = (existingRows ?? []).filter((r: ExistingMarket) => r.type === m.type);
+                const plan = planSharedMainLine(group.map((r: ExistingMarket) => ({
+                  id: r.id,
+                  bookie_id: r.bookie_id,
+                  updated_at: r.updated_at,
+                  bettable: r.bettable,
+                  main_line: r.main_line,
+                })));
+                const record = {
+                  bookie_id: null,
+                  event_id: game.id,
+                  type: m.type,
+                  side_a: m.side_a,
+                  side_b: m.side_b,
+                  odds_a: m.odds_a,
+                  odds_b: m.odds_b,
+                  bettable: true,
+                  main_line: true,
+                };
+                if (plan.canonicalId) toUpdate.push({ ...record, id: plan.canonicalId });
+                else toInsert.push(record);
+                for (const id of plan.retireIds) retireIds.push(id);
               }
 
-              // Batched, not per row: ~1,450 single-row UPDATEs per run is what
-              // pushed sync_games past the 150s worker ceiling.
+              // Non-main rows still identity on the line. A moved alternate is
+              // a different market; a withdrawn one can be removed when no
+              // open pick holds it. Main lines never enter this set.
+              const marketKey = (m: { type: string; side_a: string; side_b: string }) =>
+                `${m.type}|${m.side_a}|${m.side_b}`;
+              const otherExisting = (existingRows ?? []).filter((r: ExistingMarket) => !isMainLine(r.type));
+              const existingByKey = new Map<string, ExistingMarket>(
+                otherExisting.map((r: ExistingMarket) => [marketKey(r), r] as const),
+              );
+              for (const m of otherIncoming) {
+                const hit = existingByKey.get(marketKey(m));
+                const record = {
+                  bookie_id: null,
+                  event_id: game.id,
+                  type: m.type,
+                  side_a: m.side_a,
+                  side_b: m.side_b,
+                  odds_a: m.odds_a,
+                  odds_b: m.odds_b,
+                };
+                if (hit) toUpdate.push({ ...record, id: hit.id });
+                else toInsert.push(record);
+              }
+
+              // Retire before the canonical write so the live row's updated_at
+              // stays the newest, and so a second main_line = true is cleared
+              // before the unique index is asked to accept the canonical one.
               let writeFailed = false;
-              for (let i = 0; i < toUpdate.length; i += 200) {
+              const uniqueRetire = Array.from(new Set(retireIds));
+              for (let i = 0; i < uniqueRetire.length; i += 200) {
                 const { error } = await client
                   .from('markets')
-                  .upsert(toUpdate.slice(i, i + 200), { onConflict: 'id' });
+                  .update({ bettable: false, main_line: false })
+                  .in('id', uniqueRetire.slice(i, i + 200));
                 if (error) {
-                  console.error(`Error updating markets for ${game.id}:`, error);
-                  oddsErrors.push({ eventId: game.id, error: 'Failed to update existing markets' });
+                  console.error(`Error retiring main lines for ${game.id}:`, error);
+                  oddsErrors.push({ eventId: game.id, error: 'Failed to retire previous main lines' });
                   writeFailed = true;
                   break;
                 }
               }
               if (writeFailed) continue;
 
-              if (toInsert.length > 0) {
-                const { error: insertError } = await client
-                  .from('markets')
-                  .insert(toInsert);
-
-                if (insertError) {
-                  console.error(`Error inserting markets for ${game.id}:`, insertError);
-                  oddsErrors.push({ eventId: game.id, error: 'Failed to insert new markets' });
-                  // Salvage what we can, one row at a time.
-                  for (const market of toInsert) {
-                    await client.from('markets').insert(market);
+              // Batched, not per row: ~1,450 single-row UPDATEs per run is what
+              // pushed sync_games past the 150s worker ceiling. Main-line rows
+              // carry main_line and bettable; other rows must not share that
+              // payload or PostgREST fills the missing keys with null.
+              const updateBatches = [
+                toUpdate.filter((r) => r.main_line !== true),
+                toUpdate.filter((r) => r.main_line === true),
+              ];
+              for (const batch of updateBatches) {
+                for (let i = 0; i < batch.length; i += 200) {
+                  const { error } = await client
+                    .from('markets')
+                    .upsert(batch.slice(i, i + 200), { onConflict: 'id' });
+                  if (error) {
+                    console.error(`Error updating markets for ${game.id}:`, error);
+                    oddsErrors.push({ eventId: game.id, error: 'Failed to update existing markets' });
+                    writeFailed = true;
+                    break;
                   }
+                }
+                if (writeFailed) break;
+              }
+              if (writeFailed) continue;
+
+              const otherInserts = toInsert.filter((r) => r.main_line !== true);
+              const mainInserts = toInsert.filter((r) => r.main_line === true);
+              if (otherInserts.length > 0) {
+                const { error: otherInsertError } = await client.from('markets').insert(otherInserts);
+                if (otherInsertError) {
+                  console.error(`Error inserting markets for ${game.id}:`, otherInsertError);
+                  oddsErrors.push({ eventId: game.id, error: 'Failed to insert new markets' });
                   continue;
                 }
               }
 
-              // Lines no longer offered. Scoped to refreshedTypes by the query
-              // above, so props and outrights are never candidates here.
-              const freshKeys = new Set(marketsToInsert.map(marketKey));
-              const withdrawnIds = (existingRows ?? [])
+              if (mainInserts.length > 0) {
+                const { error: insertError } = await client
+                  .from('markets')
+                  .insert(mainInserts);
+
+                if (insertError && isSharedMainLineConflict(insertError)) {
+                  for (const market of mainInserts) {
+                    const { error: oneError } = await client.from('markets').insert(market);
+                    if (!oneError) continue;
+                    if (!(market.main_line && isSharedMainLineConflict(oneError))) {
+                      console.error(`Error inserting market for ${game.id}:`, oneError);
+                      oddsErrors.push({ eventId: game.id, error: 'Failed to insert new markets' });
+                      continue;
+                    }
+                    const { data: winner } = await client
+                      .from('markets')
+                      .select('id')
+                      .eq('event_id', game.id)
+                      .eq('type', market.type as string)
+                      .is('bookie_id', null)
+                      .eq('main_line', true)
+                      .maybeSingle();
+                    if (!winner) {
+                      oddsErrors.push({ eventId: game.id, error: 'Main line conflict with no winning row' });
+                      continue;
+                    }
+                    await client.from('markets').update({
+                      side_a: market.side_a,
+                      side_b: market.side_b,
+                      odds_a: market.odds_a,
+                      odds_b: market.odds_b,
+                      bettable: true,
+                      main_line: true,
+                    }).eq('id', winner.id);
+                  }
+                } else if (insertError) {
+                  console.error(`Error inserting markets for ${game.id}:`, insertError);
+                  oddsErrors.push({ eventId: game.id, error: 'Failed to insert new markets' });
+                  continue;
+                }
+              }
+
+              // Non-main lines no longer offered. Main lines are retired above
+              // and must not be deleted: a pick may reference the old row.
+              const freshKeys = new Set(otherIncoming.map(marketKey));
+              const withdrawnIds = otherExisting
                 .filter((r: ExistingMarket) => !freshKeys.has(marketKey(r)))
                 .map((r: ExistingMarket) => r.id);
 

@@ -404,6 +404,11 @@ The app is **local-first** with cloud sync:
 - **Game row is one definition** expanded into both the Games page and the sport page, which had drifted: the sport page was missing "More lines" and the lock overlay entirely
 - **Odds buttons** stack line over price, price in the accent, no parentheses; all bet CTAs standardised at `--odds-height: 40px`
 
+**One spread on the board (November 2026, migration 064 — not applied)**
+- A moved spread was stored as a new row, so a game could show an old number (+11.5) while the latest feed was +12.5. Placing that pick returned 400 and the slip sometimes cleared with no message
+- The board now shows the newest bettable moneyline, spread and total. The ingest overwrites that one row and marks the previous numbers not bettable, without deleting them. Apply migration 064 before deploying `sync_games` and `auto_refresh_games`
+- *Last updated: November 17, 2026 - Games board shows one current spread/total/moneyline. A moved line updates that row instead of leaving the old number bettable (migration 064, not applied). A failed pick stays in the slip and shows an error. Invite expiry copy matches the server. QA pass fixes, attribution, member welcome, board loading, MLB props (migrations 052-058).*
+
 **Player props — MLB (migrations 056–058)**
 - **MLB props are priced and displayed but NOT bettable.** The Odds API quotes 39 MLB markets; balldontlie's `/mlb/v1/stats` returns 401 on the current plan, so nothing can be settled. `markets.bettable` is enforced at ingest, in all three submit endpoints, and in the UI
 - **Multi-sport identity**: balldontlie numbers teams from 1 per sport and **29 of 30 MLB team ids collide with NFL ones**, so `bdl_teams`/`bdl_players` keys are now `(sport, id)` and `markets.subject_sport` keeps the FK a real constraint
@@ -515,4 +520,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: November 16, 2026 - Invite expiry copy matches the server: addressed invites don't expire, link invites last 7 days, the invite email links to bookisports.com. QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*
+*Last updated: November 17, 2026 - Web delete-account confirmation is one screen that states the consequences (Stripe cancel with no refund when a Stripe subscription is on file, the group and its members) before DELETE is typed. Nothing deployed, no migration. Invite expiry copy matches the server: addressed invites don't expire, link invites last 7 days, the invite email links to bookisports.com. QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*
