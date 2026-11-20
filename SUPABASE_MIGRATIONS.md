@@ -41,6 +41,10 @@ From PR #13. Adds nullable `markets.main_line` and a partial unique index, and m
 
 Does not update or delete ledger rows. A BEFORE INSERT trigger rejects a second active settlement for a bet and for a parlay ticket (active = settlement minus reversal). `settlement_events.idempotency_key` gains a unique index where the key is not null. `settle_bet_tx` is idempotent and uses settlement_version max+1. See the release order above.
 
+### 067 — outright results (NOT applied)
+
+Depends on 063 (`settle_bet_tx` and `settle_parlay_tx`). Does not update or delete existing bets or ledger rows. Adds `outright_results` (one row per event: winning selection, void flag, recorded_by, recorded_at) and `settle_outright_tx`. Apply 063 first if it is not already applied, then 067, then deploy `settle_outright`. 065 is PR #15. 066 is reserved for the moneyline work. Do not apply this from the agent.
+
 ### 062 — bet prop snapshot (NOT applied)
 
 Additive only. Adds nullable `bets.stat_key`, `bets.subject_player_id`, and

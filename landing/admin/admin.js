@@ -181,6 +181,7 @@ const VIEWS = [
 const TITLES = {
     organizer: 'Organizer', member: 'Member', pick: 'Pick',
     search: 'Search', data_quality: 'Data quality', sql: 'SQL',
+    futures: 'Futures awaiting result',
 };
 
 function adminApp() {
@@ -204,6 +205,10 @@ function adminApp() {
         checks: [],
         sqlText: 'select status, count(*)\nfrom bets\ngroup by status\norder by 2 desc',
         sqlResult: null,
+        futuresEvents: [],
+        futuresChoice: {},
+        futuresConfirm: null,
+        futuresBusy: null,
         rows: [],
         stats: null,
         meta: {},
@@ -285,7 +290,97 @@ function adminApp() {
             }
         },
 
+        async callSettle(body) {
+            const send = () => fetch(`${SUPABASE_URL}/functions/v1/settle_outright`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.session.access_token}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            });
+            let res = await send();
+            if (res.status === 401) {
+                const { data } = await this.supabase.auth.refreshSession();
+                if (data?.session) {
+                    this.session = data.session;
+                    res = await send();
+                }
+            }
+            return res;
+        },
+
+        async loadFutures() {
+            this.loading = true;
+            try {
+                const res = await this.callSettle({ action: 'list' });
+                if (res.status === 401) {
+                    this.gate = 'Your session expired. Sign in again on the dashboard.';
+                    return;
+                }
+                if (res.status === 404) {
+                    this.gate = 'This account does not have admin access.';
+                    return;
+                }
+                const body = await res.json();
+                if (!res.ok || body.error) throw new Error(body.error || 'Could not load futures');
+                this.futuresEvents = body.events || [];
+            } catch (err) {
+                console.error('futures load failed:', err);
+                this.toast(err.message || 'Could not load futures', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async recordFuture(event) {
+            const choice = this.futuresChoice[event.event_id];
+            if (!choice) {
+                this.toast('Pick the winner first', 'error');
+                return;
+            }
+            if (this.futuresConfirm !== event.event_id) {
+                this.futuresConfirm = event.event_id;
+                return;
+            }
+            this.futuresBusy = event.event_id;
+            try {
+                const payload = choice === '__void__'
+                    ? { action: 'settle', event_id: event.event_id, void: true }
+                    : { action: 'settle', event_id: event.event_id, winning_selection: choice };
+                const res = await this.callSettle(payload);
+                const body = await res.json();
+                if (res.status === 404) {
+                    this.gate = 'This account does not have admin access.';
+                    return;
+                }
+                if (!res.ok || body.success === false || body.error) {
+                    const message = body.error === 'result_already_recorded'
+                        ? 'A result is already recorded for this future'
+                        : (body.error || 'Could not record the result');
+                    throw new Error(message);
+                }
+                const paid = (body.singles_settled || 0) + (body.parlays_settled || 0);
+                const again = body.idempotent ? 'Already recorded. ' : '';
+                const waiting = body.parlays_waiting
+                    ? ` ${body.parlays_waiting} multi-pick${body.parlays_waiting === 1 ? '' : 's'} still waiting on another leg.`
+                    : '';
+                this.toast(`${again}${paid} settled.${waiting}`);
+                this.futuresConfirm = null;
+                await this.loadFutures();
+            } catch (err) {
+                this.toast(err.message || 'Could not record the result', 'error');
+            } finally {
+                this.futuresBusy = null;
+            }
+        },
+
         async load() {
+            if (this.route === 'futures') {
+                await this.loadFutures();
+                return;
+            }
             this.loading = true;
             try {
                 const [view, extra] = this.requestFor();

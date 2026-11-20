@@ -4,7 +4,14 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 import { gradeBet, isDeferredMarket } from './grading.ts';
-import { isOutrightMarket, manualSingleSettlementKey } from './outright.ts';
+import {
+  futuresAwaitingResult,
+  isOutrightMarket,
+  manualSingleSettlementKey,
+  outrightGrade,
+  outrightSelectionMatches,
+  outrightSettlementKey,
+} from './outright.ts';
 import { deployedSingleSideAccepted, legStorageError, resolveStoredLeg, singleBetIndicator } from './market_validation.ts';
 import { decideParlay, parlaySettlementKey, parlayTooManyLegs, placeParlayIfAllowed, roundCents } from './parlay_settle.ts';
 import { gradeProp, parsePropSide, resolvePropTarget } from './prop_stats.ts';
@@ -105,6 +112,56 @@ test('a manual single settles once, through settle_bet_tx, and a future does not
   const page = readFileSync(new URL('../../../landing/dashboard/index.html', import.meta.url), 'utf8');
   assert.match(page, /away_team !== 'Outright'/);
   assert.match(page, /Win \(Home\)/);
+});
+
+test('a futures pick matches the selection name, not a market id', () => {
+  assert.equal(outrightSelectionMatches('Golden State Warriors', 'Golden State Warriors'), true);
+  assert.equal(outrightSelectionMatches('  golden   state warriors ', 'Golden State Warriors'), true);
+  assert.equal(outrightSelectionMatches('Golden State Warriors +12000', 'Golden State Warriors'), true);
+  assert.equal(outrightSelectionMatches('Warriors +12000', 'Warriors'), true);
+  assert.equal(outrightSelectionMatches('Warriors', 'Golden State Warriors'), false);
+  assert.equal(outrightSelectionMatches('Boston Celtics', 'Golden State Warriors'), false);
+  assert.equal(outrightSelectionMatches('', 'Warriors'), false);
+  assert.equal(outrightGrade('Golden State Warriors', 'Golden State Warriors', false), 'win');
+  assert.equal(outrightGrade('Boston Celtics', 'Golden State Warriors', false), 'loss');
+  assert.equal(outrightGrade('Boston Celtics', null, true), 'void');
+  assert.equal(
+    outrightSettlementKey('c2aa18ec-0000-4000-8000-000000000010'),
+    'outright_settle_c2aa18ec-0000-4000-8000-000000000010_v1',
+  );
+});
+
+test('futures awaiting a result are the open picks with no recorded winner', () => {
+  const events = [
+    { id: 'E1', away_team: 'Outright', home_team: 'NBA Championship', start_time: '2026-06-01', status: 'final', sport: 'Basketball', league: 'NBA' },
+    { id: 'E2', away_team: 'Outright', home_team: 'Super Bowl', start_time: '2027-02-01', status: 'scheduled', sport: 'Football', league: 'NFL' },
+    { id: 'E3', away_team: 'Celtics', home_team: 'Knicks', start_time: '2026-06-04', status: 'scheduled', sport: 'Basketball', league: 'NBA' },
+  ];
+  const rows = futuresAwaitingResult({
+    bets: [
+      { event_id: 'e1', side: 'Golden State Warriors', stake: 10 },
+      { event_id: 'E1', side: 'Boston Celtics', stake: 5 },
+      { event_id: 'E2', side: 'Chiefs', stake: 20 },
+      { event_id: 'E3', side: 'Knicks', stake: 10 },
+    ],
+    events,
+    markets: [
+      { event_id: 'E1', type: 'outright', side_a: 'Denver Nuggets' },
+      { event_id: 'E2', type: 'spread', side_a: 'Ignore' },
+    ],
+    results: [{ event_id: 'E2' }],
+  });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, 'NBA Championship');
+  assert.equal(rows[0].open_picks, 2);
+  assert.equal(rows[0].open_stake, 15);
+  assert.deepEqual(rows[0].selections, ['Boston Celtics', 'Denver Nuggets', 'Golden State Warriors']);
+
+  const source = readFileSync(new URL('../settle_outright/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /ADMIN_EMAILS/);
+  assert.match(source, /settle_outright_tx/);
+  assert.match(source, /, 404\)/);
+  assert.doesNotMatch(source, /\.from\('ledger_entries'\)/);
 });
 
 test('a prop grades from the bet snapshot when the market row is gone', () => {

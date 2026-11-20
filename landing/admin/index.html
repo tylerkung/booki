@@ -55,6 +55,7 @@
                     <a :href="'#/' + v.id" :class="{ active: route === v.id }" x-text="v.label"></a>
                 </li>
             </template>
+            <li><a href="#/futures" :class="{ active: route === 'futures' }">Futures</a></li>
             <li><a href="#/data_quality" :class="{ active: route === 'data_quality' }">Data quality</a></li>
             <li><a href="#/sql" :class="{ active: route === 'sql' }">SQL</a></li>
         </ul>
@@ -380,6 +381,59 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- Futures: one winner for every book. Writes go to settle_outright, not admin_query. -->
+        <div x-show="route === 'futures'" x-cloak>
+            <div class="card" style="margin-bottom:var(--s-lg);">
+                <p class="t-body-muted">
+                    A pick wins when its selection matches the winner. Every other open pick on that
+                    future loses. Void settles the whole event as a void. Running the same result
+                    again does not pay a pick twice. Organizer accounts cannot record this.
+                </p>
+            </div>
+            <template x-if="!loading && !futuresEvents.length">
+                <div class="card"><div class="empty-state"><p>No futures are waiting on a result.</p></div></div>
+            </template>
+            <template x-for="event in futuresEvents" :key="event.event_id">
+                <div class="card" style="margin-bottom:var(--s-lg);">
+                    <div class="card-header">
+                        <span class="card-title" x-text="event.name"></span>
+                        <span class="t-body-muted" x-text="event.open_picks + ' open · ' + fmt.money(event.open_stake)"></span>
+                    </div>
+                    <p class="t-micro" style="margin-bottom:var(--s-md);"
+                       x-text="(event.league || event.sport || '') + ' · ' + fmt.dateTime(event.start_time) + ' · ' + event.status"></p>
+                    <div style="display:flex;flex-direction:column;gap:var(--s-xs);margin-bottom:var(--s-md);">
+                        <template x-for="name in event.selections" :key="name">
+                            <label style="display:flex;gap:var(--s-sm);align-items:center;">
+                                <input type="radio" :name="'winner-' + event.event_id" :value="name"
+                                       @change="futuresChoice[event.event_id] = name; futuresConfirm = null">
+                                <span x-text="name"></span>
+                            </label>
+                        </template>
+                        <label style="display:flex;gap:var(--s-sm);align-items:center;">
+                            <input type="radio" :name="'winner-' + event.event_id" value="__void__"
+                                   @change="futuresChoice[event.event_id] = '__void__'; futuresConfirm = null">
+                            <span>Void the whole event</span>
+                        </label>
+                        <label style="display:flex;gap:var(--s-sm);align-items:center;margin-top:var(--s-sm);">
+                            <span class="t-micro">Not listed</span>
+                            <input class="search-input" type="text" placeholder="Type the winning selection"
+                                   @input="futuresChoice[event.event_id] = $event.target.value.trim(); futuresConfirm = null">
+                        </label>
+                    </div>
+                    <p class="t-body-muted" style="margin-bottom:var(--s-md);"
+                       x-show="futuresConfirm === event.event_id"
+                       x-text="futuresChoice[event.event_id] === '__void__'
+                           ? 'Void every open pick on this future, in every group?'
+                           : ('Record ' + futuresChoice[event.event_id] + ' as the winner for every group?')"></p>
+                    <div class="filter-bar">
+                        <button class="chip" @click="recordFuture(event)" :disabled="futuresBusy === event.event_id"
+                                x-text="futuresBusy === event.event_id ? 'Recording…' : (futuresConfirm === event.event_id ? 'Confirm' : 'Record result')"></button>
+                        <button class="chip" x-show="futuresConfirm === event.event_id" @click="futuresConfirm = null">Cancel</button>
+                    </div>
+                </div>
+            </template>
         </div>
 
         <!-- Table views -->

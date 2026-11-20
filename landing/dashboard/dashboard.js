@@ -1687,6 +1687,49 @@ function dashboardApp() {
             this.isLoadingPlayerTrack = false;
         },
 
+        // A future that has settled, until the member dismisses it. Stored on
+        // the account, like the welcome flag, so another device does not show
+        // it again. A leg that is only graded, with the multi still open, waits.
+        get futuresSettlementNotices() {
+            const meta = this.session && this.session.user && this.session.user.user_metadata;
+            const seen = new Set(Array.isArray(meta && meta.futures_notices_seen) ? meta.futures_notices_seen : []);
+            const grouped = new Map();
+            for (const bet of this.playerBets || []) {
+                const market = (bet.market || '').toLowerCase();
+                if (market !== 'outright' && market !== 'futures') continue;
+                if (bet.status !== 'settled' && bet.status !== 'void') continue;
+                if (!bet.event_id || seen.has(bet.event_id)) continue;
+                const ev = this.playerTrackEvents[bet.event_id];
+                const name = ev && (ev.away_team === 'Outright' ? (ev.home_team || 'Future') : (ev.home_team || 'Future'));
+                const result = bet.grade_result === 'win' ? 'won'
+                    : bet.grade_result === 'loss' ? 'lost'
+                    : 'was voided';
+                const entry = grouped.get(bet.event_id) || { eventId: bet.event_id, lines: [] };
+                entry.lines.push(`Your pick on ${bet.side || 'this future'} (${name || 'Future'}) ${result}.`);
+                grouped.set(bet.event_id, entry);
+            }
+            return [...grouped.values()].map((entry) => ({
+                eventId: entry.eventId,
+                text: entry.lines.join(' '),
+            }));
+        },
+
+        async dismissFuturesNotices() {
+            const ids = this.futuresSettlementNotices.map((notice) => notice.eventId);
+            if (!ids.length || !this.session || !this.session.user) return;
+            const prev = (this.session.user.user_metadata && this.session.user.user_metadata.futures_notices_seen) || [];
+            const next = [...new Set([...prev, ...ids])];
+            this.session.user.user_metadata = {
+                ...(this.session.user.user_metadata || {}),
+                futures_notices_seen: next,
+            };
+            try {
+                await this.supabase.auth.updateUser({ data: { futures_notices_seen: next } });
+            } catch (err) {
+                this.toast(err.message || 'Could not dismiss that notice', 'error');
+            }
+        },
+
         get playerTickets() {
             const ticketMap = {};
             for (const bet of this.playerBets) {
