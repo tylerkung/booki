@@ -5,7 +5,7 @@ This project cannot be built from the CLI (`CLAUDE.md`: "Xcode command line
 tools don't support full builds — use Xcode IDE"), so everything here needs a
 real build and a run in the simulator.
 
-Last updated: 2026-11-16
+Last updated: 2026-11-17
 
 ---
 
@@ -340,6 +340,47 @@ rely on the old auto-confirm.
 - [ ] Send the signed-in user's access token, not the anon key, on `claim_invite` and `claim_player`
 - [ ] Once every shipped iOS build does that, remove the interim unauthenticated path in `authorizeClaimRequest`
 
+## B16 — Stale main line on the games board
+
+Not built. iOS only. The web board and the odds ingest are fixed on
+`cursor/fix-stale-board-spread-18ee` (migration 064). Shipped iOS still has
+the display half of the same bug.
+
+`sync_games` / `auto_refresh_games` used to insert a new `spread` (and `total`)
+row every time the number moved and leave the old one bettable. Colts @ Texans
+on 19 Nov 2026 (event `672953b5`) had +10, +10.5, +11.5 and +12.5 all live.
+`submit_bets` refuses any row that trails a newer bettable sibling
+(`line_no_longer_offered`). The web board was showing +11.5 from 08:00Z while
+the 20:00Z feed was +12.5, and the pick failed.
+
+After 064 is applied and `sync_games` / `auto_refresh_games` are deployed, the
+next ingest keeps one shared main line and marks the others not bettable. Until
+that runs, and on any build that synced the duplicates into SwiftData, iOS
+still picks the wrong row:
+
+- `Booki/Views/CompactGameRow.swift` — `spreadMarket`, `moneylineMarket` and
+  `totalMarket` use `event.markets?.first { $0.type == … }`. That is whichever
+  row SwiftData returns first, not the newest `updatedAt`.
+- `Booki/Views/SubmitBetView.swift` — `marketTypeSection` lists every row of
+  the type, so a member can tap +11.5 and get the same 400. Show one row.
+- `Booki/Models/Market.swift` has `updatedAt` and does not have `bettable`.
+  The web skips `bettable === false`. iOS cannot, until that column is
+  decoded. Newest `updatedAt` is the signal that works without it: the ingest
+  writes the live row after it retires the others, so the live row is the
+  newest. A later touch of a retired row would invert that, which is why the
+  web also checks `bettable`.
+- The slip does not keep the pick or explain `line_no_longer_offered` (see B3).
+  Web now keeps the slip and toasts "That line is no longer offered…".
+
+`SyncGamesView.updateEventOdds` already overwrites the first local row of that
+type in place. The bug is which row the board and the market picker read, not
+a second local writer.
+
+- [ ] CompactGameRow: one moneyline, one spread, one total — newest `updatedAt`
+- [ ] SubmitBetView: that same single row, not a section of every stored number
+- [ ] Decode `markets.bettable` and skip `false`, matching the web
+- [ ] Confirm a pick on that row is the one `submit_bets` will accept (it is not trailing a newer sibling)
+
 ## B9 — Move invite validation onto `get_invite()`, then drop the `USING (true)` policy
 
 **Blocking a security fix.** Migration 010 created:
@@ -441,3 +482,27 @@ copy change; these two strings were left in the app on purpose.
 - [ ] Link-invite confirmation: "Expires in 7 days" (or a date), not "Expires in 24 hours"
 - [ ] Addressed-invite confirmation: do not claim an expiry
 - [ ] Mail body: the web invite URL, and expiry copy that matches the invite kind
+
+## B15 — Delete-account confirmation should state the consequences on one screen
+
+Not built. iOS only. Web shipped the layout and copy below; do not change `delete_account`.
+
+Today the organizer path is two alerts in `Booki/Views/SettingsView.swift` ("Delete Account" then "Are You Sure?" / "Delete Everything") and the member path is two alerts in `Booki/Views/AccountView.swift` ("Delete Account" then "Are you sure?" / "Delete My Account"). Neither names the Stripe cancel, the group, or the member count, and the type-DELETE step is separate from the warning.
+
+Match the web modal (`DELETE_ACCOUNT_COPY` in `landing/dashboard/dashboard.js`). One screen, so the consequences stay visible while they type. Order: title, lead, consequence list, alternatives, confirm field, buttons. Red only on the warning icon and the primary button.
+
+- [ ] Title: "Delete your account?"
+- [ ] Organizer lead: "This permanently deletes your account and the group you run."
+- [ ] Consequence list, icon bullets, in order:
+  - Paid only: "Your Pro plan is canceled immediately. You won't get a refund for the rest of this billing period." Paid means `bookies.stripe_subscription_id` is set, not `tier` or `subscription_status` (Apple IAP can set those without a Stripe subscription, and `delete_account` does not cancel those). iOS does not currently sync `stripe_subscription_id` — load it with the bookie, and if it is not on the client, omit this line rather than guessing from tier.
+  - "{Group name} and everything in it is deleted: {N} members, their picks, balances and history. Members lose access right away." Use "1 member" for one. When N is 0, drop the count: "{Group name} and everything in it is deleted." N is the member count already loaded for the members list. If that count is not on the client, omit the number rather than querying. If the group name is not loaded, use "Your group".
+  - Bold: "This can't be undone."
+- [ ] Alternatives, neutral, above the confirm field. Only include a line whose flow exists:
+  - "Want the group to keep going? Step down as organizer instead" → the existing step-down confirmation.
+  - Paid only: "Just want to stop paying? Cancel Pro and keep your group" → the existing billing path. Web uses `create_customer_portal` (`openPortal()`). iOS has no Stripe-portal call in the app today; if there is still no working cancel-plan path, drop this line.
+- [ ] Confirm field label "Type DELETE to confirm". Match is case-insensitive and trimmed. Primary stays disabled until it matches.
+- [ ] Primary: "Delete account and group" for organizers, "Delete account" for members. Secondary: "Keep my account", and it takes default focus. Both at least 44pt.
+- [ ] Members: "This permanently deletes your account and all your data. This can't be undone." Same single screen. Do not mention a plan or a group. Button label "Delete account".
+- [ ] Move Delete Account out from under Step Down into its own Danger zone at the bottom of organizer Settings.
+
+The no-refund sentence matches the server. `supabase/functions/delete_account/index.ts` cancels with `DELETE https://api.stripe.com/v1/subscriptions/{stripe_subscription_id}` and no body. That is an immediate cancel (`cancel_at_period_end` is not set; that would be a POST). `prorate` and `invoice_now` are omitted. Stripe's cancel endpoint documents both defaults as `false`, so this does not create a proration credit and does not refund the current period. Do not soften or strengthen that sentence unless the function starts sending those parameters.

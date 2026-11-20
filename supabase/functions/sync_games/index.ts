@@ -3,6 +3,12 @@ import { createServiceClient } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { selectAllIn, selectAllPaged } from '../_shared/pagination.ts';
 import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
+import {
+  isMainLine,
+  planSharedMainLine,
+  isSharedMainLineConflict,
+  type SharedMainLineRow,
+} from '../_shared/main_line.ts';
 
 /**
  * Sports to sync from the Odds API.
@@ -458,6 +464,10 @@ interface MarketRecord {
   side_b: string;
   odds_a: number;
   odds_b: number;
+  // Main lines only. Absent on alternates, team totals, props and outrights,
+  // so an upsert of those does not clear a flag they never had.
+  bettable?: boolean;
+  main_line?: boolean;
 }
 
 /**
@@ -671,16 +681,21 @@ export function extractMarketsFromOddsEvent(
 
 
 /**
- * The discriminator that makes a market row unique within its event and type.
+ * The discriminator that makes a NON-main market row unique within its event
+ * and type.
  *
- * For spreads and totals the line value is enough: an event has one away side
- * and one home side, so -3.5 identifies a row. For TEAM totals it is not —
- * both teams routinely carry a line at the same number, and keying on the
- * number alone would collide, letting one team's price silently overwrite the
- * other's. Those use the full side label, which carries the team.
+ * Shared moneyline, spread and total do NOT use this. A spread moving
+ * +11.5 → +12.5 is the same market, and keying it on the number inserted a
+ * new row per move (Colts @ Texans carried four bettable spreads at once).
+ * Those go through planSharedMainLine, which overwrites one stable row and
+ * retires the others. This function stays line-valued because alternate
+ * spreads, alternate totals and odd/even really are one row per number, and
+ * team totals need the full side: both teams routinely carry the same number,
+ * and keying on the number alone would let one team's price overwrite the
+ * other's.
  *
- * Existing types keep their exact previous key. Changing it would make every
- * stored market look new on the next run and duplicate the table.
+ * Changing the key for those types would make every stored row look new on
+ * the next run and duplicate the table.
  */
 export function marketDiscriminator(type: string, sideA: string): string {
   return type === 'team_total' ? sideA : String(extractLineValue(sideA));
@@ -815,6 +830,8 @@ interface SyncStats {
   events_skipped: number;
   markets_inserted: number;
   markets_updated: number;
+  /** Previous shared main lines marked not bettable. Never a delete count. */
+  markets_retired: number;
   /** Games given the per-event market bundle this run. */
   deep_games_enriched?: number;
   errors: string[];
@@ -883,6 +900,7 @@ Deno.serve(async (req) => {
       events_skipped: 0,
       markets_inserted: 0,
       markets_updated: 0,
+      markets_retired: 0,
       errors: [],
     };
 
@@ -1120,24 +1138,56 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Get existing markets for all events to determine insert vs update
+    // Get existing markets for all events to determine insert vs update.
+    // updated_at, bettable and main_line are how a shared spread/total/moneyline
+    // picks ONE row to keep when older numbers are still sitting in the table.
     const eventDbIds = Array.from(eventIdMap.values());
     const { data: existingMarkets, error: existingMarketsError } =
-      await selectAllIn<{ id: string; event_id: string; type: string; side_a: string }>(
-        client, 'markets', 'id, event_id, type, side_a', 'event_id', eventDbIds);
+      await selectAllIn<{
+        id: string;
+        event_id: string;
+        type: string;
+        side_a: string;
+        bookie_id: string | null;
+        updated_at: string | null;
+        bettable: boolean | null;
+        main_line: boolean | null;
+      }>(
+        client,
+        'markets',
+        'id, event_id, type, side_a, bookie_id, updated_at, bettable, main_line',
+        'event_id',
+        eventDbIds,
+      );
 
     if (existingMarketsError) {
       console.error('Error querying existing markets:', existingMarketsError);
       stats.errors.push(`Markets query error: ${existingMarketsError.message}`);
     }
 
-    // Build a map of event_id+type+lineValue -> market id for existing markets
-    // This composite key supports multiple alternate lines per type per event
+    // Alternates, team totals, props and odd/even: one row per line. The
+    // discriminator carries the number (or the full side, for team totals).
+    // Shared moneyline/spread/total are grouped separately and reconciled to
+    // a single row — see planSharedMainLine.
     const existingMarketsMap = new Map<string, string>();
+    const mainLineGroups = new Map<string, SharedMainLineRow[]>();
     if (existingMarkets) {
       for (const market of existingMarkets) {
-        const key = `${market.event_id}_${market.type}_${marketDiscriminator(market.type, market.side_a)}`;
-        existingMarketsMap.set(key, market.id);
+        if (isMainLine(market.type) && market.bookie_id == null) {
+          const groupKey = `${market.event_id}|${market.type}`;
+          const list = mainLineGroups.get(groupKey) ?? [];
+          list.push({
+            id: market.id,
+            bookie_id: market.bookie_id,
+            updated_at: market.updated_at,
+            bettable: market.bettable,
+            main_line: market.main_line,
+          });
+          mainLineGroups.set(groupKey, list);
+        } else {
+          const key = `${market.event_id}_${market.type}_${marketDiscriminator(market.type, market.side_a)}`;
+          existingMarketsMap.set(key, market.id);
+        }
       }
     }
 
@@ -1148,6 +1198,10 @@ Deno.serve(async (req) => {
     // every NOT NULL column to be present even though it never fires for rows
     // that already exist.
     const marketsToUpdate: (MarketRecord & { id: string })[] = [];
+    // Previous shared main lines. Marked not bettable below. Not deleted:
+    // a pick's market_id points here, and PR #9's prune keeps rows that
+    // still have a pick for the same reason.
+    const retireIds: string[] = [];
 
     let marketsSkippedFarOut = 0;
 
@@ -1179,7 +1233,39 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const seenMain = new Set<string>();
       for (const market of extractedMarkets) {
+        if (isMainLine(market.type)) {
+          // One main line per event and type. A second spread in the same
+          // payload is the same market; writing it twice would fight the
+          // unique index.
+          const seenKey = `${eventId}|${market.type}`;
+          if (seenMain.has(seenKey)) continue;
+          seenMain.add(seenKey);
+
+          const plan = planSharedMainLine(mainLineGroups.get(seenKey) ?? []);
+          const record: MarketRecord = {
+            event_id: eventId,
+            bookie_id: null,
+            type: market.type,
+            side_a: market.side_a,
+            side_b: market.side_b,
+            odds_a: market.odds_a,
+            odds_b: market.odds_b,
+            bettable: true,
+            main_line: true,
+          };
+          if (plan.canonicalId) {
+            marketsToUpdate.push({ ...record, id: plan.canonicalId });
+          } else {
+            marketsToInsert.push(record);
+          }
+          for (const id of plan.retireIds) {
+            if (id !== plan.canonicalId) retireIds.push(id);
+          }
+          continue;
+        }
+
         const marketKey = `${eventId}_${market.type}_${marketDiscriminator(market.type, market.side_a)}`;
         const existingMarketId = existingMarketsMap.get(marketKey);
 
@@ -1210,19 +1296,107 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Insert new markets
-    if (marketsToInsert.length > 0) {
-      const { error: insertMarketsError } = await client
+    // Retire first, then write the canonical row. Retirement is an UPDATE, so
+    // it bumps updated_at; doing it first leaves the live line as the newest
+    // sibling even on a database that has not yet picked up migration 064's
+    // "ignore unbettable rows" change to superseded_market_ids. Setting
+    // main_line false here also clears the unique index before the canonical
+    // row is flagged true.
+    const uniqueRetire = Array.from(new Set(retireIds));
+    for (let i = 0; i < uniqueRetire.length; i += 200) {
+      const chunk = uniqueRetire.slice(i, i + 200);
+      const { error: retireError } = await client
         .from('markets')
-        .insert(marketsToInsert);
-
-      if (insertMarketsError) {
-        console.error('Error inserting markets:', insertMarketsError);
-        stats.errors.push(`Markets insert error: ${insertMarketsError.message}`);
-      } else {
-        stats.markets_inserted = marketsToInsert.length;
-        console.log(`Inserted ${marketsToInsert.length} new markets`);
+        .update({ bettable: false, main_line: false })
+        .in('id', chunk);
+      if (retireError) {
+        console.error(`Error retiring main lines (chunk at ${i}):`, retireError);
+        stats.errors.push(`Main line retire error: ${retireError.message}`);
+        break;
       }
+      stats.markets_retired += chunk.length;
+    }
+    if (stats.markets_retired > 0) {
+      console.log(`Retired ${stats.markets_retired} previous main lines (left in place, not bettable)`);
+    }
+
+    // Main-line rows carry main_line and bettable. Alternate rows do not.
+    // One PostgREST payload has to use one set of keys; a missing key on some
+    // of the objects is sent as null, and bettable is NOT NULL. Write them
+    // apart.
+    const mainInserts = marketsToInsert.filter((r) => r.main_line === true);
+    const otherInserts = marketsToInsert.filter((r) => r.main_line !== true);
+
+    const insertChunk = async (rows: MarketRecord[], label: string) => {
+      if (rows.length === 0) return;
+      const { error } = await client.from('markets').insert(rows);
+      if (error) {
+        console.error(`Error inserting ${label}:`, error);
+        stats.errors.push(`Markets insert error (${label}): ${error.message}`);
+        return;
+      }
+      stats.markets_inserted += rows.length;
+    };
+    await insertChunk(otherInserts, 'alternate markets');
+
+    // A 23505 on the shared-main-line index means the other odds writer
+    // inserted that row between our read and our write. Adopt it instead of
+    // leaving the price unwritten.
+    if (mainInserts.length > 0) {
+      const { error: insertMarketsError } = await client.from('markets').insert(mainInserts);
+      if (!insertMarketsError) {
+        stats.markets_inserted += mainInserts.length;
+      } else if (isSharedMainLineConflict(insertMarketsError)) {
+        console.warn('Shared main-line insert raced; adopting the winning row per market');
+        for (const row of mainInserts) {
+          const { error: oneError } = await client.from('markets').insert(row);
+          if (!oneError) {
+            stats.markets_inserted++;
+            continue;
+          }
+          if (!isSharedMainLineConflict(oneError)) {
+            console.error('Error inserting main line:', oneError);
+            stats.errors.push(`Markets insert error: ${oneError.message}`);
+            continue;
+          }
+          const { data: winner, error: winnerError } = await client
+            .from('markets')
+            .select('id')
+            .eq('event_id', row.event_id)
+            .eq('type', row.type)
+            .is('bookie_id', null)
+            .eq('main_line', true)
+            .maybeSingle();
+          if (winnerError || !winner) {
+            console.error('Main-line conflict but no winning row:', winnerError);
+            stats.errors.push(`Main line adopt failed for ${row.event_id} ${row.type}`);
+            continue;
+          }
+          const { error: adoptError } = await client
+            .from('markets')
+            .update({
+              side_a: row.side_a,
+              side_b: row.side_b,
+              odds_a: row.odds_a,
+              odds_b: row.odds_b,
+              bettable: true,
+              main_line: true,
+            })
+            .eq('id', winner.id);
+          if (adoptError) {
+            console.error('Error adopting main line:', adoptError);
+            stats.errors.push(`Main line adopt error: ${adoptError.message}`);
+          } else {
+            stats.markets_updated++;
+          }
+        }
+      } else {
+        console.error('Error inserting main lines:', insertMarketsError);
+        stats.errors.push(`Markets insert error: ${insertMarketsError.message}`);
+      }
+    }
+    if (stats.markets_inserted > 0) {
+      console.log(`Inserted ${stats.markets_inserted} new markets`);
     }
 
     // Update existing markets.
@@ -1236,18 +1410,23 @@ Deno.serve(async (req) => {
     //
     // Upserting on the primary key is an UPDATE for every row here, since all
     // of them already exist. Chunked to keep any single request modest.
+    // Main lines go last so their updated_at stays newer than the retire write.
+    const mainUpdates = marketsToUpdate.filter((r) => r.main_line === true);
+    const otherUpdates = marketsToUpdate.filter((r) => r.main_line !== true);
     const MARKET_UPSERT_CHUNK = 500;
-    for (let i = 0; i < marketsToUpdate.length; i += MARKET_UPSERT_CHUNK) {
-      const chunk = marketsToUpdate.slice(i, i + MARKET_UPSERT_CHUNK);
-      const { error: updateMarketError } = await client
-        .from('markets')
-        .upsert(chunk, { onConflict: 'id' });
+    for (const batch of [otherUpdates, mainUpdates]) {
+      for (let i = 0; i < batch.length; i += MARKET_UPSERT_CHUNK) {
+        const chunk = batch.slice(i, i + MARKET_UPSERT_CHUNK);
+        const { error: updateMarketError } = await client
+          .from('markets')
+          .upsert(chunk, { onConflict: 'id' });
 
-      if (updateMarketError) {
-        console.error(`Error updating markets (chunk at ${i}):`, updateMarketError);
-        stats.errors.push(`Market update error: ${updateMarketError.message}`);
-      } else {
-        stats.markets_updated += chunk.length;
+        if (updateMarketError) {
+          console.error(`Error updating markets (chunk at ${i}):`, updateMarketError);
+          stats.errors.push(`Market update error: ${updateMarketError.message}`);
+        } else {
+          stats.markets_updated += chunk.length;
+        }
       }
     }
 

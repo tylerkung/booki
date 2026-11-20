@@ -13,11 +13,13 @@ import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 /**
  * Which of these markets are superseded?
  *
- * A market row is keyed event + type + LINE VALUE, so a spread moving
- * -3 -> -3.5 INSERTS a new row and leaves the old one behind — still bettable,
- * frozen at a stale price, and passing a pure odds comparison because its odds
- * genuinely are what that row says. It gives itself away by trailing the last
- * write of its own kind.
+ * A shared moneyline, spread or total is one row per event (migration 064,
+ * planSharedMainLine). It used to be keyed event + type + LINE VALUE, so a
+ * spread moving -3 -> -3.5 INSERTED a new row and left the old one behind —
+ * still bettable, frozen at a stale price, and passing a pure odds comparison
+ * because its odds genuinely are what that row says. Rows already piled up
+ * still give themselves away by trailing the newest bettable sibling.
+ * Alternate lines are still one row per number, and the same check applies.
  *
  * "Its own kind" is the part that took two goes to get right. The first version
  * compared against events.last_odds_update, which only the odds pipeline writes

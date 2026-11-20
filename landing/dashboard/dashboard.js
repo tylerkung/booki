@@ -12,6 +12,10 @@ const SUPABASE_URL = 'https://vstfauqufwpdytmvjyfz.supabase.co';
  * bloat every member's payload for lines the board cannot display anyway.
  */
 const BOARD_MARKET_TYPES = ['moneyline', 'spread', 'total'];
+/** updated_at and bettable are how the board picks one line when older
+ *  numbers are still stored. Without them every duplicate looks current and
+ *  the last row in an unordered response wins. */
+const BOARD_MARKET_COLUMNS = 'id, event_id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable';
 /** Games shown per league on the board before "Show More". */
 const BOARD_ROWS_PER_LEAGUE = 3;
 /** Outright outcomes previewed on the board. A futures market is every team in
@@ -125,6 +129,57 @@ function formatBearerInviteExpiry(expiresAt, now = Date.now()) {
     }
     if (totalHours <= 1) return withDate('in 1 hour');
     return withDate(`in ${totalHours} hours`);
+}
+
+/**
+ * Delete-account confirmation. Every user-facing string for that modal lives
+ * here so wording can be edited in one place.
+ *
+ * The paid-plan line is only shown when bookies.stripe_subscription_id is set.
+ * delete_account cancels that subscription with DELETE /v1/subscriptions/:id
+ * and sends no body: Stripe cancels immediately (not at period end), and the
+ * documented defaults are prorate=false and invoice_now=false, so no proration
+ * credit and no refund is issued. tier and subscription_status are not a
+ * paying signal — an Apple subscription can set those without a Stripe id,
+ * and this function does not cancel those.
+ */
+const DELETE_ACCOUNT_COPY = {
+    title: 'Delete your account?',
+    organizerLead: 'This permanently deletes your account and the group you run.',
+    playerLead: "This permanently deletes your account and all your data. This can't be undone.",
+    paidPlan: "Your Pro plan is canceled immediately. You won't get a refund for the rest of this billing period.",
+    undone: "This can't be undone.",
+    groupWithMembers: '{group} and everything in it is deleted: {members}, their picks, balances and history. Members lose access right away.',
+    groupEmpty: '{group} and everything in it is deleted.',
+    oneMember: '1 member',
+    manyMembers: '{n} members',
+    fallbackGroup: 'Your group',
+    stepDownLead: 'Want the group to keep going?',
+    stepDownLink: 'Step down as organizer instead',
+    cancelLead: 'Just want to stop paying?',
+    cancelLink: 'Cancel Pro and keep your group',
+    confirmLabel: 'Type DELETE to confirm',
+    organizerButton: 'Delete account and group',
+    playerButton: 'Delete account',
+    keepButton: 'Keep my account',
+    deleting: 'Deleting...',
+};
+
+function deleteAccountGroupLine(groupName, memberCount) {
+    const group = (groupName && String(groupName).trim()) || DELETE_ACCOUNT_COPY.fallbackGroup;
+    if (memberCount === null || memberCount === undefined || memberCount === 0) {
+        return DELETE_ACCOUNT_COPY.groupEmpty.replaceAll('{group}', group);
+    }
+    const members = memberCount === 1
+        ? DELETE_ACCOUNT_COPY.oneMember
+        : DELETE_ACCOUNT_COPY.manyMembers.replaceAll('{n}', String(memberCount));
+    return DELETE_ACCOUNT_COPY.groupWithMembers
+        .replaceAll('{group}', group)
+        .replaceAll('{members}', members);
+}
+
+function deleteConfirmMatches(text) {
+    return String(text || '').trim().toUpperCase() === 'DELETE';
 }
 
 function dashboardApp() {
@@ -805,10 +860,10 @@ function dashboardApp() {
         // ── Danger Zone ──
         showStepDownModal: false,
         isSteppingDown: false,
-        showDeleteStep1: false,
-        showDeleteStep2: false,
+        showDeleteAccountModal: false,
         deleteConfirmText: '',
         isDeleting: false,
+        deleteAccountCopy: DELETE_ACCOUNT_COPY,
 
         // ── Override / Reverse ──
         showOverrideModal: false,
@@ -944,9 +999,6 @@ function dashboardApp() {
         playerConfirmPassword: '',
         isChangingPlayerPassword: false,
         playerPasswordError: '',
-        showPlayerDeleteStep1: false,
-        showPlayerDeleteStep2: false,
-        playerDeleteConfirmText: '',
         isDeletingPlayerAccount: false,
 
         // ── Bet Slip ──
@@ -2154,7 +2206,7 @@ function dashboardApp() {
         },
 
         async deletePlayerAccount() {
-            if (this.playerDeleteConfirmText !== 'DELETE') return;
+            if (!deleteConfirmMatches(this.deleteConfirmText)) return;
             this.isDeletingPlayerAccount = true;
 
             try {
@@ -2166,7 +2218,7 @@ function dashboardApp() {
                     this.toast(response.error, 'error');
                 } else {
                     this.toast('Account deleted', 'success');
-                    this.showPlayerDeleteStep2 = false;
+                    this.showDeleteAccountModal = false;
                     await this.supabase.auth.signOut();
                     window.location.href = 'login.html';
                 }
@@ -2238,27 +2290,32 @@ function dashboardApp() {
             const needGames = gameIds.filter(id => !have.has(id));
             const needOutrights = outrightIds.filter(id => !haveOut.has(id));
 
-            const fetchIn = async (ids, types, limit) => {
+            const fetchIn = async (ids, types, limit, onlyBettable) => {
                 if (!ids.length) return [];
                 const BATCH = 50;
                 const batches = [];
                 for (let i = 0; i < ids.length; i += BATCH) {
-                    batches.push(this.supabase
+                    let q = this.supabase
                         .from('markets')
-                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                        .select(BOARD_MARKET_COLUMNS)
                         .in('event_id', ids.slice(i, i + BATCH))
-                        .in('type', types)
-                        .limit(limit));
+                        .in('type', types);
+                    // Retired main lines stay in the table (a pick may point at
+                    // them) but they are not a price. The picker still has to
+                    // choose among the ones that remain, because a moved line
+                    // used to leave several bettable rows behind.
+                    if (onlyBettable) q = q.eq('bettable', true);
+                    batches.push(q.limit(limit));
                 }
                 const res = await Promise.all(batches);
                 return res.flatMap(r => r.data || []);
             };
 
             const [games, outrights] = await Promise.all([
-                fetchIn(needGames, BOARD_MARKET_TYPES, 500),
+                fetchIn(needGames, BOARD_MARKET_TYPES, 500, true),
                 // A futures market is one row per team, so its cap is sized per
                 // event rather than by the 500 a board batch needs.
-                fetchIn(needOutrights, ['outright'], 1000),
+                fetchIn(needOutrights, ['outright'], 1000, false),
             ]);
             if (games.length) this.playerMarkets = [...this.playerMarkets, ...games];
             if (outrights.length) this.boardOutrightMarkets = [...this.boardOutrightMarkets, ...outrights];
@@ -2298,9 +2355,10 @@ function dashboardApp() {
                             // game by the game detail view instead, which also
                             // keeps them out of every member's sync payload.
                             .from('markets')
-                            .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                            .select(BOARD_MARKET_COLUMNS)
                             .in('event_id', eventIds.slice(i, i + BATCH))
                             .in('type', BOARD_MARKET_TYPES)
+                            .eq('bettable', true)
                             .limit(500)
                     );
                 }
@@ -2386,9 +2444,10 @@ function dashboardApp() {
                 fetches.push(
                     this.supabase
                         .from('markets')
-                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                        .select(BOARD_MARKET_COLUMNS)
                         .in('event_id', sportEventIds)
                         .in('type', BOARD_MARKET_TYPES)
+                        .eq('bettable', true)
                         .limit(500)
                 );
             } else {
@@ -2522,8 +2581,14 @@ function dashboardApp() {
             const map = {};
             for (const m of this.playerMarkets) {
                 if (!map[m.event_id]) map[m.event_id] = {};
-                map[m.event_id][m.type] = m;
-                if (aliasMap[m.type]) map[m.event_id][aliasMap[m.type]] = m;
+                const slot = map[m.event_id];
+                // Last-write-wins was wrong: the query is unordered, so the
+                // row that arrived last was often an older number. Keep the
+                // newest bettable row. Moneyline, spread and total all share
+                // this rule; a retired row must not cover the live one.
+                const chosen = preferBoardMarket(slot[m.type], m);
+                if (chosen) slot[m.type] = chosen;
+                if (aliasMap[m.type] && slot[m.type]) slot[aliasMap[m.type]] = slot[m.type];
             }
             return map;
         },
@@ -2671,7 +2736,7 @@ function dashboardApp() {
                         .select('id, away_team, home_team, start_time, status, league, sport, away_score, home_score')
                         .eq('id', eventId).maybeSingle(),
                     this.supabase.from('markets')
-                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b')
+                        .select('id, event_id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable')
                         .eq('event_id', eventId)
                         .limit(1000),
                     this.supabase.rpc('get_event_player_props', { p_event_id: eventId }),
@@ -2793,17 +2858,20 @@ function dashboardApp() {
             const pair = (key, title, markets) =>
                 markets.length ? { key, title, kind: 'pair', markets } : null;
 
-            // Moneyline first: it is what most people came for.
-            push(pair('moneyline', 'Winner', byType('moneyline')));
+            // Moneyline first: it is what most people came for. One row —
+            // the newest bettable one. Older duplicates are not extra buttons.
+            push(pair('moneyline', 'Winner', featuredMainList(all, 'moneyline')));
 
             // Spread and its alternates are one ladder, with the main line
             // included — splitting them would put the headline number in a
-            // different card from the ladder it belongs to.
-            const spreads = [...byType('spread'), ...byType('alternate_spread')];
+            // different card from the ladder it belongs to. The featured
+            // spread is a single row; the duplicates left behind by a moved
+            // number are not extra columns.
+            const spreads = [...featuredMainList(all, 'spread'), ...byType('alternate_spread')];
             const spreadLadder = this.buildLadder('spread', 'Spread', spreads, true);
             if (spreadLadder) push({ ...spreadLadder, kind: 'ladder' });
 
-            const totals = [...byType('total'), ...byType('alternate_total')];
+            const totals = [...featuredMainList(all, 'total'), ...byType('alternate_total')];
             const totalLadder = this.buildLadder('total', 'Total', totals);
             if (totalLadder) push({ ...totalLadder, kind: 'ladder' });
 
@@ -3354,20 +3422,22 @@ function dashboardApp() {
                 // away — a 404 looked identical to a network drop.
                 console.error('Submit bet slip error:', err);
                 const raw = err && err.message;
-                this.toast(this.humanizeBetError(raw), 'error');
+                const message = this.humanizeBetError(raw);
+                // Always. An empty message used to fall through to a clear
+                // with nothing on screen.
+                this.toast(message || 'Failed to place pick', 'error');
 
-                // A missing event or market means this page is holding a stale
-                // copy of the board: sync_games rewrites events twice daily, and
-                // a slip built before a rewrite points at ids that no longer
-                // exist. Singles absorb this as a partial failure; a parlay is
-                // all-or-nothing and 404s outright. Drop the dead selections and
-                // reload rather than leaving unbettable odds on screen.
-                if (this.isStaleBoardError(raw)) {
-                    this.betSlipSelections = [];
-                    this.betSlipStakes = {};
-                    this.betSlipMultiStake = '';
-                    this.showBetSlip = false;
+                // Keep the slip. line_no_longer_offered used to empty it and
+                // hide the panel in the same turn the toast was created, so
+                // the first failure looked silent: the pick was gone and no
+                // message stayed up. The member still has the pick and can
+                // swap it for the line the refresh is about to show.
+                const disposition = submitFailureDisposition(raw);
+                if (disposition.refreshBoard) {
                     this.loadPlayerGames();
+                    if (this.route === 'player-game' && this.selectedGameId) {
+                        this.loadGameDetail(this.selectedGameId);
+                    }
                 }
             }
 
@@ -3378,11 +3448,7 @@ function dashboardApp() {
          * Does this error mean the board on screen no longer matches the server?
          */
         isStaleBoardError(raw) {
-            const msg = String(raw || '');
-            return /^Events? not found/.test(msg) ||
-                /^Market not found/.test(msg) ||
-                msg === 'line_no_longer_offered' ||
-                msg === 'Market has no price';
+            return isStaleBoardErrorMessage(raw);
         },
 
         /**
@@ -3394,7 +3460,7 @@ function dashboardApp() {
         humanizeBetError(raw) {
             const msg = String(raw || '');
             if (this.isStaleBoardError(msg)) {
-                return 'One of these games is no longer available. Refreshing the board — please rebuild your pick.';
+                return 'That line is no longer offered. Your pick is still here — remove it and add the current line.';
             }
             if (/^Events locked/.test(msg) || msg === 'Event is locked for betting') {
                 return 'Betting has closed on one of these games.';
@@ -5797,8 +5863,72 @@ function dashboardApp() {
             this.isSteppingDown = false;
         },
 
+        // Paying status is the Stripe subscription delete_account actually
+        // cancels. tier / subscription_status can be Pro from Apple IAP with
+        // no Stripe subscription, and those are not canceled here.
+        organizerHasStripePlan() {
+            return !!(this.bookie && this.bookie.stripe_subscription_id);
+        },
+
+        // Members-list count (this.players), already loaded with the dashboard.
+        // While that load is still in flight the count is unknown: omit it
+        // rather than showing 0. A loaded empty list also omits the count.
+        deleteAccountGroupSentence() {
+            const count = this.isLoadingPlayers ? null : this.players.length;
+            const name = this.bookie ? this.bookie.name : '';
+            return deleteAccountGroupLine(name, count);
+        },
+
+        deleteAccountBusy() {
+            return this.userRole === 'organizer' ? this.isDeleting : this.isDeletingPlayerAccount;
+        },
+
+        deleteAccountButtonLabel() {
+            if (this.deleteAccountBusy()) return this.deleteAccountCopy.deleting;
+            return this.userRole === 'organizer'
+                ? this.deleteAccountCopy.organizerButton
+                : this.deleteAccountCopy.playerButton;
+        },
+
+        openDeleteAccountModal() {
+            this.deleteConfirmText = '';
+            this.showDeleteAccountModal = true;
+            // The overlay is still display:none on the tick that opens it, and
+            // the enter transition starts at opacity 0. Focusing then is a
+            // no-op, so retry until the button is actually on screen. Stop
+            // once focus has landed so typing in the confirm field is left alone.
+            const attempt = (left) => {
+                const btn = this.$refs.keepAccountBtn;
+                const overlay = btn && btn.closest('.modal-overlay');
+                if (!this.showDeleteAccountModal || !btn || !overlay) return;
+                if (document.activeElement && document.activeElement.id === 'delete-account-confirm') return;
+                if (getComputedStyle(overlay).display !== 'none') {
+                    btn.focus();
+                    if (document.activeElement === btn) return;
+                }
+                if (left > 0) setTimeout(() => attempt(left - 1), 16);
+            };
+            this.$nextTick(() => attempt(20));
+        },
+
+        closeDeleteAccountModal() {
+            this.showDeleteAccountModal = false;
+            this.deleteConfirmText = '';
+        },
+
+        chooseStepDownInstead() {
+            this.closeDeleteAccountModal();
+            this.showStepDownModal = true;
+        },
+
+        confirmDeleteAccount() {
+            if (!deleteConfirmMatches(this.deleteConfirmText) || this.deleteAccountBusy()) return;
+            if (this.userRole === 'organizer') this.deleteAccount();
+            else this.deletePlayerAccount();
+        },
+
         async deleteAccount() {
-            if (this.deleteConfirmText !== 'DELETE') return;
+            if (!deleteConfirmMatches(this.deleteConfirmText)) return;
             this.isDeleting = true;
 
             try {
@@ -5810,7 +5940,7 @@ function dashboardApp() {
                     this.toast(response.error, 'error');
                 } else {
                     this.toast('Account deleted', 'success');
-                    this.showDeleteStep2 = false;
+                    this.showDeleteAccountModal = false;
                     await this.supabase.auth.signOut();
                     window.location.href = 'login.html';
                 }
