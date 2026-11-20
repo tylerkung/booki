@@ -69,9 +69,17 @@ CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 
 ## Completed Migrations
 
+### 061 — RLS on user_agreements and idempotency_keys (applied)
+
+Applied. `supabase/migrations/061_enable_rls_agreements_and_idempotency.sql`
+turns RLS on for both tables and revokes anon/authenticated grants. It does
+not deploy any function. Rollback and the post-apply checks are in the pull
+request. `scripts/test-061-rls.sh` repeats them on a throwaway local Postgres
+17 database. Pending work after this is 064, then 062, then 063.
+
 > **Note:** this file records migrations narratively and stopped being updated
 > around 030. The repo's `supabase/migrations/` directory is the authoritative
-> list — it runs to 058 — and `scripts/check-migrations.py` verifies numbering.
+> list — it runs through 064. 061 is applied. 064, then 062, then 063 are not applied yet — and `scripts/check-migrations.py` verifies numbering.
 > The entries below cover the most recent work; older gaps are not backfilled.
 
 ### 2026-08-28: MLB Player Props (056–058)
