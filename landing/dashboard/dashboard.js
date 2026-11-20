@@ -3251,6 +3251,25 @@ function dashboardApp() {
         async submitBetSlip() {
             if (!this.betSlipValid || this.isSubmittingBets) return;
             this.isSubmittingBets = true;
+            // Mint before any await. A second tap, a second Alpine instance,
+            // and a retry after a dropped connection all reuse this key.
+            // A changed stake or price is a different fingerprint and a new key,
+            // which is what both the old and new submit functions need: the old
+            // one returns the cached body for a repeated key, and the new one
+            // rejects a different payload on the same key.
+            const slipFingerprint = BookiSlip.slipFingerprint({
+                mode: this.betSlipMode,
+                player_id: this.playerId,
+                bookie_id: this.playerBookieId,
+                selections: this.betSlipSelections,
+                stakes: this.betSlipStakes,
+                multiStake: this.betSlipMultiStake,
+                combinedOdds: this.betSlipMode === 'multi'
+                    ? Number(String(this.combinedMultiOddsAmerican).replace('+', ''))
+                    : null,
+            });
+            const idempotencyKey = BookiSlip.claimSlipKey(window.sessionStorage, slipFingerprint);
+            let releaseKey = false;
 
             try {
                 if (this.betSlipMode === 'singles') {
@@ -3267,7 +3286,7 @@ function dashboardApp() {
                         player_id: this.playerId,
                         bookie_id: this.playerBookieId,
                         bets,
-                        idempotency_key: crypto.randomUUID(),
+                        idempotency_key: idempotencyKey,
                     });
 
                     // A moved line is not a failure — it needs the member's
@@ -3278,6 +3297,26 @@ function dashboardApp() {
                     // a dead-end error instead of the prompt.
                     const moved = (response.failed || []).filter(f => f.error === 'line_changed');
                     if (moved.length > 0) {
+                        // Picks that landed must leave the slip before the
+                        // member confirms the new price. The confirmation is a
+                        // new key (the stake and the price changed), and both
+                        // function versions would insert those picks again.
+                        // failed[].index is the staked-row index from either
+                        // submit_bets build.
+                        const kept = BookiSlip.slipAfterPartialPlace(
+                            this.betSlipSelections,
+                            this.betSlipStakes,
+                            response.failed || [],
+                        );
+                        this.betSlipSelections = kept.selections;
+                        this.betSlipStakes = kept.stakes;
+                        if (kept.placed > 0) {
+                            BookiSlip.releaseSlipKey(window.sessionStorage, slipFingerprint);
+                            this.toast(
+                                kept.placed + (kept.placed === 1 ? ' pick placed' : ' picks placed'),
+                                'success',
+                            );
+                        }
                         this.lineChanges = moved;
                         this.applyLineChangesToSlip(moved);
                         this.isSubmittingBets = false;
@@ -3311,7 +3350,7 @@ function dashboardApp() {
                         stake: Number(this.betSlipMultiStake),
                         combined_odds: Number(this.combinedMultiOddsAmerican.replace('+', '')),
                         legs,
-                        idempotency_key: crypto.randomUUID(),
+                        idempotency_key: idempotencyKey,
                     });
 
                     if (response.error === 'line_changed') {
@@ -3337,6 +3376,7 @@ function dashboardApp() {
 
                 // Refresh player data
                 this.loadPlayerHome();
+                releaseKey = true;
             } catch (err) {
                 // Log the error itself. This used to log a bare string, which
                 // meant the one place the real server message surfaced threw it
@@ -3344,6 +3384,7 @@ function dashboardApp() {
                 console.error('Submit bet slip error:', err);
                 const raw = err && err.message;
                 this.toast(this.humanizeBetError(raw), 'error');
+                if (raw === 'idempotency_payload_mismatch') releaseKey = true;
 
                 // A missing event or market means this page is holding a stale
                 // copy of the board: sync_games rewrites events twice daily, and
@@ -3352,6 +3393,7 @@ function dashboardApp() {
                 // all-or-nothing and 404s outright. Drop the dead selections and
                 // reload rather than leaving unbettable odds on screen.
                 if (this.isStaleBoardError(raw)) {
+                    releaseKey = true;
                     this.betSlipSelections = [];
                     this.betSlipStakes = {};
                     this.betSlipMultiStake = '';
@@ -3360,6 +3402,7 @@ function dashboardApp() {
                 }
             }
 
+            if (releaseKey) BookiSlip.releaseSlipKey(window.sessionStorage, slipFingerprint);
             this.isSubmittingBets = false;
         },
 
@@ -3403,6 +3446,9 @@ function dashboardApp() {
             }
             if (msg === 'pro_required') return 'That feature needs Booki Pro.';
             if (msg === 'Unauthorized') return 'Your session has expired. Sign in again.';
+            if (msg === 'idempotency_payload_mismatch') {
+                return 'That slip was already sent with different details. Change it, or try the same slip again.';
+            }
             if (/^Stake must be/.test(msg)) return 'Enter a stake amount.';
             if (/^Odds must be/.test(msg)) return 'That price is no longer valid. Refresh and try again.';
             return msg || 'Failed to place pick';

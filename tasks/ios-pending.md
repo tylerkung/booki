@@ -5,7 +5,7 @@ This project cannot be built from the CLI (`CLAUDE.md`: "Xcode command line
 tools don't support full builds — use Xcode IDE"), so everything here needs a
 real build and a run in the simulator.
 
-Last updated: 2026-11-16
+Last updated: 2026-11-20
 
 ---
 
@@ -466,3 +466,15 @@ session cannot compile it.
 - [ ] A loss on any leg is a loss even if another leg is still open
 - [ ] The displayed payout has to use the legs that were not voided or pushed, matching `decideParlay` in `supabase/functions/_shared/parlay_settle.ts`
 - [ ] The iOS "treat void leg as push" setting is ignored: iOS previews a refund, but the server reprices void legs out of the parlay. Product decision, pending. Do not build while iOS is on hold.
+
+## B16 — Reuse one idempotency key when a slip submit is retried
+
+Not built. iOS only. The server fix is migration 065 and the new `submit_bet` / `submit_bets` / `submit_parlay`: the same key returns the original ticket, and a different payload is rejected. That only helps a client that sends the same key again.
+
+`Booki/Services/BetService.swift` mints `UUID().uuidString` inside `submitBetToServer`, `submitParlayToServer`, and `submitBetsToServer` on every call. A dropped connection that calls the method again is a new key, so the server treats it as a new slip. The web slip stores one key per fingerprint (`landing/dashboard/slip-payload.js`, `claimSlipKey`) and reuses it until the submit succeeds or the stake or price changes.
+
+An HTTP retry of the same request body already shares a key. This item is the user-initiated retry.
+
+- [ ] Keep one key for a slip attempt and pass that same key if the call is retried
+- [ ] Mint a new key when the selections, stake, or price change
+- [ ] Do not build while iOS is on hold

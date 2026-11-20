@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
-import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
+import { claimedResponse, replayedResponse } from '../_shared/submit_claim.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
 import { resolveStoredLeg } from '../_shared/market_validation.ts';
@@ -102,15 +102,6 @@ Deno.serve(async (req) => {
 
     const client = createServiceClient();
 
-    // Check idempotency
-    const cachedResponse = await checkIdempotency(client, body.idempotency_key, 'submit_parlay');
-    if (cachedResponse) {
-      return new Response(
-        cachedResponse,
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Normalize UUIDs to lowercase (iOS sends uppercase, DB stores lowercase)
     const normalizedPlayerId = body.player_id?.toLowerCase();
     const requestBookieId = body.bookie_id?.toLowerCase();
@@ -151,6 +142,17 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const replay = await replayedResponse(
+      client,
+      'submit_parlay',
+      userId,
+      normalizedPlayerId,
+      body.idempotency_key,
+      body as unknown as Record<string, unknown>,
+      corsHeaders,
+    );
+    if (replay) return replay;
 
     // Standalone open bet limit: 25 max for players without a bookie
     if (!player.bookie_id) {
@@ -462,52 +464,37 @@ Deno.serve(async (req) => {
       };
     });
 
-    // Insert all legs in a single transaction (batch insert)
-    const { data: bets, error: betsError } = await client
-      .from('bets')
-      .insert(betInserts)
-      .select();
-
-    if (betsError || !bets || bets.length === 0) {
-      console.error('Error inserting parlay bets:', betsError);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Failed to create parlay',
-          debug: {
-            message: betsError?.message,
-            details: betsError?.details,
-            hint: betsError?.hint,
-            code: betsError?.code
-          }
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Emit audit events for each leg
-    for (const bet of bets) {
-      await emitAuditEvent(client, {
-        bookieId: body.bookie_id,
-        actorUserId: userId,
-        entityType: 'bet',
-        entityId: bet.id,
-        actionType: isAutoAccept ? 'bet_auto_accepted' : 'bet_submitted',
-        previousState: null,
-        newState: bet as unknown as Record<string, unknown>,
-      });
-    }
-
-    // Prepare success response
-    const response = JSON.stringify({ success: true, bets, ticket_id: ticketId });
-
-    // Store idempotency key with response
-    await storeIdempotency(client, body.idempotency_key, 'submit_parlay', userId, response);
-
-    return new Response(
-      response,
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    const claimed = await claimedResponse(
+      client,
+      'submit_parlay',
+      userId,
+      normalizedPlayerId,
+      requestBookieId,
+      body.idempotency_key,
+      body as unknown as Record<string, unknown>,
+      betInserts,
+      {},
+      corsHeaders,
     );
+    if (claimed.http.status !== 200) return claimed.http;
+
+    if (!claimed.replayed) {
+      const payload = JSON.parse(claimed.body) as { bets?: Array<Record<string, unknown>> };
+      const bets = payload.bets ?? [];
+      for (const bet of bets) {
+        await emitAuditEvent(client, {
+          bookieId: body.bookie_id,
+          actorUserId: userId,
+          entityType: 'bet',
+          entityId: String(bet.id),
+          actionType: isAutoAccept ? 'bet_auto_accepted' : 'bet_submitted',
+          previousState: null,
+          newState: bet,
+        });
+      }
+    }
+
+    return claimed.http;
   } catch (error) {
     console.error('Error in submit_parlay:', error);
     return new Response(

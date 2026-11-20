@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
-import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
+import { claimedResponse, replayedResponse } from '../_shared/submit_claim.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { sendNotification } from '../_shared/notifications.ts';
 import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
@@ -94,15 +94,6 @@ Deno.serve(async (req) => {
 
     const client = createServiceClient();
 
-    // Check idempotency - if key exists, return cached response
-    const cachedResponse = await checkIdempotency(client, body.idempotency_key, 'submit_bet');
-    if (cachedResponse) {
-      return new Response(
-        cachedResponse,
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Normalize UUIDs to lowercase (iOS sends uppercase, DB stores lowercase)
     const normalizedPlayerId = body.player_id?.toLowerCase();
 
@@ -145,6 +136,17 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const replay = await replayedResponse(
+      client,
+      'submit_bet',
+      userId,
+      normalizedPlayerId,
+      body.idempotency_key,
+      body as unknown as Record<string, unknown>,
+      corsHeaders,
+    );
+    if (replay) return replay;
 
     // Validate: event exists and is not locked
     const normalizedEventId = body.event_id?.toLowerCase();
@@ -321,11 +323,15 @@ Deno.serve(async (req) => {
     // Generate ticket_id for this bet submission
     const ticketId = crypto.randomUUID();
 
-    // Insert bet record with appropriate status based on auto-pilot setting
-    // Use normalized (lowercase) UUIDs for consistency
-    const { data: bet, error: betError } = await client
-      .from('bets')
-      .insert({
+    const claimed = await claimedResponse(
+      client,
+      'submit_bet',
+      userId,
+      normalizedPlayerId,
+      requestBookieId,
+      body.idempotency_key,
+      body as unknown as Record<string, unknown>,
+      [{
         bookie_id: requestBookieId,
         player_id: normalizedPlayerId,
         event_id: normalizedEventId,
@@ -343,57 +349,45 @@ Deno.serve(async (req) => {
         is_parlay: false,
         parlay_legs: 1,
         policy_violation_reason: policyViolationReason,
-      })
-      .select()
-      .single();
+      }],
+      {},
+      corsHeaders,
+    );
+    if (claimed.http.status !== 200) return claimed.http;
 
-    if (betError || !bet) {
-      console.error('Error inserting bet:', betError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to create bet' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Emit audit event for bet creation
-    // Include auto_accepted flag to distinguish from manual acceptance
-    await emitAuditEvent(client, {
-      bookieId: body.bookie_id,
-      actorUserId: userId,
-      entityType: 'bet',
-      entityId: bet.id,
-      actionType: isAutoAccept ? 'bet_auto_accepted' : 'bet_submitted',
-      previousState: null,
-      newState: bet as unknown as Record<string, unknown>,
-    });
-
-    // Prepare success response
-    const response = JSON.stringify({ success: true, bet });
-
-    // Store idempotency key with response
-    await storeIdempotency(client, body.idempotency_key, 'submit_bet', userId, response);
-
-    // Notify bookie of new pick (fire-and-forget)
-    try {
-      if (bookie?.auth_user_id) {
-        const playerName = player.name || 'A member';
-        const stakeDisplay = `$${stakeNum}`;
-        await sendNotification({
-          event: 'pick_submitted',
-          recipientUserIds: [bookie.auth_user_id],
-          title: 'New pick',
-          body: `${playerName} — ${resolvedSide} ${marketType} ${stakeDisplay}`,
-          data: { deep_link: `booki://bet/${bet.id}` },
+    if (!claimed.replayed) {
+      const payload = JSON.parse(claimed.body) as { bet?: Record<string, unknown> };
+      const bet = payload.bet;
+      if (bet) {
+        await emitAuditEvent(client, {
+          bookieId: body.bookie_id,
+          actorUserId: userId,
+          entityType: 'bet',
+          entityId: String(bet.id),
+          actionType: isAutoAccept ? 'bet_auto_accepted' : 'bet_submitted',
+          previousState: null,
+          newState: bet,
         });
       }
-    } catch (notifError) {
-      console.error('Notification error (submit_bet):', notifError);
+
+      try {
+        if (bookie?.auth_user_id && bet) {
+          const playerName = player.name || 'A member';
+          const stakeDisplay = `$${stakeNum}`;
+          await sendNotification({
+            event: 'pick_submitted',
+            recipientUserIds: [bookie.auth_user_id],
+            title: 'New pick',
+            body: `${playerName} — ${resolvedSide} ${marketType} ${stakeDisplay}`,
+            data: { deep_link: `booki://bet/${bet.id}` },
+          });
+        }
+      } catch (notifError) {
+        console.error('Notification error (submit_bet):', notifError);
+      }
     }
 
-    return new Response(
-      response,
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return claimed.http;
   } catch (error) {
     console.error('Error in submit_bet:', error);
     return new Response(
