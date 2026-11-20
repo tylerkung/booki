@@ -4,6 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 import { gradeBet, isDeferredMarket } from './grading.ts';
+import { isOutrightMarket, manualSingleSettlementKey } from './outright.ts';
 import { deployedSingleSideAccepted, legStorageError, resolveStoredLeg, singleBetIndicator } from './market_validation.ts';
 import { decideParlay, parlaySettlementKey, parlayTooManyLegs, placeParlayIfAllowed, roundCents } from './parlay_settle.ts';
 import { gradeProp, parsePropSide, resolvePropTarget } from './prop_stats.ts';
@@ -87,6 +88,23 @@ test('gradeBet skips props and futures instead of pushing them', () => {
   assert.equal(isDeferredMarket('moneyline'), false);
   const moneyline = gradeBet({ id: '3', market: 'moneyline', side: 'Eagles' }, scores);
   assert.equal(moneyline.result, 'win');
+});
+
+test('a manual single settles once, through settle_bet_tx, and a future does not', () => {
+  assert.equal(manualSingleSettlementKey('c2aa18ec-0000-4000-8000-000000000010'), 'manual_settle_c2aa18ec-0000-4000-8000-000000000010_v1');
+  assert.equal(isOutrightMarket('outright'), true);
+  assert.equal(isOutrightMarket('Futures'), true);
+  assert.equal(isOutrightMarket('moneyline'), false);
+
+  const source = readFileSync(new URL('../grade_bet/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /settleBetTx\s*\(/);
+  assert.match(source, /manualSingleSettlementKey\s*\(/);
+  assert.match(source, /isOutrightMarket\s*\(/);
+  assert.doesNotMatch(source, /\.from\('ledger_entries'\)/);
+
+  const page = readFileSync(new URL('../../../landing/dashboard/index.html', import.meta.url), 'utf8');
+  assert.match(page, /away_team !== 'Outright'/);
+  assert.match(page, /Win \(Home\)/);
 });
 
 test('a prop grades from the bet snapshot when the market row is gone', () => {

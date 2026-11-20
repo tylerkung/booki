@@ -1829,7 +1829,7 @@ function dashboardApp() {
             if (ticket.gradeResult === 'win') return 'badge-won';
             if (ticket.gradeResult === 'loss') return 'badge-lost';
             if (ticket.gradeResult === 'push') return 'badge-push';
-            if (ticket.status === 'void') return 'badge-void';
+            if (ticket.gradeResult === 'void' || ticket.status === 'void') return 'badge-void';
             return 'badge-pending';
         },
 
@@ -1837,7 +1837,7 @@ function dashboardApp() {
             if (ticket.gradeResult === 'win') return 'Won';
             if (ticket.gradeResult === 'loss') return 'Lost';
             if (ticket.gradeResult === 'push') return 'Push';
-            if (ticket.status === 'void') return 'Void';
+            if (ticket.gradeResult === 'void' || ticket.status === 'void') return 'Void';
             return 'Open';
         },
 
@@ -1845,7 +1845,7 @@ function dashboardApp() {
             if (leg.grade_result === 'win') return 'var(--accent)';
             if (leg.grade_result === 'loss') return 'var(--danger)';
             if (leg.grade_result === 'push') return 'var(--warning)';
-            if (leg.status === 'void') return 'var(--text-muted)';
+            if (leg.grade_result === 'void' || leg.status === 'void') return 'var(--text-muted)';
             return 'var(--text-muted)';
         },
 
@@ -5071,7 +5071,7 @@ function dashboardApp() {
                 if (response.error) {
                     this.toast(response.error, 'error');
                 } else {
-                    this.toast(`Pick graded as ${this.gradingOutcome}`, 'success');
+                    this.toast(response.settled ? `Pick settled as ${this.gradingOutcome}` : `Pick graded as ${this.gradingOutcome}`, 'success');
                     this.showGradeModal = false;
                     await this.loadPickDetail();
                 }
@@ -6059,6 +6059,7 @@ function dashboardApp() {
             if (bet.grade_result === 'win') return 'badge-won';
             if (bet.grade_result === 'loss') return 'badge-lost';
             if (bet.grade_result === 'push') return 'badge-push';
+            if (bet.grade_result === 'void') return 'badge-void';
             switch (bet.status) {
                 case 'settled': case 'graded': return 'badge-settled';
                 case 'pending': case 'accepted': case 'readyToGrade': return 'badge-pending';
@@ -6072,6 +6073,7 @@ function dashboardApp() {
             if (bet.grade_result === 'win') return 'Won';
             if (bet.grade_result === 'loss') return 'Lost';
             if (bet.grade_result === 'push') return 'Push';
+            if (bet.grade_result === 'void') return 'Void';
             switch (bet.status) {
                 case 'pending': return 'Pending';
                 case 'accepted': return 'Open';
