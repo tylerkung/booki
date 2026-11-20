@@ -77,16 +77,23 @@ apply_migration "single-transaction"
 apply_migration "autocommit"
 
 seed_bets="$(run_psql -d "$DB" -Atc "SELECT count(*) FROM bets b JOIN bets_before_065 o ON b.id = o.id WHERE b.ticket_id = o.ticket_id AND b.odds = o.odds AND b.stake = o.stake AND b.created_at = o.created_at AND b.status = o.status;")"
-if [[ "$seed_bets" != "2" ]]; then
-    echo "migration changed the seeded bets (${seed_bets} still match)" >&2
+seed_bet_total="$(run_psql -d "$DB" -Atc "SELECT count(*) FROM bets_before_065;")"
+if [[ "$seed_bets" != "$seed_bet_total" ]]; then
+    echo "migration changed the seeded bets (${seed_bets} of ${seed_bet_total} still match)" >&2
     exit 1
 fi
 seed_keys="$(run_psql -d "$DB" -Atc "SELECT count(*) FROM idempotency_keys k JOIN keys_before_065 o ON k.id = o.id WHERE k.key = o.key AND k.response = o.response AND k.user_id = o.user_id;")"
-if [[ "$seed_keys" != "1" ]]; then
-    echo "migration changed the seeded idempotency key" >&2
+seed_key_total="$(run_psql -d "$DB" -Atc "SELECT count(*) FROM keys_before_065;")"
+if [[ "$seed_keys" != "$seed_key_total" ]]; then
+    echo "migration changed the seeded idempotency keys (${seed_keys} of ${seed_key_total})" >&2
     exit 1
 fi
-echo "PASS seeded Colorado rows are unchanged"
+user_id_type="$(run_psql -d "$DB" -Atc "SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'idempotency_keys' AND column_name = 'user_id';")"
+if [[ "$user_id_type" != "text" ]]; then
+    echo "fixture user_id type is ${user_id_type}, expected text" >&2
+    exit 1
+fi
+echo "PASS seeded rows are unchanged and user_id is text"
 
 echo
 echo "===== duplicate-detection query ====="
@@ -104,6 +111,10 @@ echo "$dupes" | grep -q '0845800d-0000-4000-8000-000000084580' || {
     echo "query did not list key 0845800d" >&2
     exit 1
 }
+if echo "$dupes" | grep -q 'aaaaaaaa-0000-4000-8000-00000000aa12'; then
+    echo "query listed the null market_id false pair" >&2
+    exit 1
+fi
 lines="$(echo "$dupes" | grep -c . || true)"
 if [[ "$lines" != "1" ]]; then
     echo "expected 1 duplicate pair, got ${lines}" >&2

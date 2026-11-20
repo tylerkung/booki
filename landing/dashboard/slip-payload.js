@@ -158,11 +158,58 @@
     }
   }
 
+  // After a partial singles submit, drop the picks that landed so a re-price
+  // confirmation does not send them again under a new key. `failed` is the
+  // server's list; its index is into the staked selections, which is what
+  // both the old and new submit_bets return. Unstaked rows were not sent.
+  // A failure with no index is matched by market_id, and only when nothing
+  // in the list has an index.
+  function slipAfterPartialPlace(selections, stakes, failed) {
+    var submitted = [];
+    var i;
+    for (i = 0; i < selections.length; i++) {
+      if ((Number(stakes[i]) || 0) > 0) submitted.push(i);
+    }
+    var failedAt = {};
+    var failedMarkets = {};
+    var anyIndex = false;
+    (failed || []).forEach(function (f) {
+      if (!f) return;
+      if (typeof f.index === 'number') {
+        failedAt[f.index] = true;
+        anyIndex = true;
+      }
+      if (f.market_id) failedMarkets[slipLower(f.market_id)] = true;
+    });
+    var drop = [];
+    submitted.forEach(function (selectionIndex, submittedIndex) {
+      if (failedAt[submittedIndex]) return;
+      if (!anyIndex && failedMarkets[slipLower(selections[selectionIndex].market_id)]) return;
+      drop.push(selectionIndex);
+    });
+    var nextSelections = selections.slice();
+    var nextStakes = {};
+    Object.keys(stakes || {}).forEach(function (k) { nextStakes[k] = stakes[k]; });
+    drop.sort(function (a, b) { return b - a; }).forEach(function (index) {
+      nextSelections.splice(index, 1);
+      var shifted = {};
+      Object.keys(nextStakes).forEach(function (k) {
+        var ki = Number(k);
+        if (ki === index) return;
+        if (ki > index) shifted[ki - 1] = nextStakes[k];
+        else shifted[ki] = nextStakes[k];
+      });
+      nextStakes = shifted;
+    });
+    return { selections: nextSelections, stakes: nextStakes, placed: drop.length };
+  }
+
   root.BookiSlip = {
     singleBetPayload: singleBetPayload,
     parlayLegPayload: parlayLegPayload,
     slipFingerprint: slipFingerprint,
     claimSlipKey: claimSlipKey,
     releaseSlipKey: releaseSlipKey,
+    slipAfterPartialPlace: slipAfterPartialPlace,
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

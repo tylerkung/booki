@@ -33,9 +33,19 @@ the old functions are still live. It only adds the settlement guard.
 
 Does not update or delete bets or idempotency rows. `claim_bet_submission` inserts the key and the bet rows in one transaction. A second call with the same player, operation, and key returns the stored ticket. A different payload raises `P0422`. The unique key is per player (`idempotency_keys.player_id` + operation + key). The old global `UNIQUE (key, operation)` is replaced by a user-scoped unique on the three submit operations and the same global unique on every other operation, so a same-user duplicate from the currently deployed functions still conflicts. Existing rows are not backfilled.
 
-065 does not read or write anything 063 or 064 touch. 064 (one shared main line) is on the spread-line branch, not this one. Apply 062 before calling the new function: the insert names `stat_key`, `subject_player_id`, and `prop_line`. Applying 065 while the old submit functions are still live is safe. Do not deploy the new `submit_bet`, `submit_bets`, or `submit_parlay` until 062 and 065 are both applied. The dashboard can ship in either order: it sends the same body and reuses one key when the slip did not change.
+065 does not read or write anything 063 or 064 touch. 064 (one shared main line) is on the spread-line branch, not this one. Apply 062 before calling the new function: the insert names `stat_key`, `subject_player_id`, and `prop_line`. Applying 065 while the old submit functions are still live is safe. Do not deploy the new `submit_bet`, `submit_bets`, or `submit_parlay` until 062 and 065 are both applied. The dashboard can ship in either order: it sends the same body and reuses one key when the slip did not change. A partial singles submit removes the picks that landed before the member confirms a new price, so those picks are not sent again.
 
-The read-only duplicate query is commented in `supabase/migrations/065_submit_idempotency.sql` and saved at `scripts/sql/065_duplicate_submits.sql`. It should list tickets `defc7465` and `51bd1346`. Do not correct them.
+Before applying 065, confirm the live type of `idempotency_keys.user_id`. Production is `text` (no foreign key; the value `system` is stored there). Migration 004 declares `uuid`. 065 does not change the type. It compares and inserts with `::text`, which works for either type. A bare `text = uuid` comparison would 500 every submit.
+
+```sql
+SELECT column_name, data_type, udt_name
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'idempotency_keys'
+  AND column_name = 'user_id';
+```
+
+The read-only duplicate query is commented in `supabase/migrations/065_submit_idempotency.sql` and saved at `scripts/sql/065_duplicate_submits.sql`. It requires `stored.market_id IS NOT NULL`, so null-market bets do not match each other. It should list tickets `defc7465` and `51bd1346` only. Do not correct them.
 
 ### 063 — one active settlement (NOT applied)
 

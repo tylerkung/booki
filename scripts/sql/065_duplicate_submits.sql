@@ -10,6 +10,8 @@
 --
 -- A batch of singles shares one key across tickets on purpose. Those tickets
 -- are named in the key's response and this query does not list them.
+-- Null market_id rows match each other. Require a market so those pairs
+-- stay out; the real Colorado pair has market 1050ea8a.
 
 WITH keyed AS (
   SELECT
@@ -45,6 +47,7 @@ JOIN bets dup
  AND dup.market_id IS NOT DISTINCT FROM stored.market_id
  AND dup.odds = stored.odds
  AND dup.stake = stored.stake
+ AND stored.market_id IS NOT NULL
  AND dup.ticket_id <> stored.ticket_id
  AND dup.id <> stored.id
  AND dup.created_at BETWEEN stored.created_at - interval '5 seconds'

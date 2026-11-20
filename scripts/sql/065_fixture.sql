@@ -57,12 +57,16 @@ CREATE TABLE bets (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Prod shape, not the UUID column migration 004 declares. Production
+-- idempotency_keys.user_id is TEXT with no foreign key. It holds auth user
+-- ids and the literal 'system'. A uuid comparison against this column
+-- raises "operator does not exist: text = uuid".
 CREATE TABLE idempotency_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     key TEXT NOT NULL,
     operation TEXT NOT NULL,
     response TEXT NOT NULL,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours'),
     UNIQUE (key, operation)
@@ -115,4 +119,52 @@ INSERT INTO idempotency_keys (key, operation, response, user_id, created_at) VAL
     '{"success":true,"bets":[{"id":"55c3ae26-0000-4000-8000-000000055c3a","ticket_id":"defc7465-0000-4000-8000-000000defc74","player_id":"33333333-3333-4333-8333-333333333333","market_id":"1050ea8a-0000-4000-8000-0000001050ea","odds":-110,"stake":1,"side":"Colorado +3"}]}',
     '11111111-1111-4111-8111-111111111111',
     '2026-11-20 12:08:09.700-08'
+);
+
+-- Same player, stake, odds, and window, but market_id is null. The duplicate
+-- query must not list this pair. Prod returned 608 of these beside the one
+-- real Colorado pair.
+INSERT INTO bets (
+    id, bookie_id, player_id, event_id, ticket_id, market, market_id, side,
+    odds, stake, status, is_parlay, parlay_legs, created_at
+) VALUES
+    (
+        'aaaaaaaa-0000-4000-8000-00000000aa01',
+        '22222222-2222-4222-8222-222222222222',
+        '33333333-3333-4333-8333-333333333333',
+        'event-null-market',
+        'aaaaaaaa-0000-4000-8000-00000000aa11',
+        'spread',
+        NULL,
+        'Somewhere +3',
+        -110, 1, 'accepted', false, 1,
+        '2026-11-20 12:08:09.632-08'
+    ),
+    (
+        'aaaaaaaa-0000-4000-8000-00000000aa02',
+        '22222222-2222-4222-8222-222222222222',
+        '33333333-3333-4333-8333-333333333333',
+        'event-null-market',
+        'aaaaaaaa-0000-4000-8000-00000000aa12',
+        'spread',
+        NULL,
+        'Somewhere +3',
+        -110, 1, 'accepted', false, 1,
+        '2026-11-20 12:08:11.029-08'
+    );
+
+INSERT INTO idempotency_keys (key, operation, response, user_id, created_at) VALUES (
+    'null-market-key',
+    'submit_bets',
+    '{"success":true,"bets":[{"id":"aaaaaaaa-0000-4000-8000-00000000aa01","ticket_id":"aaaaaaaa-0000-4000-8000-00000000aa11","player_id":"33333333-3333-4333-8333-333333333333","odds":-110,"stake":1,"side":"Somewhere +3"}]}',
+    '11111111-1111-4111-8111-111111111111',
+    '2026-11-20 12:08:09.700-08'
+);
+
+-- Proves the column accepts a non-uuid. A UUID column would reject this.
+INSERT INTO idempotency_keys (key, operation, response, user_id) VALUES (
+    'system-sync',
+    'sync_games',
+    '{}',
+    'system'
 );

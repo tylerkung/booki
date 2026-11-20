@@ -5,6 +5,11 @@
 -- Restoring UNIQUE (key, operation) fails if two players have since stored
 -- the same key string. Do not delete rows to force it. Leave the scoped
 -- indexes in place instead.
+--
+-- One transaction. A failure restoring the old unique key undoes the drops
+-- as well, so a half-applied rollback is not left behind.
+
+BEGIN;
 
 DROP FUNCTION IF EXISTS claim_bet_submission(text, text, uuid, uuid, uuid, jsonb, jsonb, jsonb);
 DROP FUNCTION IF EXISTS peek_bet_submission(text, text, uuid, uuid, jsonb);
@@ -38,3 +43,5 @@ BEGIN
             ADD CONSTRAINT idempotency_keys_key_operation_key UNIQUE (key, operation);
     END IF;
 END $$;
+
+COMMIT;

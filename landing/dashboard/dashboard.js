@@ -3297,6 +3297,26 @@ function dashboardApp() {
                     // a dead-end error instead of the prompt.
                     const moved = (response.failed || []).filter(f => f.error === 'line_changed');
                     if (moved.length > 0) {
+                        // Picks that landed must leave the slip before the
+                        // member confirms the new price. The confirmation is a
+                        // new key (the stake and the price changed), and both
+                        // function versions would insert those picks again.
+                        // failed[].index is the staked-row index from either
+                        // submit_bets build.
+                        const kept = BookiSlip.slipAfterPartialPlace(
+                            this.betSlipSelections,
+                            this.betSlipStakes,
+                            response.failed || [],
+                        );
+                        this.betSlipSelections = kept.selections;
+                        this.betSlipStakes = kept.stakes;
+                        if (kept.placed > 0) {
+                            BookiSlip.releaseSlipKey(window.sessionStorage, slipFingerprint);
+                            this.toast(
+                                kept.placed + (kept.placed === 1 ? ' pick placed' : ' picks placed'),
+                                'success',
+                            );
+                        }
                         this.lineChanges = moved;
                         this.applyLineChangesToSlip(moved);
                         this.isSubmittingBets = false;

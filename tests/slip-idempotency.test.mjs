@@ -83,12 +83,58 @@ const multiAgain = fresh.slipFingerprint({
 assert.equal(multi, multiAgain);
 assert.notEqual(multi, fingerprint);
 
+const partialSelections = [
+  { event_id: 'e1', market_id: 'm-placed', side: 'Colorado +3', side_indicator: 'a', odds: -110 },
+  { event_id: 'e2', market_id: 'm-skip', side: 'Idle', side_indicator: 'a', odds: -120 },
+  { event_id: 'e3', market_id: 'm-moved', side: 'Over 8.5', side_indicator: 'b', odds: -105 },
+];
+const partialStakes = { 0: '1', 1: 0, 2: '5' };
+const partial = fresh.slipAfterPartialPlace(partialSelections, partialStakes, [
+  { index: 1, error: 'line_changed', market_id: 'm-moved' },
+]);
+assert.equal(partial.placed, 1);
+assert.deepEqual(partial.selections.map((s) => s.market_id), ['m-skip', 'm-moved']);
+assert.equal(Number(partial.stakes[1]), 5);
+assert.equal(Number(partial.stakes[0]) || 0, 0);
+
+const untouched = fresh.slipAfterPartialPlace(partialSelections, partialStakes, [
+  { index: 0, error: 'line_changed', market_id: 'm-placed' },
+  { index: 1, error: 'line_changed', market_id: 'm-moved' },
+]);
+assert.equal(untouched.placed, 0);
+assert.equal(untouched.selections.length, 3);
+
+const byMarket = fresh.slipAfterPartialPlace(partialSelections, partialStakes, [
+  { error: 'line_changed', market_id: 'm-moved' },
+]);
+assert.equal(byMarket.placed, 1);
+assert.equal(byMarket.selections.some((s) => s.market_id === 'm-placed'), false);
+assert.equal(byMarket.selections.some((s) => s.market_id === 'm-moved'), true);
+
+const beforeSlip = fresh.slipFingerprint({
+  mode: 'singles',
+  player_id: slip.player_id,
+  bookie_id: slip.bookie_id,
+  selections: partialSelections,
+  stakes: partialStakes,
+});
+const afterSlip = fresh.slipFingerprint({
+  mode: 'singles',
+  player_id: slip.player_id,
+  bookie_id: slip.bookie_id,
+  selections: partial.selections,
+  stakes: partial.stakes,
+});
+assert.notEqual(beforeSlip, afterSlip);
+assert.equal(afterSlip.includes('m-placed'), false);
+
 const dashboard = fs.readFileSync(new URL('../landing/dashboard/dashboard.js', import.meta.url), 'utf8');
 const start = dashboard.indexOf('async submitBetSlip()');
 const end = dashboard.indexOf('closeBetSlipSuccess', start);
 const fn = dashboard.slice(start, end);
 assert.match(fn, /claimSlipKey/);
 assert.match(fn, /releaseSlipKey/);
+assert.match(fn, /slipAfterPartialPlace/);
 assert.doesNotMatch(fn, /crypto\.randomUUID/);
 assert.match(fn, /idempotency_payload_mismatch/);
 

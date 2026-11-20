@@ -131,7 +131,12 @@ test('decision: insert, legacy replay, same payload, different payload', () => {
   assert.equal(submissionDecision({ request_payload: null }, request), 'replay');
   assert.equal(submissionDecision({ request_payload: undefined }, request), 'replay');
   assert.equal(submissionDecision({ request_payload: request }, request), 'replay');
-  const other = { ...request, bets: [{ ...request.bets[0], stake: '5.00' }] };
+  const bets = request.bets;
+  if (!Array.isArray(bets) || bets.length !== 1 || typeof bets[0] !== 'object' || bets[0] === null) {
+    throw new Error('expected one bet in the canonical payload');
+  }
+  const firstBet = bets[0] as Record<string, unknown>;
+  const other = { ...request, bets: [{ ...firstBet, stake: '5.00' }] };
   assert.equal(submissionDecision({ request_payload: other }, request), 'mismatch');
 });
 

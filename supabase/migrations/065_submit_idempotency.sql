@@ -31,6 +31,16 @@
 --   * submit operations: UNIQUE (user_id, operation, key), plus
 --     UNIQUE (player_id, operation, key) where player_id is set
 --   * every other operation: UNIQUE (operation, key), same as before
+-- idempotency_keys.user_id is TEXT in production, with no foreign key.
+-- Migration 004 declares it as UUID. Production stores auth user ids and
+-- the literal 'system'. This file does not ALTER that column. Every
+-- comparison and the insert cast through text, so the same function works
+-- when the column is text and when it is uuid:
+--   user_id::text = p_user_id::text
+--   INSERT ... user_id = p_user_id::text
+-- A text = uuid comparison raises "operator does not exist" and would 500
+-- every submit.
+--
 -- Old submit functions still insert (key, operation, response, user_id)
 -- with a null player_id. The same user repeating a key still hits 23505.
 -- A different user's key does not. Existing rows already satisfy the new
@@ -62,6 +72,9 @@
 -- A batch of singles shares one key across tickets on purpose; those tickets
 -- are named in the key's response and are not what this looks for. The
 -- duplicate is a second ticket that the key row does not name.
+-- stored.market_id IS NOT NULL: bets whose market was cleared (market_id
+-- NULL) match every other null-market bet in the window. On 2026-11-20 that
+-- was 608 false pairs beside the one real pair.
 --
 -- WITH keyed AS (
 --   SELECT
@@ -97,6 +110,7 @@
 --  AND dup.market_id IS NOT DISTINCT FROM stored.market_id
 --  AND dup.odds = stored.odds
 --  AND dup.stake = stored.stake
+--  AND stored.market_id IS NOT NULL
 --  AND dup.ticket_id <> stored.ticket_id
 --  AND dup.id <> stored.id
 --  AND dup.created_at BETWEEN stored.created_at - interval '5 seconds'
@@ -199,7 +213,7 @@ BEGIN
           AND key = p_key
           AND (
               player_id = p_player_id
-              OR (player_id IS NULL AND user_id = p_user_id)
+              OR (player_id IS NULL AND user_id::text = p_user_id::text)
           )
         ORDER BY (player_id IS NOT NULL) DESC, created_at
         LIMIT 1
@@ -211,7 +225,7 @@ BEGIN
           AND key = p_key
           AND (
               player_id = p_player_id
-              OR (player_id IS NULL AND user_id = p_user_id)
+              OR (player_id IS NULL AND user_id::text = p_user_id::text)
           )
         ORDER BY (player_id IS NOT NULL) DESC, created_at
         LIMIT 1;
@@ -402,7 +416,7 @@ BEGIN
             p_idempotency_key,
             p_operation,
             v_body::text,
-            p_user_id,
+            p_user_id::text,
             p_player_id,
             p_bookie_id,
             p_request
