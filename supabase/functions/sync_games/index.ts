@@ -527,8 +527,8 @@ export function extractMarketsFromOddsEvent(
         if (homeOutcome && awayOutcome) {
           markets.push({
             type: 'moneyline',
-            side_a: oddsEvent.away_team,
-            side_b: oddsEvent.home_team,
+            side_a: oddsEvent.away_team ?? '',
+            side_b: oddsEvent.home_team ?? '',
             odds_a: awayOutcome.price,
             odds_b: homeOutcome.price,
           });
@@ -1657,8 +1657,39 @@ Deno.serve(async (req) => {
         .filter((m) => finalEventIds.has(m.event_id))
         .map((m) => m.id);
 
+      // A finished game's odds can go. A market that still has an open pick
+      // cannot: bets.market_id is ON DELETE SET NULL, and that is how a prop
+      // loses the stat it has to be graded against. Bets placed after
+      // migration 062 also carry their own snapshot, but anything still open
+      // from before that keeps its market row until it settles.
+      const heldByOpenBet = new Set<string>();
+      let pruneHeldFailed = false;
       for (let i = 0; i < staleMarketIds.length; i += 200) {
         const chunk = staleMarketIds.slice(i, i + 200);
+        const { data: openBets, error: openError } = await client
+          .from('bets')
+          .select('market_id')
+          .in('market_id', chunk)
+          .in('status', ['pending', 'accepted', 'graded']);
+        if (openError) {
+          console.error('Error checking open bets before prune:', openError);
+          stats.errors.push(`Market prune open-bet check failed: ${openError.message}`);
+          pruneHeldFailed = true;
+          break;
+        }
+        for (const bet of openBets ?? []) {
+          if (bet.market_id) heldByOpenBet.add(bet.market_id);
+        }
+      }
+      const deletableMarketIds = pruneHeldFailed
+        ? []
+        : staleMarketIds.filter((id) => !heldByOpenBet.has(id));
+      if (heldByOpenBet.size > 0) {
+        console.log(`Keeping ${heldByOpenBet.size} markets that still have open picks`);
+      }
+
+      for (let i = 0; i < deletableMarketIds.length; i += 200) {
+        const chunk = deletableMarketIds.slice(i, i + 200);
         const { error: pruneError } = await client
           .from('markets')
           .delete()

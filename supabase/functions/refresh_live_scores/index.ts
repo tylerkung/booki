@@ -1,6 +1,8 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase.ts';
-import { gradeBet, type BetInfo, type EventScores } from '../_shared/grading.ts';
+import { gradeBet, isDeferredMarket, leaveOpen, type BetInfo, type EventScores } from '../_shared/grading.ts';
+import { settleReadyParlays } from '../_shared/parlay_apply.ts';
+import { settleBetTx } from '../_shared/settle_tx.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { recordQuota, resetQuota, getQuotaSnapshot } from '../_shared/odds_quota.ts';
 
@@ -138,8 +140,9 @@ Deno.serve(async (req) => {
     }
 
     if (!liveBets || liveBets.length === 0) {
+      const parlaysSettled = await settleReadyParlays(client);
       return new Response(
-        JSON.stringify({ success: true, message: 'No open bets', skipped: true, api_calls: 0 }),
+        JSON.stringify({ success: true, message: 'No open bets', skipped: true, api_calls: 0, parlays_settled: parlaysSettled }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -154,8 +157,9 @@ Deno.serve(async (req) => {
       .not('status', 'in', '("final","canceled")');
 
     if (eventsError || !liveEvents || liveEvents.length === 0) {
+      const parlaysSettled = await settleReadyParlays(client);
       return new Response(
-        JSON.stringify({ success: true, message: 'No live events with bets', skipped: true, api_calls: 0 }),
+        JSON.stringify({ success: true, message: 'No live events with bets', skipped: true, api_calls: 0, parlays_settled: parlaysSettled }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -175,6 +179,7 @@ Deno.serve(async (req) => {
         return `${e.sport}/${e.league}: ${elapsed}min elapsed of ~${est}min`;
       });
 
+      const parlaysSettled = await settleReadyParlays(client);
       return new Response(
         JSON.stringify({
           success: true,
@@ -183,6 +188,7 @@ Deno.serve(async (req) => {
           api_calls: 0,
           live_games: liveEvents.length,
           game_timings: gameTimings,
+          parlays_settled: parlaysSettled,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -267,85 +273,61 @@ Deno.serve(async (req) => {
               if (acceptedBets && acceptedBets.length > 0) {
                 for (const bet of acceptedBets) {
                   try {
+                    // Props and futures are not score markets. Grading them
+                    // here settled props as a push before grade_player_props
+                    // could see them. Leave the row exactly as it is.
+                    if (isDeferredMarket(bet.market)) {
+                      console.log(`Live scores: leaving ${bet.market} bet ${bet.id} open`);
+                      continue;
+                    }
+
                     const betInfo: BetInfo = { id: bet.id, market: bet.market, side: bet.side };
                     const gradeOutcome = gradeBet(betInfo, eventScores);
+                    if (leaveOpen(gradeOutcome.result)) {
+                      console.log(`Live scores: leaving ${bet.market} bet ${bet.id} open`);
+                      continue;
+                    }
 
-                    // Parlay legs: grade only
+                    // Parlay legs: grade only. The ticket is settled below.
                     if (bet.is_parlay && bet.ticket_id) {
-                      await client.from('bets').update({
+                      const { error: parlayUpdateError } = await client.from('bets').update({
                         status: 'graded',
                         grade_result: gradeOutcome.result,
-                        grade_details: gradeOutcome.gradeDetails,
                       }).eq('id', bet.id);
+                      if (parlayUpdateError) {
+                        console.error(`Live scores: parlay leg ${bet.id} was not graded:`, parlayUpdateError);
+                        errors.push(`Bet ${bet.id}: ${parlayUpdateError.message}`);
+                        continue;
+                      }
                       betsGraded++;
                       console.log(`Live scores: graded parlay leg ${bet.id}: ${gradeOutcome.result}`);
                       continue;
                     }
 
-                    // Singles: grade + settle + ledger entry
-                    // Convention: positive = player owes bookie, negative = bookie owes player
-                    let payoutAmount = 0;
-                    if (gradeOutcome.result === 'win') {
-                      const stake = typeof bet.stake === 'number' ? bet.stake : parseFloat(String(bet.stake));
-                      const odds = typeof bet.odds === 'number' ? bet.odds : parseFloat(String(bet.odds));
-                      const profit = odds > 0
-                        ? stake * (odds / 100)
-                        : stake * (100 / Math.abs(odds));
-                      payoutAmount = -profit; // Bookie owes player
-                    } else if (gradeOutcome.result === 'loss') {
-                      const stake = typeof bet.stake === 'number' ? bet.stake : parseFloat(String(bet.stake));
-                      payoutAmount = stake; // Player owes bookie
-                    }
-
-                    await client.from('bets').update({
-                      status: 'settled',
+                    // Record the grade, then let settle_bet_tx flip status and
+                    // post the ledger in one transaction. grade_details and
+                    // settled_amount are not columns; sending them made this
+                    // update 400 and the old code wrote the ledger anyway.
+                    const { error: gradeError } = await client.from('bets').update({
                       grade_result: gradeOutcome.result,
-                      grade_details: gradeOutcome.gradeDetails,
-                      settled_amount: payoutAmount,
+                      updated_at: new Date().toISOString(),
                     }).eq('id', bet.id).eq('status', 'accepted');
-
-                    // Check for existing ledger entry to prevent duplicates
-                    const { data: existingLedger } = await client
-                      .from('ledger_entries')
-                      .select('id')
-                      .eq('bet_id', bet.id)
-                      .eq('type', 'settlement')
-                      .limit(1);
-
-                    if (existingLedger && existingLedger.length > 0) {
-                      console.log(`Live scores: skipping ledger entry for bet ${bet.id} — already exists`);
-                      betsGraded++;
+                    if (gradeError) {
+                      console.error(`Live scores: bet ${bet.id} was not graded, ledger not written:`, gradeError);
+                      errors.push(`Bet ${bet.id}: ${gradeError.message}`);
                       continue;
                     }
 
-                    const descriptionMap: Record<string, string> = { win: 'Bet won', loss: 'Bet lost', push: 'Bet pushed', void: 'Bet voided' };
-                    const description = descriptionMap[gradeOutcome.result] || 'Bet settled';
-
-                    const { data: ledgerEntry } = await client
-                      .from('ledger_entries')
-                      .insert({
-                        bookie_id: bet.bookie_id,
-                        player_id: bet.player_id,
-                        bet_id: bet.id,
-                        amount: payoutAmount,
-                        type: 'settlement',
-                        description: description,
-                      })
-                      .select()
-                      .single();
-
-                    if (ledgerEntry) {
-                      try {
-                        await client.from('settlement_events').insert({
-                          bookie_id: bet.bookie_id,
-                          bet_id: bet.id,
-                          mode: 'auto',
-                          idempotency_key: `live_settle_${bet.id}_${Date.now()}`,
-                          ledger_entry_ids: [ledgerEntry.id],
-                        });
-                      } catch (seError) {
-                        console.error(`Error writing settlement_event for bet ${bet.id}:`, seError);
-                      }
+                    const posted = await settleBetTx(client, {
+                      betId: bet.id,
+                      actorUserId: null,
+                      idempotencyKey: `live_settle_${bet.id}`,
+                      mode: 'auto',
+                    });
+                    if (posted.error) {
+                      console.error(`Live scores: bet ${bet.id} was not settled:`, posted.error);
+                      errors.push(`Bet ${bet.id}: ${posted.error}`);
+                      continue;
                     }
 
                     betsGraded++;
@@ -365,96 +347,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Auto-settle parlays where all legs are now graded
     let parlaysSettled = 0;
     try {
-      const { data: gradedLegs } = await client
-        .from('bets')
-        .select('id, ticket_id, bookie_id, player_id, stake, odds, grade_result, is_parlay')
-        .eq('status', 'graded')
-        .eq('is_parlay', true);
-
-      if (gradedLegs && gradedLegs.length > 0) {
-        const ticketMap = new Map<string, typeof gradedLegs>();
-        for (const leg of gradedLegs) {
-          if (!leg.ticket_id) continue;
-          const existing = ticketMap.get(leg.ticket_id) || [];
-          existing.push(leg);
-          ticketMap.set(leg.ticket_id, existing);
-        }
-
-        for (const [ticketId, legs] of ticketMap) {
-          const { count: totalLegs } = await client
-            .from('bets')
-            .select('*', { count: 'exact', head: true })
-            .eq('ticket_id', ticketId);
-
-          if (totalLegs !== legs.length) continue;
-
-          const bookieId = legs[0].bookie_id;
-          const playerId = legs[0].player_id;
-          const stake = typeof legs[0].stake === 'number' ? legs[0].stake : parseFloat(String(legs[0].stake));
-
-          const hasLoss = legs.some((l) => l.grade_result === 'loss');
-          const winLegs = legs.filter((l) => l.grade_result === 'win');
-
-          let payoutAmount = 0;
-          let ticketResult = 'loss';
-
-          // Convention: positive = player owes bookie, negative = bookie owes player
-          if (!hasLoss && winLegs.length > 0) {
-            let combinedMultiplier = 1;
-            for (const leg of winLegs) {
-              const odds = typeof leg.odds === 'number' ? leg.odds : parseFloat(String(leg.odds));
-              if (odds > 0) combinedMultiplier *= (1 + odds / 100);
-              else if (odds < 0) combinedMultiplier *= (1 + 100 / Math.abs(odds));
-            }
-            const profit = stake * (combinedMultiplier - 1);
-            payoutAmount = -profit; // Bookie owes player
-            ticketResult = 'win';
-          } else if (hasLoss) {
-            payoutAmount = stake; // Player owes bookie
-            ticketResult = 'loss';
-          }
-
-          for (const leg of legs) {
-            await client.from('bets').update({
-              status: 'settled',
-              settled_amount: leg.grade_result === 'win' ? payoutAmount / winLegs.length : 0,
-            }).eq('id', leg.id);
-          }
-
-          const description = ticketResult === 'win' ? `Parlay won (${legs.length} legs)` : `Parlay lost (${legs.length} legs)`;
-
-          const { data: ledgerEntry } = await client
-            .from('ledger_entries')
-            .insert({
-              bookie_id: bookieId,
-              player_id: playerId,
-              amount: payoutAmount,
-              type: 'settlement',
-              description: description,
-            })
-            .select()
-            .single();
-
-          if (ledgerEntry) {
-            try {
-              await client.from('settlement_events').insert({
-                bookie_id: bookieId,
-                mode: 'auto',
-                idempotency_key: `live_settle_parlay_${ticketId}_${Date.now()}`,
-                ledger_entry_ids: [ledgerEntry.id],
-              });
-            } catch (seError) {
-              console.error(`Error writing settlement_event for parlay ${ticketId}:`, seError);
-            }
-          }
-
-          parlaysSettled++;
-          console.log(`Live scores: settled parlay ${ticketId}: ${ticketResult}`);
-        }
-      }
+      parlaysSettled = await settleReadyParlays(client);
     } catch (parlayError) {
       errors.push(`Parlay settlement: ${parlayError instanceof Error ? parlayError.message : 'Unknown error'}`);
     }

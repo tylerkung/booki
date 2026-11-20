@@ -4,11 +4,15 @@ import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { sendNotification } from '../_shared/notifications.ts';
 import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
+import { resolveStoredLeg, singleBetIndicator } from '../_shared/market_validation.ts';
 
 interface BatchBetInput {
   event_id: string;
   market_id: string;
   side: string;
+  /** Readable label. Optional. Production ignores it; the new function stores the market's label either way. */
+  side_label?: string;
+  side_indicator?: 'a' | 'b';
   odds: number;
   stake: string;
 }
@@ -81,7 +85,10 @@ Deno.serve(async (req) => {
           );
         }
       }
-      if (bet.side !== 'a' && bet.side !== 'b') {
+      // 'a'/'b' in side is the deployed contract. A label in side is accepted
+      // only when side_indicator carries the letter, so an old client and a
+      // new client both pass, in either deploy order.
+      if (!singleBetIndicator(bet)) {
         return new Response(
           JSON.stringify({ success: false, error: `Side must be 'a' or 'b' in bet ${i}` }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -268,7 +275,7 @@ Deno.serve(async (req) => {
 
     const { data: markets, error: marketsError } = await client
       .from('markets')
-      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable')
+      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable, stat_key, subject_player_id')
       .in('id', uniqueMarketIds);
 
     if (marketsError) {
@@ -336,12 +343,19 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Resolve side label and market type
-      const resolvedSide = bet.side === 'a' ? market.side_a : market.side_b;
-      const marketType = market.type;
+      // Letter in `side` wins, so the payload production already accepts
+      // resolves the same way. side_indicator covers a label sent in `side`.
+      const indicator = singleBetIndicator(bet);
+      const stored = resolveStoredLeg(market, indicator);
+      if (!stored.ok) {
+        failed.push({ index: i, event_id: bet.event_id, error: stored.error });
+        continue;
+      }
+      const resolvedSide = stored.side;
+      const marketType = stored.market;
 
       // Price guardrail — the server decides what price is on offer.
-      const currentOdds = bet.side === 'a' ? market.odds_a : market.odds_b;
+      const currentOdds = indicator === 'a' ? market.odds_a : market.odds_b;
       if (typeof currentOdds !== 'number') {
         failed.push({ index: i, event_id: bet.event_id, error: 'Market has no price' });
         continue;
@@ -414,6 +428,9 @@ Deno.serve(async (req) => {
         market: marketType,
         market_id: market.id,
         side: resolvedSide,
+        stat_key: stored.snapshot.stat_key,
+        subject_player_id: stored.snapshot.subject_player_id,
+        prop_line: stored.snapshot.prop_line,
         odds: priceToStore,
         stake: stakeNum,
         status: betStatus,

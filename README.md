@@ -406,7 +406,7 @@ The app is **local-first** with cloud sync:
 
 **One spread on the board (November 2026, migration 064 — not applied)**
 - A moved spread was stored as a new row, so a game could show an old number (+11.5) while the latest feed was +12.5. Placing that pick returned 400 and the slip sometimes cleared with no message
-- The board now shows the newest bettable moneyline, spread and total. The ingest overwrites that one row and marks the previous numbers not bettable, without deleting them. Apply migration 064 before deploying `sync_games` and `auto_refresh_games`
+- The board now shows the newest bettable moneyline, spread and total. The ingest overwrites that one row and marks the previous numbers not bettable, without deleting them. Apply migration 064 before 062 and 063, and before deploying `sync_games` and `auto_refresh_games`
 - *Last updated: November 17, 2026 - Games board shows one current spread/total/moneyline. A moved line updates that row instead of leaving the old number bettable (migration 064, not applied). A failed pick stays in the slip and shows an error. Invite expiry copy matches the server. QA pass fixes, attribution, member welcome, board loading, MLB props (migrations 052-058).*
 
 **Player props — MLB (migrations 056–058)**
@@ -494,6 +494,8 @@ Server-authoritative functions running on Supabase (Deno/TypeScript):
 | `auto_refresh_games` | Cron job: fetches scores and auto-grades bets when games finalize (hourly) |
 | `refresh_live_scores` | Smart scores-only refresh every 5 min with sport duration estimation |
 | `sync_games` | Fetches odds/events from The Odds API, updates markets |
+| `grade_player_props` | Grades NFL player props from a balldontlie box score. Singles settle through `settle_bet_tx` |
+| `grade_dry_run` | Admin-only read. Reports what grading would do and writes nothing |
 | `delete_account` | Cancels Stripe subscription, deletes bookie data atomically, removes auth user |
 
 All functions validate JWT auth, check idempotency, and emit audit events.
@@ -526,4 +528,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: November 17, 2026 - Migration 061 (not applied yet) enables RLS on user_agreements and idempotency_keys and revokes anon/authenticated grants. Web delete-account confirmation is one screen that states the consequences (Stripe cancel with no refund when a Stripe subscription is on file, the group and its members) before DELETE is typed. Nothing deployed, no migration. Invite expiry copy matches the server: addressed invites don't expire, link invites last 7 days, the invite email links to bookisports.com. QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058)*
+*Last updated: November 17, 2026 - Migration 061 is applied: it enables RLS on user_agreements and idempotency_keys and revokes anon/authenticated grants. Web delete-account confirmation is one screen that states the consequences (Stripe cancel with no refund when a Stripe subscription is on file, the group and its members) before DELETE is typed. Invite expiry copy matches the server: addressed invites don't expire, link invites last 7 days, the invite email links to bookisports.com. QA pass fixes (invite lookup rebuilt, loading guards, signup UX), first-touch attribution, referral moved to signup form, member welcome modal, board market loading + futures view, shared game row, MLB player props shown but not bettable (migrations 052-058). Games board shows one current spread/total/moneyline (migration 064, not applied; apply it before 062 and 063). Player props grade from the player's stat instead of settling as a push, and a multi-pick with a voided leg is repriced over the legs that remain. A bet or parlay ticket can have one active settlement. Migration 063 is in the repo and is not applied; it does not rewrite past ledger rows. Migration 062 (prop snapshot columns) is also unapplied. Past bets are not rewritten.*

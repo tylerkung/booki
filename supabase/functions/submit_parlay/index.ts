@@ -3,6 +3,8 @@ import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabas
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
+import { resolveStoredLeg } from '../_shared/market_validation.ts';
+import { placeParlayIfAllowed } from '../_shared/parlay_settle.ts';
 
 interface ParlayLeg {
   event_id: string;
@@ -307,8 +309,17 @@ Deno.serve(async (req) => {
       policyViolations.push('Parlays require review');
     }
 
-    if (body.legs.length > effectivePolicy.parlay_max_legs) {
-      policyViolations.push(`Exceeds max parlay legs (${effectivePolicy.parlay_max_legs})`);
+    // Over the leg cap is a rejection, not a review. Storing it as 'pending'
+    // left a 9-leg ticket sitting open (ticket 33f8748b was one). The row is
+    // never inserted.
+    // A cap below 2 is treated as 4 inside placeParlayIfAllowed. Over the
+    // cap returns 400 and the callback (the insert) never runs.
+    const legGate = placeParlayIfAllowed(body.legs.length, effectivePolicy.parlay_max_legs, () => {});
+    if (legGate.status === 400) {
+      return new Response(
+        JSON.stringify({ success: false, error: legGate.error, max_legs: legGate.max_legs }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     if (winLimitRequireApproval) {
@@ -342,7 +353,7 @@ Deno.serve(async (req) => {
     const marketIds = body.legs.map(leg => leg.market_id.toLowerCase());
     const { data: markets, error: marketsError } = await client
       .from('markets')
-      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable')
+      .select('id, type, side_a, side_b, odds_a, odds_b, updated_at, bettable, stat_key, subject_player_id')
       .in('id', marketIds);
 
     if (marketsError) {
@@ -367,7 +378,19 @@ Deno.serve(async (req) => {
     const eventById = new Map((events ?? []).map((e: { id: string }) => [e.id.toLowerCase(), e]));
     for (const leg of body.legs) {
       const market = marketMap.get(leg.market_id.toLowerCase());
-      if (!market) continue; // existing handling covers a missing market
+      if (!market) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Market not found', market_id: leg.market_id }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const stored = resolveStoredLeg(market, leg.side_indicator);
+      if (!stored.ok) {
+        return new Response(
+          JSON.stringify({ success: false, error: stored.error, market_id: leg.market_id }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       const legEvent = eventById.get(String(leg.event_id ?? '').toLowerCase()) as
         { last_odds_update?: string | null } | undefined;
@@ -409,22 +432,27 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Build insert records for all legs
+    // Build insert records for all legs. The loop above already rejected a
+    // missing market, an unknown type, or a side that is not on the market,
+    // so this cannot fall back to storing the market id or the letter 'b'.
     const betInserts = body.legs.map(leg => {
       const market = marketMap.get(leg.market_id.toLowerCase());
-      const resolvedSide = market
-        ? (leg.side_indicator === 'a' ? market.side_a : market.side_b)
-        : leg.side; // fallback to client-provided side
-      const marketType = market?.type ?? leg.market_id.toLowerCase();
+      const stored = resolveStoredLeg(market, leg.side_indicator);
+      if (!stored.ok || !market) {
+        throw new Error(stored.ok ? 'Market not found' : stored.error);
+      }
 
       return {
         bookie_id: requestBookieId,
         player_id: normalizedPlayerId,
         event_id: leg.event_id.toLowerCase(),
         ticket_id: ticketId,
-        market: marketType,
+        market: stored.market,
         market_id: market.id,
-        side: resolvedSide,
+        side: stored.side,
+        stat_key: stored.snapshot.stat_key,
+        subject_player_id: stored.snapshot.subject_player_id,
+        prop_line: stored.snapshot.prop_line,
         odds: leg.odds,
         stake: stakeNum,
         status: betStatus,

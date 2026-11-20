@@ -1699,14 +1699,16 @@ function dashboardApp() {
                 const first = legs[0];
                 const stake = Number(first.stake) || 0;
 
-                // Ticket-level grade result
-                // If ANY leg has lost, the parlay is lost (no need to wait for all legs)
+                // Ticket-level grade result.
+                // A loss settles the ticket immediately. Void and push legs
+                // are removed and the rest is repriced; every leg void or
+                // push is a refund.
+                const legRemoved = (l) => l.status === 'void' || l.grade_result === 'void' || l.grade_result === 'push';
                 let gradeResult = null;
                 if (legs.some(l => l.grade_result === 'loss')) {
                     gradeResult = 'loss';
-                } else if (legs.every(l => l.grade_result)) {
-                    if (legs.every(l => l.grade_result === 'push')) gradeResult = 'push';
-                    else gradeResult = 'win';
+                } else if (legs.every(l => l.grade_result || l.status === 'void')) {
+                    gradeResult = legs.some(l => !legRemoved(l)) ? 'win' : 'void';
                 }
 
                 // Status
@@ -1730,7 +1732,7 @@ function dashboardApp() {
                     if (isParlay && legs.length > 1) {
                         let dec = 1;
                         for (const l of legs) {
-                            if (l.grade_result !== 'push') dec *= this.americanToDecimal(l.odds);
+                            if (l.grade_result === 'win') dec *= this.americanToDecimal(l.odds);
                         }
                         pnl = stake * dec - stake;
                     } else {
@@ -1936,14 +1938,14 @@ function dashboardApp() {
                 combinedOdds = this.decimalToAmerican(dec);
             }
 
-            // Ticket-level grade result
-            // If ANY leg has lost, the parlay is lost (no need to wait for all legs)
+            // Ticket-level grade result. Loss short-circuits. Void and push
+            // legs are removed; if nothing remains the stake is refunded.
+            const legRemoved = (l) => l.status === 'void' || l.grade_result === 'void' || l.grade_result === 'push';
             let gradeResult = null;
             if (legs.some(l => l.grade_result === 'loss')) {
                 gradeResult = 'loss';
-            } else if (legs.every(l => l.grade_result)) {
-                if (legs.every(l => l.grade_result === 'push')) gradeResult = 'push';
-                else gradeResult = 'win';
+            } else if (legs.every(l => l.grade_result || l.status === 'void')) {
+                gradeResult = legs.some(l => !legRemoved(l)) ? 'win' : 'void';
             }
 
             // PnL
@@ -1952,7 +1954,7 @@ function dashboardApp() {
                 if (isParlay && legs.length > 1) {
                     let dec = 1;
                     for (const l of legs) {
-                        if (l.grade_result !== 'push') dec *= this.americanToDecimal(l.odds);
+                        if (l.grade_result === 'win') dec *= this.americanToDecimal(l.odds);
                     }
                     pnl = stake * dec - stake;
                 } else {
@@ -1986,7 +1988,7 @@ function dashboardApp() {
                 const gradedAt = bet.updated_at;
                 timeline.push({
                     type: 'graded',
-                    label: gradeResult === 'win' ? 'Won' : gradeResult === 'loss' ? 'Lost' : 'Pushed',
+                    label: gradeResult === 'win' ? 'Won' : gradeResult === 'loss' ? 'Lost' : gradeResult === 'void' ? 'Refunded' : 'Pushed',
                     date: gradedAt || bet.updated_at,
                 });
             }
@@ -3326,14 +3328,7 @@ function dashboardApp() {
                         const stake = Number(this.betSlipStakes[i]) || 0;
                         if (stake <= 0) continue;
                         const sel = this.betSlipSelections[i];
-                        bets.push({
-                            event_id: sel.event_id,
-                            market_id: sel.market_id,
-                            side: sel.side_indicator,
-                            side_indicator: sel.side_indicator,
-                            odds: sel.odds,
-                            stake,
-                        });
+                        bets.push(BookiSlip.singleBetPayload(sel, stake));
                     }
 
                     const response = await this.callEdgeFunction('submit_bets', {
@@ -3376,13 +3371,7 @@ function dashboardApp() {
                     }
                 } else {
                     // Multi-pick / parlay
-                    const legs = this.betSlipSelections.map(sel => ({
-                        event_id: sel.event_id,
-                        market_id: sel.market_id,
-                        side: sel.side_indicator,
-                        side_indicator: sel.side_indicator,
-                        odds: sel.odds,
-                    }));
+                    const legs = this.betSlipSelections.map(sel => BookiSlip.parlayLegPayload(sel));
 
                     const response = await this.callEdgeFunction('submit_parlay', {
                         player_id: this.playerId,
@@ -4764,13 +4753,12 @@ function dashboardApp() {
         },
 
         _ticketGradeResult(ticket) {
-            // If any leg has no grade_result, ticket is still open
-            if (ticket.legs.some(l => !l.grade_result)) return null;
-            // If any leg lost, ticket lost
-            if (ticket.legs.some(l => l.grade_result === 'loss')) return 'loss';
-            // If all pushed, ticket pushed
-            if (ticket.legs.every(l => l.grade_result === 'push')) return 'push';
-            // Otherwise won (all win or mix of win+push)
+            const legs = ticket.legs;
+            const removed = (l) => l.status === 'void' || l.grade_result === 'void' || l.grade_result === 'push';
+            // A loss settles the ticket even if other legs are still open.
+            if (legs.some(l => l.grade_result === 'loss')) return 'loss';
+            if (legs.some(l => !l.grade_result && l.status !== 'void')) return null;
+            if (!legs.some(l => !removed(l))) return 'void';
             return 'win';
         },
 
@@ -4779,11 +4767,12 @@ function dashboardApp() {
                 const result = this._ticketGradeResult(ticket);
                 const stake = Number(ticket.legs[0].stake) || 0;
                 if (result === 'loss') return -stake;
-                if (result === 'push') return 0;
+                if (result === 'push' || result === 'void') return 0;
                 if (result === 'win') {
-                    // Combined decimal odds
+                    // Repriced: void and push legs are not in the product.
                     let combinedDecimal = 1;
                     for (const leg of ticket.legs) {
+                        if (leg.grade_result !== 'win') continue;
                         const odds = Number(leg.odds) || 0;
                         combinedDecimal *= odds > 0 ? (1 + odds / 100) : (1 + 100 / Math.abs(odds));
                     }
@@ -4813,7 +4802,7 @@ function dashboardApp() {
                 } else if (result === 'loss') {
                     type = 'lost';
                     amount = this._ticketPnl(ticket);
-                } else if (result === 'push') {
+                } else if (result === 'push' || result === 'void') {
                     type = 'push';
                     amount = 0;
                 } else if (isOpen) {
