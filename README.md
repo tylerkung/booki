@@ -411,6 +411,10 @@ The app is **local-first** with cloud sync:
 - **Bounded, resumable runs**: `max_games` plus a wall-clock guard, after nine games in one pass exceeded the 150s worker ceiling
 - Scheduled every 3h at `:25`; an unsettleable sport ingests each game once, so spend tracks new games rather than run frequency
 
+### One ticket per slip submit (migration 065, not applied)
+
+A submit used to check `idempotency_keys`, insert the pick, then store the key. Two in-flight calls with the same key both inserted. Migration 065 claims the key and inserts the rows in one transaction. The same key returns the original ticket. A different payload is rejected and writes nothing. The key is per member. The web slip reuses one key for a retry of the same slip and mints a new one when the stake or the price changes, so the page works before and after the functions are deployed. The Colorado duplicate (tickets `defc7465` and `51bd1346`) is not rewritten. 065 does not depend on 063 or 064. Do not deploy `submit_bet`, `submit_bets`, or `submit_parlay` until 062 and 065 are both applied.
+
 ### Branding & Design System
 - **App Icon**: Custom Booki wordmark on electric cyan background (1024x1024)
 - **Launch Screen**: Electric cyan background → SwiftUI loading view with logo and spinner
@@ -517,4 +521,4 @@ All functions validate JWT auth, check idempotency, and emit audit events.
 
 ---
 
-*Last updated: November 17, 2026 - A bet or parlay ticket can have one active settlement. Migration 063 is in the repo and is not applied; it does not rewrite past ledger rows. Migration 062 (prop snapshot columns) is also unapplied.*
+*Last updated: November 20, 2026 - A submit idempotency key and its picks commit together. Migration 065 is in the repo and is not applied; it does not rewrite the Colorado duplicate (tickets defc7465 and 51bd1346). Migrations 062 and 063 are also unapplied.*

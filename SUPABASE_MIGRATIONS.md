@@ -29,6 +29,14 @@ the old functions are still live. It only adds the settlement guard.
 
 `grade_player_props` is in that list. It grades from the new snapshot columns and settles parlays through `settle_parlay_tx`. Leaving the old build up skips both.
 
+### 065 — one ticket per submit key (NOT applied)
+
+Does not update or delete bets or idempotency rows. `claim_bet_submission` inserts the key and the bet rows in one transaction. A second call with the same player, operation, and key returns the stored ticket. A different payload raises `P0422`. The unique key is per player (`idempotency_keys.player_id` + operation + key). The old global `UNIQUE (key, operation)` is replaced by a user-scoped unique on the three submit operations and the same global unique on every other operation, so a same-user duplicate from the currently deployed functions still conflicts. Existing rows are not backfilled.
+
+065 does not read or write anything 063 or 064 touch. 064 (one shared main line) is on the spread-line branch, not this one. Apply 062 before calling the new function: the insert names `stat_key`, `subject_player_id`, and `prop_line`. Applying 065 while the old submit functions are still live is safe. Do not deploy the new `submit_bet`, `submit_bets`, or `submit_parlay` until 062 and 065 are both applied. The dashboard can ship in either order: it sends the same body and reuses one key when the slip did not change.
+
+The read-only duplicate query is commented in `supabase/migrations/065_submit_idempotency.sql` and saved at `scripts/sql/065_duplicate_submits.sql`. It should list tickets `defc7465` and `51bd1346`. Do not correct them.
+
 ### 063 — one active settlement (NOT applied)
 
 Does not update or delete ledger rows. A BEFORE INSERT trigger rejects a second active settlement for a bet and for a parlay ticket (active = settlement minus reversal). `settlement_events.idempotency_key` gains a unique index where the key is not null. `settle_bet_tx` is idempotent and uses settlement_version max+1. See the release order above.

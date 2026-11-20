@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
-import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
+import { claimedResponse, replayedResponse } from '../_shared/submit_claim.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { sendNotification } from '../_shared/notifications.ts';
 import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
@@ -111,15 +111,6 @@ Deno.serve(async (req) => {
 
     const client = createServiceClient();
 
-    // 1. Idempotency check
-    const cachedResponse = await checkIdempotency(client, body.idempotency_key, 'submit_bets');
-    if (cachedResponse) {
-      return new Response(
-        cachedResponse,
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Normalize UUIDs
     const normalizedPlayerId = body.player_id.toLowerCase();
     const requestBookieId = body.bookie_id.toLowerCase();
@@ -152,6 +143,22 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Replay before the line, limit, and lock checks. A retry of a ticket
+    // that already landed must return that ticket even if the game has
+    // since locked or the price has moved. A different payload is 422 and
+    // writes nothing. A miss falls through and the claim below is what
+    // makes two in-flight calls insert once.
+    const replay = await replayedResponse(
+      client,
+      'submit_bets',
+      userId,
+      normalizedPlayerId,
+      body.idempotency_key,
+      body as unknown as Record<string, unknown>,
+      corsHeaders,
+    );
+    if (replay) return replay;
 
     // Standalone open bet limit: 25 max for players without a bookie
     if (!player.bookie_id) {
@@ -450,73 +457,56 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 9. Batch insert all valid bets
-    const { data: createdBets, error: betsError } = await client
-      .from('bets')
-      .insert(validBetInserts)
-      .select();
-
-    if (betsError || !createdBets || createdBets.length === 0) {
-      console.error('Error inserting bets:', betsError);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Failed to create bets',
-          debug: {
-            message: betsError?.message,
-            details: betsError?.details,
-            hint: betsError?.hint,
-            code: betsError?.code
-          }
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // 10. Audit events (fire-and-forget)
-    for (const bet of createdBets) {
-      const isAutoAccept = bet.status === 'accepted';
-      emitAuditEvent(client, {
-        bookieId: body.bookie_id,
-        actorUserId: userId,
-        entityType: 'bet',
-        entityId: bet.id,
-        actionType: isAutoAccept ? 'bet_auto_accepted' : 'bet_submitted',
-        previousState: null,
-        newState: bet as unknown as Record<string, unknown>,
-      }).catch(err => console.error('Audit event error:', err));
-    }
-
-    // Prepare response
-    const response = JSON.stringify({
-      success: true,
-      bets: createdBets,
-      failed: failed.length > 0 ? failed : undefined,
-    });
-
-    // 11. Store idempotency
-    await storeIdempotency(client, body.idempotency_key, 'submit_bets', userId, response);
-
-    // Notify bookie of batch pick submission (fire-and-forget)
-    try {
-      if (bookie?.auth_user_id && createdBets.length > 0) {
-        const playerName = player.name || 'A member';
-        await sendNotification({
-          event: 'pick_submitted',
-          recipientUserIds: [bookie.auth_user_id],
-          title: 'New picks',
-          body: `${playerName} submitted ${createdBets.length} pick${createdBets.length > 1 ? 's' : ''}`,
-          data: { deep_link: 'booki://picks' },
-        });
-      }
-    } catch (notifError) {
-      console.error('Notification error (submit_bets):', notifError);
-    }
-
-    return new Response(
-      response,
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    // Claim the key and insert the bets in one transaction. A second call
+    // with this key returns the original rows and does not insert again.
+    const claimed = await claimedResponse(
+      client,
+      'submit_bets',
+      userId,
+      normalizedPlayerId,
+      requestBookieId,
+      body.idempotency_key,
+      body as unknown as Record<string, unknown>,
+      validBetInserts,
+      failed.length > 0 ? { failed } : {},
+      corsHeaders,
     );
+    if (claimed.http.status !== 200) return claimed.http;
+
+    if (!claimed.replayed) {
+      const payload = JSON.parse(claimed.body) as { bets?: Array<Record<string, unknown>> };
+      const createdBets = payload.bets ?? [];
+
+      for (const bet of createdBets) {
+        const isAutoAccept = bet.status === 'accepted';
+        emitAuditEvent(client, {
+          bookieId: body.bookie_id,
+          actorUserId: userId,
+          entityType: 'bet',
+          entityId: String(bet.id),
+          actionType: isAutoAccept ? 'bet_auto_accepted' : 'bet_submitted',
+          previousState: null,
+          newState: bet,
+        }).catch(err => console.error('Audit event error:', err));
+      }
+
+      try {
+        if (bookie?.auth_user_id && createdBets.length > 0) {
+          const playerName = player.name || 'A member';
+          await sendNotification({
+            event: 'pick_submitted',
+            recipientUserIds: [bookie.auth_user_id],
+            title: 'New picks',
+            body: `${playerName} submitted ${createdBets.length} pick${createdBets.length > 1 ? 's' : ''}`,
+            data: { deep_link: 'booki://picks' },
+          });
+        }
+      } catch (notifError) {
+        console.error('Notification error (submit_bets):', notifError);
+      }
+    }
+
+    return claimed.http;
   } catch (error) {
     console.error('Error in submit_bets:', error);
     return new Response(
