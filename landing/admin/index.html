@@ -429,6 +429,30 @@
                     </div>
                 </div>
             </template>
+
+            <template x-if="!loading && futuresRecorded.length">
+                <div>
+                    <h2 class="t-title" style="margin:var(--s-xl) 0 var(--s-md);">Recorded results</h2>
+                    <template x-for="event in futuresRecorded" :key="event.event_id">
+                        <div class="card" style="margin-bottom:var(--s-lg);">
+                            <div class="card-header">
+                                <span class="card-title" x-text="event.name"></span>
+                                <span class="t-body-muted" x-text="event.void ? 'Void' : event.winning_selection"></span>
+                            </div>
+                            <p class="t-micro" style="margin-bottom:var(--s-md);" x-text="'Recorded ' + fmt.dateTime(event.recorded_at)"></p>
+                            <div x-show="futuresUndo === event.event_id" style="margin-bottom:var(--s-md);">
+                                <p class="t-body-muted" style="margin-bottom:var(--s-sm);">This returns every settled pick on this future to accepted, in every group, and removes the result. Confirm to continue.</p>
+                                <input class="search-input" style="width:100%;" type="text" x-model="futuresUndoReason" placeholder="Reason">
+                            </div>
+                            <div class="filter-bar">
+                                <button class="chip" @click="undoFuture(event)" :disabled="futuresBusy === event.event_id"
+                                        x-text="futuresBusy === event.event_id ? 'Undoing…' : (futuresUndo === event.event_id ? 'Confirm undo' : 'Undo result')"></button>
+                                <button class="chip" x-show="futuresUndo === event.event_id" @click="futuresUndo = null">Cancel</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
         </div>
 
         <!-- Table views -->

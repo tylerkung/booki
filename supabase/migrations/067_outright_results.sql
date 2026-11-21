@@ -73,32 +73,29 @@ END $$;
 
 CREATE OR REPLACE FUNCTION normalize_outright_selection(p_value TEXT)
 RETURNS TEXT
-LANGUAGE sql
+LANGUAGE plpgsql
 IMMUTABLE
 AS $$
-    SELECT btrim(regexp_replace(
-        regexp_replace(
-            regexp_replace(
-                regexp_replace(
-                    lower(translate(
-                        coalesce(p_value, ''),
-                        'ÁÀÂÄÃÅĀĂĄáàâäãåāăąÉÈÊËĒĔĖĘéèêëēĕėęÍÌÎÏĪĬĮíìîïīĭįÓÒÔÖÕŌŎŐóòôöõōŏőÚÙÛÜŪŬŮŰúùûüūŭůűÝŸýÿÑñÇçČčĆćŠšŽž',
-                        'AAAAAAAAAaaaaaaaaaEEEEEEEEeeeeeeeeIIIIIIIiiiiiiiOOOOOOOOooooooooUUUUUUUUuuuuuuuuYYyyNnCcCcCcSsZz'
-                    )),
-                    '\s*\(\s*[+-][0-9]+(\.[0-9]+)?\s*\)\s*$',
-                    ''
-                ),
-                '\s+[+-][0-9]+(\.[0-9]+)?\s*$',
-                ''
-            ),
-            '[^a-z0-9]+',
-            ' ',
-            'g'
-        ),
-        '\s+',
-        ' ',
-        'g'
+DECLARE
+    v TEXT := coalesce(p_value, '');
+BEGIN
+    -- æ/ß expand to two letters. translate is one character to one character.
+    v := regexp_replace(v, '[Ææ]', 'ae', 'g');
+    v := regexp_replace(v, 'ß', 'ss', 'g');
+    v := lower(translate(
+        v,
+        'ÁÀÂÄÃÅĀĂĄáàâäãåāăąÉÈÊËĒĔĖĘéèêëēĕėęÍÌÎÏĪĬĮíìîïīĭįÓÒÔÖÕŌŎŐóòôöõōŏőÚÙÛÜŪŬŮŰúùûüūŭůűÝŸýÿÑñÇçČčĆćŠšŽžØøŁłĐđŹź',
+        'AAAAAAAAAaaaaaaaaaEEEEEEEEeeeeeeeeIIIIIIIiiiiiiiOOOOOOOOooooooooUUUUUUUUuuuuuuuuYYyyNnCcCcCcSsZzOoLlDdZz'
     ));
+    -- A trailing price in parentheses, or a signed price of at least three
+    -- digits. "+1" and "-1" stay, so they do not collapse into each other.
+    v := regexp_replace(v, '\s*\(\s*[+-][0-9]+(\.[0-9]+)?\s*\)\s*$', '');
+    v := regexp_replace(v, '\s+[+-][0-9]{3,}(\.[0-9]+)?\s*$', '');
+    v := regexp_replace(v, '([^0-9])\+([0-9])', '\1plus\2', 'g');
+    v := regexp_replace(v, '([^0-9])-([0-9])', '\1minus\2', 'g');
+    v := regexp_replace(v, '[^a-z0-9]+', ' ', 'g');
+    RETURN btrim(regexp_replace(v, '\s+', ' ', 'g'));
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION outright_side_key(p_value TEXT)
@@ -121,13 +118,16 @@ $$;
 -- current_user inside a SECURITY DEFINER function is the owner, so it cannot
 -- tell anon from postgres. The role GUC is the SET ROLE PostgREST performed
 -- and stays visible here. A direct psql session has role 'none'.
-CREATE OR REPLACE FUNCTION assert_futures_settler()
+DROP FUNCTION IF EXISTS assert_futures_settler();
+
+CREATE OR REPLACE FUNCTION assert_futures_settler(p_function TEXT)
 RETURNS void
 LANGUAGE plpgsql
 SET search_path = public
 AS $$
 DECLARE
     v_role TEXT := btrim(coalesce(current_setting('role', true), ''));
+    v_name TEXT := COALESCE(NULLIF(btrim(p_function), ''), 'futures settler');
 BEGIN
     IF v_role IN ('', 'none') THEN
         IF session_user IN ('postgres', 'service_role') THEN
@@ -137,7 +137,7 @@ BEGIN
         RETURN;
     END IF;
 
-    RAISE EXCEPTION 'settle_outright_tx is restricted to service_role'
+    RAISE EXCEPTION '% is restricted to service_role', v_name
         USING ERRCODE = '42501';
 END;
 $$;
@@ -182,7 +182,7 @@ DECLARE
     v_by_side JSONB := '[]'::jsonb;
     v_unmatched JSONB := '[]'::jsonb;
 BEGIN
-    PERFORM assert_futures_settler();
+    PERFORM assert_futures_settler('settle_outright_tx');
 
     v_void := COALESCE(p_void, FALSE);
     v_winner := NULLIF(btrim(COALESCE(p_winning_selection, '')), '');
@@ -467,6 +467,9 @@ BEGIN
         'by_side', v_by_side,
         'unmatched_sides', v_unmatched
     );
+EXCEPTION
+    WHEN deadlock_detected THEN
+        RETURN jsonb_build_object('success', false, 'error', 'try_again');
 END;
 $$;
 
@@ -493,7 +496,7 @@ DECLARE
     v_now TIMESTAMPTZ := NOW();
     v_key TEXT;
 BEGIN
-    PERFORM assert_futures_settler();
+    PERFORM assert_futures_settler('grade_and_settle_bet_tx');
 
     IF p_outcome IS NULL OR p_outcome NOT IN ('win', 'loss', 'push', 'void') THEN
         RETURN jsonb_build_object('success', false, 'error', 'Invalid outcome');
@@ -631,7 +634,10 @@ BEGIN
         v_now
     );
 
-    v_key := format('manual_settle_%s_v1', p_bet_id);
+    v_key := NULLIF(btrim(COALESCE(p_idempotency_key, '')), '');
+    IF v_key IS NULL THEN
+        v_key := format('manual_settle_%s_v1', p_bet_id);
+    END IF;
     v_settle := settle_bet_tx(p_bet_id, p_actor_user_id, v_key, 'manual');
 
     IF COALESCE((v_settle->>'success')::boolean, FALSE) IS NOT TRUE THEN
@@ -643,18 +649,226 @@ BEGIN
         'voided', false,
         'idempotency_key', v_key
     );
+EXCEPTION
+    WHEN deadlock_detected THEN
+        RETURN jsonb_build_object('success', false, 'error', 'try_again');
 END;
 $$;
 
 COMMENT ON FUNCTION grade_and_settle_bet_tx(uuid, text, uuid, text) IS
-    'Grades one single and settles it in the same transaction through settle_bet_tx (manual_settle_<bet>_v1). A void is status void with no ledger row. A different outcome on an already settled pick returns outcome_conflict and writes nothing. v067.';
+    'Grades one single and settles it in the same transaction through settle_bet_tx. Uses p_idempotency_key when it is set, otherwise manual_settle_<bet>_v1. A void is status void with no ledger row. A different outcome on an already settled pick returns outcome_conflict and writes nothing. A deadlock returns try_again. v067.';
+
+-- Undo one recorded futures result for every book. One transaction: reverse
+-- each active settlement (singles and multi tickets), put this event's
+-- futures picks back to accepted, restore the other legs of a multi, delete
+-- the result row. A second call finds nothing to undo.
+CREATE OR REPLACE FUNCTION reverse_outright_tx(
+    p_event_id UUID,
+    p_reason TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_event RECORD;
+    v_bet RECORD;
+    v_ticket UUID;
+    v_entry RECORD;
+    v_now TIMESTAMPTZ := NOW();
+    v_reason TEXT := NULLIF(btrim(COALESCE(p_reason, '')), '');
+    v_had_result BOOLEAN := FALSE;
+    v_reversed INTEGER := 0;
+    v_reopened INTEGER := 0;
+    v_moved INTEGER := 0;
+BEGIN
+    PERFORM assert_futures_settler('reverse_outright_tx');
+
+    IF p_event_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Missing event_id');
+    END IF;
+    IF v_reason IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'A reason is required');
+    END IF;
+
+    SELECT id, away_team, status
+      INTO v_event
+      FROM events
+     WHERE id = p_event_id
+     FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Event not found');
+    END IF;
+    IF v_event.away_team IS DISTINCT FROM 'Outright' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Event is not a future');
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM outright_results WHERE event_id = p_event_id
+    ) INTO v_had_result;
+
+    PERFORM 1
+      FROM bets
+     WHERE lower(event_id) = lower(p_event_id::text)
+       AND lower(btrim(coalesce(market, ''))) IN ('outright', 'futures')
+     ORDER BY id
+       FOR UPDATE;
+
+    FOR v_ticket IN
+        SELECT DISTINCT ticket_id
+          FROM bets
+         WHERE lower(event_id) = lower(p_event_id::text)
+           AND COALESCE(is_parlay, FALSE)
+           AND lower(btrim(coalesce(market, ''))) IN ('outright', 'futures')
+           AND status IN ('settled', 'graded', 'void')
+    LOOP
+        PERFORM 1
+          FROM bets
+         WHERE ticket_id = v_ticket
+         ORDER BY id
+           FOR UPDATE;
+
+        WHILE active_settlement_count(v_ticket) >= 1 LOOP
+            SELECT id, bookie_id, player_id, bet_id, amount
+              INTO v_entry
+              FROM ledger_entries le
+             WHERE le.type = 'settlement'
+               AND le.bet_id IN (SELECT id FROM bets WHERE ticket_id = v_ticket)
+               AND NOT EXISTS (
+                   SELECT 1 FROM ledger_entries r
+                    WHERE r.bet_id = le.bet_id
+                      AND r.type = 'reversal'
+                      AND r.seq > le.seq
+               )
+             ORDER BY le.seq DESC
+             LIMIT 1;
+
+            IF NOT FOUND THEN
+                EXIT;
+            END IF;
+
+            INSERT INTO ledger_entries (
+                bookie_id, player_id, bet_id, amount, type, description, created_at
+            ) VALUES (
+                v_entry.bookie_id, v_entry.player_id, v_entry.bet_id,
+                -v_entry.amount, 'reversal',
+                format('Futures reversal: %s', v_reason), v_now
+            );
+            v_reversed := v_reversed + 1;
+        END LOOP;
+
+        UPDATE bets
+           SET status = 'accepted',
+               grade_result = NULL,
+               updated_at = v_now
+         WHERE ticket_id = v_ticket
+           AND lower(event_id) = lower(p_event_id::text)
+           AND lower(btrim(coalesce(market, ''))) IN ('outright', 'futures')
+           AND status IN ('settled', 'graded', 'void');
+        GET DIAGNOSTICS v_moved = ROW_COUNT;
+        v_reopened := v_reopened + v_moved;
+
+        -- A leg that already had its own grade goes back to graded so the
+        -- multi can be repriced. A leg closed only because this future lost
+        -- goes back to accepted.
+        UPDATE bets
+           SET status = CASE WHEN grade_result IS NULL THEN 'accepted' ELSE 'graded' END,
+               updated_at = v_now
+         WHERE ticket_id = v_ticket
+           AND lower(coalesce(event_id, '')) IS DISTINCT FROM lower(p_event_id::text)
+           AND status = 'settled';
+    END LOOP;
+
+    FOR v_bet IN
+        SELECT id, bookie_id, player_id, ticket_id, status
+          FROM bets
+         WHERE lower(event_id) = lower(p_event_id::text)
+           AND lower(btrim(coalesce(market, ''))) IN ('outright', 'futures')
+           AND COALESCE(is_parlay, FALSE) = FALSE
+           AND status IN ('settled', 'graded', 'void')
+         ORDER BY id
+    LOOP
+        WHILE active_settlement_count(v_bet.ticket_id) >= 1 LOOP
+            SELECT id, bookie_id, player_id, bet_id, amount
+              INTO v_entry
+              FROM ledger_entries le
+             WHERE le.bet_id = v_bet.id
+               AND le.type = 'settlement'
+               AND NOT EXISTS (
+                   SELECT 1 FROM ledger_entries r
+                    WHERE r.bet_id = le.bet_id
+                      AND r.type = 'reversal'
+                      AND r.seq > le.seq
+               )
+             ORDER BY le.seq DESC
+             LIMIT 1;
+
+            IF NOT FOUND THEN
+                EXIT;
+            END IF;
+
+            INSERT INTO ledger_entries (
+                bookie_id, player_id, bet_id, amount, type, description, created_at
+            ) VALUES (
+                v_entry.bookie_id, v_entry.player_id, v_entry.bet_id,
+                -v_entry.amount, 'reversal',
+                format('Futures reversal: %s', v_reason), v_now
+            );
+            v_reversed := v_reversed + 1;
+        END LOOP;
+
+        UPDATE bets
+           SET status = 'accepted',
+               grade_result = NULL,
+               updated_at = v_now
+         WHERE id = v_bet.id;
+        v_reopened := v_reopened + 1;
+    END LOOP;
+
+    DELETE FROM outright_results WHERE event_id = p_event_id;
+
+    IF v_event.status = 'final' AND v_had_result THEN
+        UPDATE events
+           SET status = 'scheduled',
+               updated_at = v_now
+         WHERE id = p_event_id;
+    END IF;
+
+    IF NOT v_had_result AND v_reversed = 0 AND v_reopened = 0 THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'idempotent', true,
+            'event_id', p_event_id,
+            'reversed', 0,
+            'reopened', 0
+        );
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'idempotent', false,
+        'event_id', p_event_id,
+        'reversed', v_reversed,
+        'reopened', v_reopened
+    );
+EXCEPTION
+    WHEN deadlock_detected THEN
+        RETURN jsonb_build_object('success', false, 'error', 'try_again');
+END;
+$$;
+
+COMMENT ON FUNCTION reverse_outright_tx(uuid, text) IS
+    'Undoes one futures result for every book. Reverses active settlements, including a multi that was settled or is waiting, returns this event''s futures picks to accepted, and deletes the outright_results row. A second call changes nothing. service_role only. v067.';
 
 REVOKE ALL ON FUNCTION normalize_outright_selection(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION outright_side_key(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION outright_selection_matches(text, text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION assert_futures_settler() FROM PUBLIC;
+REVOKE ALL ON FUNCTION assert_futures_settler(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION grade_and_settle_bet_tx(uuid, text, uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION reverse_outright_tx(uuid, text) FROM PUBLIC;
 
 -- Default privileges on this database grant EXECUTE to anon and authenticated
 -- by name. REVOKE FROM PUBLIC does not remove those. Name them.
@@ -665,9 +879,10 @@ DECLARE
         'normalize_outright_selection(text)',
         'outright_side_key(text)',
         'outright_selection_matches(text, text)',
-        'assert_futures_settler()',
+        'assert_futures_settler(text)',
         'settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean)',
-        'grade_and_settle_bet_tx(uuid, text, uuid, text)'
+        'grade_and_settle_bet_tx(uuid, text, uuid, text)',
+        'reverse_outright_tx(uuid, text)'
     ];
     v_role TEXT;
 BEGIN
@@ -687,4 +902,5 @@ BEGIN
 
     GRANT EXECUTE ON FUNCTION settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean) TO service_role;
     GRANT EXECUTE ON FUNCTION grade_and_settle_bet_tx(uuid, text, uuid, text) TO service_role;
+    GRANT EXECUTE ON FUNCTION reverse_outright_tx(uuid, text) TO service_role;
 END $$;

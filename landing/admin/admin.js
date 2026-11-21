@@ -206,6 +206,9 @@ function adminApp() {
         sqlText: 'select status, count(*)\nfrom bets\ngroup by status\norder by 2 desc',
         sqlResult: null,
         futuresEvents: [],
+        futuresRecorded: [],
+        futuresUndo: null,
+        futuresUndoReason: '',
         futuresChoice: {},
         futuresConfirm: null,
         futuresPreview: null,
@@ -327,6 +330,7 @@ function adminApp() {
                 const body = await res.json();
                 if (!res.ok || body.error) throw new Error(body.error || 'Could not load futures');
                 this.futuresEvents = body.events || [];
+                this.futuresRecorded = body.recorded || [];
             } catch (err) {
                 console.error('futures load failed:', err);
                 this.toast(err.message || 'Could not load futures', 'error');
@@ -397,6 +401,45 @@ function adminApp() {
                 await this.loadFutures();
             } catch (err) {
                 this.toast(err.message || 'Could not record the result', 'error');
+            } finally {
+                this.futuresBusy = null;
+            }
+        },
+
+        async undoFuture(event) {
+            const reason = (this.futuresUndoReason || '').trim();
+            if (this.futuresUndo !== event.event_id) {
+                this.futuresUndo = event.event_id;
+                if (!this.futuresUndoReason) this.futuresUndoReason = 'Wrong winner';
+                return;
+            }
+            if (!reason) {
+                this.toast('A reason is required', 'error');
+                return;
+            }
+            this.futuresBusy = event.event_id;
+            try {
+                const res = await this.callSettle({
+                    action: 'reverse',
+                    event_id: event.event_id,
+                    reason,
+                });
+                const body = await res.json();
+                if (res.status === 404) {
+                    this.gate = 'This account does not have admin access.';
+                    return;
+                }
+                if (body.error === 'try_again') {
+                    this.toast('try again', 'error');
+                    return;
+                }
+                if (!res.ok || body.success === false || body.error) throw new Error(body.error || 'Could not undo the result');
+                const again = body.idempotent ? 'Nothing left to undo.' : `Undid ${body.reversed} settlement${body.reversed === 1 ? '' : 's'}.`;
+                this.toast(again);
+                this.futuresUndo = null;
+                await this.loadFutures();
+            } catch (err) {
+                this.toast(err.message || 'Could not undo the result', 'error');
             } finally {
                 this.futuresBusy = null;
             }

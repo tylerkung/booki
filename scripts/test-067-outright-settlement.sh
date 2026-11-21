@@ -114,14 +114,22 @@ echo "PASS settle, re-run, conflicting winner, void, and the old duplicates"
 
 echo
 echo "===== anon and authenticated cannot execute settle_outright_tx ====="
-sig='settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean)'
-for role in anon authenticated; do
-    granted="$(run_psql -d "$DB" -Atc "SELECT has_function_privilege('${role}', '${sig}', 'EXECUTE');")"
-    if [[ "$granted" != "f" ]]; then
-        echo "${role} can EXECUTE ${sig}" >&2
-        exit 1
-    fi
+sigs=(
+    'settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean)'
+    'grade_and_settle_bet_tx(uuid, text, uuid, text)'
+    'assert_futures_settler(text)'
+    'reverse_outright_tx(uuid, text)'
+)
+for sig in "${sigs[@]}"; do
+    for role in anon authenticated; do
+        granted="$(run_psql -d "$DB" -Atc "SELECT has_function_privilege('${role}', '${sig}', 'EXECUTE');")"
+        if [[ "$granted" != "f" ]]; then
+            echo "${role} can EXECUTE ${sig}" >&2
+            exit 1
+        fi
+    done
 done
+sig="${sigs[0]}"
 set +e
 run_psql -d "$DB" -c "SET ROLE anon; SELECT settle_outright_tx('67000000-0000-4000-8000-000000000001'::uuid, 'Golden State Warriors', false, NULL);" >/tmp/067-anon.out 2>&1
 anon_status=$?
@@ -148,8 +156,8 @@ if [[ "$guard_status" -eq 0 ]]; then
     cat /tmp/067-anon-grant.out >&2
     exit 1
 fi
-if ! grep -q 'restricted to service_role' /tmp/067-anon-grant.out; then
-    echo "in-function guard did not refuse anon" >&2
+if ! grep -q 'settle_outright_tx is restricted to service_role' /tmp/067-anon-grant.out; then
+    echo "in-function guard did not name settle_outright_tx" >&2
     cat /tmp/067-anon-grant.out >&2
     exit 1
 fi
@@ -166,11 +174,11 @@ echo "===== re-apply 067 after rows exist ====="
 run_psql -d "$DB" -f "$MIGRATION"
 kept="$(run_psql -d "$DB" -Atc "SELECT count(*) FROM outright_results;")"
 paid="$(run_psql -d "$DB" -Atc "SELECT count(*) FROM ledger_entries WHERE bet_id = '67000000-0000-4000-8000-000000000010' AND type = 'settlement';")"
-if [[ "$kept" != "2" || "$paid" != "1" ]]; then
+if [[ "$kept" != "3" || "$paid" != "1" ]]; then
     echo "re-apply changed stored results (results ${kept}, warriors rows ${paid})" >&2
     exit 1
 fi
-echo "PASS re-apply keeps the two results and the one Warriors payout"
+echo "PASS re-apply keeps the recorded results and the one Warriors payout"
 
 echo
 echo "===== concurrent first settle ====="

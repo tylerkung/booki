@@ -109,6 +109,7 @@ test('a manual single settles once, through settle_bet_tx, and a future does not
   assert.match(source, /grade_and_settle_bet_tx/);
   assert.match(source, /manualSingleSettlementKey\s*\(/);
   assert.match(source, /409/);
+  assert.match(source, /try again/);
   assert.doesNotMatch(source, /settleBetTx\s*\(/);
   assert.match(source, /isOutrightMarket\s*\(/);
   assert.doesNotMatch(source, /\.from\('ledger_entries'\)/);

@@ -43,14 +43,30 @@ Does not update or delete ledger rows. A BEFORE INSERT trigger rejects a second 
 
 ### 067 — outright results (NOT applied)
 
-063 is already live, so `settle_bet_tx` and `settle_parlay_tx` are the settlement path this calls. 067 does not update or delete existing bets or ledger rows. It adds `outright_results` and `settle_outright_tx`, and `grade_and_settle_bet_tx` for a manual single. EXECUTE is revoked from PUBLIC, anon, and authenticated and granted to service_role only; the functions also refuse any other role. Apply 067, then deploy `settle_outright` and `grade_bet`. Confirm afterward:
+063 is already live. Apply the security hotfix (migration 068, which locks down `settle_bet_tx`, `settle_parlay_tx`, `override_grade_tx`, `reverse_settlement_tx`, and `mark_ticket_settled`) before or together with 067. 067 does not update or delete existing bets or ledger rows. It adds `outright_results`, `settle_outright_tx`, `grade_and_settle_bet_tx`, and `reverse_outright_tx`.
+
+Deploy in this order:
+
+1. Set and confirm the `ADMIN_EMAILS` secret. If it is empty, `settle_outright` returns 404 for everyone.
+2. Apply `supabase/migrations/067_outright_results.sql`.
+3. Deploy `settle_outright` and `grade_bet`. **Deploying `grade_bet` before 067 breaks every manual grade**, because it calls `grade_and_settle_bet_tx`, which does not exist until 067.
+4. Deploy `sync_games`, `auto_refresh_games`, and `refresh_live_scores`.
+5. This query must return false:
 
 ```sql
-SELECT has_function_privilege('anon', 'settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean)', 'EXECUTE')
-    OR has_function_privilege('authenticated', 'settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean)', 'EXECUTE');
+SELECT bool_or(has_function_privilege(role, signature, 'EXECUTE'))
+  FROM (VALUES
+    ('anon'), ('authenticated')
+  ) AS roles(role)
+  CROSS JOIN (VALUES
+    ('settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean)'),
+    ('grade_and_settle_bet_tx(uuid, text, uuid, text)'),
+    ('assert_futures_settler(text)'),
+    ('reverse_outright_tx(uuid, text)')
+  ) AS fns(signature);
 ```
 
-That must be false. `ADMIN_EMAILS` must be set on the function or every caller gets 404. 065 is PR #15. 066 is reserved. Migration 068, a separate hotfix, locks down `settle_bet_tx` and is not part of this file.
+065 is PR #15. 066 is reserved.
 
 ### 062 — bet prop snapshot (NOT applied)
 

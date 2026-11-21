@@ -214,7 +214,8 @@ BEGIN
     END IF;
 
     v_result := grade_and_settle_bet_tx(
-        '67000000-0000-4000-8000-000000000071', 'win', v_actor, 'manual_settle_071');
+        '67000000-0000-4000-8000-000000000071', 'win', v_actor,
+        'manual_settle_67000000-0000-4000-8000-000000000071_v1');
     IF COALESCE((v_result->>'success')::boolean, false) IS NOT TRUE THEN
         RAISE EXCEPTION 'manual win failed: %', v_result;
     END IF;
@@ -239,6 +240,78 @@ BEGIN
     IF (SELECT count(*) FROM ledger_entries
          WHERE bet_id = 'e4df12ed-0000-4000-8000-000000000076' AND type = 'settlement') <> 2 THEN
         RAISE EXCEPTION 'e4df12ed settlements changed';
+    END IF;
+
+    -- Wrong winner, reverse, correct winner. One net settlement per pick.
+    v_result := settle_outright_tx(
+        '67000000-0000-4000-8000-000000000006', 'Golden State Warriors', false, v_actor);
+    IF COALESCE((v_result->>'success')::boolean, false) IS NOT TRUE THEN
+        RAISE EXCEPTION 'wrong winner failed: %', v_result;
+    END IF;
+    v_result := reverse_outright_tx('67000000-0000-4000-8000-000000000006', 'wrong winner');
+    IF COALESCE((v_result->>'success')::boolean, false) IS NOT TRUE OR (v_result->>'reversed')::int < 1 THEN
+        RAISE EXCEPTION 'reverse failed: %', v_result;
+    END IF;
+    IF (SELECT count(*) FROM outright_results WHERE event_id = '67000000-0000-4000-8000-000000000006') <> 0 THEN
+        RAISE EXCEPTION 'reverse left the result row';
+    END IF;
+    SELECT status, grade_result INTO v_status, v_grade
+      FROM bets WHERE id = '67000000-0000-4000-8000-000000000080';
+    IF v_status <> 'accepted' OR v_grade IS NOT NULL THEN
+        RAISE EXCEPTION 'reversed single is % / %', v_status, v_grade;
+    END IF;
+    SELECT status, grade_result INTO v_status, v_grade
+      FROM bets WHERE id = '67000000-0000-4000-8000-000000000083';
+    IF v_status <> 'graded' OR v_grade <> 'win' THEN
+        RAISE EXCEPTION 'other multi leg should be graded again, got % / %', v_status, v_grade;
+    END IF;
+    v_again := reverse_outright_tx('67000000-0000-4000-8000-000000000006', 'wrong winner');
+    IF COALESCE((v_again->>'idempotent')::boolean, false) IS NOT TRUE THEN
+        RAISE EXCEPTION 'second reverse was not idempotent: %', v_again;
+    END IF;
+
+    v_result := settle_outright_tx(
+        '67000000-0000-4000-8000-000000000006', 'Boston Celtics', false, v_actor);
+    IF COALESCE((v_result->>'success')::boolean, false) IS NOT TRUE THEN
+        RAISE EXCEPTION 'correct winner failed: %', v_result;
+    END IF;
+
+    -- Warriors single: wrong win -1200, reversal +1200, correct loss +10.
+    -- Net is the correct payout, and one settlement is still active.
+    SELECT COALESCE(sum(amount), 0),
+           COALESCE(count(*) FILTER (WHERE type = 'settlement')
+                    - count(*) FILTER (WHERE type = 'reversal'), 0)
+      INTO v_amount, v_count
+      FROM ledger_entries
+     WHERE bet_id = '67000000-0000-4000-8000-000000000080'
+       AND type IN ('settlement', 'reversal');
+    IF v_amount <> 10 OR v_count <> 1 THEN
+        RAISE EXCEPTION 'Warriors net % active %', v_amount, v_count;
+    END IF;
+
+    -- Celtics single: wrong loss +5, reversal -5, correct win -10. Net -10.
+    SELECT COALESCE(sum(amount), 0),
+           COALESCE(count(*) FILTER (WHERE type = 'settlement')
+                    - count(*) FILTER (WHERE type = 'reversal'), 0)
+      INTO v_amount, v_count
+      FROM ledger_entries
+     WHERE bet_id = '67000000-0000-4000-8000-000000000081'
+       AND type IN ('settlement', 'reversal');
+    IF v_amount <> -10 OR v_count <> 1 THEN
+        RAISE EXCEPTION 'Celtics net % active %', v_amount, v_count;
+    END IF;
+
+    -- Multi: wrong loss +20 reversed, then repriced win -60. One active settlement.
+    SELECT COALESCE(sum(le.amount), 0),
+           COALESCE(count(*) FILTER (WHERE le.type = 'settlement')
+                    - count(*) FILTER (WHERE le.type = 'reversal'), 0)
+      INTO v_amount, v_count
+      FROM ledger_entries le
+      JOIN bets b ON b.id = le.bet_id
+     WHERE b.ticket_id = '67000000-0000-4000-8000-0000000000b1'
+       AND le.type IN ('settlement', 'reversal');
+    IF v_amount <> -60 OR v_count <> 1 THEN
+        RAISE EXCEPTION 'multi net % active %', v_amount, v_count;
     END IF;
     IF (SELECT count(*) FROM ledger_entries
          WHERE bet_id = '297c5d53-0000-4000-8000-000000000297' AND type = 'settlement') <> 2 THEN

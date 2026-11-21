@@ -46,7 +46,10 @@ VALUES
      'Race Future', 'Outright'),
     ('67000000-0000-4000-8000-000000000004',
      'Knicks at Celtics', 'Basketball', 'NBA', '2026-06-04 00:00:00+00', 'scheduled',
-     'Celtics', 'Knicks');
+     'Celtics', 'Knicks'),
+    ('67000000-0000-4000-8000-000000000006',
+     'Reverse Future', 'Basketball', 'NBA', '2026-06-06 00:00:00+00', 'scheduled',
+     'Reverse Future', 'Outright');
 
 -- No market_id column on this fixture. Matching has to use bets.side.
 INSERT INTO bets (
@@ -145,7 +148,32 @@ INSERT INTO bets (
      '33333333-3333-4333-8333-333333333333',
      '67000000-0000-4000-8000-000000000004',
      '67000000-0000-4000-8000-000000000071',
-     'moneyline', 'Knicks', -110, 8, 'accepted', NULL, false, 1);
+     'moneyline', 'Knicks', -110, 8, 'accepted', NULL, false, 1),
+    -- Wrong winner, reverse, then the correct winner.
+    ('67000000-0000-4000-8000-000000000080',
+     '22222222-2222-4222-8222-222222222222',
+     '33333333-3333-4333-8333-333333333333',
+     '67000000-0000-4000-8000-000000000006',
+     '67000000-0000-4000-8000-000000000080',
+     'outright', 'Golden State Warriors', 12000, 10, 'accepted', NULL, false, 1),
+    ('67000000-0000-4000-8000-000000000081',
+     '22222222-2222-4222-8222-222222222223',
+     '33333333-3333-4333-8333-333333333334',
+     '67000000-0000-4000-8000-000000000006',
+     '67000000-0000-4000-8000-000000000081',
+     'outright', 'Boston Celtics', 200, 5, 'accepted', NULL, false, 1),
+    ('67000000-0000-4000-8000-000000000082',
+     '22222222-2222-4222-8222-222222222222',
+     '33333333-3333-4333-8333-333333333333',
+     '67000000-0000-4000-8000-000000000006',
+     '67000000-0000-4000-8000-0000000000b1',
+     'outright', 'Boston Celtics', 100, 20, 'accepted', NULL, true, 2),
+    ('67000000-0000-4000-8000-000000000083',
+     '22222222-2222-4222-8222-222222222222',
+     '33333333-3333-4333-8333-333333333333',
+     '67000000-0000-4000-8000-000000000004',
+     '67000000-0000-4000-8000-0000000000b1',
+     'moneyline', 'Knicks', 100, 20, 'graded', 'win', true, 2);
 
 CREATE TABLE IF NOT EXISTS markets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -159,4 +187,6 @@ INSERT INTO markets (event_id, type, side_a) VALUES
     ('67000000-0000-4000-8000-000000000001', 'outright', 'Golden State Warriors'),
     ('67000000-0000-4000-8000-000000000001', 'outright', 'Boston Celtics'),
     ('67000000-0000-4000-8000-000000000001', 'outright', 'St. Louis Blues'),
-    ('67000000-0000-4000-8000-000000000003', 'outright', 'Team A');
+    ('67000000-0000-4000-8000-000000000003', 'outright', 'Team A'),
+    ('67000000-0000-4000-8000-000000000006', 'outright', 'Golden State Warriors'),
+    ('67000000-0000-4000-8000-000000000006', 'outright', 'Boston Celtics');

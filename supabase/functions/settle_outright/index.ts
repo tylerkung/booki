@@ -29,6 +29,7 @@ interface SettleBody {
   dry_run?: boolean;
   /** Allow a winner that matches no known selection and no pick side. */
   force?: boolean;
+  reason?: string;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -64,7 +65,33 @@ Deno.serve(async (req) => {
     const action = body.action ?? 'list';
 
     if (action === 'list') {
-      return json({ events: await listAwaiting(client) });
+      const [events, recorded] = await Promise.all([
+        listAwaiting(client),
+        listRecorded(client),
+      ]);
+      return json({ events, recorded });
+    }
+
+    if (action === 'reverse') {
+      const eventId = (body.event_id ?? '').trim();
+      if (!UUID_RE.test(eventId)) return json({ error: 'event_id must be a UUID' }, 400);
+      const reason = (body.reason ?? '').trim();
+      if (!reason) return json({ error: 'A reason is required' }, 400);
+      const { data, error } = await client.rpc('reverse_outright_tx', {
+        p_event_id: eventId,
+        p_reason: reason,
+      });
+      if (error) {
+        if (error.code === '40P01' || /deadlock/i.test(error.message ?? '')) {
+          return json({ success: false, error: 'try again' }, 409);
+        }
+        console.error('reverse_outright_tx error:', error);
+        return json({ error: error.message }, 500);
+      }
+      const result = data as { success?: boolean; error?: string } | null;
+      if (result?.error === 'try_again') return json({ success: false, error: 'try again' }, 409);
+      if (!result?.success) return json(result ?? { error: 'reverse_outright_tx failed' }, 400);
+      return json(result);
     }
 
     if (action !== 'settle') {
@@ -95,11 +122,17 @@ Deno.serve(async (req) => {
     });
 
     if (error) {
+      if (error.code === '40P01' || /deadlock/i.test(error.message ?? '')) {
+        return json({ success: false, error: 'try again' }, 409);
+      }
       console.error('settle_outright_tx error:', error);
       return json({ error: error.message }, 500);
     }
 
     const result = data as { success?: boolean; error?: string } | null;
+    if (result?.error === 'try_again') {
+      return json({ success: false, error: 'try again' }, 409);
+    }
     if (!result?.success) {
       const status = result?.error === 'result_already_recorded' ? 409 : 400;
       return json(result ?? { error: 'settle_outright_tx failed' }, status);
@@ -143,5 +176,39 @@ async function listAwaiting(client: ReturnType<typeof createServiceClient>) {
     events: eventsResult.data as Parameters<typeof futuresAwaitingResult>[0]['events'],
     markets: marketsResult.data as Parameters<typeof futuresAwaitingResult>[0]['markets'],
     results: resultsResult.data as Array<{ event_id: string }>,
+  });
+}
+
+async function listRecorded(client: ReturnType<typeof createServiceClient>) {
+  const { data: rows, error } = await selectAllPaged<{
+    event_id: string;
+    winning_selection: string | null;
+    void: boolean;
+    recorded_at: string;
+  }>(() => client.from('outright_results').select('event_id, winning_selection, void, recorded_at'));
+  if (error) throw new Error(error.message);
+  if (rows.length === 0) return [];
+  const ids = rows.map((row) => row.event_id);
+  const events = await selectAllIn(
+    client,
+    'events',
+    'id, home_team, name, away_team',
+    'id',
+    ids,
+  );
+  if (events.error) throw new Error(events.error.message);
+  const byId = new Map(
+    (events.data as Array<{ id: string; home_team: string | null; name: string | null; away_team: string | null }>)
+      .map((event) => [event.id.toLowerCase(), event]),
+  );
+  return rows.map((row) => {
+    const event = byId.get(row.event_id.toLowerCase());
+    return {
+      event_id: row.event_id,
+      name: event?.home_team || event?.name || 'Future',
+      winning_selection: row.winning_selection,
+      void: row.void,
+      recorded_at: row.recorded_at,
+    };
   });
 }

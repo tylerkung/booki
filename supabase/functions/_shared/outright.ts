@@ -56,13 +56,14 @@ export function outrightSettlementKey(betId: string): string {
  * migration 067. outright_match_vectors.json is the shared contract.
  */
 const ACCENT_FROM =
-  'ÁÀÂÄÃÅĀĂĄáàâäãåāăąÉÈÊËĒĔĖĘéèêëēĕėęÍÌÎÏĪĬĮíìîïīĭįÓÒÔÖÕŌŎŐóòôöõōŏőÚÙÛÜŪŬŮŰúùûüūŭůűÝŸýÿÑñÇçČčĆćŠšŽž';
+  'ÁÀÂÄÃÅĀĂĄáàâäãåāăąÉÈÊËĒĔĖĘéèêëēĕėęÍÌÎÏĪĬĮíìîïīĭįÓÒÔÖÕŌŎŐóòôöõōŏőÚÙÛÜŪŬŮŰúùûüūŭůűÝŸýÿÑñÇçČčĆćŠšŽžØøŁłĐđŹź';
 const ACCENT_TO =
-  'AAAAAAAAAaaaaaaaaaEEEEEEEEeeeeeeeeIIIIIIIiiiiiiiOOOOOOOOooooooooUUUUUUUUuuuuuuuuYYyyNnCcCcCcSsZz';
+  'AAAAAAAAAaaaaaaaaaEEEEEEEEeeeeeeeeIIIIIIIiiiiiiiOOOOOOOOooooooooUUUUUUUUuuuuuuuuYYyyNnCcCcCcSsZzOoLlDdZz';
 
 function foldAccents(value: string): string {
+  const expanded = value.replace(/[Ææ]/g, 'ae').replace(/ß/g, 'ss');
   let out = '';
-  for (const ch of value) {
+  for (const ch of expanded) {
     const at = ACCENT_FROM.indexOf(ch);
     out += at >= 0 ? ACCENT_TO[at] : ch;
   }
@@ -73,7 +74,9 @@ export function outrightSideKey(value: string | null | undefined): string {
   return foldAccents(value ?? '')
     .toLowerCase()
     .replace(/\s*\(\s*[+-]\d+(?:\.\d+)?\s*\)\s*$/u, '')
-    .replace(/\s+[+-]\d+(?:\.\d+)?\s*$/u, '')
+    .replace(/\s+[+-]\d{3,}(?:\.\d+)?\s*$/u, '')
+    .replace(/([^0-9])\+(\d)/g, '$1plus$2')
+    .replace(/([^0-9])-(\d)/g, '$1minus$2')
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

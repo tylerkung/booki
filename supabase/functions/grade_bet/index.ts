@@ -214,6 +214,7 @@ async function gradeAndSettleSingle(
   });
 
   if (error) {
+    if (isDeadlock(error)) return json({ success: false, error: 'try again' }, 409);
     console.error('grade_and_settle_bet_tx error:', error);
     return json({ success: false, error: error.message }, 500);
   }
@@ -228,6 +229,10 @@ async function gradeAndSettleSingle(
     bet?: Record<string, unknown>;
     ledger_entry?: Record<string, unknown> | null;
   } | null;
+
+  if (result?.error === 'try_again') {
+    return json({ success: false, error: 'try again' }, 409);
+  }
 
   if (!result?.success) {
     const conflict = result?.error === 'outcome_conflict';
@@ -254,6 +259,10 @@ async function gradeAndSettleSingle(
     status: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+function isDeadlock(error: { code?: string; message?: string }): boolean {
+  return error.code === '40P01' || /deadlock/i.test(error.message ?? '');
 }
 
 function statusError(status: string): Response {
