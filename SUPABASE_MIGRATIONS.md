@@ -14,6 +14,12 @@ Track all SQL changes needed in Supabase when updating the app.
 
 ## Pending Migrations
 
+### 068 — lock settlement RPCs to service_role (NOT applied)
+
+`settle_bet_tx`, `settle_parlay_tx`, `override_grade_tx`, `reverse_settlement_tx`, and `mark_ticket_settled` are SECURITY DEFINER. `anon` and `authenticated` can execute them by name, so the public anon key can settle, override, or reverse any bet. 068 revokes those grants, grants `EXECUTE` to `service_role`, and adds an in-function guard. It does not insert, update, or delete rows. It does not deploy an edge function: every app caller already uses the service-role client.
+
+Apply 068 only where all five functions already exist. The SQL editor should run `scripts/sql/068_verify.sql` afterward (`anon_exec` and `authenticated_exec` false, `service_role_exec` and `guarded` true). Rollback is `scripts/sql/068_rollback.sql` in one transaction. Local proof: `scripts/test-068-settlement-privileges.sh` on throwaway Postgres 17. Do not point it at the hosted project.
+
 ### Release order for 064, 062, and 063 (none applied)
 
 064 is the main-line migration from PR #13. Apply it before 062 and 063.
