@@ -208,6 +208,7 @@ function adminApp() {
         futuresEvents: [],
         futuresChoice: {},
         futuresConfirm: null,
+        futuresPreview: null,
         futuresBusy: null,
         rows: [],
         stats: null,
@@ -334,40 +335,65 @@ function adminApp() {
             }
         },
 
+        futuresPreviewText(preview) {
+            if (!preview) return '';
+            if (preview.void) return `Void ${preview.by_side ? preview.by_side.reduce((n, row) => n + row.count, 0) : 0} accepted picks. Nothing is written until you confirm.`;
+            const unmatched = (preview.unmatched_sides || []).length;
+            return `${preview.wins} win, ${preview.losses} lose`
+                + (unmatched ? `. ${unmatched} selection${unmatched === 1 ? '' : 's'} do not match the winner and will lose.` : '.')
+                + ' Nothing is written until you confirm.';
+        },
+
+        futurePayload(event, dryRun) {
+            const choice = this.futuresChoice[event.event_id];
+            const payload = choice === '__void__'
+                ? { action: 'settle', event_id: event.event_id, void: true }
+                : { action: 'settle', event_id: event.event_id, winning_selection: choice };
+            if (dryRun) payload.dry_run = true;
+            return payload;
+        },
+
+        futureError(body) {
+            if (body.error === 'result_already_recorded') return 'A result is already recorded for this future';
+            if (body.error === 'unknown_winner') return 'That winner is not one of this future\'s selections';
+            return body.error || 'Could not record the result';
+        },
+
         async recordFuture(event) {
             const choice = this.futuresChoice[event.event_id];
             if (!choice) {
                 this.toast('Pick the winner first', 'error');
                 return;
             }
-            if (this.futuresConfirm !== event.event_id) {
-                this.futuresConfirm = event.event_id;
-                return;
-            }
             this.futuresBusy = event.event_id;
             try {
-                const payload = choice === '__void__'
-                    ? { action: 'settle', event_id: event.event_id, void: true }
-                    : { action: 'settle', event_id: event.event_id, winning_selection: choice };
-                const res = await this.callSettle(payload);
+                if (this.futuresConfirm !== event.event_id) {
+                    const res = await this.callSettle(this.futurePayload(event, true));
+                    const body = await res.json();
+                    if (res.status === 404) {
+                        this.gate = 'This account does not have admin access.';
+                        return;
+                    }
+                    if (!res.ok || body.success === false || body.error) throw new Error(this.futureError(body));
+                    this.futuresPreview = { ...body, event_id: event.event_id };
+                    this.futuresConfirm = event.event_id;
+                    return;
+                }
+                const res = await this.callSettle(this.futurePayload(event, false));
                 const body = await res.json();
                 if (res.status === 404) {
                     this.gate = 'This account does not have admin access.';
                     return;
                 }
-                if (!res.ok || body.success === false || body.error) {
-                    const message = body.error === 'result_already_recorded'
-                        ? 'A result is already recorded for this future'
-                        : (body.error || 'Could not record the result');
-                    throw new Error(message);
-                }
-                const paid = (body.singles_settled || 0) + (body.parlays_settled || 0);
+                if (!res.ok || body.success === false || body.error) throw new Error(this.futureError(body));
+                const paid = (body.singles_settled || 0) + (body.parlays_settled || 0) + (body.singles_voided || 0);
                 const again = body.idempotent ? 'Already recorded. ' : '';
                 const waiting = body.parlays_waiting
                     ? ` ${body.parlays_waiting} multi-pick${body.parlays_waiting === 1 ? '' : 's'} still waiting on another leg.`
                     : '';
                 this.toast(`${again}${paid} settled.${waiting}`);
                 this.futuresConfirm = null;
+                this.futuresPreview = null;
                 await this.loadFutures();
             } catch (err) {
                 this.toast(err.message || 'Could not record the result', 'error');

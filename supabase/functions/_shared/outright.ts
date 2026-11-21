@@ -48,16 +48,39 @@ export function outrightSettlementKey(betId: string): string {
 /**
  * Compare a pick's side to the recorded winner.
  *
- * Trailing American odds are not part of the name: a side stored as
- * "Warriors +12000" is the Warriors. "Warriors" does not match
- * "Golden State Warriors" — a substring would also match the wrong team.
+ * Accents and punctuation fold, and a trailing price is ignored in either
+ * form (" +12000" or "(+2000)"). "St. Louis Blues" matches "St Louis Blues".
+ * "Warriors" does not match "Golden State Warriors".
+ *
+ * The accent map is the same string as normalize_outright_selection in
+ * migration 067. outright_match_vectors.json is the shared contract.
  */
-export function normalizeOutrightSelection(value: string | null | undefined): string {
-  return (value ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+const ACCENT_FROM =
+  'ÁÀÂÄÃÅĀĂĄáàâäãåāăąÉÈÊËĒĔĖĘéèêëēĕėęÍÌÎÏĪĬĮíìîïīĭįÓÒÔÖÕŌŎŐóòôöõōŏőÚÙÛÜŪŬŮŰúùûüūŭůűÝŸýÿÑñÇçČčĆćŠšŽž';
+const ACCENT_TO =
+  'AAAAAAAAAaaaaaaaaaEEEEEEEEeeeeeeeeIIIIIIIiiiiiiiOOOOOOOOooooooooUUUUUUUUuuuuuuuuYYyyNnCcCcCcSsZz';
+
+function foldAccents(value: string): string {
+  let out = '';
+  for (const ch of value) {
+    const at = ACCENT_FROM.indexOf(ch);
+    out += at >= 0 ? ACCENT_TO[at] : ch;
+  }
+  return out;
 }
 
 export function outrightSideKey(value: string | null | undefined): string {
-  return normalizeOutrightSelection(value).replace(/\s+[+-]\d+(?:\.\d+)?$/, '').trim();
+  return foldAccents(value ?? '')
+    .toLowerCase()
+    .replace(/\s*\(\s*[+-]\d+(?:\.\d+)?\s*\)\s*$/u, '')
+    .replace(/\s+[+-]\d+(?:\.\d+)?\s*$/u, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function normalizeOutrightSelection(value: string | null | undefined): string {
+  return outrightSideKey(value);
 }
 
 export function outrightSelectionMatches(

@@ -25,6 +25,10 @@ interface SettleBody {
   event_id?: string;
   winning_selection?: string;
   void?: boolean;
+  /** Preview win/loss counts. Writes nothing. */
+  dry_run?: boolean;
+  /** Allow a winner that matches no known selection and no pick side. */
+  force?: boolean;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -86,6 +90,8 @@ Deno.serve(async (req) => {
       p_winning_selection: voidEvent ? null : winner,
       p_void: voidEvent,
       p_actor_user_id: userId,
+      p_force: body.force === true,
+      p_dry_run: body.dry_run === true,
     });
 
     if (error) {
@@ -107,7 +113,6 @@ Deno.serve(async (req) => {
 });
 
 async function listAwaiting(client: ReturnType<typeof createServiceClient>) {
-  const openStatuses = ['pending', 'accepted', 'graded', 'readyToGrade'];
   const { data: bets, error: betsError } = await selectAllPaged<{
     event_id: string | null;
     side: string | null;
@@ -117,7 +122,7 @@ async function listAwaiting(client: ReturnType<typeof createServiceClient>) {
     client
       .from('bets')
       .select('event_id, side, stake, market')
-      .in('status', openStatuses)
+      .eq('status', 'accepted')
       .in('market', ['outright', 'futures'])
   );
   if (betsError) throw new Error(betsError.message);

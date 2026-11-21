@@ -3996,7 +3996,8 @@ function dashboardApp() {
                 .is('bookie_id', null)
                 .gte('start_time', fourteenDaysAgo)
                 .or(`start_time.lte.${organizerHorizon},away_team.eq.Outright`)
-                .order('start_time', { ascending: true }));
+                .order('start_time', { ascending: true })
+                .order('id', { ascending: true }));
 
             if (error) {
                 console.error('Failed to load events');

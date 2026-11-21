@@ -61,6 +61,17 @@ recreate_db() {
     run_psql -d "$DB" -f "$SQL_DIR/063_fixture.sql"
     run_psql -d "$DB" --single-transaction -f "$PRIOR"
     run_psql -d "$DB" -f "$SQL_DIR/067_seed.sql"
+    # Prod grants EXECUTE to anon and authenticated by name via default
+    # privileges. REVOKE FROM PUBLIC alone does not remove those.
+    run_psql -d "$DB" -c "DO \$\$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+            CREATE ROLE anon NOLOGIN;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+            CREATE ROLE authenticated NOLOGIN;
+        END IF;
+    END \$\$;"
+    run_psql -d "$DB" -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, PUBLIC;"
 }
 
 echo
@@ -71,9 +82,84 @@ run_psql -d "$DB" -f "$MIGRATION"
 echo "apply 067 twice committed"
 
 echo
+echo "===== SQL and TS selection keys agree ====="
+cd "$ROOT"
+node --experimental-strip-types --input-type=module <<'JS' > /tmp/067-vectors.sql
+import { readFileSync } from 'node:fs';
+import { outrightSideKey, outrightSelectionMatches } from './supabase/functions/_shared/outright.ts';
+const vectors = JSON.parse(readFileSync('./supabase/functions/_shared/outright_match_vectors.json', 'utf8'));
+const q = (value) => "'" + String(value).replaceAll("'", "''") + "'";
+const lines = ['DO $$ BEGIN'];
+for (const vector of vectors) {
+  if (outrightSelectionMatches(vector.left, vector.right) !== vector.match) {
+    throw new Error('TS vector failed: ' + vector.left);
+  }
+  lines.push(
+    `IF outright_selection_matches(${q(vector.left)}, ${q(vector.right)}) IS DISTINCT FROM ${vector.match ? 'TRUE' : 'FALSE'} THEN RAISE EXCEPTION 'SQL match %', ${q(vector.left)}; END IF;`,
+  );
+  lines.push(
+    `IF outright_side_key(${q(vector.left)}) IS DISTINCT FROM ${q(outrightSideKey(vector.left))} THEN RAISE EXCEPTION 'SQL key % got %', ${q(vector.left)}, outright_side_key(${q(vector.left)}); END IF;`,
+  );
+}
+lines.push('END $$;');
+process.stdout.write(lines.join('\n'));
+JS
+run_psql -d "$DB" -f /tmp/067-vectors.sql
+echo "PASS SQL and TS matchers agree on the shared vectors"
+
+echo
 echo "===== behavior checks ====="
 run_psql -d "$DB" --single-transaction -f "$SQL_DIR/067_checks.sql"
 echo "PASS settle, re-run, conflicting winner, void, and the old duplicates"
+
+echo
+echo "===== anon and authenticated cannot execute settle_outright_tx ====="
+sig='settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean)'
+for role in anon authenticated; do
+    granted="$(run_psql -d "$DB" -Atc "SELECT has_function_privilege('${role}', '${sig}', 'EXECUTE');")"
+    if [[ "$granted" != "f" ]]; then
+        echo "${role} can EXECUTE ${sig}" >&2
+        exit 1
+    fi
+done
+set +e
+run_psql -d "$DB" -c "SET ROLE anon; SELECT settle_outright_tx('67000000-0000-4000-8000-000000000001'::uuid, 'Golden State Warriors', false, NULL);" >/tmp/067-anon.out 2>&1
+anon_status=$?
+set -e
+if [[ "$anon_status" -eq 0 ]]; then
+    echo "anon executed settle_outright_tx" >&2
+    cat /tmp/067-anon.out >&2
+    exit 1
+fi
+if ! grep -q 'permission denied' /tmp/067-anon.out; then
+    echo "anon was refused for an unexpected reason" >&2
+    cat /tmp/067-anon.out >&2
+    exit 1
+fi
+# A leaked GRANT must still be stopped by the in-function guard, and must
+# not write a second settlement.
+run_psql -d "$DB" -c "GRANT EXECUTE ON FUNCTION ${sig} TO anon;"
+set +e
+run_psql -d "$DB" -c "SET ROLE anon; SELECT settle_outright_tx('67000000-0000-4000-8000-000000000001'::uuid, 'Boston Celtics', false, NULL);" >/tmp/067-anon-grant.out 2>&1
+guard_status=$?
+set -e
+if [[ "$guard_status" -eq 0 ]]; then
+    echo "anon with a leaked GRANT executed settle_outright_tx" >&2
+    cat /tmp/067-anon-grant.out >&2
+    exit 1
+fi
+if ! grep -q 'restricted to service_role' /tmp/067-anon-grant.out; then
+    echo "in-function guard did not refuse anon" >&2
+    cat /tmp/067-anon-grant.out >&2
+    exit 1
+fi
+run_psql -d "$DB" -c "REVOKE ALL ON FUNCTION ${sig} FROM anon;"
+warriors_rows="$(run_psql -d "$DB" -Atc "SELECT count(*) FROM ledger_entries WHERE bet_id = '67000000-0000-4000-8000-000000000010' AND type = 'settlement';")"
+if [[ "$warriors_rows" != "1" ]]; then
+    echo "anon call changed the Warriors settlement count to ${warriors_rows}" >&2
+    exit 1
+fi
+echo "PASS anon and authenticated lack EXECUTE, and a leaked grant still cannot settle"
 
 echo
 echo "===== re-apply 067 after rows exist ====="

@@ -411,7 +411,8 @@ The app is **local-first** with cloud sync:
 - A manual grade of an ordinary single now settles in the same request, so it is paid once including a retry. The event page does not offer Win (Home) / Win (Away) on a future
 - The member's Track page shows a notice when a future settles. Dismissing it is stored on the account
 - The organizer events list pages past PostgREST's 1000-row cap, so later futures are not cut off
-- Apply migration 063 before 067, then deploy `settle_outright` before using the admin screen. Nothing in the migration settles an existing pick
+- 063 is already live. Apply 067, then deploy `settle_outright` and `grade_bet`. `ADMIN_EMAILS` has to be set or the admin page 404s. After deploy, `anon` and `authenticated` must not have EXECUTE on `settle_outright_tx`. Nothing in the migration settles an existing pick
+- A wrong futures payout is reversed with `reverse_settlement_tx(bet_id, actor, reason, idempotency_key)`. That posts the negated ledger row and sets the pick back to graded. Delete that event's `outright_results` row, set the pick back to accepted, then record the correct winner. Do not record a second winner while the first row is still there
 
 **One spread on the board (November 2026, migration 064 — not applied)**
 - A moved spread was stored as a new row, so a game could show an old number (+11.5) while the latest feed was +12.5. Placing that pick returned 400 and the slip sometimes cleared with no message

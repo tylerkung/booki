@@ -43,7 +43,14 @@ Does not update or delete ledger rows. A BEFORE INSERT trigger rejects a second 
 
 ### 067 — outright results (NOT applied)
 
-Depends on 063 (`settle_bet_tx` and `settle_parlay_tx`). Does not update or delete existing bets or ledger rows. Adds `outright_results` (one row per event: winning selection, void flag, recorded_by, recorded_at) and `settle_outright_tx`. Apply 063 first if it is not already applied, then 067, then deploy `settle_outright`. 065 is PR #15. 066 is reserved for the moneyline work. Do not apply this from the agent.
+063 is already live, so `settle_bet_tx` and `settle_parlay_tx` are the settlement path this calls. 067 does not update or delete existing bets or ledger rows. It adds `outright_results` and `settle_outright_tx`, and `grade_and_settle_bet_tx` for a manual single. EXECUTE is revoked from PUBLIC, anon, and authenticated and granted to service_role only; the functions also refuse any other role. Apply 067, then deploy `settle_outright` and `grade_bet`. Confirm afterward:
+
+```sql
+SELECT has_function_privilege('anon', 'settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean)', 'EXECUTE')
+    OR has_function_privilege('authenticated', 'settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean)', 'EXECUTE');
+```
+
+That must be false. `ADMIN_EMAILS` must be set on the function or every caller gets 404. 065 is PR #15. 066 is reserved. Migration 068, a separate hotfix, locks down `settle_bet_tx` and is not part of this file.
 
 ### 062 — bet prop snapshot (NOT applied)
 

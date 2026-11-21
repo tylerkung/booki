@@ -11,6 +11,7 @@ import {
   outrightGrade,
   outrightSelectionMatches,
   outrightSettlementKey,
+  outrightSideKey,
   shouldClockFinalize,
 } from './outright.ts';
 import { deployedSingleSideAccepted, legStorageError, resolveStoredLeg, singleBetIndicator } from './market_validation.ts';
@@ -105,8 +106,10 @@ test('a manual single settles once, through settle_bet_tx, and a future does not
   assert.equal(isOutrightMarket('moneyline'), false);
 
   const source = readFileSync(new URL('../grade_bet/index.ts', import.meta.url), 'utf8');
-  assert.match(source, /settleBetTx\s*\(/);
+  assert.match(source, /grade_and_settle_bet_tx/);
   assert.match(source, /manualSingleSettlementKey\s*\(/);
+  assert.match(source, /409/);
+  assert.doesNotMatch(source, /settleBetTx\s*\(/);
   assert.match(source, /isOutrightMarket\s*\(/);
   assert.doesNotMatch(source, /\.from\('ledger_entries'\)/);
 
@@ -116,13 +119,16 @@ test('a manual single settles once, through settle_bet_tx, and a future does not
 });
 
 test('a futures pick matches the selection name, not a market id', () => {
+  const vectors = JSON.parse(readFileSync(new URL('./outright_match_vectors.json', import.meta.url), 'utf8'));
+  for (const vector of vectors) {
+    assert.equal(outrightSelectionMatches(vector.left, vector.right), vector.match, `${vector.left} vs ${vector.right}`);
+    assert.equal(outrightSideKey(vector.left) === outrightSideKey(vector.right), vector.match);
+  }
+  assert.equal(outrightSideKey('St. Louis Blues'), 'st louis blues');
+  assert.equal(outrightSideKey('St Louis Blues (+2000)'), 'st louis blues');
+  assert.equal(outrightSideKey('Montréal Canadiens'), 'montreal canadiens');
   assert.equal(outrightSelectionMatches('Golden State Warriors', 'Golden State Warriors'), true);
   assert.equal(outrightSelectionMatches('  golden   state warriors ', 'Golden State Warriors'), true);
-  assert.equal(outrightSelectionMatches('Golden State Warriors +12000', 'Golden State Warriors'), true);
-  assert.equal(outrightSelectionMatches('Warriors +12000', 'Warriors'), true);
-  assert.equal(outrightSelectionMatches('Warriors', 'Golden State Warriors'), false);
-  assert.equal(outrightSelectionMatches('Boston Celtics', 'Golden State Warriors'), false);
-  assert.equal(outrightSelectionMatches('', 'Warriors'), false);
   assert.equal(outrightGrade('Golden State Warriors', 'Golden State Warriors', false), 'win');
   assert.equal(outrightGrade('Boston Celtics', 'Golden State Warriors', false), 'loss');
   assert.equal(outrightGrade('Boston Celtics', null, true), 'void');
@@ -609,6 +615,7 @@ test('organizer events page past the 1000-row cap, including a later future', as
 
   const dash = readFileSync(new URL('../../../landing/dashboard/dashboard.js', import.meta.url), 'utf8');
   assert.match(dash, /BookiPaging\.fetchAllRows\(\(\) => this\.supabase/);
+  assert.match(dash, /\.order\('start_time', \{ ascending: true \}\)\s*\.order\('id', \{ ascending: true \}\)/);
 });
 
 test('the singles payload still satisfies the deployed submit_bets contract', () => {

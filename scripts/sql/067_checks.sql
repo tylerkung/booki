@@ -23,6 +23,36 @@ BEGIN
         RAISE EXCEPTION 'fixture lost an e4df12ed settlement before the test';
     END IF;
 
+    IF NOT outright_selection_matches('St. Louis Blues', 'St Louis Blues')
+       OR NOT outright_selection_matches('St Louis Blues (+2000)', 'St Louis Blues')
+       OR NOT outright_selection_matches('Montréal Canadiens', 'Montreal Canadiens')
+       OR NOT outright_selection_matches('Golden State Warriors +12000', 'Golden State Warriors')
+       OR outright_selection_matches('Warriors', 'Golden State Warriors') THEN
+        RAISE EXCEPTION 'name matcher disagreed: % / % / %',
+            outright_side_key('St. Louis Blues'),
+            outright_side_key('St Louis Blues (+2000)'),
+            outright_side_key('Montréal Canadiens');
+    END IF;
+
+    v_result := settle_outright_tx(v_event, 'Not A Real Team', false, v_actor);
+    IF v_result->>'error' <> 'unknown_winner' THEN
+        RAISE EXCEPTION 'unknown winner should be refused, got %', v_result;
+    END IF;
+    IF (SELECT count(*) FROM outright_results) <> 0 THEN
+        RAISE EXCEPTION 'unknown winner wrote a result';
+    END IF;
+
+    v_result := settle_outright_tx(v_event, 'Golden State Warriors', false, v_actor, false, true);
+    IF COALESCE((v_result->>'dry_run')::boolean, false) IS NOT TRUE
+       OR (v_result->>'wins')::int <> 3
+       OR (v_result->>'losses')::int <> 3 THEN
+        RAISE EXCEPTION 'dry run counts were %', v_result;
+    END IF;
+    IF (SELECT count(*) FROM outright_results) <> 0
+       OR (SELECT count(*) FROM ledger_entries WHERE bet_id = '67000000-0000-4000-8000-000000000010') <> 0 THEN
+        RAISE EXCEPTION 'dry run wrote rows';
+    END IF;
+
     v_result := settle_outright_tx(v_event, 'Golden State Warriors', false, v_actor);
     IF COALESCE((v_result->>'success')::boolean, false) IS NOT TRUE THEN
         RAISE EXCEPTION 'first settle failed: %', v_result;
@@ -70,6 +100,11 @@ BEGIN
     IF (SELECT count(*) FROM ledger_entries
          WHERE bet_id = '67000000-0000-4000-8000-000000000013') <> 0 THEN
         RAISE EXCEPTION 'declined pick was paid';
+    END IF;
+    SELECT status INTO v_status FROM bets WHERE id = '67000000-0000-4000-8000-000000000015';
+    IF v_status <> 'pending'
+       OR (SELECT count(*) FROM ledger_entries WHERE bet_id = '67000000-0000-4000-8000-000000000015') <> 0 THEN
+        RAISE EXCEPTION 'pending pick was touched, status %', v_status;
     END IF;
     SELECT status INTO v_status FROM bets WHERE id = '67000000-0000-4000-8000-000000000013';
     IF v_status <> 'declined' THEN
@@ -146,14 +181,14 @@ BEGIN
     IF COALESCE((v_result->>'success')::boolean, false) IS NOT TRUE THEN
         RAISE EXCEPTION 'void failed: %', v_result;
     END IF;
-    SELECT amount INTO v_amount FROM ledger_entries
-     WHERE bet_id = '67000000-0000-4000-8000-000000000040' AND type = 'settlement';
-    IF v_amount <> 0 THEN
-        RAISE EXCEPTION 'void payout should be 0, got %', v_amount;
+    SELECT count(*) INTO v_count FROM ledger_entries
+     WHERE bet_id = '67000000-0000-4000-8000-000000000040';
+    IF v_count <> 0 THEN
+        RAISE EXCEPTION 'void single should have no ledger row, got %', v_count;
     END IF;
     SELECT status, grade_result INTO v_status, v_grade
       FROM bets WHERE id = '67000000-0000-4000-8000-000000000040';
-    IF v_status <> 'settled' OR v_grade <> 'void' THEN
+    IF v_status <> 'void' OR v_grade IS NOT NULL THEN
         RAISE EXCEPTION 'voided single is % / %', v_status, v_grade;
     END IF;
 
@@ -162,9 +197,43 @@ BEGIN
         RAISE EXCEPTION 'void re-run was not idempotent: %', v_again;
     END IF;
     SELECT count(*) INTO v_count FROM ledger_entries
-     WHERE bet_id = '67000000-0000-4000-8000-000000000040' AND type = 'settlement';
+     WHERE bet_id = '67000000-0000-4000-8000-000000000040';
+    IF v_count <> 0 THEN
+        RAISE EXCEPTION 'void re-run posted a ledger row';
+    END IF;
+
+    v_result := grade_and_settle_bet_tx(
+        '67000000-0000-4000-8000-000000000070', 'void', v_actor, 'manual_settle_070');
+    IF COALESCE((v_result->>'voided')::boolean, false) IS NOT TRUE THEN
+        RAISE EXCEPTION 'manual void failed: %', v_result;
+    END IF;
+    SELECT status INTO v_status FROM bets WHERE id = '67000000-0000-4000-8000-000000000070';
+    IF v_status <> 'void'
+       OR (SELECT count(*) FROM ledger_entries WHERE bet_id = '67000000-0000-4000-8000-000000000070') <> 0 THEN
+        RAISE EXCEPTION 'manual void wrote a ledger row or status %', v_status;
+    END IF;
+
+    v_result := grade_and_settle_bet_tx(
+        '67000000-0000-4000-8000-000000000071', 'win', v_actor, 'manual_settle_071');
+    IF COALESCE((v_result->>'success')::boolean, false) IS NOT TRUE THEN
+        RAISE EXCEPTION 'manual win failed: %', v_result;
+    END IF;
+    SELECT idempotency_key, count(*) INTO v_key, v_count
+      FROM settlement_events
+     WHERE bet_id = '67000000-0000-4000-8000-000000000071'
+     GROUP BY idempotency_key;
+    IF v_count <> 1 OR v_key <> 'manual_settle_67000000-0000-4000-8000-000000000071_v1' THEN
+        RAISE EXCEPTION 'manual settle key % count %', v_key, v_count;
+    END IF;
+    v_conflict := grade_and_settle_bet_tx(
+        '67000000-0000-4000-8000-000000000071', 'loss', v_actor, 'manual_settle_071_again');
+    IF v_conflict->>'error' <> 'outcome_conflict' THEN
+        RAISE EXCEPTION 'regrade should conflict, got %', v_conflict;
+    END IF;
+    SELECT count(*) INTO v_count FROM ledger_entries
+     WHERE bet_id = '67000000-0000-4000-8000-000000000071' AND type = 'settlement';
     IF v_count <> 1 THEN
-        RAISE EXCEPTION 'void re-run posted % rows', v_count;
+        RAISE EXCEPTION 'regrade posted % settlement rows', v_count;
     END IF;
 
     IF (SELECT count(*) FROM ledger_entries

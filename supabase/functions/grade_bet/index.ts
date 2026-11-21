@@ -2,7 +2,6 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient, getUserIdFromAuthHeader } from '../_shared/supabase.ts';
 import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
-import { settleBetTx } from '../_shared/settle_tx.ts';
 import { isOutrightMarket, manualSingleSettlementKey } from '../_shared/outright.ts';
 
 interface GradeBetRequest {
@@ -188,90 +187,66 @@ async function gradeAndSettleSingle(
   body: GradeBetRequest,
   bet: BetRecord,
 ): Promise<Response> {
-  // Already paid. A second click uses a new request key, so the cache above
-  // does not catch it. settle_bet_tx would also refuse a second ledger row;
-  // returning here avoids rewriting the grade.
-  if (bet.status === 'settled' || bet.status === 'void') {
-    const response = JSON.stringify({
-      success: true,
-      idempotent: true,
-      settled: bet.status === 'settled',
-      bet,
-    });
-    await storeIdempotency(client, body.idempotency_key, 'grade_bet', userId, response);
-    return new Response(response, {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  // A second grade of a settled pick is not a success. Same outcome is an
+  // idempotent replay; a different outcome must not look like it stuck.
+  if (bet.status === 'settled' && bet.grade_result && bet.grade_result !== body.outcome) {
+    return json({ success: false, error: 'Bet has already been settled' }, 409);
+  }
+  if (bet.status === 'void' && body.outcome !== 'void') {
+    return json({ success: false, error: 'Bet has already been voided' }, 409);
   }
 
   if (bet.status === 'graded' && bet.grade_result && bet.grade_result !== body.outcome) {
     return json({ success: false, error: 'Bet has already been graded' }, 400);
   }
 
-  if (bet.status !== 'accepted' && bet.status !== 'graded') {
+  if (!['accepted', 'graded', 'settled', 'void'].includes(bet.status)) {
     return statusError(bet.status);
   }
 
-  const now = new Date().toISOString();
-  let graded = bet;
-
-  if (bet.status === 'accepted' || bet.grade_result !== body.outcome) {
-    // status stays one settle_bet_tx accepts. A void is grade_result 'void',
-    // not status 'void': the RPC rejects status 'void' and posts a 0 payout
-    // for grade_result 'void', then marks the row settled.
-    const { data: updatedBet, error: updateError } = await client
-      .from('bets')
-      .update({
-        grade_result: body.outcome,
-        status: 'graded',
-        updated_at: now,
-      })
-      .eq('id', body.bet_id)
-      .in('status', ['accepted', 'graded'])
-      .select()
-      .single();
-
-    if (updateError || !updatedBet) {
-      console.error('Error updating bet:', updateError);
-      return json({ success: false, error: 'Failed to grade bet' }, 500);
-    }
-
-    graded = updatedBet as BetRecord;
-
-    await emitAuditEvent(client, {
-      bookieId: bet.bookie_id,
-      actorUserId: userId,
-      entityType: 'bet',
-      entityId: bet.id,
-      actionType: 'grade',
-      previousState: { status: bet.status, grade_result: bet.grade_result },
-      newState: { status: 'graded', grade_result: body.outcome },
-    });
-  }
-
-  // The ledger write is settle_bet_tx, one transaction, the same path as
-  // auto-grading. The key is stable, so a retry that arrives after the grade
-  // write and before this call posts the row once.
-  const posted = await settleBetTx(client, {
-    betId: bet.id,
-    actorUserId: userId,
-    idempotencyKey: manualSingleSettlementKey(bet.id),
-    mode: 'manual',
+  // Grade and, for a win/loss/push, the ledger row are one transaction.
+  // A void stays status void and writes no ledger row.
+  const { data, error } = await client.rpc('grade_and_settle_bet_tx', {
+    p_bet_id: bet.id,
+    p_outcome: body.outcome,
+    p_actor_user_id: userId,
+    p_idempotency_key: manualSingleSettlementKey(bet.id),
   });
 
-  if (posted.error || !posted.result) {
-    console.error('Error settling bet:', posted.error);
-    return json({ success: false, error: posted.error || 'Failed to settle bet' }, 500);
+  if (error) {
+    console.error('grade_and_settle_bet_tx error:', error);
+    return json({ success: false, error: error.message }, 500);
+  }
+
+  const result = data as {
+    success?: boolean;
+    error?: string;
+    status?: string;
+    idempotent?: boolean;
+    settled?: boolean;
+    voided?: boolean;
+    bet?: Record<string, unknown>;
+    ledger_entry?: Record<string, unknown> | null;
+  } | null;
+
+  if (!result?.success) {
+    const conflict = result?.error === 'outcome_conflict';
+    const settledConflict = conflict && (result?.status === 'settled' || result?.status === 'void');
+    return json({
+      success: false,
+      error: settledConflict
+        ? 'Bet has already been settled'
+        : (result?.error === 'outcome_conflict' ? 'Bet has already been graded' : (result?.error || 'Failed to grade bet')),
+    }, settledConflict ? 409 : 400);
   }
 
   const response = JSON.stringify({
     success: true,
-    idempotent: posted.result.idempotent === true,
-    settled: true,
-    bet: posted.result.bet ?? graded,
-    ledger_entry: posted.result.ledger_entry ?? null,
-    settlement_version: posted.result.settlement_version ?? null,
+    idempotent: result.idempotent === true,
+    settled: result.settled === true,
+    voided: result.voided === true,
+    bet: result.bet ?? bet,
+    ledger_entry: result.ledger_entry ?? null,
   });
 
   await storeIdempotency(client, body.idempotency_key, 'grade_bet', userId, response);
