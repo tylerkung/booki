@@ -1264,7 +1264,21 @@ Deno.serve(async (req) => {
               // Find matching odds event by external_id
               const oddsEvent = oddsEvents.find((e) => e.id === game.external_id);
               if (!oddsEvent) {
+                // The sport payload came back and this game was not in it.
+                // Stamp the attempt. A null last_auto_odds_refresh bypasses
+                // the tier clock, so an absent game otherwise made this sport
+                // get fetched every 30 minutes. The stamp puts it on the
+                // normal 2h/4h schedule. A failed sport fetch does not reach
+                // here, so a blip still retries on the next run.
                 console.log(`No odds found for event ${game.id} (external_id: ${game.external_id})`);
+                const { error: stampError } = await client
+                  .from('events')
+                  .update({ last_auto_odds_refresh: now.toISOString() })
+                  .eq('id', game.id);
+                if (stampError) {
+                  console.error(`Error stamping missed odds lookup for ${game.id}:`, stampError);
+                  oddsErrors.push({ eventId: game.id, error: 'Failed to stamp missed odds lookup' });
+                }
                 continue;
               }
 

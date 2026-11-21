@@ -14,9 +14,9 @@ Track all SQL changes needed in Supabase when updating the app.
 
 ## Pending Migrations
 
-### Release order for 064, 062, and 063 (none applied)
+### Release order for 064, 062, and 063
 
-064 is the main-line migration from PR #13. Apply it before 062 and 063.
+064 (one shared main line, PR #13) is applied. It was applied before 062 and 063.
 It does not update or delete rows. `sync_games` and `auto_refresh_games`
 write `main_line`, so deploying those functions before 064 makes every
 market write fail. 062 and 063 do not update or delete existing rows either.
@@ -25,7 +25,7 @@ Do not ship any of the nine functions before 062: every pick submit inserts
 exist until 062, so a submit fails. 063 is safe while the old functions are
 still live. It only adds the settlement guard.
 
-1. Apply `supabase/migrations/064_main_line_identity.sql`.
+1. `supabase/migrations/064_main_line_identity.sql` is applied.
 2. Apply `supabase/migrations/062_bet_prop_snapshot.sql`.
 3. Apply `supabase/migrations/063_one_active_settlement.sql`.
 4. Deploy these nine together, `--no-verify-jwt --project-ref vstfauqufwpdytmvjyfz`: `grade_player_props`, `grade_dry_run`, `refresh_live_scores`, `auto_refresh_games`, `sync_games`, `submit_parlay`, `submit_bets`, `submit_bet`, `settle_parlay`.
@@ -35,11 +35,11 @@ still live. It only adds the settlement guard.
 
 ### 066 — bookmaker key on markets (NOT applied)
 
-Adds nullable `markets.bookmaker` (the Odds API bookmaker key). Does not update, delete, or backfill rows. `sync_games` and `auto_refresh_games` write the column, so apply this before deploying those two. 065 is the submit-idempotency migration on another branch. 067 is reserved. This migration does not depend on either.
+Adds nullable `markets.bookmaker` (the Odds API bookmaker key). Does not update, delete, or backfill rows. Apply 066, then deploy `sync_games` and `auto_refresh_games`, then `submit_bet`, `submit_bets`, and `submit_parlay`. 065 is PR #15. 067 is PR #16. 064 is already applied.
 
-### 064 — one shared main line (NOT applied)
+### 064 — one shared main line (applied)
 
-From PR #13. Adds nullable `markets.main_line` and a partial unique index, and makes `superseded_market_ids` ignore `bettable = false`. Does not update, delete, or backfill market rows. Apply before 062 and 063, and before deploying `sync_games` or `auto_refresh_games`.
+From PR #13. Applied. Adds nullable `markets.main_line` and a partial unique index, and makes `superseded_market_ids` ignore `bettable = false`. Does not update, delete, or backfill market rows.
 
 ### 063 — one active settlement (NOT applied)
 
@@ -83,7 +83,7 @@ request. `scripts/test-061-rls.sh` repeats them on a throwaway local Postgres
 
 > **Note:** this file records migrations narratively and stopped being updated
 > around 030. The repo's `supabase/migrations/` directory is the authoritative
-> list — it runs through 064. 061 is applied. 064, then 062, then 063 are not applied yet — and `scripts/check-migrations.py` verifies numbering.
+> list — it runs through 066. 061 and 064 are applied. 066 is not applied yet. 065 is PR #15 and 067 is PR #16. `scripts/check-migrations.py` verifies numbering.
 > The entries below cover the most recent work; older gaps are not backfilled.
 
 ### 2026-08-28: MLB Player Props (056–058)

@@ -7,10 +7,13 @@ import { planSharedMainLine } from './main_line.ts';
 import {
   bettableSharedIds,
   canonicalTeamName,
+  isOffBoardAmerican,
   MONEYLINE_MAX_AGE_MS,
   moneylineOffBoardError,
   OFF_BOARD_AMERICAN,
+  pairAlternateSpreadOutcomes,
   selectMoneyline,
+  sameSchool,
   sameTeam,
 } from './h2h.ts';
 import { oddsRefreshSkip } from './odds_refresh.ts';
@@ -53,6 +56,29 @@ test('Nov 20 names that the exact match dropped', () => {
   for (const [eventName, bookName] of pairs) {
     assert.equal(sameTeam(eventName, bookName), true, `${eventName} vs ${bookName}`);
   }
+});
+
+test('Odds API spellings that are actually stored on events', () => {
+  // home_team / away_team rows, not guessed abbreviations.
+  const pairs = [
+    ['Miss Valley St Delta Devils', 'MVSU'],
+    ['Miss Valley St Delta Devils', 'Mississippi Valley State'],
+    ['Miss Valley St Delta Devils', 'Mississippi Valley State Delta Devils'],
+    ['Loyola (MD) Greyhounds', 'Loyola Maryland'],
+    ['Eastern Illinois Panthers', 'E. Illinois'],
+    ['Le Moyne Dolphins', 'LeMoyne'],
+    ['Ole Miss Rebels', 'Mississippi'],
+    ['Wofford Terriers', 'Wofford'],
+    ['Coastal Carolina Chanticleers', 'Coastal Carolina'],
+    ['Mississippi St Bulldogs', 'Mississippi State'],
+  ];
+  for (const [stored, book] of pairs) {
+    assert.equal(sameTeam(stored, book), true, `${stored} vs ${book}`);
+  }
+  assert.equal(sameTeam('Ole Miss Rebels', 'Mississippi St Bulldogs'), false);
+  assert.equal(sameTeam('Ole Miss Rebels', 'Mississippi State Bulldogs'), false);
+  assert.equal(canonicalTeamName('Łódź'), canonicalTeamName('Lodz'));
+  assert.equal(canonicalTeamName('Ørland'), canonicalTeamName('Orland'));
 });
 
 test('a different school is not a match', () => {
@@ -116,7 +142,7 @@ test('another book is used when DraftKings and Fanatics have no moneyline', () =
   assert.equal(pick.awayPrice, 120);
 });
 
-test('a price worse than -10000 is off the board, and the next sane book is used', () => {
+test('DraftKings past -10000 is off the board, even when another book is in bounds', () => {
   const extreme = selectMoneyline(
     [book('draftkings', h2h('Tennessee', -20000, 'Coastal Carolina', 3500))],
     'Tennessee',
@@ -124,7 +150,7 @@ test('a price worse than -10000 is off the board, and the next sane book is used
   );
   assert.equal(extreme, null);
 
-  const fallback = selectMoneyline(
+  const doNotShop = selectMoneyline(
     [
       book('draftkings', h2h('Tennessee', -20000, 'Coastal Carolina', 3500)),
       book('fanatics', h2h('Tennessee', -450, 'Coastal Carolina', 360)),
@@ -132,9 +158,19 @@ test('a price worse than -10000 is off the board, and the next sane book is used
     'Tennessee',
     'Coastal Carolina',
   );
+  assert.equal(doNotShop, null);
+
+  // Fall through only when DraftKings does not have the market.
+  const fallback = selectMoneyline(
+    [
+      book('draftkings', [], 'spreads'),
+      book('fanatics', h2h('Tennessee Volunteers', -450, 'Coastal Carolina Chanticleers', 360)),
+    ],
+    'Tennessee',
+    'Coastal Carolina',
+  );
   assert.equal(fallback.bookmaker, 'fanatics');
   assert.equal(fallback.homePrice, -450);
-  assert.equal(fallback.awayPrice, 360);
 
   assert.equal(moneylineOffBoardError(
     { type: 'moneyline', odds_a: 3500, odds_b: -20000, updated_at: '2026-11-20T22:00:00Z' },
@@ -175,6 +211,64 @@ test('a moneyline older than 18 hours is off the board', () => {
   assert.equal(moneylineOffBoardError(row(fresh), 150, NOW), null);
   assert.equal(moneylineOffBoardError(row(stale), 150, NOW), 'off_the_board');
   assert.equal(moneylineOffBoardError(row(null), 150, NOW), 'off_the_board');
+});
+
+test('alternate spreads keep overlapping school names apart', () => {
+  const games = [
+    ['Texas', 'TCU', 'Texas Longhorns', 'TCU Horned Frogs'],
+    ['Houston', 'Houston Christian', 'Houston Cougars', 'Houston Christian Huskies'],
+    ['Utah', 'Utah Valley', 'Utah Utes', 'Utah Valley Wolverines'],
+    ['South Carolina', 'SC Upstate', 'South Carolina Gamecocks', 'South Carolina Upstate Spartans'],
+  ];
+  for (const [home, away, homeName, awayName] of games) {
+    assert.equal(sameSchool(homeName, awayName), false, `${away} is not ${home}`);
+    const grouped = pairAlternateSpreadOutcomes([
+      { name: homeName, point: -3.5, price: -110 },
+      { name: awayName, point: 3.5, price: -110 },
+      { name: homeName, point: -7, price: -110 },
+      { name: awayName, point: 7, price: -110 },
+    ], home, away);
+    const three = grouped.get(3.5);
+    const seven = grouped.get(7);
+    assert.equal(three && three.home && three.home.name, homeName, `${away} @ ${home} 3.5`);
+    assert.equal(three && three.away && three.away.name, awayName, `${away} @ ${home} 3.5 away`);
+    assert.equal(seven && seven.home && seven.away && seven.home.name, homeName);
+  }
+});
+
+test('a null price is off the board on the server and the client', () => {
+  const fresh = '2026-11-20T22:00:00Z';
+  assert.equal(isOffBoardAmerican(null), true);
+  assert.equal(isOffBoardAmerican(undefined), true);
+  assert.equal(moneylineOffBoardError(
+    { type: 'moneyline', odds_a: null, odds_b: -110, updated_at: fresh },
+    -110,
+    NOW,
+  ), 'off_the_board');
+  assert.equal(board.moneylineMarketOnBoard(
+    { odds_a: null, odds_b: -110, bettable: true, updated_at: fresh },
+    NOW,
+  ), false);
+  assert.equal(board.moneylinePriceOffBoard(null), isOffBoardAmerican(null));
+  assert.equal(board.moneylinePriceOffBoard(-110), isOffBoardAmerican(-110));
+  assert.equal(board.moneylinePriceOffBoard(-20000), isOffBoardAmerican(-20000));
+});
+
+test('a retired moneyline refreshes the board and marks the slip leg', () => {
+  for (const msg of ['market_not_bettable', 'This market is not available to bet', 'off_the_board']) {
+    const d = board.submitFailureDisposition(msg);
+    assert.equal(d.refreshBoard, true, msg);
+    assert.equal(d.markOffBoard, true, msg);
+    assert.equal(d.clearSlip, false, msg);
+    assert.equal(board.isOffBoardSlipError(msg), true, msg);
+  }
+  assert.deepEqual(
+    board.slipLegsToMarkOffBoard([1, 4], [
+      { index: 0, error: 'This market is not available to bet' },
+      { index: 1, error: 'line_changed' },
+    ]),
+    [1],
+  );
 });
 
 test('Campbell @ K-State: writing the new moneyline retires the older one', () => {
@@ -275,6 +369,9 @@ test('the ingest, the submits, and the board are wired to this', () => {
   }
   assert.match(refresh, /oddsRefreshSkip/);
   assert.match(refresh, /last_auto_odds_refresh/);
+  const missed = refresh.slice(refresh.indexOf('No odds found for event'));
+  assert.match(missed.slice(0, 900), /last_auto_odds_refresh/);
+  assert.match(sync, /pairAlternateSpreadOutcomes/);
   assert.match(boardJs, /Off the board/);
   assert.match(html, /leagueHeaderCount\(leagueGroup\)/);
   assert.match(html, /leagueGroup\.outrights/);

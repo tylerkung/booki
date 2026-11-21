@@ -87,6 +87,7 @@ const ALIASES: Record<string, string> = {
   'mvsu': 'mississippi valley state',
   'mississippi valley': 'mississippi valley state',
   'miss valley state': 'mississippi valley state',
+  'sc upstate': 'south carolina upstate',
   'lemoyne': 'le moyne',
   'loyola md': 'loyola maryland',
   'e illinois': 'eastern illinois',
@@ -140,7 +141,7 @@ const MASCOTS = new Set([
   'bison', 'blazers', 'bluejays', 'bobcats', 'boilermakers', 'braves', 'broncos',
   'bruins', 'buckeyes', 'bulldogs', 'cardinal', 'cardinals', 'catamounts',
   'cavaliers', 'chanticleers', 'chippewas', 'colonials', 'cornhuskers', 'cougars',
-  'cowboys', 'cyclones', 'deacons', 'demon', 'devils', 'dolphins', 'ducks',
+  'cowboys', 'cyclones', 'deacons', 'delta', 'demon', 'devils', 'dolphins', 'ducks',
   'dukes', 'eagles', 'explorers', 'falcons', 'flashes', 'flyers', 'friars',
   'frogs', 'gamecocks', 'gaels', 'gators', 'golden', 'gophers', 'governors',
   'greyhounds', 'hawkeyes', 'hawks', 'heels', 'hilltoppers', 'hokies', 'hoosiers',
@@ -170,6 +171,11 @@ const DISTINGUISHERS = new Set([
   ...Object.values(STATE_ABBREV),
 ]);
 
+/**
+ * Null, missing, and non-finite prices are off the board, same as a number
+ * worse than -10000. The dashboard uses the same rule. A pick'em is a real
+ * number on both sides and is not this.
+ */
 export function isOffBoardAmerican(price: unknown): boolean {
   return typeof price !== 'number' || !Number.isFinite(price) || price < OFF_BOARD_AMERICAN;
 }
@@ -220,9 +226,25 @@ export function bettableSharedIds(
     .map((r) => r.id);
 }
 
+/** Letters that do not decompose under NFD, so the accent strip never sees them. */
+function foldLetters(raw: string): string {
+  return raw
+    .replace(/Ł/g, 'L').replace(/ł/g, 'l')
+    .replace(/Ø/g, 'O').replace(/ø/g, 'o')
+    .replace(/Đ/g, 'D').replace(/đ/g, 'd')
+    .replace(/Ð/g, 'D').replace(/ð/g, 'd')
+    .replace(/Þ/g, 'Th').replace(/þ/g, 'th')
+    .replace(/Æ/g, 'AE').replace(/æ/g, 'ae')
+    .replace(/Œ/g, 'OE').replace(/œ/g, 'oe')
+    .replace(/ß/g, 'ss')
+    .replace(/Ħ/g, 'H').replace(/ħ/g, 'h')
+    .replace(/Ŋ/g, 'N').replace(/ŋ/g, 'n')
+    .replace(/Ŧ/g, 'T').replace(/ŧ/g, 't');
+}
+
 export function normalizeTeamName(raw: string | null | undefined): string {
   if (!raw) return '';
-  let s = raw.normalize('NFD').replace(/\p{M}/gu, '');
+  let s = foldLetters(raw).normalize('NFD').replace(/\p{M}/gu, '');
   s = s.toLowerCase().replace(/&/g, ' and ');
   s = s.replace(/\(([^)]*)\)/g, (_, inner: string) => {
     const token = String(inner).trim().toLowerCase().replace(/\./g, '');
@@ -231,7 +253,10 @@ export function normalizeTeamName(raw: string | null | undefined): string {
   s = s.replace(/[.'’`]/g, '');
   s = s.replace(/[-/]/g, ' ');
   s = s.replace(/\s+/g, ' ').trim();
-  s = s.replace(/ st$/, ' state');
+  // "St." at the front is Saint. Anywhere else in these names it is State
+  // ("Miss Valley St", "Mississippi St"). A trailing-only replace left the
+  // Odds API spelling "Miss Valley St Delta Devils" unmatched.
+  s = s.replace(/\bst\b/g, (_token, offset: number) => (offset === 0 ? 'saint' : 'state'));
   return s;
 }
 
@@ -279,6 +304,45 @@ export function sameTeam(
   b: string | null | undefined,
 ): boolean {
   return matchScore(a, b) >= 80;
+}
+
+/**
+ * The same school, not a shorter name that happens to be a prefix.
+ *
+ * sameTeam("Texas", "TCU") is true because TCU canonicalizes to "texas
+ * christian" and the leftover token is not a distinguisher. That is fine for
+ * choosing a moneyline assignment, where both outcomes are scored together
+ * and the better pairing wins. It is wrong for alternate spreads, which tag
+ * each outcome on its own: "Houston Christian" matches "Houston" first and
+ * the real Houston outcome never becomes the other side, so the pair is
+ * dropped. Exact identity is canonical equality (or the same letters with
+ * the spaces removed). A nickname still matches, because mascots are stripped
+ * before the compare. A different school does not.
+ */
+export function sameSchool(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  return matchScore(a, b) >= 95;
+}
+
+export function pairAlternateSpreadOutcomes<T extends { name: string; point?: number }>(
+  outcomes: readonly T[],
+  home: string | null | undefined,
+  away: string | null | undefined,
+): Map<number, { home?: T; away?: T }> {
+  const byPoint = new Map<number, { home?: T; away?: T }>();
+  for (const outcome of outcomes) {
+    if (outcome.point === undefined) continue;
+    const key = Math.abs(outcome.point);
+    const pair = byPoint.get(key) ?? {};
+    const homeHit = sameSchool(outcome.name, home);
+    const awayHit = sameSchool(outcome.name, away);
+    if (homeHit && !awayHit) pair.home = outcome;
+    else if (awayHit && !homeHit) pair.away = outcome;
+    byPoint.set(key, pair);
+  }
+  return byPoint;
 }
 
 const NOT_A_TEAM = new Set(['over', 'under', 'draw', 'odd', 'even']);
@@ -332,10 +396,15 @@ export function orderBookmakers<T extends { key: string }>(books: readonly T[]):
 
 /**
  * One moneyline, both sides from the same book.
- * DraftKings, then Fanatics, then the rest. A book whose names do not map
- * onto both teams is skipped. A book with either side worse than -10000 is
- * skipped so a sane book behind it can still price the game. Null means off
- * the board: do not insert, and retire the one we had.
+ *
+ * DraftKings, then Fanatics, then the rest. Most missing moneylines are
+ * DraftKings not offering the market at all, which is why the later books
+ * exist. Fall through only when this book lacks the market (no h2h, or the
+ * outcomes do not name both teams).
+ *
+ * When the book does have both teams and either price is worse than -10000,
+ * the moneyline is off the board. Do not shop the next book for a milder
+ * number. Null means off the board: do not insert, and retire the one we had.
  */
 export function selectMoneyline(
   books: readonly H2HBook[] | null | undefined,
@@ -348,7 +417,9 @@ export function selectMoneyline(
     if (!market?.outcomes?.length) continue;
     const paired = pairTeamOutcomes(market.outcomes, home, away);
     if (!paired) continue;
-    if (isOffBoardAmerican(paired.home.price) || isOffBoardAmerican(paired.away.price)) continue;
+    if (isOffBoardAmerican(paired.home.price) || isOffBoardAmerican(paired.away.price)) {
+      return null;
+    }
     return {
       bookmaker: book.key,
       awayPrice: paired.away.price,

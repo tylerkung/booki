@@ -3734,14 +3734,14 @@
                         <!-- Selection Cards -->
                         <div class="bs-selections" style="margin-bottom:0;">
                             <template x-for="(sel, idx) in betSlipSelections" :key="sel.event_id + sel.market_id + sel.side_indicator">
-                                <div class="bs-card">
+                                <div class="bs-card" :class="{ 'bs-card-off': sel.offBoard }">
                                     <div class="bs-card-header">
                                         <div style="flex:1;min-width: 0;">
                                             <div class="bs-card-side" x-text="sel.side"></div>
                                             <div class="bs-card-event" x-text="sel.event_name"></div>
                                         </div>
                                         <div style="display:flex;align-items:center;gap:var(--s-sm);">
-                                            <span class="bs-card-odds" x-text="formatOdds(sel.odds)"></span>
+                                            <span class="bs-card-odds" x-text="sel.offBoard ? 'Off the board' : formatOdds(sel.odds)"></span>
                                             <button class="bs-remove-btn" @click="removeSelection(idx)">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                             </button>
@@ -3749,7 +3749,7 @@
                                     </div>
 
                                     <!-- Stake / Potential inputs (singles mode only) -->
-                                    <template x-if="betSlipMode === 'singles'">
+                                    <template x-if="betSlipMode === 'singles' && !sel.offBoard">
                                         <div class="bs-stake-pair">
                                             <div class="bs-field">
                                                 <div class="bs-field-label">Stake</div>
@@ -3949,14 +3949,14 @@
                         <!-- Selection Cards -->
                         <div class="bs-selections">
                             <template x-for="(sel, idx) in betSlipSelections" :key="sel.event_id + sel.market_id + sel.side_indicator">
-                                <div class="bs-card">
+                                <div class="bs-card" :class="{ 'bs-card-off': sel.offBoard }">
                                     <div class="bs-card-header">
                                         <div style="flex:1;min-width: 0;">
                                             <div class="bs-card-side" x-text="sel.side"></div>
                                             <div class="bs-card-event" x-text="sel.event_name"></div>
                                         </div>
                                         <div style="display:flex;align-items:center;gap:var(--s-sm);">
-                                            <span class="bs-card-odds" x-text="formatOdds(sel.odds)"></span>
+                                            <span class="bs-card-odds" x-text="sel.offBoard ? 'Off the board' : formatOdds(sel.odds)"></span>
                                             <button class="bs-remove-btn" @click="removeSelection(idx)">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                             </button>
@@ -3964,7 +3964,7 @@
                                     </div>
 
                                     <!-- Stake / Potential inputs (singles mode only) -->
-                                    <template x-if="betSlipMode === 'singles'">
+                                    <template x-if="betSlipMode === 'singles' && !sel.offBoard">
                                         <div class="bs-stake-pair">
                                             <div class="bs-field">
                                                 <div class="bs-field-label">Stake</div>

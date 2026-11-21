@@ -11,8 +11,8 @@ import {
 } from '../_shared/main_line.ts';
 import {
   bettableSharedIds,
+  pairAlternateSpreadOutcomes,
   pairTeamOutcomes,
-  sameTeam,
   selectMoneyline,
 } from '../_shared/h2h.ts';
 
@@ -585,20 +585,16 @@ export function extractMarketsFromOddsEvent(
         break;
       }
       case 'alternate_spreads': {
-        // Alternate spreads: group outcomes by |point| into home/away pairs
-        const byPoint = new Map<number, { home?: OddsOutcome; away?: OddsOutcome }>();
-        for (const outcome of market.outcomes) {
-          if (outcome.point === undefined) continue;
-          const key = Math.abs(outcome.point);
-          const pair = byPoint.get(key) || {};
-          if (sameTeam(outcome.name, oddsEvent.home_team)) {
-            pair.home = outcome;
-          } else if (sameTeam(outcome.name, oddsEvent.away_team)) {
-            pair.away = outcome;
-          }
-          byPoint.set(key, pair);
-        }
-        for (const [_, pair] of byPoint) {
+        // Exact school identity, not a prefix. sameTeam("Houston", "Houston
+        // Christian") is true, and checking home first then dropped the pair
+        // for TCU @ Texas, Houston Christian @ Houston, Utah Valley @ Utah,
+        // and SC Upstate @ South Carolina.
+        const byPoint = pairAlternateSpreadOutcomes(
+          market.outcomes,
+          oddsEvent.home_team,
+          oddsEvent.away_team,
+        );
+        for (const [, pair] of byPoint) {
           if (pair.home && pair.away) {
             const awaySpread = formatSpread(pair.away.point ?? 0);
             const homeSpread = formatSpread(pair.home.point ?? 0);

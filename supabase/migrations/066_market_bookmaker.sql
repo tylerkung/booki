@@ -11,10 +11,12 @@
 -- update, delete, or backfill them. sync_games and auto_refresh_games set
 -- the key on the rows they write.
 --
--- Apply this BEFORE deploying those two functions. Their writes include
--- bookmaker. Deploying them first fails every market write on the unknown
--- column, and the odds sync stops. 065 is the submit-idempotency migration
--- on another branch. 067 is reserved. This file does not touch either.
+-- Apply this BEFORE deploying sync_games and auto_refresh_games. Their
+-- writes include bookmaker. Deploying them first fails every market write
+-- on the unknown column, and the odds sync stops. Then deploy submit_bet,
+-- submit_bets, and submit_parlay. 065 is the submit-idempotency migration
+-- on PR #15. 067 is PR #16. This file does not touch either. 064 is already
+-- applied.
 --
 -- Idempotent. A re-run after a partial failure only adds the column if it
 -- is missing.

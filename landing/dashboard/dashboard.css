@@ -2164,6 +2164,13 @@ input, button, select, textarea { font: inherit; }
     text-overflow: ellipsis;
 }
 
+.bs-card-off .bs-card-odds {
+    color: var(--text-muted);
+    font-size: var(--fs-micro);
+    white-space: normal;
+    text-align: right;
+}
+
 .bs-card-odds {
     font-family: var(--font-mono);
     font-size: var(--fs-body);
