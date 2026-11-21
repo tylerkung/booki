@@ -71,11 +71,83 @@ function isStaleBoardErrorMessage(raw) {
         msg === 'Market has no price';
 }
 
+/**
+ * A retired or off-board moneyline. submit_bet and submit_parlay say
+ * market_not_bettable. submit_bets says the sentence. Both used to reach the
+ * member as raw text, and the board did not refresh.
+ */
+function isOffBoardSlipError(raw) {
+    var msg = String(raw || '');
+    return msg === 'off_the_board' ||
+        msg === 'market_not_bettable' ||
+        msg === 'This market is not available to bet';
+}
+
 function submitFailureDisposition(raw) {
+    var msg = String(raw || '');
+    var off = isOffBoardSlipError(msg);
     return {
         clearSlip: false,
-        refreshBoard: isStaleBoardErrorMessage(raw),
+        refreshBoard: isStaleBoardErrorMessage(msg) || off,
+        markOffBoard: off,
     };
+}
+
+/**
+ * Slip indexes to mark off the board.
+ *
+ * `failed[].index` is the index in the staked list that was sent, not the
+ * index in the slip. `stakedSlipIndexes[failedIndex]` is the slip index.
+ */
+function slipLegsToMarkOffBoard(stakedSlipIndexes, failed) {
+    var out = [];
+    var rows = failed || [];
+    for (var i = 0; i < rows.length; i++) {
+        if (!isOffBoardSlipError(rows[i] && rows[i].error)) continue;
+        var slipIndex = stakedSlipIndexes[rows[i].index];
+        if (typeof slipIndex === 'number') out.push(slipIndex);
+    }
+    return out;
+}
+
+/**
+ * A moneyline the board will not offer.
+ *
+ * Missing, retired, either side worse than -10000, or last written more than
+ * 18 hours ago. -10000 itself stays. A pick'em (-110/-110, -105/-115) stays.
+ * The same numbers live in supabase/functions/_shared/h2h.ts. The test checks
+ * they match.
+ */
+var OFF_BOARD_AMERICAN = -10000;
+var MONEYLINE_MAX_AGE_MS = 18 * 60 * 60 * 1000;
+var OFF_BOARD_LABEL = 'Off the board';
+
+function moneylinePriceOffBoard(price) {
+    // Same rule as isOffBoardAmerican: a null or missing price is off the
+    // board, not a price of zero that can still be tapped.
+    if (typeof price !== 'number' || !isFinite(price)) return true;
+    return price < OFF_BOARD_AMERICAN;
+}
+
+function moneylineMarketOnBoard(market, nowMs) {
+    if (!market || market.bettable === false) return false;
+    if (moneylinePriceOffBoard(market.odds_a) || moneylinePriceOffBoard(market.odds_b)) return false;
+    var at = Date.parse(market.updated_at || '');
+    if (!isFinite(at)) return false;
+    var now = typeof nowMs === 'number' ? nowMs : Date.now();
+    return now - at <= MONEYLINE_MAX_AGE_MS;
+}
+
+/**
+ * The number in the league header. Games only.
+ *
+ * leagueGroup.events also holds the championship outright, which made NFL,
+ * NCAAF, NBA, NCAAB and NHL read one high. The futures block still renders
+ * from leagueGroup.outrights. This count does not decide that.
+ */
+function leagueHeaderCount(group) {
+    if (!group || !group.games) return 0;
+    return group.games.length;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -84,6 +156,14 @@ if (typeof module !== 'undefined' && module.exports) {
         preferBoardMarket: preferBoardMarket,
         featuredMainList: featuredMainList,
         isStaleBoardErrorMessage: isStaleBoardErrorMessage,
+        isOffBoardSlipError: isOffBoardSlipError,
         submitFailureDisposition: submitFailureDisposition,
+        slipLegsToMarkOffBoard: slipLegsToMarkOffBoard,
+        OFF_BOARD_AMERICAN: OFF_BOARD_AMERICAN,
+        MONEYLINE_MAX_AGE_MS: MONEYLINE_MAX_AGE_MS,
+        OFF_BOARD_LABEL: OFF_BOARD_LABEL,
+        moneylineMarketOnBoard: moneylineMarketOnBoard,
+        moneylinePriceOffBoard: moneylinePriceOffBoard,
+        leagueHeaderCount: leagueHeaderCount,
     };
 }

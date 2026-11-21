@@ -4,6 +4,7 @@ import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { sendNotification } from '../_shared/notifications.ts';
 import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
+import { moneylineOffBoardError } from '../_shared/h2h.ts';
 import { resolveStoredLeg, singleBetIndicator } from '../_shared/market_validation.ts';
 
 interface BatchBetInput {
@@ -340,6 +341,13 @@ Deno.serve(async (req) => {
       // refused here too.
       if (market.bettable === false) {
         failed.push({ index: i, event_id: bet.event_id, error: 'This market is not available to bet' });
+        continue;
+      }
+
+      // Worse than -10000 on either side, or a moneyline older than 18 hours.
+      const offBoard = moneylineOffBoardError(market, bet.odds, now.getTime());
+      if (offBoard) {
+        failed.push({ index: i, event_id: bet.event_id, error: offBoard });
         continue;
       }
 

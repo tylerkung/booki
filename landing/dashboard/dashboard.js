@@ -2860,9 +2860,19 @@ function dashboardApp() {
             const pair = (key, title, markets) =>
                 markets.length ? { key, title, kind: 'pair', markets } : null;
 
-            // Moneyline first: it is what most people came for. One row —
-            // the newest bettable one. Older duplicates are not extra buttons.
-            push(pair('moneyline', 'Winner', featuredMainList(all, 'moneyline')));
+            // Moneyline first, on a game. A championship outright has no
+            // moneyline; it keeps the futures section below and is not
+            // "Off the board". On a game, one row, and only when it is still
+            // a price someone can take. Missing, retired, worse than -10000,
+            // or older than 18 hours is Off the board — not a dash, and not
+            // a button.
+            const outrightEvent = this.gameDetail && this.gameDetail.away_team === 'Outright';
+            if (!outrightEvent) {
+                const moneyline = featuredMainList(all, 'moneyline')
+                    .filter((m) => moneylineMarketOnBoard(m, Date.now()));
+                if (moneyline.length) push(pair('moneyline', 'Winner', moneyline));
+                else sections.push({ key: 'moneyline', title: 'Winner', kind: 'off', markets: [] });
+            }
 
             // Spread and its alternates are one ladder, with the main line
             // included — splitting them would put the headline number in a
@@ -3036,7 +3046,16 @@ function dashboardApp() {
          * main lines, the start time and the score.
          */
         getMarketForEvent(eventId, marketType) {
-            return this.playerMarketsByEvent[eventId]?.[marketType] || null;
+            const market = this.playerMarketsByEvent[eventId]?.[marketType] || null;
+            if (!market) return null;
+            // The moneyline cell is the only one that turns a missing or
+            // unusable price into "Off the board". Spreads and totals still
+            // show a dash when they are absent.
+            if ((marketType === 'h2h' || marketType === 'moneyline') &&
+                !moneylineMarketOnBoard(market, Date.now())) {
+                return null;
+            }
+            return market;
         },
 
         formatSpreadLine(line) {
@@ -3073,6 +3092,8 @@ function dashboardApp() {
         toggleSelection(event, market, sideIndicator, side, odds) {
             if (!market || !odds) return;
             if (this.isEventLocked(event)) return;
+            if ((market.type === 'moneyline' || market.type === 'h2h') &&
+                !moneylineMarketOnBoard(market, Date.now())) return;
 
             const idx = this.betSlipSelections.findIndex(
                 s => s.event_id === event.id && s.market_id === market.id && s.side_indicator === sideIndicator
@@ -3221,10 +3242,12 @@ function dashboardApp() {
         },
 
         get betSlipValid() {
+            if (this.betSlipSelections.some(s => s.offBoard)) return false;
             if (this.betSlipMode === 'singles') {
                 // At least one selection with a positive stake
                 let hasStake = false;
                 for (let i = 0; i < this.betSlipSelections.length; i++) {
+                    if (this.betSlipSelections[i].offBoard) continue;
                     const s = Number(this.betSlipStakes[i]) || 0;
                     if (s > 0) hasStake = true;
                 }
@@ -3241,6 +3264,9 @@ function dashboardApp() {
         },
 
         get betSlipValidationMessage() {
+            if (this.betSlipSelections.some(s => s.offBoard)) {
+                return 'That moneyline is off the board.';
+            }
             if (this.betSlipMode === 'singles') {
                 let hasStake = false;
                 for (let i = 0; i < this.betSlipSelections.length; i++) {
@@ -3316,6 +3342,41 @@ function dashboardApp() {
             'Go big or go home!', 'Smooth sailing!',
         ],
 
+        markSlipLegsOffBoard(indexes) {
+            for (const i of indexes) {
+                const sel = this.betSlipSelections[i];
+                if (!sel) continue;
+                this.betSlipSelections[i] = { ...sel, offBoard: true };
+                delete this.betSlipStakes[i];
+            }
+            this.betSlipSelections = [...this.betSlipSelections];
+        },
+
+        markSlipOffBoardByMarket(marketId) {
+            if (!marketId) return;
+            const id = String(marketId).toLowerCase();
+            const indexes = [];
+            this.betSlipSelections.forEach((sel, i) => {
+                if (String(sel.market_id).toLowerCase() === id) indexes.push(i);
+            });
+            this.markSlipLegsOffBoard(indexes);
+        },
+
+        /** Remove slip legs that were placed. Keep the ones marked off the board. */
+        dropPlacedSlipLegs(stakedSlipIndexes, offBoardLegs) {
+            const keep = new Set(offBoardLegs);
+            const drop = new Set(stakedSlipIndexes.filter(i => !keep.has(i)));
+            const next = [];
+            const stakes = {};
+            this.betSlipSelections.forEach((sel, i) => {
+                if (drop.has(i)) return;
+                stakes[next.length] = this.betSlipStakes[i];
+                next.push(sel);
+            });
+            this.betSlipSelections = next;
+            this.betSlipStakes = stakes;
+        },
+
         async submitBetSlip() {
             if (!this.betSlipValid || this.isSubmittingBets) return;
             this.isSubmittingBets = true;
@@ -3324,10 +3385,13 @@ function dashboardApp() {
                 if (this.betSlipMode === 'singles') {
                     // Build bets array — only selections with stakes
                     const bets = [];
+                    const stakedSlipIndexes = [];
                     for (let i = 0; i < this.betSlipSelections.length; i++) {
+                        const sel = this.betSlipSelections[i];
+                        if (sel.offBoard) continue;
                         const stake = Number(this.betSlipStakes[i]) || 0;
                         if (stake <= 0) continue;
-                        const sel = this.betSlipSelections[i];
+                        stakedSlipIndexes.push(i);
                         bets.push(BookiSlip.singleBetPayload(sel, stake));
                     }
 
@@ -3352,6 +3416,9 @@ function dashboardApp() {
                         return;
                     }
 
+                    const offBoardLegs = slipLegsToMarkOffBoard(stakedSlipIndexes, response.failed);
+                    if (offBoardLegs.length) this.markSlipLegsOffBoard(offBoardLegs);
+
                     // When every single in the batch fails, the server wraps the
                     // real reasons in a generic 'All bets failed validation'.
                     // Surface the first actual reason instead, so the member gets
@@ -3361,6 +3428,20 @@ function dashboardApp() {
                         throw new Error(response.failed[0].error || response.error);
                     }
                     if (response.error) throw new Error(response.error);
+
+                    // Some picks landed and a retired moneyline did not. Keep
+                    // the off-board leg in the slip and drop the ones that
+                    // were placed. The success path below would clear all of them.
+                    if (offBoardLegs.length) {
+                        this.dropPlacedSlipLegs(stakedSlipIndexes, offBoardLegs);
+                        this.toast('That moneyline is off the board.', 'error');
+                        this.loadPlayerGames();
+                        if (this.route === 'player-game' && this.selectedGameId) {
+                            this.loadGameDetail(this.selectedGameId);
+                        }
+                        this.isSubmittingBets = false;
+                        return;
+                    }
 
                     // Check partial success
                     if (response.results) {
@@ -3387,6 +3468,10 @@ function dashboardApp() {
                         this.applyLineChangesToSlip([response]);
                         this.isSubmittingBets = false;
                         return;
+                    }
+                    if (isOffBoardSlipError(response.error)) {
+                        this.markSlipOffBoardByMarket(response.market_id);
+                        throw new Error(response.error);
                     }
                     if (response.error) throw new Error(response.error);
                 }
@@ -3448,6 +3533,9 @@ function dashboardApp() {
          */
         humanizeBetError(raw) {
             const msg = String(raw || '');
+            if (isOffBoardSlipError(msg)) {
+                return 'That moneyline is off the board.';
+            }
             if (this.isStaleBoardError(msg)) {
                 return 'That line is no longer offered. Your pick is still here — remove it and add the current line.';
             }

@@ -12,6 +12,8 @@ import {
   planSharedMainLine,
   isSharedMainLineConflict,
 } from '../_shared/main_line.ts';
+import { bettableSharedIds, pairTeamOutcomes, selectMoneyline } from '../_shared/h2h.ts';
+import { oddsRefreshSkip } from '../_shared/odds_refresh.ts';
 
 /**
  * Generates an idempotency key for auto-refresh operations.
@@ -59,6 +61,8 @@ interface SelectedGame {
   bookie_auth_user_id: string | null;
   total_wagered: number;
   accepted_bet_count: number;
+  /** Null until this function has priced the event. sync_games does not set it. */
+  last_auto_odds_refresh: string | null;
 }
 
 /**
@@ -392,7 +396,7 @@ async function fetchOutrightsFromApi(
 function extractOutrightMarkets(
   oddsEvent: OddsEvent,
   preferredBookmaker: string = 'draftkings'
-): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number }[] {
+): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number; bookmaker: string }[] {
   const bookmakers = oddsEvent.bookmakers;
   if (!bookmakers || bookmakers.length === 0) {
     return [];
@@ -412,6 +416,7 @@ function extractOutrightMarkets(
     side_b: oddsEvent.sport_title,
     odds_a: outcome.price,
     odds_b: 0,
+    bookmaker: selectedBookmaker.key,
   }));
 }
 
@@ -441,54 +446,53 @@ function formatNumber(value: number): string {
 function extractMarketsFromOddsEvent(
   oddsEvent: OddsEvent,
   preferredBookmaker: string = 'draftkings'
-): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number }[] {
+): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number; bookmaker: string }[] {
   const bookmakers = oddsEvent.bookmakers;
   if (!bookmakers || bookmakers.length === 0) {
     return [];
   }
 
-  // Find preferred bookmaker or fall back to first available
+  // Spreads and totals stay on DraftKings, or the first book if it has
+  // none. The moneyline walks DraftKings, then Fanatics, then the rest,
+  // and both of its prices come from that one book.
   const selectedBookmaker =
     bookmakers.find((b) => b.key === preferredBookmaker) || bookmakers[0];
 
-  const markets: { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number }[] = [];
+  const markets: { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number; bookmaker: string }[] = [];
+
+  const moneyline = selectMoneyline(bookmakers, oddsEvent.home_team, oddsEvent.away_team);
+  if (moneyline && oddsEvent.home_team && oddsEvent.away_team) {
+    markets.push({
+      type: 'moneyline',
+      side_a: oddsEvent.away_team,
+      side_b: oddsEvent.home_team,
+      odds_a: moneyline.awayPrice,
+      odds_b: moneyline.homePrice,
+      bookmaker: moneyline.bookmaker,
+    });
+  }
 
   for (const market of selectedBookmaker.markets) {
     switch (market.key) {
-      case 'h2h': {
-        // Moneyline
-        const homeOutcome = market.outcomes.find((o) => o.name === oddsEvent.home_team);
-        const awayOutcome = market.outcomes.find((o) => o.name === oddsEvent.away_team);
-        if (homeOutcome && awayOutcome) {
-          markets.push({
-            type: 'moneyline',
-            side_a: oddsEvent.away_team ?? '',
-            side_b: oddsEvent.home_team ?? '',
-            odds_a: awayOutcome.price,
-            odds_b: homeOutcome.price,
-          });
-        }
+      case 'h2h':
         break;
-      }
       case 'spreads': {
-        // Spread
-        const homeOutcome = market.outcomes.find((o) => o.name === oddsEvent.home_team);
-        const awayOutcome = market.outcomes.find((o) => o.name === oddsEvent.away_team);
-        if (homeOutcome && awayOutcome) {
-          const awaySpread = formatSpread(awayOutcome.point ?? 0);
-          const homeSpread = formatSpread(homeOutcome.point ?? 0);
+        const paired = pairTeamOutcomes(market.outcomes, oddsEvent.home_team, oddsEvent.away_team);
+        if (paired) {
+          const awaySpread = formatSpread(paired.away.point ?? 0);
+          const homeSpread = formatSpread(paired.home.point ?? 0);
           markets.push({
             type: 'spread',
             side_a: `${oddsEvent.away_team} ${awaySpread}`,
             side_b: `${oddsEvent.home_team} ${homeSpread}`,
-            odds_a: awayOutcome.price,
-            odds_b: homeOutcome.price,
+            odds_a: paired.away.price,
+            odds_b: paired.home.price,
+            bookmaker: selectedBookmaker.key,
           });
         }
         break;
       }
       case 'totals': {
-        // Total (over/under)
         const overOutcome = market.outcomes.find((o) => o.name === 'Over');
         const underOutcome = market.outcomes.find((o) => o.name === 'Under');
         if (overOutcome && underOutcome) {
@@ -499,6 +503,7 @@ function extractMarketsFromOddsEvent(
             side_b: `Under ${formatNumber(totalValue)}`,
             odds_a: overOutcome.price,
             odds_b: underOutcome.price,
+            bookmaker: selectedBookmaker.key,
           });
         }
         break;
@@ -942,7 +947,7 @@ Deno.serve(async (req) => {
       // Fetch events that are not final/live/canceled (no bookie join — events are shared with bookie_id=NULL)
       const { data: betEvents, error: eventsQueryError } = await client
         .from('events')
-        .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id')
+        .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id, last_auto_odds_refresh')
         .in('id', eventIds)
         .not('status', 'in', '("final","live","canceled")')
         .order('start_time', { ascending: true });
@@ -950,7 +955,7 @@ Deno.serve(async (req) => {
       // Also fetch outright/futures events (may have no bets yet but still need odds refreshed)
       const { data: outrightEvents } = await client
         .from('events')
-        .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id')
+        .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id, last_auto_odds_refresh')
         .eq('away_team', 'Outright')
         .not('status', 'in', '("final","live","canceled")')
         .order('start_time', { ascending: true });
@@ -1041,6 +1046,7 @@ Deno.serve(async (req) => {
           bookie_auth_user_id: bookieAuthMap.get(agg.bookieId) || null,
           total_wagered: agg.totalWagered,
           accepted_bet_count: agg.betCount,
+          last_auto_odds_refresh: event.last_auto_odds_refresh ?? null,
         };
       });
 
@@ -1077,7 +1083,7 @@ Deno.serve(async (req) => {
 
       const { data: windowEvents, error: windowEventsError } = await client
         .from('events')
-        .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id')
+        .select('id, external_id, sport, league, home_team, away_team, start_time, status, bookie_id, last_auto_odds_refresh')
         .eq('status', 'scheduled')
         .gt('start_time', windowStart.toISOString())
         .lte('start_time', windowEnd.toISOString());
@@ -1101,6 +1107,7 @@ Deno.serve(async (req) => {
           bookie_auth_user_id: null,
           total_wagered: 0,
           accepted_bet_count: 0,
+          last_auto_odds_refresh: e.last_auto_odds_refresh,
         })) as SelectedGame[];
 
       const finalSelection = [...betSelection, ...unbetInWindow];
@@ -1127,8 +1134,8 @@ Deno.serve(async (req) => {
       // market has its own key, so refreshing them on every run was costing
       // one call each, every hour, for prices that barely move. Measured
       // 2026-08-18: 9 selected games produced 9 calls, mostly outrights.
-      const NEAR_WINDOW_MS = 4 * 60 * 60 * 1000;   // 4 hours
-      const MID_WINDOW_MS = 48 * 60 * 60 * 1000;   // 48 hours — the member display window
+      // Windows and the NFL/NBA/MLB set live in oddsRefreshSkip. A game whose
+      // last_auto_odds_refresh is null skips the clock and is priced this run.
       // Cadence, chosen against measured cost (see tasks/prd-line-change-guardrails.md
       // and the costing in CLAUDE.md). An odds call costs 3 credits and covers a
       // whole sport, so spend scales with SPORTS IN SEASON x runs — which is why
@@ -1142,16 +1149,8 @@ Deno.serve(async (req) => {
       const MID_TIER_EVERY_HOURS = 4;    // everything else in the window
       const FUTURES_TIER_HOUR_UTC = 12;            // once a day, midday UTC
 
-      // Only these leagues get the fastest cadence close to kickoff. They carry
-      // the most volume and the most line movement, and their spreads/totals
-      // are the ones that actually move in the last few hours. Everything else
-      // near-start settles for hourly, which halves its cost.
-      //
-      // Add a league here to promote it — NCAAF and NCAAB are the obvious
-      // candidates once their seasons start.
-      const HIGH_FREQUENCY_LEAGUES = new Set(['NFL', 'NBA', 'MLB']);
-
-      // Which optional tiers this particular run includes.
+      // Which optional tiers this particular run includes. NFL, NBA and MLB are
+      // the near tier; add a league in odds_refresh.ts to promote it.
       const runHour = now.getUTCHours();
       const runMinute = now.getUTCMinutes();
       const isTopOfHour = runMinute < 30;
@@ -1176,43 +1175,36 @@ Deno.serve(async (req) => {
       let skippedFutures = 0;
       let skippedLowFrequency = 0;
       for (const game of finalSelection) {
-        // Skip odds refresh if event has already started (but not outrights — they have distant future dates)
         const isOutright = game.away_team === 'Outright';
-        if (isOutright) {
-          if (!includeFutures) {
-            skippedFutures++;
-            continue;
-          }
-        } else {
-          const startTime = new Date(game.start_time);
-          if (startTime <= now) {
-            console.log(`Skipping odds refresh for ${game.id} - event has started`);
-            continue;
-          }
-          const untilStart = startTime.getTime() - now.getTime();
-          if (untilStart > MID_WINDOW_MS) {
-            // Beyond what members can even see — sync_games keeps it current.
-            skippedNotSoon++;
-            continue;
-          }
-          if (untilStart > NEAR_WINDOW_MS) {
-            // 4-48h band: every 2 hours regardless of league.
-            if (!includeMidTier) {
-              skippedMidTier++;
-              continue;
-            }
-          } else if (HIGH_FREQUENCY_LEAGUES.has(game.league)) {
-            // Inside 4h in a major league — the fastest tier we run.
-            if (!includeNearTier) {
-              skippedLowFrequency++;
-              continue;
-            }
-          } else if (!includeMidTier) {
-            // Inside 4h but a lower-volume league — same cadence as the rest of
-            // the window. These lines move far less and are bet far less.
-            skippedLowFrequency++;
-            continue;
-          }
+        const skip = oddsRefreshSkip({
+          startTime: game.start_time,
+          now: now.getTime(),
+          isOutright,
+          lastAutoOddsRefresh: game.last_auto_odds_refresh,
+          league: game.league,
+          includeNearTier,
+          includeMidTier,
+          includeFutures,
+        });
+        if (skip === 'started') {
+          console.log(`Skipping odds refresh for ${game.id} - event has started`);
+          continue;
+        }
+        if (skip === 'not_soon') {
+          skippedNotSoon++;
+          continue;
+        }
+        if (skip === 'mid_tier') {
+          skippedMidTier++;
+          continue;
+        }
+        if (skip === 'futures') {
+          skippedFutures++;
+          continue;
+        }
+        if (skip === 'low_frequency') {
+          skippedLowFrequency++;
+          continue;
         }
 
         if (isOutright) {
@@ -1272,15 +1264,29 @@ Deno.serve(async (req) => {
               // Find matching odds event by external_id
               const oddsEvent = oddsEvents.find((e) => e.id === game.external_id);
               if (!oddsEvent) {
+                // The sport payload came back and this game was not in it.
+                // Stamp the attempt. A null last_auto_odds_refresh bypasses
+                // the tier clock, so an absent game otherwise made this sport
+                // get fetched every 30 minutes. The stamp puts it on the
+                // normal 2h/4h schedule. A failed sport fetch does not reach
+                // here, so a blip still retries on the next run.
                 console.log(`No odds found for event ${game.id} (external_id: ${game.external_id})`);
+                const { error: stampError } = await client
+                  .from('events')
+                  .update({ last_auto_odds_refresh: now.toISOString() })
+                  .eq('id', game.id);
+                if (stampError) {
+                  console.error(`Error stamping missed odds lookup for ${game.id}:`, stampError);
+                  oddsErrors.push({ eventId: game.id, error: 'Failed to stamp missed odds lookup' });
+                }
                 continue;
               }
 
               // Extract markets from the odds event
               const newMarkets = extractMarketsFromOddsEvent(oddsEvent);
+              const wroteMoneyline = newMarkets.some((m) => m.type === 'moneyline');
               if (newMarkets.length === 0) {
                 console.log(`No markets extracted for event ${game.id}`);
-                continue;
               }
 
               // Moneyline, spread and total are ONE row per event. The number
@@ -1298,11 +1304,17 @@ Deno.serve(async (req) => {
               // path does not delete at all, so the two stay compatible.
               //
               // Props are a different type, written by sync_player_props. This
-              // query is limited to the types just fetched, so a refresh cannot
-              // see them, retire them, or delete them.
+              // query is the types just fetched, plus moneyline when the feed
+              // had none so that row can be retired. It still cannot see a
+              // prop, retire one, or delete one.
               const mainIncoming = newMarkets.filter((m) => isMainLine(m.type));
               const otherIncoming = newMarkets.filter((m) => !isMainLine(m.type));
-              const refreshedTypes = Array.from(new Set(newMarkets.map((m) => m.type)));
+              // Always load the stored moneyline when this feed has none, so
+              // the missing line can be retired instead of staying bettable.
+              const refreshedTypes = Array.from(new Set([
+                ...newMarkets.map((m) => m.type),
+                ...(wroteMoneyline ? [] : ['moneyline']),
+              ]));
 
               type ExistingMarket = {
                 id: string;
@@ -1352,10 +1364,15 @@ Deno.serve(async (req) => {
                   odds_b: m.odds_b,
                   bettable: true,
                   main_line: true,
+                  bookmaker: m.bookmaker,
                 };
                 if (plan.canonicalId) toUpdate.push({ ...record, id: plan.canonicalId });
                 else toInsert.push(record);
                 for (const id of plan.retireIds) retireIds.push(id);
+              }
+              if (!wroteMoneyline) {
+                const storedMl = (existingRows ?? []).filter((r: ExistingMarket) => r.type === 'moneyline');
+                for (const id of bettableSharedIds(storedMl)) retireIds.push(id);
               }
 
               // Non-main rows still identity on the line. A moved alternate is
@@ -1377,6 +1394,7 @@ Deno.serve(async (req) => {
                   side_b: m.side_b,
                   odds_a: m.odds_a,
                   odds_b: m.odds_b,
+                  bookmaker: m.bookmaker,
                 };
                 if (hit) toUpdate.push({ ...record, id: hit.id });
                 else toInsert.push(record);
@@ -1469,6 +1487,7 @@ Deno.serve(async (req) => {
                       odds_b: market.odds_b,
                       bettable: true,
                       main_line: true,
+                      bookmaker: market.bookmaker ?? null,
                     }).eq('id', winner.id);
                   }
                 } else if (insertError) {
@@ -1605,7 +1624,7 @@ Deno.serve(async (req) => {
                 if (existingId) {
                   await client
                     .from('markets')
-                    .update({ odds_a: market.odds_a })
+                    .update({ odds_a: market.odds_a, bookmaker: market.bookmaker ?? null })
                     .eq('id', existingId);
                 } else {
                   await client
@@ -1618,6 +1637,7 @@ Deno.serve(async (req) => {
                       side_b: market.side_b,
                       odds_a: market.odds_a,
                       odds_b: 0,
+                      bookmaker: market.bookmaker ?? null,
                     });
                 }
               }
