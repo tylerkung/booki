@@ -1575,8 +1575,11 @@ Deno.serve(async (req) => {
 
     } // End of !skipOddsSync block
 
-    // US-005: Mark past events as final
-    // Any event with start_time in the past that's still 'scheduled' should be 'final'
+    // Mark a game final 3 hours after it started. A future is not a game:
+    // it has no score, and marking it final here is what stopped the odds
+    // refresh on the 2026 NBA Championship in the middle of the Finals.
+    // Betting is already closed at start_time. The event becomes final only
+    // when settle_outright records a result. shouldClockFinalize is the same rule.
     const cutoffTime = new Date();
     cutoffTime.setHours(cutoffTime.getHours() - 3); // 3 hours after start time
 
@@ -1584,6 +1587,7 @@ Deno.serve(async (req) => {
       .from('events')
       .update({ status: 'final', updated_at: new Date().toISOString() })
       .eq('status', 'scheduled')
+      .neq('away_team', 'Outright')
       .lt('start_time', cutoffTime.toISOString())
       .select('id');
 

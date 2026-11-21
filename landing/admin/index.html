@@ -55,6 +55,7 @@
                     <a :href="'#/' + v.id" :class="{ active: route === v.id }" x-text="v.label"></a>
                 </li>
             </template>
+            <li><a href="#/futures" :class="{ active: route === 'futures' }">Futures</a></li>
             <li><a href="#/data_quality" :class="{ active: route === 'data_quality' }">Data quality</a></li>
             <li><a href="#/sql" :class="{ active: route === 'sql' }">SQL</a></li>
         </ul>
@@ -380,6 +381,78 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- Futures: one winner for every book. Writes go to settle_outright, not admin_query. -->
+        <div x-show="route === 'futures'" x-cloak>
+            <div class="card" style="margin-bottom:var(--s-lg);">
+                <p class="t-body-muted">
+                    A pick wins when its selection matches the winner. Every other open pick on that
+                    future loses. Void settles the whole event as a void. Running the same result
+                    again does not pay a pick twice. Organizer accounts cannot record this.
+                </p>
+            </div>
+            <template x-if="!loading && !futuresEvents.length">
+                <div class="card"><div class="empty-state"><p>No futures are waiting on a result.</p></div></div>
+            </template>
+            <template x-for="event in futuresEvents" :key="event.event_id">
+                <div class="card" style="margin-bottom:var(--s-lg);">
+                    <div class="card-header">
+                        <span class="card-title" x-text="event.name"></span>
+                        <span class="t-body-muted" x-text="event.open_picks + ' open · ' + fmt.money(event.open_stake)"></span>
+                    </div>
+                    <p class="t-micro" style="margin-bottom:var(--s-md);"
+                       x-text="(event.league || event.sport || '') + ' · ' + fmt.dateTime(event.start_time) + ' · ' + event.status"></p>
+                    <div style="margin-bottom:var(--s-md);">
+                        <select class="search-input" style="width:100%;"
+                                x-model="futuresChoice[event.event_id]"
+                                @change="futuresConfirm = null; futuresPreview = null">
+                            <option value="">Choose the winner</option>
+                            <template x-for="name in event.selections" :key="name">
+                                <option :value="name" x-text="name"></option>
+                            </template>
+                            <option value="__void__">Void the whole event</option>
+                        </select>
+                    </div>
+                    <div x-show="futuresPreview && futuresPreview.event_id === event.event_id" style="margin-bottom:var(--s-md);">
+                        <p class="t-body-muted" x-text="futuresPreviewText(futuresPreview)"></p>
+                        <template x-for="row in (futuresPreview.by_side || [])" :key="row.side">
+                            <p class="t-micro" x-text="row.count + ' × ' + row.side + ' → ' + row.outcome"></p>
+                        </template>
+                        <p class="t-micro" x-show="futuresPreview.unmatched_sides && futuresPreview.unmatched_sides.length"
+                           x-text="'Will lose: ' + (futuresPreview.unmatched_sides || []).join(', ')"></p>
+                    </div>
+                    <div class="filter-bar">
+                        <button class="chip" @click="recordFuture(event)" :disabled="futuresBusy === event.event_id"
+                                x-text="futuresBusy === event.event_id ? 'Recording…' : (futuresConfirm === event.event_id ? 'Confirm' : 'Record result')"></button>
+                        <button class="chip" x-show="futuresConfirm === event.event_id" @click="futuresConfirm = null">Cancel</button>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="!loading && futuresRecorded.length">
+                <div>
+                    <h2 class="t-title" style="margin:var(--s-xl) 0 var(--s-md);">Recorded results</h2>
+                    <template x-for="event in futuresRecorded" :key="event.event_id">
+                        <div class="card" style="margin-bottom:var(--s-lg);">
+                            <div class="card-header">
+                                <span class="card-title" x-text="event.name"></span>
+                                <span class="t-body-muted" x-text="event.void ? 'Void' : event.winning_selection"></span>
+                            </div>
+                            <p class="t-micro" style="margin-bottom:var(--s-md);" x-text="'Recorded ' + fmt.dateTime(event.recorded_at)"></p>
+                            <div x-show="futuresUndo === event.event_id" style="margin-bottom:var(--s-md);">
+                                <p class="t-body-muted" style="margin-bottom:var(--s-sm);">This returns every settled pick on this future to accepted, in every group, and removes the result. Confirm to continue.</p>
+                                <input class="search-input" style="width:100%;" type="text" x-model="futuresUndoReason" placeholder="Reason">
+                            </div>
+                            <div class="filter-bar">
+                                <button class="chip" @click="undoFuture(event)" :disabled="futuresBusy === event.event_id"
+                                        x-text="futuresBusy === event.event_id ? 'Undoing…' : (futuresUndo === event.event_id ? 'Confirm undo' : 'Undo result')"></button>
+                                <button class="chip" x-show="futuresUndo === event.event_id" @click="futuresUndo = null">Cancel</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
         </div>
 
         <!-- Table views -->

@@ -41,6 +41,33 @@ From PR #13. Adds nullable `markets.main_line` and a partial unique index, and m
 
 Does not update or delete ledger rows. A BEFORE INSERT trigger rejects a second active settlement for a bet and for a parlay ticket (active = settlement minus reversal). `settlement_events.idempotency_key` gains a unique index where the key is not null. `settle_bet_tx` is idempotent and uses settlement_version max+1. See the release order above.
 
+### 067 — outright results (NOT applied)
+
+063 is already live. Apply the security hotfix (migration 068, which locks down `settle_bet_tx`, `settle_parlay_tx`, `override_grade_tx`, `reverse_settlement_tx`, and `mark_ticket_settled`) before or together with 067. 067 does not update or delete existing bets or ledger rows. It adds `outright_results`, `settle_outright_tx`, `grade_and_settle_bet_tx`, and `reverse_outright_tx`.
+
+Deploy in this order:
+
+1. Set and confirm the `ADMIN_EMAILS` secret. If it is empty, `settle_outright` returns 404 for everyone.
+2. Apply `supabase/migrations/067_outright_results.sql`.
+3. Deploy `settle_outright` and `grade_bet`. **Deploying `grade_bet` before 067 breaks every manual grade**, because it calls `grade_and_settle_bet_tx`, which does not exist until 067.
+4. Deploy `sync_games`, `auto_refresh_games`, and `refresh_live_scores`.
+5. This query must return false:
+
+```sql
+SELECT bool_or(has_function_privilege(role, signature, 'EXECUTE'))
+  FROM (VALUES
+    ('anon'), ('authenticated')
+  ) AS roles(role)
+  CROSS JOIN (VALUES
+    ('settle_outright_tx(uuid, text, boolean, uuid, boolean, boolean)'),
+    ('grade_and_settle_bet_tx(uuid, text, uuid, text)'),
+    ('assert_futures_settler(text)'),
+    ('reverse_outright_tx(uuid, text)')
+  ) AS fns(signature);
+```
+
+065 is PR #15. 066 is reserved.
+
 ### 062 — bet prop snapshot (NOT applied)
 
 Additive only. Adds nullable `bets.stat_key`, `bets.subject_player_id`, and

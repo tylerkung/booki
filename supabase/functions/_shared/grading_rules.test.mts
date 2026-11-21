@@ -4,6 +4,16 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 import { gradeBet, isDeferredMarket } from './grading.ts';
+import {
+  futuresAwaitingResult,
+  isOutrightMarket,
+  manualSingleSettlementKey,
+  outrightGrade,
+  outrightSelectionMatches,
+  outrightSettlementKey,
+  outrightSideKey,
+  shouldClockFinalize,
+} from './outright.ts';
 import { deployedSingleSideAccepted, legStorageError, resolveStoredLeg, singleBetIndicator } from './market_validation.ts';
 import { decideParlay, parlaySettlementKey, parlayTooManyLegs, placeParlayIfAllowed, roundCents } from './parlay_settle.ts';
 import { gradeProp, parsePropSide, resolvePropTarget } from './prop_stats.ts';
@@ -87,6 +97,110 @@ test('gradeBet skips props and futures instead of pushing them', () => {
   assert.equal(isDeferredMarket('moneyline'), false);
   const moneyline = gradeBet({ id: '3', market: 'moneyline', side: 'Eagles' }, scores);
   assert.equal(moneyline.result, 'win');
+});
+
+test('a manual single settles once, through settle_bet_tx, and a future does not', () => {
+  assert.equal(manualSingleSettlementKey('c2aa18ec-0000-4000-8000-000000000010'), 'manual_settle_c2aa18ec-0000-4000-8000-000000000010_v1');
+  assert.equal(isOutrightMarket('outright'), true);
+  assert.equal(isOutrightMarket('Futures'), true);
+  assert.equal(isOutrightMarket('moneyline'), false);
+
+  const source = readFileSync(new URL('../grade_bet/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /grade_and_settle_bet_tx/);
+  assert.match(source, /manualSingleSettlementKey\s*\(/);
+  assert.match(source, /409/);
+  assert.match(source, /try again/);
+  assert.doesNotMatch(source, /settleBetTx\s*\(/);
+  assert.match(source, /isOutrightMarket\s*\(/);
+  assert.doesNotMatch(source, /\.from\('ledger_entries'\)/);
+
+  const page = readFileSync(new URL('../../../landing/dashboard/index.html', import.meta.url), 'utf8');
+  assert.match(page, /away_team !== 'Outright'/);
+  assert.match(page, /Win \(Home\)/);
+});
+
+test('a futures pick matches the selection name, not a market id', () => {
+  const vectors = JSON.parse(readFileSync(new URL('./outright_match_vectors.json', import.meta.url), 'utf8'));
+  for (const vector of vectors) {
+    assert.equal(outrightSelectionMatches(vector.left, vector.right), vector.match, `${vector.left} vs ${vector.right}`);
+    assert.equal(outrightSideKey(vector.left) === outrightSideKey(vector.right), vector.match);
+  }
+  assert.equal(outrightSideKey('St. Louis Blues'), 'st louis blues');
+  assert.equal(outrightSideKey('St Louis Blues (+2000)'), 'st louis blues');
+  assert.equal(outrightSideKey('Montréal Canadiens'), 'montreal canadiens');
+  assert.equal(outrightSelectionMatches('Golden State Warriors', 'Golden State Warriors'), true);
+  assert.equal(outrightSelectionMatches('  golden   state warriors ', 'Golden State Warriors'), true);
+  assert.equal(outrightGrade('Golden State Warriors', 'Golden State Warriors', false), 'win');
+  assert.equal(outrightGrade('Boston Celtics', 'Golden State Warriors', false), 'loss');
+  assert.equal(outrightGrade('Boston Celtics', null, true), 'void');
+  assert.equal(
+    outrightSettlementKey('c2aa18ec-0000-4000-8000-000000000010'),
+    'outright_settle_c2aa18ec-0000-4000-8000-000000000010_v1',
+  );
+});
+
+test('futures awaiting a result are the open picks with no recorded winner', () => {
+  const events = [
+    { id: 'E1', away_team: 'Outright', home_team: 'NBA Championship', start_time: '2026-06-01', status: 'final', sport: 'Basketball', league: 'NBA' },
+    { id: 'E2', away_team: 'Outright', home_team: 'Super Bowl', start_time: '2027-02-01', status: 'scheduled', sport: 'Football', league: 'NFL' },
+    { id: 'E3', away_team: 'Celtics', home_team: 'Knicks', start_time: '2026-06-04', status: 'scheduled', sport: 'Basketball', league: 'NBA' },
+  ];
+  const rows = futuresAwaitingResult({
+    bets: [
+      { event_id: 'e1', side: 'Golden State Warriors', stake: 10 },
+      { event_id: 'E1', side: 'Boston Celtics', stake: 5 },
+      { event_id: 'E2', side: 'Chiefs', stake: 20 },
+      { event_id: 'E3', side: 'Knicks', stake: 10 },
+    ],
+    events,
+    markets: [
+      { event_id: 'E1', type: 'outright', side_a: 'Denver Nuggets' },
+      { event_id: 'E2', type: 'spread', side_a: 'Ignore' },
+    ],
+    results: [{ event_id: 'E2' }],
+  });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, 'NBA Championship');
+  assert.equal(rows[0].open_picks, 2);
+  assert.equal(rows[0].open_stake, 15);
+  assert.deepEqual(rows[0].selections, ['Boston Celtics', 'Denver Nuggets', 'Golden State Warriors']);
+
+  const source = readFileSync(new URL('../settle_outright/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /ADMIN_EMAILS/);
+  assert.match(source, /settle_outright_tx/);
+  assert.match(source, /, 404\)/);
+  assert.doesNotMatch(source, /\.from\('ledger_entries'\)/);
+});
+
+test('the clock does not finalize a future, and the score jobs leave it to settle_outright', () => {
+  const cutoff = new Date('2026-06-11T20:00:00Z');
+  const future = {
+    status: 'scheduled',
+    away_team: 'Outright',
+    start_time: '2026-06-01T00:00:00Z',
+  };
+  const game = {
+    status: 'scheduled',
+    away_team: 'Celtics',
+    start_time: '2026-06-11T16:00:00Z',
+  };
+  assert.equal(shouldClockFinalize(future, cutoff), false);
+  assert.equal(shouldClockFinalize(game, cutoff), true);
+  assert.equal(shouldClockFinalize({ ...game, start_time: '2026-06-11T21:00:00Z' }, cutoff), false);
+  assert.equal(shouldClockFinalize({ ...game, status: 'final' }, cutoff), false);
+
+  const sync = readFileSync(new URL('../sync_games/index.ts', import.meta.url), 'utf8');
+  assert.match(sync, /\.neq\('away_team', 'Outright'\)/);
+  const scores = readFileSync(new URL('../refresh_live_scores/index.ts', import.meta.url), 'utf8');
+  const refresh = readFileSync(new URL('../auto_refresh_games/index.ts', import.meta.url), 'utf8');
+  assert.match(scores, /settle_outright/);
+  assert.match(refresh, /settle_outright/);
+  const outright = gradeBet(
+    { id: '2', market: 'outright', side: 'Warriors' },
+    { homeScore: 0, awayScore: 0, homeTeam: 'NBA Championship', awayTeam: 'Outright' },
+  );
+  assert.equal(outright.result, 'deferred');
+  assert.match(outright.gradeDetails, /settle_outright/);
 });
 
 test('a prop grades from the bet snapshot when the market row is gone', () => {
@@ -467,6 +581,42 @@ test('parlay settlement has no settling status', () => {
   assert.doesNotMatch(apply, /['"]settling['"]/);
   assert.match(apply, /settleParlayTx\s*\(/);
   assert.throws(() => readFileSync(new URL('./parlay_claim.ts', import.meta.url), 'utf8'));
+});
+
+test('organizer events page past the 1000-row cap, including a later future', async () => {
+  const code = readFileSync(new URL('../../../landing/dashboard/paging.js', import.meta.url), 'utf8');
+  const sandbox = {};
+  sandbox.globalThis = sandbox;
+  vm.runInNewContext(code, sandbox);
+  const pages = [
+    Array.from({ length: 1000 }, (_, i) => ({ id: String(i) })),
+    Array.from({ length: 239 }, (_, i) => ({ id: String(1000 + i), away_team: 'Outright' })),
+  ];
+  let calls = 0;
+  const result = await sandbox.globalThis.BookiPaging.fetchAllRows(() => ({
+    range(from, to) {
+      calls += 1;
+      assert.equal(to - from, 999);
+      assert.equal(from, (calls - 1) * 1000);
+      return Promise.resolve({ data: pages[calls - 1] || [], error: null });
+    },
+  }));
+  assert.equal(calls, 2);
+  assert.equal(result.data.length, 1239);
+  assert.equal(result.data[1238].away_team, 'Outright');
+  assert.equal(result.error, null);
+
+  const stopped = await sandbox.globalThis.BookiPaging.fetchAllRows(() => ({
+    range() {
+      return Promise.resolve({ data: null, error: { message: 'down' } });
+    },
+  }));
+  assert.equal(stopped.data.length, 0);
+  assert.equal(stopped.error.message, 'down');
+
+  const dash = readFileSync(new URL('../../../landing/dashboard/dashboard.js', import.meta.url), 'utf8');
+  assert.match(dash, /BookiPaging\.fetchAllRows\(\(\) => this\.supabase/);
+  assert.match(dash, /\.order\('start_time', \{ ascending: true \}\)\s*\.order\('id', \{ ascending: true \}\)/);
 });
 
 test('the singles payload still satisfies the deployed submit_bets contract', () => {

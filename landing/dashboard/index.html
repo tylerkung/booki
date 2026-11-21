@@ -871,8 +871,9 @@
                                 <span class="t-caption" x-text="isLoadingEventDetail ? '' : eventGradableBets.length + ' gradable'"></span>
                             </div>
 
-                            <!-- Grade All Picks -->
-                            <div x-show="eventGradableBets.length > 0" style="padding:var(--s-md) 0;border-bottom:1px solid var(--divider);">
+                            <!-- Grade All Picks. Hidden on a future: Home/Away would stamp one
+                                 result onto every selection, including the winner and the rest. -->
+                            <div x-show="eventGradableBets.length > 0 && eventDetail.away_team !== 'Outright'" style="padding:var(--s-md) 0;border-bottom:1px solid var(--divider);">
                                 <div style="font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--text-secondary);margin-bottom:var(--s-md);">Grade All Picks</div>
                                 <div style="display:flex;gap:var(--s-sm);flex-wrap:wrap;">
                                     <button class="btn btn-grade btn-grade-win" @click="confirmBatchGrade('win')">Win (Home)</button>
@@ -880,24 +881,27 @@
                                     <button class="btn btn-grade btn-grade-push" @click="confirmBatchGrade('push')">Push</button>
                                 </div>
                             </div>
+                            <div x-show="eventDetail && eventDetail.away_team === 'Outright'" style="padding:var(--s-md) 0;border-bottom:1px solid var(--divider);">
+                                <p class="t-body-muted">Futures are settled by Booki when the result is recorded.</p>
+                            </div>
 
-                            <!-- Void All Picks -->
-                            <div x-show="eventVoidableBets.length > 0" style="padding:var(--s-md) 0;border-bottom:1px solid var(--divider);">
+                            <!-- Void All Picks. A future is voided by Booki, for every group, not from this event. -->
+                            <div x-show="eventVoidableBets.length > 0 && eventDetail.away_team !== 'Outright'" style="padding:var(--s-md) 0;border-bottom:1px solid var(--divider);">
                                 <button class="btn btn-void" @click="showBatchVoidModal = true">
                                     Void All Picks
                                 </button>
                             </div>
 
-                            <!-- Enter Final Score -->
-                            <div style="padding:var(--s-md) 0;border-bottom:var(--hairline) solid var(--divider);">
+                            <!-- Enter Final Score. A future has no score. -->
+                            <div x-show="!eventDetail || eventDetail.away_team !== 'Outright'" style="padding:var(--s-md) 0;border-bottom:var(--hairline) solid var(--divider);">
                                 <button class="btn btn-ghost" @click="openFinalScoreModal()" style="color:var(--text-primary);">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:var(--s-sm);"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                     Enter Final Score
                                 </button>
                             </div>
 
-                            <!-- Change Status -->
-                            <div style="padding:var(--s-md) 0;">
+                            <!-- Change Status. Final on a future is set when the result is recorded. -->
+                            <div x-show="!eventDetail || eventDetail.away_team !== 'Outright'" style="padding:var(--s-md) 0;">
                                 <button class="btn btn-ghost" @click="showChangeStatusModal = true; eventNewStatus = eventDetail.status || 'scheduled'" style="color:var(--text-primary);">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:var(--s-sm);"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
                                     Change Status
@@ -1277,7 +1281,7 @@
                         </div>
 
                         <!-- Grade / Void Actions -->
-                        <div class="card" style="margin-bottom:var(--s-lg);" x-show="pickDetail.status === 'accepted'">
+                        <div class="card" style="margin-bottom:var(--s-lg);" x-show="pickDetail.status === 'accepted' && pickDetail.market !== 'outright' && pickDetail.market !== 'futures'">
                             <div class="card-header"><span class="card-title">Actions</span></div>
                             <div style="display:flex;gap:var(--s-sm);flex-wrap:wrap;">
                                 <button class="btn btn-grade btn-grade-win" @click="confirmGrade('win')" :disabled="isGrading">Win</button>
@@ -1286,8 +1290,11 @@
                                 <button class="btn btn-void" @click="confirmVoid()" :disabled="isVoiding">Void</button>
                             </div>
                         </div>
+                        <div class="card" style="margin-bottom:var(--s-lg);" x-show="(pickDetail.market === 'outright' || pickDetail.market === 'futures') && (pickDetail.status === 'accepted' || pickDetail.status === 'pending' || pickDetail.status === 'graded')">
+                            <p class="t-body-muted">Futures are settled by Booki when the result is recorded.</p>
+                        </div>
 
-                        <div class="card" style="margin-bottom:var(--s-lg);" x-show="pickDetail.status === 'graded'">
+                        <div class="card" style="margin-bottom:var(--s-lg);" x-show="pickDetail.status === 'graded' && pickDetail.market !== 'outright' && pickDetail.market !== 'futures'">
                             <div class="card-header"><span class="card-title">Actions</span></div>
                             <div style="display:flex;gap:var(--s-sm);flex-wrap:wrap;">
                                 <button class="btn btn-void" @click="confirmVoid()" :disabled="isVoiding">Void</button>
@@ -2934,6 +2941,20 @@
                 <!-- Loaded Content -->
                 <div x-show="!(isLoadingPlayerTrack && playerBets.length === 0)" x-cloak>
 
+                    <template x-if="futuresSettlementNotices.length">
+                        <div class="card" style="margin-bottom:var(--s-lg);">
+                            <div style="display:flex;justify-content:space-between;gap:var(--s-md);align-items:flex-start;">
+                                <div>
+                                    <div class="t-body-strong" style="margin-bottom:var(--s-xs);">Futures settled</div>
+                                    <template x-for="notice in futuresSettlementNotices" :key="notice.eventId">
+                                        <p class="t-body-muted" x-text="notice.text"></p>
+                                    </template>
+                                </div>
+                                <button class="btn btn-ghost" @click="dismissFuturesNotices()">Dismiss</button>
+                            </div>
+                        </div>
+                    </template>
+
                     <!-- Summary Card -->
                     <div class="card" style="padding:var(--s-xl);margin-bottom:var(--s-xl);">
                         <div class="player-stats-row">
@@ -4542,6 +4563,7 @@
     <script src="/invite-handoff.js"></script>
     <script src="board_markets.js"></script>
     <script src="slip-payload.js"></script>
+    <script src="paging.js"></script>
     <script src="dashboard.js"></script>
     <script src="../attribution.js"></script>
 </body>

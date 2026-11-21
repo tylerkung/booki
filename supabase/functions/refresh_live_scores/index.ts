@@ -275,16 +275,23 @@ Deno.serve(async (req) => {
                   try {
                     // Props and futures are not score markets. Grading them
                     // here settled props as a push before grade_player_props
-                    // could see them. Leave the row exactly as it is.
+                    // could see them. A future is settle_outright's, after an
+                    // admin records the winner. Leave the row exactly as it is.
                     if (isDeferredMarket(bet.market)) {
-                      console.log(`Live scores: leaving ${bet.market} bet ${bet.id} open`);
+                      const owner = bet.market === 'outright' || bet.market === 'futures'
+                        ? 'settle_outright'
+                        : 'grade_player_props';
+                      console.log(`Live scores: leaving ${bet.market} bet ${bet.id} for ${owner}`);
                       continue;
                     }
 
                     const betInfo: BetInfo = { id: bet.id, market: bet.market, side: bet.side };
                     const gradeOutcome = gradeBet(betInfo, eventScores);
                     if (leaveOpen(gradeOutcome.result)) {
-                      console.log(`Live scores: leaving ${bet.market} bet ${bet.id} open`);
+                      const owner = bet.market === 'outright' || bet.market === 'futures'
+                        ? 'settle_outright'
+                        : 'manual review';
+                      console.log(`Live scores: leaving ${bet.market} bet ${bet.id} for ${owner}`);
                       continue;
                     }
 

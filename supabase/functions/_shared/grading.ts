@@ -22,7 +22,8 @@ export function leaveOpen(result: GradeResult): boolean {
  * accepted bet. Props fell through to the default branch, came back as a
  * push, and were settled — about five minutes after the game went final,
  * before grade_player_props (which only looks at still-open bets) could run.
- * Callers must leave a deferred market untouched.
+ * Callers must leave a deferred market untouched. A future is settled by
+ * settle_outright once an admin records the winner, not from a score.
  */
 export function isDeferredMarket(market: string | null | undefined): boolean {
   const name = (market ?? '').toLowerCase();
@@ -399,7 +400,7 @@ export function gradeBet(bet: BetInfo, scores: EventScores): GradeOutcome {
     case 'futures':
       return {
         result: 'deferred',
-        gradeDetails: 'Outright/futures market: left open for manual grading. Not settled as a push.',
+        gradeDetails: 'Outright/futures market: left open for settle_outright. Not graded from the score.',
       };
 
     default:

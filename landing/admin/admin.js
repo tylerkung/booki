@@ -181,6 +181,7 @@ const VIEWS = [
 const TITLES = {
     organizer: 'Organizer', member: 'Member', pick: 'Pick',
     search: 'Search', data_quality: 'Data quality', sql: 'SQL',
+    futures: 'Futures awaiting result',
 };
 
 function adminApp() {
@@ -204,6 +205,14 @@ function adminApp() {
         checks: [],
         sqlText: 'select status, count(*)\nfrom bets\ngroup by status\norder by 2 desc',
         sqlResult: null,
+        futuresEvents: [],
+        futuresRecorded: [],
+        futuresUndo: null,
+        futuresUndoReason: '',
+        futuresChoice: {},
+        futuresConfirm: null,
+        futuresPreview: null,
+        futuresBusy: null,
         rows: [],
         stats: null,
         meta: {},
@@ -285,7 +294,162 @@ function adminApp() {
             }
         },
 
+        async callSettle(body) {
+            const send = () => fetch(`${SUPABASE_URL}/functions/v1/settle_outright`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.session.access_token}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            });
+            let res = await send();
+            if (res.status === 401) {
+                const { data } = await this.supabase.auth.refreshSession();
+                if (data?.session) {
+                    this.session = data.session;
+                    res = await send();
+                }
+            }
+            return res;
+        },
+
+        async loadFutures() {
+            this.loading = true;
+            try {
+                const res = await this.callSettle({ action: 'list' });
+                if (res.status === 401) {
+                    this.gate = 'Your session expired. Sign in again on the dashboard.';
+                    return;
+                }
+                if (res.status === 404) {
+                    this.gate = 'This account does not have admin access.';
+                    return;
+                }
+                const body = await res.json();
+                if (!res.ok || body.error) throw new Error(body.error || 'Could not load futures');
+                this.futuresEvents = body.events || [];
+                this.futuresRecorded = body.recorded || [];
+            } catch (err) {
+                console.error('futures load failed:', err);
+                this.toast(err.message || 'Could not load futures', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        futuresPreviewText(preview) {
+            if (!preview) return '';
+            if (preview.void) return `Void ${preview.by_side ? preview.by_side.reduce((n, row) => n + row.count, 0) : 0} accepted picks. Nothing is written until you confirm.`;
+            const unmatched = (preview.unmatched_sides || []).length;
+            return `${preview.wins} win, ${preview.losses} lose`
+                + (unmatched ? `. ${unmatched} selection${unmatched === 1 ? '' : 's'} do not match the winner and will lose.` : '.')
+                + ' Nothing is written until you confirm.';
+        },
+
+        futurePayload(event, dryRun) {
+            const choice = this.futuresChoice[event.event_id];
+            const payload = choice === '__void__'
+                ? { action: 'settle', event_id: event.event_id, void: true }
+                : { action: 'settle', event_id: event.event_id, winning_selection: choice };
+            if (dryRun) payload.dry_run = true;
+            return payload;
+        },
+
+        futureError(body) {
+            if (body.error === 'result_already_recorded') return 'A result is already recorded for this future';
+            if (body.error === 'unknown_winner') return 'That winner is not one of this future\'s selections';
+            return body.error || 'Could not record the result';
+        },
+
+        async recordFuture(event) {
+            const choice = this.futuresChoice[event.event_id];
+            if (!choice) {
+                this.toast('Pick the winner first', 'error');
+                return;
+            }
+            this.futuresBusy = event.event_id;
+            try {
+                if (this.futuresConfirm !== event.event_id) {
+                    const res = await this.callSettle(this.futurePayload(event, true));
+                    const body = await res.json();
+                    if (res.status === 404) {
+                        this.gate = 'This account does not have admin access.';
+                        return;
+                    }
+                    if (!res.ok || body.success === false || body.error) throw new Error(this.futureError(body));
+                    this.futuresPreview = { ...body, event_id: event.event_id };
+                    this.futuresConfirm = event.event_id;
+                    return;
+                }
+                const res = await this.callSettle(this.futurePayload(event, false));
+                const body = await res.json();
+                if (res.status === 404) {
+                    this.gate = 'This account does not have admin access.';
+                    return;
+                }
+                if (!res.ok || body.success === false || body.error) throw new Error(this.futureError(body));
+                const paid = (body.singles_settled || 0) + (body.parlays_settled || 0) + (body.singles_voided || 0);
+                const again = body.idempotent ? 'Already recorded. ' : '';
+                const waiting = body.parlays_waiting
+                    ? ` ${body.parlays_waiting} multi-pick${body.parlays_waiting === 1 ? '' : 's'} still waiting on another leg.`
+                    : '';
+                this.toast(`${again}${paid} settled.${waiting}`);
+                this.futuresConfirm = null;
+                this.futuresPreview = null;
+                await this.loadFutures();
+            } catch (err) {
+                this.toast(err.message || 'Could not record the result', 'error');
+            } finally {
+                this.futuresBusy = null;
+            }
+        },
+
+        async undoFuture(event) {
+            const reason = (this.futuresUndoReason || '').trim();
+            if (this.futuresUndo !== event.event_id) {
+                this.futuresUndo = event.event_id;
+                if (!this.futuresUndoReason) this.futuresUndoReason = 'Wrong winner';
+                return;
+            }
+            if (!reason) {
+                this.toast('A reason is required', 'error');
+                return;
+            }
+            this.futuresBusy = event.event_id;
+            try {
+                const res = await this.callSettle({
+                    action: 'reverse',
+                    event_id: event.event_id,
+                    reason,
+                });
+                const body = await res.json();
+                if (res.status === 404) {
+                    this.gate = 'This account does not have admin access.';
+                    return;
+                }
+                if (body.error === 'try_again') {
+                    this.toast('try again', 'error');
+                    return;
+                }
+                if (!res.ok || body.success === false || body.error) throw new Error(body.error || 'Could not undo the result');
+                const again = body.idempotent ? 'Nothing left to undo.' : `Undid ${body.reversed} settlement${body.reversed === 1 ? '' : 's'}.`;
+                this.toast(again);
+                this.futuresUndo = null;
+                await this.loadFutures();
+            } catch (err) {
+                this.toast(err.message || 'Could not undo the result', 'error');
+            } finally {
+                this.futuresBusy = null;
+            }
+        },
+
         async load() {
+            if (this.route === 'futures') {
+                await this.loadFutures();
+                return;
+            }
             this.loading = true;
             try {
                 const [view, extra] = this.requestFor();

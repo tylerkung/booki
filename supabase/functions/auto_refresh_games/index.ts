@@ -576,14 +576,20 @@ async function runCatchupGrading(client: ReturnType<typeof createServiceClient>)
           for (const bet of eventBets) {
             try {
               if (isDeferredMarket(bet.market)) {
-                console.log(`Catch-up: leaving ${bet.market} bet ${bet.id} open`);
+                const owner = bet.market === 'outright' || bet.market === 'futures'
+                  ? 'settle_outright'
+                  : 'grade_player_props';
+                console.log(`Catch-up: leaving ${bet.market} bet ${bet.id} for ${owner}`);
                 continue;
               }
 
               const betInfo: BetInfo = { id: bet.id, market: bet.market, side: bet.side };
               const gradeOutcome = gradeBet(betInfo, eventScores);
               if (leaveOpen(gradeOutcome.result)) {
-                console.log(`Catch-up: leaving ${bet.market} bet ${bet.id} open`);
+                const owner = bet.market === 'outright' || bet.market === 'futures'
+                  ? 'settle_outright'
+                  : 'manual review';
+                console.log(`Catch-up: leaving ${bet.market} bet ${bet.id} for ${owner}`);
                 continue;
               }
 
@@ -1701,9 +1707,10 @@ Deno.serve(async (req) => {
       // costs credits and grades nothing.
       const gamesForScoresBySportKey = new Map<string, SelectedGame[]>();
       for (const game of betSelection) {
-        // Skip score refresh for outright events (no scores)
+        // No score to fetch. settle_outright records the winner; a final
+        // score here would grade the pick as a push.
         if (game.away_team === 'Outright') {
-          console.log(`Skipping score refresh for ${game.id} - outright/futures event`);
+          console.log(`Skipping score refresh for ${game.id} - left for settle_outright`);
           continue;
         }
 
@@ -1880,7 +1887,10 @@ Deno.serve(async (req) => {
                     for (const bet of acceptedBets) {
                       try {
                         if (isDeferredMarket(bet.market)) {
-                          console.log(`Leaving ${bet.market} bet ${bet.id} open`);
+                          const owner = bet.market === 'outright' || bet.market === 'futures'
+                            ? 'settle_outright'
+                            : 'grade_player_props';
+                          console.log(`Leaving ${bet.market} bet ${bet.id} for ${owner}`);
                           continue;
                         }
 
@@ -1893,7 +1903,10 @@ Deno.serve(async (req) => {
                         // Get grade result from grading logic
                         const gradeOutcome = gradeBet(betInfo, eventScores);
                         if (leaveOpen(gradeOutcome.result)) {
-                          console.log(`Leaving ${bet.market} bet ${bet.id} open`);
+                          const owner = bet.market === 'outright' || bet.market === 'futures'
+                            ? 'settle_outright'
+                            : 'manual review';
+                          console.log(`Leaving ${bet.market} bet ${bet.id} for ${owner}`);
                           continue;
                         }
 

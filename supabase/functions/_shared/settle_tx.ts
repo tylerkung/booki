@@ -17,6 +17,8 @@ export interface SettleTxResult {
   detail?: string;
   settlement_version?: number;
   legs_settled?: number;
+  /** Present on settle_bet_tx. The row after the ledger insert. */
+  bet?: Record<string, unknown>;
   ledger_entry?: {
     id: string;
     amount: number;

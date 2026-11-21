@@ -1,0 +1,16 @@
+[
+  { "left": "St. Louis Blues", "right": "St Louis Blues", "match": true },
+  { "left": "St Louis Blues (+2000)", "right": "St Louis Blues", "match": true },
+  { "left": "Montréal Canadiens", "right": "Montreal Canadiens", "match": true },
+  { "left": "Golden State Warriors +12000", "right": "Golden State Warriors", "match": true },
+  { "left": "Golden State Warriors (+12000)", "right": "Golden State Warriors", "match": true },
+  { "left": "Team +1", "right": "Team -1", "match": false },
+  { "left": "Malmö FF", "right": "Malmo FF", "match": true },
+  { "left": "Łódź", "right": "Lodz", "match": true },
+  { "left": "Đakovo", "right": "Dakovo", "match": true },
+  { "left": "Ægir", "right": "Aegir", "match": true },
+  { "left": "Straße", "right": "Strasse", "match": true },
+  { "left": "Warriors", "right": "Golden State Warriors", "match": false },
+  { "left": "Boston Celtics", "right": "Golden State Warriors", "match": false },
+  { "left": "", "right": "Warriors", "match": false }
+]

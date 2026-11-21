@@ -1687,6 +1687,49 @@ function dashboardApp() {
             this.isLoadingPlayerTrack = false;
         },
 
+        // A future that has settled, until the member dismisses it. Stored on
+        // the account, like the welcome flag, so another device does not show
+        // it again. A leg that is only graded, with the multi still open, waits.
+        get futuresSettlementNotices() {
+            const meta = this.session && this.session.user && this.session.user.user_metadata;
+            const seen = new Set(Array.isArray(meta && meta.futures_notices_seen) ? meta.futures_notices_seen : []);
+            const grouped = new Map();
+            for (const bet of this.playerBets || []) {
+                const market = (bet.market || '').toLowerCase();
+                if (market !== 'outright' && market !== 'futures') continue;
+                if (bet.status !== 'settled' && bet.status !== 'void') continue;
+                if (!bet.event_id || seen.has(bet.event_id)) continue;
+                const ev = this.playerTrackEvents[bet.event_id];
+                const name = ev && (ev.away_team === 'Outright' ? (ev.home_team || 'Future') : (ev.home_team || 'Future'));
+                const result = bet.grade_result === 'win' ? 'won'
+                    : bet.grade_result === 'loss' ? 'lost'
+                    : 'was voided';
+                const entry = grouped.get(bet.event_id) || { eventId: bet.event_id, lines: [] };
+                entry.lines.push(`Your pick on ${bet.side || 'this future'} (${name || 'Future'}) ${result}.`);
+                grouped.set(bet.event_id, entry);
+            }
+            return [...grouped.values()].map((entry) => ({
+                eventId: entry.eventId,
+                text: entry.lines.join(' '),
+            }));
+        },
+
+        async dismissFuturesNotices() {
+            const ids = this.futuresSettlementNotices.map((notice) => notice.eventId);
+            if (!ids.length || !this.session || !this.session.user) return;
+            const prev = (this.session.user.user_metadata && this.session.user.user_metadata.futures_notices_seen) || [];
+            const next = [...new Set([...prev, ...ids])];
+            this.session.user.user_metadata = {
+                ...(this.session.user.user_metadata || {}),
+                futures_notices_seen: next,
+            };
+            try {
+                await this.supabase.auth.updateUser({ data: { futures_notices_seen: next } });
+            } catch (err) {
+                this.toast(err.message || 'Could not dismiss that notice', 'error');
+            }
+        },
+
         get playerTickets() {
             const ticketMap = {};
             for (const bet of this.playerBets) {
@@ -1829,7 +1872,7 @@ function dashboardApp() {
             if (ticket.gradeResult === 'win') return 'badge-won';
             if (ticket.gradeResult === 'loss') return 'badge-lost';
             if (ticket.gradeResult === 'push') return 'badge-push';
-            if (ticket.status === 'void') return 'badge-void';
+            if (ticket.gradeResult === 'void' || ticket.status === 'void') return 'badge-void';
             return 'badge-pending';
         },
 
@@ -1837,7 +1880,7 @@ function dashboardApp() {
             if (ticket.gradeResult === 'win') return 'Won';
             if (ticket.gradeResult === 'loss') return 'Lost';
             if (ticket.gradeResult === 'push') return 'Push';
-            if (ticket.status === 'void') return 'Void';
+            if (ticket.gradeResult === 'void' || ticket.status === 'void') return 'Void';
             return 'Open';
         },
 
@@ -1845,7 +1888,7 @@ function dashboardApp() {
             if (leg.grade_result === 'win') return 'var(--accent)';
             if (leg.grade_result === 'loss') return 'var(--danger)';
             if (leg.grade_result === 'push') return 'var(--warning)';
-            if (leg.status === 'void') return 'var(--text-muted)';
+            if (leg.grade_result === 'void' || leg.status === 'void') return 'var(--text-muted)';
             return 'var(--text-muted)';
         },
 
@@ -3944,13 +3987,17 @@ function dashboardApp() {
             // disappear under a plain upper bound.
             const organizerHorizon = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString();
 
-            const { data, error } = await this.supabase
+            // PostgREST stops at 1000 rows and does not say so. Ordering by
+            // start_time ascending kept the oldest rows and cut off the 2027
+            // futures. Page until a short page comes back.
+            const { data, error } = await BookiPaging.fetchAllRows(() => this.supabase
                 .from('events')
                 .select('*')
                 .is('bookie_id', null)
                 .gte('start_time', fourteenDaysAgo)
                 .or(`start_time.lte.${organizerHorizon},away_team.eq.Outright`)
-                .order('start_time', { ascending: true });
+                .order('start_time', { ascending: true })
+                .order('id', { ascending: true }));
 
             if (error) {
                 console.error('Failed to load events');
@@ -5071,7 +5118,7 @@ function dashboardApp() {
                 if (response.error) {
                     this.toast(response.error, 'error');
                 } else {
-                    this.toast(`Pick graded as ${this.gradingOutcome}`, 'success');
+                    this.toast(response.settled ? `Pick settled as ${this.gradingOutcome}` : `Pick graded as ${this.gradingOutcome}`, 'success');
                     this.showGradeModal = false;
                     await this.loadPickDetail();
                 }
@@ -6059,6 +6106,7 @@ function dashboardApp() {
             if (bet.grade_result === 'win') return 'badge-won';
             if (bet.grade_result === 'loss') return 'badge-lost';
             if (bet.grade_result === 'push') return 'badge-push';
+            if (bet.grade_result === 'void') return 'badge-void';
             switch (bet.status) {
                 case 'settled': case 'graded': return 'badge-settled';
                 case 'pending': case 'accepted': case 'readyToGrade': return 'badge-pending';
@@ -6072,6 +6120,7 @@ function dashboardApp() {
             if (bet.grade_result === 'win') return 'Won';
             if (bet.grade_result === 'loss') return 'Lost';
             if (bet.grade_result === 'push') return 'Push';
+            if (bet.grade_result === 'void') return 'Void';
             switch (bet.status) {
                 case 'pending': return 'Pending';
                 case 'accepted': return 'Open';
