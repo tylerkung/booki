@@ -33,6 +33,10 @@ still live. It only adds the settlement guard.
 
 `grade_player_props` is in that list. It grades from the new snapshot columns and settles parlays through `settle_parlay_tx`. Leaving the old build up skips both.
 
+### 066 — bookmaker key on markets (NOT applied)
+
+Adds nullable `markets.bookmaker` (the Odds API bookmaker key). Does not update, delete, or backfill rows. `sync_games` and `auto_refresh_games` write the column, so apply this before deploying those two. 065 is the submit-idempotency migration on another branch. 067 is reserved. This migration does not depend on either.
+
 ### 064 — one shared main line (NOT applied)
 
 From PR #13. Adds nullable `markets.main_line` and a partial unique index, and makes `superseded_market_ids` ignore `bettable = false`. Does not update, delete, or backfill market rows. Apply before 062 and 063, and before deploying `sync_games` or `auto_refresh_games`.

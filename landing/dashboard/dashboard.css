@@ -1972,6 +1972,27 @@ input, button, select, textarea { font: inherit; }
     font-size: var(--fs-caption);
 }
 
+/* "Off the board" has to stay readable inside the odds column. A disabled
+   price is faded on purpose; this state is a label, not a dead button. */
+.pg-odds-btn.pg-odds-off {
+    white-space: normal;
+    cursor: default;
+}
+.pg-odds-btn.pg-odds-off:disabled {
+    opacity: 1;
+}
+.pg-odds-btn.pg-odds-off .pg-odds-na {
+    font-size: var(--fs-micro);
+    line-height: var(--lh-tight);
+    white-space: normal;
+}
+
+.gd-off-board {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--fs-body);
+}
+
 .pg-lock-badge {
     display: inline-flex;
     align-items: center;

@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: '22'
       - name: Prop and parlay grading
-        run: node --experimental-strip-types --test supabase/functions/_shared/grading_rules.test.mts
+        run: node --experimental-strip-types --test supabase/functions/_shared/grading_rules.test.mts supabase/functions/_shared/h2h.test.mts
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x

@@ -5,7 +5,7 @@ This project cannot be built from the CLI (`CLAUDE.md`: "Xcode command line
 tools don't support full builds — use Xcode IDE"), so everything here needs a
 real build and a run in the simulator.
 
-Last updated: 2026-11-17
+Last updated: 2026-11-20
 
 ---
 
@@ -531,3 +531,15 @@ session cannot compile it.
 - [ ] A loss on any leg is a loss even if another leg is still open
 - [ ] The displayed payout has to use the legs that were not voided or pushed, matching `decideParlay` in `supabase/functions/_shared/parlay_settle.ts`
 - [ ] The iOS "treat void leg as push" setting is ignored: iOS previews a refund, but the server reprices void legs out of the parlay. Product decision, pending. Do not build while iOS is on hold.
+
+## B18 — Moneyline off the board
+
+Not built. iOS only. The web board and the three submit functions now treat a missing, unbettable, extreme, or stale moneyline as off the board. Shipped iOS does not.
+
+`CompactGameRow` leaves a clear gap when `moneylineMarket` is nil, and it still offers a moneyline whose price is worse than -10000 or whose `updatedAt` is older than 18 hours. The server rejects those with `off_the_board` (`submit_bet`, `submit_bets`, `submit_parlay`). Until the slip understands that error, the member sees a generic failure.
+
+- [ ] Show "Off the board" instead of an empty moneyline cell, and do not call `onSelectOdds`, when the moneyline is missing, `bettable == false`, either side is worse than -10000, or `updatedAt` is older than 18 hours
+- [ ] Map `off_the_board` to that same label in the slip
+- [ ] Decode `markets.bettable` if it is still missing (see B16) so a retired moneyline is not offered
+
+The web league header counts games only and still lists the championship outright under the league. iOS sport pages already keep outrights out of the game list. No iOS count change came out of that fix.

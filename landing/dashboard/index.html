@@ -2354,7 +2354,10 @@
                                                 <div class="league-sub-left">
                                                     <a class="league-sub-link" @click.stop.prevent="navigateToSportLeague(sportGroup.sportKey || sportGroup.sport.toLowerCase(), leagueGroup.league)" href="#">
                                                         <span x-text="leagueGroup.league"></span>
-                                                        <span class="league-count" x-text="'(' + leagueGroup.events.length + ')'"></span>
+                                                        <!-- Games only. The championship outright is still
+                                                             rendered from leagueGroup.outrights below; it
+                                                             is not part of this number. -->
+                                                        <span class="league-count" x-text="'(' + leagueHeaderCount(leagueGroup) + ')'"></span>
                                                     </a>
                                                     <span class="league-toggle" x-text="collapsedLeagues[sportGroup.sport + '|' + leagueGroup.league] ? '+' : '−'"></span>
                                                 </div>
@@ -2646,7 +2649,7 @@
                                                 @click="ladderShift(section.key, ladderPageSize, section.count)"
                                                 aria-label="More lines">›</button>
                                     </div>
-                                    <span class="t-body-muted" x-show="section.kind !== 'ladder'"
+                                    <span class="t-body-muted" x-show="section.kind !== 'ladder' && section.kind !== 'off'"
                                           x-text="((section.markets || []).length) + ((section.markets || []).length === 1 ? ' line' : ' lines')"></span>
                                 </div>
 
@@ -2695,6 +2698,11 @@
                                                 @click="toggleLadder(section.key)"
                                                 x-text="isLadderExpanded(section.key) ? 'Hide all lines' : ('View all ' + section.count + ' lines')"></button>
                                     </div>
+                                </template>
+
+                                <!-- Moneyline with no price the member can take. -->
+                                <template x-if="section.kind === 'off'">
+                                    <p class="gd-off-board">Off the board</p>
                                 </template>
 
                                 <!-- Pair: a market with one line per side -->
@@ -4430,15 +4438,16 @@
                             </template>
                             <template x-if="!getMarketForEvent(ev.id, 'spreads')"><span class="pg-odds-na">—</span></template>
                         </button>
-                        <!-- Away moneyline -->
+                        <!-- Away moneyline. Missing, retired, extreme, or stale
+                             is Off the board and is not a pick. -->
                         <button class="pg-odds-btn"
-                            :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev) }"
+                            :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'a'), 'pg-odds-locked': isEventLocked(ev), 'pg-odds-off': !getMarketForEvent(ev.id, 'h2h') }"
                             :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'h2h')"
                             @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'a', (ev.away_team || 'Away') + ' ML', getMarketForEvent(ev.id, 'h2h')?.odds_a)">
                             <template x-if="getMarketForEvent(ev.id, 'h2h')">
                                 <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').odds_a)"></span>
                             </template>
-                            <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">—</span></template>
+                            <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">Off the board</span></template>
                         </button>
                         <!-- Over -->
                         <button class="pg-odds-btn"
@@ -4474,13 +4483,13 @@
                         </button>
                         <!-- Home moneyline -->
                         <button class="pg-odds-btn"
-                            :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev) }"
+                            :class="{ 'pg-odds-active': getMarketForEvent(ev.id, 'h2h') && isSelectionActive(ev.id, getMarketForEvent(ev.id, 'h2h')?.id, 'b'), 'pg-odds-locked': isEventLocked(ev), 'pg-odds-off': !getMarketForEvent(ev.id, 'h2h') }"
                             :disabled="isEventLocked(ev) || !getMarketForEvent(ev.id, 'h2h')"
                             @click="toggleSelection(ev, getMarketForEvent(ev.id, 'h2h'), 'b', (ev.home_team || 'Home') + ' ML', getMarketForEvent(ev.id, 'h2h')?.odds_b)">
                             <template x-if="getMarketForEvent(ev.id, 'h2h')">
                                 <span class="pg-odds-val" x-text="formatOdds(getMarketForEvent(ev.id, 'h2h').odds_b)"></span>
                             </template>
-                            <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">—</span></template>
+                            <template x-if="!getMarketForEvent(ev.id, 'h2h')"><span class="pg-odds-na">Off the board</span></template>
                         </button>
                         <!-- Under -->
                         <button class="pg-odds-btn"

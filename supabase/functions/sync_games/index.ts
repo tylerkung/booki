@@ -9,6 +9,12 @@ import {
   isSharedMainLineConflict,
   type SharedMainLineRow,
 } from '../_shared/main_line.ts';
+import {
+  bettableSharedIds,
+  pairTeamOutcomes,
+  sameTeam,
+  selectMoneyline,
+} from '../_shared/h2h.ts';
 
 /**
  * Sports to sync from the Odds API.
@@ -136,6 +142,8 @@ interface OddsMarket {
   key: string;
   last_update: string;
   outcomes: OddsOutcome[];
+  /** Set when a deep market was copied off a book other than the featured one. */
+  bookmaker?: string;
 }
 
 interface OddsBookmaker {
@@ -411,7 +419,7 @@ async function fetchOutrightsFromApi(
 function extractOutrightMarkets(
   oddsEvent: OddsEvent,
   preferredBookmaker: string = 'draftkings'
-): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number }[] {
+): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number; bookmaker: string }[] {
   const bookmakers = oddsEvent.bookmakers;
   if (!bookmakers || bookmakers.length === 0) {
     return [];
@@ -431,6 +439,7 @@ function extractOutrightMarkets(
     side_b: oddsEvent.sport_title,
     odds_a: outcome.price,
     odds_b: 0,
+    bookmaker: selectedBookmaker.key,
   }));
 }
 
@@ -468,6 +477,8 @@ interface MarketRecord {
   // so an upsert of those does not clear a flag they never had.
   bettable?: boolean;
   main_line?: boolean;
+  /** Odds API bookmaker key. Null only when the source book is unknown. */
+  bookmaker?: string | null;
 }
 
 /**
@@ -506,48 +517,52 @@ function extractLineValue(sideA: string): string {
 export function extractMarketsFromOddsEvent(
   oddsEvent: OddsEvent,
   preferredBookmaker: string = 'draftkings'
-): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number }[] {
+): { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number; bookmaker: string }[] {
   const bookmakers = oddsEvent.bookmakers;
   if (!bookmakers || bookmakers.length === 0) {
     return [];
   }
 
-  // Find preferred bookmaker or fall back to first available
+  // Spreads and totals stay on DraftKings, or the first book if it has
+  // none. The moneyline is chosen separately: DraftKings, then Fanatics,
+  // then the rest, and both of its prices come from that one book.
   const selectedBookmaker =
     bookmakers.find((b) => b.key === preferredBookmaker) || bookmakers[0];
 
-  const markets: { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number }[] = [];
+  const markets: { type: string; side_a: string; side_b: string; odds_a: number; odds_b: number; bookmaker?: string }[] = [];
+
+  const moneyline = selectMoneyline(bookmakers, oddsEvent.home_team, oddsEvent.away_team);
+  if (moneyline && oddsEvent.home_team && oddsEvent.away_team) {
+    markets.push({
+      type: 'moneyline',
+      side_a: oddsEvent.away_team,
+      side_b: oddsEvent.home_team,
+      odds_a: moneyline.awayPrice,
+      odds_b: moneyline.homePrice,
+      bookmaker: moneyline.bookmaker,
+    });
+  }
 
   for (const market of selectedBookmaker.markets) {
+    const bookmaker = market.bookmaker || selectedBookmaker.key;
     switch (market.key) {
-      case 'h2h': {
-        // Moneyline
-        const homeOutcome = market.outcomes.find((o) => o.name === oddsEvent.home_team);
-        const awayOutcome = market.outcomes.find((o) => o.name === oddsEvent.away_team);
-        if (homeOutcome && awayOutcome) {
-          markets.push({
-            type: 'moneyline',
-            side_a: oddsEvent.away_team ?? '',
-            side_b: oddsEvent.home_team ?? '',
-            odds_a: awayOutcome.price,
-            odds_b: homeOutcome.price,
-          });
-        }
+      case 'h2h':
+        // Priced above, across books. The selected book's h2h is not read
+        // again here, or a DraftKings line that failed the name match would
+        // be written beside the Fanatics line that succeeded.
         break;
-      }
       case 'spreads': {
-        // Spread
-        const homeOutcome = market.outcomes.find((o) => o.name === oddsEvent.home_team);
-        const awayOutcome = market.outcomes.find((o) => o.name === oddsEvent.away_team);
-        if (homeOutcome && awayOutcome) {
-          const awaySpread = formatSpread(awayOutcome.point ?? 0);
-          const homeSpread = formatSpread(homeOutcome.point ?? 0);
+        const paired = pairTeamOutcomes(market.outcomes, oddsEvent.home_team, oddsEvent.away_team);
+        if (paired) {
+          const awaySpread = formatSpread(paired.away.point ?? 0);
+          const homeSpread = formatSpread(paired.home.point ?? 0);
           markets.push({
             type: 'spread',
             side_a: `${oddsEvent.away_team} ${awaySpread}`,
             side_b: `${oddsEvent.home_team} ${homeSpread}`,
-            odds_a: awayOutcome.price,
-            odds_b: homeOutcome.price,
+            odds_a: paired.away.price,
+            odds_b: paired.home.price,
+            bookmaker,
           });
         }
         break;
@@ -564,6 +579,7 @@ export function extractMarketsFromOddsEvent(
             side_b: `Under ${formatNumber(totalValue)}`,
             odds_a: overOutcome.price,
             odds_b: underOutcome.price,
+            bookmaker,
           });
         }
         break;
@@ -575,9 +591,9 @@ export function extractMarketsFromOddsEvent(
           if (outcome.point === undefined) continue;
           const key = Math.abs(outcome.point);
           const pair = byPoint.get(key) || {};
-          if (outcome.name === oddsEvent.home_team) {
+          if (sameTeam(outcome.name, oddsEvent.home_team)) {
             pair.home = outcome;
-          } else {
+          } else if (sameTeam(outcome.name, oddsEvent.away_team)) {
             pair.away = outcome;
           }
           byPoint.set(key, pair);
@@ -592,6 +608,7 @@ export function extractMarketsFromOddsEvent(
               side_b: `${oddsEvent.home_team} ${homeSpread}`,
               odds_a: pair.away.price,
               odds_b: pair.home.price,
+              bookmaker,
             });
           }
         }
@@ -618,6 +635,7 @@ export function extractMarketsFromOddsEvent(
               side_b: `Under ${formatNumber(pointVal)}`,
               odds_a: pair.over.price,
               odds_b: pair.under.price,
+              bookmaker,
             });
           }
         }
@@ -650,6 +668,7 @@ export function extractMarketsFromOddsEvent(
               side_b: `${entry.team} Under ${formatNumber(entry.point)}`,
               odds_a: entry.over.price,
               odds_b: entry.under.price,
+              bookmaker,
             });
           }
         }
@@ -668,6 +687,7 @@ export function extractMarketsFromOddsEvent(
             side_b: 'Even',
             odds_a: odd.price,
             odds_b: even.price,
+            bookmaker,
           });
         }
         break;
@@ -675,7 +695,10 @@ export function extractMarketsFromOddsEvent(
     }
   }
 
-  return markets;
+  return markets.map((m) => ({
+    ...m,
+    bookmaker: m.bookmaker || selectedBookmaker.key,
+  }));
 }
 
 
@@ -735,11 +758,13 @@ export function mergeDeepMarkets(
 
   // First pass: the selected book's own deep markets.
   const sameBook = deepBooks.find((b) => b.key === selected.key);
-  for (const market of sameBook?.markets ?? []) {
-    if (present.has(market.key)) continue;
-    selected.markets.push(market);
-    present.add(market.key);
-    added++;
+  if (sameBook) {
+    for (const market of sameBook.markets ?? []) {
+      if (present.has(market.key)) continue;
+      selected.markets.push({ ...market, bookmaker: sameBook.key });
+      present.add(market.key);
+      added++;
+    }
   }
 
   // Second pass: fill what is still missing from a single other book.
@@ -750,11 +775,14 @@ export function mergeDeepMarkets(
       .map((b) => ({ book: b, hits: (b.markets ?? []).filter((m) => missing.includes(m.key)).length }))
       .sort((a, b) => b.hits - a.hits)[0];
 
-    for (const market of fallback?.book.markets ?? []) {
-      if (present.has(market.key) || !missing.includes(market.key)) continue;
-      selected.markets.push(market);
-      present.add(market.key);
-      added++;
+    const fallbackBook = fallback?.book;
+    if (fallbackBook) {
+      for (const market of fallbackBook.markets ?? []) {
+        if (present.has(market.key) || !missing.includes(market.key)) continue;
+        selected.markets.push({ ...market, bookmaker: fallbackBook.key });
+        present.add(market.key);
+        added++;
+      }
     }
   }
 
@@ -1227,6 +1255,12 @@ Deno.serve(async (req) => {
 
       // Extract markets from the odds event
       const extractedMarkets = extractMarketsFromOddsEvent(oddsEvent);
+      // No acceptable moneyline in this feed: the one we stored is off the
+      // board. Retire it. Do not delete it — a pick may still point at it.
+      if (!extractedMarkets.some((m) => m.type === 'moneyline')) {
+        const staleMl = mainLineGroups.get(`${eventId}|moneyline`) ?? [];
+        for (const id of bettableSharedIds(staleMl)) retireIds.push(id);
+      }
       if (extractedMarkets.length === 0) {
         // No odds data available for this event - skip
         stats.events_skipped++;
@@ -1254,6 +1288,7 @@ Deno.serve(async (req) => {
             odds_b: market.odds_b,
             bettable: true,
             main_line: true,
+            bookmaker: market.bookmaker,
           };
           if (plan.canonicalId) {
             marketsToUpdate.push({ ...record, id: plan.canonicalId });
@@ -1280,6 +1315,7 @@ Deno.serve(async (req) => {
             side_b: market.side_b,
             odds_a: market.odds_a,
             odds_b: market.odds_b,
+            bookmaker: market.bookmaker,
           });
         } else {
           // New market - insert it
@@ -1291,6 +1327,7 @@ Deno.serve(async (req) => {
             side_b: market.side_b,
             odds_a: market.odds_a,
             odds_b: market.odds_b,
+            bookmaker: market.bookmaker,
           });
         }
       }
@@ -1381,6 +1418,7 @@ Deno.serve(async (req) => {
               odds_b: row.odds_b,
               bettable: true,
               main_line: true,
+              bookmaker: row.bookmaker ?? null,
             })
             .eq('id', winner.id);
           if (adoptError) {
@@ -1535,7 +1573,7 @@ Deno.serve(async (req) => {
               // Update existing market odds
               await client
                 .from('markets')
-                .update({ odds_a: market.odds_a })
+                .update({ odds_a: market.odds_a, bookmaker: market.bookmaker ?? null })
                 .eq('id', existingId);
             } else {
               outrightToInsert.push({
@@ -1546,6 +1584,7 @@ Deno.serve(async (req) => {
                 side_b: market.side_b,
                 odds_a: market.odds_a,
                 odds_b: 0,
+                bookmaker: market.bookmaker ?? null,
               });
             }
           }

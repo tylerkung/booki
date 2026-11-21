@@ -2860,9 +2860,19 @@ function dashboardApp() {
             const pair = (key, title, markets) =>
                 markets.length ? { key, title, kind: 'pair', markets } : null;
 
-            // Moneyline first: it is what most people came for. One row —
-            // the newest bettable one. Older duplicates are not extra buttons.
-            push(pair('moneyline', 'Winner', featuredMainList(all, 'moneyline')));
+            // Moneyline first, on a game. A championship outright has no
+            // moneyline; it keeps the futures section below and is not
+            // "Off the board". On a game, one row, and only when it is still
+            // a price someone can take. Missing, retired, worse than -10000,
+            // or older than 18 hours is Off the board — not a dash, and not
+            // a button.
+            const outrightEvent = this.gameDetail && this.gameDetail.away_team === 'Outright';
+            if (!outrightEvent) {
+                const moneyline = featuredMainList(all, 'moneyline')
+                    .filter((m) => moneylineMarketOnBoard(m, Date.now()));
+                if (moneyline.length) push(pair('moneyline', 'Winner', moneyline));
+                else sections.push({ key: 'moneyline', title: 'Winner', kind: 'off', markets: [] });
+            }
 
             // Spread and its alternates are one ladder, with the main line
             // included — splitting them would put the headline number in a
@@ -3036,7 +3046,16 @@ function dashboardApp() {
          * main lines, the start time and the score.
          */
         getMarketForEvent(eventId, marketType) {
-            return this.playerMarketsByEvent[eventId]?.[marketType] || null;
+            const market = this.playerMarketsByEvent[eventId]?.[marketType] || null;
+            if (!market) return null;
+            // The moneyline cell is the only one that turns a missing or
+            // unusable price into "Off the board". Spreads and totals still
+            // show a dash when they are absent.
+            if ((marketType === 'h2h' || marketType === 'moneyline') &&
+                !moneylineMarketOnBoard(market, Date.now())) {
+                return null;
+            }
+            return market;
         },
 
         formatSpreadLine(line) {
@@ -3073,6 +3092,8 @@ function dashboardApp() {
         toggleSelection(event, market, sideIndicator, side, odds) {
             if (!market || !odds) return;
             if (this.isEventLocked(event)) return;
+            if ((market.type === 'moneyline' || market.type === 'h2h') &&
+                !moneylineMarketOnBoard(market, Date.now())) return;
 
             const idx = this.betSlipSelections.findIndex(
                 s => s.event_id === event.id && s.market_id === market.id && s.side_indicator === sideIndicator
@@ -3448,6 +3469,9 @@ function dashboardApp() {
          */
         humanizeBetError(raw) {
             const msg = String(raw || '');
+            if (msg === 'off_the_board') {
+                return 'That moneyline is off the board.';
+            }
             if (this.isStaleBoardError(msg)) {
                 return 'That line is no longer offered. Your pick is still here — remove it and add the current line.';
             }

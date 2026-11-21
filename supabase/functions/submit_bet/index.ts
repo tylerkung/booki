@@ -4,6 +4,7 @@ import { checkIdempotency, storeIdempotency } from '../_shared/idempotency.ts';
 import { emitAuditEvent } from '../_shared/audit.ts';
 import { sendNotification } from '../_shared/notifications.ts';
 import { supersededMarketIds, isBetterForMember } from '../_shared/line_guard.ts';
+import { moneylineOffBoardError } from '../_shared/h2h.ts';
 import { resolveStoredLeg } from '../_shared/market_validation.ts';
 
 interface SubmitBetRequest {
@@ -268,6 +269,16 @@ Deno.serve(async (req) => {
     if (market.bettable === false) {
       return new Response(
         JSON.stringify({ success: false, error: 'market_not_bettable' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Worse than -10000 on either side, or a moneyline older than 18 hours.
+    // A pick'em (both sides moderate minus prices) is not this.
+    const offBoard = moneylineOffBoardError(market, body.odds, Date.now());
+    if (offBoard) {
+      return new Response(
+        JSON.stringify({ success: false, error: offBoard }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
